@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -102,6 +103,11 @@ func (b *BlockReader) Invoke(
 
 	weightCollector := &queryWeightCollector{}
 
+	// Per-invocation byte counter: only the successful response carries the
+	// total, so retried calls from the query-frontend never double-count.
+	var fetchedBytes atomic.Uint64
+	countingStorage := objstore.NewCountingBucket(b.storage, &fetchedBytes)
+
 	var blocksCount, datasetsCount int64
 	for _, md := range req.QueryPlan.Root.Blocks {
 		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
@@ -115,7 +121,7 @@ func (b *BlockReader) Invoke(
 		}
 		blocksCount++
 		datasetsCount += int64(len(md.Datasets))
-		obj := block.NewObject(b.storage, md)
+		obj := block.NewObject(countingStorage, md)
 		g.Go(util.RecoverPanic((&blockContext{
 			ctx:             ctx,
 			log:             b.log,
@@ -131,6 +137,11 @@ func (b *BlockReader) Invoke(
 	if err = g.Wait(); err != nil {
 		return nil, err
 	}
+
+	// Wait for any async readers (e.g. parquet ReadModeAsync goroutines) that
+	// may still be draining a GetRange reader after the errgroup returned.
+	// This ensures fetchedBytes is stable before we sample it below.
+	countingStorage.Wait()
 
 	if weightCollector.datasetsCount > 0 {
 		traceID, _ := tracing.ExtractTraceID(ctx)
@@ -155,20 +166,26 @@ func (b *BlockReader) Invoke(
 
 	resp := agg.response()
 
+	if resp.Diagnostics == nil {
+		resp.Diagnostics = &queryv1.Diagnostics{}
+	}
+	stats := &queryv1.ExecutionStats{
+		BytesFetched: fetchedBytes.Load(),
+	}
 	if collectDiag {
-		if resp.Diagnostics == nil {
-			resp.Diagnostics = &queryv1.Diagnostics{}
-		}
+		stats.BlocksRead = blocksCount
+		stats.DatasetsProcessed = datasetsCount
+		stats.BlockExecutions = blockExecCollector.collect()
 		resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
 			Type:        queryv1.QueryNode_READ,
 			Executor:    b.hostname,
 			StartTimeNs: startTime.UnixNano(),
 			EndTimeNs:   time.Now().UnixNano(),
-			Stats: &queryv1.ExecutionStats{
-				BlocksRead:        blocksCount,
-				DatasetsProcessed: datasetsCount,
-				BlockExecutions:   blockExecCollector.collect(),
-			},
+			Stats:       stats,
+		}
+	} else {
+		resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
+			Stats: stats,
 		}
 	}
 
