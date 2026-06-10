@@ -1,0 +1,16 @@
+services:
+  prometheus:
+    # This service is generated from examples/templates/prometheus/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: prom/prometheus:v3.1.0
+    ports:
+    - '9099:9090'
+    command: >
+      --enable-feature=remote-write-receiver
+      --enable-feature=exemplar-storage
+      --enable-feature=native-histograms
+      --config.file=/etc/prometheus/prometheus.yml
+      --storage.tsdb.path=/prometheus
+      --web.enable-otlp-receiver
+    volumes:
+    - ./prometheus-provisioning/prometheus.yaml:/etc/prometheus/prometheus.yml

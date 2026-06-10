@@ -35,12 +35,6 @@ type example struct {
 	// to deviate. Lines should use the same 4-space indent as the template
 	// (e.g. "    - ./grafana/grafana.ini:/etc/grafana/grafana.ini").
 	serviceVolumes map[string][]string
-	// fileAppends maps a template-relative config file path to extra text that
-	// is appended after the template content before the byte-for-byte check.
-	// Use this when an example legitimately extends a config file (e.g. an
-	// additional datasource in a provisioning YAML). The template prefix is
-	// still enforced; only the appended portion is allowed to deviate.
-	fileAppends map[string]string
 }
 
 // j is a shorthand for filepath.Join.
@@ -135,27 +129,10 @@ var examples = []example{
 	// ── language-sdk-instrumentation/golang-push ─────────────────────────────
 	{
 		// The rideshare example also provisions a Prometheus datasource because
-		// its app exports OTLP metrics to Prometheus. The extra datasource is
-		// tracked via fileAppends so the shared Pyroscope DS config is still
-		// enforced.
+		// its app exports OTLP metrics to Prometheus. The prometheus template
+		// provides the service definition and grafana datasource provisioning.
 		compose:   "language-sdk-instrumentation/golang-push/rideshare",
-		templates: []string{"grafana", "pyroscope"},
-		fileAppends: map[string]string{
-			"grafana-provisioning/datasources/pyroscope.yml": `  - uid: local-prometheus
-    type: prometheus
-    name: Prometheus
-    access: proxy
-    url: http://prometheus:9090
-    basicAuth: true #username: admin, password: admin
-    basicAuthUser: admin
-    jsonData:
-      manageAlerts: true
-      prometheusType: Prometheus #Cortex | Mimir | Prometheus | Thanos
-      prometheusVersion: 2.40.0
-    secureJsonData:
-      basicAuthPassword: admin #https://grafana.com/docs/grafana/latest/administration/provisioning/#using-environment-variables
-`,
-		},
+		templates: []string{"grafana", "pyroscope", "prometheus"},
 	},
 	{
 		compose:   "language-sdk-instrumentation/golang-push/rideshare-alloy",
@@ -316,11 +293,7 @@ func TestExamplesConsistency(t *testing.T) {
 							t.Run(rel, func(t *testing.T) {
 								canonical, err := os.ReadFile(path)
 								require.NoError(t, err)
-								// Append example-specific extra content if registered.
-								if extra, ok := ex.fileAppends[rel]; ok {
-									canonical = append(canonical, []byte(extra)...)
-								}
-								if checkMode() == "update" {
+							if checkMode() == "update" {
 									require.NoError(t, os.MkdirAll(filepath.Dir(dstPath), 0o755))
 									require.NoError(t, os.WriteFile(dstPath, canonical, 0o644))
 									return
