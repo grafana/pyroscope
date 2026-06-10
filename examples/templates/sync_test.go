@@ -12,6 +12,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	modeCheck  = "check"
+	modeUpdate = "update"
+)
+
 // checkMode returns the value of EXAMPLE_CHECK_MODE ("check" or "update").
 // Any other value (including unset) causes the test to be skipped.
 func checkMode() string { return os.Getenv("EXAMPLE_CHECK_MODE") }
@@ -240,7 +245,7 @@ var examples = []example{
 // Sync:  EXAMPLE_CHECK_MODE=update go test ./examples/templates/
 func TestExamplesConsistency(t *testing.T) {
 	switch checkMode() {
-	case "check", "update":
+	case modeCheck, modeUpdate:
 		// proceed
 	default:
 		t.Skip("set EXAMPLE_CHECK_MODE=check or EXAMPLE_CHECK_MODE=update to run")
@@ -275,7 +280,7 @@ func TestExamplesConsistency(t *testing.T) {
 								canonical = injectVolumes(t, canonical, extra)
 							}
 							t.Run(svcName, func(t *testing.T) {
-								if checkMode() == "update" {
+								if checkMode() == modeUpdate {
 									require.NoError(t, updateService(t, composePath, svcName, canonical))
 									return
 								}
@@ -293,7 +298,7 @@ func TestExamplesConsistency(t *testing.T) {
 							t.Run(rel, func(t *testing.T) {
 								canonical, err := os.ReadFile(path)
 								require.NoError(t, err)
-							if checkMode() == "update" {
+								if checkMode() == modeUpdate {
 									require.NoError(t, os.MkdirAll(filepath.Dir(dstPath), 0o755))
 									require.NoError(t, os.WriteFile(dstPath, canonical, 0o644))
 									return
