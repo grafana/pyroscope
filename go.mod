@@ -83,7 +83,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260504160031-60b97b32f348
 	google.golang.org/grpc v1.81.0
 	google.golang.org/protobuf v1.36.11
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -129,6 +128,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
