@@ -8,6 +8,9 @@ import "context"
 type QueryStats struct {
 	ObjectStorageBytes uint64
 	MetastoreBytes     uint64
+	// EstimatedBytes is the pre-execution metadata size estimate (weight.Total())
+	// derived from block dataset section offsets before the backend is invoked.
+	EstimatedBytes uint64
 }
 
 type queryStatsKey struct{}
