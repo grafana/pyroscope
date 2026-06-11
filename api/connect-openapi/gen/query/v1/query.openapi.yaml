@@ -656,6 +656,17 @@ components:
           items:
             $ref: '#/components/schemas/query.v1.BlockExecution'
           title: block_executions
+        bytesFetched:
+          type:
+            - integer
+            - string
+          title: bytes_fetched
+          format: int64
+          description: |-
+            bytes_fetched is the total number of bytes requested from object storage
+             during this invocation. It counts only the bytes from this single,
+             successful Invoke call: retried or hedged calls that did not produce a
+             response are not included, so the value is deterministic across retries.
       title: ExecutionStats
       additionalProperties: false
       description: ExecutionStats captures statistics for READ node execution.

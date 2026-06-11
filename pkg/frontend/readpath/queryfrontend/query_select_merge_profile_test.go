@@ -46,6 +46,7 @@ func newSMPQueryFrontend(
 		backend,
 		nil, // symbolizer
 		nil, // diagnosticsStore
+		nil, // reg
 	)
 }
 
@@ -673,6 +674,7 @@ func TestSelectMergeProfiles_Symbolization(t *testing.T) {
 				nil,
 				mockQueryBackend,
 				mockSymbolizer,
+				nil,
 				nil,
 			)
 

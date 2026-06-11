@@ -31,7 +31,7 @@ Profiles Drilldown offers a convenient platform to analyze profiles and get insi
 
 {{< youtube id="x9aPw_CbIQc" >}}
 
-{{< docs/play title="the Grafana Play site" url="https://play.grafana.org/a/grafana-pyroscope-app/profiles-explorer" >}}
+{{< docs/play title="the Grafana Play site" url="https://play.grafana.org/a/grafana-pyroscope-app/explore" >}}
 
 ## Continuous profiling
 
