@@ -358,6 +358,7 @@ func TestTimeSeriesAggregator_FirstSampleNotLost(t *testing.T) {
 type benchmarkFixture struct {
 	ctx       context.Context
 	reader    *BlockReader
+	bucket    *memory.InMemBucket
 	plan      *queryv1.QueryPlan
 	tenant    []string
 	startTime time.Time
@@ -390,7 +391,7 @@ func setupBenchmarkFixture(b *testing.B) *benchmarkFixture {
 	}
 
 	logger := test.NewTestingLogger(b)
-	reader := NewBlockReader(logger, &objstore.ReaderAtBucket{Bucket: bucket}, nil)
+	reader := NewBlockReader(logger, &objstore.ReaderAtBucket{Bucket: bucket}, nil, nil, nil)
 
 	meta := make([]*metastorev1.BlockMeta, len(blocks))
 	for i, block := range blocks {
@@ -417,6 +418,7 @@ func setupBenchmarkFixture(b *testing.B) *benchmarkFixture {
 	return &benchmarkFixture{
 		ctx:       context.Background(),
 		reader:    reader,
+		bucket:    bucket,
 		plan:      plan,
 		tenant:    tenant,
 		startTime: time.UnixMilli(minTime),

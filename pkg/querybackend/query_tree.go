@@ -106,6 +106,30 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 
+	// Unsymbolized datasets take a pprof detour: the resolver's pprof output
+	// preserves the build IDs and addresses the symbolizer needs, and the
+	// symbolized profile is rendered back into a function-name tree.
+	if !query.Tree.FullSymbols && q.shouldSymbolizeDataset() {
+		profile, err := resolver.Pprof()
+		if err != nil {
+			return nil, err
+		}
+		if err = q.symbolizePprof(profile); err != nil {
+			return nil, err
+		}
+		treeBytes, err := model.TreeFromBackendProfile(profile, query.Tree.GetMaxNodes())
+		if err != nil {
+			return nil, err
+		}
+		return &queryv1.Report{
+			Tree: &queryv1.TreeReport{
+				// Query must be set: the tree aggregator dereferences it.
+				Query: query.Tree.CloneVT(),
+				Tree:  treeBytes,
+			},
+		}, nil
+	}
+
 	// output full pprof tree if that's requested
 	if query.Tree.FullSymbols {
 		tree, symbolBuilder, err := resolver.LocationRefNameTree()

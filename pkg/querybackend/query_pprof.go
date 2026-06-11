@@ -71,7 +71,7 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		resolverOptions = append(
 			resolverOptions,
 			symdb.WithResolverStackTraceSelector(query.Pprof.StackTraceSelector),
-			symdb.WithResolverSanitizeOnMerge(q.req.src.Options.SanitizeOnMerge))
+			symdb.WithResolverSanitizeOnMerge(q.req.src.GetOptions().GetSanitizeOnMerge()))
 	}
 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
@@ -88,6 +88,12 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 	profile, err := resolver.Pprof()
 	if err != nil {
 		return nil, err
+	}
+
+	if q.shouldSymbolizeDataset() {
+		if err = q.symbolizePprof(profile); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, m := range q.req.matchers {
