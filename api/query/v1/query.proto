@@ -43,6 +43,10 @@ message InvokeOptions {
   // be listed in the request explicitly.
   bool sanitize_on_merge = 1;
   bool collect_diagnostics = 2;
+  // Symbolize enables symbolization at query time: datasets labeled as
+  // unsymbolized are symbolized before merge, provided the symbolizer is
+  // enabled for the tenant owning the dataset.
+  bool symbolize = 3;
 }
 
 message InvokeRequest {
