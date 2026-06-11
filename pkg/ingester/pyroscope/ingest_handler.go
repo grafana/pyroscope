@@ -135,7 +135,10 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 
 	if sr := q.Get("sampleRate"); sr != "" {
 		sampleRate, err := strconv.Atoi(sr)
-		if err != nil {
+		if err != nil || sampleRate <= 0 {
+			if err == nil {
+				err = fmt.Errorf("sample rate must be positive")
+			}
 			_ = h.log.Log(
 				"err", err,
 				"msg", fmt.Sprintf("invalid sample rate: %q", sr),

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"slices"
@@ -24,6 +25,7 @@ import (
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/og/agent/types"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -210,6 +212,44 @@ func BenchmarkIngestJFR(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestParseInputMetadataFromRequest_InvalidSampleRateDefaults(t *testing.T) {
+	t.Parallel()
+
+	h := ingestHandler{log: log.NewNopLogger()}
+
+	tests := []struct {
+		name       string
+		sampleRate string
+	}{
+		{name: "negative", sampleRate: "-1"},
+		{name: "zero", sampleRate: "0"},
+		{name: "non numeric", sampleRate: "abc"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodPost, "/ingest?name=test-app&sampleRate="+tt.sampleRate, nil)
+
+			input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.EqualValues(t, types.DefaultSampleRate, input.Metadata.SampleRate)
+		})
+	}
+}
+
+func TestParseInputMetadataFromRequest_ValidSampleRatePreserved(t *testing.T) {
+	t.Parallel()
+
+	h := ingestHandler{log: log.NewNopLogger()}
+	req := httptest.NewRequest(http.MethodPost, "/ingest?name=test-app&sampleRate=97", nil)
+
+	input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.EqualValues(t, 97, input.Metadata.SampleRate)
 }
 
 func TestIngestPPROFFixtures(t *testing.T) {
