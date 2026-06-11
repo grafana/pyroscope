@@ -6,7 +6,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/dot"
@@ -124,16 +123,6 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 					ProfileIdSelector:  c.Msg.ProfileIdSelector,
 				},
 			}},
-		},
-		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
-			shouldSymbolize := q.shouldSymbolize(ctx, tenantIDs, blocks)
-			if !shouldSymbolize {
-				return upstream
-			}
-			return &backendTreeSymbolizer{
-				upstream:   upstream,
-				symbolizer: q.symbolizer,
-			}
 		},
 	)
 	if err != nil {

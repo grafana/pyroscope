@@ -83,22 +83,31 @@ func NewQueryFrontend(
 var xrand = rand.New(rand.NewSource(4349676827832284783))
 var xrandMutex = sync.Mutex{} // todo fix the race properly
 
-// backendCreator allows to modify behavior of a query after more about the dataset is learned from the QueryMetadata call.
-// We currently use this mainly to change backend query, for symbolizing unsymbolized blocks.
-// TODO: Once symbolization moves to the query-backend, the query-backend plan should incorporate the symbolize step
-type backendWrapper = func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend
+// symbolizationEnabled reports whether profiles are symbolized for the
+// given tenants: by the query backend per dataset (InvokeOptions.Symbolize),
+// and by the frontend for full-symbols tree profiles only.
+func (q *QueryFrontend) symbolizationEnabled(tenants []string) bool {
+	if q.symbolizer == nil {
+		return false
+	}
+	for _, t := range tenants {
+		if !q.limits.SymbolizerEnabled(t) {
+			return false
+		}
+	}
+	return true
+}
 
 func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	return q.doQuery(ctx, req, nil)
+	return q.doQuery(ctx, req)
 }
 
 func (q *QueryFrontend) doQuery(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
-	backendC backendWrapper,
 ) (*queryv1.QueryResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.doQuery")
 	defer span.Finish()
@@ -179,11 +188,7 @@ func (q *QueryFrontend) doQuery(
 	// TODO(kolesnikovae): Should be dynamic.
 	p := queryplan.Build(blocks, 4, 20)
 
-	backend := q.querybackend
-	if backendC != nil {
-		backend = backendC(ctx, backend, blocks)
-	}
-	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
+	resp, err := q.querybackend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,
@@ -191,6 +196,7 @@ func (q *QueryFrontend) doQuery(
 		Options: &queryv1.InvokeOptions{
 			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
 			CollectDiagnostics: collectDiagnostics,
+			Symbolize:          q.symbolizationEnabled(tenants),
 		},
 		QueryPlan: p,
 		Query:     req.Query,
@@ -243,7 +249,9 @@ func (q *QueryFrontend) QueryMetadata(
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
-		Labels:    []string{metadata.LabelNameUnsymbolized},
+		// The query backend relies on this label to decide which datasets
+		// to symbolize.
+		Labels: []string{metadata.LabelNameUnsymbolized},
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers

@@ -2,7 +2,6 @@ package queryfrontend
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -23,90 +22,24 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
 )
 
+// TestSelectMergeStacktrace_Symbolization verifies that the frontend never
+// symbolizes tree queries itself: symbolization is requested from the
+// backend via InvokeOptions.Symbolize.
 func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
-	// pprofBytes contains a profile with one sample at location 1, where location 1
-	// maps to function "original_func". backendTreeSymbolizer rewrites QUERY_TREE →
-	// QUERY_PPROF before calling the upstream backend, so the mock must return this
-	// pprof report. The symbolizer mock then renames the function to "symbolized_func",
-	// which must be visible in the resulting flamegraph.
-	pprofBytes := func() []byte {
-		p := &profilev1.Profile{
-			StringTable: []string{"", "original_func"},
-			Function:    []*profilev1.Function{{Id: 1, Name: 1}},
-			Location:    []*profilev1.Location{{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
-			Mapping:     []*profilev1.Mapping{{Id: 1}},
-			Sample:      []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{10}}},
-		}
-		b, err := pprof.Marshal(p, true)
-		require.NoError(t, err)
-		return b
-	}()
-
 	tests := []struct {
-		name             string
-		tenantID         string
-		hasUnsymbolized  bool
-		backendResp      *queryv1.InvokeResponse
-		expectSymbolized bool
-		setupMocks       func(*mockfrontend.MockLimits, *mockqueryfrontend.MockSymbolizer)
+		name              string
+		tenantID          string
+		symbolizerEnabled bool
 	}{
 		{
-			name:             "symbolization enabled for tenant with native profiles",
-			tenantID:         "tenant1",
-			hasUnsymbolized:  true,
-			expectSymbolized: true,
-			// backendTreeSymbolizer rewrites QUERY_TREE -> QUERY_PPROF before calling
-			// the upstream backend, so the mock must return a pprof report.
-			backendResp: &queryv1.InvokeResponse{
-				Reports: []*queryv1.Report{{
-					Pprof: &queryv1.PprofReport{Pprof: pprofBytes},
-				}},
-			},
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant1").Return(true)
-				l.On("QuerySanitizeOnMerge", "tenant1").Return(false)
-				s.On("SymbolizePprof", mock.Anything, mock.Anything).
-					Run(func(args mock.Arguments) {
-						p := args.Get(1).(*profilev1.Profile)
-						p.StringTable = append(p.StringTable, "symbolized_func")
-						p.Function[0].Name = int64(len(p.StringTable) - 1)
-					}).
-					Return(nil).Once()
-			},
+			name:              "symbolizer enabled for tenant",
+			tenantID:          "tenant1",
+			symbolizerEnabled: true,
 		},
 		{
-			name:             "symbolization disabled for tenant",
-			tenantID:         "tenant2",
-			hasUnsymbolized:  true,
-			expectSymbolized: false,
-			// No backendTreeSymbolizer wrapping; backend receives the TREE query directly.
-			backendResp: &queryv1.InvokeResponse{
-				Reports: []*queryv1.Report{{
-					ReportType: queryv1.ReportType_REPORT_TREE,
-					Tree:       &queryv1.TreeReport{},
-				}},
-			},
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant2").Return(false)
-				l.On("QuerySanitizeOnMerge", "tenant2").Return(false)
-			},
-		},
-		{
-			name:             "symbolization enabled but no native profiles",
-			tenantID:         "tenant3",
-			hasUnsymbolized:  false,
-			expectSymbolized: false,
-			// No backendTreeSymbolizer wrapping; backend receives the TREE query directly.
-			backendResp: &queryv1.InvokeResponse{
-				Reports: []*queryv1.Report{{
-					ReportType: queryv1.ReportType_REPORT_TREE,
-					Tree:       &queryv1.TreeReport{},
-				}},
-			},
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant3").Return(true)
-				l.On("QuerySanitizeOnMerge", "tenant3").Return(false)
-			},
+			name:              "symbolizer disabled for tenant",
+			tenantID:          "tenant2",
+			symbolizerEnabled: false,
 		},
 	}
 
@@ -116,11 +49,24 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 			mockLimits.On("MaxQueryLookback", tt.tenantID).Return(time.Duration(0))
 			mockLimits.On("MaxQueryLength", tt.tenantID).Return(time.Duration(0))
 			mockLimits.On("MaxFlameGraphNodesDefault", tt.tenantID).Return(0)
+			mockLimits.On("SymbolizerEnabled", tt.tenantID).Return(tt.symbolizerEnabled)
+			mockLimits.On("QuerySanitizeOnMerge", tt.tenantID).Return(false)
+
+			// Strict mock without expectations: any SymbolizePprof call fails.
 			mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
-			tt.setupMocks(mockLimits, mockSymbolizer)
 
 			mockQueryBackend := mockqueryfrontend.NewMockQueryBackend(t)
-			mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Return(tt.backendResp, nil)
+			mockQueryBackend.On("Invoke", mock.Anything, mock.MatchedBy(func(req *queryv1.InvokeRequest) bool {
+				require.Len(t, req.Query, 1)
+				require.Equal(t, queryv1.QueryType_QUERY_TREE, req.Query[0].QueryType)
+				require.Equal(t, tt.symbolizerEnabled, req.Options.GetSymbolize())
+				return true
+			})).Return(&queryv1.InvokeResponse{
+				Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_TREE,
+					Tree:       &queryv1.TreeReport{},
+				}},
+			}, nil)
 
 			mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
 			mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).
@@ -133,7 +79,7 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 						StringTable: []string{
 							"", // First string is always empty by convention
 							metadata.LabelNameUnsymbolized,
-							fmt.Sprintf("%v", tt.hasUnsymbolized),
+							"true",
 						},
 					}},
 				}, nil).
@@ -151,7 +97,7 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 
 			ctx := tenant.InjectTenantID(context.Background(), tt.tenantID)
 			start, end := smpValidTimeRange()
-			resp, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+			_, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 				ProfileTypeID: smpProfileType,
 				LabelSelector: `{service_name="test-service"}`,
 				Start:         start,
@@ -159,14 +105,6 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 			}))
 
 			require.NoError(t, err)
-			names := resp.Msg.GetFlamegraph().GetNames()
-			if tt.expectSymbolized {
-				require.Contains(t, names, "symbolized_func")
-				require.NotContains(t, names, "original_func")
-			} else {
-				require.NotContains(t, names, "symbolized_func")
-			}
-
 			mockMetadataClient.AssertExpectations(t)
 			mockQueryBackend.AssertExpectations(t)
 		})

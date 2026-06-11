@@ -154,7 +154,7 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 		fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
 	)
 
-	if c.debuginfodURL != "" && comp.Target == "query-frontend" {
+	if c.debuginfodURL != "" && (comp.Target == "query-frontend" || comp.Target == "query-backend") {
 		comp.flags = append(comp.flags,
 			fmt.Sprintf("-symbolizer.debuginfod-url=%s", c.debuginfodURL),
 			"-symbolizer.enabled=true",

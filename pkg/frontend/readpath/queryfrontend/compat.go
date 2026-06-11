@@ -21,14 +21,13 @@ import (
 func (q *QueryFrontend) querySingle(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
-	backendF backendWrapper,
 ) (*queryv1.Report, error) {
 	if len(req.Query) != 1 {
 		// Nil report is a valid response.
 		return nil, nil
 	}
 	t := querybackend.QueryReportType(req.Query[0].QueryType)
-	resp, err := q.doQuery(ctx, req, backendF)
+	resp, err := q.doQuery(ctx, req)
 	if err != nil {
 		code, sanitized := http.ClientHTTPStatusAndError(err)
 		return nil, connect.NewError(connectgrpc.HTTPToCode(int32(code)), sanitized)

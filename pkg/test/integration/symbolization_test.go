@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,7 +25,8 @@ import (
 
 const testBuildID = "2fa2055ef20fabc972d5751147e093275514b142"
 
-func TestMicroServicesIntegrationV2Symbolization(t *testing.T) {
+func startSymbolizationCluster(t *testing.T, ctx context.Context, opts ...cluster.ClusterOption) *cluster.Cluster {
+	t.Helper()
 	debuginfodServer, err := NewTestDebuginfodServer()
 	require.NoError(t, err)
 
@@ -35,16 +37,14 @@ func TestMicroServicesIntegrationV2Symbolization(t *testing.T) {
 	debuginfodServer.AddDebugFile(testBuildID, debugFilePath)
 
 	require.NoError(t, debuginfodServer.Start())
-	defer func() {
+	t.Cleanup(func() {
 		_ = debuginfodServer.Stop()
-	}()
+	})
 
-	c := cluster.NewMicroServiceCluster(
+	c := cluster.NewMicroServiceCluster(append([]cluster.ClusterOption{
 		cluster.WithV2(),
 		cluster.WithSymbolizer(debuginfodServer.URL()),
-	)
-
-	ctx := context.Background()
+	}, opts...)...)
 
 	require.NoError(t, c.Prepare(ctx))
 	for _, comp := range c.Components {
@@ -53,14 +53,131 @@ func TestMicroServicesIntegrationV2Symbolization(t *testing.T) {
 
 	require.NoError(t, c.Start(ctx))
 	t.Log("Cluster ready")
-	defer func() {
+	t.Cleanup(func() {
 		waitStopped := c.Stop()
 		require.NoError(t, waitStopped(ctx))
-	}()
+	})
+
+	return c
+}
+
+func TestMicroServicesIntegrationV2Symbolization(t *testing.T) {
+	ctx := context.Background()
+	c := startSymbolizationCluster(t, ctx)
 
 	t.Run("SymbolizationFlow", func(t *testing.T) {
 		testSymbolizationFlow(t, ctx, c)
 	})
+	t.Run("NoServiceNameSelector", func(t *testing.T) {
+		testSymbolizationWithoutServiceName(t, ctx, c)
+	})
+}
+
+func buildUnsymbolizedTestProfile() *profile.Profile {
+	p := &profile.Profile{
+		DurationNanos: int64(10 * time.Second),
+		Period:        1000000000,
+		SampleType: []*profile.ValueType{
+			{Type: "cpu", Unit: "nanoseconds"},
+		},
+		PeriodType: &profile.ValueType{
+			Type: "cpu",
+			Unit: "nanoseconds",
+		},
+	}
+
+	m := &profile.Mapping{
+		ID:           1,
+		Start:        0,
+		Limit:        0x1000000,
+		Offset:       0,
+		File:         "libfoo.so",
+		BuildID:      testBuildID,
+		HasFunctions: false,
+	}
+	p.Mapping = []*profile.Mapping{m}
+
+	loc1 := &profile.Location{
+		ID:      1,
+		Mapping: m,
+		Address: 0x1500,
+	}
+	loc2 := &profile.Location{
+		ID:      2,
+		Mapping: m,
+		Address: 0x3c5a,
+	}
+	p.Location = []*profile.Location{loc1, loc2}
+
+	p.Sample = []*profile.Sample{
+		{
+			Location: []*profile.Location{loc1},
+			Value:    []int64{100},
+		},
+		{
+			Location: []*profile.Location{loc2},
+			Value:    []int64{200},
+		},
+		{
+			Location: []*profile.Location{loc1, loc2},
+			Value:    []int64{3},
+		},
+	}
+
+	return p
+}
+
+// testSymbolizationWithoutServiceName queries without a service_name
+// selector, so the query is served via the tenant-wide datasets index, which
+// the query backend must resolve into labeled datasets and symbolize.
+func testSymbolizationWithoutServiceName(t *testing.T, ctx context.Context, c *cluster.Cluster) {
+	pusher := c.PushClient()
+	querier := c.QueryClient()
+
+	now := time.Now().Truncate(time.Second)
+	tenantID := "test-tenant-no-service-name"
+
+	src := buildUnsymbolizedTestProfile()
+	var buf bytes.Buffer
+	require.NoError(t, src.Write(&buf))
+
+	ctx = tenant.InjectTenantID(ctx, tenantID)
+	_, err := pusher.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{{
+			Labels: []*typesv1.LabelPair{
+				{Name: "service_name", Value: "test-symbolization-service-format1"},
+				{Name: "__name__", Value: "process_cpu"},
+			},
+			Samples: []*pushv1.RawSample{{RawProfile: buf.Bytes()}},
+		}},
+	}))
+	require.NoError(t, err)
+
+	q := connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		Start:         now.Add(-time.Hour).UnixMilli(),
+		End:           now.Add(time.Hour).UnixMilli(),
+		LabelSelector: `{}`, // No service_name: served via the datasets index.
+	})
+
+	var actual string
+	require.Eventually(t, func() bool {
+		resp, err := querier.SelectMergeProfile(ctx, q)
+		if err != nil {
+			t.Logf("Error querying profile: %v", err)
+			return false
+		}
+		if len(resp.Msg.Sample) == 0 {
+			return false
+		}
+		rp := pprof.RawFromProto(normalizePprof(resp.Msg))
+		rp.TimeNanos = 0
+		actual = rp.DebugString()
+		return strings.Contains(actual, "atoll_b")
+	}, 10*time.Second, 100*time.Millisecond)
+
+	assert.Contains(t, actual, "atoll_b", "symbols must be resolved on the datasets-index path")
+	assert.Contains(t, actual, "main")
 }
 
 func testSymbolizationFlow(t *testing.T, ctx context.Context, c *cluster.Cluster) {
@@ -73,57 +190,7 @@ func testSymbolizationFlow(t *testing.T, ctx context.Context, c *cluster.Cluster
 		{
 			name: "fully unsymbolized",
 			profile: func(now time.Time) *profile.Profile {
-				p := &profile.Profile{
-					DurationNanos: int64(10 * time.Second),
-					Period:        1000000000,
-					SampleType: []*profile.ValueType{
-						{Type: "cpu", Unit: "nanoseconds"},
-					},
-					PeriodType: &profile.ValueType{
-						Type: "cpu",
-						Unit: "nanoseconds",
-					},
-				}
-
-				m := &profile.Mapping{
-					ID:           1,
-					Start:        0,
-					Limit:        0x1000000,
-					Offset:       0,
-					File:         "libfoo.so",
-					BuildID:      testBuildID,
-					HasFunctions: false,
-				}
-				p.Mapping = []*profile.Mapping{m}
-
-				loc1 := &profile.Location{
-					ID:      1,
-					Mapping: m,
-					Address: 0x1500,
-				}
-				loc2 := &profile.Location{
-					ID:      2,
-					Mapping: m,
-					Address: 0x3c5a,
-				}
-				p.Location = []*profile.Location{loc1, loc2}
-
-				p.Sample = []*profile.Sample{
-					{
-						Location: []*profile.Location{loc1},
-						Value:    []int64{100},
-					},
-					{
-						Location: []*profile.Location{loc2},
-						Value:    []int64{200},
-					},
-					{
-						Location: []*profile.Location{loc1, loc2},
-						Value:    []int64{3},
-					},
-				}
-
-				return p
+				return buildUnsymbolizedTestProfile()
 			},
 			expected: `PeriodType: cpu nanoseconds
 Period: 1000000000

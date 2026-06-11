@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/dskit/tenant"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -76,7 +75,6 @@ func (q *QueryFrontend) SelectMergeProfile(
 
 	if !useQueryTree {
 		level.Info(q.logger).Log("msg", "use pprof query-backend based query")
-		shouldSymbolize := false
 		report, err := q.querySingle(ctx,
 			&queryv1.QueryRequest{
 				StartTime:     c.Msg.Start,
@@ -91,11 +89,6 @@ func (q *QueryFrontend) SelectMergeProfile(
 					},
 				}},
 			},
-			// capture if this pprof needs symbolization
-			func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
-				shouldSymbolize = q.shouldSymbolize(ctx, tenantIDs, blocks)
-				return upstream
-			},
 		)
 		if err != nil {
 			return nil, err
@@ -106,11 +99,6 @@ func (q *QueryFrontend) SelectMergeProfile(
 		var p profilev1.Profile
 		if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
 			return nil, err
-		}
-		if shouldSymbolize {
-			if err := q.symbolizer.SymbolizePprof(ctx, &p); err != nil {
-				return nil, fmt.Errorf("failed to symbolize profile: %w", err)
-			}
 		}
 		return connect.NewResponse(&p), nil
 	}
@@ -128,7 +116,9 @@ func (q *QueryFrontend) selectMergeProfileTree(
 	tenantIDs []string,
 ) (*connect.Response[profilev1.Profile], error) {
 	level.Info(q.logger).Log("msg", "use tree query-backend based query")
-	shouldSymbolize := false
+	// The backend does not symbolize full-symbols trees: the merged profile
+	// is symbolized below. SymbolizePprof is a no-op on symbolized profiles.
+	shouldSymbolize := q.symbolizationEnabled(tenantIDs)
 	report, err := q.querySingle(ctx,
 		&queryv1.QueryRequest{
 			StartTime:     req.Start,
@@ -143,11 +133,6 @@ func (q *QueryFrontend) selectMergeProfileTree(
 					FullSymbols:        true,
 				},
 			}},
-		},
-		// capture if this pprof needs symbolization
-		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
-			shouldSymbolize = q.shouldSymbolize(ctx, tenantIDs, blocks)
-			return upstream
 		},
 	)
 	if err != nil {
