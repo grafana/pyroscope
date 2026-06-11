@@ -2,6 +2,7 @@ package spanlogger
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -64,7 +65,13 @@ func (l LogSpanParametersWrapper) logQuery(
 		finishFields = append(finishFields,
 			"fetched_object_bytes", humanize.Bytes(stats.ObjectStorageBytes),
 			"fetched_metastore_bytes", humanize.Bytes(stats.MetastoreBytes),
+			"estimated_object_bytes", humanize.Bytes(stats.EstimatedBytes),
 		)
+		if stats.ObjectStorageBytes > 0 {
+			finishFields = append(finishFields,
+				"estimation_ratio", fmt.Sprintf("%.2f", float64(stats.EstimatedBytes)/float64(stats.ObjectStorageBytes)),
+			)
+		}
 	}
 	level.Info(logger).Log(finishFields...)
 	return err
