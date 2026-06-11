@@ -3301,7 +3301,7 @@ distributor_usage_groups:
 
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
-[max_recording_rules: <int> | default = 10]
+[max_recording_rules: <int> | default = 25]
 ```
 
 ### s3_storage_backend

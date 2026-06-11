@@ -463,7 +463,7 @@ limits:
   # reject_newer_than: 10m
 
   # Maximum number of recording rules a tenant can create. 0 to disable.
-  # max_recording_rules: 10
+  # max_recording_rules: 25
 
 segment_writer:
   lifecycler:
