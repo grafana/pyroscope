@@ -402,6 +402,8 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries,
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 		if strings.HasPrefix(svc, "ebpf/") {
 			lang = "ebpf/"
+		} else if strings.HasPrefix(svc, "java/") && strings.Count(svc, "/") >= 2 {
+			lang = "java/alloy"
 		} else if strings.Contains(agent, "pyroscope-rs/pyspy") {
 			lang = "python"
 		} else if strings.Contains(agent, "pyroscope-rs/rbspy") {
@@ -639,7 +641,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	if profLanguage == "unknown" {
 		if rand.Intn(100) == 0 {
-			finalLog.addFields("debug_pprof7", req.Profile.DebugString())
+			finalLog.addFields("debug_pprof8", req.Profile.DebugString())
 		}
 	}
 

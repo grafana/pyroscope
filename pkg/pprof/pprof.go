@@ -1241,7 +1241,7 @@ var languageMatchers = map[string][]string{
 	"go": {".go", "/usr/local/go/",
 		"runtime.systemstack", "runtime/internal/syscall", "runtime.goexit", // ebpf/go
 	},
-	"java":   {"java/", "sun/", "void java.lang.Thread", "void java.util."},
+	"java":   {"java/", "sun/", "void java.lang.Thread", "void java.util.", "libjvm.so", ".unknown"},
 	"php":    {".php", "zend_execute"},
 	"ruby":   {".rb", "gems/", "libruby.so", "thread_do_start_proc", "vm_exec_core", "rb_vm_exec"},
 	"nodejs": {"./node_modules/", ".js", "node:internal/", "_ZN4node", "_ZN2v88internal"},
