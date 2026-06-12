@@ -633,7 +633,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	if profLanguage == "unknown" {
 		if rand.Intn(100) == 0 {
-			finalLog.addFields("debug_pprof5", req.Profile.DebugString())
+			finalLog.addFields("debug_pprof6", req.Profile.DebugString())
 		}
 	}
 
