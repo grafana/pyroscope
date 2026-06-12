@@ -411,6 +411,7 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries,
 		} else {
 			cppOrRust := false
 			vmlinux := false
+			hasUnknown := false
 			for _, s := range series.Profile.StringTable {
 				if strings.Contains(s, "std::__cxx11") || strings.Contains(s, "::basic_string<") {
 					lang = "cpp"
@@ -423,11 +424,16 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries,
 				if strings.Count(s, "::") >= 2 {
 					cppOrRust = true
 				}
+				if s == "[unknown]" {
+					hasUnknown = true
+				}
 			}
 			if cppOrRust {
 				lang = "unknown/cpp_or_rust"
 			} else if vmlinux {
 				lang = "ebpf/vmlinux"
+			} else if hasUnknown {
+				lang = "ebpf/unknown_symbol"
 			}
 		}
 
@@ -633,7 +639,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	if profLanguage == "unknown" {
 		if rand.Intn(100) == 0 {
-			finalLog.addFields("debug_pprof6", req.Profile.DebugString())
+			finalLog.addFields("debug_pprof7", req.Profile.DebugString())
 		}
 	}
 
