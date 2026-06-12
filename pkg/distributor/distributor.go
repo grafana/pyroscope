@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -388,13 +389,23 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	return connect.NewResponse(new(pushv1.PushResponse)), err
 }
 
-func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries) string {
+func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries, agent string) string {
 	if series.Language != "" {
 		return series.Language
 	}
 	lang := series.GetLanguage()
 	if lang == "" {
 		lang = pprof.GetLanguage(series.Profile)
+	}
+	if strings.Contains(lang, "unknown") {
+		svc := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
+		if strings.HasPrefix(svc, "ebpf/") {
+			lang = "unknown/ebpf"
+		} else if strings.Contains(agent, "pyroscope-rs/pyspy") {
+			lang = "python"
+		} else if len(series.Profile.Sample) == 0 {
+			lang = "unknown/empty/" + phlaremodel.Labels(series.Labels).Get(ProfileName)
+		}
 	}
 	series.Language = lang
 	return series.Language
@@ -589,13 +600,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		}
 	}
 
-	profLanguage := d.GetProfileLanguage(req)
+	profLanguage := d.GetProfileLanguage(req, userAgent)
 	if profLanguage != "" {
 		finalLog.addFields("detected_language", profLanguage)
 	}
 	if profLanguage == "unknown" {
 		if rand.Intn(1000) == 0 {
-			finalLog.addFields("debug_pprof", req.Profile.DebugString())
+			finalLog.addFields("debug_pprof2", req.Profile.DebugString())
 		}
 	}
 

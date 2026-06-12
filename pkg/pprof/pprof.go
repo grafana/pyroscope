@@ -1238,7 +1238,9 @@ func ZeroLabelStrings(p *profilev1.Profile) {
 }
 
 var languageMatchers = map[string][]string{
-	"go":     {".go", "/usr/local/go/"},
+	"go": {".go", "/usr/local/go/",
+		"runtime.systemstack", "runtime/internal/syscall", "runtime.goexit", // ebpf/go
+	},
 	"java":   {"java/", "sun/"},
 	"ruby":   {".rb", "gems/"},
 	"nodejs": {"./node_modules/", ".js"},
