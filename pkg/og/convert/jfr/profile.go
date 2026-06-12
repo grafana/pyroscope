@@ -2,12 +2,13 @@ package jfr
 
 import (
 	"bytes"
-	"github.com/klauspost/compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"strings"
+
+	"github.com/klauspost/compress/gzip"
 
 	"github.com/grafana/dskit/tenant"
 	jfrPprof "github.com/grafana/jfr-parser/pprof"
@@ -55,6 +56,8 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, li
 		return nil, err
 	}
 	res := new(distributormodel.PushRequest)
+	res.UserAgent = md.UserAgent
+	res.RequestSource = "ingest jfr"
 	for _, req := range profiles.Profiles {
 		seriesLabels := jfrPprofPyroscope.Labels(
 			md.LabelSet.Labels(),

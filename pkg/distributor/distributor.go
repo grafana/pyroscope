@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -339,6 +340,8 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	req := &distributormodel.PushRequest{
 		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
+		UserAgent:      grpcReq.Header().Get("User-Agent"),
+		RequestSource:  "connect",
 	}
 	allErrors := multierror.New()
 	for _, grpcSeries := range grpcReq.Msg.Series {
@@ -386,13 +389,58 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	return connect.NewResponse(new(pushv1.PushResponse)), err
 }
 
-func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries) string {
+func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries, agent string) string {
 	if series.Language != "" {
 		return series.Language
 	}
 	lang := series.GetLanguage()
 	if lang == "" {
 		lang = pprof.GetLanguage(series.Profile)
+	}
+	if strings.Contains(lang, "unknown") {
+		svc := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
+		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+		if strings.HasPrefix(svc, "ebpf/") {
+			lang = "ebpf/"
+		} else if strings.HasPrefix(svc, "java/") && strings.Count(svc, "/") >= 2 {
+			lang = "java/alloy"
+		} else if strings.Contains(agent, "pyroscope-rs/pyspy") {
+			lang = "python"
+		} else if strings.Contains(agent, "pyroscope-rs/rbspy") {
+			lang = "ruby"
+		} else if len(series.Profile.Sample) == 0 {
+			lang = "empty/" + profName
+		} else {
+			cppOrRust := false
+			vmlinux := false
+			hasUnknown := false
+			for _, s := range series.Profile.StringTable {
+				if strings.Contains(s, "std::__cxx11") || strings.Contains(s, "::basic_string<") {
+					lang = "cpp"
+					cppOrRust = false
+					break
+				}
+				if s == "vmlinux" {
+					vmlinux = true
+				}
+				if strings.Count(s, "::") >= 2 {
+					cppOrRust = true
+				}
+				if s == "[unknown]" {
+					hasUnknown = true
+				}
+			}
+			if cppOrRust {
+				lang = "unknown/cpp_or_rust"
+			} else if vmlinux {
+				lang = "ebpf/vmlinux"
+			} else if hasUnknown {
+				lang = "ebpf/unknown_symbol"
+			}
+		}
+
+		//vmlinux
+
 	}
 	series.Language = lang
 	return series.Language
@@ -439,7 +487,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		go func() {
 			defer wg.Done()
 			itErr := util.RecoverPanic(func() error {
-				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration)
+				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration, req.UserAgent, req.RequestSource)
 			})()
 
 			if itErr != nil {
@@ -509,7 +557,7 @@ func (p *pushLog) log(logger log.Logger, err error) {
 	p.lvl(logger).Log(p.fields...)
 }
 
-func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string, parseDuration time.Duration) (err error) {
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string, parseDuration time.Duration, userAgent, requestSource string) (err error) {
 	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
@@ -528,6 +576,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	} else {
 		finalLog.addFields("service_name", serviceName)
 	}
+	finalLog.addFields("user_agent", userAgent)
+	finalLog.addFields("request_source", requestSource)
+
 	sort.Sort(phlaremodel.Labels(req.Labels))
 
 	if req.ID != "" {
@@ -584,7 +635,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		}
 	}
 
-	profLanguage := d.GetProfileLanguage(req)
+	profLanguage := d.GetProfileLanguage(req, userAgent)
 	if profLanguage != "" {
 		finalLog.addFields("detected_language", profLanguage)
 	}

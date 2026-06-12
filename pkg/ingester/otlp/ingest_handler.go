@@ -198,7 +198,7 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	resp, err := h.export(r.Context(), req)
+	resp, err := h.export(r.Context(), req, r.UserAgent())
 	if err != nil {
 		level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
 		if isKnownValidationError(err) {
@@ -224,10 +224,10 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	return h.export(ctx, er)
+	return h.export(ctx, er, "OTEL_GRPC_TODO")
 }
 
-func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
+func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest, userAgent string) (*pprofileotlp.ExportProfilesServiceResponse, error) {
 	_, err := tenant.TenantID(ctx)
 	if err != nil {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.Unauthenticated, "failed to extract tenant ID from context: %s", err.Error())
@@ -257,6 +257,8 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					ReceivedCompressedProfileSize:   proto.Size(p),
 					ReceivedDecompressedProfileSize: proto.Size(p),
 					RawProfileType:                  distributormodel.RawProfileTypeOTEL,
+					UserAgent:                       userAgent,
+					RequestSource:                   "otlp",
 				}
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {

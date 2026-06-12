@@ -126,6 +126,7 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 	} else {
 		input.Metadata.StartTime = time.Now()
 	}
+	input.Metadata.UserAgent = r.UserAgent()
 
 	if qt := q.Get("until"); qt != "" {
 		input.Metadata.EndTime = attime.Parse(qt)
