@@ -1242,10 +1242,11 @@ var languageMatchers = map[string][]string{
 		"runtime.systemstack", "runtime/internal/syscall", "runtime.goexit", // ebpf/go
 	},
 	"java":   {"java/", "sun/"},
-	"ruby":   {".rb", "gems/", "libruby.so", "thread_do_start_proc"},
-	"nodejs": {"./node_modules/", ".js"},
+	"php":    {".php", "zend_execute"},
+	"ruby":   {".rb", "gems/", "libruby.so", "thread_do_start_proc", "vm_exec_core", "rb_vm_exec"},
+	"nodejs": {"./node_modules/", ".js", "node:internal/", "_ZN4node"},
 	"dotnet": {"System.", "Microsoft."},
-	"python": {".py", "libpython.so"},
+	"python": {".py", "libpython.so", "PyUnicode_", "_PyEval_EvalFrameDefault", "PyEval_"},
 	"rust":   {"main.rs", "core.rs", "_ZN3std2rt", "_ZN5tokio7runtime", "std::rt::", "tokio::runtime", "_ZN3std3sys", "std::sys::"},
 }
 
