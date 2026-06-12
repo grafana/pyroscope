@@ -199,6 +199,8 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -query-scheduler.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -recording-rules.max-rules-per-tenant int
+    	Maximum number of recording rules a tenant can create. 0 to disable. (default 25)
   -retention-period duration
     	Retention period for the data. 0 means data never deleted. (default 31d)
   -ring.store string

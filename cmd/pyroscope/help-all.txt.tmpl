@@ -1033,6 +1033,8 @@ Usage of ./pyroscope:
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -query-scheduler.service-discovery-mode string
     	[experimental] Service discovery mode that query-frontends and queriers use to find query-scheduler instances. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. Supported values are: dns, ring. (default "ring")
+  -recording-rules.max-rules-per-tenant int
+    	Maximum number of recording rules a tenant can create. 0 to disable. (default 25)
   -retention-period duration
     	Retention period for the data. 0 means data never deleted. (default 31d)
   -ring.heartbeat-timeout duration

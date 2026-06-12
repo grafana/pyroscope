@@ -3298,6 +3298,10 @@ distributor_usage_groups:
 # is enforced in the distributor. 0 to disable, defaults to 10m.
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
+
+# Maximum number of recording rules a tenant can create. 0 to disable.
+# CLI flag: -recording-rules.max-rules-per-tenant
+[max_recording_rules: <int> | default = 25]
 ```
 
 ### s3_storage_backend

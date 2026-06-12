@@ -65,8 +65,11 @@ func (b *bucketStore) List(ctx context.Context) (*settingsv1.RecordingRulesStore
 	return rules, nil
 }
 
-func (b *bucketStore) Upsert(ctx context.Context, newRule *settingsv1.RecordingRuleStore) (*settingsv1.RecordingRuleStore, error) {
-	err := b.store.Upsert(ctx, newRule, &newRule.Generation)
+// Upsert inserts or updates newRule. maxRules caps the number of rules that can
+// be stored for the tenant; 0 disables the limit. The cap only applies when a
+// new rule would be created, not when an existing rule is updated.
+func (b *bucketStore) Upsert(ctx context.Context, newRule *settingsv1.RecordingRuleStore, maxRules int) (*settingsv1.RecordingRuleStore, error) {
+	err := b.store.Upsert(ctx, newRule, &newRule.Generation, maxRules)
 	if err != nil {
 		return nil, err
 	}
