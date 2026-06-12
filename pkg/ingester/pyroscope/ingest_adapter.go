@@ -169,7 +169,9 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		ID:         uuid.New().String(),
 	}}
 	req.Series = append(req.Series, series)
-	_, err = p.svc.Push(ctx, connect.NewRequest(req))
+	request := connect.NewRequest(req)
+	request.Header().Set("User-Agent", pi.UserAgent)
+	_, err = p.svc.Push(ctx, request)
 	if err != nil {
 		return fmt.Errorf("pyroscopeIngesterAdapter failed to push: %w", err)
 	}

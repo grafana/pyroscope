@@ -54,6 +54,7 @@ type Metadata struct {
 	SampleRate      uint32
 	Units           metadata.Units
 	AggregationType metadata.AggregationType
+	UserAgent       string
 }
 
 type Error struct{ Err error }
