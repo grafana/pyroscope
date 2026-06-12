@@ -399,12 +399,36 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries,
 	}
 	if strings.Contains(lang, "unknown") {
 		svc := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
+		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 		if strings.HasPrefix(svc, "ebpf/") {
-			lang = "unknown/ebpf"
+			lang = "ebpf/"
 		} else if strings.Contains(agent, "pyroscope-rs/pyspy") {
 			lang = "python"
+		} else if strings.Contains(agent, "pyroscope-rs/rbspy") {
+			lang = "ruby"
 		} else if len(series.Profile.Sample) == 0 {
-			lang = "unknown/empty/" + phlaremodel.Labels(series.Labels).Get(ProfileName)
+			lang = "empty/" + profName
+		} else {
+			cppOrRust := false
+			vmlinux := false
+			for _, s := range series.Profile.StringTable {
+				if strings.Contains(s, "std::__cxx11") || strings.Contains(s, "::basic_string<") {
+					lang = "cpp"
+					cppOrRust = false
+					break
+				}
+				if s == "vmlinux" {
+					vmlinux = true
+				}
+				if strings.Count(s, "::") >= 2 {
+					cppOrRust = true
+				}
+			}
+			if cppOrRust {
+				lang = "unknown/cpp_or_rust"
+			} else if vmlinux {
+				lang = "ebpf/vmlinux"
+			}
 		}
 
 		//vmlinux
@@ -608,7 +632,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.addFields("detected_language", profLanguage)
 	}
 	if profLanguage == "unknown" {
-		if rand.Intn(1000) == 0 {
+		if rand.Intn(100) == 0 {
 			finalLog.addFields("debug_pprof3", req.Profile.DebugString())
 		}
 	}

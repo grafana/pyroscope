@@ -1245,9 +1245,8 @@ var languageMatchers = map[string][]string{
 	"ruby":   {".rb", "gems/", "libruby.so", "thread_do_start_proc"},
 	"nodejs": {"./node_modules/", ".js"},
 	"dotnet": {"System.", "Microsoft."},
-	"python": {".py"},
-	"rust":   {"main.rs", "core.rs", "_ZN3std2rt"},
-	"cpp":    {"std::__1"},
+	"python": {".py", "libpython.so"},
+	"rust":   {"main.rs", "core.rs", "_ZN3std2rt", "_ZN5tokio7runtime", "std::rt::", "tokio::runtime", "_ZN3std3sys", "std::sys::"},
 }
 
 func GetLanguage(profile *Profile) string {
