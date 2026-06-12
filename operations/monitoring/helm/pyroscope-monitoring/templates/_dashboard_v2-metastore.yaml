@@ -149,7 +149,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: asc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -244,7 +243,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -345,7 +343,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -446,7 +443,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -573,7 +569,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -651,7 +646,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -781,7 +775,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -918,7 +911,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1014,7 +1006,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1120,7 +1111,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1233,7 +1223,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1329,7 +1318,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1445,7 +1433,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1558,7 +1545,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1654,7 +1640,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1760,7 +1745,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1873,7 +1857,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1969,7 +1952,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2085,7 +2067,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2198,7 +2179,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2294,7 +2274,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2410,7 +2389,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2529,7 +2507,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2639,7 +2616,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2720,7 +2696,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2801,7 +2776,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2906,7 +2880,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -3001,7 +2974,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -3115,7 +3087,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3204,7 +3175,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3295,7 +3265,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3387,7 +3356,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3467,7 +3435,7 @@ templating:
         query: label_values(pyroscope_build_info,namespace)
         refId: PrometheusVariableQueryEditor-VariableQuery
       refresh: 1
-      regex: {{.Values.dashboards.namespaceRegex | quote}}
+      regex: {{ include "pyroscope-monitoring.dashboards-namespace-regex" (list . $dashboard) | quote }}
       type: query
 time:
   from: now-6h

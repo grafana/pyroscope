@@ -178,7 +178,6 @@ panels:
           sortBy:
             - desc: true
               displayName: Time
-        pluginVersion: 12.1.0-90017
         targets:
           - datasource:
               type: loki
@@ -348,7 +347,6 @@ panels:
           sortBy:
             - desc: true
               displayName: Start time
-        pluginVersion: 12.1.0-90017
         targets:
           - datasource:
               type: tempo
@@ -468,7 +466,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: asc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -566,7 +563,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -700,7 +696,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -831,7 +826,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -924,7 +918,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1030,7 +1023,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1138,7 +1130,6 @@ panels:
         hideZeros: true
         mode: multi
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           uid: $datasource
@@ -1153,7 +1144,7 @@ panels:
         expr: >-
           sum by (status_code)
           (rate(pyroscope_request_duration_seconds_count{cluster=~"$cluster",
-          {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[5m]))
         {{- end }}
         legendFormat: '{{"{{status_code}}"}} '
@@ -1239,7 +1230,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1248,12 +1238,12 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.99, sum by (route) (
-          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
         {{- else }}
         expr: >-
           histogram_quantile(0.99, sum by (le, route) (
-          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds_bucket{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
         {{- end }}
         hide: false
@@ -1360,7 +1350,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1463,7 +1452,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1572,7 +1560,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1667,7 +1654,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1797,7 +1783,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1935,7 +1920,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2054,7 +2038,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2155,7 +2138,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2236,7 +2218,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2359,7 +2340,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85113
         targets:
           - datasource:
               type: prometheus
@@ -2448,7 +2428,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85113
         targets:
           - datasource:
               type: prometheus
@@ -2539,7 +2518,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85113
         targets:
           - datasource:
               type: prometheus
@@ -2631,7 +2609,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85113
         targets:
           - datasource:
               type: prometheus
@@ -2679,7 +2656,6 @@ panels:
           showTime: false
           sortOrder: Descending
           wrapLogMessage: false
-        pluginVersion: 12.0.0-85113
         targets:
           - datasource:
               type: loki
@@ -2774,7 +2750,7 @@ templating:
         query: label_values(pyroscope_build_info,namespace)
         refId: PrometheusVariableQueryEditor-VariableQuery
       refresh: 1
-      regex: {{.Values.dashboards.namespaceRegex | quote}}
+      regex: {{ include "pyroscope-monitoring.dashboards-namespace-regex" (list . $dashboard) | quote }}
       type: query
 time:
   from: now-6h

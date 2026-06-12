@@ -121,6 +121,11 @@
               "type": "auto"
             },
             "filterable": true,
+            "footer": {
+              "reducers": [
+                "countAll"
+              ]
+            },
             "inspect": false
           },
           "mappings": [],
@@ -257,15 +262,7 @@
       "id": 68,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": true,
-          "enablePagination": false,
-          "fields": "",
-          "reducer": [
-            "count"
-          ],
-          "show": true
-        },
+        "enablePagination": false,
         "showHeader": true,
         "sortBy": [
           {
@@ -274,7 +271,6 @@
           }
         ]
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -360,6 +356,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -411,7 +408,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -464,6 +460,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -516,7 +513,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -578,13 +574,13 @@
           "fields": "",
           "values": false
         },
+        "sort": "desc",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -650,13 +646,13 @@
           "fields": "",
           "values": false
         },
+        "sort": "desc",
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -682,7 +678,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 25
       },
       "id": 90,
       "panels": [
@@ -774,7 +770,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 20
+            "y": 34
           },
           "id": 94,
           "options": {
@@ -792,7 +788,6 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -847,7 +842,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 20
+            "y": 34
           },
           "id": 93,
           "options": {
@@ -900,7 +895,6 @@
               "unit": "s"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -987,7 +981,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 20
+            "y": 34
           },
           "id": 42,
           "options": {
@@ -1005,7 +999,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -1093,7 +1086,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 28
+            "y": 42
           },
           "id": 72,
           "options": {
@@ -1109,7 +1102,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -1167,7 +1159,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 28
+            "y": 42
           },
           "id": 56,
           "options": {
@@ -1220,7 +1212,6 @@
               "unit": "s"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -1307,7 +1298,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 28
+            "y": 42
           },
           "id": 95,
           "options": {
@@ -1327,7 +1318,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -1468,7 +1458,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 36
+            "y": 50
           },
           "id": 97,
           "options": {
@@ -1489,7 +1479,6 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -1627,7 +1616,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 36
+            "y": 50
           },
           "id": 62,
           "options": {
@@ -1648,7 +1637,6 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -1759,7 +1747,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 36
+            "y": 50
           },
           "id": 98,
           "options": {
@@ -1779,7 +1767,6 @@
               "sort": "asc"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -1808,7 +1795,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 26
       },
       "id": 47,
       "panels": [],
@@ -1850,6 +1837,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1907,7 +1895,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 21
+        "y": 27
       },
       "id": 79,
       "options": {
@@ -1923,7 +1911,6 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2007,7 +1994,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 21
+        "y": 27
       },
       "id": 76,
       "options": {
@@ -2060,7 +2047,6 @@
           "unit": "s"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2115,6 +2101,7 @@
               "type": "log"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2147,7 +2134,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 21
+        "y": 27
       },
       "id": 52,
       "options": {
@@ -2163,7 +2150,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2217,6 +2203,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2274,7 +2261,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 29
+        "y": 35
       },
       "id": 57,
       "options": {
@@ -2290,7 +2277,6 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2374,7 +2360,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 29
+        "y": 35
       },
       "id": 80,
       "options": {
@@ -2427,7 +2413,6 @@
           "unit": "s"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2482,6 +2467,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -2530,7 +2516,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 29
+        "y": 35
       },
       "id": 59,
       "options": {
@@ -2546,7 +2532,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2671,7 +2656,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 37
+        "y": 43
       },
       "id": 77,
       "options": {
@@ -2687,7 +2672,6 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2771,7 +2755,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 37
+        "y": 43
       },
       "id": 78,
       "options": {
@@ -2824,7 +2808,6 @@
           "unit": "s"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -2934,7 +2917,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 37
+        "y": 43
       },
       "id": 73,
       "options": {
@@ -2950,7 +2933,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -3063,7 +3045,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 45
+        "y": 51
       },
       "id": 21,
       "options": {
@@ -3081,7 +3063,6 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -3207,7 +3188,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 45
+        "y": 51
       },
       "id": 63,
       "options": {
@@ -3228,7 +3209,6 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -3361,7 +3341,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 45
+        "y": 51
       },
       "id": 27,
       "options": {
@@ -3381,7 +3361,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-90139",
       "targets": [
         {
           "datasource": {
@@ -3417,7 +3396,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 59
       },
       "id": 51,
       "panels": [
@@ -3492,7 +3471,7 @@
             "h": 5,
             "w": 24,
             "x": 0,
-            "y": 92
+            "y": 106
           },
           "id": 65,
           "options": {
@@ -3511,7 +3490,6 @@
               "sort": "asc"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -3627,7 +3605,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 97
+            "y": 111
           },
           "id": 49,
           "options": {
@@ -3643,7 +3621,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -3786,7 +3763,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 97
+            "y": 111
           },
           "id": 50,
           "options": {
@@ -3802,7 +3779,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -3832,7 +3808,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 60
       },
       "id": 22,
       "panels": [
@@ -3901,7 +3877,7 @@
             "h": 9,
             "w": 17,
             "x": 0,
-            "y": 55
+            "y": 69
           },
           "id": 44,
           "options": {
@@ -3922,7 +3898,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4006,7 +3981,7 @@
             "h": 9,
             "w": 7,
             "x": 17,
-            "y": 55
+            "y": 69
           },
           "id": 107,
           "options": {
@@ -4026,7 +4001,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4069,7 +4043,7 @@
             "h": 11,
             "w": 24,
             "x": 0,
-            "y": 64
+            "y": 78
           },
           "id": 23,
           "options": {
@@ -4112,7 +4086,6 @@
               "unit": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4199,7 +4172,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 75
+            "y": 89
           },
           "id": 64,
           "options": {
@@ -4219,7 +4192,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4305,7 +4277,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 75
+            "y": 89
           },
           "id": 26,
           "options": {
@@ -4325,7 +4297,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4411,7 +4382,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 84
+            "y": 98
           },
           "id": 24,
           "options": {
@@ -4431,7 +4402,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4515,7 +4485,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 84
+            "y": 98
           },
           "id": 34,
           "options": {
@@ -4535,7 +4505,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4632,7 +4601,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 93
+            "y": 107
           },
           "id": 35,
           "options": {
@@ -4652,7 +4621,6 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4736,7 +4704,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 93
+            "y": 107
           },
           "id": 36,
           "options": {
@@ -4756,7 +4724,6 @@
               "sort": "desc"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4784,7 +4751,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 61
       },
       "id": 86,
       "panels": [
@@ -4816,7 +4783,7 @@
             "h": 13,
             "w": 12,
             "x": 0,
-            "y": 154
+            "y": 168
           },
           "id": 87,
           "options": {
@@ -4828,7 +4795,6 @@
             "textField": "instance_type",
             "tiling": "treemapSquarify"
           },
-          "pluginVersion": "2.1.1",
           "targets": [
             {
               "datasource": {
@@ -4915,7 +4881,7 @@
             "h": 13,
             "w": 12,
             "x": 12,
-            "y": 154
+            "y": 168
           },
           "id": 84,
           "options": {
@@ -4934,7 +4900,6 @@
               "sort": "none"
             }
           },
-          "pluginVersion": "12.1.0-90058",
           "targets": [
             {
               "datasource": {
@@ -4959,7 +4924,7 @@
     }
   ],
   "preload": false,
-  "schemaVersion": 41,
+  "schemaVersion": 42,
   "tags": [
     "pyroscope",
     "pyroscope-v2"
@@ -4995,8 +4960,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "prod-eu-west-2",
-          "value": "prod-eu-west-2"
+          "text": "pyroscope-dev",
+          "value": "pyroscope-dev"
         },
         "datasource": {
           "type": "prometheus",

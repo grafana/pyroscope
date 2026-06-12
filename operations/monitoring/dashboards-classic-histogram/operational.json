@@ -173,7 +173,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -271,7 +270,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -369,7 +367,6 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -434,7 +431,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -503,7 +499,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -632,7 +627,6 @@
           }
         ]
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -802,7 +796,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -898,7 +891,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -995,7 +987,6 @@
         "showRowNums": false,
         "sortBy": []
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1165,7 +1156,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1261,7 +1251,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1382,7 +1371,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1425,7 +1413,6 @@
         "sortOrder": "Descending",
         "wrapLogMessage": true
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1603,7 +1590,6 @@
           }
         ]
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -2887,7 +2873,6 @@
             "showHeader": true,
             "showRowNums": false
           },
-          "pluginVersion": "9.5.0-53857pre",
           "targets": [
             {
               "datasource": {
@@ -7154,7 +7139,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -7258,7 +7242,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
