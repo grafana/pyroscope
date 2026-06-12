@@ -1242,11 +1242,12 @@ var languageMatchers = map[string][]string{
 		"runtime.systemstack", "runtime/internal/syscall", "runtime.goexit", // ebpf/go
 	},
 	"java":   {"java/", "sun/"},
-	"ruby":   {".rb", "gems/"},
+	"ruby":   {".rb", "gems/", "libruby.so", "thread_do_start_proc"},
 	"nodejs": {"./node_modules/", ".js"},
 	"dotnet": {"System.", "Microsoft."},
 	"python": {".py"},
-	"rust":   {"main.rs", "core.rs"},
+	"rust":   {"main.rs", "core.rs", "_ZN3std2rt"},
+	"cpp":    {"std::__1"},
 }
 
 func GetLanguage(profile *Profile) string {

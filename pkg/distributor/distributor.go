@@ -406,6 +406,9 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries,
 		} else if len(series.Profile.Sample) == 0 {
 			lang = "unknown/empty/" + phlaremodel.Labels(series.Labels).Get(ProfileName)
 		}
+
+		//vmlinux
+
 	}
 	series.Language = lang
 	return series.Language
@@ -606,7 +609,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 	if profLanguage == "unknown" {
 		if rand.Intn(1000) == 0 {
-			finalLog.addFields("debug_pprof2", req.Profile.DebugString())
+			finalLog.addFields("debug_pprof3", req.Profile.DebugString())
 		}
 	}
 
