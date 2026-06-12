@@ -63,6 +63,8 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, li
 		ReceivedCompressedProfileSize: len(p.Profile),
 		RawProfileType:                distributormodel.RawProfileTypePPROF,
 		Series:                        nil,
+		UserAgent:                     md.UserAgent,
+		RequestSource:                 "ingest pprof",
 	}
 	if len(p.Profile) == 0 {
 		return res, nil

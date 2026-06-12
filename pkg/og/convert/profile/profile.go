@@ -31,6 +31,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 		Units:           md.Units,
 		AggregationType: md.AggregationType,
 		Val:             tree.New(),
+		UserAgent:       md.UserAgent,
 	}
 
 	cb := createParseCallback(input, exporter)

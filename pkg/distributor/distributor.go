@@ -339,6 +339,8 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	req := &distributormodel.PushRequest{
 		Series:         make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
+		UserAgent:      grpcReq.Header().Get("User-Agent"),
+		RequestSource:  "connect",
 	}
 	allErrors := multierror.New()
 	for _, grpcSeries := range grpcReq.Msg.Series {
@@ -439,7 +441,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		go func() {
 			defer wg.Done()
 			itErr := util.RecoverPanic(func() error {
-				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration)
+				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration, req.UserAgent, req.RequestSource)
 			})()
 
 			if itErr != nil {
@@ -509,7 +511,7 @@ func (p *pushLog) log(logger log.Logger, err error) {
 	p.lvl(logger).Log(p.fields...)
 }
 
-func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string, parseDuration time.Duration) (err error) {
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string, parseDuration time.Duration, userAgent, requestSource string) (err error) {
 	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
@@ -528,6 +530,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	} else {
 		finalLog.addFields("service_name", serviceName)
 	}
+	finalLog.addFields("user_agent", userAgent)
+	finalLog.addFields("request_source", requestSource)
+
 	sort.Sort(phlaremodel.Labels(req.Labels))
 
 	if req.ID != "" {
@@ -587,6 +592,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	profLanguage := d.GetProfileLanguage(req)
 	if profLanguage != "" {
 		finalLog.addFields("detected_language", profLanguage)
+	}
+	if profLanguage == "unknown" {
+		if rand.Intn(1000) == 0 {
+			finalLog.addFields("debug_pprof", req.Profile.DebugString())
+		}
 	}
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)

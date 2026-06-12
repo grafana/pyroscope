@@ -38,6 +38,7 @@ type PutInput struct {
 	SampleRate      uint32
 	Units           metadata.Units
 	AggregationType metadata.AggregationType
+	UserAgent       string
 }
 
 type Putter interface {

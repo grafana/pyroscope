@@ -24,6 +24,9 @@ type PushRequest struct {
 	ReceivedDecompressedProfileSize int
 	RawProfileType                  RawProfileType
 	ParseDuration                   time.Duration
+
+	UserAgent     string
+	RequestSource string
 }
 
 // todo better name
