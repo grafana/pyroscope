@@ -639,11 +639,6 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	if profLanguage != "" {
 		finalLog.addFields("detected_language", profLanguage)
 	}
-	if profLanguage == "unknown" {
-		if rand.Intn(100) == 0 {
-			finalLog.addFields("debug_pprof8", req.Profile.DebugString())
-		}
-	}
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
