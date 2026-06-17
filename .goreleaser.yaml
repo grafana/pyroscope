@@ -3,12 +3,13 @@ version: 2
 before:
   hooks:
     # This hook ensures that goreleaser uses the correct go version for a Pyroscope release
-    - sh -euc 'go version | grep "go version go1.25.9 " || { echo "Unexpected go version"; exit 1; }'
+    - sh -euc 'go version | grep "go version go1.25.11 " || { echo "Unexpected go version"; exit 1; }'
 env:
   # Strip debug information from the binary by default, weekly builds will have debug information
   - GORELEASER_DEBUG_INFO_FLAGS={{ if and (index .Env "GORELEASER_STRIP_DEBUG_INFO") (eq .Env.GORELEASER_STRIP_DEBUG_INFO "false")  }}{{ else }}-s -w{{ end }}
-  # Use a custom image prefix (registry) or fallback to docker.io/grafana/
-  - IMAGE_PREFIX={{ or (index .Env "IMAGE_PREFIX") "docker.io/grafana/" }}
+  # Use a custom image prefix (registry) or fallback to the GAR mirror staging repo.
+  # The gar-image-mirror service copies images from there to docker.io/grafana/pyroscope.
+  - IMAGE_PREFIX={{ or (index .Env "IMAGE_PREFIX") "us-docker.pkg.dev/grafanalabs-global/dockerhub-pyroscope-prod-mirror/" }}
   # Allow a custom image tag to be used (must be set by workflow)
   - IMAGE_TAG={{ .Env.IMAGE_TAG }}
   # Publish latest image tag
@@ -232,7 +233,7 @@ release:
     - [grafana/pyroscope](https://hub.docker.com/r/grafana/pyroscope/tags)
 
     ```bash
-      docker pull {{ .Env.IMAGE_PREFIX }}{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}
+      docker pull grafana/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}
     ```
 
   ids:
