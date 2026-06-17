@@ -1,0 +1,27 @@
+.fg-tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  box-shadow: var(--shadow-md);
+  max-width: 400px;
+}
+
+.fg-tooltip-content {
+  font-size: var(--text-sm);
+  width: 100%;
+}
+
+.fg-tooltip-name {
+  margin-top: 0;
+  word-break: break-all;
+}
+
+.fg-tooltip-last {
+  margin-bottom: 0;
+}

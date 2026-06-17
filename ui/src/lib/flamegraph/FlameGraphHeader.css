@@ -1,0 +1,196 @@
+.fg-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
+  top: 0;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.fg-header-sticky {
+  z-index: 1000;
+  position: sticky;
+  background: var(--bg-primary);
+}
+
+.fg-header-input-container {
+  flex-grow: 1;
+  min-width: 150px;
+  max-width: 350px;
+}
+
+.fg-header-right {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.fg-header-spacing-right {
+  margin-right: 8px;
+}
+
+.fg-header-extra-elements {
+  margin-left: 8px;
+}
+
+.fg-header-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fg-header-search-input {
+  flex: 1;
+  height: 28px;
+  padding-left: 8px;
+  padding-right: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.fg-header-search-input:focus {
+  border-color: var(--color-primary-border);
+}
+
+.fg-header-search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.fg-header-clear-button {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 0 6px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.fg-header-clear-button:hover {
+  color: var(--text-primary);
+}
+
+.fg-header-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--color-secondary-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.fg-header-icon-btn:hover {
+  background: var(--action-hover);
+}
+
+.fg-header-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.fg-header-icon-btn-grouped {
+  border-radius: 0;
+  margin-left: -1px;
+}
+
+.fg-header-icon-btn-grouped:first-of-type {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+  margin-left: 0;
+}
+
+.fg-header-icon-btn-grouped:last-of-type {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.fg-header-btn-group {
+  display: inline-flex;
+}
+
+.fg-header-radio-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.fg-header-radio-cell {
+  position: relative;
+  display: inline-flex;
+}
+
+.fg-header-radio-input {
+  /* Overlay the input on top of its label so it stays the click target
+     (Playwright's .click() goes to the actual element) while the label
+     provides the visuals. */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.fg-header-radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--color-secondary-border);
+  border-right: none;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.fg-header-radio-label:first-of-type {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+.fg-header-radio-label:last-of-type {
+  border-right: 1px solid var(--color-secondary-border);
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.fg-header-radio-label:hover {
+  background: var(--action-hover);
+}
+
+.fg-header-radio-label[data-checked='true'] {
+  background: var(--action-selected);
+  color: var(--color-primary-text);
+  border-color: var(--color-primary-border);
+}
+
+.fg-header-radio-input:disabled + .fg-header-radio-label {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.fg-header-radio-input:focus-visible + .fg-header-radio-label {
+  outline: 2px solid var(--action-focus);
+  outline-offset: 1px;
+}
