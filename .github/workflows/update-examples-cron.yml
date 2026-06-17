@@ -17,23 +17,10 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: 'false'
-      - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@c2f1df59dba624b3fd509e5181aa8da5217120c0
+      - id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
         with:
-          repo_secrets: |
-            GITHUB_APP_ID=pyroscope-development-app:app-id
-            GITHUB_APP_INSTALLATION_ID=pyroscope-development-app:app-installation-id
-            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:private-key
-
-      - name: Generate token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ env.GITHUB_APP_ID }}
-          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            pyroscope
+          github_app: pyroscope-development-app
 
       - run: |
           make tools/update_examples
@@ -42,5 +29,5 @@ jobs:
             make tools/update_examples_pr
           fi
         env:
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
