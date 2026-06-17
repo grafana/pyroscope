@@ -429,6 +429,8 @@ Usage of ./pyroscope:
     	The cluster label is an optional string to include in outbound packets and gossip streams. Other members in the memberlist cluster will discard any message whose label doesn't match the configured one, unless the 'cluster-label-verification-disabled' configuration option is set to true.
   -memberlist.cluster-label-verification-disabled
     	When true, memberlist doesn't verify that inbound packets and gossip streams have the cluster label matching the configured one. This verification should be disabled while rolling out the change to the configured cluster label in a live memberlist cluster.
+  -memberlist.compression-algorithm string
+    	Compression algorithm used for outgoing messages when -memberlist.compression-enabled is true. Supported values: lzw, snappy. Ignored when -memberlist.compression-enabled is false. (default "lzw")
   -memberlist.compression-enabled
     	Enable message compression. This can be used to reduce bandwidth usage at the cost of slightly more CPU utilization. (default true)
   -memberlist.dead-node-reclaim-time duration
@@ -465,6 +467,8 @@ Usage of ./pyroscope:
     	Timeout used when connecting to other nodes to send packet. (default 2s)
   -memberlist.packet-write-timeout duration
     	Timeout for writing 'packet' data. (default 5s)
+  -memberlist.processed-messages-queue-size int
+    	Size of the per-key internal queue for processing messages received from other nodes. Increasing this value may help to avoid dropping per-key updates when the node is processing many updates for the same key. (default 1024)
   -memberlist.propagation-delay-tracker.beacon-interval duration
     	[experimental] How often to publish beacons for propagation tracking. (default 1m0s)
   -memberlist.propagation-delay-tracker.beacon-lifetime duration
@@ -1047,6 +1051,8 @@ Usage of ./pyroscope:
     	Comma separated list of yaml files or URLs with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
   -runtime-config.http-client-cluster-validation.label string
     	[experimental] Primary cluster validation label.
+  -runtime-config.http-client-disable-keep-alives
+    	Disable HTTP keep-alives for the runtime config HTTP client. When enabled, each reload opens a new connection, which prevents long-lived connections from being pinned to a single backend when the runtime config URL is served by multiple replicas behind a connection-level (L4) load balancer, such as a Kubernetes Service. (default true)
   -runtime-config.http-client-timeout duration
     	HTTP client timeout when fetching runtime config from URLs. (default 30s)
   -runtime-config.reload-period duration
