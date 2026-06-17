@@ -133,7 +133,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -214,7 +213,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -295,7 +293,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -344,7 +341,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -399,7 +395,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -482,20 +477,14 @@ panels:
       sortBy:
         - desc: true
           displayName: Value
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
         exemplar: false
-        {{- if .Values.dashboards.nativeHistograms }}
         expr: |
-          {{ .Values.dashboards.tenantQuery | nindent 10 }}
-        {{- else }}
-        expr: |
-          {{ .Values.dashboards.tenantQueryClassic | nindent 10 }}
-        {{- end }}
+          {{ tpl .Values.dashboards.tenantQuery . | nindent 10 }}
         format: table
         instant: true
         legendFormat: __auto
@@ -605,7 +594,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           uid: $datasource
@@ -624,7 +612,7 @@ panels:
           sum by (status) (
           label_replace(
             label_replace(
-                  rate(pyroscope_request_duration_seconds_count{cluster=~"$cluster", {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace", route=~".*ingest.*|.*pusher.*"}[$__rate_interval]),
+                  rate(pyroscope_request_duration_seconds_count{cluster=~"$cluster", {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }}, route=~".*ingest.*|.*pusher.*"}[$__rate_interval]),
             "status", "${1}xx", "status_code", "([0-9]).."),
           "status", "${1}", "status_code", "([a-z]+)")
           )
@@ -694,7 +682,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -703,7 +690,7 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.99, sum by (route) (
-          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
         {{- else }}
         expr: >-
@@ -721,7 +708,7 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.75, sum by (route) (
-          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
         {{- else }}
         expr: >-
@@ -740,7 +727,7 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.5, sum by (route) (
-          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*ingest.*|.*pusher.*"}[$__rate_interval])))
         {{- else }}
         expr: >-
@@ -793,7 +780,6 @@ panels:
       showHeader: true
       showRowNums: false
       sortBy: []
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -911,7 +897,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           uid: $datasource
@@ -930,7 +915,7 @@ panels:
           sum by (status) (
           label_replace(
             label_replace(
-                  rate(pyroscope_request_duration_seconds_count{cluster=~"$cluster", {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace", route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval]),
+                  rate(pyroscope_request_duration_seconds_count{cluster=~"$cluster", {{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }}, route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval]),
             "status", "${1}xx", "status_code", "([0-9]).."),
           "status", "${1}", "status_code", "([a-z]+)")
           )
@@ -1000,7 +985,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -1009,7 +993,7 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.99, sum by (route) (
-          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
         {{- else }}
         expr: >-
@@ -1027,7 +1011,7 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.75, sum by (route) (
-          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
         {{- else }}
         expr: >-
@@ -1046,7 +1030,7 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.5, sum by (route) (
-          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}, namespace=~"$namespace",
+          rate(pyroscope_request_duration_seconds{{ "{" }}{{ include "pyroscope-monitoring.dashboards-ingest-selector" . }}{{ include "pyroscope-monitoring.dashboards-ingest-namespace-selector" . }},
           cluster=~"$cluster",route=~".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*"}[$__rate_interval])))
         {{- else }}
         expr: >-
@@ -1120,7 +1104,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: loki
@@ -1158,7 +1141,6 @@ panels:
       showTime: false
       sortOrder: Descending
       wrapLogMessage: true
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: loki
@@ -1270,7 +1252,6 @@ panels:
       sortBy:
         - desc: false
           displayName: status
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: loki
@@ -2293,7 +2274,6 @@ panels:
             show: false
           showHeader: true
           showRowNums: false
-        pluginVersion: 9.5.0-53857pre
         targets:
           - datasource:
               type: prometheus
@@ -5629,7 +5609,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -5719,7 +5698,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-88106
     targets:
       - datasource:
           type: prometheus
@@ -5817,7 +5795,7 @@ templating:
         query: label_values(pyroscope_build_info,namespace)
         refId: PrometheusVariableQueryEditor-VariableQuery
       refresh: 1
-      regex: {{.Values.dashboards.namespaceRegex | quote}}
+      regex: {{ include "pyroscope-monitoring.dashboards-namespace-regex" (list . $dashboard) | quote }}
       sort: 1
       type: query
 time:

@@ -39,13 +39,14 @@ The committed JSON files under `operations/monitoring/dashboards/` (native) and 
 | dashboards.cloudBackendGateway | bool | `false` |  |
 | dashboards.cloudBackendGatewaySelector | string | `"container=~\"cortex-gw(-internal)?\""` |  |
 | dashboards.cluster | string | `"pyroscope-dev"` |  |
+| dashboards.ingestNamespaceSelector | string | `"namespace=~\"$namespace\""` |  |
 | dashboards.ingestSelector | string | `"container=~\"pyroscope|distributor|query-frontend\""` |  |
 | dashboards.kubeStateMetricsSelector | string | `"job=~\"(.*/)?kube-state-metrics\""` |  |
 | dashboards.namespace | string | `"default"` |  |
 | dashboards.namespaceRegex | string | `".*"` |  |
+| dashboards.namespaceRegexPerDashboard | object | `{}` |  |
 | dashboards.nativeHistograms | bool | `true` |  |
-| dashboards.tenantQuery | string | `"sum by (tenant, slug, org_name, environment) (\n  histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))\n)\n"` |  |
-| dashboards.tenantQueryClassic | string | `"sum by (tenant, slug, org_name, environment) (\n  rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])\n)\n"` |  |
+| dashboards.tenantQuery | string | `"sum by (tenant, slug, org_name, environment) (\n  {{- if .Values.dashboards.nativeHistograms }}\n  histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))\n  {{- else }}\n  rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])\n  {{- end }}\n)\n"` |  |
 | fullnameOverride | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"grafana/otel-lgtm"` |  |
