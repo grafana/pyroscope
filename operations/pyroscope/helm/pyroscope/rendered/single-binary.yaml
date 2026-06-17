@@ -6,7 +6,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -43,7 +43,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -56,7 +56,7 @@ metadata:
   name: alloy-config-pyroscope
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -118,6 +118,21 @@ data:
     		action        = "replace"
     		source_labels = ["__meta_kubernetes_pod_container_name"]
     		target_label  = "container"
+    	}
+
+    	// Set service_name by choosing the first non-empty value from the following ordered list:
+    	// - pod.annotation[profiles.grafana.com/service_name]
+    	// - pod.annotation[resource.opentelemetry.io/service.name]
+    	rule {
+    		action        = "replace"
+    		source_labels = [
+    			"__meta_kubernetes_pod_annotation_profiles_grafana_com_service_name",
+    			"__meta_kubernetes_pod_annotation_resource_opentelemetry_io_service_name",
+    		]
+    		separator    = ";"
+    		regex        = "^(?:;*)?([^;]+).*$"
+    		replacement  = "$1"
+    		target_label = "service_name"
     	}
 
     	rule {
@@ -914,7 +929,7 @@ metadata:
   name: pyroscope-dev-overrides-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -931,7 +946,7 @@ metadata:
   name: pyroscope-dev-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -1082,7 +1097,7 @@ kind: Role
 metadata:
   name: pyroscope-dev-discovery
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -1107,7 +1122,7 @@ kind: RoleBinding
 metadata:
   name: pyroscope-dev-discovery
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -1186,7 +1201,7 @@ metadata:
   name: pyroscope-dev-memberlist
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -1213,7 +1228,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -1246,7 +1261,7 @@ metadata:
   name: pyroscope-dev-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -1371,7 +1386,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.1.0
+    helm.sh/chart: pyroscope-2.1.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "2.1.0"
@@ -1389,7 +1404,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6e8b27d53525159d8cc6cdaeb8eb8d02bf33217062a75bf2781108cf6f3f4957
+        checksum/config: 17ccf3ed138f79387efcd6089a1361cc1075be87d3e4a01161e58ce82b4e9986
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
         profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
