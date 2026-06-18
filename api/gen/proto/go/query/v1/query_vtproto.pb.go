@@ -683,6 +683,11 @@ func (m *PprofQuery) CloneVT() *PprofQuery {
 		copy(tmpContainer, rhs)
 		r.ProfileIdSelector = tmpContainer
 	}
+	if rhs := m.SpanSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SpanSelector = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -1908,6 +1913,15 @@ func (this *PprofQuery) EqualVT(that *PprofQuery) bool {
 	}
 	for i, vx := range this.ProfileIdSelector {
 		vy := that.ProfileIdSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.SpanSelector) != len(that.SpanSelector) {
+		return false
+	}
+	for i, vx := range this.SpanSelector {
+		vy := that.SpanSelector[i]
 		if vx != vy {
 			return false
 		}
@@ -4186,6 +4200,15 @@ func (m *PprofQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.SpanSelector) > 0 {
+		for iNdEx := len(m.SpanSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SpanSelector[iNdEx])
+			copy(dAtA[i:], m.SpanSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SpanSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
 	if len(m.ProfileIdSelector) > 0 {
 		for iNdEx := len(m.ProfileIdSelector) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.ProfileIdSelector[iNdEx])
@@ -5563,6 +5586,12 @@ func (m *PprofQuery) SizeVT() (n int) {
 	}
 	if len(m.ProfileIdSelector) > 0 {
 		for _, s := range m.ProfileIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.SpanSelector) > 0 {
+		for _, s := range m.SpanSelector {
 			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
@@ -10022,6 +10051,38 @@ func (m *PprofQuery) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ProfileIdSelector = append(m.ProfileIdSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SpanSelector = append(m.SpanSelector, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

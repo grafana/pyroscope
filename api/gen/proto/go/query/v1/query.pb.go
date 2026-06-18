@@ -1800,7 +1800,8 @@ type PprofQuery struct {
 	state              protoimpl.MessageState  `protogen:"open.v1"`
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
-	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
+	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
+	SpanSelector       []string                `protobuf:"bytes,4,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1852,6 +1853,13 @@ func (x *PprofQuery) GetStackTraceSelector() *v11.StackTraceSelector {
 func (x *PprofQuery) GetProfileIdSelector() []string {
 	if x != nil {
 		return x.ProfileIdSelector
+	}
+	return nil
+}
+
+func (x *PprofQuery) GetSpanSelector() []string {
+	if x != nil {
+		return x.SpanSelector
 	}
 	return nil
 }
@@ -2626,12 +2634,13 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x04tree\x18\x02 \x01(\fR\x04tree\x124\n" +
 	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01B\n" +
 	"\n" +
-	"\b_symbols\"\xc7\x01\n" +
+	"\b_symbols\"\xec\x01\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +
 	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
-	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelectorB\x17\n" +
+	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelector\x12#\n" +
+	"\rspan_selector\x18\x04 \x03(\tR\fspanSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"O\n" +
 	"\vPprofReport\x12*\n" +
 	"\x05query\x18\x01 \x01(\v2\x14.query.v1.PprofQueryR\x05query\x12\x14\n" +

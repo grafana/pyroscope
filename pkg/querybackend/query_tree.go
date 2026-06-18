@@ -68,6 +68,10 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		columns.Value.ColumnIndex,
 	}
 	if len(spanSelector) > 0 {
+		if !columns.HasSpanID() {
+			// Block has no SpanID column: no samples can match the span selector.
+			return &queryv1.Report{Tree: &queryv1.TreeReport{Query: query.Tree.CloneVT()}}, nil
+		}
 		indices = append(indices, columns.SpanID.ColumnIndex)
 	}
 
