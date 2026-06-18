@@ -1,5 +1,15 @@
 GITHUB_REPOSITORY ?= grafana/pyroscope
 
+# Sync all example files from templates.
+.PHONY: examples/sync-templates
+examples/sync-templates:
+	EXAMPLE_CHECK_MODE=update go test ./examples/_templates/ -count 1 -v
+
+# Verify that every example's files match their templates.
+.PHONY: examples/check-templates
+examples/check-templates:
+	EXAMPLE_CHECK_MODE=check go test ./examples/_templates/ -count 1 -v
+
 .PHONY: tools/update_examples
 tools/update_examples:
 	docker buildx build --platform linux/amd64 -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
