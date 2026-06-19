@@ -46,7 +46,7 @@ func TestSpeedscope(t *testing.T) {
 		profile := &RawProfile{RawData: data}
 
 		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
-		err = profile.Parse(context.Background(), ingester, nil, md)
+		err = profile.Parse(context.Background(), ingester, nil, md, nil)
 		require.NoError(t, err)
 
 		require.Len(t, ingester.actual, 1)
@@ -69,7 +69,7 @@ func TestSpeedscope(t *testing.T) {
 		profile := &RawProfile{RawData: data}
 
 		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
-		err = profile.Parse(context.Background(), ingester, nil, md)
+		err = profile.Parse(context.Background(), ingester, nil, md, nil)
 		require.NoError(t, err)
 
 		require.Len(t, ingester.actual, 2)
@@ -113,7 +113,7 @@ func TestSpeedscope(t *testing.T) {
 		profile := &RawProfile{RawData: data}
 
 		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
-		err = profile.Parse(context.Background(), ingester, nil, md)
+		err = profile.Parse(context.Background(), ingester, nil, md, nil)
 		require.Error(t, err)
 		require.Empty(t, ingester.actual)
 	})
@@ -128,7 +128,7 @@ func TestSpeedscope(t *testing.T) {
 		profile := &RawProfile{RawData: data}
 
 		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
-		err = profile.Parse(context.Background(), ingester, nil, md)
+		err = profile.Parse(context.Background(), ingester, nil, md, nil)
 		require.Error(t, err)
 		require.Empty(t, ingester.actual)
 	})
@@ -144,7 +144,7 @@ func TestSpeedscope(t *testing.T) {
 		profile := &RawProfile{RawData: data}
 
 		md := ingestion.Metadata{LabelSet: key, SampleRate: 100}
-		err = profile.Parse(context.Background(), ingester, nil, md)
+		err = profile.Parse(context.Background(), ingester, nil, md, nil)
 		require.NoError(t, err)
 
 		require.Len(t, ingester.actual, 1)

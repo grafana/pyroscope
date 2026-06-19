@@ -20,7 +20,7 @@ type RawProfile struct {
 }
 
 // Parse parses a profile
-func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata, _ ingestion.Limits) error {
 	profiles, err := parseAll(p.RawData, md)
 	if err != nil {
 		return err
