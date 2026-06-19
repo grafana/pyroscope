@@ -25,7 +25,6 @@ import (
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
-	"github.com/grafana/pyroscope/v2/pkg/og/agent/types"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -222,10 +221,11 @@ func TestParseInputMetadataFromRequest_InvalidSampleRateDefaults(t *testing.T) {
 	tests := []struct {
 		name       string
 		sampleRate string
+		expect     uint32
 	}{
-		{name: "negative", sampleRate: "-1"},
-		{name: "zero", sampleRate: "0"},
-		{name: "non numeric", sampleRate: "abc"},
+		{name: "negative", sampleRate: "-1", expect: 100},
+		{name: "zero", sampleRate: "0", expect: 0},
+		{name: "non numeric", sampleRate: "abc", expect: 100},
 	}
 
 	for _, tt := range tests {
@@ -236,7 +236,7 @@ func TestParseInputMetadataFromRequest_InvalidSampleRateDefaults(t *testing.T) {
 
 			input, err := h.parseInputMetadataFromRequest(context.Background(), req)
 			require.NoError(t, err)
-			require.EqualValues(t, types.DefaultSampleRate, input.Metadata.SampleRate)
+			require.Equal(t, tt.expect, input.Metadata.SampleRate)
 		})
 	}
 }
