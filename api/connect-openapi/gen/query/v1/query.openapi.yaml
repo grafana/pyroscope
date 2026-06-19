@@ -818,6 +818,13 @@ components:
         collectDiagnostics:
           type: boolean
           title: collect_diagnostics
+        symbolize:
+          type: boolean
+          title: symbolize
+          description: |-
+            Symbolize enables symbolization at query time: datasets labeled as
+             unsymbolized are symbolized before merge, provided the symbolizer is
+             enabled for the tenant owning the dataset.
       title: InvokeOptions
       additionalProperties: false
     query.v1.InvokeRequest:

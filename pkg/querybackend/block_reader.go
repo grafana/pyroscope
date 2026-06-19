@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/symbolizer"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -54,6 +55,10 @@ type BlockReader struct {
 	metrics  *metrics
 	hostname string
 
+	// Optional: when nil, backend-side symbolization is disabled.
+	symbolizer Symbolizer
+	limits     Limits
+
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
 	//  - Reusable query context.
@@ -62,13 +67,15 @@ type BlockReader struct {
 	//    Instead, they should share the processing pipeline, if possible.
 }
 
-func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer) *BlockReader {
+func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer, symbolizer Symbolizer, limits Limits) *BlockReader {
 	hostname, _ := os.Hostname()
 	return &BlockReader{
-		log:      logger,
-		storage:  storage,
-		metrics:  newMetrics(reg),
-		hostname: hostname,
+		log:        logger,
+		storage:    storage,
+		metrics:    newMetrics(reg),
+		hostname:   hostname,
+		symbolizer: symbolizer,
+		limits:     limits,
 	}
 }
 
@@ -87,6 +94,11 @@ func (b *BlockReader) Invoke(
 		return nil, status.Errorf(codes.InvalidArgument, "request validation failed: %v", err)
 	}
 	r.setTraceTags(span)
+
+	// Share fetched symbol data across all datasets and blocks of the request.
+	if b.symbolizer != nil && req.Options.GetSymbolize() {
+		ctx = symbolizer.WithRequestCache(ctx)
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	agg := newAggregator(req)
@@ -131,6 +143,9 @@ func (b *BlockReader) Invoke(
 			grp:             g,
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,
+			symbolizer:      b.symbolizer,
+			limits:          b.limits,
+			metrics:         b.metrics,
 		}).execute))
 	}
 

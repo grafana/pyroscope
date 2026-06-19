@@ -525,7 +525,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
 		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
 		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore},
-		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
+		QueryBackend:          {Overrides, API, Storage, QueryBackendClient, Symbolizer},
 		QueryDiagnosticsStore: {Storage},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
 		Symbolizer:            {Overrides, Storage},

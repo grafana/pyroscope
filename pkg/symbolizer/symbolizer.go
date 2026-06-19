@@ -425,7 +425,16 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 	if err != nil {
 		return nil, err
 	}
+	rc, ok := requestCacheFromContext(ctx)
+	if !ok {
+		return s.fetchLidiaBytes(ctx, tenantID, buildID)
+	}
+	return rc.getOrFetch(tenantID+"/"+buildID, s.metrics, func() ([]byte, error) {
+		return s.fetchLidiaBytes(ctx, tenantID, buildID)
+	})
+}
 
+func (s *Symbolizer) fetchLidiaBytes(ctx context.Context, tenantID, buildID string) ([]byte, error) {
 	lidiaBytes, err := s.fetchLidiaFromObjectStore(ctx, tenantID, buildID)
 	if err == nil {
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
