@@ -9,11 +9,7 @@ import { Panel } from '@components/Panel';
 import { TenantDialog } from '@components/TenantDialog';
 import { usePyroscopeQuery, type ProfileType } from '@hooks/usePyroscopeQuery';
 import { useTenant } from '@hooks/useTenant';
-import {
-  profileTypeLabel,
-  profileTypeRateLabel,
-  sortProfileTypes,
-} from '@api/client';
+import { profileTypeRateLabel, sortProfileTypes } from '@api/client';
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -26,23 +22,17 @@ function useTheme() {
   return { theme, setTheme: setAndApply };
 }
 
-function buildQuery(service: string, pt: ProfileType): string {
-  return `{service_name="${service}", profile_type="${pt}"}`;
+function buildQuery(service: string): string {
+  return `{service_name="${service}"}`;
 }
-
-function parseQuery(
-  q: string,
-): { service: string; profileType: string } | null {
+function parseQueryServiceName(q: string): string | null {
   const service = q.match(/service_name\s*=\s*"([^"]+)"/)?.[1];
-  const profileType = q.match(/profile_type\s*=\s*"([^"]+)"/)?.[1];
-  if (!service || !profileType) return null;
-  return { service, profileType };
+  if (!service) return null;
+  return service;
 }
-
 export default function App() {
   const { theme, setTheme } = useTheme();
   const tenant = useTenant();
-  const [service, setService] = useState('');
   const [profileType, setProfileType] = useState<ProfileType>('');
   const [timeRange, setTimeRange] = useState('now-1h');
   const [absoluteRange, setAbsoluteRange] = useState<
@@ -52,13 +42,12 @@ export default function App() {
       }
     | undefined
   >(undefined);
-  const [queryUserInput, setQueryUserInput] = useState<string | null>(null);
-  const queryInput =
-    queryUserInput ??
-    (service || profileType ? buildQuery(service, profileType) : '');
+  const [queryUserInput, setQueryUserInput] = useState<string>('');
+  const [labelSelector, setLabelSelector] = useState<string>('');
+  const service = parseQueryServiceName(labelSelector);
 
   const query = usePyroscopeQuery({
-    service,
+    labelSelector,
     profileType,
     timeRange,
     absoluteRange,
@@ -66,27 +55,24 @@ export default function App() {
   });
 
   useEffect(() => {
-    if (query.servicesLoading || service) return;
+    if (query.servicesLoading || labelSelector) return;
     const first = query.services[0];
     if (!first) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setService(first.name);
+    setQueryUserInput(buildQuery(first.name));
+    setLabelSelector(buildQuery(first.name));
     setProfileType(
       sortProfileTypes(first.profileTypes).find(
         (pt): pt is string => typeof pt === 'string',
       ) ?? '',
     );
-  }, [query.services, query.servicesLoading, service]);
+  }, [query.services, query.servicesLoading, labelSelector]);
 
   const handleAppSelect = (s: string, pt: ProfileType) => {
-    setService(s);
+    setQueryUserInput(buildQuery(s));
+    setLabelSelector(buildQuery(s));
     setProfileType(pt);
-    setQueryUserInput(null);
   };
-
-  const queryDirty =
-    !!service && queryInput !== buildQuery(service, profileType);
-  const handleReset = () => setQueryUserInput(null);
 
   if (tenant.status === 'loading') return null;
 
@@ -107,11 +93,10 @@ export default function App() {
       <NavBar
         services={query.services}
         servicesLoading={query.servicesLoading}
-        service={service}
+        service={service ?? ''}
         profileType={profileType}
         timeRange={timeRange}
         theme={theme}
-        queryDirty={queryDirty}
         onAppSelect={handleAppSelect}
         absoluteRange={absoluteRange}
         onTimeChange={(v) => {
@@ -119,19 +104,15 @@ export default function App() {
           setTimeRange(v);
         }}
         onThemeChange={setTheme}
-        onReset={handleReset}
         isMultiTenant={isMultiTenant}
         tenantID={tenant.tenantID}
         onChangeTenant={() => tenant.setWantsToChange(true)}
       />
       <QueryBar
-        query={queryInput}
+        query={queryUserInput}
         onQueryChange={setQueryUserInput}
         onRun={(q) => {
-          const parsed = parseQuery(q);
-          if (parsed) {
-            query.execute(parsed.service, parsed.profileType, timeRange);
-          }
+          setLabelSelector(q);
         }}
       />
 
@@ -154,10 +135,7 @@ export default function App() {
           />
         </Panel>
 
-        <Panel
-          title="Flamegraph"
-          meta={`${service} · ${profileTypeLabel(profileType)} · ${timeRange}`}
-        >
+        <Panel title="Flamegraph">
           <FlameGraph data={query.flamegraph} profileTypeId={profileType} />
         </Panel>
       </div>

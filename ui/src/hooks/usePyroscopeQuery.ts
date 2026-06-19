@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   fetchServices,
   fetchFlamegraph,
@@ -12,7 +12,7 @@ export type { Service, FlamegraphData } from '@api/client';
 export type ProfileType = string;
 
 export interface QueryParams {
-  service: string;
+  labelSelector: string;
   profileType: ProfileType;
   timeRange: string;
   absoluteRange?: { start: number; end: number };
@@ -26,8 +26,6 @@ export interface QueryResult {
   timeline: Point[];
   loading: boolean;
   error: string | null;
-  run: () => void;
-  execute: (service: string, profileType: string, timeRange: string) => void;
 }
 
 function parseTimeRange(range: string): { start: number; end: number } {
@@ -54,9 +52,11 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
   const [servicesLoading, setServicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { service, profileType, timeRange, absoluteRange, tenantID } = params;
+  const { labelSelector, profileType, timeRange, absoluteRange, tenantID } =
+    params;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setServicesLoading(true);
     const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
     fetchServices(start, end)
@@ -70,43 +70,13 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
       .finally(() => setServicesLoading(false));
   }, [timeRange, absoluteRange, tenantID]);
 
-  const execute = useCallback(
-    (svc: string, pt: string, tr: string) => {
-      if (!svc || !pt) return;
-      const { start, end } = absoluteRange ?? parseTimeRange(tr);
-      const labelSelector = `{service_name="${svc}"}`;
-      const rangeSeconds = (end - start) / 1000;
-      const step = Math.max(15, Math.ceil(rangeSeconds / 100));
-      setLoading(true);
-      Promise.all([
-        fetchFlamegraph({ profileTypeID: pt, labelSelector, start, end }),
-        fetchTimeline({ profileTypeID: pt, labelSelector, start, end, step }),
-      ])
-        .then(([fg, tl]) => {
-          setFlamegraph(fg);
-          setTimeline(tl);
-          setError(null);
-        })
-        .catch((e: unknown) =>
-          setError(e instanceof Error ? e.message : String(e)),
-        )
-        .finally(() => setLoading(false));
-    },
-    // tenantID is not read inside the callback but is included to invalidate
-    // execute (and run) when the tenant changes, ensuring the run callback is
-    // re-created.
-    //
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [absoluteRange, tenantID],
-  );
-
   useEffect(() => {
-    if (!service || !profileType) return;
+    if (!labelSelector || !profileType) return;
     const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
-    const labelSelector = `{service_name="${service}"}`;
     const rangeSeconds = (end - start) / 1000;
     const step = Math.max(15, Math.ceil(rangeSeconds / 100));
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     Promise.all([
       fetchFlamegraph({
@@ -132,11 +102,7 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
         setError(e instanceof Error ? e.message : String(e)),
       )
       .finally(() => setLoading(false));
-  }, [service, profileType, timeRange, absoluteRange, tenantID]);
-
-  const run = useCallback(() => {
-    execute(service, profileType, timeRange);
-  }, [service, profileType, timeRange, execute]);
+  }, [labelSelector, profileType, timeRange, absoluteRange, tenantID]);
 
   return {
     services,
@@ -145,7 +111,5 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
     timeline,
     loading,
     error,
-    run,
-    execute,
   };
 }

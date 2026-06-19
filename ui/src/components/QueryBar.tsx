@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Icon } from '@components/core/Icon';
 import './QueryBar.css';
 
@@ -11,11 +10,7 @@ export function QueryBar({
   onQueryChange: (q: string) => void;
   onRun: (query: string) => void;
 }) {
-  const [lastRun, setLastRun] = useState<string | null>(null);
-  const dirty = lastRun === null || lastRun !== query;
-
   const handleRun = () => {
-    setLastRun(query);
     onRun(query);
   };
 
@@ -29,7 +24,7 @@ export function QueryBar({
       />
 
       <button className="querybar-run" onClick={handleRun}>
-        <Icon name={dirty ? 'play' : 'refresh'} size={10} />
+        <Icon name={'play'} size={10} />
         Run
       </button>
     </div>

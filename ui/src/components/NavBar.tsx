@@ -45,11 +45,9 @@ export function NavBar({
   timeRange,
   absoluteRange,
   theme,
-  queryDirty,
   onAppSelect,
   onTimeChange,
   onThemeChange,
-  onReset,
   isMultiTenant,
   tenantID,
   onChangeTenant,
@@ -61,11 +59,9 @@ export function NavBar({
   timeRange: string;
   absoluteRange: { start: number; end: number } | undefined;
   theme: 'dark' | 'light';
-  queryDirty: boolean;
   onAppSelect: (s: string, pt: ProfileType) => void;
   onTimeChange: (v: string) => void;
   onThemeChange: (t: 'dark' | 'light') => void;
-  onReset: () => void;
   isMultiTenant?: boolean;
   tenantID?: string;
   onChangeTenant?: () => void;
@@ -116,11 +112,6 @@ export function NavBar({
           if (v !== ABS_VALUE) onTimeChange(v);
         }}
       />
-      {queryDirty && (
-        <button className="navbar-reset" onClick={onReset}>
-          Reset query
-        </button>
-      )}
 
       <div className="navbar-spacer" />
 
