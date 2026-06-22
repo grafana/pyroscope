@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -71,7 +72,7 @@ func queryTop(ctx context.Context, params *queryTopParams, async bool) error {
 		qc := params.queryClient()
 		resp, err := qc.SelectSeries(ctx, connect.NewRequest(selectSeriesReq))
 		if err != nil {
-			return errors.Wrap(err, "failed to query series")
+			return fmt.Errorf("failed to query series: %w", err)
 		}
 		logDiagnostics(params.phlareClient, resp.Header())
 		series = resp.Msg.Series

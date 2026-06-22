@@ -331,7 +331,7 @@ func queryViaFrontendService(ctx context.Context, client queryv1connect.QueryFro
 
 		resp, err = client.Query(ctx, connect.NewRequest(pollReq))
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to poll async query")
+			return nil, fmt.Errorf("failed to poll async query: %w", err)
 		}
 
 		switch resp.Msg.Status {
