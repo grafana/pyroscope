@@ -18,6 +18,7 @@ import (
 const (
 	LabelNameTenantDataset     = "__tenant_dataset__"
 	LabelValueDatasetTSDBIndex = "dataset_tsdb_index"
+	LabelValueSymbolBloomIndex = "symbol_bloom_index"
 	LabelNameUnsymbolized      = "__unsymbolized__"
 )
 

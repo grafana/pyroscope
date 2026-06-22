@@ -128,6 +128,7 @@ func (b *BlockReader) Invoke(
 			req:             r,
 			agg:             agg,
 			obj:             obj,
+			storage:         countingStorage,
 			grp:             g,
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,

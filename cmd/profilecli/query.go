@@ -19,6 +19,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
@@ -30,6 +31,17 @@ import (
 
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
+		c.httpClient(),
+		c.URL,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
+	)
+}
+
+func (c *phlareClient) queryFrontendClient() queryv1connect.QueryFrontendServiceClient {
+	return queryv1connect.NewQueryFrontendServiceClient(
 		c.httpClient(),
 		c.URL,
 		append(

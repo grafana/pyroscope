@@ -24,6 +24,11 @@ func RegisterQueryFrontendServiceHandler(mux *mux.Router, svc QueryFrontendServi
 		svc.Query,
 		opts...,
 	))
+	mux.Handle("/query.v1.QueryFrontendService/SymbolServices", connect.NewUnaryHandler(
+		"/query.v1.QueryFrontendService/SymbolServices",
+		svc.SymbolServices,
+		opts...,
+	))
 }
 
 // RegisterQueryBackendServiceHandler register an HTTP handler to a mux.Router from the service

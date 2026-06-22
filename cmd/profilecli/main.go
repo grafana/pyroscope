@@ -83,6 +83,8 @@ func main() {
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
 	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
+	querySymbolsCmd := queryCmd.Command("symbols", "Find services containing exact function symbols.")
+	querySymbolsParams := addQuerySymbolsParams(querySymbolsCmd)
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
 	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
@@ -184,6 +186,10 @@ func main() {
 		}
 	case querySeriesCmd.FullCommand():
 		if err := querySeries(ctx, querySeriesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case querySymbolsCmd.FullCommand():
+		if err := querySymbols(ctx, querySymbolsParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
