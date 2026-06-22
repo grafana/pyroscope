@@ -1,13 +1,13 @@
 package cfg
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

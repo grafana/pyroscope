@@ -325,7 +325,7 @@ func (si *shardIterator) Next() bool {
 	}
 	c := si.shards[0]
 	si.shards = si.shards[1:]
-	si.cur, si.err = si.index.shards.getForRead(si.tx, c.Partition, c.Tenant, c.Shard)
+	si.cur, si.err = si.index.shards.getForReadAtVersion(si.tx, c.Partition, c.Tenant, c.Shard, c.ShardIndex.Version)
 	return si.err == nil
 }
 

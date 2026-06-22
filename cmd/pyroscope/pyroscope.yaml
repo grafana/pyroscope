@@ -1,2 +1,814 @@
+# Pyroscope example configuration file.
+#
+# All fields are shown with their default values, commented out.
+# Uncomment and modify the ones you want to override.
+# For the full reference see:
+#   https://grafana.com/docs/pyroscope/latest/configure-server/reference-configuration-parameters/
+
+# Comma-separated list of Pyroscope modules to load. The alias 'all' can be used
+# in the list to load a number of core modules and will enable single-binary
+# mode.
+# target: "all"
+
+api:
+  # base URL for when the server is behind a reverse proxy with a different path
+  # base-url: ""
+
 server:
-  http_listen_port: 4040
+  # HTTP server listen network, default tcp
+  # http_listen_network: "tcp"
+
+  # HTTP server listen address.
+  # http_listen_address: ""
+
+  # HTTP server listen port.
+  # http_listen_port: 4040
+
+  # Maximum number of simultaneous http connections, <=0 to disable
+  # http_listen_conn_limit: 0
+
+  # gRPC server listen network
+  # grpc_listen_network: "tcp"
+
+  # gRPC server listen address.
+  # grpc_listen_address: ""
+
+  # gRPC server listen port.
+  # grpc_listen_port: 9095
+
+  # Maximum number of simultaneous grpc connections, <=0 to disable
+  # grpc_listen_conn_limit: 0
+
+  # If true, the max streams by connection gauge will be collected.
+  # grpc_collect_max_streams_by_conn: true
+
+  # Enables PROXY protocol.
+  # proxy_protocol_enabled: false
+
+  # Comma-separated list of cipher suites to use. If blank, the default Go
+  # cipher suites is used.
+  # tls_cipher_suites: ""
+
+  # Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11,
+  # VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
+  # tls_min_version: ""
+
+  http_tls_config:
+    # Server TLS certificate. This configuration parameter is YAML only.
+    # cert: ""
+
+    # Server TLS key. This configuration parameter is YAML only.
+    # key: ""
+
+    # Root certificate authority used to verify client certificates. This
+    # configuration parameter is YAML only.
+    # client_ca: ""
+
+    # HTTP server cert path.
+    # cert_file: ""
+
+    # HTTP server key path.
+    # key_file: ""
+
+    # HTTP TLS Client Auth type.
+    # client_auth_type: ""
+
+    # HTTP TLS Client CA path.
+    # client_ca_file: ""
+
+  grpc_tls_config:
+    # Server TLS certificate. This configuration parameter is YAML only.
+    # cert: ""
+
+    # Server TLS key. This configuration parameter is YAML only.
+    # key: ""
+
+    # Root certificate authority used to verify client certificates. This
+    # configuration parameter is YAML only.
+    # client_ca: ""
+
+    # GRPC TLS server cert path.
+    # cert_file: ""
+
+    # GRPC TLS server key path.
+    # key_file: ""
+
+    # GRPC TLS Client Auth type.
+    # client_auth_type: ""
+
+    # GRPC TLS Client CA path.
+    # client_ca_file: ""
+
+  # Register the intrumentation handlers (/metrics etc).
+  # register_instrumentation: true
+
+  # If set to true, gRPC statuses will be reported in instrumentation labels
+  # with their string representations. Otherwise, they will be reported as
+  # "error".
+  # report_grpc_codes_in_instrumentation_label_enabled: false
+
+  # Timeout for graceful shutdowns
+  # graceful_shutdown_timeout: 30s
+
+  # Read timeout for entire HTTP request, including headers and body.
+  # http_server_read_timeout: 30s
+
+  # Read timeout for HTTP request headers. If set to 0, value of
+  # -server.http-read-timeout is used.
+  # http_server_read_header_timeout: 0s
+
+  # Write timeout for HTTP server
+  # http_server_write_timeout: 30s
+
+  # Idle timeout for HTTP server
+  # http_server_idle_timeout: 2m
+
+  # Log closed connections that did not receive any response, most likely
+  # because client didn't send any request within timeout.
+  # http_log_closed_connections_without_response_enabled: false
+
+  # Limit on the size of a gRPC message this server can receive (bytes).
+  # grpc_server_max_recv_msg_size: 104857600
+
+  # Limit on the size of a gRPC message this server can send (bytes).
+  # grpc_server_max_send_msg_size: 104857600
+
+  # Limit on the number of concurrent streams for gRPC calls per client
+  # connection (0 = unlimited)
+  # grpc_server_max_concurrent_streams: 100
+
+  # The duration after which an idle connection should be closed. Default:
+  # infinity
+  # grpc_server_max_connection_idle: 2562047h47m16.854775807s
+
+  # The duration for the maximum amount of time a connection may exist before it
+  # will be closed. Default: infinity
+  # grpc_server_max_connection_age: 2562047h47m16.854775807s
+
+  # An additive period after max-connection-age after which the connection will
+  # be forcibly closed. Default: infinity
+  # grpc_server_max_connection_age_grace: 2562047h47m16.854775807s
+
+  # Duration after which a keepalive probe is sent in case of no activity over
+  # the connection., Default: 2h
+  # grpc_server_keepalive_time: 2h
+
+  # After having pinged for keepalive check, the duration after which an idle
+  # connection should be closed, Default: 20s
+  # grpc_server_keepalive_timeout: 20s
+
+  # Minimum amount of time a client should wait before sending a keepalive ping.
+  # If client sends keepalive ping more often, server will send GOAWAY and close
+  # the connection.
+  # grpc_server_min_time_between_pings: 1s
+
+  # If true, server allows keepalive pings even when there are no active
+  # streams(RPCs). If false, and client sends ping when there are no active
+  # streams, server will send GOAWAY and close the connection.
+  # grpc_server_ping_without_stream_allowed: false
+
+  # If non-zero, configures the amount of GRPC server workers used to serve the
+  # requests.
+  # grpc_server_num_workers: 0
+
+  # If true, the request_message_bytes, response_message_bytes, and
+  # inflight_requests metrics will be tracked. Enabling this option prevents the
+  # use of memory pools for parsing gRPC request bodies and may lead to more
+  # memory allocations.
+  # grpc_server_stats_tracking_enabled: true
+
+  # Deprecated option, has no effect and will be removed in a future version.
+  # grpc_server_recv_buffer_pools_enabled: false
+
+  # Size of the read buffer for each gRPC connection (bytes). A smaller buffer
+  # may reduce memory usage but may lead to more system calls.
+  # grpc_server_read_buffer_size: 32768
+
+  # Size of the write buffer for each gRPC connection (bytes). A smaller buffer
+  # may reduce memory usage but may lead to more system calls.
+  # grpc_server_write_buffer_size: 32768
+
+  # Output log messages in the given format. Valid formats: [logfmt, json]
+  # log_format: "logfmt"
+
+  # Only log messages with the given severity or above. Valid levels: [debug,
+  # info, warn, error]
+  # log_level: "info"
+
+  # Optionally log the source IPs.
+  # log_source_ips_enabled: false
+
+  # Log all source IPs instead of only the originating one. Only used if
+  # server.log-source-ips-enabled is true
+  # log_source_ips_full: false
+
+  # Header field storing the source IPs. Only used if
+  # server.log-source-ips-enabled is true. If not set the default Forwarded,
+  # X-Real-IP and X-Forwarded-For headers are used
+  # log_source_ips_header: ""
+
+  # Regex for matching the source IPs. Only used if
+  # server.log-source-ips-enabled is true. If not set the default Forwarded,
+  # X-Real-IP and X-Forwarded-For headers are used
+  # log_source_ips_regex: ""
+
+  # Optionally log request headers.
+  # log_request_headers: false
+
+  # Optionally log requests at info level instead of debug level. Applies to
+  # request headers as well if server.log-request-headers is enabled.
+  # log_request_at_info_level_enabled: false
+
+  # Comma separated list of headers to exclude from loggin. Only used if
+  # server.log-request-headers is true.
+  # log_request_exclude_headers_list: ""
+
+  # Optionally add request headers to tracing spans.
+  # trace_request_headers: false
+
+  # Comma separated list of headers to exclude from tracing spans. Only used if
+  # server.trace-request-headers is true. The following headers are always
+  # excluded: Authorization, Cookie, X-Access-Token, X-Csrf-Token, X-Grafana-Id.
+  # trace_request_exclude_headers_list: ""
+
+  # Base path to serve all API routes from (e.g. /v1/)
+  # http_path_prefix: ""
+
+  # Creates new traces for each call rather than continuing the existing trace.
+  # A span link is used to allow navigation to the parent trace. Only works when
+  # using Open-Telemetry tracing.
+  # create_new_traces: false
+
+metastore:
+  raft:
+    # Directory to store WAL and raft state. It must be a persistent directory,
+    # not a tmpfs or similar.
+    # dir: "./data/v2/metastore/raft"
+
+  # Directory to store the data.
+  # data_dir: "./data/v2/metastore/data"
+
+  # levels: 0
+
+  # cleanupbatchsize: 0
+
+  # cleanupdelay: 0s
+
+  # cleanupjobminlevel: 0
+
+  # cleanupjobmaxlevel: 0
+
+distributor:
+  # Timeout when pushing data to ingester.
+  # pushtimeout: 5s
+
+  pool_config:
+    # How frequently to clean up clients for ingesters that have gone away.
+    # client_cleanup_period: 15s
+
+    # Run a health check on each ingester client during periodic cleanup.
+    # health_check_ingesters: true
+
+    # Timeout for ingester client healthcheck RPCs.
+    # remote_timeout: 5s
+
+  ring:
+    kvstore:
+      # Backend storage to use for the ring. Supported values are: consul, etcd,
+      # inmemory, memberlist, multi.
+      # store: "memberlist"
+
+      consul:
+        # Hostname and port of Consul.
+        # host: "localhost:8500"
+
+      etcd:
+        # The etcd endpoints to connect to.
+        # endpoints: []
+
+        # Etcd username.
+        # username: ""
+
+        # Etcd password.
+        # password: ""
+
+    # List of network interface names to look up when finding the instance IP
+    # address.
+    # instance_interface_names: [<private network interfaces>]
+
+limits:
+  # Per-tenant ingestion rate limit in sample size per second. Units in MB.
+  # ingestion_rate_mb: 4
+
+  # Per-tenant allowed ingestion burst size (in sample size). Units in MB. The
+  # burst size refers to the per-distributor local rate limiter, and should be
+  # set at least to the maximum profile size expected in a single push request.
+  # ingestion_burst_size_mb: 2
+
+  # Maximum length accepted for label names.
+  # max_label_name_length: 1024
+
+  # Maximum length accepted for label value. This setting also applies to the
+  # metric name.
+  # max_label_value_length: 2048
+
+  # Maximum number of label names per series.
+  # max_label_names_per_series: 30
+
+  # Maximum number of sessions per series. 0 to disable.
+  # max_sessions_per_series: 0
+
+  # Enforce labels order optimization.
+  # enforce_labels_order: false
+
+  # Disable label name sanitization (converting dots to underscores). When
+  # disabled, labels with dots are accepted as-is using UTF-8 validation.
+  # disable_label_sanitization: true
+
+  # Maximum size of a profile in bytes. This is based off the uncompressed size.
+  # 0 to disable.
+  # max_profile_size_bytes: 4194304
+
+  # Maximum number of samples in a profile. 0 to disable.
+  # max_profile_stacktrace_samples: 16000
+
+  # Maximum number of labels in a profile sample. 0 to disable.
+  # max_profile_stacktrace_sample_labels: 100
+
+  # Maximum depth of a profile stacktrace. Profiles are not rejected instead
+  # stacktraces are truncated. 0 to disable.
+  # max_profile_stacktrace_depth: 1000
+
+  # Maximum length of a profile symbol value (labels, function names and
+  # filenames, etc...). Profiles are not rejected instead symbol values are
+  # truncated. 0 to disable.
+  # max_profile_symbol_value_length: 65535
+
+  # Duration of the distributor aggregation window. Requires aggregation period
+  # to be specified. 0 to disable.
+  # distributor_aggregation_window: 0s
+
+  # Duration of the distributor aggregation period. Requires aggregation window
+  # to be specified. 0 to disable.
+  # distributor_aggregation_period: 0s
+
+  # The tenant's shard size used by shuffle-sharding. Must be set both on
+  # ingesters and distributors. 0 disables shuffle sharding.
+  # ingestion_tenant_shard_size: 0
+
+  # Maximum number of active series of profiles per tenant, per ingester. 0 to
+  # disable.
+  # max_local_series_per_tenant: 0
+
+  # Maximum number of active series of profiles per tenant, across the cluster.
+  # 0 to disable. When the global limit is enabled, each ingester is configured
+  # with a dynamic local limit based on the replication factor and the current
+  # number of healthy ingesters, and is kept updated whenever the number of
+  # ingesters change.
+  # max_global_series_per_tenant: 5000
+
+  # Limit how far back in profiling data can be queried, up until lookback
+  # duration ago. This limit is enforced in the query frontend. If the requested
+  # time range is outside the allowed range, the request will not fail, but will
+  # be modified to only query data within the allowed time range. 0 to disable,
+  # default to 7d.
+  # max_query_lookback: 1w
+
+  # The limit to length of queries. 0 to disable.
+  # max_query_length: 1d
+
+  # Maximum number of queries that will be scheduled in parallel by the
+  # frontend.
+  # max_query_parallelism: 0
+
+  # Whether query analysis is enabled in the query frontend. If disabled, the
+  # /AnalyzeQuery endpoint will return an empty response.
+  # query_analysis_enabled: true
+
+  # Whether the series portion of query analysis is enabled. If disabled, no
+  # series data (e.g., series count) will be calculated by the /AnalyzeQuery
+  # endpoint.
+  # query_analysis_series_enabled: false
+
+  # Maximum number of flame graph nodes by default. 0 to disable.
+  # max_flamegraph_nodes_default: 8192
+
+  # Maximum number of flame graph nodes allowed. 0 to disable.
+  # max_flamegraph_nodes_max: 1048576
+
+  # The tenant's shard size, used when store-gateway sharding is enabled. Value
+  # of 0 disables shuffle sharding for the tenant, that is all tenant blocks are
+  # sharded across all store-gateway replicas.
+  # store_gateway_tenant_shard_size: 0
+
+  # Split queries by a time interval and execute in parallel. The value 0
+  # disables splitting by time
+  # split_queries_by_interval: 0s
+
+  # Whether profiles should be sanitized when merging.
+  # query_sanitize_on_merge: true
+
+  # Maximum number of concurrent async queries per tenant. 0 to disable async
+  # queries.
+  # max_async_query_concurrency: 5
+
+  # Queries taking longer than this threshold are automatically promoted to
+  # async execution. 0 to disable auto-async.
+  # async_query_threshold: 2s
+
+  # Delete blocks containing samples older than the specified retention period.
+  # 0 to disable.
+  # compactor_blocks_retention_period: 0s
+
+  # The number of shards to use when splitting blocks. 0 to disable splitting.
+  # compactor_split_and_merge_shards: 0
+
+  # Number of stages split shards will be written to. Number of output split
+  # shards is controlled by -compactor.split-and-merge-shards.
+  # compactor_split_and_merge_stage_size: 0
+
+  # Number of groups that blocks for splitting should be grouped into. Each
+  # group of blocks is then split separately. Number of output split shards is
+  # controlled by -compactor.split-and-merge-shards.
+  # compactor_split_groups: 1
+
+  # Max number of compactors that can compact blocks for single tenant. 0 to
+  # disable the limit and use all compactors.
+  # compactor_tenant_shard_size: 0
+
+  # If a partial block (unfinished block without meta.json file) hasn't been
+  # modified for this time, it will be marked for deletion. The minimum accepted
+  # value is 4h0m0s: a lower value will be ignored and the feature disabled. 0
+  # to disable.
+  # compactor_partial_block_deletion_delay: 1d
+
+  # If enabled, the compactor will downsample profiles in blocks at compaction
+  # level 3 and above. The original profiles are also kept. Note: This set the
+  # default for the teanant overrides, in order to be effective it also requires
+  # compactor.downsampler-enabled to be set to true.
+  # compactor_downsampler_enabled: true
+
+  # S3 server-side encryption type. Required to enable server-side encryption
+  # overrides for a specific tenant. If not set, the default S3 client settings
+  # are used.
+  # s3_sse_type: ""
+
+  # S3 server-side encryption KMS Key ID. Ignored if the SSE type override is
+  # not set.
+  # s3_sse_kms_key_id: ""
+
+  # S3 server-side encryption KMS encryption context. If unset and the key ID
+  # override is set, the encryption context will not be provided to S3. Ignored
+  # if the SSE type override is not set.
+  # s3_sse_kms_encryption_context: ""
+
+  # This limits how far into the past profiling data can be ingested. This limit
+  # is enforced in the distributor. 0 to disable, defaults to 1h.
+  # reject_older_than: 1h
+
+  # This limits how far into the future profiling data can be ingested. This
+  # limit is enforced in the distributor. 0 to disable, defaults to 10m.
+  # reject_newer_than: 10m
+
+  # Maximum number of recording rules a tenant can create. 0 to disable.
+  # max_recording_rules: 25
+
+segment_writer:
+  lifecycler:
+    ring:
+      kvstore:
+        # Backend storage to use for the ring. Supported values are: consul,
+        # etcd, inmemory, memberlist, multi.
+        # store: "consul"
+
+        consul:
+          # Hostname and port of Consul.
+          # host: "localhost:8500"
+
+        etcd:
+          # The etcd endpoints to connect to.
+          # endpoints: []
+
+          # Etcd username.
+          # username: ""
+
+          # Etcd password.
+          # password: ""
+
+      # The number of ingesters to write to and read from.
+      # replication_factor: 3
+
+      # True to enable the zone-awareness and replicate ingested samples across
+      # different availability zones.
+      # zone_awareness_enabled: false
+
+    # Name of network interface to read address from.
+    # interface_names: [<private network interfaces>]
+
+    # File path where tokens are stored. If empty, tokens are not stored at
+    # shutdown and restored at startup.
+    # tokens_file_path: ""
+
+    # The availability zone where this instance is running.
+    # availability_zone: ""
+
+memberlist:
+  # Gossip address to advertise to other members in the cluster. Used for NAT
+  # traversal.
+  # advertise_addr: ""
+
+  # Gossip port to advertise to other members in the cluster. Used for NAT
+  # traversal.
+  # advertise_port: 7946
+
+  # Other cluster members to join. Can be specified multiple times or as a
+  # comma-separated list. It can be an IP, hostname or an entry specified in the
+  # DNS Service Discovery format.
+  # join_members: 0
+
+  # Abort if this node fails to join memberlist cluster at startup. When
+  # enabled, it's not guaranteed that other services are started only after the
+  # cluster state has been successfully updated; use 'abort-if-fast-join-fails'
+  # instead.
+  # abort_if_cluster_join_fails: false
+
+  # IP address to listen on for gossip messages. Multiple addresses may be
+  # specified. Defaults to 0.0.0.0
+  # bind_addr: []
+
+  # Port to listen on for gossip messages.
+  # bind_port: 7946
+
+pyroscopedb:
+  # Directory used for local storage.
+  # data_path: "./data"
+
+  # Upper limit to the duration of a Pyroscope block.
+  # max_block_duration: 1h
+
+  # How big should a single row group be uncompressed
+  # row_group_target_size: 1342177280
+
+  # Specifies the dimension by which symbols are partitioned. By default, the
+  # partitioning is determined automatically.
+  # symbols_partition_label: ""
+
+  # How much available disk space to keep in GiB
+  # min_free_disk_gb: 10
+
+  # Which percentage of free disk space to keep
+  # min_disk_available_percentage: 0.05
+
+  # How often to enforce disk retention
+  # enforcement_interval: 5m
+
+  # Disable retention policy enforcement
+  # disable_enforcement: false
+
+tracing:
+  # Set to false to disable tracing.
+  # enabled: true
+
+overrides_exporter:
+  ring:
+    kvstore:
+      # Backend storage to use for the ring. Supported values are: consul, etcd,
+      # inmemory, memberlist, multi.
+      # store: "memberlist"
+
+      consul:
+        # Hostname and port of Consul.
+        # host: "localhost:8500"
+
+      etcd:
+        # The etcd endpoints to connect to.
+        # endpoints: []
+
+        # Etcd username.
+        # username: ""
+
+        # Etcd password.
+        # password: ""
+
+    # List of network interface names to look up when finding the instance IP
+    # address.
+    # instance_interface_names: [<private network interfaces>]
+
+runtime_config:
+  # Comma separated list of yaml files or URLs with the configuration that can
+  # be updated at runtime. Runtime config files will be merged from left to
+  # right.
+  # file: ""
+
+storage:
+  # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
+  # filesystem, cos.
+  # backend: "filesystem"
+
+  s3:
+    # The S3 bucket endpoint. It could be an AWS S3 endpoint listed at
+    # https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an
+    # S3-compatible service in hostname:port format.
+    # endpoint: ""
+
+    # S3 region. If unset, the client will issue a S3 GetBucketLocation API call
+    # to autodetect it.
+    # region: ""
+
+    # S3 bucket name
+    # bucket_name: ""
+
+    # S3 secret access key
+    # secret_access_key: ""
+
+    # S3 access key ID
+    # access_key_id: ""
+
+    sse:
+      # Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.
+      # type: ""
+
+      # KMS Key ID used to encrypt objects in S3
+      # kms_key_id: ""
+
+      # KMS Encryption Context used for object encryption. It expects JSON
+      # formatted string.
+      # kms_encryption_context: ""
+
+  gcs:
+    # GCS bucket name
+    # bucket_name: ""
+
+    # JSON either from a Google Developers Console client_credentials.json file,
+    # or a Google Developers service account key. Needs to be valid JSON, not a
+    # filesystem path. If empty, fallback to Google default logic:
+    # 1. A JSON file whose path is specified by the
+    # GOOGLE_APPLICATION_CREDENTIALS environment variable. For workload identity
+    # federation, refer to
+    # https://cloud.google.com/iam/docs/how-to#using-workload-identity-federation
+    # on how to generate the JSON configuration file for on-prem/non-Google
+    # cloud platforms.
+    # 2. A JSON file in a location known to the gcloud command-line tool:
+    # $HOME/.config/gcloud/application_default_credentials.json.
+    # 3. On Google Compute Engine it fetches credentials from the metadata
+    # server.
+    # service_account: ""
+
+  azure:
+    # Azure Active Directory tenant ID. If set alongside `client-id` and
+    # `client-secret`, these values will be used for authentication via a client
+    # secret credential.
+    # az_tenant_id: ""
+
+    # Azure Active Directory client ID. If set alongside `az-tenant-id` and
+    # `client-secret`, these values will be used for authentication via a client
+    # secret credential.
+    # client_id: ""
+
+    # Azure Active Directory client secret. If set alongside `az-tenant-id` and
+    # `client-id`, these values will be used for authentication via a client
+    # secret credential.
+    # client_secret: ""
+
+    # Azure storage account name
+    # account_name: ""
+
+    # Azure storage account key. If unset, Azure managed identities will be used
+    # for authentication instead.
+    # account_key: ""
+
+    # If `connection-string` is set, the value of `endpoint-suffix` will not be
+    # used. Use this method over `account-key` if you need to authenticate via a
+    # SAS token. Or if you use the Azurite emulator.
+    # connection_string: ""
+
+    # Azure storage container name
+    # container_name: ""
+
+    # Azure storage endpoint suffix without schema. The account name will be
+    # prefixed to this value to create the FQDN. If set to empty string, default
+    # endpoint suffix is used.
+    # endpoint_suffix: ""
+
+  swift:
+    # OpenStack Swift authentication API version. 0 to autodetect.
+    # auth_version: 0
+
+    # OpenStack Swift authentication URL
+    # auth_url: ""
+
+    # OpenStack Swift username.
+    # username: ""
+
+    # OpenStack Swift user's domain name.
+    # user_domain_name: ""
+
+    # OpenStack Swift user's domain ID.
+    # user_domain_id: ""
+
+    # OpenStack Swift user ID.
+    # user_id: ""
+
+    # OpenStack Swift API key.
+    # password: ""
+
+    # OpenStack Swift user's domain ID.
+    # domain_id: ""
+
+    # OpenStack Swift user's domain name.
+    # domain_name: ""
+
+    # OpenStack Swift project ID (v2,v3 auth only).
+    # project_id: ""
+
+    # OpenStack Swift project name (v2,v3 auth only).
+    # project_name: ""
+
+    # ID of the OpenStack Swift project's domain (v3 auth only), only needed if
+    # it differs the from user domain.
+    # project_domain_id: ""
+
+    # Name of the OpenStack Swift project's domain (v3 auth only), only needed
+    # if it differs from the user domain.
+    # project_domain_name: ""
+
+    # OpenStack Swift Region to use (v2,v3 auth only).
+    # region_name: ""
+
+    # Name of the OpenStack Swift container to put chunks in.
+    # container_name: ""
+
+  cos:
+    # COS bucket name
+    # bucket: ""
+
+    # COS region name
+    # region: ""
+
+    # COS app id
+    # app_id: ""
+
+    # COS storage endpoint
+    # endpoint: ""
+
+    # COS secret key
+    # secret_key: ""
+
+    # COS secret id
+    # secret_id: ""
+
+  filesystem:
+    # Local filesystem storage directory.
+    # dir: "./data/v2/shared"
+
+  # Prefix for all objects stored in the backend storage. For simplicity, it may
+  # only contain digits and English alphabet characters, hyphens, underscores,
+  # dots and forward slashes.
+  # prefix: ""
+
+self_profiling:
+  # When running in single binary (--target=all) Pyroscope will push (Go SDK)
+  # profiles to itself. Set to true to disable self-profiling.
+  # disable_push: false
+
+  # mutex_profile_fraction: 5
+
+  # block_profile_rate: 5
+
+  # Read k6 labels from request headers and set them as dynamic profile tags.
+  # use_k6_middleware: false
+
+  # Tenant ID for self-profiling data. If empty, no tenant header is sent
+  # (anonymous).
+  # tenant_id: ""
+
+# When set to true, incoming HTTP requests must specify tenant ID in HTTP
+# X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
+# multitenancy_enabled: false
+
+analytics:
+  # Enable anonymous usage statistics collection. For more details about usage
+  # statistics, refer to
+  # https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/
+  # reporting_enabled: true
+
+# Prints the application banner at startup.
+# show_banner: true
+
+# Wait time before shutting down after a termination signal.
+# shutdown_delay: 0s
+
+# Storage architecture layer. Use 'v1' to use legacy ingester-based storage,
+# 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to
+# query old data.
+# architecture_storage: "v1-v2-dual"
+
+embedded_grafana:
+  # The directory where the Grafana data will be stored.
+  # data_path: "./data/__embedded_grafana/"
+
+  # The port on which the Grafana will listen.
+  # listen_port: 4041
+
+  # The URL of the Pyroscope instance to use for the Grafana datasources.
+  # pyroscope_url: "http://localhost:4040"

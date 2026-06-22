@@ -3,12 +3,12 @@ package block
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 
 	"github.com/parquet-go/parquet-go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/v2/pkg/iter"

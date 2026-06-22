@@ -14,7 +14,7 @@ import (
 	"text/template"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 func main() {
@@ -238,7 +238,7 @@ type schemaContext struct {
 }
 
 // getExample returns the example value for a property, checking inline metadata first,
-// then falling back to the schema's extensions
+// then falling back to the schema's examples.
 func (ctx *schemaContext) getExample(propertyName string, schema *openapi3.Schema) (string, any) {
 	// First check inline metadata (from properties with $ref that had sibling examples)
 	if ctx.InlineMeta != nil {
@@ -247,22 +247,18 @@ func (ctx *schemaContext) getExample(propertyName string, schema *openapi3.Schem
 		}
 	}
 
-	// Fall back to schema extensions
-	if schema.Extensions != nil {
-		examples := schema.Extensions["examples"].([]any)
-		if len(examples) > 0 {
-			switch examples[0].(type) {
-			case string:
-				return examples[0].(string), examples[0]
-			case []any:
-				res, err := json.Marshal(examples[0])
-				if err != nil {
-					panic(err)
-				}
-				return string(res), examples[0]
-			default:
-				panic(fmt.Sprintf("unknown example type: %T", examples[0]))
+	if len(schema.Examples) > 0 {
+		switch v := schema.Examples[0].(type) {
+		case string:
+			return v, v
+		case []any:
+			res, err := json.Marshal(v)
+			if err != nil {
+				panic(err)
 			}
+			return string(res), v
+		default:
+			panic(fmt.Sprintf("unknown example type: %T", v))
 		}
 	}
 	return "", nil

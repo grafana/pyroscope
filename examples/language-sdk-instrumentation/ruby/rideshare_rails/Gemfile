@@ -4,10 +4,9 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 ruby "3.3.9"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 7.1.5", ">= 7.1.5.2"
+gem "rails", "~> 7.2.3", ">= 7.2.3.1"
 
-# Security updates for CVE-2025-24293
-gem "activestorage", "~> 7.1.5", ">= 7.1.5.2"
+gem "activestorage", "~> 7.2.3", ">= 7.2.3.1"
 
 # Security update for nokogiri CVE (GHSA-353f-x4gh-cqq8)
 gem "nokogiri", ">= 1.18.9"
@@ -21,9 +20,9 @@ gem "sqlite3", "~> 1.4"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", "~> 6.0"
 
-gem 'pyroscope', '= 0.6.7'
+gem 'pyroscope', '= 1.0.1'
 
-gem "pyroscope-otel", "~> 0.1.1"
+gem "pyroscope-otel", "~> 0.2.0"
 gem 'opentelemetry-sdk', "~> 1.2.0"
 gem 'opentelemetry-exporter-jaeger', '~> 0.22.0'
 gem 'opentelemetry-instrumentation-rails' # it's top span is "http get" which is not super usefull for demo

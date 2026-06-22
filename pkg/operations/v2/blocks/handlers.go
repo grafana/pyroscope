@@ -2,6 +2,7 @@ package blocks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -11,7 +12,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -35,7 +35,7 @@ func (h *Handlers) CreateIndexHandler() func(http.ResponseWriter, *http.Request)
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := h.MetastoreClient.GetTenants(r.Context(), &metastorev1.GetTenantsRequest{})
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to get tenants"))
+			httputil.Error(w, fmt.Errorf("failed to get tenants: %w", err))
 			return
 		}
 
@@ -58,7 +58,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 		vars := mux.Vars(r)
 		tenantId := vars["tenant"]
 		if tenantId == "" {
-			httputil.Error(w, errors.New("No tenant id provided"))
+			httputil.Error(w, errors.New("no tenant id provided"))
 			return
 		}
 
@@ -73,7 +73,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 			EndTime:   endTimeMs,
 		})
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to query metadata for blocks"))
+			httputil.Error(w, fmt.Errorf("failed to query metadata for blocks: %w", err))
 			return
 		}
 
@@ -158,22 +158,22 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 		vars := mux.Vars(r)
 		tenantId := vars["tenant"]
 		if tenantId == "" {
-			httputil.Error(w, errors.New("No tenant id provided"))
+			httputil.Error(w, errors.New("no tenant id provided"))
 			return
 		}
 		blockId := vars["block"]
 		if blockId == "" {
-			httputil.Error(w, errors.New("No block id provided"))
+			httputil.Error(w, errors.New("no block id provided"))
 			return
 		}
 		shardStr := r.URL.Query().Get("shard")
 		if shardStr == "" {
-			httputil.Error(w, errors.New("No shard provided"))
+			httputil.Error(w, errors.New("no shard provided"))
 			return
 		}
 		var shard uint32
 		if _, err := fmt.Sscanf(shardStr, "%d", &shard); err != nil {
-			httputil.Error(w, errors.Wrap(err, "invalid shard parameter"))
+			httputil.Error(w, fmt.Errorf("invalid shard parameter: %w", err))
 			return
 		}
 
@@ -187,11 +187,11 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 			},
 		})
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to get block metadata"))
+			httputil.Error(w, fmt.Errorf("failed to get block metadata: %w", err))
 			return
 		}
 		if len(metadataResp.Blocks) == 0 {
-			httputil.Error(w, errors.New("Block not found"))
+			httputil.Error(w, errors.New("block not found"))
 			return
 		}
 

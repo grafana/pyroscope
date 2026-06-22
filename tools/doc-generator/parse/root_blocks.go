@@ -9,10 +9,12 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/server"
 
+	"github.com/grafana/pyroscope/v2/pkg/compactionworker"
 	"github.com/grafana/pyroscope/v2/pkg/compactor"
 	"github.com/grafana/pyroscope/v2/pkg/distributor"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
+	"github.com/grafana/pyroscope/v2/pkg/metastore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/azure"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/gcs"
@@ -20,10 +22,15 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/swift"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler"
+	"github.com/grafana/pyroscope/v2/pkg/segmentwriter"
+	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 	"github.com/grafana/pyroscope/v2/pkg/storegateway"
+	"github.com/grafana/pyroscope/v2/pkg/symbolizer"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
+	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
 
 // RootBlocks is an ordered list of root blocks. The order is the same order that will
@@ -40,6 +47,21 @@ var RootBlocks = []RootBlock{
 		Desc:       "The distributor block configures the distributor.",
 	},
 	{
+		Name:       "segment_writer",
+		StructType: reflect.TypeOf(segmentwriter.Config{}),
+		Desc:       "The segment_writer block configures the segment-writer (V2 write path).",
+	},
+	{
+		Name:       "metastore",
+		StructType: reflect.TypeOf(metastore.Config{}),
+		Desc:       "The metastore block configures the metastore (V2).",
+	},
+	{
+		Name:       "compaction_worker",
+		StructType: reflect.TypeOf(compactionworker.Config{}),
+		Desc:       "The compaction_worker block configures the compaction-worker (V2).",
+	},
+	{
 		Name:       "ingester",
 		StructType: reflect.TypeOf(ingester.Config{}),
 		Desc:       "The ingester block configures the ingester.",
@@ -53,6 +75,11 @@ var RootBlocks = []RootBlock{
 		Name:       "query_frontend",
 		StructType: reflect.TypeOf(frontend.Config{}),
 		Desc:       "The query_frontend block configures the query-frontend.",
+	},
+	{
+		Name:       "query_backend",
+		StructType: reflect.TypeOf(querybackend.Config{}),
+		Desc:       "The query_backend block configures the query-backend (V2 read path).",
 	},
 	{
 		Name:       "frontend_worker",
@@ -73,6 +100,21 @@ var RootBlocks = []RootBlock{
 		Name:       "compactor",
 		StructType: reflect.TypeOf(compactor.Config{}),
 		Desc:       "The compactor block configures the compactor.",
+	},
+	{
+		Name:       "adaptive_placement",
+		StructType: reflect.TypeOf(placement.Config{}),
+		Desc:       "The adaptive_placement block configures adaptive placement for the segment-writer (V2).",
+	},
+	{
+		Name:       "symbolizer",
+		StructType: reflect.TypeOf(symbolizer.Config{}),
+		Desc:       "The symbolizer block configures the symbolizer (V2).",
+	},
+	{
+		Name:       "overrides_exporter",
+		StructType: reflect.TypeOf(exporter.Config{}),
+		Desc:       "The overrides_exporter block configures the overrides exporter.",
 	},
 	{
 		Name:       "grpc_client",

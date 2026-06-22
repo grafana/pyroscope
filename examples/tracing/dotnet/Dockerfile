@@ -1,4 +1,5 @@
 ARG SDK_VERSION=8.0
+ARG PROFILER_VERSION=1.0.0
 # The build images takes an SDK image of the buildplatform, so the platform the build is running on.
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:$SDK_VERSION AS build
 
@@ -16,16 +17,21 @@ RUN sed -i -E 's|<TargetFramework>.*</TargetFramework>|<TargetFramework>net'$SDK
 # We hardcode linux-x64 here, as the profiler doesn't support any other platform
 RUN dotnet publish -o . --framework net$SDK_VERSION --runtime linux-x64 --no-self-contained
 
-# This fetches the SDK
-FROM --platform=linux/amd64 pyroscope/pyroscope-dotnet:0.13.0-glibc AS sdk
+FROM --platform=linux/amd64 alpine:3 AS sdk
+ARG PROFILER_VERSION
+RUN apk add --no-cache curl tar
+RUN curl -fsSL -o /tmp/pyroscope.tar.gz \
+      "https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-${PROFILER_VERSION}/pyroscope.${PROFILER_VERSION}-glibc-x86_64.tar.gz" \
+    && mkdir -p /pyroscope \
+    && tar -xzf /tmp/pyroscope.tar.gz -C /pyroscope
 
 # Runtime only image of the targetplatfrom, so the platform the image will be running on.
 FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:$SDK_VERSION
 
 WORKDIR /dotnet
 
-COPY --from=sdk /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=sdk /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=sdk /pyroscope/Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=sdk /pyroscope/Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 COPY --from=build /dotnet/ ./
 
 

@@ -1,0 +1,33 @@
+.fg-popover-anchor {
+  display: inline-block;
+}
+
+.fg-popover-overlay {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px 0;
+  min-width: 160px;
+}
+
+.fg-popover-item {
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fg-popover-item:hover,
+.fg-popover-item:focus {
+  background: var(--action-hover);
+  outline: none;
+}
+
+.fg-popover-item[data-active='true'] {
+  background: var(--action-selected);
+  color: var(--color-primary-text);
+}

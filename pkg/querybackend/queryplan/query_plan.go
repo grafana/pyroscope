@@ -1,8 +1,6 @@
 package queryplan
 
 import (
-	"math"
-
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
@@ -35,38 +33,47 @@ func Build(
 	}
 
 	// create leaf nodes and spread the blocks in a uniform way
-	var leafNodes []*queryv1.QueryNode
-	for i := 0; i < len(blocks); i += maxReads {
-		end := i + maxReads
+	leafNodeCount := (len(blocks) + maxReads - 1) / maxReads
+	nodes := allocateContiguous[queryv1.QueryNode](leafNodeCount)
+	for start, idx := 0, 0; start < len(blocks); start, idx = start+maxReads, idx+1 {
+		end := start + maxReads
 		if end > len(blocks) {
 			end = len(blocks)
 		}
-		leafNodes = append(leafNodes, &queryv1.QueryNode{
-			Type:   queryv1.QueryNode_READ,
-			Blocks: blocks[i:end],
-		})
+		nodes[idx].Type = queryv1.QueryNode_READ
+		nodes[idx].Blocks = blocks[start:end]
 	}
 
 	// create merge nodes until we reach a single root node
-	for len(leafNodes) > 1 {
-		numNodes := len(leafNodes)
-		numMerges := int(math.Ceil(float64(numNodes) / float64(maxMerges)))
+	for len(nodes) > 1 {
+		mergeNodeCount := (len(nodes) + maxMerges - 1) / maxMerges
+		mergeNodes := allocateContiguous[queryv1.QueryNode](mergeNodeCount)
 
-		var newLeafNodes []*queryv1.QueryNode
-		for i := 0; i < numMerges; i++ {
-			newNode := &queryv1.QueryNode{
-				Type: queryv1.QueryNode_MERGE,
+		for start, idx := 0, 0; start < len(nodes); start, idx = start+maxMerges, idx+1 {
+			end := start + maxMerges
+			if end > len(nodes) {
+				end = len(nodes)
 			}
-			for j := 0; j < maxMerges && len(leafNodes) > 0; j++ {
-				newNode.Children = append(newNode.Children, leafNodes[0])
-				leafNodes = leafNodes[1:]
-			}
-			newLeafNodes = append(newLeafNodes, newNode)
+			mergeNodes[idx].Type = queryv1.QueryNode_MERGE
+			mergeNodes[idx].Children = nodes[start:end:end]
 		}
-		leafNodes = newLeafNodes
+
+		nodes = mergeNodes
 	}
 
 	return &queryv1.QueryPlan{
-		Root: leafNodes[0],
+		Root: nodes[0],
 	}
+}
+
+// allocateContiguous returns a []*T of length size where every element points
+// into a single backing []T allocation. This avoids the per-element heap
+// allocations from N separate &T{} expressions.
+func allocateContiguous[T any](size int) []*T {
+	values := make([]T, size)
+	pointers := make([]*T, size)
+	for i := range values {
+		pointers[i] = &values[i]
+	}
+	return pointers
 }

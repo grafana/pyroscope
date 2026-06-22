@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@datadog/pprof@5.12.0":
-  version "5.12.0"
-  resolved "https://registry.yarnpkg.com/@datadog/pprof/-/pprof-5.12.0.tgz#1f0a592aec5ea3a48ad795d069e8a925d21667db"
-  integrity sha512-qX32upm9eqObGVGvqHpjQB2bXVPTX0ccXTW3mUqUWXgJrAKyHtTfo9PqfoXhflYs0WD9el9xl9c0bM1RS4vRmQ==
+"@datadog/pprof@5.13.3":
+  version "5.13.3"
+  resolved "https://registry.yarnpkg.com/@datadog/pprof/-/pprof-5.13.3.tgz#7080d38b6c05736cb8a027835707ee4ee43eedf3"
+  integrity sha512-G25IicP7pc5CXmAfVz7nrIERsKK9hvPz6p7xsLTUwG4Qs+Zgd5KFedKCVsnvNasLc7l7OXQ6839ajowgQLWTyw==
   dependencies:
     delay "^5.0.0"
     node-gyp-build "<4.0"
@@ -66,14 +66,14 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pyroscope/nodejs@v0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.8.tgz#a8b4a9a4bbd4e667b36fe93b27fbe90f18fabf87"
-  integrity sha512-DhuGx1IzrFLheZ2zQayDHIEFfB1imZJgOc4Mpu/u6LKTN454nui+YXbgWb5clqIuuLCWF84Uc3kJ1ZrCKu36yA==
+"@pyroscope/nodejs@v0.4.11":
+  version "0.4.11"
+  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.4.11.tgz#ef78d106845834773d4aed21264f400d72a93dbc"
+  integrity sha512-hfLE72zc8toxC4UPgSPHxglHfFF9+62YqhqUC6LsK5pdaBQBKjqvIW9EFL6vp5c3lSs7ctjnLy2Rki9RCsqQ8g==
   dependencies:
-    "@datadog/pprof" "5.12.0"
+    "@datadog/pprof" "5.13.3"
     debug "^4.4.3"
-    p-limit "^7.2.0"
+    p-limit "^7.3.0"
     regenerator-runtime "^0.14.1"
     source-map "^0.7.6"
 
@@ -501,10 +501,10 @@ p-limit@^3.1.0:
   dependencies:
     yocto-queue "^0.1.0"
 
-p-limit@^7.2.0:
-  version "7.2.0"
-  resolved "https://registry.yarnpkg.com/p-limit/-/p-limit-7.2.0.tgz#afcf6b5a86d093660140497dda0e640dd01a7b3b"
-  integrity sha512-ATHLtwoTNDloHRFFxFJdHnG6n2WUeFjaR8XQMFdKIv0xkXjrER8/iG9iu265jOM95zXHAfv9oTkqhrfbIzosrQ==
+p-limit@^7.3.0:
+  version "7.3.0"
+  resolved "https://registry.yarnpkg.com/p-limit/-/p-limit-7.3.0.tgz#821398d91491c6b6a1340ecd09cdc402a9c8d0ee"
+  integrity sha512-7cIXg/Z0M5WZRblrsOla88S4wAK+zOQQWeBYfV3qJuJXMr+LnbYjaadrFaS0JILfEDPVqHyKnZ1Z/1d6J9VVUw==
   dependencies:
     yocto-queue "^1.2.1"
 
@@ -523,10 +523,10 @@ pprof-format@^2.2.1:
   resolved "https://registry.yarnpkg.com/pprof-format/-/pprof-format-2.2.1.tgz#64d32207fb46990349eb52825defb449d6ccc9b4"
   integrity sha512-p4tVN7iK19ccDqQv8heyobzUmbHyds4N2FI6aBMcXz6y99MglTWDxIyhFkNaLeEXs6IFUEzT0zya0icbSLLY0g==
 
-protobufjs@^7.2.5:
-  version "7.2.6"
-  resolved "https://registry.yarnpkg.com/protobufjs/-/protobufjs-7.2.6.tgz#4a0ccd79eb292717aacf07530a07e0ed20278215"
-  integrity sha512-dgJaEDDL6x8ASUZ1YqWciTRrdOuYNzoOf27oHNfdyvKqHr5i0FV7FSLU+aIeFjyFgVxrpTOtQUi0BLLBymZaBw==
+protobufjs@^7.5.5:
+  version "7.5.5"
+  resolved "https://registry.yarnpkg.com/protobufjs/-/protobufjs-7.5.5.tgz#b7089ca4410374c75150baf277353ef76db69f96"
+  integrity sha512-3wY1AxV+VBNW8Yypfd1yQY9pXnqTAN+KwQxL8iYm3/BjKYMNg4i0owhEe26PWDOMaIrzeeF98Lqd5NGz4omiIg==
   dependencies:
     "@protobufjs/aspromise" "^1.1.2"
     "@protobufjs/base64" "^1.1.2"

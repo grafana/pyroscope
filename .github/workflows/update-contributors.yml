@@ -19,43 +19,28 @@ jobs:
         with:
           persist-credentials: 'false'
           ref: main
-      - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@c2f1df59dba624b3fd509e5181aa8da5217120c0
+      - id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
         with:
-          repo_secrets: |
-            GITHUB_APP_ID=pyroscope-development-app:app-id
-            GITHUB_APP_INSTALLATION_ID=pyroscope-development-app:app-installation-id
-            GITHUB_APP_PRIVATE_KEY=pyroscope-development-app:private-key
-
-      - name: Generate token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ env.GITHUB_APP_ID }}
-          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          permission-contents: write
-          permission-pull-requests: write
-          repositories: |
-            pyroscope
+          github_app: pyroscope-development-app
       - name: Get GitHub App User ID
         id: get-user-id
         env:
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
         run: |
-          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          APP_BOT="pyroscope-development-app[bot]"
           echo "user-id=$(gh api "/users/${APP_BOT}" --jq .id)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
-          go-version: 1.25.9
+          go-version: 1.25.11
       - name: Update contributors
         run: make update-contributors
 
       - name: Commit and push changes
         env:
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
         run: |
-          APP_BOT="${{ steps.generate_token.outputs.app-slug }}[bot]"
+          APP_BOT="pyroscope-development-app[bot]"
           git config --local user.name "${APP_BOT}"
           git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
           
@@ -64,7 +49,7 @@ jobs:
               git checkout -b "${BRANCH_NAME}"
               git add README.md
               git commit -m 'docs: updates the list of contributors in README'
-              git push https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git HEAD:${BRANCH_NAME}
+              git push https://x-access-token:${{ steps.get-github-app-token.outputs.token }}@github.com/${{ github.repository }}.git HEAD:${BRANCH_NAME}
           
               # Check if PR already exists for this branch
               EXISTING_PR=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number' || echo "")

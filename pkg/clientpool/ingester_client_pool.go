@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 // PoolConfig is config for creating a Pool.
@@ -60,7 +60,7 @@ func (f *ingesterPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.
 		return nil, err
 	}
 
-	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport(), util.WithBaggageTransport())
+	httpClient := httputil.InstrumentedDefaultHTTPClient(httputil.WithTracingTransport(), httputil.WithBaggageTransport())
 	return &ingesterPoolClient{
 		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(httpClient, "http://"+inst.Addr, f.options...),
 		HealthClient:          grpc_health_v1.NewHealthClient(conn),

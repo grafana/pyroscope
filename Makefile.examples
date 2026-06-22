@@ -1,5 +1,15 @@
 GITHUB_REPOSITORY ?= grafana/pyroscope
 
+# Sync all example files from templates.
+.PHONY: examples/sync-templates
+examples/sync-templates:
+	EXAMPLE_CHECK_MODE=update go test ./examples/_templates/ -count 1 -v
+
+# Verify that every example's files match their templates.
+.PHONY: examples/check-templates
+examples/check-templates:
+	EXAMPLE_CHECK_MODE=check go test ./examples/_templates/ -count 1 -v
+
 .PHONY: tools/update_examples
 tools/update_examples:
 	docker buildx build --platform linux/amd64 -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
@@ -18,8 +28,9 @@ tools/update_examples_pr:
 
 
 .PHONY: rideshare/docker/push
+rideshare/docker/push: IMAGE_PLATFORM := linux/amd64
 rideshare/docker/push: IMAGE_PREFIX := us-docker.pkg.dev/grafanalabs-dev/docker-pyroscope-dev/
-rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust
+rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust rideshare/docker/push-nodejs
 
 .PHONY: rideshare/docker/push-golang
 rideshare/docker/push-golang:
@@ -48,3 +59,7 @@ rideshare/docker/push-java:
 .PHONY: rideshare/docker/push-rust
 rideshare/docker/push-rust:
 	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG) examples/language-sdk-instrumentation/rust/rideshare
+
+.PHONY: rideshare/docker/push-nodejs
+rideshare/docker/push-nodejs:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-nodejs -t $(IMAGE_PREFIX)pyroscope-rideshare-nodejs:$(IMAGE_TAG) examples/language-sdk-instrumentation/nodejs/express

@@ -11,7 +11,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -111,7 +110,7 @@ func queryTop(ctx context.Context, params *queryTopParams, async bool) error {
 
 	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile type")
+		return fmt.Errorf("failed to parse profile type: %w", err)
 	}
 
 	switch params.Output {

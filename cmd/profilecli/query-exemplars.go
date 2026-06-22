@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -80,7 +79,7 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 		ExemplarType:  typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
 	}))
 	if err != nil {
-		return errors.Wrap(err, "failed to query exemplars")
+		return fmt.Errorf("failed to query exemplars: %w", err)
 	}
 
 	logDiagnostics(params.phlareClient, resp.Header())
@@ -136,7 +135,7 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 
 	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile type")
+		return fmt.Errorf("failed to parse profile type: %w", err)
 	}
 
 	// Auto-detect the highest-cardinality labels for table columns
@@ -295,7 +294,7 @@ func querySpanExemplars(ctx context.Context, params *queryExemplarsParams) error
 		Limit:         &limit,
 	}))
 	if err != nil {
-		return errors.Wrap(err, "failed to query span exemplars")
+		return fmt.Errorf("failed to query span exemplars: %w", err)
 	}
 
 	logDiagnostics(params.phlareClient, resp.Header())
@@ -341,7 +340,7 @@ func querySpanExemplars(ctx context.Context, params *queryExemplarsParams) error
 
 	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile type")
+		return fmt.Errorf("failed to parse profile type: %w", err)
 	}
 
 	tableLabels := topCardinalityLabels(entries, params.MaxLabelColumns)

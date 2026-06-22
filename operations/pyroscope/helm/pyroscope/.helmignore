@@ -21,3 +21,7 @@
 .idea/
 *.tmproj
 .vscode/
+# Integration tests and rendered reference manifests — not part of the chart package
+e2e/
+ci/integration/
+rendered/

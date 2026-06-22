@@ -149,7 +149,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: asc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -244,17 +243,24 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.995,
           sum(rate(pyroscope_metastore_raft_apply_command_duration_seconds{
             namespace="$namespace",
+          }[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.995,
+          sum(rate(pyroscope_metastore_raft_apply_command_duration_seconds_bucket{
+            namespace="$namespace",
           }[$__rate_interval])) by (le))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99
@@ -337,17 +343,24 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.99,
           sum(rate(pyroscope_metastore_raft_read_index_wait_duration_seconds{
             namespace="$namespace",
+          }[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_metastore_raft_read_index_wait_duration_seconds_bucket{
+            namespace="$namespace",
           }[$__rate_interval])) by (le))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99
@@ -430,18 +443,26 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          (
+            histogram_quantile(0.99,(sum by (pod) (
+              irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds{namespace="$namespace"}[$__rate_interval])))
+            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state="Leader"} >= 1)
+          )
+        {{- else }}
         expr: |-
           (
             histogram_quantile(0.99,(sum by (le, pod) (
               irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace="$namespace"}[$__rate_interval])))
-            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state="Leader"} >= 1) 
+            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state="Leader"} >= 1)
           )
+        {{- end }}
         hide: false
         instant: false
         legendFormat: '{{"{{pod}}"}} Leader'
@@ -451,12 +472,21 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          (
+            histogram_quantile(0.99,(sum by (pod) (
+              irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds{namespace="$namespace"}[$__rate_interval])))
+            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state!="Leader"} >= 1)
+          )
+        {{- else }}
         expr: |-
           (
             histogram_quantile(0.99,(sum by (le, pod) (
               irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace="$namespace"}[$__rate_interval])))
-            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state!="Leader"} >= 1) 
+            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state!="Leader"} >= 1)
           )
+        {{- end }}
         hide: false
         instant: false
         legendFormat: '{{"{{pod}}"}} Follower'
@@ -539,7 +569,6 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -617,15 +646,20 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.99,
           sum(rate(pyroscope_metastore_fsm_apply_command_duration_seconds{namespace="$namespace"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_metastore_fsm_apply_command_duration_seconds_bucket{namespace="$namespace"}[$__rate_interval])) by (le))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99
@@ -635,9 +669,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           histogram_quantile(0.95,
           sum(rate(pyroscope_metastore_fsm_apply_command_duration_seconds{namespace="$namespace"}[$__rate_interval])))
+        {{- else }}
+        expr: >-
+          histogram_quantile(0.95,
+          sum(rate(pyroscope_metastore_fsm_apply_command_duration_seconds_bucket{namespace="$namespace"}[$__rate_interval])) by (le))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p95
@@ -735,18 +775,26 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          (
+            histogram_quantile(1,(sum by (pod) (
+              irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds{namespace="$namespace"}[$__rate_interval])))
+            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state="Leader"} >= 1)
+          )
+        {{- else }}
         expr: |-
           (
             histogram_quantile(1,(sum by (le, pod) (
               irate(pyroscope_metastore_boltdb_persist_snapshot_duration_seconds_bucket{namespace="$namespace"}[$__rate_interval])))
-            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state="Leader"} >= 1) 
+            ) * on(pod) group_left() (pyroscope_metastore_raft_state{namespace="$namespace", state="Leader"} >= 1)
           )
+        {{- end }}
         hide: false
         instant: false
         legendFormat: Metastore leader snapshot ({{"{{pod}}"}})
@@ -756,13 +804,23 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.IndexService/AddBlock",
+          }[$__rate_interval])) by (pod))
+        {{- else }}
         expr: >-
           histogram_quantile(0.99,
           sum(rate(pyroscope_request_duration_seconds_bucket{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.IndexService/AddBlock",
-          }[$__rate_interval])) by (le,pod))
+          }[$__rate_interval])) by (le, pod))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99 {{"{{pod}}"}}
@@ -772,6 +830,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.95,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.IndexService/AddBlock",
+          }[$__rate_interval])))
+        {{- else }}
         expr: >-
           histogram_quantile(0.95,
           sum(rate(pyroscope_request_duration_seconds_bucket{
@@ -779,6 +846,7 @@ panels:
             method="gRPC",
             route="/metastore.v1.IndexService/AddBlock",
           }[$__rate_interval])) by (le))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p95
@@ -843,7 +911,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -939,18 +1006,26 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          sum(histogram_count(irate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.IndexService/AddBlock",
+          }[$__rate_interval]))) by (status_code)
+        {{- else }}
         expr: |-
           sum(irate(pyroscope_request_duration_seconds_count{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.IndexService/AddBlock",
           }[$__rate_interval])) by (status_code)
+        {{- end }}
         hide: false
         instant: false
         legendFormat: __auto
@@ -1036,19 +1111,28 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.IndexService/GetBlockMetadata",
+          }[$__rate_interval])) by (pod))
+        {{- else }}
         expr: >-
           histogram_quantile(0.99,
           sum(rate(pyroscope_request_duration_seconds_bucket{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.IndexService/GetBlockMetadata",
-          }[$__rate_interval])) by (le,pod))
+          }[$__rate_interval])) by (le, pod))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99 {{"{{pod}}"}}
@@ -1058,6 +1142,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.95,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.IndexService/GetBlockMetadata",
+          }[$__rate_interval])))
+        {{- else }}
         expr: >-
           histogram_quantile(0.95,
           sum(rate(pyroscope_request_duration_seconds_bucket{
@@ -1065,6 +1158,7 @@ panels:
             method="gRPC",
             route="/metastore.v1.IndexService/GetBlockMetadata",
           }[$__rate_interval])) by (le))
+        {{- end }}
         hide: true
         instant: false
         legendFormat: p95
@@ -1129,7 +1223,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1225,18 +1318,26 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          sum(histogram_count(irate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.IndexService/GetBlockMetadata",
+          }[$__rate_interval]))) by (status_code)
+        {{- else }}
         expr: |-
           sum(irate(pyroscope_request_duration_seconds_count{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.IndexService/GetBlockMetadata",
           }[$__rate_interval])) by (status_code)
+        {{- end }}
         hide: false
         instant: false
         legendFormat: __auto
@@ -1332,19 +1433,28 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.MetadataQueryService/QueryMetadata",
+          }[$__rate_interval])) by (pod))
+        {{- else }}
         expr: >-
           histogram_quantile(0.99,
           sum(rate(pyroscope_request_duration_seconds_bucket{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.MetadataQueryService/QueryMetadata",
-          }[$__rate_interval])) by (le,pod))
+          }[$__rate_interval])) by (le, pod))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99 {{"{{pod}}"}}
@@ -1354,6 +1464,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.95,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.MetadataQueryService/QueryMetadata",
+          }[$__rate_interval])))
+        {{- else }}
         expr: >-
           histogram_quantile(0.95,
           sum(rate(pyroscope_request_duration_seconds_bucket{
@@ -1361,6 +1480,7 @@ panels:
             method="gRPC",
             route="/metastore.v1.MetadataQueryService/QueryMetadata",
           }[$__rate_interval])) by (le))
+        {{- end }}
         hide: true
         instant: false
         legendFormat: p95
@@ -1425,7 +1545,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1521,18 +1640,26 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          sum(histogram_count(irate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.MetadataQueryService/QueryMetadata",
+          }[$__rate_interval]))) by (status_code)
+        {{- else }}
         expr: |-
           sum(irate(pyroscope_request_duration_seconds_count{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.MetadataQueryService/QueryMetadata",
           }[$__rate_interval])) by (status_code)
+        {{- end }}
         hide: false
         instant: false
         legendFormat: __auto
@@ -1618,19 +1745,28 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.MetadataQueryService/QueryMetadataLabels",
+          }[$__rate_interval])) by (pod))
+        {{- else }}
         expr: >-
           histogram_quantile(0.99,
           sum(rate(pyroscope_request_duration_seconds_bucket{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.MetadataQueryService/QueryMetadataLabels",
-          }[$__rate_interval])) by (le,pod))
+          }[$__rate_interval])) by (le, pod))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99 {{"{{pod}}"}}
@@ -1640,6 +1776,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.95,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.MetadataQueryService/QueryMetadataLabels",
+          }[$__rate_interval])))
+        {{- else }}
         expr: >-
           histogram_quantile(0.95,
           sum(rate(pyroscope_request_duration_seconds_bucket{
@@ -1647,6 +1792,7 @@ panels:
             method="gRPC",
             route="/metastore.v1.MetadataQueryService/QueryMetadataLabels",
           }[$__rate_interval])) by (le))
+        {{- end }}
         hide: true
         instant: false
         legendFormat: p95
@@ -1711,7 +1857,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -1807,18 +1952,26 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          sum(histogram_count(irate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.MetadataQueryService/QueryMetadataLabels",
+          }[$__rate_interval]))) by (status_code)
+        {{- else }}
         expr: |-
           sum(irate(pyroscope_request_duration_seconds_count{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.MetadataQueryService/QueryMetadataLabels",
           }[$__rate_interval])) by (status_code)
+        {{- end }}
         hide: false
         instant: false
         legendFormat: __auto
@@ -1914,19 +2067,28 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.99,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.CompactionService/PollCompactionJobs",
+          }[$__rate_interval])) by (pod))
+        {{- else }}
         expr: >-
           histogram_quantile(0.99,
           sum(rate(pyroscope_request_duration_seconds_bucket{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.CompactionService/PollCompactionJobs",
-          }[$__rate_interval])) by (le,pod))
+          }[$__rate_interval])) by (le, pod))
+        {{- end }}
         hide: false
         instant: false
         legendFormat: p99 {{"{{pod}}"}}
@@ -1936,6 +2098,15 @@ panels:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: >-
+          histogram_quantile(0.95,
+          sum(rate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.CompactionService/PollCompactionJobs",
+          }[$__rate_interval])))
+        {{- else }}
         expr: >-
           histogram_quantile(0.95,
           sum(rate(pyroscope_request_duration_seconds_bucket{
@@ -1943,6 +2114,7 @@ panels:
             method="gRPC",
             route="/metastore.v1.CompactionService/PollCompactionJobs",
           }[$__rate_interval])) by (le))
+        {{- end }}
         hide: true
         instant: false
         legendFormat: p95
@@ -2007,7 +2179,6 @@ panels:
         axisPlacement: left
         reverse: false
         unit: s
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2103,18 +2274,26 @@ panels:
         hideZeros: false
         mode: single
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
           uid: ${datasource}
         editorMode: code
+        {{- if .Values.dashboards.nativeHistograms }}
+        expr: |-
+          sum(histogram_count(irate(pyroscope_request_duration_seconds{
+            namespace="$namespace",
+            method="gRPC",
+            route="/metastore.v1.CompactionService/PollCompactionJobs",
+          }[$__rate_interval]))) by (status_code)
+        {{- else }}
         expr: |-
           sum(irate(pyroscope_request_duration_seconds_count{
             namespace="$namespace",
             method="gRPC",
             route="/metastore.v1.CompactionService/PollCompactionJobs",
           }[$__rate_interval])) by (status_code)
+        {{- end }}
         hide: false
         instant: false
         legendFormat: __auto
@@ -2210,7 +2389,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2329,7 +2507,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2439,7 +2616,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2520,7 +2696,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: none
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2601,7 +2776,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2706,7 +2880,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2801,7 +2974,6 @@ panels:
         hideZeros: false
         mode: multi
         sort: desc
-    pluginVersion: 12.1.0-90017
     targets:
       - datasource:
           type: prometheus
@@ -2915,7 +3087,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3004,7 +3175,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3095,7 +3265,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3187,7 +3356,6 @@ panels:
             hideZeros: false
             mode: multi
             sort: desc
-        pluginVersion: 12.0.0-85518.patch7-85777
         targets:
           - datasource:
               type: prometheus
@@ -3267,7 +3435,7 @@ templating:
         query: label_values(pyroscope_build_info,namespace)
         refId: PrometheusVariableQueryEditor-VariableQuery
       refresh: 1
-      regex: {{.Values.dashboards.namespaceRegex | quote}}
+      regex: {{ include "pyroscope-monitoring.dashboards-namespace-regex" (list . $dashboard) | quote }}
       type: query
 time:
   from: now-6h

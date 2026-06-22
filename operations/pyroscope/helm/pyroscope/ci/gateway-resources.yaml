@@ -1,0 +1,48 @@
+# GatewayClass, EnvoyProxy config, and Gateway for the HTTPRoute e2e integration test.
+# Applied to the Kind cluster by the Go test infrastructure in main_test.go.
+#
+# EnvoyProxy sets service type to ClusterIP so the Gateway reaches Programmed=True
+# in Kind clusters where LoadBalancer external IPs are never assigned.
+#
+# allowedRoutes: from: All is required because each test variant installs the chart
+# into its own namespace, and the HTTPRoute must cross namespaces to bind to the
+# Gateway in the default namespace.
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: proxy-config
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: proxy-config
+    namespace: envoy-gateway-system
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: pyroscope
+  namespace: default
+spec:
+  gatewayClassName: envoy
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All

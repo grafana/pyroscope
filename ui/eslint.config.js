@@ -7,7 +7,9 @@ import prettier from 'eslint-config-prettier';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // src/lib/flamegraph is vendored from grafana/grafana@v13.0.1; we strip it
+  // down incrementally, so apply our project lint only to first-party code.
+  globalIgnores(['dist', 'src/lib/flamegraph/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

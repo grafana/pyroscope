@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
 
 	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 	_ "github.com/grafana/pyroscope/v2/pkg/util/build"
@@ -147,6 +147,10 @@ func main() {
 	debuginfoCmd := app.Command("debuginfo", "Operations on debuginfo (experimental).")
 	debuginfoUploadCmd := debuginfoCmd.Command("upload", "Upload debuginfo.")
 	debuginfoUploadParams := addDebuginfoUploadParams(debuginfoUploadCmd)
+	debuginfoListCmd := debuginfoCmd.Command("list", "List debuginfo.")
+	debuginfoListParams := addDebuginfoListParams(debuginfoListCmd)
+	debuginfoDeleteCmd := debuginfoCmd.Command("delete", "Delete debuginfo by GNU build ID.")
+	debuginfoDeleteParams := addDebuginfoDeleteParams(debuginfoDeleteCmd)
 
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -277,6 +281,14 @@ func main() {
 		}
 	case debuginfoUploadCmd.FullCommand():
 		if err := uploadDebuginfo(ctx, debuginfoUploadParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case debuginfoListCmd.FullCommand():
+		if err := listDebuginfo(ctx, debuginfoListParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case debuginfoDeleteCmd.FullCommand():
+		if err := deleteDebuginfo(ctx, debuginfoDeleteParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:

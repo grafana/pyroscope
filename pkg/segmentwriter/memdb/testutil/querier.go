@@ -2,11 +2,11 @@ package testutil
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"

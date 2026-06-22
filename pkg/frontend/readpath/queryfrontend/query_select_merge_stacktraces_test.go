@@ -147,6 +147,7 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 				mockQueryBackend,
 				mockSymbolizer,
 				nil,
+				nil,
 			)
 
 			ctx := tenant.InjectTenantID(context.Background(), tt.tenantID)
@@ -211,7 +212,7 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 			}},
 		}, nil)
 
-	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, mockMetadataClient, nil, mockQueryBackend, nil, nil)
+	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, mockMetadataClient, nil, mockQueryBackend, nil, nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), "tenant1")
 	start, end := smpValidTimeRange()

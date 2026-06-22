@@ -7,10 +7,8 @@ import (
 	"iter"
 	"time"
 
-	"gopkg.in/yaml.v3"
-
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
@@ -137,6 +135,9 @@ type Limits struct {
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
 
+	// MaxRecordingRules is the maximum number of recording rules a tenant can create and store.
+	MaxRecordingRules int `yaml:"max_recording_rules" json:"max_recording_rules"`
+
 	// Symbolizer.
 	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
 }
@@ -223,6 +224,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.Var(&l.IngestionArtificialDelay, "distributor.ingestion-artificial-delay", "Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.")
 
+	f.IntVar(&l.MaxRecordingRules, "recording-rules.max-rules-per-tenant", 25, "Maximum number of recording rules a tenant can create. 0 to disable.")
+
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -236,10 +239,10 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if defaultLimits != nil {
 		b, err := yaml.Marshal(defaultLimits)
 		if err != nil {
-			return errors.Wrap(err, "cloning limits (marshaling)")
+			return fmt.Errorf("cloning limits (marshaling): %w", err)
 		}
 		if err := yaml.Unmarshal(b, (*plain)(l)); err != nil {
-			return errors.Wrap(err, "cloning limits (unmarshaling)")
+			return fmt.Errorf("cloning limits (unmarshaling): %w", err)
 		}
 	}
 	return unmarshal((*plain)(l))

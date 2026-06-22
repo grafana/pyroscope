@@ -1,20 +1,21 @@
 <p align="center"><img alt="Pyroscope" src="https://github.com/grafana/pyroscope/assets/662636/c1fc4055-b33d-4e69-a450-9e7a7b2317bb" width="100%"/></p>
 
 
-[![ci](https://github.com/grafana/pyroscope/actions/workflows/test.yml/badge.svg)](https://github.com/grafana/pyroscope/actions/workflows/test.yml)
-[![JS Tests Status](https://github.com/grafana/pyroscope/workflows/JS%20Tests/badge.svg)](https://github.com/grafana/pyroscope/actions?query=workflow%3AJS%20Tests)
+[![ci](https://github.com/grafana/pyroscope/actions/workflows/ci.yml/badge.svg)](https://github.com/grafana/pyroscope/actions/workflows/ci.yml)
 [![Go Report](https://goreportcard.com/badge/github.com/grafana/pyroscope)](https://goreportcard.com/report/github.com/grafana/pyroscope)
 [![License: AGPLv3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgrafana%2Fpyroscope.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgrafana%2Fpyroscope?ref=badge_shield)
 [![Latest release](https://img.shields.io/github/release/grafana/pyroscope.svg)](https://github.com/grafana/pyroscope/releases)
 [![DockerHub](https://img.shields.io/docker/pulls/grafana/pyroscope.svg)](https://hub.docker.com/r/grafana/pyroscope)
-[![GoDoc](https://godoc.org/github.com/grafana/pyroscope?status.svg)](https://godoc.org/github.com/grafana/pyroscope)
+[![Go Reference](https://pkg.go.dev/badge/github.com/grafana/pyroscope/v2.svg)](https://pkg.go.dev/github.com/grafana/pyroscope/v2)
 
-## 🎉 **Announcement: The new Explore Profiles UI is here!**
+## 🎉 **Announcement: Pyroscope 2.0 is here!**
 
-We are thrilled to announce the launch of the **Explore Profiles UI**, a brand-new way to explore and analyze your profiling data—now available as part of the Grafana Explore Apps suite! This new app brings you a **queryless**, **intuitive** experience for visualizing your profiling data, simplifying the entire process without the need to write complex queries.
+Pyroscope 2.0 makes the new **v2 architecture** the default. Profiles are written directly to object storage, removing the need for in-memory ingesters and local disks - simplifying operations and lowering resource usage at scale. Existing v1 deployments can opt in via a flag and migrate without data loss.
 
-https://github.com/user-attachments/assets/4db19ec7-86f3-4701-8f5f-9b7ffcebd49c
+Read the [2.0 release notes](https://grafana.com/docs/pyroscope/latest/release-notes/v2-0/) and the [v2 architecture overview](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/). Upgrading from v1? See the [migration guide](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/migrate-from-v1/).
+
+Want the full story? Watch the GrafanaCON 2026 talk [_Pyroscope 2.0: Continuous Profiling Architecture Deep Dive_](https://www.youtube.com/watch?v=vseSm-pzgmc).
 
 ## What is Grafana Pyroscope?
 
@@ -29,60 +30,80 @@ Pyroscope provides powerful tools to give you a comprehensive view of your appli
 
 ## How Does Pyroscope Work?
 
-![deployment_diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_09_18_2024.png)
+![deployment_diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram_11_18_2024.png)
 
 Pyroscope consists of three main components:
-- **Pyroscope Server:** The server component that stores and processes profiling data.
-- **Pyroscope SDKs(push) or Grafana alloy(pull) :** The client-side part of Pyroscope that collects profiling data from your applications and sends it to the server.
-- **Explore Profiles UI:** A queryless, intuitive UI for visualizing and analyzing profiling data.
+- **Pyroscope Server:** Stores and processes profiling data and serves queries.
+- **Clients and instrumentation:** Profiling data reaches the server in several ways: the [Pyroscope SDKs](https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/) (push), [Grafana Alloy](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/) (pull or push), or OTLP from OpenTelemetry-compatible sources such as the [OpenTelemetry eBPF profiler](https://grafana.com/docs/pyroscope/latest/configure-client/opentelemetry/ebpf-profiler/).
+- **Grafana Profiles Drilldown:** A queryless, intuitive UI for visualizing and analyzing profiling data (formerly Explore Profiles).
+
+Under the hood, Pyroscope v2 writes profiles straight to object storage—no ingesters, no local disk. The animations below trace the three parts of the architecture. For the details behind each component, see the [v2 architecture documentation](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/).
+
+**Write path** — profiles are routed by service and written straight to object storage:
+
+![Pyroscope v2 write path](images/pyroscope-v2-write-path.gif)
+
+**Compaction** — compaction-workers merge small segments into larger blocks in the background:
+
+![Pyroscope v2 compaction](images/pyroscope-v2-compaction.gif)
+
+**Read path** — queries fan out across object storage to build flame graphs in Grafana Profiles Drilldown:
+
+![Pyroscope v2 read path](images/pyroscope-v2-read-path.gif)
 
 ---
 
-## [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/)
+## [Pyroscope Live Demo](https://play.grafana.org/a/grafana-pyroscope-app/explore)
 
-[![Pyroscope GIF Demo](https://github.com/user-attachments/assets/2faeb985-f2b6-4311-ad29-e318e850c025)](https://play.grafana.org/a/grafana-pyroscope-app/)
+[![Pyroscope GIF Demo](https://github.com/user-attachments/assets/2faeb985-f2b6-4311-ad29-e318e850c025)](https://play.grafana.org/a/grafana-pyroscope-app/explore)
 
 
 ---
 
-## **Quick Start: Run Pyroscope server locally**
-
-### Homebrew
-```sh
-brew install pyroscope-io/brew/pyroscope
-brew services start pyroscope
-```
+## **Quick Start: Run the Pyroscope server locally**
 
 ### Docker
 ```sh
 docker run -it -p 4040:4040 grafana/pyroscope
 ```
 
-For more documentation on how to configure Pyroscope server, see [our server documentation](https://grafana.com/docs/pyroscope/latest/configure-server/).
+### Homebrew (macOS / Linux)
+```sh
+brew install pyroscope-io/brew/pyroscope
+brew services start pyroscope
+```
 
-## **Quick Start: Run Explore Profiles UI in Grafana**
+### Binary
+Download the archive for your operating system and architecture from the [latest release](https://github.com/grafana/pyroscope/releases/latest), unpack it, and run the binary:
+```sh
+tar xvf pyroscope_*.tar.gz
+./pyroscope
+```
+
+Pyroscope listens on port `4040`. For Kubernetes/Helm, Linux packages, building from source, and full configuration options, see the [Get started guide](https://grafana.com/docs/pyroscope/latest/get-started/) and the [server documentation](https://grafana.com/docs/pyroscope/latest/configure-server/).
+
+## **Quick Start: Visualize profiles with Grafana Profiles Drilldown**
 
 <img width="1728" alt="image" src="https://github.com/user-attachments/assets/67691443-6450-45b9-8064-f41056c88ade">
 
-### Grafana Cloud
-The app UI and server are both installed and running automatically -- just start sending data!
+[Grafana Profiles Drilldown](https://grafana.com/docs/grafana/latest/visualizations/simplified-exploration/profiles/) (formerly Explore Profiles) is the primary, queryless way to visualize and analyze your profiling data.
 
-### Grafana OSS
-You can run the Explore profiles UI in Grafana by installing the plugin from the [Grafana Plugin Directory](https://grafana.com/grafana/plugins/grafana-pyroscope-app/)
-
-For more information, check out the [Explore Profiles README](https://github.com/grafana/explore-profiles)
+### Grafana Cloud / OSS
+Profiles Drilldown is pre-installed and is the default way to explore your profiles – all you need to do is start sending data.
 
 ## Documentation
 
-For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
+For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in a production environment, check out our documentation:
 
 * [Getting Started](https://grafana.com/docs/pyroscope/latest/get-started/)
 * [Deployment Guide](https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/)
-* [Pyroscope Architecture](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-architecture/)
+* [Pyroscope v2 Architecture](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-v2-architecture/)
 
-## Send data to server via Pyroscope agent (language specific)
+## Send data to the server
 
-For more documentation on how to add the Pyroscope agent to your code, see the [agent documentation](https://grafana.com/docs/pyroscope/latest/configure-client/) on our website or find language specific examples and documentation below:
+You can send profiles to Pyroscope with the language SDKs, with [Grafana Alloy](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-alloy/), or over OTLP from OpenTelemetry-compatible sources such as the [OpenTelemetry eBPF profiler](https://grafana.com/docs/pyroscope/latest/configure-client/opentelemetry/ebpf-profiler/).
+
+For more documentation on how to add the Pyroscope SDK to your code, see the [client documentation](https://grafana.com/docs/pyroscope/latest/configure-client/) on our website or find language-specific examples and documentation below:
 <table>
    <tr>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/go_push/"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
@@ -168,19 +189,19 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80"></a>
 <a href="https://github.com/Rperry2174"><img src="https://avatars.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80"></a>
 <a href="https://github.com/aleks-p"><img src="https://avatars.githubusercontent.com/u/8142643?v=4" title="aleks-p" width="80"></a>
-<a href="https://github.com/aocenas"><img src="https://avatars.githubusercontent.com/u/1014802?v=4" title="aocenas" width="80"></a>
 <a href="https://github.com/marcsanmi"><img src="https://avatars.githubusercontent.com/u/8235696?v=4" title="marcsanmi" width="80"></a>
+<a href="https://github.com/aocenas"><img src="https://avatars.githubusercontent.com/u/1014802?v=4" title="aocenas" width="80"></a>
 <a href="https://github.com/bryanhuhta"><img src="https://avatars.githubusercontent.com/u/32787160?v=4" title="bryanhuhta" width="80"></a>
 <a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80"></a>
 <a href="https://github.com/abeaumont"><img src="https://avatars.githubusercontent.com/u/80059?v=4" title="abeaumont" width="80"></a>
+<a href="https://github.com/alsoba13"><img src="https://avatars.githubusercontent.com/u/3586560?v=4" title="alsoba13" width="80"></a>
 <a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80"></a>
+<a href="https://github.com/korniltsev-grafanista"><img src="https://avatars.githubusercontent.com/u/229453617?v=4" title="korniltsev-grafanista" width="80"></a>
 <a href="https://github.com/jake-kramer"><img src="https://avatars.githubusercontent.com/u/899428?v=4" title="jake-kramer" width="80"></a>
 <a href="https://github.com/knylander-grafana"><img src="https://avatars.githubusercontent.com/u/104772500?v=4" title="knylander-grafana" width="80"></a>
-<a href="https://github.com/alsoba13"><img src="https://avatars.githubusercontent.com/u/3586560?v=4" title="alsoba13" width="80"></a>
 <a href="https://github.com/0xPoe"><img src="https://avatars.githubusercontent.com/u/29879298?v=4" title="0xPoe" width="80"></a>
 <a href="https://github.com/darrenjaneczek"><img src="https://avatars.githubusercontent.com/u/38694490?v=4" title="darrenjaneczek" width="80"></a>
 <a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="LouisInFlow" width="80"></a>
-<a href="https://github.com/korniltsev-grafanista"><img src="https://avatars.githubusercontent.com/u/229453617?v=4" title="korniltsev-grafanista" width="80"></a>
 <a href="https://github.com/oleg-kozlyuk-grafana"><img src="https://avatars.githubusercontent.com/u/229985674?v=4" title="oleg-kozlyuk-grafana" width="80"></a>
 <a href="https://github.com/jdbaldry"><img src="https://avatars.githubusercontent.com/u/4599384?v=4" title="jdbaldry" width="80"></a>
 <a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80"></a>
@@ -196,33 +217,33 @@ To start contributing, check out our [Contributing Guide](docs/internal/contribu
 <a href="https://github.com/RichiH"><img src="https://avatars.githubusercontent.com/u/754723?v=4" title="RichiH" width="80"></a>
 <a href="https://github.com/cjsampson"><img src="https://avatars.githubusercontent.com/u/8391857?v=4" title="cjsampson" width="80"></a>
 <a href="https://github.com/cristiangreco"><img src="https://avatars.githubusercontent.com/u/316923?v=4" title="cristiangreco" width="80"></a>
-<a href="https://github.com/callpraths"><img src="https://avatars.githubusercontent.com/u/2848904?v=4" title="callpraths" width="80"></a>
 <a href="https://github.com/ekpatrice"><img src="https://avatars.githubusercontent.com/u/77462462?v=4" title="ekpatrice" width="80"></a>
-<a href="https://github.com/ruslanpascoal2"><img src="https://avatars.githubusercontent.com/u/61955096?v=4" title="ruslanpascoal2" width="80"></a>
+<a href="https://github.com/luweglarz"><img src="https://avatars.githubusercontent.com/u/54635394?v=4" title="luweglarz" width="80"></a>
+<a href="https://github.com/callpraths"><img src="https://avatars.githubusercontent.com/u/2848904?v=4" title="callpraths" width="80"></a>
 <a href="https://github.com/StasDachinsky"><img src="https://avatars.githubusercontent.com/u/23450818?v=4" title="StasDachinsky" width="80"></a>
 <a href="https://github.com/gawicks"><img src="https://avatars.githubusercontent.com/u/1481491?v=4" title="gawicks" width="80"></a>
+<a href="https://github.com/ruslanpascoal2"><img src="https://avatars.githubusercontent.com/u/61955096?v=4" title="ruslanpascoal2" width="80"></a>
 <a href="https://github.com/omarabid"><img src="https://avatars.githubusercontent.com/u/909237?v=4" title="omarabid" width="80"></a>
 <a href="https://github.com/scottzhlin"><img src="https://avatars.githubusercontent.com/u/37504582?v=4" title="scottzhlin" width="80"></a>
 <a href="https://github.com/Skemba"><img src="https://avatars.githubusercontent.com/u/8813875?v=4" title="Skemba" width="80"></a>
 <a href="https://github.com/cuishuang"><img src="https://avatars.githubusercontent.com/u/15921519?v=4" title="cuishuang" width="80"></a>
 <a href="https://github.com/wilfriedroset"><img src="https://avatars.githubusercontent.com/u/12611310?v=4" title="wilfriedroset" width="80"></a>
+<a href="https://github.com/korniltsev-grafanista-yolo-vibecoder239"><img src="https://avatars.githubusercontent.com/u/264712751?v=4" title="korniltsev-grafanista-yolo-vibecoder239" width="80"></a>
 <a href="https://github.com/rajat2004"><img src="https://avatars.githubusercontent.com/u/37938604?v=4" title="rajat2004" width="80"></a>
 <a href="https://github.com/nlamirault"><img src="https://avatars.githubusercontent.com/u/29233?v=4" title="nlamirault" width="80"></a>
+<a href="https://github.com/alrs"><img src="https://avatars.githubusercontent.com/u/28523?v=4" title="alrs" width="80"></a>
 <a href="https://github.com/fandreuz"><img src="https://avatars.githubusercontent.com/u/8464342?v=4" title="fandreuz" width="80"></a>
 <a href="https://github.com/cmonez"><img src="https://avatars.githubusercontent.com/u/39146411?v=4" title="cmonez" width="80"></a>
 <a href="https://github.com/EgorMozheiko"><img src="https://avatars.githubusercontent.com/u/90687109?v=4" title="EgorMozheiko" width="80"></a>
 <a href="https://github.com/cstyan"><img src="https://avatars.githubusercontent.com/u/3246492?v=4" title="cstyan" width="80"></a>
-<a href="https://github.com/luweglarz"><img src="https://avatars.githubusercontent.com/u/54635394?v=4" title="luweglarz" width="80"></a>
 <a href="https://github.com/liaol"><img src="https://avatars.githubusercontent.com/u/5674087?v=4" title="liaol" width="80"></a>
 <a href="https://github.com/dancer1325"><img src="https://avatars.githubusercontent.com/u/39351487?v=4" title="dancer1325" width="80"></a>
 <a href="https://github.com/QuantumEnigmaa"><img src="https://avatars.githubusercontent.com/u/64951262?v=4" title="QuantumEnigmaa" width="80"></a>
 <a href="https://github.com/Pranay0302"><img src="https://avatars.githubusercontent.com/u/55592629?v=4" title="Pranay0302" width="80"></a>
-<a href="https://github.com/alrs"><img src="https://avatars.githubusercontent.com/u/28523?v=4" title="alrs" width="80"></a>
 <a href="https://github.com/juliosaraiva"><img src="https://avatars.githubusercontent.com/u/6595701?v=4" title="juliosaraiva" width="80"></a>
 <a href="https://github.com/clovis1122"><img src="https://avatars.githubusercontent.com/u/22270042?v=4" title="clovis1122" width="80"></a>
+<a href="https://github.com/immanuwell"><img src="https://avatars.githubusercontent.com/u/122638311?v=4" title="immanuwell" width="80"></a>
 <a href="https://github.com/linthan"><img src="https://avatars.githubusercontent.com/u/13914829?v=4" title="linthan" width="80"></a>
-<a href="https://github.com/dapirian"><img src="https://avatars.githubusercontent.com/u/3904462?v=4" title="dapirian" width="80"></a>
-<a href="https://github.com/Cluas"><img src="https://avatars.githubusercontent.com/u/10056928?v=4" title="Cluas" width="80"></a>
 </p>
 
 [//]: contributor-faces

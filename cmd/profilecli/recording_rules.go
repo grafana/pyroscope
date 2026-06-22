@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"connectrpc.com/connect"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"

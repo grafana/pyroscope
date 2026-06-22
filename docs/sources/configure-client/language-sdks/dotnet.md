@@ -24,17 +24,22 @@ The .NET Profiler supports the following profiling types:
 * Allocations
 * Lock contention
 * Exceptions
-* Live heap (requires .NET 7+)
+* Live heap
 
 ### Compatibility
 
 The only compatible operating system and architecture combination is Linux running on amd64 architecture.
 
-Our .NET profiler works with .NET 6 and later versions.
+Our .NET profiler works with the following .NET versions:
+
+* .NET 8
+* .NET 9
+* .NET 10
+
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pyroscope instance with Grafana Cloud Profiles](/products/cloud/profiles/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -43,14 +48,10 @@ The Pyroscope server can be a local server for development or a remote server fo
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/grafana/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.14.2-pyroscope/pyroscope.0.14.2-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.0.0/pyroscope.1.0.0-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 
-Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags). We have `glibc` and `musl` versions:
-```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.14.2-glibc /Pyroscope.Profiler.Native.so /dotnet/Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.14.2-glibc /Pyroscope.Linux.ApiWrapper.x64.so /dotnet/Pyroscope.Linux.ApiWrapper.x64.so
-````
+`glibc` and `musl` builds are published for both `x86_64` and `aarch64`; pick the tarball that matches your base image.
 
 2. Set the following required environment variables to enable profiler
 ```shell
@@ -175,7 +176,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_PROFILING_EXCEPTION_ENABLED  | Boolean      | If set to true, enables the Exceptions profiling. Defaults to false.                                                              |
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false.                                                             |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false.                                                         |
-| PYROSCOPE_PROFILING_HEAP_ENABLED       | Boolean      | If set to true, enables the Live heap profiling. Requires .NET 7+. Defaults to false.                                             |
+| PYROSCOPE_PROFILING_HEAP_ENABLED       | Boolean      | If set to true, enables the Live heap profiling. Defaults to false.                                                               |
 | PYROSCOPE_BASIC_AUTH_USER              | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_TENANT_ID                    | String       | Only needed if using multi-tenancy in Pyroscope.                                                                                  |

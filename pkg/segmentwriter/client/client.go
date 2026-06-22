@@ -2,6 +2,7 @@ package segmentwriterclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -14,7 +15,6 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sony/gobreaker/v2"
 	"google.golang.org/grpc"
@@ -182,6 +182,24 @@ func NewSegmentWriterClient(
 }
 
 func (c *Client) Service() services.Service { return c.service }
+
+// CheckReady reports whether the client can dispatch requests, i.e. its
+// service is Running and the segment-writer ring has at least one healthy
+// instance. Used by callers (e.g. the distributor) to gate readiness so
+// that traffic isn't accepted before the ring has been populated.
+func (c *Client) CheckReady(_ context.Context) error {
+	if state := c.service.State(); state != services.Running {
+		return fmt.Errorf("segment-writer client not running: %s", state)
+	}
+	rs, err := c.ring.GetAllHealthy(ring.Reporting)
+	if err != nil {
+		return fmt.Errorf("segment-writer ring: %w", err)
+	}
+	if len(rs.Instances) == 0 {
+		return errors.New("segment-writer ring has no healthy instances")
+	}
+	return nil
+}
 
 func (c *Client) starting(ctx context.Context) error {
 	// Warm up connections. The pool does not do this.

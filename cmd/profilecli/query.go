@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -11,7 +12,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -84,15 +84,15 @@ type queryParams struct {
 func (p *queryParams) parseFromTo() (from time.Time, to time.Time, err error) {
 	from, err = operations.ParseTime(p.From)
 	if err != nil {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse from")
+		return time.Time{}, time.Time{}, fmt.Errorf("failed to parse from: %w", err)
 	}
 	to, err = operations.ParseTime(p.To)
 	if err != nil {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse to")
+		return time.Time{}, time.Time{}, fmt.Errorf("failed to parse to: %w", err)
 	}
 
 	if to.Before(from) {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "from cannot be after")
+		return time.Time{}, time.Time{}, errors.New("from cannot be after")
 	}
 
 	return from, to, nil
@@ -239,14 +239,14 @@ func querySpanProfile(ctx context.Context, params *queryProfileParams, from time
 	qc := params.phlareClient.queryClient()
 	resp, err := qc.SelectMergeSpanProfile(ctx, connect.NewRequest(req))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to query span profile")
+		return nil, fmt.Errorf("failed to query span profile: %w", err)
 	}
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
 	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal tree")
+		return nil, fmt.Errorf("failed to unmarshal tree: %w", err)
 	}
 
 	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
@@ -376,14 +376,14 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	qc := params.phlareClient.queryClient()
 	resp, err := qc.SelectMergeStacktraces(ctx, connect.NewRequest(req))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to query")
+		return nil, fmt.Errorf("failed to query: %w", err)
 	}
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
 	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal tree")
+		return nil, fmt.Errorf("failed to unmarshal tree: %w", err)
 	}
 
 	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
@@ -398,7 +398,7 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 	qc := client.queryClient()
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
 	if err != nil {
-		return errors.Wrap(err, "failed to query")
+		return fmt.Errorf("failed to query: %w", err)
 	}
 
 	logDiagnostics(client, resp.Header())
@@ -527,7 +527,7 @@ func querySeries(ctx context.Context, params *querySeriesParams, async bool) (er
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
-			return errors.Wrap(err, "failed to query")
+			return fmt.Errorf("failed to query: %w", err)
 		}
 		logDiagnostics(params.phlareClient, resp.Header())
 		result = resp.Msg.LabelsSet
@@ -540,7 +540,7 @@ func querySeries(ctx context.Context, params *querySeriesParams, async bool) (er
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
-			return errors.Wrap(err, "failed to query")
+			return fmt.Errorf("failed to query: %w", err)
 		}
 		result = resp.Msg.LabelsSet
 	case "store-gateway":
@@ -552,11 +552,11 @@ func querySeries(ctx context.Context, params *querySeriesParams, async bool) (er
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
-			return errors.Wrap(err, "failed to query")
+			return fmt.Errorf("failed to query: %w", err)
 		}
 		result = resp.Msg.LabelsSet
 	default:
-		return errors.Errorf("unknown api type %s", params.APIType)
+		return fmt.Errorf("unknown api type %s", params.APIType)
 	}
 
 	return outputSeries(ctx, result, params.Output, from, to)
@@ -589,7 +589,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 		Matchers: []string{params.Query},
 	}))
 	if err != nil {
-		return errors.Wrap(err, "failed to query")
+		return fmt.Errorf("failed to query: %w", err)
 	}
 	logDiagnostics(params.phlareClient, resp.Header())
 

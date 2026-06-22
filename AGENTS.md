@@ -67,7 +67,7 @@ Pyroscope uses a **microservices architecture** where a single binary can run di
 │   ├── objstore/            # Object storage abstraction
 │   ├── api/                 # API definitions and handlers
 │   └── og/                  # Legacy code (original Pyroscope)
-├── public/app/              # React/TypeScript frontend
+├── ui/                      # React/TypeScript frontend (Vite) - has its own ui/CLAUDE.md
 ├── api/                     # API definitions (protobuf, OpenAPI)
 ├── docs/                    # Documentation
 ├── operations/              # Deployment configs (jsonnet, helm)
@@ -78,31 +78,30 @@ Pyroscope uses a **microservices architecture** where a single binary can run di
 ## Tech Stack
 
 ### Backend
-- **Language**: Go 1.24+
+- **Language**: Go 1.25 (see `go.mod`)
 - **RPC**: gRPC with Connect protocol
 - **Storage**: Parquet, TSDB
 - **Hash Ring**: Consistent hashing with memberlist (gossip protocol)
 - **Observability**: Prometheus metrics, Structured logs, Distributed traces, pprof profiles
 
 ### Frontend
-- **Language**: TypeScript
-- **Framework**: React
-- **Build**: Webpack
-- **Styling**: Emotion (CSS-in-JS)
-- **State**: React hooks, Context API
-- **UI Library**: Grafana UI components
+The frontend lives in `ui/` and is a dependency-minimal rewrite of the old `public/app` UI.
+**`ui/CLAUDE.md` and `ui/DESIGN.md` are the authoritative guides — read them before touching the UI.** Summary:
+- **Stack**: React 19 + Vite 8 + TypeScript 5.9, package-managed with **Yarn 4 (Berry)** — use `yarn`, not `npm`
+- **No UI library**: styling via CSS custom properties / semantic tokens in `src/theme.css` (no Emotion, no Grafana UI)
+- **Resist new dependencies** — prefer a small local implementation; minimizing the dependency surface is the whole point of the rewrite
 
 ### Testing
 - **Go**: Standard `testing` package, testify for assertions
-- **Frontend**: Jest, React Testing Library, Cypress (e2e)
+- **Frontend**: Vitest (`yarn test` from `ui/`)
 
 ## Development Workflow
 
 ### Setup & Build
 
 ```bash
-# Install dependencies (Go 1.24+, Docker, Node v18, Yarn v1.22)
-# All other tools auto-download to .tmp/bin/
+# Prerequisites: Go 1.25, Docker, Node, Yarn 4 (Berry).
+# All other build tools auto-download to .tmp/bin/
 
 # Build backend
 make go/bin
@@ -110,12 +109,10 @@ make go/bin
 # Run tests
 make go/test
 
-# Build frontend
-yarn install
-yarn dev          # Dev server on :4041
-
-# Run backend for frontend development
-yarn backend:dev  # Runs Pyroscope server
+# Frontend dev (run from ui/): Vite dev server on :5173, proxies API to :4040
+cd ui && yarn install && yarn dev
+# Production frontend build (Docker -> ui/dist; required before `make build`):
+make frontend/build
 
 # Docker image
 make GOOS=linux GOARCH=amd64 docker-image/pyroscope/build
@@ -138,12 +135,8 @@ go run ./cmd/pyroscope --target all,embedded-grafana
 # Grafana: http://localhost:4041
 
 # Run with V2 architecture (segment writers, query backend, symbolizer)
-PYROSCOPE_V2=1 go run ./cmd/pyroscope \
-  -target=all \
-  -storage.backend=filesystem \
-  -write-path=segment-writer \
-  -enable-query-backend=true \
-  -symbolizer.enabled=true
+# -symbolizer.enabled=true opts into symbolization (off by default).
+go run ./cmd/pyroscope -symbolizer.enabled=true
 ```
 
 ## Code Style & Conventions
@@ -193,11 +186,13 @@ PYROSCOPE_V2=1 go run ./cmd/pyroscope \
 
 ### TypeScript/React Code
 
+The `ui/` frontend has its own authoritative guides — **follow `ui/CLAUDE.md` and `ui/DESIGN.md`**. In brief:
+
 1. **File Extensions**: `.tsx` for components, `.ts` for utilities
-2. **Components**: Use functional components with hooks
-3. **Styling**: Use Emotion CSS-in-JS with Grafana UI theme
+2. **Components**: Functional components with hooks; keep state management simple (the rewrite deliberately dropped Redux)
+3. **Styling**: Use semantic CSS custom properties from `src/theme.css`; never reference primitive tokens directly, and don't add Emotion or Grafana UI
 4. **Props**: Define explicit TypeScript interfaces for all component props
-5. **Formatting**: Use Prettier (run via `yarn lint`)
+5. **Formatting**: Prettier + ESLint — `yarn format` / `yarn lint` from `ui/`
 
 ## Common Patterns
 

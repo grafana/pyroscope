@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"expvar"
 	"flag"
 	"fmt"
@@ -28,7 +29,6 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
@@ -53,12 +53,18 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type PushClient interface {
 	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+}
+
+type SegmentWriterClient interface {
+	Push(context.Context, *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error)
+	CheckReady(context.Context) error
 }
 
 const (
@@ -121,7 +127,7 @@ type Distributor struct {
 	profileSizeStats        *usagestats.MultiStatistics
 
 	router        *writepath.Router
-	segmentWriter writepath.SegmentWriterClient
+	segmentWriter SegmentWriterClient
 }
 
 type Limits interface {
@@ -157,7 +163,7 @@ func New(
 	limits Limits,
 	reg prometheus.Registerer,
 	logger log.Logger,
-	segmentWriter writepath.SegmentWriterClient,
+	segmentWriter SegmentWriterClient,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -211,7 +217,7 @@ func New(
 
 	d.subservices, err = services.NewManager(subservices...)
 	if err != nil {
-		return nil, errors.Wrap(err, "services manager")
+		return nil, fmt.Errorf("services manager: %w", err)
 	}
 	d.subservicesWatcher = services.NewFailureWatcher()
 	d.subservicesWatcher.WatchManager(d.subservices)
@@ -231,13 +237,61 @@ func (d *Distributor) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-d.subservicesWatcher.Chan():
-		return errors.Wrap(err, "distributor subservice failed")
+		return fmt.Errorf("distributor subservice failed: %w", err)
 	}
 }
 
 func (d *Distributor) stopping(_ error) error {
 	d.asyncRequests.Wait()
 	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
+}
+
+// CheckReady reports whether the distributor is ready to serve requests.
+// It verifies the destinations selected by the deployment default write path,
+// so the distributor does not accept traffic before the relevant ring is
+// populated during rollouts.
+func (d *Distributor) CheckReady(ctx context.Context) error {
+	if s := d.State(); s != services.Running && s != services.Stopping {
+		return fmt.Errorf("distributor not ready: %v", s)
+	}
+
+	switch d.limits.WritePathOverrides("").WritePath {
+	case writepath.SegmentWriterPath:
+		return d.checkSegmentWriterReady(ctx)
+	case writepath.CombinedPath:
+		if err := d.checkIngesterRingReady(ctx); err != nil {
+			return fmt.Errorf("ingester write path: %w", err)
+		}
+		if err := d.checkSegmentWriterReady(ctx); err != nil {
+			return fmt.Errorf("segment-writer write path: %w", err)
+		}
+		return nil
+	default:
+		return d.checkIngesterRingReady(ctx)
+	}
+}
+
+// checkIngesterRingReady reports whether the ingester ring has at least one
+// healthy instance available for writes.
+func (d *Distributor) checkIngesterRingReady(context.Context) error {
+	if d.ingestersRing == nil {
+		return errors.New("ingester ring not configured")
+	}
+	rs, err := d.ingestersRing.GetAllHealthy(ring.Write)
+	if err != nil {
+		return fmt.Errorf("ingester ring: %w", err)
+	}
+	if len(rs.Instances) == 0 {
+		return errors.New("ingester ring has no healthy instances")
+	}
+	return nil
+}
+
+func (d *Distributor) checkSegmentWriterReady(ctx context.Context) error {
+	if d.segmentWriter == nil {
+		return errors.New("segment-writer client not configured")
+	}
+	return d.segmentWriter.CheckReady(ctx)
 }
 
 func isKnownConnectError(err error) bool {
@@ -373,6 +427,10 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		)
 	}
 
+	if req.ParseDuration > 0 {
+		d.metrics.parseDuration.WithLabelValues(string(req.RawProfileType), tenantID).Observe(req.ParseDuration.Seconds())
+	}
+
 	res := multierror.New()
 	errorsMutex := new(sync.Mutex)
 	wg := new(sync.WaitGroup)
@@ -381,7 +439,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		go func() {
 			defer wg.Done()
 			itErr := util.RecoverPanic(func() error {
-				return d.pushSeries(ctx, s, req.RawProfileType, tenantID)
+				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration)
 			})()
 
 			if itErr != nil {
@@ -451,14 +509,14 @@ func (p *pushLog) log(logger log.Logger, err error) {
 	p.lvl(logger).Log(p.fields...)
 }
 
-func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string) (err error) {
+func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.ProfileSeries, origin distributormodel.RawProfileType, tenantID string, parseDuration time.Duration) (err error) {
 	if req.Profile == nil {
 		return noNewProfilesReceivedError()
 	}
 	now := model.Now()
 
 	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
-	finalLog := newPushLog(10)
+	finalLog := newPushLog(13)
 	defer func() {
 		finalLog.log(logger, err)
 	}()
@@ -544,6 +602,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		"ingestion_delay", now.Time().Sub(profTime),
 		"decompressed_size", decompressedSize,
 		"sample_count", len(p.Sample),
+		"parse_duration", parseDuration,
 	)
 	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
 	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
@@ -960,7 +1019,7 @@ func (d *Distributor) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					<p>Distributor is not running with global limits enabled</p>
 				</body>
 			</html>`
-		util.WriteHTMLResponse(w, ringNotEnabledPage)
+		httputil.WriteHTMLResponse(w, ringNotEnabledPage)
 	}
 }
 
@@ -1131,12 +1190,12 @@ func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint3
 	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(cfg.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "distributor-lifecycler"), logger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize distributors' KV store")
+		return nil, nil, fmt.Errorf("failed to initialize distributors' KV store: %w", err)
 	}
 
 	lifecyclerCfg, err := toBasicLifecyclerConfig(cfg, logger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to build distributors' lifecycler config")
+		return nil, nil, fmt.Errorf("failed to build distributors' lifecycler config: %w", err)
 	}
 
 	var delegate ring.BasicLifecyclerDelegate
@@ -1147,12 +1206,12 @@ func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint3
 
 	distributorsLifecycler, err := ring.NewBasicLifecycler(lifecyclerCfg, "distributor", distributorRingKey, kvStore, delegate, logger, reg)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize distributors' lifecycler")
+		return nil, nil, fmt.Errorf("failed to initialize distributors' lifecycler: %w", err)
 	}
 
 	distributorsRing, err := ring.New(cfg.ToRingConfig(), "distributor", distributorRingKey, logger, reg)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to initialize distributors' ring client")
+		return nil, nil, fmt.Errorf("failed to initialize distributors' ring client: %w", err)
 	}
 
 	return distributorsRing, distributorsLifecycler, nil

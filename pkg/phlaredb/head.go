@@ -12,16 +12,15 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/gogo/status"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -568,7 +567,7 @@ func (h *Head) flush(ctx context.Context) error {
 	for _, t := range h.tables {
 		numRows, numRowGroups, err := t.Flush(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "flushing table %s", t.Name())
+			return fmt.Errorf("flushing table %s: %w", t.Name(), err)
 		}
 		h.metrics.rowsWritten.WithLabelValues(t.Name()).Add(float64(numRows))
 		f := block.File{
@@ -579,7 +578,7 @@ func (h *Head) flush(ctx context.Context) error {
 			},
 		}
 		if err = t.Close(); err != nil {
-			return errors.Wrapf(err, "closing table %s", t.Name())
+			return fmt.Errorf("closing table %s: %w", t.Name(), err)
 		}
 		if stat, err := os.Stat(filepath.Join(h.headPath, f.RelPath)); err == nil {
 			f.SizeBytes = uint64(stat.Size())
@@ -591,7 +590,7 @@ func (h *Head) flush(ctx context.Context) error {
 
 	// symdb
 	if err := h.symdb.Flush(); err != nil {
-		return errors.Wrap(err, "flushing symdb")
+		return fmt.Errorf("flushing symdb: %w", err)
 	}
 	for _, file := range h.symdb.Files() {
 		// Files' path is relative to the symdb dir.

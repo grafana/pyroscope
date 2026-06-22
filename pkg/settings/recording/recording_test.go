@@ -177,6 +177,19 @@ func Test_validateUpsert(t *testing.T) {
 			WantErr: `matcher "" is invalid: unknown position: parse error: unexpected end of input`,
 		},
 		{
+			Name: "mixed_invalid_matchers",
+			Req: &settingsv1.UpsertRecordingRuleRequest{
+				MetricName: "profiles_recorded_my_metric",
+				Matchers: []string{
+					"",
+					`{ __profile_type__ = "any-type", INVALID }`,
+				},
+				GroupBy:        []string{},
+				ExternalLabels: []*typesv1.LabelPair{},
+			},
+			WantErr: "matcher \"\" is invalid: unknown position: parse error: unexpected end of input\nmatcher \"{ __profile_type__ = \\\"any-type\\\", INVALID }\" is invalid: 1:42: parse error: unexpected \"}\" in label matching, expected label matching operator",
+		},
+		{
 			Name: "missing __profile_type__ matcher",
 			Req: &settingsv1.UpsertRecordingRuleRequest{
 				MetricName:     "profiles_recorded_my_metric",
@@ -599,6 +612,59 @@ func TestRecordingRules_Get(t *testing.T) {
 		require.EqualError(t, err, fmt.Sprintf("not_found: no rule with ID='%s' found", configRule1.Id))
 	})
 
+}
+
+func upsertReqFromRule(rule *settingsv1.RecordingRule) *settingsv1.UpsertRecordingRuleRequest {
+	return &settingsv1.UpsertRecordingRuleRequest{
+		Id:               rule.Id,
+		MetricName:       rule.MetricName,
+		Matchers:         rule.Matchers,
+		GroupBy:          rule.GroupBy,
+		Generation:       rule.Generation,
+		ExternalLabels:   rule.ExternalLabels,
+		StacktraceFilter: rule.StacktraceFilter,
+	}
+}
+
+func TestRecordingRules_MaxRecordingRules(t *testing.T) {
+	const testUser = "user1"
+
+	r := newTestRecordingRules(t, validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		limits := validation.MockDefaultLimits()
+		limits.MaxRecordingRules = 2
+		tenantLimits[testUser] = limits
+	}))
+
+	ctx := user.InjectOrgID(context.Background(), testUser)
+
+	rule1, rule2 := RandomRule(), RandomRule()
+
+	t.Run("can create up to the limit", func(t *testing.T) {
+		_, err := r.UpsertRecordingRule(ctx, connect.NewRequest(upsertReqFromRule(rule1)))
+		require.NoError(t, err)
+		_, err = r.UpsertRecordingRule(ctx, connect.NewRequest(upsertReqFromRule(rule2)))
+		require.NoError(t, err)
+	})
+
+	t.Run("creating beyond the limit is rejected", func(t *testing.T) {
+		_, err := r.UpsertRecordingRule(ctx, connect.NewRequest(upsertReqFromRule(RandomRule())))
+		require.Error(t, err)
+		require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+	})
+
+	t.Run("updating an existing rule at the limit is allowed", func(t *testing.T) {
+		req := upsertReqFromRule(rule1)
+		req.Generation = 1 // matches stored generation
+		_, err := r.UpsertRecordingRule(ctx, connect.NewRequest(req))
+		require.NoError(t, err)
+	})
+
+	t.Run("creating again after deleting a rule is allowed", func(t *testing.T) {
+		_, err := r.DeleteRecordingRule(ctx, connect.NewRequest(&settingsv1.DeleteRecordingRuleRequest{Id: rule2.Id}))
+		require.NoError(t, err)
+		_, err = r.UpsertRecordingRule(ctx, connect.NewRequest(upsertReqFromRule(RandomRule())))
+		require.NoError(t, err)
+	})
 }
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

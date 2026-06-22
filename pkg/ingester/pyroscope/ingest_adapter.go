@@ -34,6 +34,8 @@ type PushService interface {
 
 type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
 }
 
 func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger) http.Handler {
@@ -53,9 +55,8 @@ func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.Ing
 	pprofable, ok := in.Profile.(ingestion.ParseableToPprof)
 	if ok {
 		return p.parseToPprof(ctx, in, pprofable)
-	} else {
-		return in.Profile.Parse(ctx, p, p, in.Metadata)
 	}
+	return in.Profile.Parse(ctx, p, p, in.Metadata, p.limits)
 }
 
 const (
@@ -185,10 +186,12 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 	in *ingestion.IngestInput,
 	pprofable ingestion.ParseableToPprof,
 ) error {
+	parseStart := time.Now()
 	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata, p.limits)
 	if err != nil {
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}
+	plainReq.ParseDuration = time.Since(parseStart)
 	if len(plainReq.Series) == 0 {
 		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 		_ = level.Debug(p.log).Log("msg", "empty profile",

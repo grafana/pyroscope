@@ -2,6 +2,7 @@ package querier
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"math"
@@ -18,7 +19,6 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
@@ -141,7 +141,7 @@ func New(params *NewQuerierParams) (*Querier, error) {
 	// should we watch for the ring module status ?
 	q.subservices, err = services.NewManager(svcs...)
 	if err != nil {
-		return nil, errors.Wrap(err, "services manager")
+		return nil, fmt.Errorf("services manager: %w", err)
 	}
 	q.subservicesWatcher = services.NewFailureWatcher()
 	q.subservicesWatcher.WatchManager(q.subservices)
@@ -158,7 +158,7 @@ func (q *Querier) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-q.subservicesWatcher.Chan():
-		return errors.Wrap(err, "querier subservice failed")
+		return fmt.Errorf("querier subservice failed: %w", err)
 	}
 }
 
@@ -1004,8 +1004,10 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start must be before end"))
 	}
 
-	if req.Msg.Step == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be non-zero"))
+	// Sub-millisecond step values truncate to 0 in stepMs and would cause an
+	// unbounded loop in RangeSeries; reject anything below 1ms.
+	if req.Msg.Step < 0.001 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be >= 1ms"))
 	}
 
 	// SelectSeries (v1 API) does not support exemplars

@@ -33,6 +33,24 @@ type FlushedHead struct {
 		NumProfiles      uint64
 		NumSeries        uint64
 	}
+
+	datasetIndexSeries []*profileSeries
+}
+
+type datasetIndexWriter interface {
+	AddSeries(idx uint32, labels phlaremodel.Labels, fp model.Fingerprint)
+}
+
+// WriteDatasetIndex feeds the flushed head's series (labels + fingerprint)
+// into the given dataset index writer, attributing every series to the
+// supplied dataset index (the dataset's global position in the block).
+// It is safe to call concurrently with other heads' writes only if the
+// writer itself is externally synchronised; segment flushes call it
+// serially in dataset (tenant+service) order.
+func (f *FlushedHead) WriteDatasetIndex(w datasetIndexWriter, idx uint32) {
+	for _, s := range f.datasetIndexSeries {
+		w.AddSeries(idx, s.lbs, s.fp)
+	}
 }
 
 type Head struct {
@@ -173,7 +191,7 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return nil, fmt.Errorf("failed to get profile type names: %w", err)
 	}
 
-	if res.Index, profiles, err = h.profiles.Flush(ctx); err != nil {
+	if res.Index, profiles, res.datasetIndexSeries, err = h.profiles.Flush(ctx); err != nil {
 		return nil, fmt.Errorf("failed to flush profiles: %w", err)
 	}
 	res.Meta.NumProfiles = uint64(len(profiles))

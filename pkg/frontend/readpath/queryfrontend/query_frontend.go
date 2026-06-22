@@ -14,6 +14,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,6 +29,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
+	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -56,6 +58,52 @@ type QueryFrontend struct {
 	symbolizer          Symbolizer
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
+
+	metrics *queryFrontendMetrics
+}
+
+type queryFrontendMetrics struct {
+	fetchedBytesTotal       *prometheus.CounterVec
+	estimationAccuracyRatio prometheus.Histogram
+}
+
+func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
+	m := &queryFrontendMetrics{
+		fetchedBytesTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Subsystem: "query_frontend",
+				Name:      "fetched_bytes_total",
+				Help:      "Total bytes fetched per tenant per source (object_storage, metastore).",
+			},
+			[]string{"tenant", "kind"},
+		),
+		// estimationAccuracyRatio records the ratio of the pre-execution
+		// metadata size estimate (weight.Total()) to the actual object-storage
+		// bytes fetched per query.  A value of 1.0 means the estimate matched
+		// exactly; values below 1.0 mean the query fetched less than estimated
+		// (the common case, since the weight is an upper-bound derived from
+		// section offsets).  Format1 index-lookup blocks have unknown
+		// profile/symbol sizes pre-execution, so queries that hit those blocks
+		// will tend to produce ratios below 1.0.
+		// Both classic explicit buckets and native-histogram parameters are set
+		// so that scrapers that support native histograms get higher resolution
+		// automatically.
+		estimationAccuracyRatio: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace:                       "pyroscope",
+			Subsystem:                       "query_frontend",
+			Name:                            "estimation_accuracy_ratio",
+			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = over-estimated; >1.0 = under-estimated.",
+			Buckets:                         []float64{0.1, 0.25, 0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2, 5, 10},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: time.Hour,
+		}),
+	}
+	if reg != nil {
+		reg.MustRegister(m.fetchedBytesTotal, m.estimationAccuracyRatio)
+	}
+	return m
 }
 
 func NewQueryFrontend(
@@ -66,6 +114,7 @@ func NewQueryFrontend(
 	querybackendClient QueryBackend,
 	sym Symbolizer,
 	diagnosticsStore DiagnosticsStore,
+	reg prometheus.Registerer,
 ) *QueryFrontend {
 	qf := &QueryFrontend{
 		logger:              logger,
@@ -76,6 +125,7 @@ func NewQueryFrontend(
 		symbolizer:          sym,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
+		metrics:             newQueryFrontendMetrics(reg),
 	}
 	return qf
 }
@@ -127,6 +177,12 @@ func (q *QueryFrontend) doQuery(
 	span.SetTag("block_count", len(blocks))
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
+	}
+
+	// Measure bytes received from the metastore (serialized block metadata).
+	var metastoreBytes uint64
+	for _, b := range blocks {
+		metastoreBytes += uint64(b.SizeVT())
 	}
 
 	var weight block.DatasetWeight
@@ -197,6 +253,26 @@ func (q *QueryFrontend) doQuery(
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Emit per-tenant bytes metrics. Object storage bytes come from the
+	// query-backend response; metastore bytes were measured above.
+	// Use dskit's JoinTenantIDs so the label matches the standard |-separated
+	// org ID format used elsewhere in the Grafana stack.
+	tenantLabel := tenant.JoinTenantIDs(tenants)
+	objectBytes := resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
+	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(objectBytes))
+	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
+	// Record estimation accuracy: ratio of pre-execution weight to actual bytes
+	// fetched. Only observed when the backend fetched bytes to avoid division
+	// by zero (e.g. empty result sets).
+	if objectBytes > 0 {
+		q.metrics.estimationAccuracyRatio.Observe(float64(weight.Total()) / float64(objectBytes))
+	}
+	if qs := spanlogger.QueryStatsFromContext(ctx); qs != nil {
+		qs.ObjectStorageBytes += objectBytes
+		qs.MetastoreBytes += metastoreBytes
+		qs.EstimatedBytes += weight.Total()
 	}
 
 	if resp.Diagnostics == nil {

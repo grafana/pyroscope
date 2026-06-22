@@ -2,6 +2,7 @@ package pyroscope
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,12 +11,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-
-	"google.golang.org/genproto/googleapis/api/httpbody"
-	"google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/protobuf/encoding/protojson"
-	"gopkg.in/yaml.v3"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/dns"
@@ -27,12 +22,13 @@ import (
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"go.yaml.in/yaml/v3"
+	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/v2/pkg/adhocprofiles"
@@ -58,6 +54,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
@@ -150,7 +147,7 @@ func (f *Pyroscope) initRuntimeConfig() (services.Service, error) {
 func (f *Pyroscope) initTenantSettings() (services.Service, error) {
 	settings, err := settings.New(f.Cfg.TenantSettings, f.storageBucket, log.With(f.logger, "component", TenantSettings), f.Overrides)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to init settings service")
+		return nil, fmt.Errorf("failed to init settings service: %w", err)
 	}
 
 	f.API.RegisterTenantSettings(settings)
@@ -184,7 +181,7 @@ func (f *Pyroscope) initOverridesExporter() (services.Service, error) {
 		f.reg,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to instantiate overrides-exporter")
+		return nil, fmt.Errorf("failed to instantiate overrides-exporter: %w", err)
 	}
 	if f.reg != nil {
 		f.reg.MustRegister(overridesExporter)
@@ -200,7 +197,7 @@ func (f *Pyroscope) initQueryScheduler() (services.Service, error) {
 
 	s, err := scheduler.NewScheduler(f.Cfg.QueryScheduler, f.Overrides, log.With(f.logger, "component", "scheduler"), f.reg)
 	if err != nil {
-		return nil, errors.Wrap(err, "query-scheduler init")
+		return nil, fmt.Errorf("query-scheduler init: %w", err)
 	}
 
 	f.API.RegisterQueryScheduler(s)
@@ -323,10 +320,15 @@ func (f *Pyroscope) initGRPCGateway() (services.Service, error) {
 func (f *Pyroscope) initDistributor() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.ListenPort = f.Cfg.Server.HTTPListenPort
 	logger := log.With(f.logger, "component", "distributor")
-	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, f.segmentWriterClient, f.auth)
+	var swClient distributor.SegmentWriterClient
+	if f.segmentWriterClient != nil {
+		swClient = f.segmentWriterClient
+	}
+	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, swClient, f.auth)
 	if err != nil {
 		return nil, err
 	}
+	f.distributor = d
 	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
 
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
@@ -351,7 +353,7 @@ func (f *Pyroscope) initMemberlistKV() (services.Service, error) {
 			f.reg,
 		),
 	)
-	dnsProvider := dns.NewProvider(f.logger, dnsProviderReg, dns.GolangResolverType)
+	dnsProvider := dns.NewProvider(dns.GolangResolverType, 2, f.logger, dnsProviderReg)
 
 	f.Cfg.MemberlistKV.MetricsNamespace = "pyroscope"
 	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, f.reg)
@@ -399,7 +401,7 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 			"storage",
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to initialise bucket")
+			return nil, fmt.Errorf("unable to initialise bucket: %w", err)
 		}
 		f.storageBucket = b
 	}
@@ -507,7 +509,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		return svs
 	}
 
-	httpMetric, err := util.NewHTTPMetricMiddleware(f.Server.HTTP, f.Cfg.Server.MetricsNamespace, f.Cfg.Server.Registerer)
+	httpMetric, err := httputil.NewHTTPMetricMiddleware(f.Server.HTTP, f.Cfg.Server.MetricsNamespace, f.Cfg.Server.Registerer)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +519,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		middleware.RouteInjector{
 			RouteMatcher: f.Server.HTTP,
 		},
-		&util.Log{
+		&httputil.Log{
 			Log:                      f.Server.Log,
 			LogRequestAtInfoLevel:    f.Cfg.Server.LogRequestAtInfoLevel,
 			LogRequestHeaders:        f.Cfg.Server.LogRequestHeaders,
@@ -534,8 +536,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
 
 	s := NewServerService(f.Server, servicesToWaitFor, f.logger)
-	// todo configure http2
-	f.Server.HTTPServer.Handler = h2c.NewHandler(f.Server.HTTPServer.Handler, &http2.Server{})
+	httpserver.EnableHTTP2(f.Server.HTTPServer)
 	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
 
 	return s, nil
