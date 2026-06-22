@@ -16,6 +16,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -88,6 +89,7 @@ type blockContext struct {
 	req             *request
 	agg             *reportAggregator
 	obj             *block.Object
+	storage         objstore.Bucket
 	grp             *errgroup.Group
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
@@ -114,9 +116,20 @@ func (b *blockContext) execute() error {
 	}
 
 	md := b.obj.Metadata()
+	for _, query := range b.req.src.Query {
+		if query.QueryType != queryv1.QueryType_QUERY_SYMBOL_SERVICES {
+			continue
+		}
+		if err := b.executeSymbolServices(query); err != nil {
+			return err
+		}
+	}
 	for _, ds := range md.Datasets {
 		q := b.newQueryContext(ds)
 		for _, query := range b.req.src.Query {
+			if query.QueryType == queryv1.QueryType_QUERY_SYMBOL_SERVICES {
+				continue
+			}
 			q.grp.Go(util.RecoverPanic(func() error {
 				return q.execute(query)
 			}))

@@ -20,6 +20,7 @@ import "types/v1/types.proto";
 
 service QueryFrontendService {
   rpc Query(QueryRequest) returns (QueryResponse) {}
+  rpc SymbolServices(SymbolServicesRequest) returns (SymbolServicesResponse) {}
 }
 
 message QueryRequest {
@@ -31,6 +32,18 @@ message QueryRequest {
 
 message QueryResponse {
   repeated Report reports = 1;
+}
+
+message SymbolServicesRequest {
+  int64 start_time = 1;
+  int64 end_time = 2;
+  string label_selector = 3;
+  repeated string symbol_names = 4;
+}
+
+message SymbolServicesResponse {
+  repeated SymbolServicesResult results = 1;
+  bool complete = 2;
 }
 
 service QueryBackendService {
@@ -88,6 +101,7 @@ message Query {
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
+  SymbolServicesQuery symbol_services = 10;
   // function_details
   // call_graph
   // top_table
@@ -104,6 +118,7 @@ enum QueryType {
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
+  QUERY_SYMBOL_SERVICES = 9;
 }
 
 message InvokeResponse {
@@ -163,6 +178,7 @@ message Report {
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
+  SymbolServicesReport symbol_services = 10;
 }
 
 enum ReportType {
@@ -175,6 +191,27 @@ enum ReportType {
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
+  REPORT_SYMBOL_SERVICES = 9;
+}
+
+message SymbolServicesQuery {
+  repeated string symbol_names = 1;
+}
+
+message SymbolServicesReport {
+  SymbolServicesQuery query = 1;
+  repeated SymbolServicesResult results = 2;
+  bool complete = 3;
+}
+
+message SymbolServicesResult {
+  string symbol_name = 1;
+  repeated SymbolService services = 2;
+}
+
+message SymbolService {
+  string service_name = 1;
+  repeated string profile_types = 2;
 }
 
 message LabelNamesQuery {}

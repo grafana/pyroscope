@@ -435,6 +435,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	sourcedir := filepath.Join(tempdir, "source")
 	options := []block.CompactionOption{
 		block.WithCompactionTempDir(tempdir),
+		block.WithSymbolBloomMetrics(w.metrics.symbolBloomMetrics()),
 		block.WithCompactionObjectOptions(
 			block.WithObjectMaxSizeLoadInMemory(w.config.SmallObjectSize),
 			block.WithObjectDownload(sourcedir),

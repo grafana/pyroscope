@@ -38,6 +38,9 @@ const (
 	// QueryFrontendServiceQueryProcedure is the fully-qualified name of the QueryFrontendService's
 	// Query RPC.
 	QueryFrontendServiceQueryProcedure = "/query.v1.QueryFrontendService/Query"
+	// QueryFrontendServiceSymbolServicesProcedure is the fully-qualified name of the
+	// QueryFrontendService's SymbolServices RPC.
+	QueryFrontendServiceSymbolServicesProcedure = "/query.v1.QueryFrontendService/SymbolServices"
 	// QueryBackendServiceInvokeProcedure is the fully-qualified name of the QueryBackendService's
 	// Invoke RPC.
 	QueryBackendServiceInvokeProcedure = "/query.v1.QueryBackendService/Invoke"
@@ -46,6 +49,7 @@ const (
 // QueryFrontendServiceClient is a client for the query.v1.QueryFrontendService service.
 type QueryFrontendServiceClient interface {
 	Query(context.Context, *connect.Request[v1.QueryRequest]) (*connect.Response[v1.QueryResponse], error)
+	SymbolServices(context.Context, *connect.Request[v1.SymbolServicesRequest]) (*connect.Response[v1.SymbolServicesResponse], error)
 }
 
 // NewQueryFrontendServiceClient constructs a client for the query.v1.QueryFrontendService service.
@@ -65,12 +69,19 @@ func NewQueryFrontendServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(queryFrontendServiceMethods.ByName("Query")),
 			connect.WithClientOptions(opts...),
 		),
+		symbolServices: connect.NewClient[v1.SymbolServicesRequest, v1.SymbolServicesResponse](
+			httpClient,
+			baseURL+QueryFrontendServiceSymbolServicesProcedure,
+			connect.WithSchema(queryFrontendServiceMethods.ByName("SymbolServices")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // queryFrontendServiceClient implements QueryFrontendServiceClient.
 type queryFrontendServiceClient struct {
-	query *connect.Client[v1.QueryRequest, v1.QueryResponse]
+	query          *connect.Client[v1.QueryRequest, v1.QueryResponse]
+	symbolServices *connect.Client[v1.SymbolServicesRequest, v1.SymbolServicesResponse]
 }
 
 // Query calls query.v1.QueryFrontendService.Query.
@@ -78,9 +89,15 @@ func (c *queryFrontendServiceClient) Query(ctx context.Context, req *connect.Req
 	return c.query.CallUnary(ctx, req)
 }
 
+// SymbolServices calls query.v1.QueryFrontendService.SymbolServices.
+func (c *queryFrontendServiceClient) SymbolServices(ctx context.Context, req *connect.Request[v1.SymbolServicesRequest]) (*connect.Response[v1.SymbolServicesResponse], error) {
+	return c.symbolServices.CallUnary(ctx, req)
+}
+
 // QueryFrontendServiceHandler is an implementation of the query.v1.QueryFrontendService service.
 type QueryFrontendServiceHandler interface {
 	Query(context.Context, *connect.Request[v1.QueryRequest]) (*connect.Response[v1.QueryResponse], error)
+	SymbolServices(context.Context, *connect.Request[v1.SymbolServicesRequest]) (*connect.Response[v1.SymbolServicesResponse], error)
 }
 
 // NewQueryFrontendServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -96,10 +113,18 @@ func NewQueryFrontendServiceHandler(svc QueryFrontendServiceHandler, opts ...con
 		connect.WithSchema(queryFrontendServiceMethods.ByName("Query")),
 		connect.WithHandlerOptions(opts...),
 	)
+	queryFrontendServiceSymbolServicesHandler := connect.NewUnaryHandler(
+		QueryFrontendServiceSymbolServicesProcedure,
+		svc.SymbolServices,
+		connect.WithSchema(queryFrontendServiceMethods.ByName("SymbolServices")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/query.v1.QueryFrontendService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case QueryFrontendServiceQueryProcedure:
 			queryFrontendServiceQueryHandler.ServeHTTP(w, r)
+		case QueryFrontendServiceSymbolServicesProcedure:
+			queryFrontendServiceSymbolServicesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -111,6 +136,10 @@ type UnimplementedQueryFrontendServiceHandler struct{}
 
 func (UnimplementedQueryFrontendServiceHandler) Query(context.Context, *connect.Request[v1.QueryRequest]) (*connect.Response[v1.QueryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("query.v1.QueryFrontendService.Query is not implemented"))
+}
+
+func (UnimplementedQueryFrontendServiceHandler) SymbolServices(context.Context, *connect.Request[v1.SymbolServicesRequest]) (*connect.Response[v1.SymbolServicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("query.v1.QueryFrontendService.SymbolServices is not implemented"))
 }
 
 // QueryBackendServiceClient is a client for the query.v1.QueryBackendService service.

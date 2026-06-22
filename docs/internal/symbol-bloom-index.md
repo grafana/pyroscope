@@ -2,7 +2,7 @@
 
 ## Summary
 
-Build a compact per-tenant, per-block Bloom index during L1+ compaction that maps exact `Function.Name` membership to candidate `service_name` and `profile_type` datasets.
+Build a compact per-tenant, per-block Bloom index during L1+ compaction that maps exact `Function.Name` membership to candidate `service_name` datasets.
 
 The Bloom index is not the source of truth. It is a pruning structure. Query execution uses it to find candidate services quickly, then opens existing `symbols.symdb` and profile data for exact verification or metric computation.
 
@@ -27,6 +27,25 @@ This supports two primary use cases:
 - No L0 fallback; results are available after L1 compaction.
 - No exact inverted posting list in the first version.
 - No stacktrace refs stored in the index.
+
+## Terminology And Existing Metadata
+
+The implementation should reuse existing block metadata conventions where possible:
+
+```text
+metadata.LabelNameTenantDataset = "__tenant_dataset__"
+metadata.LabelValueDatasetTSDBIndex = "dataset_tsdb_index"
+```
+
+The new pseudo-dataset should add a sibling tenant dataset value:
+
+```text
+metadata.LabelValueSymbolBloomIndex = "symbol_bloom_index"
+```
+
+Profile type filtering should use the existing `__profile_type__` label during exact verification. The Bloom row does not store profile type; profile types in API responses are derived from verified profile rows.
+
+`dataset_index` should refer to the position of the real service/profile dataset in the containing block metadata. It must not refer to the tenant-wide `dataset_tsdb_index` pseudo-dataset.
 
 ## Use Cases
 
@@ -54,7 +73,6 @@ Each symbol Bloom index payload contains entries like:
 
 ```text
 service_name
-profile_type
 dataset_index
 min_time
 max_time
@@ -79,12 +97,14 @@ During L1+ compaction:
 
 1. Compact real service datasets as today.
 2. While rewriting symbols, observe `Function.Name` values used by stacktraces.
-3. Group observed function names by `service_name + profile_type + dataset_index`.
-4. Build one Bloom filter per service/profile dataset entry.
+3. Group observed function names by `service_name + dataset_index`.
+4. Build one Bloom filter per service dataset entry.
 5. Write the symbol Bloom index payload into the block.
 6. Add a pseudo-dataset metadata entry labeled `__tenant_dataset__="symbol_bloom_index"`.
 
 This index should be rebuilt for every compacted output block at `CompactionLevel >= 1`, including L2+ compactions, so lookup remains available after older blocks are compacted away.
+
+The index is intentionally absent from L0 blocks. A query over a range that still has un-compacted L0 data cannot claim complete coverage unless the query path either excludes that time span or reports partial index coverage.
 
 ## Query Flow: Service And CVE Lookup
 
@@ -96,9 +116,9 @@ This index should be rebuilt for every compacted output block at `CompactionLeve
 6. Bloom hits become candidate datasets.
 7. In exact mode, open candidate datasets' `symbols.symdb`.
 8. Verify that `Function.Name == symbol_name` exists in the dataset.
-9. Return deduped services and profile types.
+9. Return deduped services and verified profile types.
 
-Responses should be exact. Bloom candidates must be verified against `symbols.symdb` before they are returned.
+Responses should be exact for indexed data. Bloom candidates must be verified against `symbols.symdb` before they are returned. If the requested time range includes L0-only data or blocks where index writing was disabled, the response should indicate incomplete index coverage instead of silently presenting the result as complete.
 
 ## Query Flow: Metrics From Profiles
 
@@ -129,14 +149,16 @@ message SymbolServicesRequest {
 
 message SymbolServicesResponse {
   repeated SymbolService services = 1;
+  bool complete = 2;
 }
 
 message SymbolService {
   string service_name = 1;
   repeated string profile_types = 2;
-  bool exact = 3;
 }
 ```
+
+`complete=false` means the response is verified for scanned indexed blocks but may miss data from unindexed blocks, such as L0 blocks or blocks created before rollout.
 
 Future metrics endpoint:
 
@@ -181,13 +203,15 @@ The command should call the public `SymbolServices` API and support:
 --output       table or json.
 ```
 
-Default output should be exact and human-readable:
+Default output should be verified and human-readable:
 
 ```text
-SERVICE_NAME                 PROFILE_TYPES                    EXACT
-pyroscope/distributor        process_cpu,memory,mutex          true
-pyroscope/query-frontend     process_cpu                       true
+SERVICE_NAME                 PROFILE_TYPES
+pyroscope/distributor        process_cpu,memory,mutex
+pyroscope/query-frontend     process_cpu
 ```
+
+If the API returns `complete=false`, table output should print a warning before the table and JSON output should include the top-level `complete` value.
 
 JSON output should preserve enough structure for automation:
 
@@ -196,11 +220,11 @@ JSON output should preserve enough structure for automation:
   "symbol": "github.com/example/vulnerable.Function",
   "from": "2026-06-18T00:00:00Z",
   "to": "2026-06-19T00:00:00Z",
+  "complete": true,
   "services": [
     {
       "service_name": "pyroscope/distributor",
-      "profile_types": ["process_cpu", "memory", "mutex"],
-      "exact": true
+      "profile_types": ["process_cpu", "memory", "mutex"]
     }
   ]
 }
@@ -254,6 +278,20 @@ Bloom filters can produce false positives but not false negatives, assuming the 
 - Bloom miss means the dataset can be skipped.
 - Bloom hit means the dataset must be verified for exact results.
 - Security/CVE workflows should use exact verification by default.
+- Completeness depends on index coverage. L0-only blocks and blocks created while index writing is disabled are unindexed unless a later compaction rebuilds the index.
+
+## Operational Guardrails
+
+The first implementation should include hard limits to prevent one tenant, service, or malformed symbol payload from creating unbounded compaction or query cost:
+
+- Maximum accepted `symbol_name` length for lookup requests.
+- Maximum unique function names per Bloom row before the row is skipped or marked truncated.
+- Maximum Bloom bytes per row and per output block.
+- Maximum candidate datasets per query before returning a resource-exhausted error.
+- Query timeout and cancellation checks inside morsel workers.
+- Metrics for skipped or truncated Bloom rows.
+
+If truncation is allowed, the API must treat affected blocks as incomplete. A simpler first implementation can omit the symbol Bloom index for the affected output block and rely on rollout limits until sizing data is available.
 
 ## Sharding
 
@@ -277,13 +315,12 @@ The block metadata still represents the table as a tenant pseudo-dataset:
 __tenant_dataset__ = "symbol_bloom_index"
 ```
 
-The pseudo-dataset points to a `symbol_bloom.parquet` section. Each row represents one searchable service/profile dataset within the containing block.
+The pseudo-dataset points to a `symbol_bloom.parquet` payload. Each row represents one searchable service dataset within the containing block. This likely requires a new dataset format or section identifier; it should not overload `dataset_tsdb_index` format semantics.
 
 Proposed Parquet schema:
 
 ```text
 service_name: string
-profile_type: string
 dataset_index: uint32
 min_time: int64
 max_time: int64
@@ -296,12 +333,14 @@ format_version: uint32
 
 The Bloom filter remains opaque to Parquet. Parquet stores and compresses the table; query code reads `bloom_bits` and tests membership in Go.
 
+The Bloom hash function, seed, bit ordering, and serialization must be part of `format_version` compatibility. Readers should reject unknown versions instead of guessing.
+
 Parquet advantages:
 
 - Easier inspection and debugging with existing tools.
 - Schema evolution without a custom binary compatibility layer.
-- Compression for repeated `service_name` and `profile_type` values.
-- Predicate pushdown for `service_name`, `profile_type`, and time range filters.
+- Compression for repeated `service_name` values.
+- Predicate pushdown for `service_name` and time range filters.
 - Alignment with the existing block format, which already stores profiles in Parquet.
 
 Parquet tradeoffs:
@@ -322,7 +361,6 @@ Projected columns for service lookup:
 
 ```text
 service_name
-profile_type
 dataset_index
 min_time
 max_time
@@ -340,7 +378,7 @@ Execution flow:
 2. Plan morsels from row groups or fixed row ranges.
 3. Start four workers for the block read task.
 4. Workers read projected columns for their morsels.
-5. Workers apply time, service, and profile type filters before reading or testing Bloom bytes where possible.
+5. Workers apply time and service filters before reading or testing Bloom bytes where possible.
 6. Workers test `bloom_bits` for `Function.Name` membership.
 7. Workers emit candidate `dataset_index` values.
 8. The query backend dedupes candidates and performs exact verification with `symbols.symdb`.
@@ -352,18 +390,19 @@ The exact verification step can remain dataset-oriented initially. The important
 ## Implementation Steps
 
 1. Add metadata constants, including `LabelValueSymbolBloomIndex = "symbol_bloom_index"`.
-2. Add a new dataset section or format for symbol Bloom index payloads.
+2. Add a new dataset section or format for symbol Bloom index payloads without overloading `dataset_tsdb_index`.
 3. Implement `SymbolBloomIndexWriter` and `SymbolBloomIndexReader`.
 4. Extend compaction symbol observation to collect `Function.Name` only.
-5. Group observed symbols by `service_name + profile_type + dataset_index`.
+5. Group observed symbols by `service_name + dataset_index`.
 6. Write the symbol Bloom index pseudo-dataset during L1+ compaction.
 7. Update metastore/query frontend to request `__tenant_dataset__="symbol_bloom_index"` for symbol queries.
 8. Add a four-worker columnar morsel reader for `symbol_bloom.parquet`.
 9. Add a query backend handler for symbol service lookup.
 10. Implement exact verification by reading existing `symbols.symdb`.
 11. Add query and compaction metrics.
-12. Add tests.
-13. Run `make generate` after proto changes.
+12. Add operational guardrails for symbol length, Bloom bytes, candidate counts, and cancellation.
+13. Add tests.
+14. Run `make generate` after proto changes.
 
 ## Implementation Phases
 
@@ -393,7 +432,7 @@ Deliverable: a tested local reader/writer that can encode service/profile Bloom 
 Build the Bloom index during L1+ compaction:
 
 - Observe rewritten `Function.Name` values during symbol rewrite.
-- Group observed names by `service_name + profile_type + dataset_index`.
+- Group observed names by `service_name + dataset_index`.
 - Write a `symbol_bloom_index` pseudo-dataset into compacted blocks.
 - Rebuild the index for L2+ outputs so the index survives further compaction.
 - Add compaction metrics for entries, symbol count, bytes, and build duration.
@@ -432,6 +471,7 @@ Roll out cautiously:
 - Enable in one low-risk cell, then in `profiles-ops-002`, then more broadly.
 - Monitor index bytes, compaction latency, query latency, candidate counts, and false positives.
 - Tune Bloom false-positive rate and maximum candidate limits if needed.
+- Track indexed block coverage and expose incomplete query responses while rollout is partial.
 
 Deliverable: production rollout with dashboards and alerting for build cost, query cost, and false-positive behavior.
 
@@ -468,6 +508,8 @@ pyroscope_symbol_bloom_index_symbols
 pyroscope_symbol_bloom_index_bytes
 pyroscope_symbol_bloom_index_false_positive_rate_estimate
 pyroscope_symbol_bloom_index_build_duration_seconds
+pyroscope_symbol_bloom_index_skipped_rows
+pyroscope_symbol_bloom_index_truncated_rows
 ```
 
 Query metrics:
@@ -480,6 +522,8 @@ pyroscope_symbol_query_false_positives
 pyroscope_symbol_query_duration_seconds
 pyroscope_symbol_query_morsels_processed
 pyroscope_symbol_query_columnar_bytes_read
+pyroscope_symbol_query_incomplete_responses
+pyroscope_symbol_query_resource_exhausted
 ```
 
 ## Tests
@@ -492,7 +536,11 @@ pyroscope_symbol_query_columnar_bytes_read
 - L1 compaction writes symbol Bloom index.
 - L2+ compaction preserves/rebuilds symbol Bloom index.
 - Query returns empty results for L0-only data.
+- Query marks responses incomplete for L0-only or partially indexed ranges.
 - Query dedupes services across shards/blocks.
+- Query enforces candidate limits and returns resource-exhausted errors.
+- Query workers respect context cancellation.
+- Reader rejects unknown Bloom format versions.
 - Metrics query scans only candidate datasets.
 - Symbol Bloom Parquet scans project only required columns.
 - Symbol Bloom Parquet scans split work into morsels and process them with four workers.

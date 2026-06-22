@@ -58,12 +58,27 @@ func WithSampleObserver(observer SampleObserver) CompactionOption {
 	}
 }
 
+func WithSymbolBloomMetrics(metrics *SymbolBloomMetrics) CompactionOption {
+	return func(p *compactionConfig) {
+		p.symbolBloomMetrics = metrics
+	}
+}
+
+type SymbolBloomMetrics struct {
+	BlockSizeBytes func(tenant string, level uint32, bytes uint64)
+	IndexSizeBytes func(tenant string, level uint32, bytes uint64)
+	UniqueSymbols  func(tenant string, level uint32, symbols uint64)
+	Rows           func(tenant string, level uint32, rows uint64)
+	BloomBitsBytes func(tenant string, level uint32, bytes uint64)
+}
+
 type compactionConfig struct {
-	objectOptions  []ObjectOption
-	source         objstore.BucketReader
-	destination    objstore.Bucket
-	tempdir        string
-	sampleObserver SampleObserver
+	objectOptions      []ObjectOption
+	source             objstore.BucketReader
+	destination        objstore.Bucket
+	tempdir            string
+	sampleObserver     SampleObserver
+	symbolBloomMetrics *SymbolBloomMetrics
 }
 
 type SampleObserver interface {
@@ -105,7 +120,7 @@ func Compact(
 
 	compacted := make([]*metastorev1.BlockMeta, 0, len(plan))
 	for _, p := range plan {
-		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver)
+		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver, c.symbolBloomMetrics)
 		if compactionErr != nil {
 			return nil, compactionErr
 		}
@@ -216,6 +231,7 @@ func (b *CompactionPlan) Compact(
 	dst objstore.Bucket,
 	tempdir string,
 	observer SampleObserver,
+	metrics *SymbolBloomMetrics,
 ) (m *metastorev1.BlockMeta, err error) {
 	w, err := NewBlockWriter(tempdir)
 	if err != nil {
@@ -237,12 +253,18 @@ func (b *CompactionPlan) Compact(
 	if err = b.writeDatasetIndex(w); err != nil {
 		return nil, fmt.Errorf("writing tenant index: %w", err)
 	}
+	if err = b.writeSymbolBloomIndex(w, metrics); err != nil {
+		return nil, fmt.Errorf("writing symbol bloom index: %w", err)
+	}
 	b.meta.StringTable = b.strings.Strings
 	b.meta.MetadataOffset = w.Offset()
 	if err = metadata.Encode(w, b.meta); err != nil {
 		return nil, fmt.Errorf("writing metadata: %w", err)
 	}
 	b.meta.Size = w.Offset()
+	if metrics != nil && metrics.BlockSizeBytes != nil {
+		metrics.BlockSizeBytes(b.tenant, b.meta.CompactionLevel, b.meta.Size)
+	}
 	if err = w.Upload(ctx, dst, b.path); err != nil {
 		return nil, fmt.Errorf("uploading block: %w", err)
 	}
@@ -278,6 +300,57 @@ func (b *CompactionPlan) writeDatasetIndex(w *Writer) error {
 		Build()
 	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
 		Format:          uint32(DatasetFormat1),
+		Tenant:          b.meta.Tenant,
+		Name:            0, // Anonymous.
+		MinTime:         b.meta.MinTime,
+		MaxTime:         b.meta.MaxTime,
+		TableOfContents: []uint64{off},
+		Size:            uint64(n),
+		Labels:          labels,
+	})
+	return nil
+}
+
+func (b *CompactionPlan) writeSymbolBloomIndex(w *Writer, metrics *SymbolBloomMetrics) error {
+	bw := NewSymbolBloomIndexWriter(0)
+	var rows, symbols uint64
+	for i, ds := range b.datasets {
+		for _, entry := range ds.symbolBloom.entries(uint32(i), ds.meta.MinTime, ds.meta.MaxTime) {
+			rows++
+			symbols += uint64(len(entry.Symbols))
+			bw.Add(entry)
+		}
+	}
+	if bw.Empty() {
+		return nil
+	}
+	bloomBitsBytes := bw.BloomBitsBytes()
+	off := w.Offset()
+	n, err := bw.WriteTo(w)
+	if err != nil {
+		return err
+	}
+	if metrics != nil {
+		tenant := b.tenant
+		level := b.meta.CompactionLevel
+		if metrics.IndexSizeBytes != nil {
+			metrics.IndexSizeBytes(tenant, level, uint64(n))
+		}
+		if metrics.UniqueSymbols != nil {
+			metrics.UniqueSymbols(tenant, level, symbols)
+		}
+		if metrics.Rows != nil {
+			metrics.Rows(tenant, level, rows)
+		}
+		if metrics.BloomBitsBytes != nil {
+			metrics.BloomBitsBytes(tenant, level, bloomBitsBytes)
+		}
+	}
+	labels := metadata.NewLabelBuilder(b.strings).
+		WithLabelSet(metadata.LabelNameTenantDataset, metadata.LabelValueSymbolBloomIndex).
+		Build()
+	b.meta.Datasets = append(b.meta.Datasets, &metastorev1.Dataset{
+		Format:          uint32(DatasetFormatSymbolBloomIndex),
 		Tenant:          b.meta.Tenant,
 		Name:            0, // Anonymous.
 		MinTime:         b.meta.MinTime,
@@ -326,14 +399,16 @@ type datasetCompaction struct {
 
 	flushOnce sync.Once
 
-	observer SampleObserver
+	observer    SampleObserver
+	symbolBloom *symbolBloomCompactionRecorder
 }
 
 func (b *CompactionPlan) newDatasetCompaction(tenant, name int32) *datasetCompaction {
 	return &datasetCompaction{
-		parent: b,
-		name:   b.strings.Strings[name],
-		labels: metadata.NewLabelBuilder(b.strings),
+		parent:      b,
+		name:        b.strings.Strings[name],
+		labels:      metadata.NewLabelBuilder(b.strings),
+		symbolBloom: newSymbolBloomCompactionRecorder(b.strings.Strings[name]),
 		meta: &metastorev1.Dataset{
 			Tenant: tenant,
 			Name:   name,
@@ -463,6 +538,7 @@ func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if err = m.symbolsRewriter.rewriteRow(r); err != nil {
 		return err
 	}
+	m.symbolBloom.observeRow(m.symbolsRewriter.w, r)
 	return m.profilesWriter.writeRow(r)
 }
 
@@ -478,6 +554,125 @@ func (m *datasetCompaction) flush() (err error) {
 		err = merr.Err()
 	})
 	return err
+}
+
+type symbolBloomCompactionRecorder struct {
+	serviceName string
+	profiles    map[string]*symbolBloomProfileRecorder
+	locations   []uint64
+}
+
+type symbolBloomProfileRecorder struct {
+	symbols map[string]struct{}
+	seen    map[symbolBloomStacktraceKey]struct{}
+}
+
+type symbolBloomStacktraceKey struct {
+	partition uint64
+	stack     uint32
+}
+
+func newSymbolBloomCompactionRecorder(serviceName string) *symbolBloomCompactionRecorder {
+	return &symbolBloomCompactionRecorder{
+		serviceName: serviceName,
+		profiles:    make(map[string]*symbolBloomProfileRecorder),
+	}
+}
+
+func (r *symbolBloomCompactionRecorder) observeRow(symbols symdb.SymbolsReader, row ProfileEntry) {
+	profileType := profileTypeLabel(row.Labels)
+	profile := r.profile(profileType)
+	partition := row.Row.StacktracePartitionID()
+	reader, err := symbols.Partition(context.Background(), partition)
+	if err != nil {
+		return
+	}
+	defer reader.Release()
+	s := reader.Symbols()
+	row.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
+		for _, value := range values {
+			stacktraceID := value.Uint32()
+			key := symbolBloomStacktraceKey{partition: partition, stack: stacktraceID}
+			if _, ok := profile.seen[key]; ok {
+				continue
+			}
+			profile.seen[key] = struct{}{}
+			r.observeStacktrace(profile, s, stacktraceID)
+		}
+	})
+}
+
+func (r *symbolBloomCompactionRecorder) observeStacktrace(profile *symbolBloomProfileRecorder, symbols *symdb.Symbols, stacktraceID uint32) {
+	r.locations = symbols.Stacktraces.LookupLocations(r.locations[:0], stacktraceID)
+	for _, locationID := range r.locations {
+		if locationID == 0 || int(locationID) > len(symbols.Locations) {
+			continue
+		}
+		location := symbols.Locations[locationID-1]
+		for _, line := range location.Line {
+			functionID := line.FunctionId
+			if functionID == 0 || int(functionID) > len(symbols.Functions) {
+				continue
+			}
+			function := symbols.Functions[functionID-1]
+			if function.Name == 0 || int(function.Name) >= len(symbols.Strings) {
+				continue
+			}
+			name := symbols.Strings[function.Name]
+			if name != "" {
+				profile.symbols[name] = struct{}{}
+			}
+		}
+	}
+}
+
+func (r *symbolBloomCompactionRecorder) entries(datasetIndex uint32, minTime, maxTime int64) []SymbolBloomIndexEntry {
+	if len(r.profiles) == 0 {
+		return nil
+	}
+	unique := make(map[string]struct{})
+	for _, profile := range r.profiles {
+		for symbol := range profile.symbols {
+			unique[symbol] = struct{}{}
+		}
+	}
+	if len(unique) == 0 {
+		return nil
+	}
+	symbols := make([]string, 0, len(unique))
+	for symbol := range unique {
+		symbols = append(symbols, symbol)
+	}
+	sort.Strings(symbols)
+	return []SymbolBloomIndexEntry{{
+		ServiceName:  r.serviceName,
+		DatasetIndex: datasetIndex,
+		MinTime:      minTime,
+		MaxTime:      maxTime,
+		Symbols:      symbols,
+	}}
+}
+
+func (r *symbolBloomCompactionRecorder) profile(profileType string) *symbolBloomProfileRecorder {
+	p, ok := r.profiles[profileType]
+	if ok {
+		return p
+	}
+	p = &symbolBloomProfileRecorder{
+		symbols: make(map[string]struct{}),
+		seen:    make(map[symbolBloomStacktraceKey]struct{}),
+	}
+	r.profiles[profileType] = p
+	return p
+}
+
+func profileTypeLabel(labels phlaremodel.Labels) string {
+	for _, label := range labels {
+		if label.Name == phlaremodel.LabelNameProfileType {
+			return label.Value
+		}
+	}
+	return ""
 }
 
 func (m *datasetCompaction) close() error {
