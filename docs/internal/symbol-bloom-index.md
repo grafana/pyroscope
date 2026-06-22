@@ -269,36 +269,85 @@ Query planning already fans out across matching blocks and shards. Results are u
 
 ## Storage Format
 
-Use a simple custom binary format:
+Store the symbol Bloom index as a Parquet table in the compacted block.
+
+The block metadata still represents the table as a tenant pseudo-dataset:
 
 ```text
-Header:
-  magic
-  version
-  entry_count
-  string_table_offset
-  entries_offset
-
-String table:
-  service names
-  profile types
-
-Entries:
-  service_name_ref
-  profile_type_ref
-  dataset_index
-  min_time
-  max_time
-  bloom_offset
-  bloom_size
-  bloom_hash_count
-  bloom_bit_count
-
-Bloom payloads:
-  raw bitsets
+__tenant_dataset__ = "symbol_bloom_index"
 ```
 
-Compression can be added later if needed.
+The pseudo-dataset points to a `symbol_bloom.parquet` section. Each row represents one searchable service/profile dataset within the containing block.
+
+Proposed Parquet schema:
+
+```text
+service_name: string
+profile_type: string
+dataset_index: uint32
+min_time: int64
+max_time: int64
+bloom_bits: binary
+bloom_hash_count: uint32
+bloom_bit_count: uint32
+symbol_count_estimate: uint32
+format_version: uint32
+```
+
+The Bloom filter remains opaque to Parquet. Parquet stores and compresses the table; query code reads `bloom_bits` and tests membership in Go.
+
+Parquet advantages:
+
+- Easier inspection and debugging with existing tools.
+- Schema evolution without a custom binary compatibility layer.
+- Compression for repeated `service_name` and `profile_type` values.
+- Predicate pushdown for `service_name`, `profile_type`, and time range filters.
+- Alignment with the existing block format, which already stores profiles in Parquet.
+
+Parquet tradeoffs:
+
+- More footer/read overhead than a minimal custom binary format.
+- Bloom membership checks cannot be pushed down into Parquet.
+- Many very small Bloom tables may be less efficient than a custom packed format.
+
+If Parquet overhead proves too high, a later format version can replace the payload with a custom binary encoding behind the same pseudo-dataset label.
+
+## Columnar Query Execution
+
+The symbol Bloom index query path should use a columnar morsel execution model instead of the current row-oriented query style.
+
+The initial implementation should use four workers per query backend read task. Each worker processes independent morsels from the `symbol_bloom.parquet` table. A morsel should be a bounded unit of Parquet work, such as one row group or a fixed row range within a row group, chosen so workers can make progress independently without excessive scheduling overhead.
+
+Projected columns for service lookup:
+
+```text
+service_name
+profile_type
+dataset_index
+min_time
+max_time
+bloom_bits
+bloom_hash_count
+bloom_bit_count
+format_version
+```
+
+The reader should avoid materializing full rows. It should read only the projected columns, apply cheap column-level filters first, and test Bloom filters only for rows that survive those filters.
+
+Execution flow:
+
+1. Open the `symbol_bloom.parquet` section for a block.
+2. Plan morsels from row groups or fixed row ranges.
+3. Start four workers for the block read task.
+4. Workers read projected columns for their morsels.
+5. Workers apply time, service, and profile type filters before reading or testing Bloom bytes where possible.
+6. Workers test `bloom_bits` for `Function.Name` membership.
+7. Workers emit candidate `dataset_index` values.
+8. The query backend dedupes candidates and performs exact verification with `symbols.symdb`.
+
+This keeps the Bloom index scan horizontally parallel across query plan blocks and locally parallel within each block. The four-worker limit is a starting point, not a global concurrency target. It should be configurable or easy to tune if production measurements show a different value is better.
+
+The exact verification step can remain dataset-oriented initially. The important requirement for the first implementation is that scanning the Bloom Parquet table is columnar and morsel-based.
 
 ## Implementation Steps
 
@@ -309,11 +358,12 @@ Compression can be added later if needed.
 5. Group observed symbols by `service_name + profile_type + dataset_index`.
 6. Write the symbol Bloom index pseudo-dataset during L1+ compaction.
 7. Update metastore/query frontend to request `__tenant_dataset__="symbol_bloom_index"` for symbol queries.
-8. Add a query backend handler for symbol service lookup.
-9. Implement exact verification by reading existing `symbols.symdb`.
-10. Add query and compaction metrics.
-11. Add tests.
-12. Run `make generate` after proto changes.
+8. Add a four-worker columnar morsel reader for `symbol_bloom.parquet`.
+9. Add a query backend handler for symbol service lookup.
+10. Implement exact verification by reading existing `symbols.symdb`.
+11. Add query and compaction metrics.
+12. Add tests.
+13. Run `make generate` after proto changes.
 
 ## Implementation Phases
 
@@ -333,7 +383,7 @@ Implement the storage primitive without wiring it into production queries:
 
 - Add metadata constants and dataset format or section identifiers.
 - Implement `SymbolBloomIndexWriter` and `SymbolBloomIndexReader`.
-- Add binary format versioning and reader compatibility checks.
+- Implement the Parquet schema, format version column, and reader compatibility checks.
 - Add unit tests for roundtrip, misses, hits, corrupt payloads, and version mismatch.
 
 Deliverable: a tested local reader/writer that can encode service/profile Bloom entries and read them back.
@@ -355,7 +405,7 @@ Deliverable: compacted blocks at `CompactionLevel >= 1` contain a symbol Bloom i
 Add the backend lookup path behind internal query types:
 
 - Query metastore for `__tenant_dataset__="symbol_bloom_index"`.
-- Read block-local Bloom payloads in the query backend.
+- Read block-local Bloom payloads with the four-worker columnar morsel reader.
 - Produce candidate service/profile datasets from Bloom hits.
 - Verify exact `Function.Name` matches using existing `symbols.symdb`.
 - Return exact service/profile results by default.
@@ -428,6 +478,8 @@ pyroscope_symbol_query_bloom_candidates
 pyroscope_symbol_query_exact_verified
 pyroscope_symbol_query_false_positives
 pyroscope_symbol_query_duration_seconds
+pyroscope_symbol_query_morsels_processed
+pyroscope_symbol_query_columnar_bytes_read
 ```
 
 ## Tests
@@ -442,6 +494,9 @@ pyroscope_symbol_query_duration_seconds
 - Query returns empty results for L0-only data.
 - Query dedupes services across shards/blocks.
 - Metrics query scans only candidate datasets.
+- Symbol Bloom Parquet scans project only required columns.
+- Symbol Bloom Parquet scans split work into morsels and process them with four workers.
+- Symbol Bloom Parquet scans apply service, profile type, and time filters before Bloom membership tests where possible.
 
 ## Tradeoffs
 
