@@ -178,6 +178,9 @@ func (f *Pyroscope) getFrontendAddress() (addr string, err error) {
 }
 
 func (f *Pyroscope) registerQueryFrontendServiceHandler() {
+	if !f.Cfg.Frontend.AsyncQueriesEnabled {
+		return
+	}
 	if f.asyncQueryStore == nil || f.queryFrontend == nil {
 		return
 	}
@@ -192,6 +195,9 @@ func (f *Pyroscope) registerQueryFrontendServiceHandler() {
 }
 
 func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
+	if !f.Cfg.Frontend.AsyncQueriesEnabled {
+		return nil, nil
+	}
 	if f.storageBucket == nil {
 		return nil, nil
 	}
