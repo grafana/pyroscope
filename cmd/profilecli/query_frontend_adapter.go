@@ -21,7 +21,6 @@ func queryProfileViaFrontend(ctx context.Context, client queryv1connect.QueryFro
 		StartTime:     req.Start,
 		EndTime:       req.End,
 		LabelSelector: labelSelectorWithProfileType(req.LabelSelector, req.ProfileTypeID),
-		Async:         async,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_PPROF,
 			Pprof: &queryv1.PprofQuery{
@@ -32,7 +31,7 @@ func queryProfileViaFrontend(ctx context.Context, client queryv1connect.QueryFro
 		}},
 	}
 
-	resp, err := queryViaFrontendService(ctx, client, qr)
+	resp, err := queryViaFrontendService(ctx, client, qr, async)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +45,6 @@ func querySeriesViaFrontend(ctx context.Context, client queryv1connect.QueryFron
 		StartTime:     req.Start,
 		EndTime:       req.End,
 		LabelSelector: matchersToLabelSelector(req.Matchers),
-		Async:         async,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_SERIES_LABELS,
 			SeriesLabels: &queryv1.SeriesLabelsQuery{
@@ -55,7 +53,7 @@ func querySeriesViaFrontend(ctx context.Context, client queryv1connect.QueryFron
 		}},
 	}
 
-	resp, err := queryViaFrontendService(ctx, client, qr)
+	resp, err := queryViaFrontendService(ctx, client, qr, async)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +74,6 @@ func querySelectSeriesViaFrontend(ctx context.Context, client queryv1connect.Que
 		StartTime:     req.Start,
 		EndTime:       req.End,
 		LabelSelector: labelSelectorWithProfileType(req.LabelSelector, req.ProfileTypeID),
-		Async:         async,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 			TimeSeries: &queryv1.TimeSeriesQuery{
@@ -87,7 +84,7 @@ func querySelectSeriesViaFrontend(ctx context.Context, client queryv1connect.Que
 		}},
 	}
 
-	resp, err := queryViaFrontendService(ctx, client, qr)
+	resp, err := queryViaFrontendService(ctx, client, qr, async)
 	if err != nil {
 		return nil, err
 	}

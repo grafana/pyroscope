@@ -731,8 +731,6 @@ Usage of ./pyroscope:
     	How big should a single row group be uncompressed (default 1342177280)
   -pyroscopedb.symbols-partition-label string
     	Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.
-  -querier.async-query-threshold duration
-    	Queries taking longer than this threshold are automatically promoted to async execution. 0 to disable auto-async. (default 2s)
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -querier.frontend-client.backoff-max-period duration
@@ -865,6 +863,8 @@ Usage of ./pyroscope:
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -query-backend.grpc-client-config.tls-server-name string
     	Override the expected name on the server certificate.
+  -query-frontend.async-queries-enabled
+    	[experimental] Enable the experimental asynchronous query API (AsyncQuery RPC on QueryFrontendService). Off by default.
   -query-frontend.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-frontend.grpc-client-config.backoff-min-period duration

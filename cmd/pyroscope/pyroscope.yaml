@@ -412,10 +412,6 @@ limits:
   # queries.
   # max_async_query_concurrency: 5
 
-  # Queries taking longer than this threshold are automatically promoted to
-  # async execution. 0 to disable auto-async.
-  # async_query_threshold: 2s
-
   # Delete blocks containing samples older than the specified retention period.
   # 0 to disable.
   # compactor_blocks_retention_period: 0s

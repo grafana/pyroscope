@@ -2,7 +2,7 @@ package async
 
 import (
 	"context"
-	"time"
+	"errors"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
@@ -11,27 +11,21 @@ import (
 	pyrotenant "github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
-// QueryFn executes a query and returns the response.
+// QueryFn executes a query synchronously and returns the response.
 type QueryFn func(ctx context.Context, req *queryv1.QueryRequest) (*queryv1.QueryResponse, error)
 
-// HandlerLimits is the subset of limits needed by the handler.
-type HandlerLimits interface {
-	Limits
-	AsyncQueryThreshold(tenantID string) time.Duration
-}
-
-// Handler implements queryv1connect.QueryFrontendServiceHandler.
+// Handler implements queryv1connect.QueryFrontendServiceHandler. Sync Query is
+// always served. AsyncQuery returns Unimplemented when coordinator is nil
+// (i.e. the AsyncQueriesEnabled flag is off).
 type Handler struct {
 	coordinator *Coordinator
 	queryFn     QueryFn
-	limits      HandlerLimits
 }
 
-func NewHandler(coordinator *Coordinator, limits HandlerLimits, queryFn QueryFn) *Handler {
+func NewHandler(coordinator *Coordinator, queryFn QueryFn) *Handler {
 	return &Handler{
 		coordinator: coordinator,
 		queryFn:     queryFn,
-		limits:      limits,
 	}
 }
 
@@ -39,6 +33,21 @@ func (h *Handler) Query(
 	ctx context.Context,
 	req *connect.Request[queryv1.QueryRequest],
 ) (*connect.Response[queryv1.QueryResponse], error) {
+	resp, err := h.queryFn(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (h *Handler) AsyncQuery(
+	ctx context.Context,
+	req *connect.Request[queryv1.AsyncQueryRequest],
+) (*connect.Response[queryv1.AsyncQueryResponse], error) {
+	if h.coordinator == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("async queries are disabled (set -query-frontend.async-queries-enabled=true)"))
+	}
+
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -49,17 +58,20 @@ func (h *Handler) Query(
 		return h.poll(ctx, tenantID, req.Msg.RequestId)
 	}
 
-	return h.execute(ctx, tenantID, req.Msg)
+	if req.Msg.Query == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either query or request_id must be set"))
+	}
+	return h.submit(ctx, tenantID, req.Msg.Query)
 }
 
-func (h *Handler) execute(
+func (h *Handler) submit(
 	ctx context.Context,
 	tenantID string,
 	req *queryv1.QueryRequest,
-) (*connect.Response[queryv1.QueryResponse], error) {
+) (*connect.Response[queryv1.AsyncQueryResponse], error) {
 	// Use a detached context with the tenant injected so the query survives
-	// even if the HTTP request context is cancelled (which happens when we
-	// return an async IN_PROGRESS response).
+	// even if the HTTP request context is cancelled when we return the
+	// IN_PROGRESS response.
 	queryCtx := pyrotenant.InjectTenantID(context.Background(), tenantID)
 
 	resultCh := make(chan QueryResult, 1)
@@ -68,47 +80,12 @@ func (h *Handler) execute(
 		resultCh <- QueryResult{Response: resp, Err: err}
 	}()
 
-	// If the client explicitly requested async, promote immediately.
-	if req.Async {
-		return h.promoteToAsync(ctx, tenantID, resultCh)
-	}
-
-	// Otherwise, wait up to the threshold for a sync response.
-	threshold := h.limits.AsyncQueryThreshold(tenantID)
-	if threshold <= 0 {
-		// Auto-async disabled: wait for the result synchronously.
-		res := <-resultCh
-		if res.Err != nil {
-			return nil, res.Err
-		}
-		return connect.NewResponse(res.Response), nil
-	}
-
-	timer := time.NewTimer(threshold)
-	defer timer.Stop()
-
-	select {
-	case res := <-resultCh:
-		if res.Err != nil {
-			return nil, res.Err
-		}
-		return connect.NewResponse(res.Response), nil
-	case <-timer.C:
-		return h.promoteToAsync(ctx, tenantID, resultCh)
-	}
-}
-
-func (h *Handler) promoteToAsync(
-	ctx context.Context,
-	tenantID string,
-	resultCh <-chan QueryResult,
-) (*connect.Response[queryv1.QueryResponse], error) {
 	requestID, err := h.coordinator.PromoteToAsync(ctx, tenantID, resultCh)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeResourceExhausted, err)
 	}
 
-	return connect.NewResponse(&queryv1.QueryResponse{
+	return connect.NewResponse(&queryv1.AsyncQueryResponse{
 		RequestId: requestID,
 		Status:    queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS,
 	}), nil
@@ -118,16 +95,16 @@ func (h *Handler) poll(
 	ctx context.Context,
 	tenantID string,
 	requestID string,
-) (*connect.Response[queryv1.QueryResponse], error) {
+) (*connect.Response[queryv1.AsyncQueryResponse], error) {
 	result, err := h.coordinator.PollQuery(ctx, tenantID, requestID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if result == nil {
-		return nil, connect.NewError(connect.CodeNotFound, nil)
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("async query not found"))
 	}
 
-	resp := &queryv1.QueryResponse{
+	resp := &queryv1.AsyncQueryResponse{
 		RequestId: requestID,
 	}
 
@@ -136,9 +113,7 @@ func (h *Handler) poll(
 		resp.Status = queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS
 	case StatusSuccess:
 		resp.Status = queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS
-		if result.Response != nil {
-			resp.Reports = result.Response.Reports
-		}
+		resp.Response = result.Response
 	case StatusFailure:
 		resp.Status = queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE
 		resp.ErrorMessage = result.Metadata.ErrorMessage

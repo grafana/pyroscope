@@ -549,27 +549,28 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
 				ctx := tenant.InjectTenantID(ctx, tenantID)
-				req := &queryv1.QueryRequest{
-					StartTime:     tc.now.Add(-time.Hour).UnixMilli(),
-					EndTime:       tc.now.Add(time.Hour).UnixMilli(),
-					LabelSelector: `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
-					Async:         true,
-					Query: []*queryv1.Query{{
-						QueryType: queryv1.QueryType_QUERY_PPROF,
-						Pprof:     &queryv1.PprofQuery{},
-					}},
+				submitReq := &queryv1.AsyncQueryRequest{
+					Query: &queryv1.QueryRequest{
+						StartTime:     tc.now.Add(-time.Hour).UnixMilli(),
+						EndTime:       tc.now.Add(time.Hour).UnixMilli(),
+						LabelSelector: `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
+						Query: []*queryv1.Query{{
+							QueryType: queryv1.QueryType_QUERY_PPROF,
+							Pprof:     &queryv1.PprofQuery{},
+						}},
+					},
 				}
 
-				// Start async query (forced via Async flag).
-				resp, err := tc.queryFrontend.Query(ctx, connect.NewRequest(req))
+				// Submit async query.
+				resp, err := tc.queryFrontend.AsyncQuery(ctx, connect.NewRequest(submitReq))
 				require.NoError(t, err)
 				require.NotEmpty(t, resp.Msg.RequestId)
 				assert.Equal(t, queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
 
 				// Poll until done.
-				pollReq := &queryv1.QueryRequest{RequestId: resp.Msg.RequestId}
+				pollReq := &queryv1.AsyncQueryRequest{RequestId: resp.Msg.RequestId}
 				require.Eventually(t, func() bool {
-					pollResp, err := tc.queryFrontend.Query(ctx, connect.NewRequest(pollReq))
+					pollResp, err := tc.queryFrontend.AsyncQuery(ctx, connect.NewRequest(pollReq))
 					if err != nil {
 						return false
 					}
@@ -587,7 +588,8 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 				}
 
 				require.Equal(t, queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Status, "error: %s", resp.Msg.ErrorMessage)
-				require.NotEmpty(t, resp.Msg.Reports, "expected at least one report")
+				require.NotNil(t, resp.Msg.Response, "expected a response payload")
+				require.NotEmpty(t, resp.Msg.Response.Reports, "expected at least one report")
 			})
 		}
 	})

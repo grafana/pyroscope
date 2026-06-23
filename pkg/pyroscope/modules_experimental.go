@@ -178,19 +178,19 @@ func (f *Pyroscope) getFrontendAddress() (addr string, err error) {
 }
 
 func (f *Pyroscope) registerQueryFrontendServiceHandler() {
-	if !f.Cfg.Frontend.AsyncQueriesEnabled {
+	if f.queryFrontend == nil {
 		return
 	}
-	if f.asyncQueryStore == nil || f.queryFrontend == nil {
-		return
+	var coordinator *asyncquery.Coordinator
+	if f.Cfg.Frontend.AsyncQueriesEnabled && f.asyncQueryStore != nil {
+		coordinator = asyncquery.NewCoordinator(
+			log.With(f.logger, "component", "async-query-coordinator"),
+			f.asyncQueryStore,
+			f.Overrides,
+			f.reg,
+		)
 	}
-	coordinator := asyncquery.NewCoordinator(
-		log.With(f.logger, "component", "async-query-coordinator"),
-		f.asyncQueryStore,
-		f.Overrides,
-		f.reg,
-	)
-	handler := asyncquery.NewHandler(coordinator, f.Overrides, f.queryFrontend.Query)
+	handler := asyncquery.NewHandler(coordinator, f.queryFrontend.Query)
 	f.API.RegisterQueryFrontendServiceHandler(handler)
 }
 

@@ -6,12 +6,9 @@ import (
 	context "context"
 
 	connect "connectrpc.com/connect"
-
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-
-	mock "github.com/stretchr/testify/mock"
-
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	mock "github.com/stretchr/testify/mock"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )

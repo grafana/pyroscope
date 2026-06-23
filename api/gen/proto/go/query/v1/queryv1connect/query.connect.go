@@ -38,6 +38,9 @@ const (
 	// QueryFrontendServiceQueryProcedure is the fully-qualified name of the QueryFrontendService's
 	// Query RPC.
 	QueryFrontendServiceQueryProcedure = "/query.v1.QueryFrontendService/Query"
+	// QueryFrontendServiceAsyncQueryProcedure is the fully-qualified name of the QueryFrontendService's
+	// AsyncQuery RPC.
+	QueryFrontendServiceAsyncQueryProcedure = "/query.v1.QueryFrontendService/AsyncQuery"
 	// QueryBackendServiceInvokeProcedure is the fully-qualified name of the QueryBackendService's
 	// Invoke RPC.
 	QueryBackendServiceInvokeProcedure = "/query.v1.QueryBackendService/Invoke"
@@ -46,6 +49,8 @@ const (
 // QueryFrontendServiceClient is a client for the query.v1.QueryFrontendService service.
 type QueryFrontendServiceClient interface {
 	Query(context.Context, *connect.Request[v1.QueryRequest]) (*connect.Response[v1.QueryResponse], error)
+	// Experimental, gated by -query-frontend.async-queries-enabled.
+	AsyncQuery(context.Context, *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error)
 }
 
 // NewQueryFrontendServiceClient constructs a client for the query.v1.QueryFrontendService service.
@@ -65,12 +70,19 @@ func NewQueryFrontendServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(queryFrontendServiceMethods.ByName("Query")),
 			connect.WithClientOptions(opts...),
 		),
+		asyncQuery: connect.NewClient[v1.AsyncQueryRequest, v1.AsyncQueryResponse](
+			httpClient,
+			baseURL+QueryFrontendServiceAsyncQueryProcedure,
+			connect.WithSchema(queryFrontendServiceMethods.ByName("AsyncQuery")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // queryFrontendServiceClient implements QueryFrontendServiceClient.
 type queryFrontendServiceClient struct {
-	query *connect.Client[v1.QueryRequest, v1.QueryResponse]
+	query      *connect.Client[v1.QueryRequest, v1.QueryResponse]
+	asyncQuery *connect.Client[v1.AsyncQueryRequest, v1.AsyncQueryResponse]
 }
 
 // Query calls query.v1.QueryFrontendService.Query.
@@ -78,9 +90,16 @@ func (c *queryFrontendServiceClient) Query(ctx context.Context, req *connect.Req
 	return c.query.CallUnary(ctx, req)
 }
 
+// AsyncQuery calls query.v1.QueryFrontendService.AsyncQuery.
+func (c *queryFrontendServiceClient) AsyncQuery(ctx context.Context, req *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error) {
+	return c.asyncQuery.CallUnary(ctx, req)
+}
+
 // QueryFrontendServiceHandler is an implementation of the query.v1.QueryFrontendService service.
 type QueryFrontendServiceHandler interface {
 	Query(context.Context, *connect.Request[v1.QueryRequest]) (*connect.Response[v1.QueryResponse], error)
+	// Experimental, gated by -query-frontend.async-queries-enabled.
+	AsyncQuery(context.Context, *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error)
 }
 
 // NewQueryFrontendServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -96,10 +115,18 @@ func NewQueryFrontendServiceHandler(svc QueryFrontendServiceHandler, opts ...con
 		connect.WithSchema(queryFrontendServiceMethods.ByName("Query")),
 		connect.WithHandlerOptions(opts...),
 	)
+	queryFrontendServiceAsyncQueryHandler := connect.NewUnaryHandler(
+		QueryFrontendServiceAsyncQueryProcedure,
+		svc.AsyncQuery,
+		connect.WithSchema(queryFrontendServiceMethods.ByName("AsyncQuery")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/query.v1.QueryFrontendService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case QueryFrontendServiceQueryProcedure:
 			queryFrontendServiceQueryHandler.ServeHTTP(w, r)
+		case QueryFrontendServiceAsyncQueryProcedure:
+			queryFrontendServiceAsyncQueryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -111,6 +138,10 @@ type UnimplementedQueryFrontendServiceHandler struct{}
 
 func (UnimplementedQueryFrontendServiceHandler) Query(context.Context, *connect.Request[v1.QueryRequest]) (*connect.Response[v1.QueryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("query.v1.QueryFrontendService.Query is not implemented"))
+}
+
+func (UnimplementedQueryFrontendServiceHandler) AsyncQuery(context.Context, *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("query.v1.QueryFrontendService.AsyncQuery is not implemented"))
 }
 
 // QueryBackendServiceClient is a client for the query.v1.QueryBackendService service.

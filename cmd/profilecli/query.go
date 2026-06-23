@@ -292,32 +292,36 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 	return resp.Msg, err
 }
 
-// queryViaFrontendService sends a query via the QueryFrontendService and handles
-// async responses transparently. If the server returns IN_PROGRESS, it polls
-// until the query completes. Returns errFrontendUnsupported if the server
-// doesn't support the QueryFrontendService.
+// queryViaFrontendService sends a query via the QueryFrontendService. When
+// async is true, it uses the AsyncQuery RPC and polls until completion.
+// Returns errFrontendUnsupported if the server doesn't implement the relevant
+// RPC.
 var errFrontendUnsupported = fmt.Errorf("server does not support QueryFrontendService")
 
-func queryViaFrontendService(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, req *queryv1.QueryRequest) (*queryv1.QueryResponse, error) {
-	resp, err := client.Query(ctx, connect.NewRequest(req))
-	if err != nil {
-		if connectErr := new(connect.Error); errors.As(err, &connectErr) {
-			if connectErr.Code() == connect.CodeUnimplemented || connectErr.Code() == connect.CodeNotFound {
+func queryViaFrontendService(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, req *queryv1.QueryRequest, async bool) (*queryv1.QueryResponse, error) {
+	if !async {
+		resp, err := client.Query(ctx, connect.NewRequest(req))
+		if err != nil {
+			if isUnsupported(err) {
 				return nil, errFrontendUnsupported
 			}
+			return nil, err
 		}
-		return nil, err
-	}
-
-	// Sync response — no async promotion happened.
-	if resp.Msg.RequestId == "" {
 		return resp.Msg, nil
 	}
 
-	level.Info(logger).Log("msg", "query promoted to async", "request_id", resp.Msg.RequestId)
+	// Async submit.
+	submit, err := client.AsyncQuery(ctx, connect.NewRequest(&queryv1.AsyncQueryRequest{Query: req}))
+	if err != nil {
+		if isUnsupported(err) {
+			return nil, errFrontendUnsupported
+		}
+		return nil, err
+	}
+	level.Info(logger).Log("msg", "async query submitted", "request_id", submit.Msg.RequestId)
 
-	// Poll until the query completes.
-	pollReq := &queryv1.QueryRequest{RequestId: resp.Msg.RequestId}
+	// Poll until terminal.
+	pollReq := &queryv1.AsyncQueryRequest{RequestId: submit.Msg.RequestId}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -329,24 +333,32 @@ func queryViaFrontendService(ctx context.Context, client queryv1connect.QueryFro
 		case <-ticker.C:
 		}
 
-		resp, err = client.Query(ctx, connect.NewRequest(pollReq))
+		poll, err := client.AsyncQuery(ctx, connect.NewRequest(pollReq))
 		if err != nil {
 			return nil, fmt.Errorf("failed to poll async query: %w", err)
 		}
 
-		switch resp.Msg.Status {
+		switch poll.Msg.Status {
 		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS:
-			level.Info(logger).Log("msg", "waiting for async query", "request_id", resp.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
+			level.Info(logger).Log("msg", "waiting for async query", "request_id", poll.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
 			continue
 		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS:
-			level.Info(logger).Log("msg", "async query completed", "request_id", resp.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
-			return resp.Msg, nil
+			level.Info(logger).Log("msg", "async query completed", "request_id", poll.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
+			return poll.Msg.Response, nil
 		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE:
-			return nil, fmt.Errorf("async query failed: %s", resp.Msg.ErrorMessage)
+			return nil, fmt.Errorf("async query failed: %s", poll.Msg.ErrorMessage)
 		default:
-			return nil, fmt.Errorf("unexpected async query status: %v", resp.Msg.Status)
+			return nil, fmt.Errorf("unexpected async query status: %v", poll.Msg.Status)
 		}
 	}
+}
+
+func isUnsupported(err error) bool {
+	connectErr := new(connect.Error)
+	if errors.As(err, &connectErr) {
+		return connectErr.Code() == connect.CodeUnimplemented || connectErr.Code() == connect.CodeNotFound
+	}
+	return false
 }
 
 func queryProfileTree(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
