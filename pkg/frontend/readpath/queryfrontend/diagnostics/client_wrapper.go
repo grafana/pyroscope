@@ -146,6 +146,14 @@ func (w *Wrapper) SelectHeatmap(ctx context.Context, req *connect.Request[querie
 	return resp, err
 }
 
+func (w *Wrapper) SymbolLookup(ctx context.Context, req *connect.Request[querierv1.SymbolLookupRequest]) (*connect.Response[querierv1.SymbolLookupResponse], error) {
+	resp, err := w.client.SymbolLookup(ctx, req)
+	if resp != nil {
+		flushDiagnostics(w, ctx, "SymbolLookup", req, resp)
+	}
+	return resp, err
+}
+
 func (w *Wrapper) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
 	resp, err := w.client.Diff(ctx, req)
 	if resp != nil {

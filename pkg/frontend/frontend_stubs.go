@@ -17,3 +17,10 @@ func (f *Frontend) SelectHeatmap(
 ) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
 	return nil, errNotAvailableInV1Frontend
 }
+
+func (f *Frontend) SymbolLookup(
+	ctx context.Context,
+	c *connect.Request[querierv1.SymbolLookupRequest],
+) (*connect.Response[querierv1.SymbolLookupResponse], error) {
+	return nil, errNotAvailableInV1Frontend
+}

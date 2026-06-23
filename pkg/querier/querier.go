@@ -1056,6 +1056,10 @@ func (q *Querier) SelectHeatmap(ctx context.Context, req *connect.Request[querie
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SelectHeatmap not implemented in old querier"))
 }
 
+func (q *Querier) SymbolLookup(ctx context.Context, req *connect.Request[querierv1.SymbolLookupRequest]) (*connect.Response[querierv1.SymbolLookupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SymbolLookup not implemented in old querier"))
+}
+
 func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
 	sort.Strings(req.Msg.GroupBy)

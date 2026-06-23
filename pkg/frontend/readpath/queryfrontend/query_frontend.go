@@ -34,11 +34,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
-const (
-	maxSymbolServicesSymbols         = 64
-	maxSymbolServicesSymbolNameBytes = 1024
-)
-
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
 var _ queryv1connect.QueryFrontendServiceHandler = (*ConnectHandler)(nil)
@@ -53,14 +48,6 @@ func NewConnectHandler(frontend *QueryFrontend) *ConnectHandler {
 
 func (h *ConnectHandler) Query(ctx context.Context, req *connect.Request[queryv1.QueryRequest]) (*connect.Response[queryv1.QueryResponse], error) {
 	resp, err := h.frontend.Query(ctx, req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(resp), nil
-}
-
-func (h *ConnectHandler) SymbolServices(ctx context.Context, req *connect.Request[queryv1.SymbolServicesRequest]) (*connect.Response[queryv1.SymbolServicesResponse], error) {
-	resp, err := h.frontend.SymbolServices(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -178,55 +165,6 @@ func (q *QueryFrontend) Query(
 	return q.doQuery(ctx, req, nil)
 }
 
-func (q *QueryFrontend) SymbolServices(ctx context.Context, req *queryv1.SymbolServicesRequest) (*queryv1.SymbolServicesResponse, error) {
-	if err := validateSymbolServicesRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	resp, err := q.Query(ctx, &queryv1.QueryRequest{
-		StartTime:     req.StartTime,
-		EndTime:       req.EndTime,
-		LabelSelector: req.LabelSelector,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_SYMBOL_SERVICES,
-			SymbolServices: &queryv1.SymbolServicesQuery{
-				SymbolNames: req.SymbolNames,
-			},
-		}},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(resp.GetReports()) == 0 {
-		return &queryv1.SymbolServicesResponse{Complete: true}, nil
-	}
-	report := resp.GetReports()[0].GetSymbolServices()
-	if report == nil {
-		return nil, status.Error(codes.Internal, "symbol services report missing")
-	}
-	return &queryv1.SymbolServicesResponse{
-		Results:  report.GetResults(),
-		Complete: report.GetComplete(),
-	}, nil
-}
-
-func validateSymbolServicesRequest(req *queryv1.SymbolServicesRequest) error {
-	if len(req.GetSymbolNames()) == 0 {
-		return fmt.Errorf("at least one symbol name is required")
-	}
-	if len(req.GetSymbolNames()) > maxSymbolServicesSymbols {
-		return fmt.Errorf("too many symbol names: got %d max %d", len(req.GetSymbolNames()), maxSymbolServicesSymbols)
-	}
-	for i, symbolName := range req.GetSymbolNames() {
-		if symbolName == "" {
-			return fmt.Errorf("symbol name at index %d is empty", i)
-		}
-		if len(symbolName) > maxSymbolServicesSymbolNameBytes {
-			return fmt.Errorf("symbol name at index %d is too long: got %d bytes max %d", i, len(symbolName), maxSymbolServicesSymbolNameBytes)
-		}
-	}
-	return nil
-}
-
 func (q *QueryFrontend) doQuery(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
@@ -257,6 +195,33 @@ func (q *QueryFrontend) doQuery(
 		return nil, err
 	}
 	span.SetTag("block_count", len(blocks))
+	if len(blocks) == 0 {
+		return new(queryv1.QueryResponse), nil
+	}
+
+	return q.doQueryWithBlocks(ctx, req, tenants, blocks, backendC)
+}
+
+func (q *QueryFrontend) doQueryWithBlocks(
+	ctx context.Context,
+	req *queryv1.QueryRequest,
+	tenants []string,
+	blocks []*metastorev1.BlockMeta,
+	backendC backendWrapper,
+) (*queryv1.QueryResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.executeQueryPlan")
+	defer span.Finish()
+	span.SetTag("start_time", req.StartTime)
+	span.SetTag("end_time", req.EndTime)
+	span.SetTag("label_selector", req.LabelSelector)
+	span.SetTag("tenant_ids", tenants)
+	span.SetTag("block_count", len(blocks))
+	diagCtx := diagnostics.From(ctx)
+	collectDiagnostics := diagCtx != nil && diagCtx.Collect && q.diagnosticsStore != nil
+	if collectDiagnostics {
+		span.SetTag("diagnostics_id", diagCtx.ID)
+	}
+
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
@@ -404,7 +369,7 @@ func (q *QueryFrontend) QueryMetadata(
 		Labels:    []string{metadata.LabelNameUnsymbolized},
 	}
 
-	if isSymbolServicesQuery(req) {
+	if isSymbolLookupQuery(req) {
 		query.Labels = append(query.Labels, metadata.LabelNameTenantDataset)
 		query.Query = matchersToLabelSelector([]*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
@@ -447,10 +412,15 @@ func (q *QueryFrontend) QueryMetadata(
 	return md.Blocks, nil
 }
 
-func isSymbolServicesQuery(req *queryv1.QueryRequest) bool {
+func isSymbolLookupQuery(req *queryv1.QueryRequest) bool {
 	for _, query := range req.Query {
-		if query.QueryType == queryv1.QueryType_QUERY_SYMBOL_SERVICES {
+		switch query.QueryType {
+		case queryv1.QueryType_QUERY_SYMBOL_BLOOM_CANDIDATES:
 			return true
+		case queryv1.QueryType_QUERY_SYMBOL_SERVICES:
+			if len(query.GetSymbolServices().GetCandidates()) == 0 {
+				return true
+			}
 		}
 	}
 	return false

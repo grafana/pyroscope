@@ -118,17 +118,23 @@ func (b *blockContext) execute() error {
 
 	md := b.obj.Metadata()
 	for _, query := range b.req.src.Query {
-		if query.QueryType != queryv1.QueryType_QUERY_SYMBOL_SERVICES {
+		switch query.QueryType {
+		case queryv1.QueryType_QUERY_SYMBOL_BLOOM_CANDIDATES:
+			if err := b.executeSymbolBloomCandidates(query); err != nil {
+				return err
+			}
+		case queryv1.QueryType_QUERY_SYMBOL_SERVICES:
+			if err := b.executeSymbolServices(query); err != nil {
+				return err
+			}
+		default:
 			continue
-		}
-		if err := b.executeSymbolServices(query); err != nil {
-			return err
 		}
 	}
 	for _, ds := range md.Datasets {
 		q := b.newQueryContext(ds)
 		for _, query := range b.req.src.Query {
-			if query.QueryType == queryv1.QueryType_QUERY_SYMBOL_SERVICES {
+			if query.QueryType == queryv1.QueryType_QUERY_SYMBOL_SERVICES || query.QueryType == queryv1.QueryType_QUERY_SYMBOL_BLOOM_CANDIDATES {
 				continue
 			}
 			q.grp.Go(util.RecoverPanic(func() error {
