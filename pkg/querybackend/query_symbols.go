@@ -4,7 +4,10 @@ import (
 	"errors"
 	"sort"
 	"sync"
+	"time"
 
+	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/tracing"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -29,20 +32,62 @@ func querySymbolServices(*queryContext, *queryv1.Query) (*queryv1.Report, error)
 }
 
 func (b *blockContext) executeSymbolServices(query *queryv1.Query) error {
+	span, ctx := tracing.StartSpanFromContext(b.ctx, "executeSymbolServices")
+	defer span.Finish()
+
 	q := query.GetSymbolServices()
-	result, err := block.LookupSymbolBloomServices(b.ctx, b.storage, b.obj.Metadata(), block.SymbolBloomLookupRequest{
+	traceID, _ := tracing.ExtractTraceID(ctx)
+	blockID := b.obj.Metadata().GetId()
+
+	start := time.Now()
+	result, err := block.LookupSymbolBloomServices(ctx, b.storage, b.obj.Metadata(), block.SymbolBloomLookupRequest{
 		SymbolNames:   q.GetSymbolNames(),
 		MinTime:       b.req.src.StartTime,
 		MaxTime:       b.req.src.EndTime,
 		Matchers:      b.req.matchers,
 		MaxCandidates: maxSymbolBloomCandidates,
 	})
+	dur := time.Since(start)
+
 	if err != nil {
 		if errors.Is(err, block.ErrSymbolBloomTooManyCandidates) {
+			level.Warn(b.log).Log(
+				"msg", "symbol services candidate limit exceeded",
+				"trace_id", traceID,
+				"block_id", blockID,
+				"symbol_names", len(q.GetSymbolNames()),
+				"limit", maxSymbolBloomCandidates,
+				"duration", dur,
+			)
+			span.SetTag("too_many_candidates", true)
 			return status.Error(codes.ResourceExhausted, err.Error())
 		}
 		return err
 	}
+
+	if b.metrics != nil {
+		b.metrics.symbolServicesVerifyDuration.Observe(dur.Seconds())
+		// Count candidates as the total services * symbols found (proxy for bloom verify fan-out).
+		var candidateCount float64
+		for _, r := range result.Results {
+			candidateCount += float64(len(r.Services))
+		}
+		b.metrics.symbolServicesCandidatesTotal.Add(candidateCount)
+	}
+
+	span.SetTag("complete", result.Complete)
+	span.SetTag("result_count", len(result.Results))
+	span.SetTag("symbol_names", len(q.GetSymbolNames()))
+
+	level.Debug(b.log).Log(
+		"msg", "symbol services block query",
+		"trace_id", traceID,
+		"block_id", blockID,
+		"symbol_names", len(q.GetSymbolNames()),
+		"result_count", len(result.Results),
+		"complete", result.Complete,
+		"duration", dur,
+	)
 	report := &queryv1.Report{
 		ReportType: queryv1.ReportType_REPORT_SYMBOL_SERVICES,
 		SymbolServices: &queryv1.SymbolServicesReport{
