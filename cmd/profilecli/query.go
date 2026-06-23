@@ -19,7 +19,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -162,41 +161,21 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		return err
 	}
 
-	// Try QueryFrontendService first — handles async transparently.
-	req := &querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: params.ProfileType,
-		Start:         from.UnixMilli(),
-		End:           to.UnixMilli(),
-		LabelSelector: params.Query,
-	}
-	if params.MaxNodes > 0 {
-		req.MaxNodes = &params.MaxNodes
-	}
-	if len(params.StacktraceSelector) > 0 {
-		locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
-		for _, cs := range params.StacktraceSelector {
-			locations = append(locations, &typesv1.Location{Name: cs})
-		}
-		req.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
-	}
-	if len(params.ProfileIDs) > 0 {
-		req.ProfileIdSelector = params.ProfileIDs
-	}
-
-	profile, err := queryProfileViaFrontend(ctx, params.phlareClient.queryFrontendClient(), req, async)
-	if err != nil && !errors.Is(err, errFrontendUnsupported) {
-		return err
-	}
-	if err == nil {
-		return outputMergeProfile(ctx, outputFlag, force, profile)
-	}
-
+	var profile *googlev1.Profile
 	if async {
-		return fmt.Errorf("the server does not support async queries; try without --async")
-	}
-
-	// Fallback to QuerierService.
-	if len(params.SpanSelector) > 0 {
+		if len(params.SpanSelector) > 0 {
+			return fmt.Errorf("--async does not support --span-selector")
+		}
+		var stackTraceSelector *typesv1.StackTraceSelector
+		if len(params.StacktraceSelector) > 0 {
+			locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+			for _, cs := range params.StacktraceSelector {
+				locations = append(locations, &typesv1.Location{Name: cs})
+			}
+			stackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
+		}
+		profile, err = asyncQueryProfile(ctx, params.phlareClient.queryFrontendClient(), params.ProfileType, params.Query, from.UnixMilli(), to.UnixMilli(), params.MaxNodes, stackTraceSelector, params.ProfileIDs)
+	} else if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)
 	} else {
@@ -208,7 +187,6 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 			}
 			level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
 		}
-
 		if profileTree {
 			profile, err = queryProfileTree(ctx, params, from, to, locations)
 		} else {
@@ -290,75 +268,6 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 	logDiagnostics(params.phlareClient, resp.Header())
 
 	return resp.Msg, err
-}
-
-// queryViaFrontendService sends a query via the QueryFrontendService. When
-// async is true, it uses the AsyncQuery RPC and polls until completion.
-// Returns errFrontendUnsupported if the server doesn't implement the relevant
-// RPC.
-var errFrontendUnsupported = fmt.Errorf("server does not support QueryFrontendService")
-
-func queryViaFrontendService(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, req *queryv1.QueryRequest, async bool) (*queryv1.QueryResponse, error) {
-	if !async {
-		resp, err := client.Query(ctx, connect.NewRequest(req))
-		if err != nil {
-			if isUnsupported(err) {
-				return nil, errFrontendUnsupported
-			}
-			return nil, err
-		}
-		return resp.Msg, nil
-	}
-
-	// Async submit.
-	submit, err := client.AsyncQuery(ctx, connect.NewRequest(&queryv1.AsyncQueryRequest{Query: req}))
-	if err != nil {
-		if isUnsupported(err) {
-			return nil, errFrontendUnsupported
-		}
-		return nil, err
-	}
-	level.Info(logger).Log("msg", "async query submitted", "request_id", submit.Msg.RequestId)
-
-	// Poll until terminal.
-	pollReq := &queryv1.AsyncQueryRequest{RequestId: submit.Msg.RequestId}
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	start := time.Now()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-ticker.C:
-		}
-
-		poll, err := client.AsyncQuery(ctx, connect.NewRequest(pollReq))
-		if err != nil {
-			return nil, fmt.Errorf("failed to poll async query: %w", err)
-		}
-
-		switch poll.Msg.Status {
-		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS:
-			level.Info(logger).Log("msg", "waiting for async query", "request_id", poll.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
-			continue
-		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS:
-			level.Info(logger).Log("msg", "async query completed", "request_id", poll.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
-			return poll.Msg.Response, nil
-		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE:
-			return nil, fmt.Errorf("async query failed: %s", poll.Msg.ErrorMessage)
-		default:
-			return nil, fmt.Errorf("unexpected async query status: %v", poll.Msg.Status)
-		}
-	}
-}
-
-func isUnsupported(err error) bool {
-	connectErr := new(connect.Error)
-	if errors.As(err, &connectErr) {
-		return connectErr.Code() == connect.CodeUnimplemented || connectErr.Code() == connect.CodeNotFound
-	}
-	return false
 }
 
 func queryProfileTree(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
@@ -462,27 +371,28 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	req := &querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: params.ProfileType,
-		Start:         from.UnixMilli(),
-		End:           to.UnixMilli(),
-		LabelSelector: params.Query,
-		StackTraceSelector: &typesv1.StackTraceSelector{
-			GoPgo: &typesv1.GoPGO{
-				KeepLocations:    params.KeepLocations,
-				AggregateCallees: params.AggregateCallees,
-			},
+	stackTraceSelector := &typesv1.StackTraceSelector{
+		GoPgo: &typesv1.GoPGO{
+			KeepLocations:    params.KeepLocations,
+			AggregateCallees: params.AggregateCallees,
 		},
 	}
 
-	profile, err := queryProfileViaFrontend(ctx, params.phlareClient.queryFrontendClient(), req, async)
-	if err != nil && !errors.Is(err, errFrontendUnsupported) {
-		return err
-	}
-	if err == nil {
+	if async {
+		profile, err := asyncQueryProfile(ctx, params.phlareClient.queryFrontendClient(), params.ProfileType, params.Query, from.UnixMilli(), to.UnixMilli(), 0, stackTraceSelector, nil)
+		if err != nil {
+			return err
+		}
 		return outputMergeProfile(ctx, outputFlag, force, profile)
 	}
 
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID:      params.ProfileType,
+		Start:              from.UnixMilli(),
+		End:                to.UnixMilli(),
+		LabelSelector:      params.Query,
+		StackTraceSelector: stackTraceSelector,
+	}
 	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
 }
 
@@ -510,24 +420,17 @@ func querySeries(ctx context.Context, params *querySeriesParams, async bool) (er
 
 	level.Info(logger).Log("msg", fmt.Sprintf("query series from %s", params.APIType), "url", params.URL, "from", from, "to", to, "labelNames", fmt.Sprintf("%q", params.LabelNames))
 
-	// Try QueryFrontendService for the querier API type.
-	if params.APIType == "querier" {
-		seriesReq := &querierv1.SeriesRequest{
-			Start:      from.UnixMilli(),
-			End:        to.UnixMilli(),
-			Matchers:   []string{params.Query},
-			LabelNames: params.LabelNames,
+	if async {
+		if params.APIType != "querier" {
+			return fmt.Errorf("--async only supports --api-type=querier")
 		}
-		result, err := querySeriesViaFrontend(ctx, params.phlareClient.queryFrontendClient(), seriesReq, async)
-		if err != nil && !errors.Is(err, errFrontendUnsupported) {
+		result, err := asyncQuerySeries(ctx, params.phlareClient.queryFrontendClient(), params.Query, params.LabelNames, from.UnixMilli(), to.UnixMilli())
+		if err != nil {
 			return err
 		}
-		if err == nil {
-			return outputSeries(ctx, result, params.Output, from, to)
-		}
+		return outputSeries(ctx, result, params.Output, from, to)
 	}
 
-	// Fallback to direct API calls.
 	var result []*typesv1.Labels
 	switch params.APIType {
 	case "querier":
@@ -586,7 +489,7 @@ func addQueryLabelValuesCardinalityParams(queryCmd commander) *queryLabelValuesC
 	return params
 }
 
-func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCardinalityParams, async bool) (err error) {
+func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCardinalityParams) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err

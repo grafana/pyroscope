@@ -198,7 +198,7 @@ func main() {
 		}
 
 	case queryLabelValuesCardinalityCmd.FullCommand():
-		if err := queryLabelValuesCardinality(ctx, queryLabelValuesCardinalityParams, *queryAsync); err != nil {
+		if err := queryLabelValuesCardinality(ctx, queryLabelValuesCardinalityParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryTopCmd.FullCommand():

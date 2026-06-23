@@ -95,7 +95,7 @@ type Limits struct {
 	// Query frontend.
 	QuerySplitDuration       model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
 	QuerySanitizeOnMerge     bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
-	MaxAsyncQueryConcurrency int `yaml:"max_async_query_concurrency" json:"max_async_query_concurrency"`
+	MaxAsyncQueryConcurrency int            `yaml:"max_async_query_concurrency" json:"max_async_query_concurrency"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`

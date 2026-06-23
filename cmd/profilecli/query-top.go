@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
@@ -54,23 +54,23 @@ func queryTop(ctx context.Context, params *queryTopParams, async bool) error {
 
 	stepSeconds := to.Sub(from).Seconds()
 
-	selectSeriesReq := &querierv1.SelectSeriesRequest{
-		ProfileTypeID: params.ProfileType,
-		LabelSelector: params.Query,
-		Start:         from.UnixMilli(),
-		End:           to.UnixMilli(),
-		Step:          stepSeconds,
-		GroupBy:       params.LabelNames,
-	}
-
-	series, frontendErr := querySelectSeriesViaFrontend(ctx, params.queryFrontendClient(), selectSeriesReq, async)
-	if frontendErr != nil && !errors.Is(frontendErr, errFrontendUnsupported) {
-		return frontendErr
-	}
-	if frontendErr != nil {
-		// Fallback to QuerierService.
+	var series []*typesv1.Series
+	if async {
+		var err error
+		series, err = asyncQueryTimeSeries(ctx, params.queryFrontendClient(), params.ProfileType, params.Query, from.UnixMilli(), to.UnixMilli(), stepSeconds, params.LabelNames, typesv1.ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED)
+		if err != nil {
+			return err
+		}
+	} else {
 		qc := params.queryClient()
-		resp, err := qc.SelectSeries(ctx, connect.NewRequest(selectSeriesReq))
+		resp, err := qc.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+			ProfileTypeID: params.ProfileType,
+			LabelSelector: params.Query,
+			Start:         from.UnixMilli(),
+			End:           to.UnixMilli(),
+			Step:          stepSeconds,
+			GroupBy:       params.LabelNames,
+		}))
 		if err != nil {
 			return fmt.Errorf("failed to query series: %w", err)
 		}
