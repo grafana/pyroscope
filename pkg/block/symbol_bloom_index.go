@@ -296,6 +296,22 @@ func VerifySymbolBloomCandidate(ctx context.Context, bucket objstore.Bucket, md 
 }
 
 func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, options ...ObjectOption) (map[string]map[string]struct{}, error) {
+	obj := NewObject(bucket, md, options...)
+	fullMD, err := obj.ReadMetadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+	obj.SetMetadata(fullMD)
+	return verifySymbolsInDataset(ctx, obj, fullMD, datasetIndex, symbolNames, matchers)
+}
+
+// VerifySymbolsInDatasetFromMetadata verifies symbols in a dataset using already-expanded block metadata.
+func VerifySymbolsInDatasetFromMetadata(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, options ...ObjectOption) (map[string]map[string]struct{}, error) {
+	obj := NewObject(bucket, md, options...)
+	return verifySymbolsInDataset(ctx, obj, md, datasetIndex, symbolNames, matchers)
+}
+
+func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher) (map[string]map[string]struct{}, error) {
 	span := oteltrace.SpanFromContext(ctx)
 	span.AddEvent("verify_symbols_in_dataset.start", oteltrace.WithAttributes(
 		attribute.Int("dataset_index", int(datasetIndex)),
@@ -315,17 +331,10 @@ func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *met
 		return found, nil
 	}
 
-	obj := NewObject(bucket, md, options...)
-	fullMD, err := obj.ReadMetadata(ctx)
-	if err != nil {
-		return nil, err
-	}
-	obj.SetMetadata(fullMD)
-
-	if int(datasetIndex) >= len(fullMD.Datasets) {
+	if int(datasetIndex) >= len(md.Datasets) {
 		return nil, fmt.Errorf("symbol bloom candidate dataset index %d out of range", datasetIndex)
 	}
-	target := fullMD.Datasets[datasetIndex]
+	target := md.Datasets[datasetIndex]
 	if DatasetFormat(target.Format) != DatasetFormat0 {
 		return nil, fmt.Errorf("symbol bloom candidate dataset index %d references dataset format %d", datasetIndex, target.Format)
 	}

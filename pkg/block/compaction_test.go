@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -143,6 +145,16 @@ func assertSymbolBloomLookup(t *testing.T, ctx context.Context, bucket objstore.
 	require.NotEmpty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
 	require.Empty(t, found["github.com/grafana/pyroscope/pkg/does.not.exist"])
 
+	countingBucket := &metadataReadCountingBucket{Bucket: bucket, md: md}
+	found, err = block.VerifySymbolsInDatasetFromMetadata(ctx, countingBucket, md, result.Candidates[0].DatasetIndex, []string{
+		"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
+		"github.com/grafana/pyroscope/pkg/does.not.exist",
+	}, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
+	require.Empty(t, found["github.com/grafana/pyroscope/pkg/does.not.exist"])
+	require.Zero(t, countingBucket.metadataReads())
+
 	services, err := block.LookupSymbolBloomServices(ctx, bucket, md, block.SymbolBloomLookupRequest{
 		SymbolNames: []string{"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"},
 		MinTime:     md.MinTime,
@@ -184,6 +196,29 @@ func assertSymbolBloomLookup(t *testing.T, ctx context.Context, bucket objstore.
 	require.NoError(t, err)
 	require.False(t, result.Complete)
 	require.Empty(t, result.Candidates)
+}
+
+type metadataReadCountingBucket struct {
+	objstore.Bucket
+	md *metastorev1.BlockMeta
+
+	mu    sync.Mutex
+	reads int
+}
+
+func (b *metadataReadCountingBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	if name == block.ObjectPath(b.md) && off == int64(b.md.MetadataOffset) && length == int64(b.md.Size-b.md.MetadataOffset) {
+		b.mu.Lock()
+		b.reads++
+		b.mu.Unlock()
+	}
+	return b.Bucket.GetRange(ctx, name, off, length)
+}
+
+func (b *metadataReadCountingBucket) metadataReads() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.reads
 }
 
 func Test_CompactBlocks_recordingRules(t *testing.T) {
