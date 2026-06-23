@@ -40,6 +40,7 @@ func querySymbols(ctx context.Context, params *querySymbolsParams) error {
 		SymbolNames:   params.Symbols,
 	}))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return fmt.Errorf("failed to query symbols: %w", err)
 	}
 	logDiagnostics(params.phlareClient, resp.Header())

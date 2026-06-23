@@ -79,6 +79,7 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 		ExemplarType:  typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
 	}))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return fmt.Errorf("failed to query exemplars: %w", err)
 	}
 
@@ -294,6 +295,7 @@ func querySpanExemplars(ctx context.Context, params *queryExemplarsParams) error
 		Limit:         &limit,
 	}))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return fmt.Errorf("failed to query span exemplars: %w", err)
 	}
 
