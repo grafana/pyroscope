@@ -1309,7 +1309,7 @@ index:
 
   # (advanced) Interval for index cleanup check. 0 to disable.
   # CLI flag: -metastore.index.cleanup-interval
-  [cleanup_interval: <duration> | default = 0s]
+  [cleanup_interval: <duration> | default = 15m]
 
   # (advanced) Dead Letter Queue check interval. 0 to disable.
   # CLI flag: -metastore.index.dlq-recovery-check-interval
