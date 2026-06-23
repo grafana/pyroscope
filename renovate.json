@@ -3,6 +3,7 @@
   "extends": ["config:best-practices"],
   "timezone": "UTC",
   "schedule": ["before 4am on monday"],
+  "baseBranchPatterns": ["$default", "release/v2.1", "release/v2.0"],
   "prConcurrentLimit": 239,
   "prCreation": "not-pending",
   "internalChecksFilter": "strict",
