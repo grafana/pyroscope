@@ -108,17 +108,47 @@ The index is intentionally absent from L0 blocks. A query over a range that stil
 
 ## Query Flow: Service And CVE Lookup
 
-1. User queries exact `Function.Name`.
-2. Query frontend asks metastore for `symbol_bloom_index` pseudo-datasets in the requested time range.
-3. Query backend reads symbol Bloom index payloads from matching blocks.
-4. For each entry, check `bloom.MightContain(symbol_name)`.
-5. Bloom misses are skipped.
-6. Bloom hits become candidate datasets.
-7. In exact mode, open candidate datasets' `symbols.symdb`.
-8. Verify that `Function.Name == symbol_name` exists in the dataset.
-9. Return deduped services and verified profile types.
+The public service lookup API is `querier.v1.SymbolLookup`. The query frontend handles it as two sequential phases. This does not pipeline yet: validation starts after the Bloom phase has returned all candidates.
+
+### Phase 1: Bloom Candidate Lookup
+
+1. User queries one or more exact `Function.Name` values via `querier.v1.SymbolLookup`.
+2. Query frontend starts span `SymbolLookup.bloom`.
+3. Query frontend asks metastore for `symbol_bloom_index` pseudo-datasets in the requested time range.
+4. Query frontend invokes the query backend with internal query type `QUERY_SYMBOL_BLOOM_CANDIDATES`.
+5. Query backend reads symbol Bloom index payloads from matching blocks.
+6. For each row, the backend checks Bloom membership for the requested symbols.
+7. Bloom misses are skipped.
+8. Bloom hits become `SymbolBloomCandidate` rows containing block ID, dataset index, service name, matching requested symbols, time bounds, and symbol count estimate.
+
+### Phase 2: Exact Validation
+
+1. Query frontend starts span `SymbolLookup.validate`.
+2. Query frontend starts sub-span `SymbolLookup.validationMetadata`.
+3. Query frontend builds a `service_name` selector from Bloom candidates and performs a second metadata query.
+4. Metadata results are filtered to candidate block IDs.
+5. Query frontend invokes the query backend with internal query type `QUERY_SYMBOL_SERVICES`, passing the candidate list on `SymbolServicesQuery`.
+6. Query backend groups candidates by `(block_id, dataset_index)`.
+7. Query backend opens only candidate datasets' profile, TSDB, and `symbols.symdb` sections.
+8. Query backend verifies that the requested `Function.Name` exists in the dataset before returning a service.
+9. Query frontend returns deduped services and verified profile types.
 
 Responses should be exact for indexed data. Bloom candidates must be verified against `symbols.symdb` before they are returned. If the requested time range includes L0-only data or blocks where index writing was disabled, the response should indicate incomplete index coverage instead of silently presenting the result as complete.
+
+### Current Trace Findings
+
+Trace `f456cf87d90b7cf2927a8123b80a941f` shows the two-phase path is active:
+
+- `SymbolLookup`: about 6.2s.
+- `SymbolLookup.bloom`: about 783ms.
+- `SymbolLookup.validationMetadata`: about 61ms.
+- `SymbolLookup.validate`: about 5.4s.
+- Bloom phase: 187 blocks, 1,932 candidates.
+- Validation phase: 187 blocks, 1,932 candidates, 829 services.
+- Object storage reads: about 833 MiB requested, about 781 MiB unique ranges.
+- Repeated range amplification is low, around 1.07x.
+
+The original repeated-read problem is mostly resolved. The current bottleneck is validation scan volume: the trace scanned about 1.43M profiles across candidates.
 
 ## Query Flow: Metrics From Profiles
 
@@ -135,26 +165,65 @@ The Bloom index only prunes. It does not store metric values.
 
 ## API Sketch
 
-Public service lookup:
+Public service lookup lives on `querier.v1`:
 
 ```proto
-rpc SymbolServices(SymbolServicesRequest) returns (SymbolServicesResponse) {}
+rpc SymbolLookup(SymbolLookupRequest) returns (SymbolLookupResponse) {}
 
-message SymbolServicesRequest {
-  string symbol_name = 1;
-  repeated string matchers = 2;
-  int64 start = 3;
-  int64 end = 4;
+message SymbolLookupRequest {
+  int64 start = 1;
+  int64 end = 2;
+  string label_selector = 3;
+  repeated string symbol_names = 4;
 }
 
-message SymbolServicesResponse {
-  repeated SymbolService services = 1;
+message SymbolLookupResponse {
+  repeated SymbolLookupResult results = 1;
   bool complete = 2;
 }
 
-message SymbolService {
+message SymbolLookupResult {
+  string symbol_name = 1;
+  repeated SymbolLookupService services = 2;
+}
+
+message SymbolLookupService {
   string service_name = 1;
   repeated string profile_types = 2;
+}
+```
+
+Internal query backend APIs split discovery from validation:
+
+```proto
+enum QueryType {
+  QUERY_SYMBOL_BLOOM_CANDIDATES = 10;
+  QUERY_SYMBOL_SERVICES = 9;
+}
+
+message SymbolBloomCandidatesQuery {
+  repeated string symbol_names = 1;
+}
+
+message SymbolBloomCandidatesReport {
+  SymbolBloomCandidatesQuery query = 1;
+  repeated SymbolBloomCandidate candidates = 2;
+  bool complete = 3;
+}
+
+message SymbolBloomCandidate {
+  string block_id = 1;
+  uint32 dataset_index = 2;
+  string service_name = 3;
+  repeated string symbol_names = 4;
+  int64 min_time = 5;
+  int64 max_time = 6;
+  uint32 symbol_count_estimate = 7;
+}
+
+message SymbolServicesQuery {
+  repeated string symbol_names = 1;
+  repeated SymbolBloomCandidate candidates = 2;
 }
 ```
 
@@ -193,10 +262,10 @@ profilecli query symbols \
   --output table
 ```
 
-The command should call the public `SymbolServices` API and support:
+The command should call the public `querier.v1.SymbolLookup` API and support:
 
 ```text
---symbol       Exact Function.Name to search for. Required.
+--symbol       Exact Function.Name to search for. Required. Repeatable.
 --query        Existing label selector syntax. Optional.
 --from         Start time. Required or defaulted consistently with other query commands.
 --to           End time. Required or defaulted consistently with other query commands.
@@ -217,14 +286,19 @@ JSON output should preserve enough structure for automation:
 
 ```json
 {
-  "symbol": "github.com/example/vulnerable.Function",
+  "symbols": ["github.com/example/vulnerable.Function"],
   "from": "2026-06-18T00:00:00Z",
   "to": "2026-06-19T00:00:00Z",
   "complete": true,
-  "services": [
+  "results": [
     {
-      "service_name": "pyroscope/distributor",
-      "profile_types": ["process_cpu", "memory", "mutex"]
+      "symbol_name": "github.com/example/vulnerable.Function",
+      "services": [
+        {
+          "service_name": "pyroscope/distributor",
+          "profile_types": ["process_cpu", "memory", "mutex"]
+        }
+      ]
     }
   ]
 }
@@ -395,10 +469,10 @@ The exact verification step can remain dataset-oriented initially. The important
 4. Extend compaction symbol observation to collect `Function.Name` only.
 5. Group observed symbols by `service_name + dataset_index`.
 6. Write the symbol Bloom index pseudo-dataset during L1+ compaction.
-7. Update metastore/query frontend to request `__tenant_dataset__="symbol_bloom_index"` for symbol queries.
+7. Update metastore/query frontend to request `__tenant_dataset__="symbol_bloom_index"` for symbol Bloom candidate queries.
 8. Add a four-worker columnar morsel reader for `symbol_bloom.parquet`.
-9. Add a query backend handler for symbol service lookup.
-10. Implement exact verification by reading existing `symbols.symdb`.
+9. Add query backend handlers for `QUERY_SYMBOL_BLOOM_CANDIDATES` and candidate-driven `QUERY_SYMBOL_SERVICES`.
+10. Implement exact verification by reading existing `symbols.symdb`, keeping symbol partitions open for the duration of candidate dataset validation.
 11. Add query and compaction metrics.
 12. Add operational guardrails for symbol length, Bloom bytes, candidate counts, and cancellation.
 13. Add tests.
@@ -443,20 +517,21 @@ Deliverable: compacted blocks at `CompactionLevel >= 1` contain a symbol Bloom i
 
 Add the backend lookup path behind internal query types:
 
-- Query metastore for `__tenant_dataset__="symbol_bloom_index"`.
+- Query metastore for `__tenant_dataset__="symbol_bloom_index"` in the Bloom phase.
 - Read block-local Bloom payloads with the four-worker columnar morsel reader.
-- Produce candidate service/profile datasets from Bloom hits.
-- Verify exact `Function.Name` matches using existing `symbols.symdb`.
+- Produce `SymbolBloomCandidate` rows from Bloom hits.
+- Query metastore a second time for candidate services and filter to candidate block IDs.
+- Verify exact `Function.Name` matches using existing `symbols.symdb` in candidate datasets.
 - Return exact service/profile results by default.
 - Track false positives by comparing Bloom hits to exact verification misses.
 
-Deliverable: internal symbol-service lookup works end-to-end with exact verification and query metrics.
+Deliverable: internal Bloom candidate discovery and candidate-driven exact verification work end-to-end with query metrics.
 
 ### Phase 4: Public API And Profile CLI
 
 Expose the lookup to users and automation:
 
-- Add the public `SymbolServices` API.
+- Add the public `querier.v1.SymbolLookup` API.
 - Add `profilecli query symbols` using that API.
 - Support `table` and `json` output.
 - Keep exact verification enabled by default.
@@ -517,7 +592,10 @@ Query metrics:
 ```text
 pyroscope_symbol_query_bloom_blocks_checked
 pyroscope_symbol_query_bloom_candidates
+pyroscope_symbol_query_candidate_datasets
 pyroscope_symbol_query_exact_verified
+pyroscope_symbol_query_profiles_scanned
+pyroscope_symbol_query_profiles_matched
 pyroscope_symbol_query_false_positives
 pyroscope_symbol_query_duration_seconds
 pyroscope_symbol_query_morsels_processed
@@ -531,6 +609,10 @@ pyroscope_symbol_query_resource_exhausted
 - Bloom index writer/reader roundtrip.
 - Bloom miss skips datasets.
 - Bloom hit triggers exact verification.
+- `SymbolLookup` runs Bloom candidate lookup before exact validation.
+- `SymbolLookup` validation metadata filters by candidate services and candidate block IDs.
+- `QUERY_SYMBOL_BLOOM_CANDIDATES` returns correct candidate payloads.
+- Candidate-driven `QUERY_SYMBOL_SERVICES` validates only provided candidate datasets.
 - Exact `Function.Name` match only.
 - No `Function.SystemName` or filename matching.
 - L1 compaction writes symbol Bloom index.
@@ -567,4 +649,6 @@ Disadvantages:
 
 Start with the Bloom-filter-first design.
 
-Use it as a pruning layer for both CVE/service lookup and profile-derived metrics. Keep exact verification in the query path by default. Avoid exact inverted indexes and stacktrace refs until real query metrics show Bloom false positives or verification cost are too high.
+Use it as a pruning layer for both CVE/service lookup and profile-derived metrics. Keep exact verification in the query path by default. The current implementation splits `SymbolLookup` into Bloom candidate discovery and exact validation in the query frontend. Avoid exact inverted indexes and stacktrace refs until real query metrics show Bloom false positives or validation scan cost are too high.
+
+The next optimization target is reducing validation scan volume. Prioritize early exit, candidate-specific service filtering during exact verification, and explicit validation scan limits before adding frontend/backend pipelining.
