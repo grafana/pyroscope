@@ -187,9 +187,16 @@ func (b *blockContext) lookupSymbolServices(ctx context.Context, q *queryv1.Symb
 	for _, symbolName := range q.GetSymbolNames() {
 		seen[symbolName] = make(map[string]map[string]struct{})
 	}
+	if len(candidatesByDataset) == 0 {
+		return result, nil
+	}
+	fullMD, err := b.obj.ReadMetadata(ctx)
+	if err != nil {
+		return result, err
+	}
 	for datasetIndex, candidates := range candidatesByDataset {
 		symbolNames := symbolNamesForCandidates(candidates)
-		found, err := block.VerifySymbolsInDataset(ctx, b.storage, b.obj.Metadata(), datasetIndex, symbolNames, b.req.matchers)
+		found, err := block.VerifySymbolsInDatasetFromMetadata(ctx, b.storage, fullMD, datasetIndex, symbolNames, b.req.matchers)
 		if err != nil {
 			return result, err
 		}
