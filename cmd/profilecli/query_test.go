@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
@@ -64,6 +65,47 @@ func TestQueryProfileParams_ProfileIDValidation(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestHeaderValue(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		headers http.Header
+		key     string
+		want    string
+	}{
+		{
+			name: "canonical header",
+			headers: http.Header{
+				grafanaTraceIDHeader: []string{"trace-123"},
+			},
+			key:  grafanaTraceIDHeader,
+			want: "trace-123",
+		},
+		{
+			name: "lowercase header",
+			headers: http.Header{
+				"x-grafana-trace-id": []string{"trace-456"},
+			},
+			key:  grafanaTraceIDHeader,
+			want: "trace-456",
+		},
+		{
+			name:    "missing header",
+			headers: http.Header{},
+			key:     grafanaTraceIDHeader,
+			want:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, headerValue(tt.headers, tt.key))
 		})
 	}
 }
