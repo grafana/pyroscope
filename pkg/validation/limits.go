@@ -176,7 +176,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	_ = l.QuerySplitDuration.Set("0s")
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
-	f.IntVar(&l.MaxAsyncQueryConcurrency, "querier.max-async-query-concurrency", 5, "Maximum number of concurrent async queries per tenant. 0 to disable async queries.")
+	f.IntVar(&l.MaxAsyncQueryConcurrency, "query-frontend.max-async-query-concurrency", 5, "Maximum number of concurrent async queries per tenant. 0 to disable async queries.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 

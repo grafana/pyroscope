@@ -3263,7 +3263,7 @@ distributor_usage_groups:
 
 # Maximum number of concurrent async queries per tenant. 0 to disable async
 # queries.
-# CLI flag: -querier.max-async-query-concurrency
+# CLI flag: -query-frontend.max-async-query-concurrency
 [max_async_query_concurrency: <int> | default = 5]
 
 # Delete blocks containing samples older than the specified retention period. 0

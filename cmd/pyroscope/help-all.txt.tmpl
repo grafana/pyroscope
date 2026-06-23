@@ -785,8 +785,6 @@ Usage of ./pyroscope:
     	Timeout for ingester client healthcheck RPCs. (default 5s)
   -querier.id string
     	Querier ID, sent to the query-frontend to identify requests from the same querier. Defaults to hostname.
-  -querier.max-async-query-concurrency int
-    	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
   -querier.max-concurrent int
     	The maximum number of concurrent queries allowed. (default 4)
   -querier.max-flamegraph-nodes-default int
@@ -919,6 +917,8 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. This address is sent to query-scheduler and querier, which uses it to send the query response back to query-frontend. (default [<private network interfaces>])
   -query-frontend.instance-port int
     	Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).
+  -query-frontend.max-async-query-concurrency int
+    	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
   -query-frontend.scheduler-worker-concurrency int
     	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
   -query-scheduler.grpc-client-config.backoff-max-period duration
