@@ -12,6 +12,8 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -148,6 +150,12 @@ type SymbolBloomServiceLookupResult struct {
 }
 
 func LookupSymbolBloomCandidates(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, req SymbolBloomLookupRequest, options ...ObjectOption) (SymbolBloomLookupResult, error) {
+	span := oteltrace.SpanFromContext(ctx)
+	span.AddEvent("symbol_bloom_candidates.start", oteltrace.WithAttributes(
+		attribute.Int("symbol_count", len(req.symbolNames())),
+		attribute.Int("max_candidates", req.MaxCandidates),
+	))
+
 	obj := NewObject(bucket, md, options...)
 	fullMD, err := obj.ReadMetadata(ctx)
 	if err != nil {
@@ -161,6 +169,7 @@ func LookupSymbolBloomCandidates(ctx context.Context, bucket objstore.Bucket, md
 		symbolBloomDatasets = append(symbolBloomDatasets, ds)
 	}
 	if len(symbolBloomDatasets) == 0 {
+		span.AddEvent("symbol_bloom_candidates.no_bloom_index")
 		return SymbolBloomLookupResult{Complete: false}, nil
 	}
 
@@ -197,10 +206,19 @@ func LookupSymbolBloomCandidates(ctx context.Context, bucket objstore.Bucket, md
 			return result, closeErr
 		}
 	}
+	span.AddEvent("symbol_bloom_candidates.done", oteltrace.WithAttributes(
+		attribute.Int("candidate_count", len(result.Candidates)),
+		attribute.Bool("complete", result.Complete),
+	))
 	return result, nil
 }
 
 func LookupSymbolBloomServices(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, req SymbolBloomLookupRequest, options ...ObjectOption) (SymbolBloomServiceLookupResult, error) {
+	span := oteltrace.SpanFromContext(ctx)
+	span.AddEvent("symbol_bloom_services.start", oteltrace.WithAttributes(
+		attribute.Int("symbol_count", len(req.symbolNames())),
+	))
+
 	candidates, err := LookupSymbolBloomCandidates(ctx, bucket, md, req, options...)
 	if err != nil {
 		return SymbolBloomServiceLookupResult{}, err
@@ -214,6 +232,10 @@ func LookupSymbolBloomServices(ctx context.Context, bucket objstore.Bucket, md *
 	for _, candidate := range candidates.Candidates {
 		candidatesByDataset[candidate.DatasetIndex] = append(candidatesByDataset[candidate.DatasetIndex], candidate)
 	}
+	span.AddEvent("symbol_bloom_services.verify_start", oteltrace.WithAttributes(
+		attribute.Int("candidate_count", len(candidates.Candidates)),
+		attribute.Int("dataset_count", len(candidatesByDataset)),
+	))
 	for datasetIndex, datasetCandidates := range candidatesByDataset {
 		found, err := VerifySymbolsInDataset(ctx, bucket, md, datasetIndex, req.symbolNames(), req.Matchers, options...)
 		if err != nil {
@@ -261,6 +283,7 @@ func LookupSymbolBloomServices(ctx context.Context, bucket objstore.Bucket, md *
 		}
 		result.Results = append(result.Results, symbolResult)
 	}
+	span.AddEvent("symbol_bloom_services.done")
 	return result, nil
 }
 
@@ -273,6 +296,12 @@ func VerifySymbolBloomCandidate(ctx context.Context, bucket objstore.Bucket, md 
 }
 
 func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, options ...ObjectOption) (map[string]map[string]struct{}, error) {
+	span := oteltrace.SpanFromContext(ctx)
+	span.AddEvent("verify_symbols_in_dataset.start", oteltrace.WithAttributes(
+		attribute.Int("dataset_index", int(datasetIndex)),
+		attribute.Int("symbol_count", len(symbolNames)),
+	))
+
 	found := make(map[string]map[string]struct{}, len(symbolNames))
 	want := make(map[string]struct{}, len(symbolNames))
 	for _, symbolName := range symbolNames {
@@ -320,10 +349,12 @@ func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *met
 		}
 	}()
 	var locations []uint64
+	var profilesScanned int
 	for profiles.Next() {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
+		profilesScanned++
 		entry := profiles.At()
 		if !profileLabelsMatch(matchers, entry.Labels) {
 			continue
@@ -354,6 +385,10 @@ func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *met
 	if err := profiles.Err(); err != nil {
 		return nil, err
 	}
+	span.AddEvent("verify_symbols_in_dataset.done", oteltrace.WithAttributes(
+		attribute.Int("dataset_index", int(datasetIndex)),
+		attribute.Int("profiles_scanned", profilesScanned),
+	))
 	return found, nil
 }
 
