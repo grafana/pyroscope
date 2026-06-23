@@ -311,6 +311,14 @@ func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *met
 		return nil, err
 	}
 	defer func() { _ = profiles.Close() }()
+	// Keep symbol partitions open while scanning the dataset. Many profiles often
+	// share a partition, and releasing per profile refetches the same symbol data.
+	partitions := make(map[uint64]symdb.PartitionReader)
+	defer func() {
+		for _, partition := range partitions {
+			partition.Release()
+		}
+	}()
 	var locations []uint64
 	for profiles.Next() {
 		if err := ctx.Err(); err != nil {
@@ -322,9 +330,13 @@ func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *met
 		}
 		profileType := profileTypeLabel(entry.Labels)
 		partitionID := entry.Row.StacktracePartitionID()
-		partition, err := ds.Symbols().Partition(ctx, partitionID)
-		if err != nil {
-			return nil, err
+		partition := partitions[partitionID]
+		if partition == nil {
+			partition, err = ds.Symbols().Partition(ctx, partitionID)
+			if err != nil {
+				return nil, err
+			}
+			partitions[partitionID] = partition
 		}
 		symbols := partition.Symbols()
 		entry.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
@@ -338,7 +350,6 @@ func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *met
 				})
 			}
 		})
-		partition.Release()
 	}
 	if err := profiles.Err(); err != nil {
 		return nil, err
