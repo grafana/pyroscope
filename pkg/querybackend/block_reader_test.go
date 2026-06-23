@@ -543,6 +543,41 @@ func (s *testSuite) Test_BytesFetched_ConsistentAcrossInvocations() {
 	s.Assert().InEpsilon(float64(first), float64(second), 0.10)
 }
 
+func (s *testSuite) Test_SpanAndTraceSelector_Combined_Errors() {
+	// No public RPC sets both span and trace selectors; an internal query plan
+	// that does is a bug, so the backend must fail loudly rather than silently
+	// honour one and drop the other.
+	span := []string{fixtureMatchingSpanID}
+	trace := []string{"0123456789abcdef0123456789abcdef"}
+
+	for _, tt := range []struct {
+		name  string
+		query *queryv1.Query
+	}{
+		{"tree", &queryv1.Query{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16, SpanSelector: span, TraceIdSelector: trace},
+		}},
+		{"pprof", &queryv1.Query{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     &queryv1.PprofQuery{SpanSelector: span, TraceIdSelector: trace},
+		}},
+	} {
+		s.Run(tt.name, func() {
+			_, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+				StartTime:     startTime.UnixMilli(),
+				EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+				LabelSelector: "{}",
+				QueryPlan:     s.plan,
+				Query:         []*queryv1.Query{tt.query},
+				Tenant:        s.tenant,
+			})
+			s.Require().Error(err)
+			s.Require().Contains(err.Error(), "span_selector and trace_id_selector cannot be combined")
+		})
+	}
+}
+
 func (s *testSuite) Test_SpanSelector() {
 	// Capture baselines used to verify that an empty/nil selector returns
 	// the full (unfiltered) result.

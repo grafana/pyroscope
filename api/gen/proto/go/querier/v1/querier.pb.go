@@ -468,9 +468,11 @@ type SelectMergeStacktracesRequest struct {
 	// List of Profile UUIDs to query
 	ProfileIdSelector []string `protobuf:"bytes,8,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
 	// (experimental) Used for making and polling async queries.
-	Async         *AsyncQueryRequest `protobuf:"bytes,9,opt,name=async,proto3,oneof" json:"async,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Async *AsyncQueryRequest `protobuf:"bytes,9,opt,name=async,proto3,oneof" json:"async,omitempty"`
+	// List of trace IDs (32 hex characters, 128-bit) to filter samples by.
+	TraceIdSelector []string `protobuf:"bytes,10,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SelectMergeStacktracesRequest) Reset() {
@@ -562,6 +564,13 @@ func (x *SelectMergeStacktracesRequest) GetProfileIdSelector() []string {
 func (x *SelectMergeStacktracesRequest) GetAsync() *AsyncQueryRequest {
 	if x != nil {
 		return x.Async
+	}
+	return nil
+}
+
+func (x *SelectMergeStacktracesRequest) GetTraceIdSelector() []string {
+	if x != nil {
+		return x.TraceIdSelector
 	}
 	return nil
 }
@@ -1219,8 +1228,10 @@ type SelectMergeProfileRequest struct {
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,6,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	// List of Profile UUIDs to query
 	ProfileIdSelector []string `protobuf:"bytes,7,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// List of trace IDs (32 hex characters, 128-bit) to filter samples by.
+	TraceIdSelector []string `protobuf:"bytes,8,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SelectMergeProfileRequest) Reset() {
@@ -1298,6 +1309,13 @@ func (x *SelectMergeProfileRequest) GetStackTraceSelector() *v1.StackTraceSelect
 func (x *SelectMergeProfileRequest) GetProfileIdSelector() []string {
 	if x != nil {
 		return x.ProfileIdSelector
+	}
+	return nil
+}
+
+func (x *SelectMergeProfileRequest) GetTraceIdSelector() []string {
+	if x != nil {
+		return x.TraceIdSelector
 	}
 	return nil
 }
@@ -1933,7 +1951,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\"A\n" +
 	"\x0eSeriesResponse\x12/\n" +
 	"\n" +
-	"labels_set\x18\x02 \x03(\v2\x10.types.v1.LabelsR\tlabelsSet\"\x90\x05\n" +
+	"labels_set\x18\x02 \x03(\v2\x10.types.v1.LabelsR\tlabelsSet\"\xe9\x05\n" +
 	"\x1dSelectMergeStacktracesRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
@@ -1943,7 +1961,9 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x06format\x18\x06 \x01(\x0e2\x19.querier.v1.ProfileFormatR\x06format\x12S\n" +
 	"\x14stack_trace_selector\x18\a \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01\x12_\n" +
 	"\x13profile_id_selector\x18\b \x03(\tB/\xbaG,:*\x12(['7c9e6679-7425-40de-944b-e07fc1f90ae7']R\x11profileIdSelector\x128\n" +
-	"\x05async\x18\t \x01(\v2\x1d.querier.v1.AsyncQueryRequestH\x02R\x05async\x88\x01\x01B\f\n" +
+	"\x05async\x18\t \x01(\v2\x1d.querier.v1.AsyncQueryRequestH\x02R\x05async\x88\x01\x01\x12W\n" +
+	"\x11trace_id_selector\x18\n" +
+	" \x03(\tB+\xbaG(:&\x12$['7c9e66797425440de944be07fc1f90ae']R\x0ftraceIdSelectorB\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
 	"\x15_stack_trace_selectorB\b\n" +
@@ -2003,7 +2023,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"rightTicks\x18\x06 \x01(\x03R\n" +
 	"rightTicks\"\x1f\n" +
 	"\x05Level\x12\x16\n" +
-	"\x06values\x18\x01 \x03(\x03R\x06values\"\x95\x04\n" +
+	"\x06values\x18\x01 \x03(\x03R\x06values\"\xee\x04\n" +
 	"\x19SelectMergeProfileRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
@@ -2011,7 +2031,8 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12 \n" +
 	"\tmax_nodes\x18\x05 \x01(\x03H\x00R\bmaxNodes\x88\x01\x01\x12S\n" +
 	"\x14stack_trace_selector\x18\x06 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x01R\x12stackTraceSelector\x88\x01\x01\x12_\n" +
-	"\x13profile_id_selector\x18\a \x03(\tB/\xbaG,:*\x12(['7c9e6679-7425-40de-944b-e07fc1f90ae7']R\x11profileIdSelectorB\f\n" +
+	"\x13profile_id_selector\x18\a \x03(\tB/\xbaG,:*\x12(['7c9e6679-7425-40de-944b-e07fc1f90ae7']R\x11profileIdSelector\x12W\n" +
+	"\x11trace_id_selector\x18\b \x03(\tB+\xbaG(:&\x12$['7c9e66797425440de944be07fc1f90ae']R\x0ftraceIdSelectorB\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
 	"\x15_stack_trace_selector\"\xfb\x04\n" +

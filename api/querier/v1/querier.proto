@@ -121,6 +121,8 @@ message SelectMergeStacktracesRequest {
   repeated string profile_id_selector = 8 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
   // (experimental) Used for making and polling async queries.
   optional AsyncQueryRequest async = 9;
+  // List of trace IDs (32 hex characters, 128-bit) to filter samples by.
+  repeated string trace_id_selector = 10 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
 }
 
 enum ProfileFormat {
@@ -243,6 +245,8 @@ message SelectMergeProfileRequest {
   optional types.v1.StackTraceSelector stack_trace_selector = 6;
   // List of Profile UUIDs to query
   repeated string profile_id_selector = 7 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
+  // List of trace IDs (32 hex characters, 128-bit) to filter samples by.
+  repeated string trace_id_selector = 8 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
 }
 
 message SelectSeriesRequest {
