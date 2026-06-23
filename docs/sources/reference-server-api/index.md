@@ -638,6 +638,46 @@ print(resp.content)
 ```
 
 {{< /code >}}
+#### `/querier.v1.QuerierService/SymbolLookup`
+
+SymbolLookup returns services and profile types that contain any of the requested symbols.
+
+A request body with the following fields is required:
+
+|Field | Description | Example |
+|:-----|:------------|:--------|
+|`start` |  | `1676282400000` |
+|`end` |  | `1676289600000` |
+|`labelSelector` |  | `{namespace="my-namespace"}` |
+|`symbolNames` |  |  |
+
+{{< code >}}
+```curl
+curl \
+  -H "Content-Type: application/json" \
+  -d '{
+      "end": '$(date +%s)000',
+      "labelSelector": "{namespace=\"my-namespace\"}",
+      "start": '$(expr $(date +%s) - 3600 )000'
+    }' \
+  http://localhost:4040/querier.v1.QuerierService/SymbolLookup
+```
+
+```python
+import requests
+import datetime
+body = {
+    "end": int(datetime.datetime.now().timestamp() * 1000),
+    "labelSelector": "{namespace=\"my-namespace\"}",
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+  }
+url = 'http://localhost:4040/querier.v1.QuerierService/SymbolLookup'
+resp = requests.post(url, json=body)
+print(resp)
+print(resp.content)
+```
+
+{{< /code >}}
 
 
 

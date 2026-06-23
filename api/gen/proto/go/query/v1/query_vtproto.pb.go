@@ -244,6 +244,7 @@ func (m *Query) CloneVT() *Query {
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	r.SymbolServices = m.SymbolServices.CloneVT()
+	r.SymbolBloomCandidates = m.SymbolBloomCandidates.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -390,6 +391,7 @@ func (m *Report) CloneVT() *Report {
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	r.SymbolServices = m.SymbolServices.CloneVT()
+	r.SymbolBloomCandidates = m.SymbolBloomCandidates.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -411,6 +413,13 @@ func (m *SymbolServicesQuery) CloneVT() *SymbolServicesQuery {
 		copy(tmpContainer, rhs)
 		r.SymbolNames = tmpContainer
 	}
+	if rhs := m.Candidates; rhs != nil {
+		tmpContainer := make([]*SymbolBloomCandidate, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Candidates = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -419,6 +428,79 @@ func (m *SymbolServicesQuery) CloneVT() *SymbolServicesQuery {
 }
 
 func (m *SymbolServicesQuery) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SymbolBloomCandidatesQuery) CloneVT() *SymbolBloomCandidatesQuery {
+	if m == nil {
+		return (*SymbolBloomCandidatesQuery)(nil)
+	}
+	r := new(SymbolBloomCandidatesQuery)
+	if rhs := m.SymbolNames; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SymbolNames = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SymbolBloomCandidatesQuery) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SymbolBloomCandidatesReport) CloneVT() *SymbolBloomCandidatesReport {
+	if m == nil {
+		return (*SymbolBloomCandidatesReport)(nil)
+	}
+	r := new(SymbolBloomCandidatesReport)
+	r.Query = m.Query.CloneVT()
+	r.Complete = m.Complete
+	if rhs := m.Candidates; rhs != nil {
+		tmpContainer := make([]*SymbolBloomCandidate, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Candidates = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SymbolBloomCandidatesReport) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SymbolBloomCandidate) CloneVT() *SymbolBloomCandidate {
+	if m == nil {
+		return (*SymbolBloomCandidate)(nil)
+	}
+	r := new(SymbolBloomCandidate)
+	r.BlockId = m.BlockId
+	r.DatasetIndex = m.DatasetIndex
+	r.ServiceName = m.ServiceName
+	r.MinTime = m.MinTime
+	r.MaxTime = m.MaxTime
+	r.SymbolCountEstimate = m.SymbolCountEstimate
+	if rhs := m.SymbolNames; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SymbolNames = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SymbolBloomCandidate) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -1431,6 +1513,9 @@ func (this *Query) EqualVT(that *Query) bool {
 	if !this.SymbolServices.EqualVT(that.SymbolServices) {
 		return false
 	}
+	if !this.SymbolBloomCandidates.EqualVT(that.SymbolBloomCandidates) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1665,6 +1750,9 @@ func (this *Report) EqualVT(that *Report) bool {
 	if !this.SymbolServices.EqualVT(that.SymbolServices) {
 		return false
 	}
+	if !this.SymbolBloomCandidates.EqualVT(that.SymbolBloomCandidates) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1690,11 +1778,135 @@ func (this *SymbolServicesQuery) EqualVT(that *SymbolServicesQuery) bool {
 			return false
 		}
 	}
+	if len(this.Candidates) != len(that.Candidates) {
+		return false
+	}
+	for i, vx := range this.Candidates {
+		vy := that.Candidates[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &SymbolBloomCandidate{}
+			}
+			if q == nil {
+				q = &SymbolBloomCandidate{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
 func (this *SymbolServicesQuery) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*SymbolServicesQuery)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SymbolBloomCandidatesQuery) EqualVT(that *SymbolBloomCandidatesQuery) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.SymbolNames) != len(that.SymbolNames) {
+		return false
+	}
+	for i, vx := range this.SymbolNames {
+		vy := that.SymbolNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SymbolBloomCandidatesQuery) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SymbolBloomCandidatesQuery)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SymbolBloomCandidatesReport) EqualVT(that *SymbolBloomCandidatesReport) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
+	if len(this.Candidates) != len(that.Candidates) {
+		return false
+	}
+	for i, vx := range this.Candidates {
+		vy := that.Candidates[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &SymbolBloomCandidate{}
+			}
+			if q == nil {
+				q = &SymbolBloomCandidate{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if this.Complete != that.Complete {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SymbolBloomCandidatesReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SymbolBloomCandidatesReport)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SymbolBloomCandidate) EqualVT(that *SymbolBloomCandidate) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BlockId != that.BlockId {
+		return false
+	}
+	if this.DatasetIndex != that.DatasetIndex {
+		return false
+	}
+	if this.ServiceName != that.ServiceName {
+		return false
+	}
+	if len(this.SymbolNames) != len(that.SymbolNames) {
+		return false
+	}
+	for i, vx := range this.SymbolNames {
+		vy := that.SymbolNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.MinTime != that.MinTime {
+		return false
+	}
+	if this.MaxTime != that.MaxTime {
+		return false
+	}
+	if this.SymbolCountEstimate != that.SymbolCountEstimate {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SymbolBloomCandidate) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SymbolBloomCandidate)
 	if !ok {
 		return false
 	}
@@ -2656,7 +2868,6 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type QueryFrontendServiceClient interface {
 	Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
-	SymbolServices(ctx context.Context, in *SymbolServicesRequest, opts ...grpc.CallOption) (*SymbolServicesResponse, error)
 }
 
 type queryFrontendServiceClient struct {
@@ -2676,21 +2887,11 @@ func (c *queryFrontendServiceClient) Query(ctx context.Context, in *QueryRequest
 	return out, nil
 }
 
-func (c *queryFrontendServiceClient) SymbolServices(ctx context.Context, in *SymbolServicesRequest, opts ...grpc.CallOption) (*SymbolServicesResponse, error) {
-	out := new(SymbolServicesResponse)
-	err := c.cc.Invoke(ctx, "/query.v1.QueryFrontendService/SymbolServices", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // QueryFrontendServiceServer is the server API for QueryFrontendService service.
 // All implementations must embed UnimplementedQueryFrontendServiceServer
 // for forward compatibility
 type QueryFrontendServiceServer interface {
 	Query(context.Context, *QueryRequest) (*QueryResponse, error)
-	SymbolServices(context.Context, *SymbolServicesRequest) (*SymbolServicesResponse, error)
 	mustEmbedUnimplementedQueryFrontendServiceServer()
 }
 
@@ -2700,9 +2901,6 @@ type UnimplementedQueryFrontendServiceServer struct {
 
 func (UnimplementedQueryFrontendServiceServer) Query(context.Context, *QueryRequest) (*QueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Query not implemented")
-}
-func (UnimplementedQueryFrontendServiceServer) SymbolServices(context.Context, *SymbolServicesRequest) (*SymbolServicesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SymbolServices not implemented")
 }
 func (UnimplementedQueryFrontendServiceServer) mustEmbedUnimplementedQueryFrontendServiceServer() {}
 
@@ -2735,24 +2933,6 @@ func _QueryFrontendService_Query_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _QueryFrontendService_SymbolServices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SymbolServicesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryFrontendServiceServer).SymbolServices(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/query.v1.QueryFrontendService/SymbolServices",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryFrontendServiceServer).SymbolServices(ctx, req.(*SymbolServicesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // QueryFrontendService_ServiceDesc is the grpc.ServiceDesc for QueryFrontendService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2763,10 +2943,6 @@ var QueryFrontendService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Query",
 			Handler:    _QueryFrontendService_Query_Handler,
-		},
-		{
-			MethodName: "SymbolServices",
-			Handler:    _QueryFrontendService_SymbolServices_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -3371,6 +3547,16 @@ func (m *Query) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.SymbolBloomCandidates != nil {
+		size, err := m.SymbolBloomCandidates.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x5a
+	}
 	if m.SymbolServices != nil {
 		size, err := m.SymbolServices.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -3821,6 +4007,16 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.SymbolBloomCandidates != nil {
+		size, err := m.SymbolBloomCandidates.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x5a
+	}
 	if m.SymbolServices != nil {
 		size, err := m.SymbolServices.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -3949,6 +4145,18 @@ func (m *SymbolServicesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.Candidates) > 0 {
+		for iNdEx := len(m.Candidates) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Candidates[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
 	if len(m.SymbolNames) > 0 {
 		for iNdEx := len(m.SymbolNames) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.SymbolNames[iNdEx])
@@ -3957,6 +4165,189 @@ func (m *SymbolServicesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i--
 			dAtA[i] = 0xa
 		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SymbolBloomCandidatesQuery) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SymbolBloomCandidatesQuery) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SymbolBloomCandidatesQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.SymbolNames) > 0 {
+		for iNdEx := len(m.SymbolNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SymbolNames[iNdEx])
+			copy(dAtA[i:], m.SymbolNames[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SymbolNames[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SymbolBloomCandidatesReport) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SymbolBloomCandidatesReport) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SymbolBloomCandidatesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Complete {
+		i--
+		if m.Complete {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Candidates) > 0 {
+		for iNdEx := len(m.Candidates) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Candidates[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SymbolBloomCandidate) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SymbolBloomCandidate) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SymbolBloomCandidate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.SymbolCountEstimate != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.SymbolCountEstimate))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.MaxTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MaxTime))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.MinTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MinTime))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.SymbolNames) > 0 {
+		for iNdEx := len(m.SymbolNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SymbolNames[iNdEx])
+			copy(dAtA[i:], m.SymbolNames[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SymbolNames[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.ServiceName) > 0 {
+		i -= len(m.ServiceName)
+		copy(dAtA[i:], m.ServiceName)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ServiceName)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.DatasetIndex != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.DatasetIndex))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -5837,6 +6228,10 @@ func (m *Query) SizeVT() (n int) {
 		l = m.SymbolServices.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if m.SymbolBloomCandidates != nil {
+		l = m.SymbolBloomCandidates.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -6018,6 +6413,10 @@ func (m *Report) SizeVT() (n int) {
 		l = m.SymbolServices.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if m.SymbolBloomCandidates != nil {
+		l = m.SymbolBloomCandidates.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -6033,6 +6432,87 @@ func (m *SymbolServicesQuery) SizeVT() (n int) {
 			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if len(m.Candidates) > 0 {
+		for _, e := range m.Candidates {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SymbolBloomCandidatesQuery) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.SymbolNames) > 0 {
+		for _, s := range m.SymbolNames {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SymbolBloomCandidatesReport) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.Candidates) > 0 {
+		for _, e := range m.Candidates {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.Complete {
+		n += 2
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SymbolBloomCandidate) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.DatasetIndex != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.DatasetIndex))
+	}
+	l = len(m.ServiceName)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.SymbolNames) > 0 {
+		for _, s := range m.SymbolNames {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.MinTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MinTime))
+	}
+	if m.MaxTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MaxTime))
+	}
+	if m.SymbolCountEstimate != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.SymbolCountEstimate))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -8131,6 +8611,42 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolBloomCandidates", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SymbolBloomCandidates == nil {
+				m.SymbolBloomCandidates = &SymbolBloomCandidatesQuery{}
+			}
+			if err := m.SymbolBloomCandidates.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -9350,6 +9866,42 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolBloomCandidates", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SymbolBloomCandidates == nil {
+				m.SymbolBloomCandidates = &SymbolBloomCandidatesReport{}
+			}
+			if err := m.SymbolBloomCandidates.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -9433,6 +9985,487 @@ func (m *SymbolServicesQuery) UnmarshalVT(dAtA []byte) error {
 			}
 			m.SymbolNames = append(m.SymbolNames, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Candidates", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Candidates = append(m.Candidates, &SymbolBloomCandidate{})
+			if err := m.Candidates[len(m.Candidates)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SymbolBloomCandidatesQuery) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SymbolBloomCandidatesQuery: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SymbolBloomCandidatesQuery: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolNames", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SymbolNames = append(m.SymbolNames, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SymbolBloomCandidatesReport) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SymbolBloomCandidatesReport: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SymbolBloomCandidatesReport: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &SymbolBloomCandidatesQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Candidates", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Candidates = append(m.Candidates, &SymbolBloomCandidate{})
+			if err := m.Candidates[len(m.Candidates)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Complete", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Complete = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SymbolBloomCandidate) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SymbolBloomCandidate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SymbolBloomCandidate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetIndex", wireType)
+			}
+			m.DatasetIndex = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DatasetIndex |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceName", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServiceName = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolNames", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SymbolNames = append(m.SymbolNames, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinTime", wireType)
+			}
+			m.MinTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MinTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxTime", wireType)
+			}
+			m.MaxTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolCountEstimate", wireType)
+			}
+			m.SymbolCountEstimate = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SymbolCountEstimate |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

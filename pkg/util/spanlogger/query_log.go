@@ -282,6 +282,27 @@ func (l LogSpanParametersWrapper) SelectHeatmap(ctx context.Context, c *connect.
 	return resp, err
 }
 
+func (l LogSpanParametersWrapper) SymbolLookup(ctx context.Context, c *connect.Request[querierv1.SymbolLookupRequest]) (*connect.Response[querierv1.SymbolLookupResponse], error) {
+	spanName := "SymbolLookup"
+	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)
+	defer sp.Finish()
+	ctx, stats := ContextWithQueryStats(ctx)
+
+	var resp *connect.Response[querierv1.SymbolLookupResponse]
+	err := l.logQuery(l.logWithRequestMetadata(ctx, c), stats, []interface{}{
+		"method", spanName,
+		"start", model.Time(c.Msg.Start).Time().String(),
+		"end", model.Time(c.Msg.End).Time().String(),
+		"query_window", model.Time(c.Msg.End).Sub(model.Time(c.Msg.Start)).String(),
+		"selector", c.Msg.LabelSelector,
+		"symbol_names", len(c.Msg.SymbolNames),
+	}, func() (err error) {
+		resp, err = l.client.SymbolLookup(ctx, c)
+		return err
+	})
+	return resp, err
+}
+
 func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
 	spanName := "Diff"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)

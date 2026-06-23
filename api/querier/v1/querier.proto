@@ -55,6 +55,11 @@ service QuerierService {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
 
+  // SymbolLookup returns services and profile types that contain any of the requested symbols.
+  rpc SymbolLookup(SymbolLookupRequest) returns (SymbolLookupResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/public";
+  }
+
   // Diff returns a diff of two profiles
   rpc Diff(DiffRequest) returns (DiffResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
@@ -267,6 +272,28 @@ message SelectHeatmapRequest {
 
 message SelectHeatmapResponse {
   repeated types.v1.HeatmapSeries series = 1;
+}
+
+message SymbolLookupRequest {
+  int64 start = 1 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
+  int64 end = 2 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
+  string label_selector = 3 [(gnostic.openapi.v3.property).example = {yaml: "'{namespace=\"my-namespace\"}'"}];
+  repeated string symbol_names = 4;
+}
+
+message SymbolLookupResponse {
+  repeated SymbolLookupResult results = 1;
+  bool complete = 2;
+}
+
+message SymbolLookupResult {
+  string symbol_name = 1;
+  repeated SymbolLookupService services = 2;
+}
+
+message SymbolLookupService {
+  string service_name = 1;
+  repeated string profile_types = 2;
 }
 
 message AnalyzeQueryRequest {

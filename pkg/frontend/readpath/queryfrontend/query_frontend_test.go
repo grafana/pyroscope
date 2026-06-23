@@ -110,24 +110,24 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 	}
 }
 
-func Test_QueryFrontend_SymbolServicesValidation(t *testing.T) {
+func Test_QueryFrontend_SymbolLookupValidation(t *testing.T) {
 	qf := &QueryFrontend{}
 	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
 
-	_, err := qf.SymbolServices(ctx, &queryv1.SymbolServicesRequest{})
+	_, err := qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{}))
 	require.ErrorContains(t, err, "at least one symbol name is required")
 
-	_, err = qf.SymbolServices(ctx, &queryv1.SymbolServicesRequest{SymbolNames: []string{""}})
+	_, err = qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{SymbolNames: []string{""}}))
 	require.ErrorContains(t, err, "symbol name at index 0 is empty")
 
-	_, err = qf.SymbolServices(ctx, &queryv1.SymbolServicesRequest{SymbolNames: []string{strings.Repeat("a", maxSymbolServicesSymbolNameBytes+1)}})
+	_, err = qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{SymbolNames: []string{strings.Repeat("a", maxSymbolLookupSymbolNameBytes+1)}}))
 	require.ErrorContains(t, err, "symbol name at index 0 is too long")
 
-	symbols := make([]string, maxSymbolServicesSymbols+1)
+	symbols := make([]string, maxSymbolLookupSymbols+1)
 	for i := range symbols {
 		symbols[i] = "runtime.mallocgc"
 	}
-	_, err = qf.SymbolServices(ctx, &queryv1.SymbolServicesRequest{SymbolNames: symbols})
+	_, err = qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{SymbolNames: symbols}))
 	require.ErrorContains(t, err, "too many symbol names")
 }
 

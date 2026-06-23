@@ -63,6 +63,9 @@ const (
 	// QuerierServiceSelectHeatmapProcedure is the fully-qualified name of the QuerierService's
 	// SelectHeatmap RPC.
 	QuerierServiceSelectHeatmapProcedure = "/querier.v1.QuerierService/SelectHeatmap"
+	// QuerierServiceSymbolLookupProcedure is the fully-qualified name of the QuerierService's
+	// SymbolLookup RPC.
+	QuerierServiceSymbolLookupProcedure = "/querier.v1.QuerierService/SymbolLookup"
 	// QuerierServiceDiffProcedure is the fully-qualified name of the QuerierService's Diff RPC.
 	QuerierServiceDiffProcedure = "/querier.v1.QuerierService/Diff"
 	// QuerierServiceGetProfileStatsProcedure is the fully-qualified name of the QuerierService's
@@ -102,6 +105,8 @@ type QuerierServiceClient interface {
 	// SelectHeatmap returns a heatmap visualization for the requested profiles.
 	// Note: This endpoint is only available in the v2 storage layer
 	SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error)
+	// SymbolLookup returns services and profile types that contain any of the requested symbols.
+	SymbolLookup(context.Context, *connect.Request[v1.SymbolLookupRequest]) (*connect.Response[v1.SymbolLookupResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
@@ -174,6 +179,12 @@ func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(querierServiceMethods.ByName("SelectHeatmap")),
 			connect.WithClientOptions(opts...),
 		),
+		symbolLookup: connect.NewClient[v1.SymbolLookupRequest, v1.SymbolLookupResponse](
+			httpClient,
+			baseURL+QuerierServiceSymbolLookupProcedure,
+			connect.WithSchema(querierServiceMethods.ByName("SymbolLookup")),
+			connect.WithClientOptions(opts...),
+		),
 		diff: connect.NewClient[v1.DiffRequest, v1.DiffResponse](
 			httpClient,
 			baseURL+QuerierServiceDiffProcedure,
@@ -206,6 +217,7 @@ type querierServiceClient struct {
 	selectMergeProfile     *connect.Client[v1.SelectMergeProfileRequest, v12.Profile]
 	selectSeries           *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
 	selectHeatmap          *connect.Client[v1.SelectHeatmapRequest, v1.SelectHeatmapResponse]
+	symbolLookup           *connect.Client[v1.SymbolLookupRequest, v1.SymbolLookupResponse]
 	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
 	getProfileStats        *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
 	analyzeQuery           *connect.Client[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse]
@@ -256,6 +268,11 @@ func (c *querierServiceClient) SelectHeatmap(ctx context.Context, req *connect.R
 	return c.selectHeatmap.CallUnary(ctx, req)
 }
 
+// SymbolLookup calls querier.v1.QuerierService.SymbolLookup.
+func (c *querierServiceClient) SymbolLookup(ctx context.Context, req *connect.Request[v1.SymbolLookupRequest]) (*connect.Response[v1.SymbolLookupResponse], error) {
+	return c.symbolLookup.CallUnary(ctx, req)
+}
+
 // Diff calls querier.v1.QuerierService.Diff.
 func (c *querierServiceClient) Diff(ctx context.Context, req *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error) {
 	return c.diff.CallUnary(ctx, req)
@@ -300,6 +317,8 @@ type QuerierServiceHandler interface {
 	// SelectHeatmap returns a heatmap visualization for the requested profiles.
 	// Note: This endpoint is only available in the v2 storage layer
 	SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error)
+	// SymbolLookup returns services and profile types that contain any of the requested symbols.
+	SymbolLookup(context.Context, *connect.Request[v1.SymbolLookupRequest]) (*connect.Response[v1.SymbolLookupResponse], error)
 	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 	// GetProfileStats returns profile stats for the current tenant.
@@ -368,6 +387,12 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 		connect.WithSchema(querierServiceMethods.ByName("SelectHeatmap")),
 		connect.WithHandlerOptions(opts...),
 	)
+	querierServiceSymbolLookupHandler := connect.NewUnaryHandler(
+		QuerierServiceSymbolLookupProcedure,
+		svc.SymbolLookup,
+		connect.WithSchema(querierServiceMethods.ByName("SymbolLookup")),
+		connect.WithHandlerOptions(opts...),
+	)
 	querierServiceDiffHandler := connect.NewUnaryHandler(
 		QuerierServiceDiffProcedure,
 		svc.Diff,
@@ -406,6 +431,8 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 			querierServiceSelectSeriesHandler.ServeHTTP(w, r)
 		case QuerierServiceSelectHeatmapProcedure:
 			querierServiceSelectHeatmapHandler.ServeHTTP(w, r)
+		case QuerierServiceSymbolLookupProcedure:
+			querierServiceSymbolLookupHandler.ServeHTTP(w, r)
 		case QuerierServiceDiffProcedure:
 			querierServiceDiffHandler.ServeHTTP(w, r)
 		case QuerierServiceGetProfileStatsProcedure:
@@ -455,6 +482,10 @@ func (UnimplementedQuerierServiceHandler) SelectSeries(context.Context, *connect
 
 func (UnimplementedQuerierServiceHandler) SelectHeatmap(context.Context, *connect.Request[v1.SelectHeatmapRequest]) (*connect.Response[v1.SelectHeatmapResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectHeatmap is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) SymbolLookup(context.Context, *connect.Request[v1.SymbolLookupRequest]) (*connect.Response[v1.SymbolLookupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SymbolLookup is not implemented"))
 }
 
 func (UnimplementedQuerierServiceHandler) Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error) {

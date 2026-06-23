@@ -10,7 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )
 
 type querySymbolsParams struct {
@@ -32,10 +32,10 @@ func querySymbols(ctx context.Context, params *querySymbolsParams) error {
 	if err != nil {
 		return err
 	}
-	client := params.phlareClient.queryFrontendClient()
-	resp, err := client.SymbolServices(ctx, connect.NewRequest(&queryv1.SymbolServicesRequest{
-		StartTime:     from.UnixMilli(),
-		EndTime:       to.UnixMilli(),
+	client := params.phlareClient.queryClient()
+	resp, err := client.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
 		LabelSelector: params.Query,
 		SymbolNames:   params.Symbols,
 	}))
@@ -47,7 +47,7 @@ func querySymbols(ctx context.Context, params *querySymbolsParams) error {
 	return outputSymbolServices(ctx, resp.Msg, params.Symbols, from, to, params.Output)
 }
 
-func outputSymbolServices(ctx context.Context, resp *queryv1.SymbolServicesResponse, symbols []string, from, to time.Time, format string) error {
+func outputSymbolServices(ctx context.Context, resp *querierv1.SymbolLookupResponse, symbols []string, from, to time.Time, format string) error {
 	switch format {
 	case outputJSON:
 		return outputSymbolServicesJSON(ctx, resp, symbols, from, to)
@@ -58,7 +58,7 @@ func outputSymbolServices(ctx context.Context, resp *queryv1.SymbolServicesRespo
 	}
 }
 
-func outputSymbolServicesJSON(ctx context.Context, resp *queryv1.SymbolServicesResponse, symbols []string, from, to time.Time) error {
+func outputSymbolServicesJSON(ctx context.Context, resp *querierv1.SymbolLookupResponse, symbols []string, from, to time.Time) error {
 	type jsonService struct {
 		ServiceName  string   `json:"service_name"`
 		ProfileTypes []string `json:"profile_types"`
@@ -96,16 +96,16 @@ func outputSymbolServicesJSON(ctx context.Context, resp *queryv1.SymbolServicesR
 	return enc.Encode(out)
 }
 
-func outputSymbolServicesTable(ctx context.Context, resp *queryv1.SymbolServicesResponse) error {
+func outputSymbolServicesTable(ctx context.Context, resp *querierv1.SymbolLookupResponse) error {
 	if !resp.GetComplete() {
 		fmt.Fprintln(output(ctx), "WARNING: response is incomplete because some blocks did not have a symbol Bloom index")
 	}
 	table := newTableWriter(output(ctx))
 	table.SetHeader([]string{"SYMBOL", "SERVICE_NAME", "PROFILE_TYPES"})
-	results := append([]*queryv1.SymbolServicesResult(nil), resp.GetResults()...)
+	results := append([]*querierv1.SymbolLookupResult(nil), resp.GetResults()...)
 	sort.Slice(results, func(i, j int) bool { return results[i].GetSymbolName() < results[j].GetSymbolName() })
 	for _, result := range results {
-		services := append([]*queryv1.SymbolService(nil), result.GetServices()...)
+		services := append([]*querierv1.SymbolLookupService(nil), result.GetServices()...)
 		sort.Slice(services, func(i, j int) bool { return services[i].GetServiceName() < services[j].GetServiceName() })
 		for _, service := range services {
 			profileTypes := append([]string(nil), service.GetProfileTypes()...)

@@ -20,7 +20,6 @@ import "types/v1/types.proto";
 
 service QueryFrontendService {
   rpc Query(QueryRequest) returns (QueryResponse) {}
-  rpc SymbolServices(SymbolServicesRequest) returns (SymbolServicesResponse) {}
 }
 
 message QueryRequest {
@@ -102,6 +101,7 @@ message Query {
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
   SymbolServicesQuery symbol_services = 10;
+  SymbolBloomCandidatesQuery symbol_bloom_candidates = 11;
   // function_details
   // call_graph
   // top_table
@@ -119,6 +119,7 @@ enum QueryType {
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
   QUERY_SYMBOL_SERVICES = 9;
+  QUERY_SYMBOL_BLOOM_CANDIDATES = 10;
 }
 
 message InvokeResponse {
@@ -179,6 +180,7 @@ message Report {
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
   SymbolServicesReport symbol_services = 10;
+  SymbolBloomCandidatesReport symbol_bloom_candidates = 11;
 }
 
 enum ReportType {
@@ -192,10 +194,32 @@ enum ReportType {
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
   REPORT_SYMBOL_SERVICES = 9;
+  REPORT_SYMBOL_BLOOM_CANDIDATES = 10;
 }
 
 message SymbolServicesQuery {
   repeated string symbol_names = 1;
+  repeated SymbolBloomCandidate candidates = 2;
+}
+
+message SymbolBloomCandidatesQuery {
+  repeated string symbol_names = 1;
+}
+
+message SymbolBloomCandidatesReport {
+  SymbolBloomCandidatesQuery query = 1;
+  repeated SymbolBloomCandidate candidates = 2;
+  bool complete = 3;
+}
+
+message SymbolBloomCandidate {
+  string block_id = 1;
+  uint32 dataset_index = 2;
+  string service_name = 3;
+  repeated string symbol_names = 4;
+  int64 min_time = 5;
+  int64 max_time = 6;
+  uint32 symbol_count_estimate = 7;
 }
 
 message SymbolServicesReport {

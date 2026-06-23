@@ -467,6 +467,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.SeriesResponse'
+  /querier.v1.QuerierService/SymbolLookup:
+    post:
+      tags:
+        - scope/public
+        - querier.v1.QuerierService
+      summary: SymbolLookup returns services and profile types that contain any of the requested symbols.
+      description: SymbolLookup returns services and profile types that contain any of the requested symbols.
+      operationId: querier.v1.QuerierService.SymbolLookup
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SymbolLookupRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.SymbolLookupResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -1647,6 +1684,76 @@ components:
             $ref: '#/components/schemas/types.v1.Labels'
           title: labels_set
       title: SeriesResponse
+      additionalProperties: false
+    querier.v1.SymbolLookupRequest:
+      type: object
+      properties:
+        start:
+          type:
+            - integer
+            - string
+          examples:
+            - "1676282400000"
+          title: start
+          format: int64
+        end:
+          type:
+            - integer
+            - string
+          examples:
+            - "1676289600000"
+          title: end
+          format: int64
+        labelSelector:
+          type: string
+          examples:
+            - '{namespace="my-namespace"}'
+          title: label_selector
+        symbolNames:
+          type: array
+          items:
+            type: string
+          title: symbol_names
+      title: SymbolLookupRequest
+      additionalProperties: false
+    querier.v1.SymbolLookupResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.SymbolLookupResult'
+          title: results
+        complete:
+          type: boolean
+          title: complete
+      title: SymbolLookupResponse
+      additionalProperties: false
+    querier.v1.SymbolLookupResult:
+      type: object
+      properties:
+        symbolName:
+          type: string
+          title: symbol_name
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.SymbolLookupService'
+          title: services
+      title: SymbolLookupResult
+      additionalProperties: false
+    querier.v1.SymbolLookupService:
+      type: object
+      properties:
+        serviceName:
+          type: string
+          title: service_name
+        profileTypes:
+          type: array
+          items:
+            type: string
+          title: profile_types
+      title: SymbolLookupService
       additionalProperties: false
     types.v1.Exemplar:
       type: object
