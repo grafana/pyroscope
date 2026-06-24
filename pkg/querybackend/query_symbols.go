@@ -196,7 +196,7 @@ func (b *blockContext) lookupSymbolServices(ctx context.Context, q *queryv1.Symb
 	}
 	for datasetIndex, candidates := range candidatesByDataset {
 		symbolNames := symbolNamesForCandidates(candidates)
-		found, err := block.VerifySymbolsInDatasetFromMetadata(ctx, b.storage, fullMD, datasetIndex, symbolNames, b.req.matchers)
+		found, err := block.VerifySymbolsInDatasetFromMetadata(ctx, b.storage, fullMD, datasetIndex, symbolNames, b.req.matchers, b.req.src.StartTime, b.req.src.EndTime)
 		if err != nil {
 			return result, err
 		}

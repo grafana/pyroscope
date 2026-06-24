@@ -78,6 +78,49 @@ func Test_CompactBlocks(t *testing.T) {
 	})
 }
 
+func TestVerifySymbolsInDataset_RealProfilingBlock(t *testing.T) {
+	ctx := context.Background()
+	bucket, _ := testutil.NewFilesystemBucket(t, ctx, "testdata")
+
+	var resp metastorev1.GetBlockMetadataResponse
+	raw, err := os.ReadFile("testdata/block-metas.json")
+	require.NoError(t, err)
+	require.NoError(t, protojson.Unmarshal(raw, &resp))
+
+	dst, tempdir := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
+	compactedBlocks, err := block.Compact(ctx, resp.Blocks, bucket,
+		block.WithCompactionDestination(dst),
+		block.WithCompactionTempDir(tempdir),
+		block.WithCompactionObjectOptions(
+			block.WithObjectDownload(filepath.Join(tempdir, "source")),
+			block.WithObjectMaxSizeLoadInMemory(0)))
+	require.NoError(t, err)
+	require.Len(t, compactedBlocks, 1)
+	md := compactedBlocks[0]
+
+	symbolName := "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"
+	matchers := []*labels.Matcher{
+		labels.MustNewMatcher(labels.MatchEqual, "service_name", "pyroscope-test/ingester"),
+		labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "memory:alloc_space:bytes:space:bytes"),
+	}
+	candidates, err := block.LookupSymbolBloomCandidates(ctx, dst, md, block.SymbolBloomLookupRequest{
+		SymbolName: symbolName,
+		MinTime:    md.MinTime,
+		MaxTime:    md.MaxTime,
+		Matchers:   matchers,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, candidates.Candidates)
+
+	found, err := block.VerifySymbolsInDataset(ctx, dst, md, candidates.Candidates[0].DatasetIndex, []string{symbolName}, matchers, md.MinTime, md.MaxTime)
+	require.NoError(t, err)
+	require.Equal(t, map[string]struct{}{"memory:alloc_space:bytes:space:bytes": {}}, found[symbolName])
+
+	found, err = block.VerifySymbolsInDataset(ctx, dst, md, candidates.Candidates[0].DatasetIndex, []string{symbolName}, matchers, md.MaxTime+1, md.MaxTime+2)
+	require.NoError(t, err)
+	require.Empty(t, found[symbolName])
+}
+
 func assertSymbolBloomIndex(t *testing.T, ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta) {
 	t.Helper()
 
@@ -140,16 +183,21 @@ func assertSymbolBloomLookup(t *testing.T, ctx context.Context, bucket objstore.
 	found, err := block.VerifySymbolsInDataset(ctx, bucket, md, result.Candidates[0].DatasetIndex, []string{
 		"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
 		"github.com/grafana/pyroscope/pkg/does.not.exist",
-	}, nil)
+	}, nil, 0, 0)
 	require.NoError(t, err)
 	require.NotEmpty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
 	require.Empty(t, found["github.com/grafana/pyroscope/pkg/does.not.exist"])
+	found, err = block.VerifySymbolsInDataset(ctx, bucket, md, result.Candidates[0].DatasetIndex, []string{
+		"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
+	}, nil, md.MaxTime+1, md.MaxTime+2)
+	require.NoError(t, err)
+	require.Empty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
 
 	countingBucket := &metadataReadCountingBucket{Bucket: bucket, md: md}
 	found, err = block.VerifySymbolsInDatasetFromMetadata(ctx, countingBucket, md, result.Candidates[0].DatasetIndex, []string{
 		"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
 		"github.com/grafana/pyroscope/pkg/does.not.exist",
-	}, nil)
+	}, nil, 0, 0)
 	require.NoError(t, err)
 	require.NotEmpty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
 	require.Empty(t, found["github.com/grafana/pyroscope/pkg/does.not.exist"])

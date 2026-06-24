@@ -18,7 +18,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
-	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
@@ -237,7 +236,7 @@ func LookupSymbolBloomServices(ctx context.Context, bucket objstore.Bucket, md *
 		attribute.Int("dataset_count", len(candidatesByDataset)),
 	))
 	for datasetIndex, datasetCandidates := range candidatesByDataset {
-		found, err := VerifySymbolsInDataset(ctx, bucket, md, datasetIndex, req.symbolNames(), req.Matchers, options...)
+		found, err := VerifySymbolsInDataset(ctx, bucket, md, datasetIndex, req.symbolNames(), req.Matchers, req.MinTime, req.MaxTime, options...)
 		if err != nil {
 			return result, err
 		}
@@ -288,30 +287,30 @@ func LookupSymbolBloomServices(ctx context.Context, bucket objstore.Bucket, md *
 }
 
 func VerifySymbolBloomCandidate(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, candidate SymbolBloomIndexRow, symbolName string, options ...ObjectOption) (bool, error) {
-	found, err := VerifySymbolsInDataset(ctx, bucket, md, candidate.DatasetIndex, []string{symbolName}, nil, options...)
+	found, err := VerifySymbolsInDataset(ctx, bucket, md, candidate.DatasetIndex, []string{symbolName}, nil, candidate.MinTime, candidate.MaxTime, options...)
 	if err != nil {
 		return false, err
 	}
 	return len(found[symbolName]) > 0, nil
 }
 
-func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, options ...ObjectOption) (map[string]map[string]struct{}, error) {
+func VerifySymbolsInDataset(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, minTime, maxTime int64, options ...ObjectOption) (map[string]map[string]struct{}, error) {
 	obj := NewObject(bucket, md, options...)
 	fullMD, err := obj.ReadMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 	obj.SetMetadata(fullMD)
-	return verifySymbolsInDataset(ctx, obj, fullMD, datasetIndex, symbolNames, matchers)
+	return verifySymbolsInDataset(ctx, obj, fullMD, datasetIndex, symbolNames, matchers, minTime, maxTime)
 }
 
 // VerifySymbolsInDatasetFromMetadata verifies symbols in a dataset using already-expanded block metadata.
-func VerifySymbolsInDatasetFromMetadata(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, options ...ObjectOption) (map[string]map[string]struct{}, error) {
+func VerifySymbolsInDatasetFromMetadata(ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, minTime, maxTime int64, options ...ObjectOption) (map[string]map[string]struct{}, error) {
 	obj := NewObject(bucket, md, options...)
-	return verifySymbolsInDataset(ctx, obj, md, datasetIndex, symbolNames, matchers)
+	return verifySymbolsInDataset(ctx, obj, md, datasetIndex, symbolNames, matchers, minTime, maxTime)
 }
 
-func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher) (map[string]map[string]struct{}, error) {
+func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.BlockMeta, datasetIndex uint32, symbolNames []string, matchers []*labels.Matcher, minTime, maxTime int64) (map[string]map[string]struct{}, error) {
 	span := oteltrace.SpanFromContext(ctx)
 	span.AddEvent("verify_symbols_in_dataset.start", oteltrace.WithAttributes(
 		attribute.Int("dataset_index", int(datasetIndex)),
@@ -344,20 +343,11 @@ func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.Bl
 	}
 	defer func() { _ = ds.Close() }()
 
-	profiles, err := NewProfileRowIterator(ds)
+	profiles, err := NewFilteredProfileRowIterator(ds, matchers, minTime, maxTime)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = profiles.Close() }()
-	// Keep symbol partitions open while scanning the dataset. Many profiles often
-	// share a partition, and releasing per profile refetches the same symbol data.
-	partitions := make(map[uint64]symdb.PartitionReader)
-	defer func() {
-		for _, partition := range partitions {
-			partition.Release()
-		}
-	}()
-	var locations []uint64
+	stacktracesByPartition := make(map[uint64]map[uint32]struct{})
 	var profilesScanned int
 	for profiles.Next() {
 		if err := ctx.Err(); err != nil {
@@ -365,29 +355,70 @@ func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.Bl
 		}
 		profilesScanned++
 		entry := profiles.At()
-		if !profileLabelsMatch(matchers, entry.Labels) {
-			continue
-		}
-		profileType := profileTypeLabel(entry.Labels)
 		partitionID := entry.Row.StacktracePartitionID()
-		partition := partitions[partitionID]
-		if partition == nil {
-			partition, err = ds.Symbols().Partition(ctx, partitionID)
-			if err != nil {
-				return nil, err
-			}
-			partitions[partitionID] = partition
+		stacktraces := stacktracesByPartition[partitionID]
+		if stacktraces == nil {
+			stacktraces = make(map[uint32]struct{})
+			stacktracesByPartition[partitionID] = stacktraces
 		}
-		symbols := partition.Symbols()
 		entry.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
 			for _, value := range values {
-				stacktraceSymbolNames(symbols, value.Uint32(), &locations, func(symbolName string) bool {
-					if _, ok := want[symbolName]; !ok {
-						return false
-					}
+				stacktraces[value.Uint32()] = struct{}{}
+			}
+		})
+	}
+	if err := profiles.Err(); err != nil {
+		return nil, err
+	}
+
+	partitionSymbols := make(map[uint64]*symbolPartitionMatches, len(stacktracesByPartition))
+	defer func() {
+		for _, partition := range partitionSymbols {
+			partition.reader.Release()
+		}
+	}()
+	for partitionID, stacktraceIDs := range stacktracesByPartition {
+		partition, err := ds.Symbols().Partition(ctx, partitionID)
+		if err != nil {
+			return nil, err
+		}
+		matches := buildSymbolPartitionMatches(partition, want, stacktraceIDs)
+		if matches.empty() {
+			partition.Release()
+			continue
+		}
+		partitionSymbols[partitionID] = matches
+	}
+	if len(partitionSymbols) == 0 {
+		span.AddEvent("verify_symbols_in_dataset.done", oteltrace.WithAttributes(
+			attribute.Int("dataset_index", int(datasetIndex)),
+			attribute.Int("profiles_scanned", profilesScanned),
+			attribute.Int("partitions_scanned", len(stacktracesByPartition)),
+			attribute.Int("partitions_with_symbols", 0),
+		))
+		return found, nil
+	}
+
+	profiles, err = NewFilteredProfileRowIterator(ds, matchers, minTime, maxTime)
+	if err != nil {
+		return nil, err
+	}
+	for profiles.Next() {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		entry := profiles.At()
+		profileType := profileTypeLabel(entry.Labels)
+		partitionID := entry.Row.StacktracePartitionID()
+		partition := partitionSymbols[partitionID]
+		if partition == nil {
+			continue
+		}
+		entry.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
+			for _, value := range values {
+				for _, symbolName := range partition.stacktraces[value.Uint32()] {
 					found[symbolName][profileType] = struct{}{}
-					return false
-				})
+				}
 			}
 		})
 	}
@@ -397,25 +428,100 @@ func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.Bl
 	span.AddEvent("verify_symbols_in_dataset.done", oteltrace.WithAttributes(
 		attribute.Int("dataset_index", int(datasetIndex)),
 		attribute.Int("profiles_scanned", profilesScanned),
+		attribute.Int("partitions_scanned", len(stacktracesByPartition)),
+		attribute.Int("partitions_with_symbols", len(partitionSymbols)),
 	))
 	return found, nil
 }
 
-func profileLabelsMatch(matchers []*labels.Matcher, ls phlaremodel.Labels) bool {
-	for _, matcher := range matchers {
-		matched := false
-		for _, label := range ls {
-			if label.Name != matcher.Name {
-				continue
-			}
-			matched = matcher.Matches(label.Value)
-			break
-		}
-		if !matched {
-			return false
+type symbolPartitionMatches struct {
+	reader      symdb.PartitionReader
+	stacktraces map[uint32][]string
+}
+
+func (m *symbolPartitionMatches) empty() bool {
+	return m == nil || len(m.stacktraces) == 0
+}
+
+func buildSymbolPartitionMatches(reader symdb.PartitionReader, want map[string]struct{}, stacktraceIDs map[uint32]struct{}) *symbolPartitionMatches {
+	symbols := reader.Symbols()
+	functionSymbols := matchingFunctionSymbols(symbols, want)
+	if len(functionSymbols) == 0 {
+		return &symbolPartitionMatches{reader: reader}
+	}
+	matches := &symbolPartitionMatches{
+		reader:      reader,
+		stacktraces: make(map[uint32][]string),
+	}
+	var locations []uint64
+	for stacktraceID := range stacktraceIDs {
+		symbolNames := matchingStacktraceSymbols(symbols, stacktraceID, functionSymbols, &locations)
+		if len(symbolNames) > 0 {
+			matches.stacktraces[stacktraceID] = symbolNames
 		}
 	}
-	return true
+	return matches
+}
+
+func matchingFunctionSymbols(symbols *symdb.Symbols, want map[string]struct{}) map[uint32]string {
+	stringRefs := make(map[uint32]string)
+	for i, symbol := range symbols.Strings {
+		if _, ok := want[symbol]; ok {
+			stringRefs[uint32(i)] = symbol
+		}
+	}
+	if len(stringRefs) == 0 {
+		return nil
+	}
+
+	functionSymbols := make(map[uint32]string)
+	for i, function := range symbols.Functions {
+		name, ok := stringRefs[uint32(function.Name)]
+		if ok {
+			functionSymbols[uint32(i+1)] = name
+		}
+	}
+	return functionSymbols
+}
+
+func matchingStacktraceSymbols(symbols *symdb.Symbols, stacktraceID uint32, functionSymbols map[uint32]string, locations *[]uint64) []string {
+	seen := make(map[string]struct{})
+	stacktraceFunctionIDs(symbols, stacktraceID, locations, func(functionID uint32) bool {
+		name, ok := functionSymbols[functionID]
+		if !ok {
+			return false
+		}
+		seen[name] = struct{}{}
+		return false
+	})
+	if len(seen) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func stacktraceFunctionIDs(symbols *symdb.Symbols, stacktraceID uint32, locations *[]uint64, fn func(uint32) bool) {
+	*locations = symbols.Stacktraces.LookupLocations((*locations)[:0], stacktraceID)
+	for _, locationID := range *locations {
+		if locationID == 0 || int(locationID) > len(symbols.Locations) {
+			continue
+		}
+		location := symbols.Locations[locationID-1]
+		for _, line := range location.Line {
+			functionID := line.FunctionId
+			if functionID == 0 || int(functionID) > len(symbols.Functions) {
+				continue
+			}
+			if fn(uint32(functionID)) {
+				return
+			}
+		}
+	}
 }
 
 func openSymbolBloomIndex(_ context.Context, s *Dataset) (err error) {
