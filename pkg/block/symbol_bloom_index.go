@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/bits"
 	"sort"
 	"sync"
 
@@ -357,25 +358,27 @@ func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.Bl
 	}
 
 	var partitionsWithSymbols int
-	for partitionID, stacktraceRows := range scan.stacktraceRowsByPartition {
+	for partitionID, stacktraceProfileTypes := range scan.profileTypesByStacktraceByPartition {
 		partition, err := ds.Symbols().Partition(ctx, partitionID)
 		if err != nil {
 			return nil, err
 		}
-		matches := buildSymbolPartitionMatches(partition, want, stacktraceRows)
+		matches := buildSymbolPartitionMatches(partition, want, stacktraceProfileTypes)
 		partition.Release()
 		if matches.empty() {
 			continue
 		}
 		partitionsWithSymbols++
 		for stacktraceID, symbolNames := range matches.stacktraces {
-			rows := roaring.New()
-			rows.AddMany(stacktraceRows[stacktraceID])
 			for _, symbolName := range symbolNames {
-				for profileTypeID, profileType := range scan.profileTypes {
-					if rows.Intersects(scan.rowsByProfileType[profileTypeID]) {
-						found[symbolName][profileType] = struct{}{}
-					}
+				profileTypeBits := stacktraceProfileTypes[stacktraceID]
+				for profileTypeBits != 0 {
+					profileTypeID := bits.TrailingZeros64(profileTypeBits)
+					found[symbolName][scan.profileTypes[profileTypeID]] = struct{}{}
+					profileTypeBits &^= 1 << profileTypeID
+				}
+				for _, profileTypeID := range scan.profileTypesOverflowByStacktraceByPartition[partitionID][stacktraceID] {
+					found[symbolName][scan.profileTypes[profileTypeID]] = struct{}{}
 				}
 			}
 		}
@@ -383,17 +386,17 @@ func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.Bl
 	span.AddEvent("verify_symbols_in_dataset.done", oteltrace.WithAttributes(
 		attribute.Int("dataset_index", int(datasetIndex)),
 		attribute.Int("profiles_scanned", int(scan.acceptedRows.GetCardinality())),
-		attribute.Int("partitions_scanned", len(scan.stacktraceRowsByPartition)),
+		attribute.Int("partitions_scanned", len(scan.profileTypesByStacktraceByPartition)),
 		attribute.Int("partitions_with_symbols", partitionsWithSymbols),
 	))
 	return found, nil
 }
 
 type columnarSymbolProfileScan struct {
-	acceptedRows              *roaring.Bitmap
-	profileTypes              []string
-	rowsByProfileType         []*roaring.Bitmap
-	stacktraceRowsByPartition map[uint64]map[uint32][]uint32
+	acceptedRows                                *roaring.Bitmap
+	profileTypes                                []string
+	profileTypesByStacktraceByPartition         map[uint64]map[uint32]uint64
+	profileTypesOverflowByStacktraceByPartition map[uint64]map[uint32][]uint32
 }
 
 func scanProfileColumnsForSymbols(ctx context.Context, ds *Dataset, matchers []*labels.Matcher, minTime, maxTime int64) (*columnarSymbolProfileScan, error) {
@@ -403,16 +406,18 @@ func scanProfileColumnsForSymbols(ctx context.Context, ds *Dataset, matchers []*
 	}
 	if len(seriesProfileTypes) == 0 {
 		return &columnarSymbolProfileScan{
-			acceptedRows:              roaring.New(),
-			stacktraceRowsByPartition: map[uint64]map[uint32][]uint32{},
+			acceptedRows:                                roaring.New(),
+			profileTypesByStacktraceByPartition:         map[uint64]map[uint32]uint64{},
+			profileTypesOverflowByStacktraceByPartition: map[uint64]map[uint32][]uint32{},
 		}, nil
 	}
 
 	profileTypeIDs := make(map[string]uint32)
 	seriesProfileTypeIDs := make(map[uint32]uint32, len(seriesProfileTypes))
 	scan := &columnarSymbolProfileScan{
-		acceptedRows:              roaring.New(),
-		stacktraceRowsByPartition: make(map[uint64]map[uint32][]uint32),
+		acceptedRows:                                roaring.New(),
+		profileTypesByStacktraceByPartition:         make(map[uint64]map[uint32]uint64),
+		profileTypesOverflowByStacktraceByPartition: make(map[uint64]map[uint32][]uint32),
 	}
 	for seriesIndex, profileType := range seriesProfileTypes {
 		profileTypeID, ok := profileTypeIDs[profileType]
@@ -420,7 +425,6 @@ func scanProfileColumnsForSymbols(ctx context.Context, ds *Dataset, matchers []*
 			profileTypeID = uint32(len(scan.profileTypes))
 			profileTypeIDs[profileType] = profileTypeID
 			scan.profileTypes = append(scan.profileTypes, profileType)
-			scan.rowsByProfileType = append(scan.rowsByProfileType, roaring.New())
 		}
 		seriesProfileTypeIDs[seriesIndex] = profileTypeID
 	}
@@ -429,7 +433,8 @@ func scanProfileColumnsForSymbols(ctx context.Context, ds *Dataset, matchers []*
 	if err != nil {
 		return nil, err
 	}
-	if err := scanAcceptedProfileRows(ctx, ds, timeRows, seriesProfileTypeIDs, scan.acceptedRows, scan.rowsByProfileType); err != nil {
+	rowProfileTypes, err := scanAcceptedProfileRows(ctx, ds, timeRows, seriesProfileTypeIDs, scan.acceptedRows)
+	if err != nil {
 		return nil, err
 	}
 	if scan.acceptedRows.IsEmpty() {
@@ -439,7 +444,7 @@ func scanProfileColumnsForSymbols(ctx context.Context, ds *Dataset, matchers []*
 	if err != nil {
 		return nil, err
 	}
-	return scan, scanAcceptedStacktraces(ctx, ds, scan.acceptedRows, rowPartitions, scan.stacktraceRowsByPartition)
+	return scan, scanAcceptedStacktraces(ctx, ds, scan.acceptedRows, rowPartitions, rowProfileTypes, scan.profileTypesByStacktraceByPartition, scan.profileTypesOverflowByStacktraceByPartition)
 }
 
 func profileTypesBySeriesIndex(reader phlaredb.IndexReader, matchers []*labels.Matcher) (map[uint32]string, error) {
@@ -503,15 +508,16 @@ func scanTimeRows(ctx context.Context, ds *Dataset, minTime, maxTime int64) (*ro
 	return rows, it.Err()
 }
 
-func scanAcceptedProfileRows(ctx context.Context, ds *Dataset, timeRows *roaring.Bitmap, seriesProfileTypeIDs map[uint32]uint32, acceptedRows *roaring.Bitmap, rowsByProfileType []*roaring.Bitmap) error {
+func scanAcceptedProfileRows(ctx context.Context, ds *Dataset, timeRows *roaring.Bitmap, seriesProfileTypeIDs map[uint32]uint32, acceptedRows *roaring.Bitmap) (map[uint32]uint32, error) {
 	it := ds.Profiles().Column(ctx, schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(seriesProfileTypeIDs))
 	defer func() { _ = it.Close() }()
 
+	rowProfileTypes := make(map[uint32]uint32)
 	for it.Next() {
 		result := it.At()
 		row, err := rowNumberToUint32(result.RowNumber[0])
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if !timeRows.Contains(row) {
 			continue
@@ -519,9 +525,9 @@ func scanAcceptedProfileRows(ctx context.Context, ds *Dataset, timeRows *roaring
 		seriesIndex := result.Entries[0].V.Uint32()
 		profileTypeID := seriesProfileTypeIDs[seriesIndex]
 		acceptedRows.Add(row)
-		rowsByProfileType[profileTypeID].Add(row)
+		rowProfileTypes[row] = profileTypeID
 	}
-	return it.Err()
+	return rowProfileTypes, it.Err()
 }
 
 func scanAcceptedRowPartitions(ctx context.Context, ds *Dataset, acceptedRows *roaring.Bitmap) (map[uint32]uint64, error) {
@@ -542,7 +548,7 @@ func scanAcceptedRowPartitions(ctx context.Context, ds *Dataset, acceptedRows *r
 	return rowPartitions, it.Err()
 }
 
-func scanAcceptedStacktraces(ctx context.Context, ds *Dataset, acceptedRows *roaring.Bitmap, rowPartitions map[uint32]uint64, stacktraceRowsByPartition map[uint64]map[uint32][]uint32) error {
+func scanAcceptedStacktraces(ctx context.Context, ds *Dataset, acceptedRows *roaring.Bitmap, rowPartitions map[uint32]uint64, rowProfileTypes map[uint32]uint32, profileTypesByStacktraceByPartition map[uint64]map[uint32]uint64, profileTypesOverflowByStacktraceByPartition map[uint64]map[uint32][]uint32) error {
 	stacktraceColumn, _ := parquetquery.GetColumnIndexByPath(ds.Profiles().Root(), "Samples.list.element.StacktraceID")
 	if stacktraceColumn < 0 {
 		return fmt.Errorf("column Samples.list.element.StacktraceID not found in profile parquet table")
@@ -559,20 +565,47 @@ func scanAcceptedStacktraces(ctx context.Context, ds *Dataset, acceptedRows *roa
 		if !ok {
 			continue
 		}
-		stacktraceRows := stacktraceRowsByPartition[partitionID]
-		if stacktraceRows == nil {
-			stacktraceRows = make(map[uint32][]uint32)
-			stacktraceRowsByPartition[partitionID] = stacktraceRows
+		profileTypesByStacktrace := profileTypesByStacktraceByPartition[partitionID]
+		if profileTypesByStacktrace == nil {
+			profileTypesByStacktrace = make(map[uint32]uint64)
+			profileTypesByStacktraceByPartition[partitionID] = profileTypesByStacktrace
+		}
+		profileTypeID := rowProfileTypes[row]
+		var profileTypeBit uint64
+		if profileTypeID < 64 {
+			profileTypeBit = uint64(1) << profileTypeID
 		}
 		for _, value := range it.At() {
 			if value.DefinitionLevel() != 1 {
 				continue
 			}
 			stacktraceID := value.Uint32()
-			stacktraceRows[stacktraceID] = append(stacktraceRows[stacktraceID], row)
+			if profileTypeID < 64 {
+				profileTypesByStacktrace[stacktraceID] |= profileTypeBit
+				continue
+			}
+			if _, ok := profileTypesByStacktrace[stacktraceID]; !ok {
+				profileTypesByStacktrace[stacktraceID] = 0
+			}
+			addOverflowProfileType(profileTypesOverflowByStacktraceByPartition, partitionID, stacktraceID, profileTypeID)
 		}
 	}
 	return it.Err()
+}
+
+func addOverflowProfileType(profileTypesOverflowByStacktraceByPartition map[uint64]map[uint32][]uint32, partitionID uint64, stacktraceID uint32, profileTypeID uint32) {
+	profileTypesByStacktrace := profileTypesOverflowByStacktraceByPartition[partitionID]
+	if profileTypesByStacktrace == nil {
+		profileTypesByStacktrace = make(map[uint32][]uint32)
+		profileTypesOverflowByStacktraceByPartition[partitionID] = profileTypesByStacktrace
+	}
+	profileTypes := profileTypesByStacktrace[stacktraceID]
+	for _, existing := range profileTypes {
+		if existing == profileTypeID {
+			return
+		}
+	}
+	profileTypesByStacktrace[stacktraceID] = append(profileTypes, profileTypeID)
 }
 
 func bitmapRows(rows *roaring.Bitmap) []int64 {
@@ -599,7 +632,7 @@ func (m *symbolPartitionMatches) empty() bool {
 	return m == nil || len(m.stacktraces) == 0
 }
 
-func buildSymbolPartitionMatches(reader symdb.PartitionReader, want map[string]struct{}, stacktraces map[uint32][]uint32) *symbolPartitionMatches {
+func buildSymbolPartitionMatches(reader symdb.PartitionReader, want map[string]struct{}, stacktraces map[uint32]uint64) *symbolPartitionMatches {
 	symbols := reader.Symbols()
 	functionSymbols := matchingFunctionSymbols(symbols, want)
 	if len(functionSymbols) == 0 {
