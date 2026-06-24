@@ -10,6 +10,7 @@ import (
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -324,11 +325,19 @@ type profileRowIterator struct {
 	index       phlaredb.IndexReader
 	profiles    iter.Iterator[parquet.Row]
 	allPostings index.Postings
+	series      map[uint32]profileRowSeries
 	err         error
 
 	currentRow       ProfileEntry
 	currentSeriesIdx uint32
 	chunks           []index.ChunkMeta
+	minTimeNano      int64
+	maxTimeNano      int64
+}
+
+type profileRowSeries struct {
+	fingerprint model.Fingerprint
+	labels      phlaremodel.Labels
 }
 
 func NewProfileRowIterator(s *Dataset) (iter.Iterator[ProfileEntry], error) {
@@ -348,39 +357,109 @@ func NewProfileRowIterator(s *Dataset) (iter.Iterator[ProfileEntry], error) {
 	}, nil
 }
 
+func NewFilteredProfileRowIterator(s *Dataset, matchers []*labels.Matcher, minTime, maxTime int64) (iter.Iterator[ProfileEntry], error) {
+	if len(matchers) == 0 {
+		it, err := NewProfileRowIterator(s)
+		if err != nil {
+			return nil, err
+		}
+		p := it.(*profileRowIterator)
+		p.minTimeNano = model.Time(minTime).UnixNano()
+		p.maxTimeNano = model.Time(maxTime).UnixNano()
+		return p, nil
+	}
+	series, err := profileSeriesBySeriesIndex(s.Index(), matchers)
+	if err != nil {
+		return nil, err
+	}
+	return &profileRowIterator{
+		reader:           s,
+		index:            s.Index(),
+		profiles:         phlareparquet.NewBufferedRowReaderIterator(s.ProfileRowReader(), 4),
+		series:           series,
+		currentSeriesIdx: math.MaxUint32,
+		chunks:           make([]index.ChunkMeta, 1),
+		minTimeNano:      model.Time(minTime).UnixNano(),
+		maxTimeNano:      model.Time(maxTime).UnixNano(),
+	}, nil
+}
+
+func profileSeriesBySeriesIndex(reader phlaredb.IndexReader, matchers []*labels.Matcher) (map[uint32]profileRowSeries, error) {
+	postings, err := phlaredb.PostingsForMatchers(reader, nil, matchers...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = postings.Close() }()
+
+	series := make(map[uint32]profileRowSeries)
+	chunks := make([]index.ChunkMeta, 1)
+	var l phlaremodel.Labels
+	for postings.Next() {
+		fp, err := reader.Series(postings.At(), &l, &chunks)
+		if err != nil {
+			return nil, err
+		}
+		seriesIndex := chunks[0].SeriesIndex
+		if _, ok := series[seriesIndex]; ok {
+			continue
+		}
+		series[seriesIndex] = profileRowSeries{
+			fingerprint: model.Fingerprint(fp),
+			labels:      l.Clone(),
+		}
+	}
+	return series, postings.Err()
+}
+
 func (p *profileRowIterator) At() ProfileEntry {
 	return p.currentRow
 }
 
 func (p *profileRowIterator) Next() bool {
-	if !p.profiles.Next() {
-		return false
-	}
-	p.currentRow.Dataset = p.reader
-	p.currentRow.Row = schemav1.ProfileRow(p.profiles.At())
-	seriesIndex := p.currentRow.Row.SeriesIndex()
-	p.currentRow.Timestamp = p.currentRow.Row.TimeNanos()
-	// do we have a new series?
-	if seriesIndex == p.currentSeriesIdx {
-		return true
-	}
-	p.currentSeriesIdx = seriesIndex
-	if !p.allPostings.Next() {
-		if err := p.allPostings.Err(); err != nil {
+	for p.profiles.Next() {
+		p.currentRow.Dataset = p.reader
+		p.currentRow.Row = schemav1.ProfileRow(p.profiles.At())
+		seriesIndex := p.currentRow.Row.SeriesIndex()
+		p.currentRow.Timestamp = p.currentRow.Row.TimeNanos()
+		if p.minTimeNano != 0 && p.currentRow.Timestamp < p.minTimeNano {
+			continue
+		}
+		if p.maxTimeNano != 0 && p.currentRow.Timestamp > p.maxTimeNano {
+			continue
+		}
+		if p.series != nil {
+			series, ok := p.series[seriesIndex]
+			if !ok {
+				continue
+			}
+			p.currentRow.Fingerprint = series.fingerprint
+			p.currentRow.Labels = series.labels
+			return true
+		}
+
+		// do we have a new series?
+		if seriesIndex == p.currentSeriesIdx {
+			return true
+		}
+		p.currentSeriesIdx = seriesIndex
+		if !p.allPostings.Next() {
+			if err := p.allPostings.Err(); err != nil {
+				p.err = err
+				return false
+			}
+			p.err = errors.New("unexpected end of postings")
+			return false
+		}
+
+		fp, err := p.index.Series(p.allPostings.At(), &p.currentRow.Labels, &p.chunks)
+		if err != nil {
 			p.err = err
 			return false
 		}
-		p.err = errors.New("unexpected end of postings")
-		return false
+		p.currentRow.Fingerprint = model.Fingerprint(fp)
+		return true
 	}
-
-	fp, err := p.index.Series(p.allPostings.At(), &p.currentRow.Labels, &p.chunks)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	p.currentRow.Fingerprint = model.Fingerprint(fp)
-	return true
+	return false
 }
 
 func (p *profileRowIterator) Err() error {
