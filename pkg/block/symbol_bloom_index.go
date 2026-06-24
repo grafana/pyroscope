@@ -494,58 +494,126 @@ func scanTimeRows(ctx context.Context, ds *Dataset, minTime, maxTime int64) (*ro
 	if minTime != 0 || maxTime != 0 {
 		predicate = parquetquery.NewIntBetweenPredicate(minTimeNano, maxTimeNano)
 	}
-	it := ds.Profiles().Column(ctx, schemav1.TimeNanosColumnName, predicate)
-	defer func() { _ = it.Close() }()
 
 	rows := roaring.New()
-	for it.Next() {
-		row, err := rowNumberToUint32(it.At().RowNumber[0])
-		if err != nil {
-			return nil, err
-		}
+	err := scanScalarProfileColumn(ctx, ds, schemav1.TimeNanosColumnName, predicate, func(row uint32, _ parquet.Value) error {
 		rows.Add(row)
-	}
-	return rows, it.Err()
+		return nil
+	})
+	return rows, err
 }
 
 func scanAcceptedProfileRows(ctx context.Context, ds *Dataset, timeRows *roaring.Bitmap, seriesProfileTypeIDs map[uint32]uint32, acceptedRows *roaring.Bitmap) (map[uint32]uint32, error) {
-	it := ds.Profiles().Column(ctx, schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(seriesProfileTypeIDs))
-	defer func() { _ = it.Close() }()
-
 	rowProfileTypes := make(map[uint32]uint32)
-	for it.Next() {
-		result := it.At()
-		row, err := rowNumberToUint32(result.RowNumber[0])
-		if err != nil {
-			return nil, err
-		}
+	err := scanScalarProfileColumn(ctx, ds, schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(seriesProfileTypeIDs), func(row uint32, value parquet.Value) error {
 		if !timeRows.Contains(row) {
-			continue
+			return nil
 		}
-		seriesIndex := result.Entries[0].V.Uint32()
+		seriesIndex := value.Uint32()
 		profileTypeID := seriesProfileTypeIDs[seriesIndex]
 		acceptedRows.Add(row)
 		rowProfileTypes[row] = profileTypeID
-	}
-	return rowProfileTypes, it.Err()
+		return nil
+	})
+	return rowProfileTypes, err
 }
 
 func scanAcceptedRowPartitions(ctx context.Context, ds *Dataset, acceptedRows *roaring.Bitmap) (map[uint32]uint64, error) {
-	it := ds.Profiles().Column(ctx, schemav1.StacktracePartitionColumnName, nil)
-	defer func() { _ = it.Close() }()
-
 	rowPartitions := make(map[uint32]uint64, acceptedRows.GetCardinality())
-	for it.Next() {
-		result := it.At()
-		row, err := rowNumberToUint32(result.RowNumber[0])
-		if err != nil {
-			return nil, err
-		}
+	err := scanScalarProfileColumn(ctx, ds, schemav1.StacktracePartitionColumnName, nil, func(row uint32, value parquet.Value) error {
 		if acceptedRows.Contains(row) {
-			rowPartitions[row] = result.Entries[0].V.Uint64()
+			rowPartitions[row] = value.Uint64()
 		}
+		return nil
+	})
+	return rowPartitions, err
+}
+
+func scanScalarProfileColumn(ctx context.Context, ds *Dataset, columnName string, predicate parquetquery.Predicate, fn func(row uint32, value parquet.Value) error) error {
+	columnIndex, _ := parquetquery.GetColumnIndexByPath(ds.Profiles().Root(), columnName)
+	if columnIndex < 0 {
+		return fmt.Errorf("column %s not found in profile parquet table", columnName)
 	}
-	return rowPartitions, it.Err()
+
+	values := make([]parquet.Value, 1024)
+	var rowBase int64
+	for _, rowGroup := range ds.Profiles().RowGroups() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		columnChunk := rowGroup.ColumnChunks()[columnIndex]
+		if predicate != nil {
+			columnChunkIndex, err := columnChunk.ColumnIndex()
+			if err != nil {
+				return err
+			}
+			if !predicate.KeepColumnChunk(columnChunkIndex) {
+				rowBase += rowGroup.NumRows()
+				continue
+			}
+		}
+
+		pages := columnChunk.Pages()
+		var rowInGroup int64
+		for {
+			page, err := pages.ReadPage()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				_ = pages.Close()
+				return err
+			}
+			if page == nil {
+				break
+			}
+
+			pageRows := page.NumRows()
+			if predicate != nil && !predicate.KeepPage(page) {
+				rowInGroup += pageRows
+				parquet.Release(page)
+				continue
+			}
+
+			reader := page.Values()
+			var rowInPage int64
+			for rowInPage < pageRows {
+				n, err := reader.ReadValues(values)
+				for i := 0; i < n; i++ {
+					value := values[i]
+					row, rowErr := rowNumberToUint32(rowBase + rowInGroup + rowInPage)
+					if rowErr != nil {
+						parquet.Release(page)
+						_ = pages.Close()
+						return rowErr
+					}
+					if predicate == nil || predicate.KeepValue(value) {
+						if err := fn(row, value); err != nil {
+							parquet.Release(page)
+							_ = pages.Close()
+							return err
+						}
+					}
+					rowInPage++
+				}
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					parquet.Release(page)
+					_ = pages.Close()
+					return err
+				}
+			}
+			rowInGroup += pageRows
+			parquet.Release(page)
+		}
+		if err := pages.Close(); err != nil {
+			return err
+		}
+		rowBase += rowGroup.NumRows()
+	}
+	return nil
 }
 
 func scanAcceptedStacktraces(ctx context.Context, ds *Dataset, acceptedRows *roaring.Bitmap, rowPartitions map[uint32]uint64, rowProfileTypes map[uint32]uint32, profileTypesByStacktraceByPartition map[uint64]map[uint32]uint64, profileTypesOverflowByStacktraceByPartition map[uint64]map[uint32][]uint32) error {
