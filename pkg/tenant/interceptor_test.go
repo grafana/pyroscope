@@ -84,6 +84,24 @@ func Test_AuthInterceptor(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, nextCalled, "multi-tenant request must reach the handler")
 		},
+		"server: enable, canonicalize duplicate tenant header": func(t *testing.T) {
+			i := NewAuthInterceptor(true)
+			req := newFakeReqWithHeader("tenant-a|tenant-a")
+
+			resp, err := i.WrapUnary(func(ctx context.Context, ar connect.AnyRequest) (connect.AnyResponse, error) {
+				tenantID, tenantErr := ExtractTenantIDFromContext(ctx)
+				require.NoError(t, tenantErr)
+				require.Equal(t, "tenant-a", tenantID)
+
+				orgID, orgErr := user.ExtractOrgID(ctx)
+				require.NoError(t, orgErr)
+				require.Equal(t, "tenant-a", orgID)
+				return nil, nil
+			})(context.Background(), req)
+
+			require.Nil(t, resp)
+			require.NoError(t, err)
+		},
 		"server: enable, reject inherited tenant when header missing": func(t *testing.T) {
 			i := NewAuthInterceptor(true)
 			req := newFakeReq(false)
@@ -116,22 +134,38 @@ func Test_AuthInterceptor(t *testing.T) {
 			i := NewAuthInterceptor(true)
 			shc := newFakeClientStreamingConn()
 			shc.requestHeaders.Set("X-Scope-OrgID", "foo")
-			_ = i.WrapStreamingHandler(func(ctx context.Context, shc connect.StreamingHandlerConn) error {
+			err := i.WrapStreamingHandler(func(ctx context.Context, shc connect.StreamingHandlerConn) error {
 				tenantID, err := ExtractTenantIDFromContext(ctx)
 				require.NoError(t, err)
 				require.Equal(t, tenantID, "foo")
 				return nil
 			})(context.Background(), shc)
+			require.NoError(t, err)
+		},
+		"streaming server should reject inherited tenant when header missing": func(t *testing.T) {
+			i := NewAuthInterceptor(true)
+			shc := newFakeClientStreamingConn()
+			nextCalled := false
+
+			err := i.WrapStreamingHandler(func(ctx context.Context, shc connect.StreamingHandlerConn) error {
+				nextCalled = true
+				return nil
+			})(InjectTenantID(context.Background(), "attacker"), shc)
+
+			require.ErrorIs(t, err, ErrNoTenantID)
+			require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+			require.False(t, nextCalled, "missing tenant header must stop the request before the handler runs")
 		},
 		"streaming server should forward default tenant to context if disable": func(t *testing.T) {
 			i := NewAuthInterceptor(false)
 			shc := newFakeClientStreamingConn()
-			_ = i.WrapStreamingHandler(func(ctx context.Context, shc connect.StreamingHandlerConn) error {
+			err := i.WrapStreamingHandler(func(ctx context.Context, shc connect.StreamingHandlerConn) error {
 				tenantID, err := ExtractTenantIDFromContext(ctx)
 				require.NoError(t, err)
 				require.Equal(t, tenantID, DefaultTenantID)
 				return nil
 			})(context.Background(), shc)
+			require.NoError(t, err)
 		},
 	} {
 		t.Run(testName, testCase)

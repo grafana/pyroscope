@@ -75,7 +75,10 @@ func (i *authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 		if !i.enabled {
 			return next(InjectTenantID(ctx, DefaultTenantID), conn)
 		}
-		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, conn.RequestHeader())
+		_, ctx, err := ExtractTenantIDFromHeaders(ctx, conn.RequestHeader())
+		if err != nil {
+			return connect.NewError(connect.CodeUnauthenticated, err)
+		}
 		if err := next(ctx, conn); err != nil {
 			if errors.Is(err, ErrNoTenantID) {
 				return connect.NewError(connect.CodeUnauthenticated, err)
@@ -105,12 +108,7 @@ func ExtractTenantIDFromHeaders(ctx context.Context, headers http.Header) (strin
 		return "", ctx, err
 	}
 
-	// Single tenant — already injected above, nothing more to do.
-	if len(tenantIDs) == 1 {
-		return orgID, ctx, nil
-	}
-
-	// Multi-tenant: re-inject the normalised (deduped, sorted) string only
+	// Re-inject the normalized (deduped, sorted) string only
 	// when it differs from the raw header value.
 	normalized := tenant.JoinTenantIDs(tenantIDs)
 	if normalized != orgID {
