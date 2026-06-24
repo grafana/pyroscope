@@ -333,6 +333,23 @@ self_profiling:
 # CLI flag: -architecture.storage
 [architecture_storage: <string> | default = "v1-v2-dual"]
 
+admin_server:
+  # Controls the admin server for metrics, pprof and admin endpoints.
+  # 'disabled': all routes on the main port (default). 'additional': admin
+  # server started, operational routes served on both ports. 'exclusive': admin
+  # server started, operational routes removed from main port.
+  # CLI flag: -admin-server.mode
+  [mode: <string> | default = "disabled"]
+
+  # Address for the admin HTTP server. Defaults to localhost so the port is not
+  # exposed externally. Use :: or 0.0.0.0 to listen on all interfaces.
+  # CLI flag: -admin-server.http-listen-address
+  [http_listen_address: <string> | default = "localhost"]
+
+  # Port for the admin HTTP server (metrics, pprof, admin).
+  # CLI flag: -admin-server.http-listen-port
+  [http_listen_port: <int> | default = 4042]
+
 embedded_grafana:
   # The directory where the Grafana data will be stored.
   # CLI flag: -embedded-grafana.data-path
