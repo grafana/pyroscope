@@ -9,8 +9,10 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/RoaringBitmap/roaring/v2"
 	"github.com/cespare/xxhash/v2"
 	"github.com/parquet-go/parquet-go"
+	prommodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -18,8 +20,14 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	parquetquery "github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
@@ -343,99 +351,247 @@ func verifySymbolsInDataset(ctx context.Context, obj *Object, md *metastorev1.Bl
 	}
 	defer func() { _ = ds.Close() }()
 
-	profiles, err := NewFilteredProfileRowIterator(ds, matchers, minTime, maxTime)
+	scan, err := scanProfileColumnsForSymbols(ctx, ds, matchers, minTime, maxTime)
 	if err != nil {
 		return nil, err
 	}
-	stacktracesByPartition := make(map[uint64]map[uint32]struct{})
-	var profilesScanned int
-	for profiles.Next() {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		profilesScanned++
-		entry := profiles.At()
-		partitionID := entry.Row.StacktracePartitionID()
-		stacktraces := stacktracesByPartition[partitionID]
-		if stacktraces == nil {
-			stacktraces = make(map[uint32]struct{})
-			stacktracesByPartition[partitionID] = stacktraces
-		}
-		entry.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
-			for _, value := range values {
-				stacktraces[value.Uint32()] = struct{}{}
-			}
-		})
-	}
-	if err := profiles.Err(); err != nil {
-		return nil, err
-	}
 
-	partitionSymbols := make(map[uint64]*symbolPartitionMatches, len(stacktracesByPartition))
-	defer func() {
-		for _, partition := range partitionSymbols {
-			partition.reader.Release()
-		}
-	}()
-	for partitionID, stacktraceIDs := range stacktracesByPartition {
+	var partitionsWithSymbols int
+	for partitionID, stacktraceRows := range scan.stacktraceRowsByPartition {
 		partition, err := ds.Symbols().Partition(ctx, partitionID)
 		if err != nil {
 			return nil, err
 		}
-		matches := buildSymbolPartitionMatches(partition, want, stacktraceIDs)
+		matches := buildSymbolPartitionMatches(partition, want, stacktraceRows)
+		partition.Release()
 		if matches.empty() {
-			partition.Release()
 			continue
 		}
-		partitionSymbols[partitionID] = matches
-	}
-	if len(partitionSymbols) == 0 {
-		span.AddEvent("verify_symbols_in_dataset.done", oteltrace.WithAttributes(
-			attribute.Int("dataset_index", int(datasetIndex)),
-			attribute.Int("profiles_scanned", profilesScanned),
-			attribute.Int("partitions_scanned", len(stacktracesByPartition)),
-			attribute.Int("partitions_with_symbols", 0),
-		))
-		return found, nil
-	}
-
-	profiles, err = NewFilteredProfileRowIterator(ds, matchers, minTime, maxTime)
-	if err != nil {
-		return nil, err
-	}
-	for profiles.Next() {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		entry := profiles.At()
-		profileType := profileTypeLabel(entry.Labels)
-		partitionID := entry.Row.StacktracePartitionID()
-		partition := partitionSymbols[partitionID]
-		if partition == nil {
-			continue
-		}
-		entry.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
-			for _, value := range values {
-				for _, symbolName := range partition.stacktraces[value.Uint32()] {
-					found[symbolName][profileType] = struct{}{}
+		partitionsWithSymbols++
+		for stacktraceID, symbolNames := range matches.stacktraces {
+			rows := roaring.New()
+			rows.AddMany(stacktraceRows[stacktraceID])
+			for _, symbolName := range symbolNames {
+				for profileTypeID, profileType := range scan.profileTypes {
+					if rows.Intersects(scan.rowsByProfileType[profileTypeID]) {
+						found[symbolName][profileType] = struct{}{}
+					}
 				}
 			}
-		})
-	}
-	if err := profiles.Err(); err != nil {
-		return nil, err
+		}
 	}
 	span.AddEvent("verify_symbols_in_dataset.done", oteltrace.WithAttributes(
 		attribute.Int("dataset_index", int(datasetIndex)),
-		attribute.Int("profiles_scanned", profilesScanned),
-		attribute.Int("partitions_scanned", len(stacktracesByPartition)),
-		attribute.Int("partitions_with_symbols", len(partitionSymbols)),
+		attribute.Int("profiles_scanned", int(scan.acceptedRows.GetCardinality())),
+		attribute.Int("partitions_scanned", len(scan.stacktraceRowsByPartition)),
+		attribute.Int("partitions_with_symbols", partitionsWithSymbols),
 	))
 	return found, nil
 }
 
+type columnarSymbolProfileScan struct {
+	acceptedRows              *roaring.Bitmap
+	profileTypes              []string
+	rowsByProfileType         []*roaring.Bitmap
+	stacktraceRowsByPartition map[uint64]map[uint32][]uint32
+}
+
+func scanProfileColumnsForSymbols(ctx context.Context, ds *Dataset, matchers []*labels.Matcher, minTime, maxTime int64) (*columnarSymbolProfileScan, error) {
+	seriesProfileTypes, err := profileTypesBySeriesIndex(ds.Index(), matchers)
+	if err != nil {
+		return nil, err
+	}
+	if len(seriesProfileTypes) == 0 {
+		return &columnarSymbolProfileScan{
+			acceptedRows:              roaring.New(),
+			stacktraceRowsByPartition: map[uint64]map[uint32][]uint32{},
+		}, nil
+	}
+
+	profileTypeIDs := make(map[string]uint32)
+	seriesProfileTypeIDs := make(map[uint32]uint32, len(seriesProfileTypes))
+	scan := &columnarSymbolProfileScan{
+		acceptedRows:              roaring.New(),
+		stacktraceRowsByPartition: make(map[uint64]map[uint32][]uint32),
+	}
+	for seriesIndex, profileType := range seriesProfileTypes {
+		profileTypeID, ok := profileTypeIDs[profileType]
+		if !ok {
+			profileTypeID = uint32(len(scan.profileTypes))
+			profileTypeIDs[profileType] = profileTypeID
+			scan.profileTypes = append(scan.profileTypes, profileType)
+			scan.rowsByProfileType = append(scan.rowsByProfileType, roaring.New())
+		}
+		seriesProfileTypeIDs[seriesIndex] = profileTypeID
+	}
+
+	timeRows, err := scanTimeRows(ctx, ds, minTime, maxTime)
+	if err != nil {
+		return nil, err
+	}
+	if err := scanAcceptedProfileRows(ctx, ds, timeRows, seriesProfileTypeIDs, scan.acceptedRows, scan.rowsByProfileType); err != nil {
+		return nil, err
+	}
+	if scan.acceptedRows.IsEmpty() {
+		return scan, nil
+	}
+	rowPartitions, err := scanAcceptedRowPartitions(ctx, ds, scan.acceptedRows)
+	if err != nil {
+		return nil, err
+	}
+	return scan, scanAcceptedStacktraces(ctx, ds, scan.acceptedRows, rowPartitions, scan.stacktraceRowsByPartition)
+}
+
+func profileTypesBySeriesIndex(reader phlaredb.IndexReader, matchers []*labels.Matcher) (map[uint32]string, error) {
+	if len(matchers) > 0 {
+		series, err := profileSeriesBySeriesIndex(reader, matchers)
+		if err != nil {
+			return nil, err
+		}
+		profileTypes := make(map[uint32]string, len(series))
+		for seriesIndex, s := range series {
+			profileTypes[seriesIndex] = profileTypeLabel(s.labels)
+		}
+		return profileTypes, nil
+	}
+
+	k, v := index.AllPostingsKey()
+	postings, err := reader.Postings(k, nil, v)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = postings.Close() }()
+
+	profileTypes := make(map[uint32]string)
+	chunks := make([]index.ChunkMeta, 1)
+	var l phlaremodel.Labels
+	for postings.Next() {
+		_, err := reader.Series(postings.At(), &l, &chunks)
+		if err != nil {
+			return nil, err
+		}
+		profileTypes[chunks[0].SeriesIndex] = profileTypeLabel(l)
+	}
+	return profileTypes, postings.Err()
+}
+
+func scanTimeRows(ctx context.Context, ds *Dataset, minTime, maxTime int64) (*roaring.Bitmap, error) {
+	minTimeNano := int64(-1 << 63)
+	maxTimeNano := int64(1<<63 - 1)
+	if minTime != 0 {
+		minTimeNano = prommodel.Time(minTime).UnixNano()
+	}
+	if maxTime != 0 {
+		maxTimeNano = prommodel.Time(maxTime).UnixNano()
+	}
+
+	var predicate parquetquery.Predicate
+	if minTime != 0 || maxTime != 0 {
+		predicate = parquetquery.NewIntBetweenPredicate(minTimeNano, maxTimeNano)
+	}
+	it := ds.Profiles().Column(ctx, schemav1.TimeNanosColumnName, predicate)
+	defer func() { _ = it.Close() }()
+
+	rows := roaring.New()
+	for it.Next() {
+		row, err := rowNumberToUint32(it.At().RowNumber[0])
+		if err != nil {
+			return nil, err
+		}
+		rows.Add(row)
+	}
+	return rows, it.Err()
+}
+
+func scanAcceptedProfileRows(ctx context.Context, ds *Dataset, timeRows *roaring.Bitmap, seriesProfileTypeIDs map[uint32]uint32, acceptedRows *roaring.Bitmap, rowsByProfileType []*roaring.Bitmap) error {
+	it := ds.Profiles().Column(ctx, schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(seriesProfileTypeIDs))
+	defer func() { _ = it.Close() }()
+
+	for it.Next() {
+		result := it.At()
+		row, err := rowNumberToUint32(result.RowNumber[0])
+		if err != nil {
+			return err
+		}
+		if !timeRows.Contains(row) {
+			continue
+		}
+		seriesIndex := result.Entries[0].V.Uint32()
+		profileTypeID := seriesProfileTypeIDs[seriesIndex]
+		acceptedRows.Add(row)
+		rowsByProfileType[profileTypeID].Add(row)
+	}
+	return it.Err()
+}
+
+func scanAcceptedRowPartitions(ctx context.Context, ds *Dataset, acceptedRows *roaring.Bitmap) (map[uint32]uint64, error) {
+	it := ds.Profiles().Column(ctx, schemav1.StacktracePartitionColumnName, nil)
+	defer func() { _ = it.Close() }()
+
+	rowPartitions := make(map[uint32]uint64, acceptedRows.GetCardinality())
+	for it.Next() {
+		result := it.At()
+		row, err := rowNumberToUint32(result.RowNumber[0])
+		if err != nil {
+			return nil, err
+		}
+		if acceptedRows.Contains(row) {
+			rowPartitions[row] = result.Entries[0].V.Uint64()
+		}
+	}
+	return rowPartitions, it.Err()
+}
+
+func scanAcceptedStacktraces(ctx context.Context, ds *Dataset, acceptedRows *roaring.Bitmap, rowPartitions map[uint32]uint64, stacktraceRowsByPartition map[uint64]map[uint32][]uint32) error {
+	stacktraceColumn, _ := parquetquery.GetColumnIndexByPath(ds.Profiles().Root(), "Samples.list.element.StacktraceID")
+	if stacktraceColumn < 0 {
+		return fmt.Errorf("column Samples.list.element.StacktraceID not found in profile parquet table")
+	}
+	rows := bitmapRows(acceptedRows)
+	it := parquetquery.NewRepeatedRowColumnIterator(ctx, iter.NewSliceIterator(rows), ds.Profiles().RowGroups(), stacktraceColumn)
+	defer func() { _ = it.Close() }()
+
+	var rowIndex int
+	for it.Next() {
+		row := uint32(rows[rowIndex])
+		rowIndex++
+		partitionID, ok := rowPartitions[row]
+		if !ok {
+			continue
+		}
+		stacktraceRows := stacktraceRowsByPartition[partitionID]
+		if stacktraceRows == nil {
+			stacktraceRows = make(map[uint32][]uint32)
+			stacktraceRowsByPartition[partitionID] = stacktraceRows
+		}
+		for _, value := range it.At() {
+			if value.DefinitionLevel() != 1 {
+				continue
+			}
+			stacktraceID := value.Uint32()
+			stacktraceRows[stacktraceID] = append(stacktraceRows[stacktraceID], row)
+		}
+	}
+	return it.Err()
+}
+
+func bitmapRows(rows *roaring.Bitmap) []int64 {
+	result := make([]int64, 0, rows.GetCardinality())
+	it := rows.Iterator()
+	for it.HasNext() {
+		result = append(result, int64(it.Next()))
+	}
+	return result
+}
+
+func rowNumberToUint32(row int64) (uint32, error) {
+	if row < 0 || row > int64(^uint32(0)) {
+		return 0, fmt.Errorf("profile row number %d out of uint32 range", row)
+	}
+	return uint32(row), nil
+}
+
 type symbolPartitionMatches struct {
-	reader      symdb.PartitionReader
 	stacktraces map[uint32][]string
 }
 
@@ -443,18 +599,17 @@ func (m *symbolPartitionMatches) empty() bool {
 	return m == nil || len(m.stacktraces) == 0
 }
 
-func buildSymbolPartitionMatches(reader symdb.PartitionReader, want map[string]struct{}, stacktraceIDs map[uint32]struct{}) *symbolPartitionMatches {
+func buildSymbolPartitionMatches(reader symdb.PartitionReader, want map[string]struct{}, stacktraces map[uint32][]uint32) *symbolPartitionMatches {
 	symbols := reader.Symbols()
 	functionSymbols := matchingFunctionSymbols(symbols, want)
 	if len(functionSymbols) == 0 {
-		return &symbolPartitionMatches{reader: reader}
+		return &symbolPartitionMatches{}
 	}
 	matches := &symbolPartitionMatches{
-		reader:      reader,
 		stacktraces: make(map[uint32][]string),
 	}
 	var locations []uint64
-	for stacktraceID := range stacktraceIDs {
+	for stacktraceID := range stacktraces {
 		symbolNames := matchingStacktraceSymbols(symbols, stacktraceID, functionSymbols, &locations)
 		if len(symbolNames) > 0 {
 			matches.stacktraces[stacktraceID] = symbolNames
