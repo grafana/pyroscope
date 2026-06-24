@@ -1,4 +1,5 @@
 require 'pyroscope/otel'
+require_relative '../../app/middleware/pyroscope_route_tagging_middleware'
 
 app_name = ENV.fetch("PYROSCOPE_APPLICATION_NAME", "ride-sharing-app")
 pyroscope_server_address = ENV.fetch("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
@@ -14,6 +15,8 @@ Pyroscope.configure do |config|
     "region": ENV["REGION"] || "us-east",
   }
 end
+
+Rails.application.config.middleware.use PyroscopeRouteTaggingMiddleware
 
 OpenTelemetry::SDK.configure do |c|
   c.service_name = app_name

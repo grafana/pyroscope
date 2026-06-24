@@ -5,4 +5,11 @@ class CarController < ApplicationController
       render html: "Car ordered"
     end
   end
+
+  def show
+    OpenTelemetry.tracer_provider.tracer('my-tracer').in_span("CarController#show") do |_|
+      helpers.find_nearest_vehicle(0.5, "car")
+      render html: "Car #{params[:id]} ordered"
+    end
+  end
 end

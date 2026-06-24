@@ -6,4 +6,5 @@ Rails.application.routes.draw do
   get "/bike" => "bike#index"
   get "/scooter" => "scooter#index"
   get "/car" => "car#index"
+  get "/car/:id" => "car#show"
 end
