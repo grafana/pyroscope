@@ -1,9 +1,10 @@
 package querybackend
 
 import (
-	"slices"
-	"strings"
+	"fmt"
+	"io"
 
+	"github.com/RoaringBitmap/roaring/v2"
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
@@ -20,6 +21,8 @@ import (
 // As we expect rows to be very small, we want to fetch a bigger
 // batch of rows at once to amortize the latency of reading.
 const bigBatchSize = 2 << 10
+
+const profileEntryColumnReadSize = 1024
 
 type ProfileEntry struct {
 	RowNum      int64
@@ -105,51 +108,6 @@ func iteratorOptsFromOptions(options []profileIteratorOption) iteratorOpts {
 	return opts
 }
 
-type queryColumn struct {
-	name      string
-	predicate parquetquery.Predicate
-	priority  int
-}
-
-type queryColumns []queryColumn
-
-func (c queryColumns) names() []string {
-	result := make([]string, len(c))
-	for idx := range result {
-		result[idx] = c[idx].name
-	}
-	return result
-}
-
-func (c queryColumns) join(q *queryContext) parquetquery.Iterator {
-	var result parquetquery.Iterator
-
-	// sort columns by priority, without modifying queryColumn slice
-	order := make([]int, len(c))
-	for idx := range order {
-		order[idx] = idx
-	}
-	slices.SortFunc(order, func(a, b int) int {
-		if r := c[a].priority - c[b].priority; r != 0 {
-			return r
-		}
-		return strings.Compare(c[a].name, c[b].name)
-	})
-
-	for _, idx := range order {
-		it := q.ds.Profiles().Column(q.ctx, c[idx].name, c[idx].predicate)
-		if result == nil {
-			result = it
-			continue
-		}
-		result = parquetquery.NewBinaryJoinIterator(0,
-			result,
-			it,
-		)
-	}
-	return result
-}
-
 func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (iter.Iterator[ProfileEntry], error) {
 	opts := iteratorOptsFromOptions(options)
 
@@ -157,72 +115,430 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 	if err != nil {
 		return nil, err
 	}
-
-	columns := queryColumns{
-		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
-		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
+	if len(series) == 0 {
+		return iter.NewSliceIterator[ProfileEntry](nil), nil
 	}
-	processor := []func([][]parquet.Value, *ProfileEntry){}
 
-	// fetch partition if requested
-	if opts.fetchPartition {
-		offset := len(columns)
-		columns = append(
-			columns,
-			queryColumn{schemav1.StacktracePartitionColumnName, nil, 20},
-		)
-		processor = append(processor, func(buf [][]parquet.Value, e *ProfileEntry) {
-			e.Partition = buf[offset][0].Uint64()
+	// Profile metadata lives in a small set of top-level parquet columns. Scan the
+	// predicate columns into bitmaps first, then project only accepted rows. This
+	// keeps the query path columnar and avoids the generic row-oriented join stack.
+	scanner := profileEntryColumnScanner{
+		q:           q,
+		int32Values: make([]int32, profileEntryColumnReadSize),
+		int64Values: make([]int64, profileEntryColumnReadSize),
+	}
+	acceptedRows, err := selectProfileEntryRows(&scanner, series, opts)
+	if err != nil {
+		return nil, err
+	}
+	if acceptedRows.IsEmpty() {
+		return iter.NewSliceIterator[ProfileEntry](nil), nil
+	}
+
+	entries, err := materializeProfileEntries(&scanner, acceptedRows, series, opts)
+	if err != nil {
+		return nil, err
+	}
+	return iter.NewSliceIterator(entries), nil
+}
+
+func selectProfileEntryRows(scanner *profileEntryColumnScanner, series map[uint32]series, opts iteratorOpts) (*roaring.Bitmap, error) {
+	timePredicate := parquetquery.NewIntBetweenPredicate(scanner.q.req.startTime, scanner.q.req.endTime)
+	timeRows, err := scanner.matchingInt64Rows(schemav1.TimeNanosColumnName, timePredicate, func(value int64) bool {
+		return scanner.q.req.startTime <= value && value <= scanner.q.req.endTime
+	})
+	if err != nil {
+		return nil, err
+	}
+	if timeRows.IsEmpty() {
+		return timeRows, nil
+	}
+
+	seriesPredicate := parquetquery.NewMapPredicate(series)
+	acceptedRows, err := scanner.matchingInt32Rows(schemav1.SeriesIndexColumnName, seriesPredicate, func(value int32) bool {
+		_, ok := series[uint32(value)]
+		return ok
+	})
+	if err != nil {
+		return nil, err
+	}
+	acceptedRows.And(timeRows)
+
+	if len(opts.profileIDSelector) > 0 && !acceptedRows.IsEmpty() {
+		idPredicate := parquetquery.NewStringInPredicate(opts.profileIDSelector)
+		profileIDs := profileIDSelectorSet(opts.profileIDSelector)
+		profileIDRows, err := scanner.matchingFixedLenByteArrayRows(schemav1.IDColumnName, idPredicate, func(value []byte) bool {
+			if len(value) != 16 {
+				return false
+			}
+			var id [16]byte
+			copy(id[:], value)
+			_, ok := profileIDs[id]
+			return ok
 		})
-	}
-	// fetch profile id if requested or part of the predicate
-	if opts.fetchProfileIDs || len(opts.profileIDSelector) > 0 {
-		var (
-			predicate parquetquery.Predicate
-			priority  = 20
-		)
-		if len(opts.profileIDSelector) > 0 {
-			predicate = parquetquery.NewStringInPredicate(opts.profileIDSelector)
-			priority = 5
+		if err != nil {
+			return nil, err
 		}
-		offset := len(columns)
-		columns = append(
-			columns,
-			queryColumn{schemav1.IDColumnName, predicate, priority},
-		)
-		var u uuid.UUID
-		processor = append(processor, func(buf [][]parquet.Value, e *ProfileEntry) {
-			b := buf[offset][0].Bytes()
-			if len(b) != 16 {
-				return
-			}
-			copy(u[:], b)
-			e.ID = u.String()
-		})
+		acceptedRows.And(profileIDRows)
 	}
 
-	buf := make([][]parquet.Value, len(columns))
-	columnNames := columns.names()
+	return acceptedRows, nil
+}
 
-	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
-		columns.join(q), bigBatchSize,
-		func(r *parquetquery.IteratorResult) ProfileEntry {
-			buf = r.Columns(buf, columnNames...)
-			x := series[buf[0][0].Uint32()]
-			e := ProfileEntry{
-				RowNum:      r.RowNumber[0],
-				Timestamp:   model.TimeFromUnixNano(buf[1][0].Int64()),
-				Fingerprint: x.fingerprint,
-				Labels:      x.labels,
+func materializeProfileEntries(scanner *profileEntryColumnScanner, acceptedRows *roaring.Bitmap, series map[uint32]series, opts iteratorOpts) ([]ProfileEntry, error) {
+	entries := make([]ProfileEntry, 0, acceptedRows.GetCardinality())
+	// Build entries from SeriesIndex first. Subsequent scans over top-level
+	// scalar columns visit rows in the same order, so their accepted-row ordinal
+	// maps directly to the entry slice index.
+	if err := scanner.scanInt32(schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), func(row uint32, value int32) error {
+		if !acceptedRows.Contains(row) {
+			return nil
+		}
+		x := series[uint32(value)]
+		entries = append(entries, ProfileEntry{
+			RowNum:      int64(row),
+			Fingerprint: x.fingerprint,
+			Labels:      x.labels,
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := scanAcceptedRowsInt64Column(scanner, acceptedRows, schemav1.TimeNanosColumnName, func(i int, value int64) error {
+		entries[i].Timestamp = model.TimeFromUnixNano(value)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if opts.fetchPartition {
+		if err := scanAcceptedRowsInt64Column(scanner, acceptedRows, schemav1.StacktracePartitionColumnName, func(i int, value int64) error {
+			entries[i].Partition = uint64(value)
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	if opts.fetchProfileIDs {
+		var u uuid.UUID
+		if err := scanAcceptedRowsFixedLenByteArrayColumn(scanner, acceptedRows, schemav1.IDColumnName, func(i int, value []byte) error {
+			if len(value) != 16 {
+				return nil
 			}
-			for _, proc := range processor {
-				proc(buf, &e)
-			}
-			return e
-		},
-		func([]ProfileEntry) {},
-	)
+			copy(u[:], value)
+			entries[i].ID = u.String()
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	return entries, nil
+}
+
+func scanAcceptedRowsInt64Column(scanner *profileEntryColumnScanner, acceptedRows *roaring.Bitmap, columnName string, fn func(entryIndex int, value int64) error) error {
+	entryIndex := 0
+	return scanner.scanInt64(columnName, nil, func(row uint32, value int64) error {
+		if !acceptedRows.Contains(row) {
+			return nil
+		}
+		if err := fn(entryIndex, value); err != nil {
+			return err
+		}
+		entryIndex++
+		return nil
+	})
+}
+
+func scanAcceptedRowsFixedLenByteArrayColumn(scanner *profileEntryColumnScanner, acceptedRows *roaring.Bitmap, columnName string, fn func(entryIndex int, value []byte) error) error {
+	entryIndex := 0
+	return scanner.scanFixedLenByteArray(columnName, nil, func(row uint32, value []byte) error {
+		if !acceptedRows.Contains(row) {
+			return nil
+		}
+		if err := fn(entryIndex, value); err != nil {
+			return err
+		}
+		entryIndex++
+		return nil
+	})
+}
+
+type profileEntryColumnScanner struct {
+	q           *queryContext
+	values      []parquet.Value
+	int32Values []int32
+	int64Values []int64
+	byteValues  []byte
+}
+
+func (s *profileEntryColumnScanner) matchingInt32Rows(columnName string, predicate parquetquery.Predicate, keep func(int32) bool) (*roaring.Bitmap, error) {
+	rows := roaring.New()
+	if err := s.scanInt32(columnName, predicate, func(row uint32, value int32) error {
+		if keep(value) {
+			rows.Add(row)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (s *profileEntryColumnScanner) matchingInt64Rows(columnName string, predicate parquetquery.Predicate, keep func(int64) bool) (*roaring.Bitmap, error) {
+	rows := roaring.New()
+	if err := s.scanInt64(columnName, predicate, func(row uint32, value int64) error {
+		if keep(value) {
+			rows.Add(row)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (s *profileEntryColumnScanner) matchingFixedLenByteArrayRows(columnName string, predicate parquetquery.Predicate, keep func([]byte) bool) (*roaring.Bitmap, error) {
+	rows := roaring.New()
+	if err := s.scanFixedLenByteArray(columnName, predicate, func(row uint32, value []byte) error {
+		if keep(value) {
+			rows.Add(row)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (s *profileEntryColumnScanner) scanInt32(columnName string, predicate parquetquery.Predicate, fn func(row uint32, value int32) error) error {
+	return s.scanTypedColumn(columnName, predicate, func(page parquet.Page, firstRow int64) error {
+		reader := page.Values()
+		if typed, ok := reader.(parquet.Int32Reader); ok {
+			return s.readInt32Page(typed, page.NumRows(), firstRow, fn)
+		}
+		return s.readValuePage(reader, page.NumRows(), firstRow, func(row uint32, value parquet.Value) error {
+			return fn(row, int32(value.Uint32()))
+		})
+	})
+}
+
+func (s *profileEntryColumnScanner) scanInt64(columnName string, predicate parquetquery.Predicate, fn func(row uint32, value int64) error) error {
+	return s.scanTypedColumn(columnName, predicate, func(page parquet.Page, firstRow int64) error {
+		reader := page.Values()
+		if typed, ok := reader.(parquet.Int64Reader); ok {
+			return s.readInt64Page(typed, page.NumRows(), firstRow, fn)
+		}
+		return s.readValuePage(reader, page.NumRows(), firstRow, func(row uint32, value parquet.Value) error {
+			return fn(row, value.Int64())
+		})
+	})
+}
+
+func (s *profileEntryColumnScanner) scanFixedLenByteArray(columnName string, predicate parquetquery.Predicate, fn func(row uint32, value []byte) error) error {
+	return s.scanTypedColumn(columnName, predicate, func(page parquet.Page, firstRow int64) error {
+		reader := page.Values()
+		if typed, ok := reader.(parquet.FixedLenByteArrayReader); ok {
+			return s.readFixedLenByteArrayPage(typed, page.Type().Length(), page.NumRows(), firstRow, fn)
+		}
+		return s.readValuePage(reader, page.NumRows(), firstRow, func(row uint32, value parquet.Value) error {
+			return fn(row, value.Bytes())
+		})
+	})
+}
+
+// scanTypedColumn reads required top-level scalar columns page-by-page. The
+// per-type scanners use parquet's native slice readers when available and only
+// fall back to parquet.Value materialization for pages that do not expose them.
+func (s *profileEntryColumnScanner) scanTypedColumn(columnName string, predicate parquetquery.Predicate, readPage func(page parquet.Page, firstRow int64) error) error {
+	columnIndex, _ := parquetquery.GetColumnIndexByPath(s.q.ds.Profiles().Root(), columnName)
+	if columnIndex < 0 {
+		return fmt.Errorf("column %s not found in profile parquet table", columnName)
+	}
+
+	var rowBase int64
+	for _, rowGroup := range s.q.ds.Profiles().RowGroups() {
+		if err := s.q.ctx.Err(); err != nil {
+			return err
+		}
+		columnChunk := rowGroup.ColumnChunks()[columnIndex]
+		if predicate != nil {
+			columnChunkIndex, err := columnChunk.ColumnIndex()
+			if err != nil {
+				return err
+			}
+			if !predicate.KeepColumnChunk(columnChunkIndex) {
+				rowBase += rowGroup.NumRows()
+				continue
+			}
+		}
+
+		pages := columnChunk.Pages()
+		var rowInGroup int64
+		for {
+			page, err := pages.ReadPage()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				_ = pages.Close()
+				return err
+			}
+			if page == nil {
+				break
+			}
+
+			pageRows := page.NumRows()
+			if predicate != nil && !predicate.KeepPage(page) {
+				rowInGroup += pageRows
+				parquet.Release(page)
+				continue
+			}
+
+			if err := readPage(page, rowBase+rowInGroup); err != nil {
+				parquet.Release(page)
+				_ = pages.Close()
+				return err
+			}
+			rowInGroup += pageRows
+			parquet.Release(page)
+		}
+		if err := pages.Close(); err != nil {
+			return err
+		}
+		rowBase += rowGroup.NumRows()
+	}
+	return nil
+}
+
+func (s *profileEntryColumnScanner) readInt32Page(reader parquet.Int32Reader, pageRows, firstRow int64, fn func(row uint32, value int32) error) error {
+	var rowInPage int64
+	for rowInPage < pageRows {
+		n, err := reader.ReadInt32s(s.int32Values)
+		for i := 0; i < n; i++ {
+			row, rowErr := profileEntryRowNumber(firstRow + rowInPage)
+			if rowErr != nil {
+				return rowErr
+			}
+			if err := fn(row, s.int32Values[i]); err != nil {
+				return err
+			}
+			rowInPage++
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *profileEntryColumnScanner) readInt64Page(reader parquet.Int64Reader, pageRows, firstRow int64, fn func(row uint32, value int64) error) error {
+	var rowInPage int64
+	for rowInPage < pageRows {
+		n, err := reader.ReadInt64s(s.int64Values)
+		for i := 0; i < n; i++ {
+			row, rowErr := profileEntryRowNumber(firstRow + rowInPage)
+			if rowErr != nil {
+				return rowErr
+			}
+			if err := fn(row, s.int64Values[i]); err != nil {
+				return err
+			}
+			rowInPage++
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *profileEntryColumnScanner) readFixedLenByteArrayPage(reader parquet.FixedLenByteArrayReader, valueWidth int, pageRows, firstRow int64, fn func(row uint32, value []byte) error) error {
+	if valueWidth <= 0 {
+		return fmt.Errorf("fixed-length byte array width must be positive")
+	}
+	if cap(s.byteValues) < profileEntryColumnReadSize*valueWidth {
+		s.byteValues = make([]byte, profileEntryColumnReadSize*valueWidth)
+	}
+	buffer := s.byteValues[:profileEntryColumnReadSize*valueWidth]
+
+	var rowInPage int64
+	for rowInPage < pageRows {
+		n, err := reader.ReadFixedLenByteArrays(buffer)
+		for i := 0; i < n; i++ {
+			row, rowErr := profileEntryRowNumber(firstRow + rowInPage)
+			if rowErr != nil {
+				return rowErr
+			}
+			start := i * valueWidth
+			if err := fn(row, buffer[start:start+valueWidth]); err != nil {
+				return err
+			}
+			rowInPage++
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *profileEntryColumnScanner) readValuePage(reader parquet.ValueReader, pageRows, firstRow int64, fn func(row uint32, value parquet.Value) error) error {
+	if s.values == nil {
+		s.values = make([]parquet.Value, profileEntryColumnReadSize)
+	}
+	var rowInPage int64
+	for rowInPage < pageRows {
+		n, err := reader.ReadValues(s.values)
+		for i := 0; i < n; i++ {
+			row, rowErr := profileEntryRowNumber(firstRow + rowInPage)
+			if rowErr != nil {
+				return rowErr
+			}
+			if err := fn(row, s.values[i]); err != nil {
+				return err
+			}
+			rowInPage++
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func profileIDSelectorSet(selectors []string) map[[16]byte]struct{} {
+	ids := make(map[[16]byte]struct{}, len(selectors))
+	for _, selector := range selectors {
+		if len(selector) != 16 {
+			continue
+		}
+		var id [16]byte
+		copy(id[:], selector)
+		ids[id] = struct{}{}
+	}
+	return ids
+}
+
+func profileEntryRowNumber(row int64) (uint32, error) {
+	if row < 0 || row > int64(^uint32(0)) {
+		return 0, fmt.Errorf("profile row number %d out of uint32 range", row)
+	}
+	return uint32(row), nil
 }
 
 type series struct {
