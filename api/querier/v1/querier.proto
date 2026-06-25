@@ -119,6 +119,8 @@ message SelectMergeStacktracesRequest {
   optional types.v1.StackTraceSelector stack_trace_selector = 7;
   // List of Profile UUIDs to query
   repeated string profile_id_selector = 8 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
+  // (experimental) Used for making and polling async queries.
+  optional AsyncQueryRequest async = 9;
 }
 
 enum ProfileFormat {
@@ -134,6 +136,38 @@ message SelectMergeStacktracesResponse {
   bytes tree = 2;
   // DOT graph representation.
   string dot = 3;
+  // (experimental) Used for responding to async queries.
+  optional AsyncQueryResponse async = 4;
+}
+
+message AsyncQueryRequest {
+  // If set, this is a polling request.
+  string request_id = 1;
+  // Sets the kind of async query.
+  AsyncQueryType type = 2;
+}
+
+message AsyncQueryResponse {
+  // Id of the async query.
+  string request_id = 1;
+  // Status of the query: unknown, in_progress, success, failed
+  AsyncQueryStatus status = 2;
+  // Populated on FAILURE.
+  string error_message = 3;
+}
+
+enum AsyncQueryType {
+  // The query should not be async.
+  ASYNC_QUERY_TYPE_DISABLED = 0;
+  // The query must be async.
+  ASYNC_QUERY_TYPE_FORCE = 1;
+}
+
+enum AsyncQueryStatus {
+  ASYNC_QUERY_STATUS_UNKNOWN = 0;
+  ASYNC_QUERY_STATUS_IN_PROGRESS = 1;
+  ASYNC_QUERY_STATUS_SUCCESS = 2;
+  ASYNC_QUERY_STATUS_FAILURE = 3;
 }
 
 message SelectMergeSpanProfileRequest {

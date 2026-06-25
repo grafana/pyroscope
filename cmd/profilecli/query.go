@@ -138,7 +138,7 @@ func validateQueryProfileParams(params *queryProfileParams) error {
 	return nil
 }
 
-func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool, async bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -150,8 +150,19 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	}
 
 	var profile *googlev1.Profile
-
-	if len(params.SpanSelector) > 0 {
+	if async {
+		if len(params.SpanSelector) > 0 {
+			return errors.New("--async is not supported with --span-selector (only SelectMergeStacktraces queries can run async)")
+		}
+		var locations []*typesv1.Location
+		if len(params.StacktraceSelector) > 0 {
+			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+			for _, cs := range params.StacktraceSelector {
+				locations = append(locations, &typesv1.Location{Name: cs})
+			}
+		}
+		profile, err = asyncQueryProfileTree(ctx, params, from, to, locations)
+	} else if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)
 	} else {
@@ -159,13 +170,10 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		if len(params.StacktraceSelector) > 0 {
 			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
 			for _, cs := range params.StacktraceSelector {
-				locations = append(locations, &typesv1.Location{
-					Name: cs,
-				})
+				locations = append(locations, &typesv1.Location{Name: cs})
 			}
 			level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
 		}
-
 		if profileTree {
 			profile, err = queryProfileTree(ctx, params, from, to, locations)
 		} else {
@@ -350,19 +358,21 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force,
-		&querierv1.SelectMergeProfileRequest{
-			ProfileTypeID: params.ProfileType,
-			Start:         from.UnixMilli(),
-			End:           to.UnixMilli(),
-			LabelSelector: params.Query,
-			StackTraceSelector: &typesv1.StackTraceSelector{
-				GoPgo: &typesv1.GoPGO{
-					KeepLocations:    params.KeepLocations,
-					AggregateCallees: params.AggregateCallees,
-				},
-			},
-		})
+	stackTraceSelector := &typesv1.StackTraceSelector{
+		GoPgo: &typesv1.GoPGO{
+			KeepLocations:    params.KeepLocations,
+			AggregateCallees: params.AggregateCallees,
+		},
+	}
+
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID:      params.ProfileType,
+		Start:              from.UnixMilli(),
+		End:                to.UnixMilli(),
+		LabelSelector:      params.Query,
+		StackTraceSelector: stackTraceSelector,
+	}
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
 }
 
 type querySeriesParams struct {

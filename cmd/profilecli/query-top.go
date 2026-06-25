@@ -65,16 +65,16 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 	if err != nil {
 		return fmt.Errorf("failed to query series: %w", err)
 	}
-
 	logDiagnostics(params.phlareClient, resp.Header())
+	series := resp.Msg.Series
 
 	type seriesTotal struct {
 		labelValues []string
 		total       float64
 	}
 
-	totals := make([]seriesTotal, 0, len(resp.Msg.Series))
-	for _, s := range resp.Msg.Series {
+	totals := make([]seriesTotal, 0, len(series))
+	for _, s := range series {
 		var total float64
 		for _, p := range s.Points {
 			total += p.Value

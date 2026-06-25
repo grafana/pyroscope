@@ -867,6 +867,8 @@ Usage of ./pyroscope:
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -query-backend.grpc-client-config.tls-server-name string
     	Override the expected name on the server certificate.
+  -query-frontend.async-queries-enabled
+    	[experimental] Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)
   -query-frontend.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-frontend.grpc-client-config.backoff-min-period duration
@@ -921,6 +923,8 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. This address is sent to query-scheduler and querier, which uses it to send the query response back to query-frontend. (default [<private network interfaces>])
   -query-frontend.instance-port int
     	Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).
+  -query-frontend.max-async-query-concurrency int
+    	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
   -query-frontend.scheduler-worker-concurrency int
     	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
   -query-scheduler.grpc-client-config.backoff-max-period duration

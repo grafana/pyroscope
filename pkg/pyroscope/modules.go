@@ -109,6 +109,7 @@ const (
 	Symbolizer            string = "symbolizer"
 	QueryDiagnosticsStore string = "query-diagnostics-store"
 	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
+	AsyncQueryStore       string = "async-query-store"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")

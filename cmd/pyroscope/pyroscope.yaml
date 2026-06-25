@@ -408,6 +408,10 @@ limits:
   # Whether profiles should be sanitized when merging.
   # query_sanitize_on_merge: true
 
+  # Maximum number of concurrent async queries per tenant. 0 to disable async
+  # queries.
+  # max_async_query_concurrency: 5
+
   # Delete blocks containing samples older than the specified retention period.
   # 0 to disable.
   # compactor_blocks_retention_period: 0s
