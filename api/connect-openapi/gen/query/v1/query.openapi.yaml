@@ -1008,12 +1008,18 @@ components:
           $ref: '#/components/schemas/query.v1.HeatmapQuery'
         timeSeriesCompact:
           title: time_series_compact
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        symbolServices:
+          title: symbol_services
+          $ref: '#/components/schemas/query.v1.SymbolServicesQuery'
+        symbolBloomCandidates:
+          title: symbol_bloom_candidates
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+          $ref: '#/components/schemas/query.v1.SymbolBloomCandidatesQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1103,6 +1109,8 @@ components:
         - QUERY_PPROF
         - QUERY_HEATMAP
         - QUERY_TIME_SERIES_COMPACT
+        - QUERY_SYMBOL_SERVICES
+        - QUERY_SYMBOL_BLOOM_CANDIDATES
     query.v1.Report:
       type: object
       properties:
@@ -1136,6 +1144,12 @@ components:
         timeSeriesCompact:
           title: time_series_compact
           $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
+        symbolServices:
+          title: symbol_services
+          $ref: '#/components/schemas/query.v1.SymbolServicesReport'
+        symbolBloomCandidates:
+          title: symbol_bloom_candidates
+          $ref: '#/components/schemas/query.v1.SymbolBloomCandidatesReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1151,6 +1165,8 @@ components:
         - REPORT_PPROF
         - REPORT_HEATMAP
         - REPORT_TIME_SERIES_COMPACT
+        - REPORT_SYMBOL_SERVICES
+        - REPORT_SYMBOL_BLOOM_CANDIDATES
     query.v1.Series:
       type: object
       properties:
@@ -1194,6 +1210,123 @@ components:
             $ref: '#/components/schemas/types.v1.Labels'
           title: series_labels
       title: SeriesLabelsReport
+      additionalProperties: false
+    query.v1.SymbolBloomCandidate:
+      type: object
+      properties:
+        blockId:
+          type: string
+          title: block_id
+        datasetIndex:
+          type: integer
+          title: dataset_index
+        serviceName:
+          type: string
+          title: service_name
+        symbolNames:
+          type: array
+          items:
+            type: string
+          title: symbol_names
+        minTime:
+          type:
+            - integer
+            - string
+          title: min_time
+          format: int64
+        maxTime:
+          type:
+            - integer
+            - string
+          title: max_time
+          format: int64
+        symbolCountEstimate:
+          type: integer
+          title: symbol_count_estimate
+      title: SymbolBloomCandidate
+      additionalProperties: false
+    query.v1.SymbolBloomCandidatesQuery:
+      type: object
+      properties:
+        symbolNames:
+          type: array
+          items:
+            type: string
+          title: symbol_names
+      title: SymbolBloomCandidatesQuery
+      additionalProperties: false
+    query.v1.SymbolBloomCandidatesReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.SymbolBloomCandidatesQuery'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.SymbolBloomCandidate'
+          title: candidates
+        complete:
+          type: boolean
+          title: complete
+      title: SymbolBloomCandidatesReport
+      additionalProperties: false
+    query.v1.SymbolService:
+      type: object
+      properties:
+        serviceName:
+          type: string
+          title: service_name
+        profileTypes:
+          type: array
+          items:
+            type: string
+          title: profile_types
+      title: SymbolService
+      additionalProperties: false
+    query.v1.SymbolServicesQuery:
+      type: object
+      properties:
+        symbolNames:
+          type: array
+          items:
+            type: string
+          title: symbol_names
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.SymbolBloomCandidate'
+          title: candidates
+      title: SymbolServicesQuery
+      additionalProperties: false
+    query.v1.SymbolServicesReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.SymbolServicesQuery'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.SymbolServicesResult'
+          title: results
+        complete:
+          type: boolean
+          title: complete
+      title: SymbolServicesReport
+      additionalProperties: false
+    query.v1.SymbolServicesResult:
+      type: object
+      properties:
+        symbolName:
+          type: string
+          title: symbol_name
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.SymbolService'
+          title: services
+      title: SymbolServicesResult
       additionalProperties: false
     query.v1.TimeSeriesCompactReport:
       type: object

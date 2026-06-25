@@ -183,6 +183,70 @@ func (r *Router) SelectHeatmap(
 		})
 }
 
+func (r *Router) SymbolLookup(
+	ctx context.Context,
+	c *connect.Request[querierv1.SymbolLookupRequest],
+) (*connect.Response[querierv1.SymbolLookupResponse], error) {
+	return Query[querierv1.SymbolLookupRequest, querierv1.SymbolLookupResponse](ctx, r, c,
+		func(_, _ *querierv1.SymbolLookupRequest) {},
+		func(a, b *querierv1.SymbolLookupResponse) (*querierv1.SymbolLookupResponse, error) {
+			return mergeSymbolLookupResponses(a, b), nil
+		})
+}
+
+func mergeSymbolLookupResponses(responses ...*querierv1.SymbolLookupResponse) *querierv1.SymbolLookupResponse {
+	out := &querierv1.SymbolLookupResponse{Complete: true}
+	results := make(map[string]map[string]map[string]struct{})
+	for _, resp := range responses {
+		if resp == nil {
+			continue
+		}
+		if !resp.GetComplete() {
+			out.Complete = false
+		}
+		for _, result := range resp.GetResults() {
+			services := results[result.GetSymbolName()]
+			if services == nil {
+				services = make(map[string]map[string]struct{})
+				results[result.GetSymbolName()] = services
+			}
+			for _, service := range result.GetServices() {
+				profileTypes := services[service.GetServiceName()]
+				if profileTypes == nil {
+					profileTypes = make(map[string]struct{})
+					services[service.GetServiceName()] = profileTypes
+				}
+				for _, profileType := range service.GetProfileTypes() {
+					profileTypes[profileType] = struct{}{}
+				}
+			}
+		}
+	}
+	symbols := make([]string, 0, len(results))
+	for symbol := range results {
+		symbols = append(symbols, symbol)
+	}
+	slices.Sort(symbols)
+	for _, symbol := range symbols {
+		result := &querierv1.SymbolLookupResult{SymbolName: symbol}
+		services := make([]string, 0, len(results[symbol]))
+		for service := range results[symbol] {
+			services = append(services, service)
+		}
+		slices.Sort(services)
+		for _, service := range services {
+			profileTypes := make([]string, 0, len(results[symbol][service]))
+			for profileType := range results[symbol][service] {
+				profileTypes = append(profileTypes, profileType)
+			}
+			slices.Sort(profileTypes)
+			result.Services = append(result.Services, &querierv1.SymbolLookupService{ServiceName: service, ProfileTypes: profileTypes})
+		}
+		out.Results = append(out.Results, result)
+	}
+	return out
+}
+
 func (r *Router) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],

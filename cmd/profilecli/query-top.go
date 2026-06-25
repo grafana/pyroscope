@@ -63,6 +63,7 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 		GroupBy:       params.LabelNames,
 	}))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return fmt.Errorf("failed to query series: %w", err)
 	}
 

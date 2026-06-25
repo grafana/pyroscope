@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,6 +108,27 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, test.response.Blocks, blocks)
 	}
+}
+
+func Test_QueryFrontend_SymbolLookupValidation(t *testing.T) {
+	qf := &QueryFrontend{}
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	_, err := qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{}))
+	require.ErrorContains(t, err, "at least one symbol name is required")
+
+	_, err = qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{SymbolNames: []string{""}}))
+	require.ErrorContains(t, err, "symbol name at index 0 is empty")
+
+	_, err = qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{SymbolNames: []string{strings.Repeat("a", maxSymbolLookupSymbolNameBytes+1)}}))
+	require.ErrorContains(t, err, "symbol name at index 0 is too long")
+
+	symbols := make([]string, maxSymbolLookupSymbols+1)
+	for i := range symbols {
+		symbols[i] = "runtime.mallocgc"
+	}
+	_, err = qf.SymbolLookup(ctx, connect.NewRequest(&querierv1.SymbolLookupRequest{SymbolNames: symbols}))
+	require.ErrorContains(t, err, "too many symbol names")
 }
 
 func Test_QueryFrontend_LabelNames_WithFiltering(t *testing.T) {

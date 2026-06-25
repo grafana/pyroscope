@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -19,6 +20,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
@@ -28,8 +30,21 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
+const grafanaTraceIDHeader = "X-Grafana-Trace-Id"
+
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
+		c.httpClient(),
+		c.URL,
+		append(
+			connectapi.DefaultClientOptions(),
+			c.protocolOption(),
+		)...,
+	)
+}
+
+func (c *phlareClient) queryFrontendClient() queryv1connect.QueryFrontendServiceClient {
+	return queryv1connect.NewQueryFrontendServiceClient(
 		c.httpClient(),
 		c.URL,
 		append(
@@ -196,6 +211,7 @@ func querySpanProfile(ctx context.Context, params *queryProfileParams, from time
 	qc := params.phlareClient.queryClient()
 	resp, err := qc.SelectMergeSpanProfile(ctx, connect.NewRequest(req))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return nil, fmt.Errorf("failed to query span profile: %w", err)
 	}
 
@@ -241,6 +257,7 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return nil, err
 	}
 
@@ -276,6 +293,7 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	qc := params.phlareClient.queryClient()
 	resp, err := qc.SelectMergeStacktraces(ctx, connect.NewRequest(req))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return nil, fmt.Errorf("failed to query: %w", err)
 	}
 
@@ -298,6 +316,7 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 	qc := client.queryClient()
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
 	if err != nil {
+		logDiagnosticsFromError(client, err)
 		return fmt.Errorf("failed to query: %w", err)
 	}
 
@@ -307,11 +326,18 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 }
 
 func logDiagnostics(client *phlareClient, headers http.Header) {
+	if traceID := headerValue(headers, grafanaTraceIDHeader); traceID != "" {
+		level.Info(logger).Log(
+			"msg", "request trace",
+			"trace_id", traceID,
+		)
+	}
+
 	if !client.CollectDiagnostics {
 		return
 	}
 
-	diagID := headers.Get(querydiagnostics.IdHeader)
+	diagID := headerValue(headers, querydiagnostics.IdHeader)
 
 	if diagID != "" {
 		level.Info(logger).Log(
@@ -319,6 +345,25 @@ func logDiagnostics(client *phlareClient, headers http.Header) {
 			"diagnostics_id", diagID,
 		)
 	}
+}
+
+func logDiagnosticsFromError(client *phlareClient, err error) {
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		logDiagnostics(client, connectErr.Meta())
+	}
+}
+
+func headerValue(headers http.Header, key string) string {
+	if value := headers.Get(key); value != "" {
+		return value
+	}
+	for k, values := range headers {
+		if strings.EqualFold(k, key) && len(values) > 0 {
+			return values[0]
+		}
+	}
+	return ""
 }
 
 type queryGoPGOParams struct {
@@ -400,6 +445,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
+			logDiagnosticsFromError(params.phlareClient, err)
 			return fmt.Errorf("failed to query: %w", err)
 		}
 		logDiagnostics(params.phlareClient, resp.Header())
@@ -413,6 +459,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
+			logDiagnosticsFromError(params.phlareClient, err)
 			return fmt.Errorf("failed to query: %w", err)
 		}
 		result = resp.Msg.LabelsSet
@@ -425,6 +472,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
+			logDiagnosticsFromError(params.phlareClient, err)
 			return fmt.Errorf("failed to query: %w", err)
 		}
 		result = resp.Msg.LabelsSet
@@ -462,6 +510,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 		Matchers: []string{params.Query},
 	}))
 	if err != nil {
+		logDiagnosticsFromError(params.phlareClient, err)
 		return fmt.Errorf("failed to query: %w", err)
 	}
 	logDiagnostics(params.phlareClient, resp.Header())
@@ -486,6 +535,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 				Matchers: []string{params.Query},
 			}))
 			if err != nil {
+				logDiagnosticsFromError(params.phlareClient, err)
 				return fmt.Errorf("failed to query label values for %s: %w", name, err)
 			}
 

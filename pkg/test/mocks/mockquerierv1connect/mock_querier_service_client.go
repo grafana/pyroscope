@@ -29,6 +29,36 @@ func (_m *MockQuerierServiceClient) EXPECT() *MockQuerierServiceClient_Expecter 
 	return &MockQuerierServiceClient_Expecter{mock: &_m.Mock}
 }
 
+// SymbolLookup provides a mock function with given fields: _a0, _a1
+func (_m *MockQuerierServiceClient) SymbolLookup(_a0 context.Context, _a1 *connect.Request[querierv1.SymbolLookupRequest]) (*connect.Response[querierv1.SymbolLookupResponse], error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SymbolLookup")
+	}
+
+	var r0 *connect.Response[querierv1.SymbolLookupResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.SymbolLookupRequest]) (*connect.Response[querierv1.SymbolLookupResponse], error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.SymbolLookupRequest]) *connect.Response[querierv1.SymbolLookupResponse]); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[querierv1.SymbolLookupResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *connect.Request[querierv1.SymbolLookupRequest]) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // AnalyzeQuery provides a mock function with given fields: _a0, _a1
 func (_m *MockQuerierServiceClient) AnalyzeQuery(_a0 context.Context, _a1 *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
 	ret := _m.Called(_a0, _a1)

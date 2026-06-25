@@ -23,6 +23,7 @@ type DatasetFormat uint32
 const (
 	DatasetFormat0 DatasetFormat = iota
 	DatasetFormat1
+	DatasetFormatSymbolBloomIndex
 )
 
 type Section uint32
@@ -32,6 +33,7 @@ const (
 	SectionTSDB
 	SectionSymbols
 	SectionDatasetIndex
+	SectionSymbolBloomIndex
 )
 
 // DatasetWeight holds the section-level size breakdown of a dataset.
@@ -49,14 +51,20 @@ type DatasetWeight struct {
 // table of contents.
 func WeightOf(ds *metastorev1.Dataset) DatasetWeight {
 	toc := ds.TableOfContents
-	switch {
-	case len(toc) >= 3: // Format0: profiles, tsdb, symbols
+	switch DatasetFormat(ds.Format) {
+	case DatasetFormat0:
+		if len(toc) < 3 {
+			return DatasetWeight{}
+		}
 		return DatasetWeight{
 			ProfilesBytes: toc[1] - toc[0],
 			TSDBBytes:     toc[2] - toc[1],
 			SymbolsBytes:  (toc[0] + ds.Size) - toc[2],
 		}
-	case len(toc) == 1: // Format1: tenant-wide dataset index
+	case DatasetFormat1:
+		if len(toc) != 1 {
+			return DatasetWeight{}
+		}
 		return DatasetWeight{
 			TSDBBytes:        ds.Size,
 			IndexLookupCount: 1,
@@ -101,6 +109,9 @@ var (
 			SectionDatasetIndex: sectionDesc{index: 0, name: "dataset_tsdb_index"},
 			SectionTSDB:         sectionDesc{index: 0, name: "dataset_tsdb_index"},
 		},
+		DatasetFormatSymbolBloomIndex: {
+			SectionSymbolBloomIndex: sectionDesc{index: 0, name: "symbol_bloom_index"},
+		},
 	}
 )
 
@@ -114,6 +125,8 @@ func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
 		return openProfileTable(ctx, s)
 	case SectionDatasetIndex:
 		return openDatasetIndex(ctx, s)
+	case SectionSymbolBloomIndex:
+		return openSymbolBloomIndex(ctx, s)
 	default:
 		panic(fmt.Sprintf("bug: unknown section: %d", sc))
 	}
@@ -130,9 +143,10 @@ type Dataset struct {
 	buf  *bufferpool.Buffer
 	err  error
 
-	tsdb     *tsdbBuffer
-	symbols  *symdb.Reader
-	profiles *ParquetFile
+	tsdb        *tsdbBuffer
+	symbols     *symdb.Reader
+	profiles    *ParquetFile
+	symbolBloom *SymbolBloomIndex
 
 	memSize int
 }
@@ -234,6 +248,9 @@ func (s *Dataset) closeErr(err error) error {
 	if s.profiles != nil {
 		merr.Add(s.profiles.Close())
 	}
+	if s.symbolBloom != nil {
+		merr.Add(s.symbolBloom.Close())
+	}
 	if s.obj != nil {
 		merr.Add(s.obj.CloseWithError(err))
 	}
@@ -251,6 +268,8 @@ func (s *Dataset) Profiles() *ParquetFile { return s.profiles }
 func (s *Dataset) ProfileRowReader() parquet.RowReader { return s.profiles.RowReader() }
 
 func (s *Dataset) Symbols() symdb.SymbolsReader { return s.symbols }
+
+func (s *Dataset) SymbolBloomIndex() *SymbolBloomIndex { return s.symbolBloom }
 
 func (s *Dataset) Index() phlaredb.IndexReader { return s.tsdb.index }
 

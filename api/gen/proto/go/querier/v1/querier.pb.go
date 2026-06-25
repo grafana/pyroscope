@@ -1398,6 +1398,230 @@ func (x *SelectHeatmapResponse) GetSeries() []*v1.HeatmapSeries {
 	return nil
 }
 
+type SymbolLookupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Start         int64                  `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
+	End           int64                  `protobuf:"varint,2,opt,name=end,proto3" json:"end,omitempty"`
+	LabelSelector string                 `protobuf:"bytes,3,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	SymbolNames   []string               `protobuf:"bytes,4,rep,name=symbol_names,json=symbolNames,proto3" json:"symbol_names,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SymbolLookupRequest) Reset() {
+	*x = SymbolLookupRequest{}
+	mi := &file_querier_v1_querier_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SymbolLookupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SymbolLookupRequest) ProtoMessage() {}
+
+func (x *SymbolLookupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SymbolLookupRequest.ProtoReflect.Descriptor instead.
+func (*SymbolLookupRequest) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *SymbolLookupRequest) GetStart() int64 {
+	if x != nil {
+		return x.Start
+	}
+	return 0
+}
+
+func (x *SymbolLookupRequest) GetEnd() int64 {
+	if x != nil {
+		return x.End
+	}
+	return 0
+}
+
+func (x *SymbolLookupRequest) GetLabelSelector() string {
+	if x != nil {
+		return x.LabelSelector
+	}
+	return ""
+}
+
+func (x *SymbolLookupRequest) GetSymbolNames() []string {
+	if x != nil {
+		return x.SymbolNames
+	}
+	return nil
+}
+
+type SymbolLookupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Results       []*SymbolLookupResult  `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	Complete      bool                   `protobuf:"varint,2,opt,name=complete,proto3" json:"complete,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SymbolLookupResponse) Reset() {
+	*x = SymbolLookupResponse{}
+	mi := &file_querier_v1_querier_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SymbolLookupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SymbolLookupResponse) ProtoMessage() {}
+
+func (x *SymbolLookupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SymbolLookupResponse.ProtoReflect.Descriptor instead.
+func (*SymbolLookupResponse) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SymbolLookupResponse) GetResults() []*SymbolLookupResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+func (x *SymbolLookupResponse) GetComplete() bool {
+	if x != nil {
+		return x.Complete
+	}
+	return false
+}
+
+type SymbolLookupResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SymbolName    string                 `protobuf:"bytes,1,opt,name=symbol_name,json=symbolName,proto3" json:"symbol_name,omitempty"`
+	Services      []*SymbolLookupService `protobuf:"bytes,2,rep,name=services,proto3" json:"services,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SymbolLookupResult) Reset() {
+	*x = SymbolLookupResult{}
+	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SymbolLookupResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SymbolLookupResult) ProtoMessage() {}
+
+func (x *SymbolLookupResult) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SymbolLookupResult.ProtoReflect.Descriptor instead.
+func (*SymbolLookupResult) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SymbolLookupResult) GetSymbolName() string {
+	if x != nil {
+		return x.SymbolName
+	}
+	return ""
+}
+
+func (x *SymbolLookupResult) GetServices() []*SymbolLookupService {
+	if x != nil {
+		return x.Services
+	}
+	return nil
+}
+
+type SymbolLookupService struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	ProfileTypes  []string               `protobuf:"bytes,2,rep,name=profile_types,json=profileTypes,proto3" json:"profile_types,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SymbolLookupService) Reset() {
+	*x = SymbolLookupService{}
+	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SymbolLookupService) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SymbolLookupService) ProtoMessage() {}
+
+func (x *SymbolLookupService) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SymbolLookupService.ProtoReflect.Descriptor instead.
+func (*SymbolLookupService) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *SymbolLookupService) GetServiceName() string {
+	if x != nil {
+		return x.ServiceName
+	}
+	return ""
+}
+
+func (x *SymbolLookupService) GetProfileTypes() []string {
+	if x != nil {
+		return x.ProfileTypes
+	}
+	return nil
+}
+
 type AnalyzeQueryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Start         int64                  `protobuf:"varint,2,opt,name=start,proto3" json:"start,omitempty"`
@@ -1409,7 +1633,7 @@ type AnalyzeQueryRequest struct {
 
 func (x *AnalyzeQueryRequest) Reset() {
 	*x = AnalyzeQueryRequest{}
-	mi := &file_querier_v1_querier_proto_msgTypes[18]
+	mi := &file_querier_v1_querier_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1421,7 +1645,7 @@ func (x *AnalyzeQueryRequest) String() string {
 func (*AnalyzeQueryRequest) ProtoMessage() {}
 
 func (x *AnalyzeQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[18]
+	mi := &file_querier_v1_querier_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1434,7 +1658,7 @@ func (x *AnalyzeQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeQueryRequest.ProtoReflect.Descriptor instead.
 func (*AnalyzeQueryRequest) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{18}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AnalyzeQueryRequest) GetStart() int64 {
@@ -1468,7 +1692,7 @@ type AnalyzeQueryResponse struct {
 
 func (x *AnalyzeQueryResponse) Reset() {
 	*x = AnalyzeQueryResponse{}
-	mi := &file_querier_v1_querier_proto_msgTypes[19]
+	mi := &file_querier_v1_querier_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1480,7 +1704,7 @@ func (x *AnalyzeQueryResponse) String() string {
 func (*AnalyzeQueryResponse) ProtoMessage() {}
 
 func (x *AnalyzeQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[19]
+	mi := &file_querier_v1_querier_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1493,7 +1717,7 @@ func (x *AnalyzeQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeQueryResponse.ProtoReflect.Descriptor instead.
 func (*AnalyzeQueryResponse) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{19}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AnalyzeQueryResponse) GetQueryScopes() []*QueryScope {
@@ -1528,7 +1752,7 @@ type QueryScope struct {
 
 func (x *QueryScope) Reset() {
 	*x = QueryScope{}
-	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	mi := &file_querier_v1_querier_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1540,7 +1764,7 @@ func (x *QueryScope) String() string {
 func (*QueryScope) ProtoMessage() {}
 
 func (x *QueryScope) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	mi := &file_querier_v1_querier_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1553,7 +1777,7 @@ func (x *QueryScope) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryScope.ProtoReflect.Descriptor instead.
 func (*QueryScope) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{20}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *QueryScope) GetComponentType() string {
@@ -1630,7 +1854,7 @@ type QueryImpact struct {
 
 func (x *QueryImpact) Reset() {
 	*x = QueryImpact{}
-	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	mi := &file_querier_v1_querier_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1642,7 +1866,7 @@ func (x *QueryImpact) String() string {
 func (*QueryImpact) ProtoMessage() {}
 
 func (x *QueryImpact) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	mi := &file_querier_v1_querier_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1655,7 +1879,7 @@ func (x *QueryImpact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryImpact.ProtoReflect.Descriptor instead.
 func (*QueryImpact) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{21}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *QueryImpact) GetTotalBytesInTimeRange() uint64 {
@@ -1797,7 +2021,22 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x05limit\x18\t \x01(\x03H\x00R\x05limit\x88\x01\x01B\b\n" +
 	"\x06_limit\"H\n" +
 	"\x15SelectHeatmapResponse\x12/\n" +
-	"\x06series\x18\x01 \x03(\v2\x17.types.v1.HeatmapSeriesR\x06series\"S\n" +
+	"\x06series\x18\x01 \x03(\v2\x17.types.v1.HeatmapSeriesR\x06series\"\xd8\x01\n" +
+	"\x13SymbolLookupRequest\x12*\n" +
+	"\x05start\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
+	"\x03end\x18\x02 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12J\n" +
+	"\x0elabel_selector\x18\x03 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12!\n" +
+	"\fsymbol_names\x18\x04 \x03(\tR\vsymbolNames\"l\n" +
+	"\x14SymbolLookupResponse\x128\n" +
+	"\aresults\x18\x01 \x03(\v2\x1e.querier.v1.SymbolLookupResultR\aresults\x12\x1a\n" +
+	"\bcomplete\x18\x02 \x01(\bR\bcomplete\"r\n" +
+	"\x12SymbolLookupResult\x12\x1f\n" +
+	"\vsymbol_name\x18\x01 \x01(\tR\n" +
+	"symbolName\x12;\n" +
+	"\bservices\x18\x02 \x03(\v2\x1f.querier.v1.SymbolLookupServiceR\bservices\"]\n" +
+	"\x13SymbolLookupService\x12!\n" +
+	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12#\n" +
+	"\rprofile_types\x18\x02 \x03(\tR\fprofileTypes\"S\n" +
 	"\x13AnalyzeQueryRequest\x12\x14\n" +
 	"\x05start\x18\x02 \x01(\x03R\x05start\x12\x10\n" +
 	"\x03end\x18\x03 \x01(\x03R\x03end\x12\x14\n" +
@@ -1830,7 +2069,8 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x10HeatmapQueryType\x12\"\n" +
 	"\x1eHEATMAP_QUERY_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dHEATMAP_QUERY_TYPE_INDIVIDUAL\x10\x01\x12\x1b\n" +
-	"\x17HEATMAP_QUERY_TYPE_SPAN\x10\x022\xe5\t\n" +
+	"\x17HEATMAP_QUERY_TYPE_SPAN\x10\x022\xcb\n" +
+	"\n" +
 	"\x0eQuerierService\x12d\n" +
 	"\fProfileTypes\x12\x1f.querier.v1.ProfileTypesRequest\x1a .querier.v1.ProfileTypesResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12]\n" +
@@ -1850,6 +2090,8 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\fSelectSeries\x12\x1f.querier.v1.SelectSeriesRequest\x1a .querier.v1.SelectSeriesResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12g\n" +
 	"\rSelectHeatmap\x12 .querier.v1.SelectHeatmapRequest\x1a!.querier.v1.SelectHeatmapResponse\"\x11\xbaG\x0e\n" +
+	"\fscope/public\x12d\n" +
+	"\fSymbolLookup\x12\x1f.querier.v1.SymbolLookupRequest\x1a .querier.v1.SymbolLookupResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12L\n" +
 	"\x04Diff\x12\x17.querier.v1.DiffRequest\x1a\x18.querier.v1.DiffResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12k\n" +
@@ -1874,7 +2116,7 @@ func file_querier_v1_querier_proto_rawDescGZIP() []byte {
 }
 
 var file_querier_v1_querier_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_querier_v1_querier_proto_goTypes = []any{
 	(ProfileFormat)(0),                     // 0: querier.v1.ProfileFormat
 	(HeatmapQueryType)(0),                  // 1: querier.v1.HeatmapQueryType
@@ -1896,30 +2138,34 @@ var file_querier_v1_querier_proto_goTypes = []any{
 	(*SelectSeriesResponse)(nil),           // 17: querier.v1.SelectSeriesResponse
 	(*SelectHeatmapRequest)(nil),           // 18: querier.v1.SelectHeatmapRequest
 	(*SelectHeatmapResponse)(nil),          // 19: querier.v1.SelectHeatmapResponse
-	(*AnalyzeQueryRequest)(nil),            // 20: querier.v1.AnalyzeQueryRequest
-	(*AnalyzeQueryResponse)(nil),           // 21: querier.v1.AnalyzeQueryResponse
-	(*QueryScope)(nil),                     // 22: querier.v1.QueryScope
-	(*QueryImpact)(nil),                    // 23: querier.v1.QueryImpact
-	(*v1.ProfileType)(nil),                 // 24: types.v1.ProfileType
-	(*v1.Labels)(nil),                      // 25: types.v1.Labels
-	(*v1.StackTraceSelector)(nil),          // 26: types.v1.StackTraceSelector
-	(v1.TimeSeriesAggregationType)(0),      // 27: types.v1.TimeSeriesAggregationType
-	(v1.ExemplarType)(0),                   // 28: types.v1.ExemplarType
-	(*v1.Series)(nil),                      // 29: types.v1.Series
-	(*v1.HeatmapSeries)(nil),               // 30: types.v1.HeatmapSeries
-	(*v1.LabelValuesRequest)(nil),          // 31: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),           // 32: types.v1.LabelNamesRequest
-	(*v1.GetProfileStatsRequest)(nil),      // 33: types.v1.GetProfileStatsRequest
-	(*v1.LabelValuesResponse)(nil),         // 34: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),          // 35: types.v1.LabelNamesResponse
-	(*v11.Profile)(nil),                    // 36: google.v1.Profile
-	(*v1.GetProfileStatsResponse)(nil),     // 37: types.v1.GetProfileStatsResponse
+	(*SymbolLookupRequest)(nil),            // 20: querier.v1.SymbolLookupRequest
+	(*SymbolLookupResponse)(nil),           // 21: querier.v1.SymbolLookupResponse
+	(*SymbolLookupResult)(nil),             // 22: querier.v1.SymbolLookupResult
+	(*SymbolLookupService)(nil),            // 23: querier.v1.SymbolLookupService
+	(*AnalyzeQueryRequest)(nil),            // 24: querier.v1.AnalyzeQueryRequest
+	(*AnalyzeQueryResponse)(nil),           // 25: querier.v1.AnalyzeQueryResponse
+	(*QueryScope)(nil),                     // 26: querier.v1.QueryScope
+	(*QueryImpact)(nil),                    // 27: querier.v1.QueryImpact
+	(*v1.ProfileType)(nil),                 // 28: types.v1.ProfileType
+	(*v1.Labels)(nil),                      // 29: types.v1.Labels
+	(*v1.StackTraceSelector)(nil),          // 30: types.v1.StackTraceSelector
+	(v1.TimeSeriesAggregationType)(0),      // 31: types.v1.TimeSeriesAggregationType
+	(v1.ExemplarType)(0),                   // 32: types.v1.ExemplarType
+	(*v1.Series)(nil),                      // 33: types.v1.Series
+	(*v1.HeatmapSeries)(nil),               // 34: types.v1.HeatmapSeries
+	(*v1.LabelValuesRequest)(nil),          // 35: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),           // 36: types.v1.LabelNamesRequest
+	(*v1.GetProfileStatsRequest)(nil),      // 37: types.v1.GetProfileStatsRequest
+	(*v1.LabelValuesResponse)(nil),         // 38: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),          // 39: types.v1.LabelNamesResponse
+	(*v11.Profile)(nil),                    // 40: google.v1.Profile
+	(*v1.GetProfileStatsResponse)(nil),     // 41: types.v1.GetProfileStatsResponse
 }
 var file_querier_v1_querier_proto_depIdxs = []int32{
-	24, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
-	25, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
+	28, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
+	29, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
 	0,  // 2: querier.v1.SelectMergeStacktracesRequest.format:type_name -> querier.v1.ProfileFormat
-	26, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	30, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	12, // 4: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
 	0,  // 5: querier.v1.SelectMergeSpanProfileRequest.format:type_name -> querier.v1.ProfileFormat
 	12, // 6: querier.v1.SelectMergeSpanProfileResponse.flamegraph:type_name -> querier.v1.FlameGraph
@@ -1928,45 +2174,49 @@ var file_querier_v1_querier_proto_depIdxs = []int32{
 	13, // 9: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
 	14, // 10: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
 	14, // 11: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
-	26, // 12: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	27, // 13: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
-	26, // 14: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	28, // 15: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	29, // 16: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
+	30, // 12: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	31, // 13: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
+	30, // 14: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	32, // 15: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	33, // 16: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
 	1,  // 17: querier.v1.SelectHeatmapRequest.query_type:type_name -> querier.v1.HeatmapQueryType
-	28, // 18: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	30, // 19: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
-	22, // 20: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
-	23, // 21: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
-	2,  // 22: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	31, // 23: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	32, // 24: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	4,  // 25: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	6,  // 26: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	8,  // 27: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	15, // 28: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	16, // 29: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	18, // 30: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
-	10, // 31: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	33, // 32: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	20, // 33: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
-	3,  // 34: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	34, // 35: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	35, // 36: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	5,  // 37: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	7,  // 38: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	9,  // 39: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	36, // 40: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	17, // 41: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	19, // 42: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
-	11, // 43: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	37, // 44: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	21, // 45: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
-	34, // [34:46] is the sub-list for method output_type
-	22, // [22:34] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	32, // 18: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	34, // 19: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
+	22, // 20: querier.v1.SymbolLookupResponse.results:type_name -> querier.v1.SymbolLookupResult
+	23, // 21: querier.v1.SymbolLookupResult.services:type_name -> querier.v1.SymbolLookupService
+	26, // 22: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
+	27, // 23: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
+	2,  // 24: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	35, // 25: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	36, // 26: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	4,  // 27: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	6,  // 28: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	8,  // 29: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	15, // 30: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	16, // 31: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	18, // 32: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
+	20, // 33: querier.v1.QuerierService.SymbolLookup:input_type -> querier.v1.SymbolLookupRequest
+	10, // 34: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	37, // 35: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	24, // 36: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
+	3,  // 37: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	38, // 38: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	39, // 39: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	5,  // 40: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	7,  // 41: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	9,  // 42: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	40, // 43: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	17, // 44: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	19, // 45: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
+	21, // 46: querier.v1.QuerierService.SymbolLookup:output_type -> querier.v1.SymbolLookupResponse
+	11, // 47: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	41, // 48: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	25, // 49: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
+	37, // [37:50] is the sub-list for method output_type
+	24, // [24:37] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }
@@ -1985,7 +2235,7 @@ func file_querier_v1_querier_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_querier_v1_querier_proto_rawDesc), len(file_querier_v1_querier_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   22,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

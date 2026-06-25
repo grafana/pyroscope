@@ -3,11 +3,14 @@ package block_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -19,8 +22,10 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	blockmetadata "github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/metrics"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetrics"
 )
@@ -47,13 +52,15 @@ func Test_CompactBlocks(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, compactedBlocks, 1)
 	require.NotZero(t, compactedBlocks[0].Size)
-	require.Len(t, compactedBlocks[0].Datasets, 4)
+	require.Len(t, compactedBlocks[0].Datasets, 5)
 
 	compactedJson, err := json.MarshalIndent(compactedBlocks, "", "  ")
 	require.NoError(t, err)
 	expectedJson, err := os.ReadFile("testdata/compacted.golden")
 	require.NoError(t, err)
-	assert.Equal(t, string(expectedJson), string(compactedJson))
+	assert.JSONEq(t, string(expectedJson), string(compactedJson))
+	assertSymbolBloomIndex(t, ctx, dst, compactedBlocks[0])
+	assertSymbolBloomLookup(t, ctx, dst, compactedBlocks[0])
 
 	t.Run("Compact compacted blocks", func(t *testing.T) {
 		compactedBlocks, err = block.Compact(ctx, compactedBlocks, dst,
@@ -67,8 +74,199 @@ func Test_CompactBlocks(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, compactedBlocks, 1)
 		require.NotZero(t, compactedBlocks[0].Size)
-		require.Len(t, compactedBlocks[0].Datasets, 4)
+		require.Len(t, compactedBlocks[0].Datasets, 5)
 	})
+}
+
+func TestVerifySymbolsInDataset_RealProfilingBlock(t *testing.T) {
+	ctx := context.Background()
+	bucket, _ := testutil.NewFilesystemBucket(t, ctx, "testdata")
+
+	var resp metastorev1.GetBlockMetadataResponse
+	raw, err := os.ReadFile("testdata/block-metas.json")
+	require.NoError(t, err)
+	require.NoError(t, protojson.Unmarshal(raw, &resp))
+
+	dst, tempdir := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
+	compactedBlocks, err := block.Compact(ctx, resp.Blocks, bucket,
+		block.WithCompactionDestination(dst),
+		block.WithCompactionTempDir(tempdir),
+		block.WithCompactionObjectOptions(
+			block.WithObjectDownload(filepath.Join(tempdir, "source")),
+			block.WithObjectMaxSizeLoadInMemory(0)))
+	require.NoError(t, err)
+	require.Len(t, compactedBlocks, 1)
+	md := compactedBlocks[0]
+
+	symbolName := "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"
+	matchers := []*labels.Matcher{
+		labels.MustNewMatcher(labels.MatchEqual, "service_name", "pyroscope-test/ingester"),
+		labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "memory:alloc_space:bytes:space:bytes"),
+	}
+	candidates, err := block.LookupSymbolBloomCandidates(ctx, dst, md, block.SymbolBloomLookupRequest{
+		SymbolName: symbolName,
+		MinTime:    md.MinTime,
+		MaxTime:    md.MaxTime,
+		Matchers:   matchers,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, candidates.Candidates)
+
+	found, err := block.VerifySymbolsInDataset(ctx, dst, md, candidates.Candidates[0].DatasetIndex, []string{symbolName}, matchers, md.MinTime, md.MaxTime)
+	require.NoError(t, err)
+	require.Equal(t, map[string]struct{}{"memory:alloc_space:bytes:space:bytes": {}}, found[symbolName])
+
+	found, err = block.VerifySymbolsInDataset(ctx, dst, md, candidates.Candidates[0].DatasetIndex, []string{symbolName}, matchers, md.MaxTime+1, md.MaxTime+2)
+	require.NoError(t, err)
+	require.Empty(t, found[symbolName])
+}
+
+func assertSymbolBloomIndex(t *testing.T, ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta) {
+	t.Helper()
+
+	matcher := labels.MustNewMatcher(labels.MatchEqual, blockmetadata.LabelNameTenantDataset, blockmetadata.LabelValueSymbolBloomIndex)
+	var symbolBloomDataset *metastorev1.Dataset
+	for ds := range blockmetadata.FindDatasets(md, matcher) {
+		symbolBloomDataset = ds
+		break
+	}
+	require.NotNil(t, symbolBloomDataset)
+	require.Equal(t, uint32(block.DatasetFormatSymbolBloomIndex), symbolBloomDataset.Format)
+
+	obj := block.NewObject(bucket, md)
+	ds := block.NewDataset(symbolBloomDataset, obj)
+	require.NoError(t, ds.Open(ctx, block.SectionSymbolBloomIndex))
+	defer func() { require.NoError(t, ds.Close()) }()
+
+	rows, err := ds.SymbolBloomIndex().ReadAll()
+	require.NoError(t, err)
+	require.NotEmpty(t, rows)
+
+	var found bool
+	for _, row := range rows {
+		if row.ServiceName != "pyroscope-test/ingester" {
+			continue
+		}
+		contains, err := row.MightContain("github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push")
+		require.NoError(t, err)
+		if contains {
+			found = true
+			break
+		}
+	}
+	require.True(t, found)
+}
+
+func assertSymbolBloomLookup(t *testing.T, ctx context.Context, bucket objstore.Bucket, md *metastorev1.BlockMeta) {
+	t.Helper()
+
+	result, err := block.LookupSymbolBloomCandidates(ctx, bucket, md, block.SymbolBloomLookupRequest{
+		SymbolNames: []string{"github.com/grafana/pyroscope/pkg/does.not.exist", "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"},
+		MinTime:     md.MinTime,
+		MaxTime:     md.MaxTime,
+		Matchers: []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchEqual, "service_name", "pyroscope-test/ingester"),
+			labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "memory:alloc_space:bytes:space:bytes"),
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, result.Complete)
+	require.NotEmpty(t, result.Candidates)
+	require.Equal(t, "pyroscope-test/ingester", result.Candidates[0].ServiceName)
+
+	verified, err := block.VerifySymbolBloomCandidate(ctx, bucket, md, result.Candidates[0], "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push")
+	require.NoError(t, err)
+	require.True(t, verified)
+	verified, err = block.VerifySymbolBloomCandidate(ctx, bucket, md, result.Candidates[0], "github.com/grafana/pyroscope/pkg/does.not.exist")
+	require.NoError(t, err)
+	require.False(t, verified)
+	found, err := block.VerifySymbolsInDataset(ctx, bucket, md, result.Candidates[0].DatasetIndex, []string{
+		"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
+		"github.com/grafana/pyroscope/pkg/does.not.exist",
+	}, nil, 0, 0)
+	require.NoError(t, err)
+	require.NotEmpty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
+	require.Empty(t, found["github.com/grafana/pyroscope/pkg/does.not.exist"])
+	found, err = block.VerifySymbolsInDataset(ctx, bucket, md, result.Candidates[0].DatasetIndex, []string{
+		"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
+	}, nil, md.MaxTime+1, md.MaxTime+2)
+	require.NoError(t, err)
+	require.Empty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
+
+	countingBucket := &metadataReadCountingBucket{Bucket: bucket, md: md}
+	found, err = block.VerifySymbolsInDatasetFromMetadata(ctx, countingBucket, md, result.Candidates[0].DatasetIndex, []string{
+		"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
+		"github.com/grafana/pyroscope/pkg/does.not.exist",
+	}, nil, 0, 0)
+	require.NoError(t, err)
+	require.NotEmpty(t, found["github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"])
+	require.Empty(t, found["github.com/grafana/pyroscope/pkg/does.not.exist"])
+	require.Zero(t, countingBucket.metadataReads())
+
+	services, err := block.LookupSymbolBloomServices(ctx, bucket, md, block.SymbolBloomLookupRequest{
+		SymbolNames: []string{"github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push"},
+		MinTime:     md.MinTime,
+		MaxTime:     md.MaxTime,
+		Matchers: []*labels.Matcher{
+			labels.MustNewMatcher(labels.MatchEqual, "service_name", "pyroscope-test/ingester"),
+			labels.MustNewMatcher(labels.MatchEqual, "__profile_type__", "memory:alloc_space:bytes:space:bytes"),
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, services.Complete)
+	require.Equal(t, []block.SymbolBloomSymbolResult{{
+		SymbolName: "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
+		Services: []block.SymbolBloomVerifiedService{{
+			ServiceName:  "pyroscope-test/ingester",
+			ProfileTypes: []string{"memory:alloc_space:bytes:space:bytes"},
+		}},
+	}}, services.Results)
+
+	result, err = block.LookupSymbolBloomCandidates(ctx, bucket, md, block.SymbolBloomLookupRequest{
+		SymbolName: "github.com/grafana/pyroscope/pkg/does.not.exist",
+	})
+	require.NoError(t, err)
+	require.True(t, result.Complete)
+	require.Empty(t, result.Candidates)
+
+	_, err = block.LookupSymbolBloomCandidates(ctx, bucket, md, block.SymbolBloomLookupRequest{
+		SymbolName:    "net/http.HandlerFunc.ServeHTTP",
+		MaxCandidates: 1,
+	})
+	require.True(t, errors.Is(err, block.ErrSymbolBloomTooManyCandidates))
+
+	withoutIndex := md.CloneVT()
+	withoutIndex.Datasets = withoutIndex.Datasets[:len(withoutIndex.Datasets)-1]
+	withoutIndex.MetadataOffset = 0
+	result, err = block.LookupSymbolBloomCandidates(ctx, bucket, withoutIndex, block.SymbolBloomLookupRequest{
+		SymbolName: "github.com/grafana/pyroscope/pkg/ingester.(*Ingester).Push",
+	})
+	require.NoError(t, err)
+	require.False(t, result.Complete)
+	require.Empty(t, result.Candidates)
+}
+
+type metadataReadCountingBucket struct {
+	objstore.Bucket
+	md *metastorev1.BlockMeta
+
+	mu    sync.Mutex
+	reads int
+}
+
+func (b *metadataReadCountingBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	if name == block.ObjectPath(b.md) && off == int64(b.md.MetadataOffset) && length == int64(b.md.Size-b.md.MetadataOffset) {
+		b.mu.Lock()
+		b.reads++
+		b.mu.Unlock()
+	}
+	return b.Bucket.GetRange(ctx, name, off, length)
+}
+
+func (b *metadataReadCountingBucket) metadataReads() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.reads
 }
 
 func Test_CompactBlocks_recordingRules(t *testing.T) {
@@ -202,7 +400,7 @@ func Test_CompactBlocks_recordingRules(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, compactedBlocks, 1)
 	require.NotZero(t, compactedBlocks[0].Size)
-	require.Len(t, compactedBlocks[0].Datasets, 4)
+	require.Len(t, compactedBlocks[0].Datasets, 5)
 
 	expectedMetrics, err := os.ReadFile("testdata/profiles_recorded.txt")
 	require.NoError(t, err)
@@ -216,7 +414,7 @@ func Test_CompactBlocks_recordingRules(t *testing.T) {
 	require.NoError(t, err)
 	expectedJson, err := os.ReadFile("testdata/compacted.golden")
 	require.NoError(t, err)
-	assert.Equal(t, string(expectedJson), string(compactedJson))
+	assert.JSONEq(t, string(expectedJson), string(compactedJson))
 }
 
 func Test_CompactBlocks_recordingRules_shadowedSymbols(t *testing.T) {
@@ -308,7 +506,7 @@ func Test_CompactBlocks_recordingRules_shadowedSymbols(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, compactedBlocks, 1)
 	require.NotZero(t, compactedBlocks[0].Size)
-	require.Len(t, compactedBlocks[0].Datasets, 4)
+	require.Len(t, compactedBlocks[0].Datasets, 5)
 
 	expectedMetrics, err := os.ReadFile("testdata/profiles_recorded_shadowed.txt")
 	require.NoError(t, err)
@@ -322,7 +520,7 @@ func Test_CompactBlocks_recordingRules_shadowedSymbols(t *testing.T) {
 	require.NoError(t, err)
 	expectedJson, err := os.ReadFile("testdata/compacted.golden")
 	require.NoError(t, err)
-	assert.Equal(t, string(expectedJson), string(compactedJson))
+	assert.JSONEq(t, string(expectedJson), string(compactedJson))
 }
 
 type stringExporter struct {

@@ -8,6 +8,7 @@ require (
 	connectrpc.com/connect v1.19.2
 	connectrpc.com/grpchealth v1.4.0
 	github.com/PuerkitoBio/goquery v1.12.0
+	github.com/RoaringBitmap/roaring/v2 v2.18.2
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381
@@ -89,6 +90,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.8 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/basgys/goxml2json v1.1.1-0.20231018121955-e66ee54ceaad // indirect
+	github.com/bits-and-blooms/bitset v1.24.2 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
@@ -108,6 +110,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
+	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/opentracing-contrib/go-grpc v0.1.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/parquet-go/bitpack v1.0.0 // indirect

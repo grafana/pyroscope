@@ -7,8 +7,8 @@
     "compaction_level": 1,
     "min_time": 1721060010831,
     "max_time": 1721060035611,
-    "metadata_offset": 163604,
-    "size": 163931,
+    "metadata_offset": 171677,
+    "size": 172057,
     "datasets": [
       {
         "tenant": 1,
@@ -60,6 +60,21 @@
           5,
           6
         ]
+      },
+      {
+        "format": 2,
+        "tenant": 1,
+        "min_time": 1721060010831,
+        "max_time": 1721060035611,
+        "table_of_contents": [
+          163604
+        ],
+        "size": 8073,
+        "labels": [
+          1,
+          5,
+          7
+        ]
       }
     ],
     "string_table": [
@@ -69,7 +84,8 @@
       "pyroscope-test/ingester",
       "pyroscope-test/alloy",
       "__tenant_dataset__",
-      "dataset_tsdb_index"
+      "dataset_tsdb_index",
+      "symbol_bloom_index"
     ]
   }
 ]

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -23,6 +24,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
@@ -33,6 +35,24 @@ import (
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
+
+var _ queryv1connect.QueryFrontendServiceHandler = (*ConnectHandler)(nil)
+
+type ConnectHandler struct {
+	frontend *QueryFrontend
+}
+
+func NewConnectHandler(frontend *QueryFrontend) *ConnectHandler {
+	return &ConnectHandler{frontend: frontend}
+}
+
+func (h *ConnectHandler) Query(ctx context.Context, req *connect.Request[queryv1.QueryRequest]) (*connect.Response[queryv1.QueryResponse], error) {
+	resp, err := h.frontend.Query(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
 
 type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
@@ -175,6 +195,33 @@ func (q *QueryFrontend) doQuery(
 		return nil, err
 	}
 	span.SetTag("block_count", len(blocks))
+	if len(blocks) == 0 {
+		return new(queryv1.QueryResponse), nil
+	}
+
+	return q.doQueryWithBlocks(ctx, req, tenants, blocks, backendC)
+}
+
+func (q *QueryFrontend) doQueryWithBlocks(
+	ctx context.Context,
+	req *queryv1.QueryRequest,
+	tenants []string,
+	blocks []*metastorev1.BlockMeta,
+	backendC backendWrapper,
+) (*queryv1.QueryResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.executeQueryPlan")
+	defer span.Finish()
+	span.SetTag("start_time", req.StartTime)
+	span.SetTag("end_time", req.EndTime)
+	span.SetTag("label_selector", req.LabelSelector)
+	span.SetTag("tenant_ids", tenants)
+	span.SetTag("block_count", len(blocks))
+	diagCtx := diagnostics.From(ctx)
+	collectDiagnostics := diagCtx != nil && diagCtx.Collect && q.diagnosticsStore != nil
+	if collectDiagnostics {
+		span.SetTag("diagnostics_id", diagCtx.ID)
+	}
+
 	if len(blocks) == 0 {
 		return new(queryv1.QueryResponse), nil
 	}
@@ -322,6 +369,21 @@ func (q *QueryFrontend) QueryMetadata(
 		Labels:    []string{metadata.LabelNameUnsymbolized},
 	}
 
+	if isSymbolLookupQuery(req) {
+		query.Labels = append(query.Labels, metadata.LabelNameTenantDataset)
+		query.Query = matchersToLabelSelector([]*labels.Matcher{{
+			Name:  metadata.LabelNameTenantDataset,
+			Value: metadata.LabelValueSymbolBloomIndex,
+			Type:  labels.MatchEqual,
+		}})
+		md, err := q.metadataQueryClient.QueryMetadata(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		span.SetTag("blocks_count", len(md.Blocks))
+		return md.Blocks, nil
+	}
+
 	// Delete all matchers but service_name with strict match. If no matchers
 	// left, request the dataset index for query backend to lookup block datasets
 	// locally.
@@ -348,4 +410,18 @@ func (q *QueryFrontend) QueryMetadata(
 	span.SetTag("blocks_count", len(md.Blocks))
 
 	return md.Blocks, nil
+}
+
+func isSymbolLookupQuery(req *queryv1.QueryRequest) bool {
+	for _, query := range req.Query {
+		switch query.QueryType {
+		case queryv1.QueryType_QUERY_SYMBOL_BLOOM_CANDIDATES:
+			return true
+		case queryv1.QueryType_QUERY_SYMBOL_SERVICES:
+			if len(query.GetSymbolServices().GetCandidates()) == 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

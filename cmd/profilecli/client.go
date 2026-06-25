@@ -1,13 +1,17 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/version"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 
 	querydiagnostics "github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 )
@@ -20,6 +24,7 @@ const (
 	protocolTypeGRPCWeb = "grpc-web"
 
 	acceptHeaderMimeType = "*/*"
+	traceparentHeader    = "traceparent"
 )
 
 var acceptHeaderClientCapabilities = []string{
@@ -86,9 +91,44 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		}
 	}
 
+	addTraceparentHeader(req)
 	addClientCapabilitiesHeader(req, acceptHeaderMimeType, acceptHeaderClientCapabilities)
 	req.Header.Set("User-Agent", userAgentHeader)
 	return a.next.RoundTrip(req)
+}
+
+func addTraceparentHeader(req *http.Request) {
+	if req.Header.Get(traceparentHeader) != "" {
+		return
+	}
+
+	traceID, spanID, err := newTraceIDs()
+	if err != nil {
+		level.Warn(logger).Log("msg", "failed to generate trace ID", "err", err)
+		return
+	}
+
+	spanContext := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+		Remote:     false,
+	})
+	ctx := trace.ContextWithSpanContext(req.Context(), spanContext)
+	propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(req.Header))
+	level.Info(logger).Log("msg", "local request trace", "trace_id", traceID.String())
+}
+
+func newTraceIDs() (trace.TraceID, trace.SpanID, error) {
+	var traceID trace.TraceID
+	if _, err := rand.Read(traceID[:]); err != nil {
+		return trace.TraceID{}, trace.SpanID{}, err
+	}
+	var spanID trace.SpanID
+	if _, err := rand.Read(spanID[:]); err != nil {
+		return trace.TraceID{}, trace.SpanID{}, err
+	}
+	return traceID, spanID, nil
 }
 
 func (c *phlareClient) httpClient() *http.Client {
