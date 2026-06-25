@@ -34,7 +34,7 @@ func addQueryTopParams(queryCmd commander) *queryTopParams {
 	return params
 }
 
-func queryTop(ctx context.Context, params *queryTopParams, async bool) error {
+func queryTop(ctx context.Context, params *queryTopParams) error {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -50,10 +50,6 @@ func queryTop(ctx context.Context, params *queryTopParams, async bool) error {
 		"labels", fmt.Sprintf("%v", params.LabelNames),
 		"top_n", params.TopN,
 	)
-
-	if async {
-		return fmt.Errorf("--async is not supported for `query top` (only `query merge` supports async)")
-	}
 
 	stepSeconds := to.Sub(from).Seconds()
 

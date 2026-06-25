@@ -343,7 +343,7 @@ func addQueryGoPGOParams(queryCmd commander) *queryGoPGOParams {
 	return params
 }
 
-func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string, force bool, async bool) (err error) {
+func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string, force bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -363,10 +363,6 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 			KeepLocations:    params.KeepLocations,
 			AggregateCallees: params.AggregateCallees,
 		},
-	}
-
-	if async {
-		return fmt.Errorf("--async is not supported for `query go-pgo` (only `query merge` supports async)")
 	}
 
 	req := &querierv1.SelectMergeProfileRequest{
@@ -395,17 +391,13 @@ func addQuerySeriesParams(queryCmd commander) *querySeriesParams {
 	return params
 }
 
-func querySeries(ctx context.Context, params *querySeriesParams, async bool) (err error) {
+func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
 	}
 
 	level.Info(logger).Log("msg", fmt.Sprintf("query series from %s", params.APIType), "url", params.URL, "from", from, "to", to, "labelNames", fmt.Sprintf("%q", params.LabelNames))
-
-	if async {
-		return fmt.Errorf("--async is not supported for `query series` (only `query merge` supports async)")
-	}
 
 	var result []*typesv1.Labels
 	switch params.APIType {

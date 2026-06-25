@@ -71,11 +71,11 @@ func main() {
 	tsdbSeriesFiles := tsdbSeriesCmd.Arg("file", "tsdb file path").Required().ExistingFiles()
 
 	queryCmd := app.Command("query", "Query profile store.")
-	queryAsync := queryCmd.Flag("async", "Force async query execution, polling until results are ready.").Default("false").Bool()
 	queryProfileCmd := queryCmd.Command("profile", "Request merged profile.").Alias("merge")
 	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
 	queryProfileForce := queryProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
 	queryProfileFunctionNamesOnly := queryProfileCmd.Flag("function-names-only", "Faster call, without details about mappings, line number, and inlining").Default("false").Bool()
+	queryProfileAsync := queryProfileCmd.Flag("async", "Force async query execution, polling until results are ready.").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryProfileCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Repeatable for multiple IDs. Use 'query exemplars profile' to find IDs.").StringsVar(&queryProfileParams.ProfileIDs)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
@@ -176,15 +176,15 @@ func main() {
 			}
 		}
 	case queryProfileCmd.FullCommand():
-		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly, *queryAsync); err != nil {
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly, *queryProfileAsync); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
-		if err := queryGoPGO(ctx, queryGoPGOParams, *queryGoPGOOutput, *queryGoPGOForce, *queryAsync); err != nil {
+		if err := queryGoPGO(ctx, queryGoPGOParams, *queryGoPGOOutput, *queryGoPGOForce); err != nil {
 			os.Exit(checkError(err))
 		}
 	case querySeriesCmd.FullCommand():
-		if err := querySeries(ctx, querySeriesParams, *queryAsync); err != nil {
+		if err := querySeries(ctx, querySeriesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 
@@ -202,7 +202,7 @@ func main() {
 			os.Exit(checkError(err))
 		}
 	case queryTopCmd.FullCommand():
-		if err := queryTop(ctx, queryTopParams, *queryAsync); err != nil {
+		if err := queryTop(ctx, queryTopParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryExemplarsProfileCmd.FullCommand():
