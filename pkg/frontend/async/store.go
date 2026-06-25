@@ -27,14 +27,20 @@ const (
 	cleanupInterval          = 5 * time.Minute
 )
 
+// Status represents the lifecycle state of an async query.
 type Status string
 
 const (
+	// StatusInProgress indicates the query is still executing.
 	StatusInProgress Status = "in_progress"
-	StatusSuccess    Status = "success"
-	StatusFailure    Status = "failure"
+	// StatusSuccess indicates the query completed and a result is available.
+	StatusSuccess Status = "success"
+	// StatusFailure indicates the query failed; ErrorMessage holds the reason.
+	StatusFailure Status = "failure"
 )
 
+// Metadata describes the state of a single async query. It is persisted as
+// metadata.json alongside the query's result in object storage.
 type Metadata struct {
 	RequestID     string    `json:"request_id"`
 	TenantID      string    `json:"tenant_id"`
@@ -44,11 +50,15 @@ type Metadata struct {
 	ErrorMessage  string    `json:"error_message,omitempty"`
 }
 
+// Result bundles a query's Metadata with its decoded Response. Response is only
+// populated when Metadata.Status is StatusSuccess.
 type Result struct {
 	Metadata Metadata
 	Response *querierv1.SelectMergeStacktracesResponse
 }
 
+// Store persists async query state and results in object storage. It also runs
+// as a dskit service that periodically removes expired entries.
 type Store struct {
 	services.Service
 	logger            log.Logger
@@ -58,36 +68,17 @@ type Store struct {
 	heartbeatTimeout  time.Duration
 }
 
-type StoreOption func(*Store)
-
-func WithTTL(ttl time.Duration) StoreOption {
-	return func(s *Store) {
-		s.ttl = ttl
-	}
-}
-
-func WithHeartbeatInterval(d time.Duration) StoreOption {
-	return func(s *Store) {
-		s.heartbeatInterval = d
-	}
-}
-
-func WithHeartbeatTimeout(d time.Duration) StoreOption {
-	return func(s *Store) {
-		s.heartbeatTimeout = d
-	}
-}
-
-func NewStore(logger log.Logger, bucket objstore.Bucket, opts ...StoreOption) *Store {
+// NewStore returns a Store backed by the given bucket. The returned Store is a
+// dskit service that, once started, periodically deletes entries older than the
+// configured TTL; callers are responsible for starting and stopping it via its
+// embedded Service.
+func NewStore(logger log.Logger, bucket objstore.Bucket) *Store {
 	s := &Store{
 		logger:            logger,
 		bucket:            bucket,
 		ttl:               defaultTTL,
 		heartbeatInterval: defaultHeartbeatInterval,
 		heartbeatTimeout:  defaultHeartbeatTimeout,
-	}
-	for _, opt := range opts {
-		opt(s)
 	}
 	s.Service = services.NewBasicService(s.starting, s.running, s.stopping)
 	return s
@@ -97,7 +88,7 @@ func (s *Store) basePath(tenantID, requestID string) string {
 	return storagePrefix + tenantID + "/" + requestID + "/"
 }
 
-func (s *Store) Create(ctx context.Context, tenantID, requestID string) error {
+func (s *Store) create(ctx context.Context, tenantID, requestID string) error {
 	now := time.Now().UTC()
 	meta := &Metadata{
 		RequestID:     requestID,
@@ -109,7 +100,7 @@ func (s *Store) Create(ctx context.Context, tenantID, requestID string) error {
 	return s.saveJSON(ctx, s.basePath(tenantID, requestID)+"metadata.json", meta)
 }
 
-func (s *Store) Heartbeat(ctx context.Context, tenantID, requestID string) error {
+func (s *Store) heartbeat(ctx context.Context, tenantID, requestID string) error {
 	base := s.basePath(tenantID, requestID)
 	var meta Metadata
 	if err := s.readJSON(ctx, base+"metadata.json", &meta); err != nil {
@@ -119,11 +110,7 @@ func (s *Store) Heartbeat(ctx context.Context, tenantID, requestID string) error
 	return s.saveJSON(ctx, base+"metadata.json", &meta)
 }
 
-func (s *Store) HeartbeatInterval() time.Duration {
-	return s.heartbeatInterval
-}
-
-func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *querierv1.SelectMergeStacktracesResponse) error {
+func (s *Store) complete(ctx context.Context, tenantID, requestID string, resp *querierv1.SelectMergeStacktracesResponse) error {
 	base := s.basePath(tenantID, requestID)
 
 	data, err := proto.Marshal(resp)
@@ -143,7 +130,7 @@ func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *
 	return s.saveJSON(ctx, base+"metadata.json", &meta)
 }
 
-func (s *Store) Fail(ctx context.Context, tenantID, requestID string, queryErr error) error {
+func (s *Store) fail(ctx context.Context, tenantID, requestID string, queryErr error) error {
 	base := s.basePath(tenantID, requestID)
 	var meta Metadata
 	if err := s.readJSON(ctx, base+"metadata.json", &meta); err != nil {
@@ -155,7 +142,7 @@ func (s *Store) Fail(ctx context.Context, tenantID, requestID string, queryErr e
 	return s.saveJSON(ctx, base+"metadata.json", &meta)
 }
 
-func (s *Store) Get(ctx context.Context, tenantID, requestID string) (*Result, error) {
+func (s *Store) get(ctx context.Context, tenantID, requestID string) (*Result, error) {
 	if _, err := uuid.Parse(requestID); err != nil {
 		return nil, fmt.Errorf("invalid request ID: %w", err)
 	}
@@ -197,19 +184,7 @@ func (s *Store) Get(ctx context.Context, tenantID, requestID string) (*Result, e
 	return result, nil
 }
 
-func (s *Store) Delete(ctx context.Context, tenantID, requestID string) error {
-	base := s.basePath(tenantID, requestID)
-	for _, file := range []string{"metadata.json", "result.pb"} {
-		if err := s.bucket.Delete(ctx, base+file); err != nil {
-			if !s.bucket.IsObjNotFoundErr(err) {
-				return fmt.Errorf("failed to delete %s: %w", file, err)
-			}
-		}
-	}
-	return nil
-}
-
-func (s *Store) Cleanup(ctx context.Context) (int, error) {
+func (s *Store) cleanup(ctx context.Context) (int, error) {
 	cutoff := time.Now().Add(-s.ttl)
 	deleted := 0
 
@@ -293,7 +268,7 @@ func (s *Store) running(ctx context.Context) error {
 }
 
 func (s *Store) runCleanup(ctx context.Context) {
-	deleted, err := s.Cleanup(ctx)
+	deleted, err := s.cleanup(ctx)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "async query cleanup failed", "err", err)
 		return

@@ -90,7 +90,7 @@ func (c *Coordinator) Register(ctx context.Context, tenantID string, resultCh <-
 
 	requestID := uuid.New().String()
 
-	if err := c.store.Create(ctx, tenantID, requestID); err != nil {
+	if err := c.store.create(ctx, tenantID, requestID); err != nil {
 		c.decrement(tenantID)
 		return "", fmt.Errorf("failed to create async query: %w", err)
 	}
@@ -105,7 +105,7 @@ func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan Qu
 
 	ctx := tenant.InjectTenantID(context.Background(), tenantID)
 
-	ticker := time.NewTicker(c.store.HeartbeatInterval())
+	ticker := time.NewTicker(c.store.heartbeatInterval)
 	defer ticker.Stop()
 
 	for {
@@ -113,17 +113,17 @@ func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan Qu
 		case res := <-resultCh:
 			if res.Err != nil {
 				level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", res.Err)
-				if storeErr := c.store.Fail(ctx, tenantID, requestID, res.Err); storeErr != nil {
+				if storeErr := c.store.fail(ctx, tenantID, requestID, res.Err); storeErr != nil {
 					level.Error(c.logger).Log("msg", "failed to store async query failure", "tenant", tenantID, "request_id", requestID, "err", storeErr)
 				}
 				return
 			}
-			if err := c.store.Complete(ctx, tenantID, requestID, res.Response); err != nil {
+			if err := c.store.complete(ctx, tenantID, requestID, res.Response); err != nil {
 				level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
 			}
 			return
 		case <-ticker.C:
-			if err := c.store.Heartbeat(ctx, tenantID, requestID); err != nil {
+			if err := c.store.heartbeat(ctx, tenantID, requestID); err != nil {
 				level.Warn(c.logger).Log("msg", "failed to update heartbeat", "tenant", tenantID, "request_id", requestID, "err", err)
 			}
 		}
@@ -143,5 +143,5 @@ func (c *Coordinator) decrement(tenantID string) {
 // PollQuery checks the status of an async query for the given tenant.
 // Returns nil if the request is not found (caller should return NotFound).
 func (c *Coordinator) PollQuery(ctx context.Context, tenantID, requestID string) (*Result, error) {
-	return c.store.Get(ctx, tenantID, requestID)
+	return c.store.get(ctx, tenantID, requestID)
 }
