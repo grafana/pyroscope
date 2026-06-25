@@ -173,7 +173,7 @@ func Test_RenderDotFormatEmptyProfile(t *testing.T) {
 		},
 	}
 
-	handlers := NewHTTPHandlers(mockClient)
+	handlers := NewHTTPHandlers(mockClient, 15*time.Second)
 
 	// Create a request with format=dot
 	q := url.Values{

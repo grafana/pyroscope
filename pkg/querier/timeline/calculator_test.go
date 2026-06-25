@@ -38,3 +38,46 @@ func Test_CalcPointInterval(t *testing.T) {
 	}
 
 }
+
+func Test_CalcPointIntervalWithMinInterval(t *testing.T) {
+	TestDate := time.Date(2023, time.April, 18, 1, 2, 3, 4, time.UTC)
+
+	testCases := []struct {
+		name        string
+		start       time.Time
+		end         time.Time
+		minInterval time.Duration
+		want        int64
+	}{
+		// eBPF use case: 5 second minimum interval
+		{name: "5s min interval - 1 second", start: TestDate, end: TestDate.Add(1 * time.Second), minInterval: 5 * time.Second, want: 5},
+		{name: "5s min interval - 1 hour", start: TestDate, end: TestDate.Add(1 * time.Hour), minInterval: 5 * time.Second, want: 5},
+		{name: "5s min interval - 7 days", start: TestDate, end: TestDate.Add(7 * 24 * time.Hour), minInterval: 5 * time.Second, want: 300},
+		{name: "5s min interval - 30 days", start: TestDate, end: TestDate.Add(30 * 24 * time.Hour), minInterval: 5 * time.Second, want: 1800},
+
+		// 1 second minimum interval
+		{name: "1s min interval - 1 second", start: TestDate, end: TestDate.Add(1 * time.Second), minInterval: 1 * time.Second, want: 1},
+		{name: "1s min interval - 10 seconds", start: TestDate, end: TestDate.Add(10 * time.Second), minInterval: 1 * time.Second, want: 1},
+		{name: "1s min interval - 1 hour", start: TestDate, end: TestDate.Add(1 * time.Hour), minInterval: 1 * time.Second, want: 2},
+
+		// Default 15 second minimum interval (should match Test_CalcPointInterval)
+		{name: "15s min interval - 1 second", start: TestDate, end: TestDate.Add(1 * time.Second), minInterval: 15 * time.Second, want: 15},
+		{name: "15s min interval - 1 hour", start: TestDate, end: TestDate.Add(1 * time.Hour), minInterval: 15 * time.Second, want: 15},
+		{name: "15s min interval - 7 days", start: TestDate, end: TestDate.Add(7 * 24 * time.Hour), minInterval: 15 * time.Second, want: 300},
+
+		// Sub-second values are clamped to 1s to prevent int64 truncation to 0
+		{name: "500ms min interval clamped to 1s", start: TestDate, end: TestDate.Add(1 * time.Second), minInterval: 500 * time.Millisecond, want: 1},
+		{name: "100ms min interval clamped to 1s", start: TestDate, end: TestDate.Add(1 * time.Hour), minInterval: 100 * time.Millisecond, want: 2},
+
+		// roundInterval must not violate the configured minimum (e.g. 7s rounds down to 5s without this guard)
+		{name: "6s min interval not violated by rounding", start: TestDate, end: TestDate.Add(1500 * 7 * time.Second), minInterval: 6 * time.Second, want: 6},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := timeline.CalcPointIntervalWithMinInterval(tc.start.UnixMilli(), tc.end.UnixMilli(), tc.minInterval)
+
+			assert.Equal(t, float64(tc.want), got)
+		})
+	}
+}
