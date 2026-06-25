@@ -10,17 +10,25 @@ import (
 	"github.com/go-kit/log/level"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
-// runAsyncQuery submits an async query and polls until it completes.
-// Returns a clear error when the server does not support async queries.
-func runAsyncQuery(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, req *queryv1.QueryRequest) (*queryv1.QueryResponse, error) {
-	submit, err := client.AsyncQuery(ctx, connect.NewRequest(&queryv1.AsyncQueryRequest{Query: req}))
+// runAsyncSelectMergeStacktraces submits a SelectMergeStacktraces query via
+// the experimental AsyncQuery RPC and polls until it completes.
+func runAsyncSelectMergeStacktraces(
+	ctx context.Context,
+	client querierv1connect.QuerierServiceClient,
+	req *querierv1.SelectMergeStacktracesRequest,
+) (*querierv1.SelectMergeStacktracesResponse, error) {
+	submit, err := client.AsyncQuery(ctx, connect.NewRequest(&querierv1.AsyncQueryRequest{
+		Query: &querierv1.AsyncQueryRequest_SelectMergeStacktraces{
+			SelectMergeStacktraces: req,
+		},
+	}))
 	if err != nil {
 		if connectErr := new(connect.Error); errors.As(err, &connectErr) && connectErr.Code() == connect.CodeUnimplemented {
 			return nil, fmt.Errorf("server has async queries disabled (set -query-frontend.async-queries-enabled=true)")
@@ -29,7 +37,7 @@ func runAsyncQuery(ctx context.Context, client queryv1connect.QueryFrontendServi
 	}
 	level.Info(logger).Log("msg", "async query submitted", "request_id", submit.Msg.RequestId)
 
-	pollReq := &queryv1.AsyncQueryRequest{RequestId: submit.Msg.RequestId}
+	pollReq := &querierv1.AsyncQueryRequest{RequestId: submit.Msg.RequestId}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -47,13 +55,17 @@ func runAsyncQuery(ctx context.Context, client queryv1connect.QueryFrontendServi
 		}
 
 		switch poll.Msg.Status {
-		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS:
+		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS:
 			level.Info(logger).Log("msg", "waiting for async query", "request_id", poll.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
 			continue
-		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS:
+		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS:
 			level.Info(logger).Log("msg", "async query completed", "request_id", poll.Msg.RequestId, "elapsed", time.Since(start).Truncate(time.Second))
-			return poll.Msg.Response, nil
-		case queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE:
+			result, ok := poll.Msg.Result.(*querierv1.AsyncQueryResponse_SelectMergeStacktraces)
+			if !ok || result.SelectMergeStacktraces == nil {
+				return nil, fmt.Errorf("missing result of type select_merge_stacktraces in response")
+			}
+			return result.SelectMergeStacktraces, nil
+		case querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE:
 			return nil, fmt.Errorf("async query failed: %s", poll.Msg.ErrorMessage)
 		default:
 			return nil, fmt.Errorf("unexpected async query status: %v", poll.Msg.Status)
@@ -61,106 +73,39 @@ func runAsyncQuery(ctx context.Context, client queryv1connect.QueryFrontendServi
 	}
 }
 
-// asyncQueryProfile submits a pprof async query and returns the unmarshaled profile.
-func asyncQueryProfile(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, profileTypeID, labelSelector string, start, end int64, maxNodes int64, stackTraceSelector *typesv1.StackTraceSelector, profileIDs []string) (*googlev1.Profile, error) {
-	req := &queryv1.QueryRequest{
-		StartTime:     start,
-		EndTime:       end,
-		LabelSelector: labelSelectorWithProfileType(labelSelector, profileTypeID),
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_PPROF,
-			Pprof: &queryv1.PprofQuery{
-				MaxNodes:           maxNodes,
-				StackTraceSelector: stackTraceSelector,
-				ProfileIdSelector:  profileIDs,
-			},
-		}},
+// asyncQueryProfileTree mirrors queryProfileTree but executes via the async
+// query API. It always requests TREE format because that is the only shape
+// the experimental AsyncQuery RPC currently supports.
+func asyncQueryProfileTree(ctx context.Context, params *queryProfileParams, from, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
+	req := &querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: params.ProfileType,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		LabelSelector: params.Query,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
 	}
-	resp, err := runAsyncQuery(ctx, client, req)
+	if params.MaxNodes > 0 {
+		req.MaxNodes = &params.MaxNodes
+	}
+	if len(params.StacktraceSelector) > 0 {
+		req.StackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
+	}
+	if len(params.ProfileIDs) > 0 {
+		req.ProfileIdSelector = params.ProfileIDs
+	}
+
+	resp, err := runAsyncSelectMergeStacktraces(ctx, params.phlareClient.queryClient(), req)
 	if err != nil {
 		return nil, err
 	}
-	return extractProfileFromResponse(resp)
-}
 
-// asyncQuerySeries submits a series-labels async query and returns the labels set.
-func asyncQuerySeries(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, labelSelector string, labelNames []string, start, end int64) ([]*typesv1.Labels, error) {
-	req := &queryv1.QueryRequest{
-		StartTime:     start,
-		EndTime:       end,
-		LabelSelector: labelSelector,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_SERIES_LABELS,
-			SeriesLabels: &queryv1.SeriesLabelsQuery{
-				LabelNames: labelNames,
-			},
-		}},
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Tree)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tree: %w", err)
 	}
-	resp, err := runAsyncQuery(ctx, client, req)
+	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Reports) == 0 {
-		return nil, nil
-	}
-	if resp.Reports[0].SeriesLabels == nil {
-		return nil, fmt.Errorf("unexpected report type: expected series_labels")
-	}
-	return resp.Reports[0].SeriesLabels.SeriesLabels, nil
-}
-
-// asyncQueryTimeSeries submits a time-series async query and returns the series.
-func asyncQueryTimeSeries(ctx context.Context, client queryv1connect.QueryFrontendServiceClient, profileTypeID, labelSelector string, start, end int64, step float64, groupBy []string, exemplarType typesv1.ExemplarType) ([]*typesv1.Series, error) {
-	req := &queryv1.QueryRequest{
-		StartTime:     start,
-		EndTime:       end,
-		LabelSelector: labelSelectorWithProfileType(labelSelector, profileTypeID),
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
-			TimeSeries: &queryv1.TimeSeriesQuery{
-				Step:         step,
-				GroupBy:      groupBy,
-				ExemplarType: exemplarType,
-			},
-		}},
-	}
-	resp, err := runAsyncQuery(ctx, client, req)
-	if err != nil {
-		return nil, err
-	}
-	if len(resp.Reports) == 0 {
-		return nil, nil
-	}
-	if resp.Reports[0].TimeSeries == nil {
-		return nil, fmt.Errorf("unexpected report type: expected time_series")
-	}
-	return resp.Reports[0].TimeSeries.TimeSeries, nil
-}
-
-// labelSelectorWithProfileType combines a label selector with a profile type ID.
-func labelSelectorWithProfileType(labelSelector, profileTypeID string) string {
-	profileType, err := model.ParseProfileTypeSelector(profileTypeID)
-	if err != nil {
-		return labelSelector
-	}
-	ptMatcher := model.SelectorFromProfileType(profileType)
-	if labelSelector == "" || labelSelector == "{}" {
-		return "{" + ptMatcher.String() + "}"
-	}
-	return labelSelector[:len(labelSelector)-1] + "," + ptMatcher.String() + "}"
-}
-
-// extractProfileFromResponse extracts a pprof profile from a QueryResponse.
-func extractProfileFromResponse(resp *queryv1.QueryResponse) (*googlev1.Profile, error) {
-	if len(resp.Reports) == 0 {
-		return &googlev1.Profile{}, nil
-	}
-	if resp.Reports[0].Pprof == nil {
-		return nil, fmt.Errorf("unexpected report type: expected pprof")
-	}
-	var p googlev1.Profile
-	if err := pprof.Unmarshal(resp.Reports[0].Pprof.Pprof, &p); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal pprof from response: %w", err)
-	}
-	return &p, nil
+	return pprof.FromTree(tree, ty, req.End*1e6), nil
 }

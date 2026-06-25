@@ -19,7 +19,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
@@ -31,17 +30,6 @@ import (
 
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
-		c.httpClient(),
-		c.URL,
-		append(
-			connectapi.DefaultClientOptions(),
-			c.protocolOption(),
-		)...,
-	)
-}
-
-func (c *phlareClient) queryFrontendClient() queryv1connect.QueryFrontendServiceClient {
-	return queryv1connect.NewQueryFrontendServiceClient(
 		c.httpClient(),
 		c.URL,
 		append(
@@ -166,15 +154,14 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		if len(params.SpanSelector) > 0 {
 			return fmt.Errorf("--async does not support --span-selector")
 		}
-		var stackTraceSelector *typesv1.StackTraceSelector
+		var locations []*typesv1.Location
 		if len(params.StacktraceSelector) > 0 {
-			locations := make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
 			for _, cs := range params.StacktraceSelector {
 				locations = append(locations, &typesv1.Location{Name: cs})
 			}
-			stackTraceSelector = &typesv1.StackTraceSelector{CallSite: locations}
 		}
-		profile, err = asyncQueryProfile(ctx, params.phlareClient.queryFrontendClient(), params.ProfileType, params.Query, from.UnixMilli(), to.UnixMilli(), params.MaxNodes, stackTraceSelector, params.ProfileIDs)
+		profile, err = asyncQueryProfileTree(ctx, params, from, to, locations)
 	} else if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)
@@ -379,11 +366,7 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 	}
 
 	if async {
-		profile, err := asyncQueryProfile(ctx, params.phlareClient.queryFrontendClient(), params.ProfileType, params.Query, from.UnixMilli(), to.UnixMilli(), 0, stackTraceSelector, nil)
-		if err != nil {
-			return err
-		}
-		return outputMergeProfile(ctx, outputFlag, force, profile)
+		return fmt.Errorf("--async is not supported for `query go-pgo` (only `query merge` supports async)")
 	}
 
 	req := &querierv1.SelectMergeProfileRequest{
@@ -421,14 +404,7 @@ func querySeries(ctx context.Context, params *querySeriesParams, async bool) (er
 	level.Info(logger).Log("msg", fmt.Sprintf("query series from %s", params.APIType), "url", params.URL, "from", from, "to", to, "labelNames", fmt.Sprintf("%q", params.LabelNames))
 
 	if async {
-		if params.APIType != "querier" {
-			return fmt.Errorf("--async only supports --api-type=querier")
-		}
-		result, err := asyncQuerySeries(ctx, params.phlareClient.queryFrontendClient(), params.Query, params.LabelNames, from.UnixMilli(), to.UnixMilli())
-		if err != nil {
-			return err
-		}
-		return outputSeries(ctx, result, params.Output, from, to)
+		return fmt.Errorf("--async is not supported for `query series` (only `query merge` supports async)")
 	}
 
 	var result []*typesv1.Labels

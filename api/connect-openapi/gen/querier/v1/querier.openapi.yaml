@@ -45,6 +45,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.AnalyzeQueryResponse'
+  /querier.v1.QuerierService/AsyncQuery:
+    post:
+      tags:
+        - scope/internal
+        - querier.v1.QuerierService
+      summary: AsyncQuery submits or polls a long-running query. Experimental, gated by  -query-frontend.async-queries-enabled.
+      description: |-
+        AsyncQuery submits or polls a long-running query. Experimental, gated by
+         -query-frontend.async-queries-enabled.
+      operationId: querier.v1.QuerierService.AsyncQuery
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.AsyncQueryRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.AsyncQueryResponse'
   /querier.v1.QuerierService/Diff:
     post:
       tags:
@@ -978,6 +1017,59 @@ components:
           $ref: '#/components/schemas/querier.v1.QueryImpact'
       title: AnalyzeQueryResponse
       additionalProperties: false
+    querier.v1.AsyncQueryRequest:
+      type: object
+      allOf:
+        - properties:
+            requestId:
+              type: string
+              title: request_id
+        - oneOf:
+            - properties:
+                selectMergeStacktraces:
+                  title: select_merge_stacktraces
+                  $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
+              title: select_merge_stacktraces
+              required:
+                - selectMergeStacktraces
+      title: AsyncQueryRequest
+      additionalProperties: false
+      description: |-
+        AsyncQueryRequest is dual-purpose: leave request_id empty and set one of
+         the query variants to submit a new query; set request_id to poll an
+         in-flight query (query variants are ignored in that case).
+    querier.v1.AsyncQueryResponse:
+      type: object
+      allOf:
+        - properties:
+            requestId:
+              type: string
+              title: request_id
+            status:
+              title: status
+              $ref: '#/components/schemas/querier.v1.AsyncQueryStatus'
+            errorMessage:
+              type: string
+              title: error_message
+              description: Populated on FAILURE.
+        - oneOf:
+            - properties:
+                selectMergeStacktraces:
+                  title: select_merge_stacktraces
+                  $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesResponse'
+              title: select_merge_stacktraces
+              required:
+                - selectMergeStacktraces
+      title: AsyncQueryResponse
+      additionalProperties: false
+    querier.v1.AsyncQueryStatus:
+      type: string
+      title: AsyncQueryStatus
+      enum:
+        - ASYNC_QUERY_STATUS_UNSPECIFIED
+        - ASYNC_QUERY_STATUS_IN_PROGRESS
+        - ASYNC_QUERY_STATUS_SUCCESS
+        - ASYNC_QUERY_STATUS_FAILURE
     querier.v1.DiffRequest:
       type: object
       properties:

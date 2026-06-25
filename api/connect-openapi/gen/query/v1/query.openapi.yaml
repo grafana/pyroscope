@@ -45,42 +45,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/query.v1.InvokeResponse'
-  /query.v1.QueryFrontendService/AsyncQuery:
-    post:
-      tags:
-        - query.v1.QueryFrontendService
-      summary: Experimental, gated by -query-frontend.async-queries-enabled.
-      description: Experimental, gated by -query-frontend.async-queries-enabled.
-      operationId: query.v1.QueryFrontendService.AsyncQuery
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/query.v1.AsyncQueryRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/query.v1.AsyncQueryResponse'
   /query.v1.QueryFrontendService/Query:
     post:
       tags:
@@ -571,48 +535,6 @@ components:
         - HEATMAP_QUERY_TYPE_UNSPECIFIED
         - HEATMAP_QUERY_TYPE_INDIVIDUAL
         - HEATMAP_QUERY_TYPE_SPAN
-    query.v1.AsyncQueryRequest:
-      type: object
-      properties:
-        query:
-          title: query
-          $ref: '#/components/schemas/query.v1.QueryRequest'
-        requestId:
-          type: string
-          title: request_id
-      title: AsyncQueryRequest
-      additionalProperties: false
-      description: |-
-        AsyncQuery is dual-purpose: leave request_id empty to submit a new query
-         (the response carries a fresh request_id with status IN_PROGRESS); set
-         request_id to poll an in-flight query. Experimental.
-    query.v1.AsyncQueryResponse:
-      type: object
-      properties:
-        requestId:
-          type: string
-          title: request_id
-        status:
-          title: status
-          $ref: '#/components/schemas/query.v1.AsyncQueryStatus'
-        response:
-          title: response
-          description: Populated on SUCCESS.
-          $ref: '#/components/schemas/query.v1.QueryResponse'
-        errorMessage:
-          type: string
-          title: error_message
-          description: Populated on FAILURE.
-      title: AsyncQueryResponse
-      additionalProperties: false
-    query.v1.AsyncQueryStatus:
-      type: string
-      title: AsyncQueryStatus
-      enum:
-        - ASYNC_QUERY_STATUS_UNSPECIFIED
-        - ASYNC_QUERY_STATUS_IN_PROGRESS
-        - ASYNC_QUERY_STATUS_SUCCESS
-        - ASYNC_QUERY_STATUS_FAILURE
     query.v1.AttributeTable:
       type: object
       properties:

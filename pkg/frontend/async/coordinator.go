@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
@@ -20,9 +20,11 @@ type Limits interface {
 	MaxAsyncQueryConcurrency(tenantID string) int
 }
 
-// QueryResult is the result of a query execution sent over a channel.
+// QueryResult is the result of a query execution sent over a channel. On
+// success, Response carries only the result oneof; the coordinator/store
+// owns request_id and status.
 type QueryResult struct {
-	Response *queryv1.QueryResponse
+	Response *querierv1.AsyncQueryResponse
 	Err      error
 }
 
@@ -74,10 +76,13 @@ func (c *Coordinator) tryAcquire(tenantID string) error {
 	return nil
 }
 
-// PromoteToAsync promotes an already-running query to async execution.
-// It takes ownership of the result channel: the coordinator will read from it,
-// store the result, and manage the heartbeat loop. Returns the request ID.
-func (c *Coordinator) PromoteToAsync(ctx context.Context, tenantID string, resultCh <-chan QueryResult) (string, error) {
+// Register reserves the per-tenant concurrency slot, persists the
+// in-progress metadata, and starts watching resultCh. The caller is
+// responsible for dispatching the query and sending its outcome on
+// resultCh; the coordinator owns reads from the channel, store writes,
+// and the heartbeat loop. Returns the assigned request ID, or an error
+// if the slot could not be acquired.
+func (c *Coordinator) Register(ctx context.Context, tenantID string, resultCh <-chan QueryResult) (string, error) {
 	if err := c.tryAcquire(tenantID); err != nil {
 		return "", err
 	}

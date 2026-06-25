@@ -20,8 +20,6 @@ import "types/v1/types.proto";
 
 service QueryFrontendService {
   rpc Query(QueryRequest) returns (QueryResponse) {}
-  // Experimental, gated by -query-frontend.async-queries-enabled.
-  rpc AsyncQuery(AsyncQueryRequest) returns (AsyncQueryResponse) {}
 }
 
 message QueryRequest {
@@ -33,30 +31,6 @@ message QueryRequest {
 
 message QueryResponse {
   repeated Report reports = 1;
-}
-
-// AsyncQuery is dual-purpose: leave request_id empty to submit a new query
-// (the response carries a fresh request_id with status IN_PROGRESS); set
-// request_id to poll an in-flight query. Experimental.
-message AsyncQueryRequest {
-  QueryRequest query = 1;
-  string request_id = 2;
-}
-
-message AsyncQueryResponse {
-  string request_id = 1;
-  AsyncQueryStatus status = 2;
-  // Populated on SUCCESS.
-  QueryResponse response = 3;
-  // Populated on FAILURE.
-  string error_message = 4;
-}
-
-enum AsyncQueryStatus {
-  ASYNC_QUERY_STATUS_UNSPECIFIED = 0;
-  ASYNC_QUERY_STATUS_IN_PROGRESS = 1;
-  ASYNC_QUERY_STATUS_SUCCESS = 2;
-  ASYNC_QUERY_STATUS_FAILURE = 3;
 }
 
 service QueryBackendService {

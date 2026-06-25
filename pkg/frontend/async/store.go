@@ -16,7 +16,7 @@ import (
 	"github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/proto"
 
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )
 
 const (
@@ -46,7 +46,7 @@ type Metadata struct {
 
 type Result struct {
 	Metadata Metadata
-	Response *queryv1.QueryResponse
+	Response *querierv1.AsyncQueryResponse
 }
 
 type Store struct {
@@ -123,7 +123,7 @@ func (s *Store) HeartbeatInterval() time.Duration {
 	return s.heartbeatInterval
 }
 
-func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *queryv1.QueryResponse) error {
+func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *querierv1.AsyncQueryResponse) error {
 	base := s.basePath(tenantID, requestID)
 
 	data, err := proto.Marshal(resp)
@@ -134,24 +134,25 @@ func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *
 		return fmt.Errorf("failed to upload result: %w", err)
 	}
 
-	meta := &Metadata{
-		RequestID: requestID,
-		TenantID:  tenantID,
-		Status:    StatusSuccess,
-		CreatedAt: time.Now().UTC(),
+	var meta Metadata
+	if err := s.readJSON(ctx, base+"metadata.json", &meta); err != nil {
+		return fmt.Errorf("failed to read metadata: %w", err)
 	}
-	return s.saveJSON(ctx, base+"metadata.json", meta)
+	meta.Status = StatusSuccess
+	meta.LastHeartbeat = time.Now().UTC()
+	return s.saveJSON(ctx, base+"metadata.json", &meta)
 }
 
 func (s *Store) Fail(ctx context.Context, tenantID, requestID string, queryErr error) error {
-	meta := &Metadata{
-		RequestID:    requestID,
-		TenantID:     tenantID,
-		Status:       StatusFailure,
-		CreatedAt:    time.Now().UTC(),
-		ErrorMessage: queryErr.Error(),
+	base := s.basePath(tenantID, requestID)
+	var meta Metadata
+	if err := s.readJSON(ctx, base+"metadata.json", &meta); err != nil {
+		return fmt.Errorf("failed to read metadata: %w", err)
 	}
-	return s.saveJSON(ctx, s.basePath(tenantID, requestID)+"metadata.json", meta)
+	meta.Status = StatusFailure
+	meta.ErrorMessage = queryErr.Error()
+	meta.LastHeartbeat = time.Now().UTC()
+	return s.saveJSON(ctx, base+"metadata.json", &meta)
 }
 
 func (s *Store) Get(ctx context.Context, tenantID, requestID string) (*Result, error) {
@@ -186,7 +187,7 @@ func (s *Store) Get(ctx context.Context, tenantID, requestID string) (*Result, e
 		if err != nil {
 			return nil, fmt.Errorf("failed to read result: %w", err)
 		}
-		var resp queryv1.QueryResponse
+		var resp querierv1.AsyncQueryResponse
 		if err := proto.Unmarshal(data, &resp); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal result: %w", err)
 		}

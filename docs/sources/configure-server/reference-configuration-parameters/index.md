@@ -1682,7 +1682,7 @@ The `query_frontend` block configures the query-frontend.
 [grpc_client_config: <grpc_client>]
 
 # (experimental) Enable the experimental asynchronous query API (AsyncQuery RPC
-# on QueryFrontendService). Off by default.
+# on QuerierService). Off by default.
 # CLI flag: -query-frontend.async-queries-enabled
 [async_queries_enabled: <boolean> | default = false]
 

@@ -67,6 +67,11 @@ service QuerierService {
   rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
+  // AsyncQuery submits or polls a long-running query. Experimental, gated by
+  // -query-frontend.async-queries-enabled.
+  rpc AsyncQuery(AsyncQueryRequest) returns (AsyncQueryResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/internal";
+  }
 }
 
 message ProfileTypesRequest {
@@ -134,6 +139,34 @@ message SelectMergeStacktracesResponse {
   bytes tree = 2;
   // DOT graph representation.
   string dot = 3;
+}
+
+// AsyncQueryRequest is dual-purpose: leave request_id empty and set one of
+// the query variants to submit a new query; set request_id to poll an
+// in-flight query (query variants are ignored in that case).
+message AsyncQueryRequest {
+  string request_id = 1;
+  oneof query {
+    SelectMergeStacktracesRequest select_merge_stacktraces = 2;
+  }
+}
+
+message AsyncQueryResponse {
+  string request_id = 1;
+  AsyncQueryStatus status = 2;
+  // Populated on FAILURE.
+  string error_message = 3;
+  // Populated on SUCCESS. The variant matches the submission's query oneof.
+  oneof result {
+    SelectMergeStacktracesResponse select_merge_stacktraces = 4;
+  }
+}
+
+enum AsyncQueryStatus {
+  ASYNC_QUERY_STATUS_UNSPECIFIED = 0;
+  ASYNC_QUERY_STATUS_IN_PROGRESS = 1;
+  ASYNC_QUERY_STATUS_SUCCESS = 2;
+  ASYNC_QUERY_STATUS_FAILURE = 3;
 }
 
 message SelectMergeSpanProfileRequest {
@@ -300,3 +333,4 @@ message QueryImpact {
   uint64 total_queried_series = 3;
   bool deduplication_needed = 4;
 }
+

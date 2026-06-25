@@ -348,6 +348,12 @@ func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.R
 	return resp, err
 }
 
+func (l LogSpanParametersWrapper) AsyncQuery(ctx context.Context, c *connect.Request[querierv1.AsyncQueryRequest]) (*connect.Response[querierv1.AsyncQueryResponse], error) {
+	sp, ctx := tracing.StartSpanFromContext(ctx, "AsyncQuery")
+	defer sp.Finish()
+	return l.client.AsyncQuery(ctx, c)
+}
+
 type LazyJoin struct {
 	strs []string
 	sep  string

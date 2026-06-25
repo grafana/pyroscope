@@ -50,8 +50,8 @@ type Config struct {
 	GRPCClientConfig  grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
 
 	// AsyncQueriesEnabled toggles the experimental async query API on the
-	// QueryFrontendService. Off by default; only the sync Query RPC is served
-	// when this is false.
+	// QuerierService. Off by default; AsyncQuery returns Unimplemented when
+	// false.
 	AsyncQueriesEnabled bool `yaml:"async_queries_enabled" category:"experimental"`
 
 	// Used to find local IP address, that is sent to scheduler and querier-worker.
@@ -78,7 +78,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.StringVar(&cfg.Addr, "query-frontend.instance-addr", "", "IP address to advertise to the querier (via scheduler) (default is auto-detected from network interfaces).")
 	f.BoolVar(&cfg.EnableIPv6, "query-frontend.instance-enable-ipv6", false, "Enable using a IPv6 instance address. (default false)")
 	f.IntVar(&cfg.Port, "query-frontend.instance-port", 0, "Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).")
-	f.BoolVar(&cfg.AsyncQueriesEnabled, "query-frontend.async-queries-enabled", false, "Enable the experimental asynchronous query API (AsyncQuery RPC on QueryFrontendService). Off by default.")
+	f.BoolVar(&cfg.AsyncQueriesEnabled, "query-frontend.async-queries-enabled", false, "Enable the experimental asynchronous query API (AsyncQuery RPC on QuerierService). Off by default.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
 }
 

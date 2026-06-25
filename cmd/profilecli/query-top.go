@@ -13,7 +13,6 @@ import (
 	"github.com/olekukonko/tablewriter"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
@@ -52,31 +51,26 @@ func queryTop(ctx context.Context, params *queryTopParams, async bool) error {
 		"top_n", params.TopN,
 	)
 
+	if async {
+		return fmt.Errorf("--async is not supported for `query top` (only `query merge` supports async)")
+	}
+
 	stepSeconds := to.Sub(from).Seconds()
 
-	var series []*typesv1.Series
-	if async {
-		var err error
-		series, err = asyncQueryTimeSeries(ctx, params.queryFrontendClient(), params.ProfileType, params.Query, from.UnixMilli(), to.UnixMilli(), stepSeconds, params.LabelNames, typesv1.ExemplarType_EXEMPLAR_TYPE_UNSPECIFIED)
-		if err != nil {
-			return err
-		}
-	} else {
-		qc := params.queryClient()
-		resp, err := qc.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
-			ProfileTypeID: params.ProfileType,
-			LabelSelector: params.Query,
-			Start:         from.UnixMilli(),
-			End:           to.UnixMilli(),
-			Step:          stepSeconds,
-			GroupBy:       params.LabelNames,
-		}))
-		if err != nil {
-			return fmt.Errorf("failed to query series: %w", err)
-		}
-		logDiagnostics(params.phlareClient, resp.Header())
-		series = resp.Msg.Series
+	qc := params.queryClient()
+	resp, err := qc.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
+		ProfileTypeID: params.ProfileType,
+		LabelSelector: params.Query,
+		Start:         from.UnixMilli(),
+		End:           to.UnixMilli(),
+		Step:          stepSeconds,
+		GroupBy:       params.LabelNames,
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to query series: %w", err)
 	}
+	logDiagnostics(params.phlareClient, resp.Header())
+	series := resp.Msg.Series
 
 	type seriesTotal struct {
 		labelValues []string

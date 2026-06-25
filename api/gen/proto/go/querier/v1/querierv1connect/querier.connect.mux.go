@@ -79,4 +79,9 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.AnalyzeQuery,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/AsyncQuery", connect.NewUnaryHandler(
+		"/querier.v1.QuerierService/AsyncQuery",
+		svc.AsyncQuery,
+		opts...,
+	))
 }

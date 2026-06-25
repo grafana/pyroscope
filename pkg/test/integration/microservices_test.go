@@ -18,8 +18,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
@@ -230,7 +228,6 @@ func TestMetastoreAutoJoin(t *testing.T) {
 func newTestCtx(x interface {
 	PushClient() pushv1connect.PusherServiceClient
 	QueryClient() querierv1connect.QuerierServiceClient
-	QueryFrontendClient() queryv1connect.QueryFrontendServiceClient
 }) *testCtx {
 	return &testCtx{
 		now: time.Now().Truncate(time.Second),
@@ -245,9 +242,8 @@ func newTestCtx(x interface {
 			},
 			"tenant-not-existing": {},
 		},
-		querier:       x.QueryClient(),
-		queryFrontend: x.QueryFrontendClient(),
-		pusher:        x.PushClient(),
+		querier: x.QueryClient(),
+		pusher:  x.PushClient(),
 	}
 }
 
@@ -261,7 +257,6 @@ type testCtx struct {
 
 	perTenantData map[string]tenantParams
 	querier       querierv1connect.QuerierServiceClient
-	queryFrontend queryv1connect.QueryFrontendServiceClient
 	pusher        pushv1connect.PusherServiceClient
 }
 
@@ -542,39 +537,39 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		}
 	})
 
-	t.Run("QueryFrontendServiceAsync", func(t *testing.T) {
+	t.Run("QuerierServiceAsync", func(t *testing.T) {
 		if !isV2 {
-			t.Skip("QueryFrontendService requires query-frontend which is not present in V1 microservices cluster")
+			t.Skip("Async queries require query-frontend which is not present in V1 microservices cluster")
 		}
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
 				ctx := tenant.InjectTenantID(ctx, tenantID)
-				submitReq := &queryv1.AsyncQueryRequest{
-					Query: &queryv1.QueryRequest{
-						StartTime:     tc.now.Add(-time.Hour).UnixMilli(),
-						EndTime:       tc.now.Add(time.Hour).UnixMilli(),
-						LabelSelector: `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
-						Query: []*queryv1.Query{{
-							QueryType: queryv1.QueryType_QUERY_PPROF,
-							Pprof:     &queryv1.PprofQuery{},
-						}},
+				submitReq := &querierv1.AsyncQueryRequest{
+					Query: &querierv1.AsyncQueryRequest_SelectMergeStacktraces{
+						SelectMergeStacktraces: &querierv1.SelectMergeStacktracesRequest{
+							ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+							Start:         tc.now.Add(-time.Hour).UnixMilli(),
+							End:           tc.now.Add(time.Hour).UnixMilli(),
+							LabelSelector: `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
+							Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+						},
 					},
 				}
 
 				// Submit async query.
-				resp, err := tc.queryFrontend.AsyncQuery(ctx, connect.NewRequest(submitReq))
+				resp, err := tc.querier.AsyncQuery(ctx, connect.NewRequest(submitReq))
 				require.NoError(t, err)
 				require.NotEmpty(t, resp.Msg.RequestId)
-				assert.Equal(t, queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
+				assert.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
 
 				// Poll until done.
-				pollReq := &queryv1.AsyncQueryRequest{RequestId: resp.Msg.RequestId}
+				pollReq := &querierv1.AsyncQueryRequest{RequestId: resp.Msg.RequestId}
 				require.Eventually(t, func() bool {
-					pollResp, err := tc.queryFrontend.AsyncQuery(ctx, connect.NewRequest(pollReq))
+					pollResp, err := tc.querier.AsyncQuery(ctx, connect.NewRequest(pollReq))
 					if err != nil {
 						return false
 					}
-					if pollResp.Msg.Status == queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS {
+					if pollResp.Msg.Status == querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS {
 						return false
 					}
 					resp = pollResp
@@ -583,13 +578,15 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 
 				// No services means no profile data.
 				if params.serviceCount == 0 {
-					assert.NotEqual(t, queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
+					assert.NotEqual(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
 					return
 				}
 
-				require.Equal(t, queryv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Status, "error: %s", resp.Msg.ErrorMessage)
-				require.NotNil(t, resp.Msg.Response, "expected a response payload")
-				require.NotEmpty(t, resp.Msg.Response.Reports, "expected at least one report")
+				require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Status, "error: %s", resp.Msg.ErrorMessage)
+				result, ok := resp.Msg.Result.(*querierv1.AsyncQueryResponse_SelectMergeStacktraces)
+				require.True(t, ok, "expected SelectMergeStacktraces result")
+				require.NotNil(t, result.SelectMergeStacktraces, "expected a result payload")
+				require.NotEmpty(t, result.SelectMergeStacktraces.Tree, "expected a tree payload")
 			})
 		}
 	})

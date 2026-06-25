@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 
@@ -15,4 +16,13 @@ func (q *QueryFrontend) AnalyzeQuery(
 	*connect.Request[querierv1.AnalyzeQueryRequest],
 ) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
 	return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
+}
+
+// AsyncQuery is served by the async decorator at the read-path layer; the
+// underlying QueryFrontend never sees it.
+func (q *QueryFrontend) AsyncQuery(
+	context.Context,
+	*connect.Request[querierv1.AsyncQueryRequest],
+) (*connect.Response[querierv1.AsyncQueryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("async queries are not handled at this layer"))
 }

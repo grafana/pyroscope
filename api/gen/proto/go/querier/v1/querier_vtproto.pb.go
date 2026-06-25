@@ -187,6 +187,70 @@ func (m *SelectMergeStacktracesResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *AsyncQueryRequest) CloneVT() *AsyncQueryRequest {
+	if m == nil {
+		return (*AsyncQueryRequest)(nil)
+	}
+	r := new(AsyncQueryRequest)
+	r.RequestId = m.RequestId
+	if m.Query != nil {
+		r.Query = m.Query.(interface {
+			CloneVT() isAsyncQueryRequest_Query
+		}).CloneVT()
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *AsyncQueryRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *AsyncQueryRequest_SelectMergeStacktraces) CloneVT() isAsyncQueryRequest_Query {
+	if m == nil {
+		return (*AsyncQueryRequest_SelectMergeStacktraces)(nil)
+	}
+	r := new(AsyncQueryRequest_SelectMergeStacktraces)
+	r.SelectMergeStacktraces = m.SelectMergeStacktraces.CloneVT()
+	return r
+}
+
+func (m *AsyncQueryResponse) CloneVT() *AsyncQueryResponse {
+	if m == nil {
+		return (*AsyncQueryResponse)(nil)
+	}
+	r := new(AsyncQueryResponse)
+	r.RequestId = m.RequestId
+	r.Status = m.Status
+	r.ErrorMessage = m.ErrorMessage
+	if m.Result != nil {
+		r.Result = m.Result.(interface {
+			CloneVT() isAsyncQueryResponse_Result
+		}).CloneVT()
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *AsyncQueryResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *AsyncQueryResponse_SelectMergeStacktraces) CloneVT() isAsyncQueryResponse_Result {
+	if m == nil {
+		return (*AsyncQueryResponse_SelectMergeStacktraces)(nil)
+	}
+	r := new(AsyncQueryResponse_SelectMergeStacktraces)
+	r.SelectMergeStacktraces = m.SelectMergeStacktraces.CloneVT()
+	return r
+}
+
 func (m *SelectMergeSpanProfileRequest) CloneVT() *SelectMergeSpanProfileRequest {
 	if m == nil {
 		return (*SelectMergeSpanProfileRequest)(nil)
@@ -821,6 +885,124 @@ func (this *SelectMergeStacktracesResponse) EqualMessageVT(thatMsg proto.Message
 	}
 	return this.EqualVT(that)
 }
+func (this *AsyncQueryRequest) EqualVT(that *AsyncQueryRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Query == nil && that.Query != nil {
+		return false
+	} else if this.Query != nil {
+		if that.Query == nil {
+			return false
+		}
+		if !this.Query.(interface {
+			EqualVT(isAsyncQueryRequest_Query) bool
+		}).EqualVT(that.Query) {
+			return false
+		}
+	}
+	if this.RequestId != that.RequestId {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *AsyncQueryRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*AsyncQueryRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *AsyncQueryRequest_SelectMergeStacktraces) EqualVT(thatIface isAsyncQueryRequest_Query) bool {
+	that, ok := thatIface.(*AsyncQueryRequest_SelectMergeStacktraces)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.SelectMergeStacktraces, that.SelectMergeStacktraces; p != q {
+		if p == nil {
+			p = &SelectMergeStacktracesRequest{}
+		}
+		if q == nil {
+			q = &SelectMergeStacktracesRequest{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *AsyncQueryResponse) EqualVT(that *AsyncQueryResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Result == nil && that.Result != nil {
+		return false
+	} else if this.Result != nil {
+		if that.Result == nil {
+			return false
+		}
+		if !this.Result.(interface {
+			EqualVT(isAsyncQueryResponse_Result) bool
+		}).EqualVT(that.Result) {
+			return false
+		}
+	}
+	if this.RequestId != that.RequestId {
+		return false
+	}
+	if this.Status != that.Status {
+		return false
+	}
+	if this.ErrorMessage != that.ErrorMessage {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *AsyncQueryResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*AsyncQueryResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *AsyncQueryResponse_SelectMergeStacktraces) EqualVT(thatIface isAsyncQueryResponse_Result) bool {
+	that, ok := thatIface.(*AsyncQueryResponse_SelectMergeStacktraces)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.SelectMergeStacktraces, that.SelectMergeStacktraces; p != q {
+		if p == nil {
+			p = &SelectMergeStacktracesResponse{}
+		}
+		if q == nil {
+			q = &SelectMergeStacktracesResponse{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
 func (this *SelectMergeSpanProfileRequest) EqualVT(that *SelectMergeSpanProfileRequest) bool {
 	if this == that {
 		return true
@@ -1455,6 +1637,9 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(ctx context.Context, in *AnalyzeQueryRequest, opts ...grpc.CallOption) (*AnalyzeQueryResponse, error)
+	// AsyncQuery submits or polls a long-running query. Experimental, gated by
+	// -query-frontend.async-queries-enabled.
+	AsyncQuery(ctx context.Context, in *AsyncQueryRequest, opts ...grpc.CallOption) (*AsyncQueryResponse, error)
 }
 
 type querierServiceClient struct {
@@ -1573,6 +1758,15 @@ func (c *querierServiceClient) AnalyzeQuery(ctx context.Context, in *AnalyzeQuer
 	return out, nil
 }
 
+func (c *querierServiceClient) AsyncQuery(ctx context.Context, in *AsyncQueryRequest, opts ...grpc.CallOption) (*AsyncQueryResponse, error) {
+	out := new(AsyncQueryResponse)
+	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/AsyncQuery", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QuerierServiceServer is the server API for QuerierService service.
 // All implementations must embed UnimplementedQuerierServiceServer
 // for forward compatibility
@@ -1609,6 +1803,9 @@ type QuerierServiceServer interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error)
+	// AsyncQuery submits or polls a long-running query. Experimental, gated by
+	// -query-frontend.async-queries-enabled.
+	AsyncQuery(context.Context, *AsyncQueryRequest) (*AsyncQueryResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
 }
 
@@ -1651,6 +1848,9 @@ func (UnimplementedQuerierServiceServer) GetProfileStats(context.Context, *v1.Ge
 }
 func (UnimplementedQuerierServiceServer) AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AnalyzeQuery not implemented")
+}
+func (UnimplementedQuerierServiceServer) AsyncQuery(context.Context, *AsyncQueryRequest) (*AsyncQueryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AsyncQuery not implemented")
 }
 func (UnimplementedQuerierServiceServer) mustEmbedUnimplementedQuerierServiceServer() {}
 
@@ -1881,6 +2081,24 @@ func _QuerierService_AnalyzeQuery_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuerierService_AsyncQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AsyncQueryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuerierServiceServer).AsyncQuery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/querier.v1.QuerierService/AsyncQuery",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuerierServiceServer).AsyncQuery(ctx, req.(*AsyncQueryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // QuerierService_ServiceDesc is the grpc.ServiceDesc for QuerierService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1935,6 +2153,10 @@ var QuerierService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AnalyzeQuery",
 			Handler:    _QuerierService_AnalyzeQuery_Handler,
+		},
+		{
+			MethodName: "AsyncQuery",
+			Handler:    _QuerierService_AsyncQuery_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -2314,6 +2536,154 @@ func (m *SelectMergeStacktracesResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 	return len(dAtA) - i, nil
 }
 
+func (m *AsyncQueryRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AsyncQueryRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AsyncQueryRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if vtmsg, ok := m.Query.(interface {
+		MarshalToSizedBufferVT([]byte) (int, error)
+	}); ok {
+		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+	}
+	if len(m.RequestId) > 0 {
+		i -= len(m.RequestId)
+		copy(dAtA[i:], m.RequestId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.RequestId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *AsyncQueryRequest_SelectMergeStacktraces) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AsyncQueryRequest_SelectMergeStacktraces) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SelectMergeStacktraces != nil {
+		size, err := m.SelectMergeStacktraces.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+func (m *AsyncQueryResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AsyncQueryResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AsyncQueryResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if vtmsg, ok := m.Result.(interface {
+		MarshalToSizedBufferVT([]byte) (int, error)
+	}); ok {
+		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+	}
+	if len(m.ErrorMessage) > 0 {
+		i -= len(m.ErrorMessage)
+		copy(dAtA[i:], m.ErrorMessage)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ErrorMessage)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Status != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Status))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.RequestId) > 0 {
+		i -= len(m.RequestId)
+		copy(dAtA[i:], m.RequestId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.RequestId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *AsyncQueryResponse_SelectMergeStacktraces) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AsyncQueryResponse_SelectMergeStacktraces) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SelectMergeStacktraces != nil {
+		size, err := m.SelectMergeStacktraces.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	return len(dAtA) - i, nil
+}
 func (m *SelectMergeSpanProfileRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -3525,6 +3895,71 @@ func (m *SelectMergeStacktracesResponse) SizeVT() (n int) {
 	return n
 }
 
+func (m *AsyncQueryRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.RequestId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if vtmsg, ok := m.Query.(interface{ SizeVT() int }); ok {
+		n += vtmsg.SizeVT()
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *AsyncQueryRequest_SelectMergeStacktraces) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SelectMergeStacktraces != nil {
+		l = m.SelectMergeStacktraces.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *AsyncQueryResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.RequestId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Status != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Status))
+	}
+	l = len(m.ErrorMessage)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if vtmsg, ok := m.Result.(interface{ SizeVT() int }); ok {
+		n += vtmsg.SizeVT()
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *AsyncQueryResponse_SelectMergeStacktraces) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SelectMergeStacktraces != nil {
+		l = m.SelectMergeStacktraces.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
 func (m *SelectMergeSpanProfileRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -4794,6 +5229,305 @@ func (m *SelectMergeStacktracesResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Dot = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AsyncQueryRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AsyncQueryRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AsyncQueryRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RequestId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RequestId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectMergeStacktraces", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Query.(*AsyncQueryRequest_SelectMergeStacktraces); ok {
+				if err := oneof.SelectMergeStacktraces.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &SelectMergeStacktracesRequest{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Query = &AsyncQueryRequest_SelectMergeStacktraces{SelectMergeStacktraces: v}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AsyncQueryResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AsyncQueryResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AsyncQueryResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RequestId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RequestId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Status |= AsyncQueryStatus(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ErrorMessage", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ErrorMessage = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectMergeStacktraces", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Result.(*AsyncQueryResponse_SelectMergeStacktraces); ok {
+				if err := oneof.SelectMergeStacktraces.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &SelectMergeStacktracesResponse{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Result = &AsyncQueryResponse_SelectMergeStacktraces{SelectMergeStacktraces: v}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
