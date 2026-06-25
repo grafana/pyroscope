@@ -15,6 +15,13 @@ a piece of work is finished it should:
 - Have unit for new functionality or tests that would have caught the bug being fixed.
 - If you have made any changes to flags, configs and/or protobuf definitions, run `make generate` and commit the changed files.
 
+### Use signed commits in PRs
+
+Effective June 22, 2026, all Grafana Labs repositories, including Pyroscope, [require signed commits](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-signed-commits).
+To learn how to enable commit verification, refer to [about commit signature verification](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification) and this page to learn about [checking your commit signature verification status](https://docs.github.com/en/authentication/troubleshooting-commit-signature-verification/checking-your-commit-and-tag-signature-verification-status).
+
+**NOTE** Unsigned commits and pull requests will be rejected and closed. This includes pull requests that have been authored by Agents.
+
 ## Requirement
 
 To be able to run make targets you'll need to install:
