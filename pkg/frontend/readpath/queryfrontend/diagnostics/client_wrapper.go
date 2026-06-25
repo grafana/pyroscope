@@ -170,9 +170,5 @@ func (w *Wrapper) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	return resp, err
 }
 
-func (w *Wrapper) AsyncQuery(ctx context.Context, req *connect.Request[querierv1.AsyncQueryRequest]) (*connect.Response[querierv1.AsyncQueryResponse], error) {
-	return w.client.AsyncQuery(ctx, req)
-}
-
 // Ensure Wrapper implements the interface
 var _ querierv1connect.QuerierServiceClient = (*Wrapper)(nil)

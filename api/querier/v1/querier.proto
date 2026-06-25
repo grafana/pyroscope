@@ -67,11 +67,6 @@ service QuerierService {
   rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
-  // AsyncQuery submits or polls a long-running query. Experimental, gated by
-  // -query-frontend.async-queries-enabled.
-  rpc AsyncQuery(AsyncQueryRequest) returns (AsyncQueryResponse) {
-    option (gnostic.openapi.v3.operation).tags = "scope/internal";
-  }
 }
 
 message ProfileTypesRequest {
@@ -124,6 +119,8 @@ message SelectMergeStacktracesRequest {
   optional types.v1.StackTraceSelector stack_trace_selector = 7;
   // List of Profile UUIDs to query
   repeated string profile_id_selector = 8 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
+  // (experimental) Used for making and polling async queries.
+  optional AsyncQueryRequest async = 9;
 }
 
 enum ProfileFormat {
@@ -139,33 +136,35 @@ message SelectMergeStacktracesResponse {
   bytes tree = 2;
   // DOT graph representation.
   string dot = 3;
+  // (experimental) Used for responding to async queries.
+  optional AsyncQueryResponse async = 4;
 }
 
-// AsyncQueryRequest is dual-purpose: leave request_id empty and set one of
-// the query variants to submit a new query; set request_id to poll an
-// in-flight query (query variants are ignored in that case).
 message AsyncQueryRequest {
+  // If set, this is a polling request.
   string request_id = 1;
-  oneof query {
-    SelectMergeStacktracesRequest select_merge_stacktraces = 2;
-    SelectMergeSpanProfileRequest select_merge_span_profile = 3;
-  }
+  // Sets the kind of async query.
+  AsyncQueryType type = 2;
 }
 
 message AsyncQueryResponse {
+  // Id of the async query.
   string request_id = 1;
+  // Status of the query: unknown, in_progress, success, failed
   AsyncQueryStatus status = 2;
   // Populated on FAILURE.
   string error_message = 3;
-  // Populated on SUCCESS. The variant matches the submission's query oneof.
-  oneof result {
-    SelectMergeStacktracesResponse select_merge_stacktraces = 4;
-    SelectMergeSpanProfileResponse select_merge_span_profile = 5;
-  }
+}
+
+enum AsyncQueryType {
+  // The query should not be async.
+  ASYNC_QUERY_TYPE_DISABLED = 0;
+  // The query must be async.
+  ASYNC_QUERY_TYPE_FORCE = 1;
 }
 
 enum AsyncQueryStatus {
-  ASYNC_QUERY_STATUS_UNSPECIFIED = 0;
+  ASYNC_QUERY_STATUS_UNKNOWN = 0;
   ASYNC_QUERY_STATUS_IN_PROGRESS = 1;
   ASYNC_QUERY_STATUS_SUCCESS = 2;
   ASYNC_QUERY_STATUS_FAILURE = 3;

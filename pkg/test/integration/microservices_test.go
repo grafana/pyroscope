@@ -544,49 +544,54 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
 				ctx := tenant.InjectTenantID(ctx, tenantID)
-				submitReq := &querierv1.AsyncQueryRequest{
-					Query: &querierv1.AsyncQueryRequest_SelectMergeStacktraces{
-						SelectMergeStacktraces: &querierv1.SelectMergeStacktracesRequest{
-							ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-							Start:         tc.now.Add(-time.Hour).UnixMilli(),
-							End:           tc.now.Add(time.Hour).UnixMilli(),
-							LabelSelector: `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
-							Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
-						},
-					},
+				submitReq := &querierv1.SelectMergeStacktracesRequest{
+					ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					Start:         tc.now.Add(-time.Hour).UnixMilli(),
+					End:           tc.now.Add(time.Hour).UnixMilli(),
+					LabelSelector: `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
+					Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+					Async:         &querierv1.AsyncQueryRequest{Type: querierv1.AsyncQueryType_ASYNC_QUERY_TYPE_FORCE},
 				}
 
 				// Submit async query.
-				resp, err := tc.querier.AsyncQuery(ctx, connect.NewRequest(submitReq))
+				resp, err := tc.querier.SelectMergeStacktraces(ctx, connect.NewRequest(submitReq))
 				require.NoError(t, err)
-				require.NotEmpty(t, resp.Msg.RequestId)
-				assert.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
+				require.NotNil(t, resp.Msg.Async, "expected async metadata on submit response")
+				require.NotEmpty(t, resp.Msg.Async.RequestId)
+				assert.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Async.Status)
 
 				// Poll until done.
-				pollReq := &querierv1.AsyncQueryRequest{RequestId: resp.Msg.RequestId}
+				pollReq := &querierv1.SelectMergeStacktracesRequest{
+					Async: &querierv1.AsyncQueryRequest{
+						Type:      querierv1.AsyncQueryType_ASYNC_QUERY_TYPE_FORCE,
+						RequestId: resp.Msg.Async.RequestId,
+					},
+				}
 				require.Eventually(t, func() bool {
-					pollResp, err := tc.querier.AsyncQuery(ctx, connect.NewRequest(pollReq))
+					pollResp, err := tc.querier.SelectMergeStacktraces(ctx, connect.NewRequest(pollReq))
 					if err != nil {
 						return false
 					}
-					if pollResp.Msg.Status == querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS {
+					if pollResp.Msg.GetAsync() == nil {
+						return false
+					}
+					if pollResp.Msg.Async.Status == querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS {
 						return false
 					}
 					resp = pollResp
 					return true
 				}, 30*time.Second, 500*time.Millisecond)
 
+				require.NotNil(t, resp.Msg.Async)
+
 				// No services means no profile data.
 				if params.serviceCount == 0 {
-					assert.NotEqual(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Status)
+					assert.NotEqual(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Async.Status)
 					return
 				}
 
-				require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Status, "error: %s", resp.Msg.ErrorMessage)
-				result, ok := resp.Msg.Result.(*querierv1.AsyncQueryResponse_SelectMergeStacktraces)
-				require.True(t, ok, "expected SelectMergeStacktraces result")
-				require.NotNil(t, result.SelectMergeStacktraces, "expected a result payload")
-				require.NotEmpty(t, result.SelectMergeStacktraces.Tree, "expected a tree payload")
+				require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Async.Status, "error: %s", resp.Msg.Async.ErrorMessage)
+				require.NotEmpty(t, resp.Msg.Tree, "expected a tree payload")
 			})
 		}
 	})

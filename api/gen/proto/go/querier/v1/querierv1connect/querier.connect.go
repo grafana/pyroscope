@@ -71,9 +71,6 @@ const (
 	// QuerierServiceAnalyzeQueryProcedure is the fully-qualified name of the QuerierService's
 	// AnalyzeQuery RPC.
 	QuerierServiceAnalyzeQueryProcedure = "/querier.v1.QuerierService/AnalyzeQuery"
-	// QuerierServiceAsyncQueryProcedure is the fully-qualified name of the QuerierService's AsyncQuery
-	// RPC.
-	QuerierServiceAsyncQueryProcedure = "/querier.v1.QuerierService/AsyncQuery"
 )
 
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
@@ -110,9 +107,6 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
-	// AsyncQuery submits or polls a long-running query. Experimental, gated by
-	// -query-frontend.async-queries-enabled.
-	AsyncQuery(context.Context, *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error)
 }
 
 // NewQuerierServiceClient constructs a client for the querier.v1.QuerierService service. By
@@ -198,12 +192,6 @@ func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 			connect.WithClientOptions(opts...),
 		),
-		asyncQuery: connect.NewClient[v1.AsyncQueryRequest, v1.AsyncQueryResponse](
-			httpClient,
-			baseURL+QuerierServiceAsyncQueryProcedure,
-			connect.WithSchema(querierServiceMethods.ByName("AsyncQuery")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
@@ -221,7 +209,6 @@ type querierServiceClient struct {
 	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
 	getProfileStats        *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
 	analyzeQuery           *connect.Client[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse]
-	asyncQuery             *connect.Client[v1.AsyncQueryRequest, v1.AsyncQueryResponse]
 }
 
 // ProfileTypes calls querier.v1.QuerierService.ProfileTypes.
@@ -284,11 +271,6 @@ func (c *querierServiceClient) AnalyzeQuery(ctx context.Context, req *connect.Re
 	return c.analyzeQuery.CallUnary(ctx, req)
 }
 
-// AsyncQuery calls querier.v1.QuerierService.AsyncQuery.
-func (c *querierServiceClient) AsyncQuery(ctx context.Context, req *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error) {
-	return c.asyncQuery.CallUnary(ctx, req)
-}
-
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
 	// ProfileType returns a list of the existing profile types.
@@ -323,9 +305,6 @@ type QuerierServiceHandler interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
-	// AsyncQuery submits or polls a long-running query. Experimental, gated by
-	// -query-frontend.async-queries-enabled.
-	AsyncQuery(context.Context, *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error)
 }
 
 // NewQuerierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -407,12 +386,6 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 		connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceAsyncQueryHandler := connect.NewUnaryHandler(
-		QuerierServiceAsyncQueryProcedure,
-		svc.AsyncQuery,
-		connect.WithSchema(querierServiceMethods.ByName("AsyncQuery")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case QuerierServiceProfileTypesProcedure:
@@ -439,8 +412,6 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 			querierServiceGetProfileStatsHandler.ServeHTTP(w, r)
 		case QuerierServiceAnalyzeQueryProcedure:
 			querierServiceAnalyzeQueryHandler.ServeHTTP(w, r)
-		case QuerierServiceAsyncQueryProcedure:
-			querierServiceAsyncQueryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -496,8 +467,4 @@ func (UnimplementedQuerierServiceHandler) GetProfileStats(context.Context, *conn
 
 func (UnimplementedQuerierServiceHandler) AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.AnalyzeQuery is not implemented"))
-}
-
-func (UnimplementedQuerierServiceHandler) AsyncQuery(context.Context, *connect.Request[v1.AsyncQueryRequest]) (*connect.Response[v1.AsyncQueryResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.AsyncQuery is not implemented"))
 }

@@ -20,11 +20,12 @@ type Limits interface {
 	MaxAsyncQueryConcurrency(tenantID string) int
 }
 
-// QueryResult is the result of a query execution sent over a channel. On
-// success, Response carries only the result oneof; the coordinator/store
-// owns request_id and status.
+// QueryResult is the result of a query execution sent over a channel.
+// On success, Response carries the raw SelectMergeStacktracesResponse
+// from the wrapped handler (its Async field is unset); the
+// coordinator/store own request_id and status.
 type QueryResult struct {
-	Response *querierv1.AsyncQueryResponse
+	Response *querierv1.SelectMergeStacktracesResponse
 	Err      error
 }
 

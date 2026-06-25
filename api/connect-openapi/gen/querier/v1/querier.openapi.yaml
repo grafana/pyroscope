@@ -45,45 +45,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.AnalyzeQueryResponse'
-  /querier.v1.QuerierService/AsyncQuery:
-    post:
-      tags:
-        - scope/internal
-        - querier.v1.QuerierService
-      summary: AsyncQuery submits or polls a long-running query. Experimental, gated by  -query-frontend.async-queries-enabled.
-      description: |-
-        AsyncQuery submits or polls a long-running query. Experimental, gated by
-         -query-frontend.async-queries-enabled.
-      operationId: querier.v1.QuerierService.AsyncQuery
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/querier.v1.AsyncQueryRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/querier.v1.AsyncQueryResponse'
   /querier.v1.QuerierService/Diff:
     post:
       tags:
@@ -1019,71 +980,48 @@ components:
       additionalProperties: false
     querier.v1.AsyncQueryRequest:
       type: object
-      allOf:
-        - properties:
-            requestId:
-              type: string
-              title: request_id
-        - oneOf:
-            - properties:
-                selectMergeSpanProfile:
-                  title: select_merge_span_profile
-                  $ref: '#/components/schemas/querier.v1.SelectMergeSpanProfileRequest'
-              title: select_merge_span_profile
-              required:
-                - selectMergeSpanProfile
-            - properties:
-                selectMergeStacktraces:
-                  title: select_merge_stacktraces
-                  $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
-              title: select_merge_stacktraces
-              required:
-                - selectMergeStacktraces
+      properties:
+        requestId:
+          type: string
+          title: request_id
+          description: If set, this is a polling request.
+        type:
+          title: type
+          description: Sets the kind of async query.
+          $ref: '#/components/schemas/querier.v1.AsyncQueryType'
       title: AsyncQueryRequest
       additionalProperties: false
-      description: |-
-        AsyncQueryRequest is dual-purpose: leave request_id empty and set one of
-         the query variants to submit a new query; set request_id to poll an
-         in-flight query (query variants are ignored in that case).
     querier.v1.AsyncQueryResponse:
       type: object
-      allOf:
-        - properties:
-            requestId:
-              type: string
-              title: request_id
-            status:
-              title: status
-              $ref: '#/components/schemas/querier.v1.AsyncQueryStatus'
-            errorMessage:
-              type: string
-              title: error_message
-              description: Populated on FAILURE.
-        - oneOf:
-            - properties:
-                selectMergeSpanProfile:
-                  title: select_merge_span_profile
-                  $ref: '#/components/schemas/querier.v1.SelectMergeSpanProfileResponse'
-              title: select_merge_span_profile
-              required:
-                - selectMergeSpanProfile
-            - properties:
-                selectMergeStacktraces:
-                  title: select_merge_stacktraces
-                  $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesResponse'
-              title: select_merge_stacktraces
-              required:
-                - selectMergeStacktraces
+      properties:
+        requestId:
+          type: string
+          title: request_id
+          description: Id of the async query.
+        status:
+          title: status
+          description: 'Status of the query: unknown, in_progress, success, failed'
+          $ref: '#/components/schemas/querier.v1.AsyncQueryStatus'
+        errorMessage:
+          type: string
+          title: error_message
+          description: Populated on FAILURE.
       title: AsyncQueryResponse
       additionalProperties: false
     querier.v1.AsyncQueryStatus:
       type: string
       title: AsyncQueryStatus
       enum:
-        - ASYNC_QUERY_STATUS_UNSPECIFIED
+        - ASYNC_QUERY_STATUS_UNKNOWN
         - ASYNC_QUERY_STATUS_IN_PROGRESS
         - ASYNC_QUERY_STATUS_SUCCESS
         - ASYNC_QUERY_STATUS_FAILURE
+    querier.v1.AsyncQueryType:
+      type: string
+      title: AsyncQueryType
+      enum:
+        - ASYNC_QUERY_TYPE_DISABLED
+        - ASYNC_QUERY_TYPE_FORCE
     querier.v1.DiffRequest:
       type: object
       properties:
@@ -1600,6 +1538,11 @@ components:
               - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
           title: profile_id_selector
           description: List of Profile UUIDs to query
+        async:
+          title: async
+          description: (experimental) Used for making and polling async queries.
+          nullable: true
+          $ref: '#/components/schemas/querier.v1.AsyncQueryRequest'
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:
@@ -1617,6 +1560,11 @@ components:
           type: string
           title: dot
           description: DOT graph representation.
+        async:
+          title: async
+          description: (experimental) Used for responding to async queries.
+          nullable: true
+          $ref: '#/components/schemas/querier.v1.AsyncQueryResponse'
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectSeriesRequest:

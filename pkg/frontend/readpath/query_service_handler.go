@@ -2,7 +2,6 @@ package readpath
 
 import (
 	"context"
-	"errors"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -18,15 +17,6 @@ import (
 )
 
 var _ querierv1connect.QuerierServiceHandler = (*Router)(nil)
-
-// AsyncQuery is unimplemented on the sync handler; the async decorator
-// overrides it when the feature is enabled.
-func (r *Router) AsyncQuery(
-	context.Context,
-	*connect.Request[querierv1.AsyncQueryRequest],
-) (*connect.Response[querierv1.AsyncQueryResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("async queries are disabled (set -query-frontend.async-queries-enabled=true)"))
-}
 
 func (r *Router) LabelValues(
 	ctx context.Context,

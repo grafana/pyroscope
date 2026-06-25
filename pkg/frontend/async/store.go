@@ -46,7 +46,7 @@ type Metadata struct {
 
 type Result struct {
 	Metadata Metadata
-	Response *querierv1.AsyncQueryResponse
+	Response *querierv1.SelectMergeStacktracesResponse
 }
 
 type Store struct {
@@ -123,7 +123,7 @@ func (s *Store) HeartbeatInterval() time.Duration {
 	return s.heartbeatInterval
 }
 
-func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *querierv1.AsyncQueryResponse) error {
+func (s *Store) Complete(ctx context.Context, tenantID, requestID string, resp *querierv1.SelectMergeStacktracesResponse) error {
 	base := s.basePath(tenantID, requestID)
 
 	data, err := proto.Marshal(resp)
@@ -187,7 +187,7 @@ func (s *Store) Get(ctx context.Context, tenantID, requestID string) (*Result, e
 		if err != nil {
 			return nil, fmt.Errorf("failed to read result: %w", err)
 		}
-		var resp querierv1.AsyncQueryResponse
+		var resp querierv1.SelectMergeStacktracesResponse
 		if err := proto.Unmarshal(data, &resp); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal result: %w", err)
 		}
