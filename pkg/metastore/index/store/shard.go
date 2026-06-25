@@ -78,19 +78,15 @@ func (s *Shard) Store(tx *bbolt.Tx, md *metastorev1.BlockMeta) error {
 		return err
 	}
 
-	var updateIndex bool
+	s.ShardIndex.Version++
 	if s.ShardIndex.MinTime == 0 || s.ShardIndex.MinTime > md.MinTime {
 		s.ShardIndex.MinTime = md.MinTime
-		updateIndex = true
 	}
 	if s.ShardIndex.MaxTime < md.MaxTime {
 		s.ShardIndex.MaxTime = md.MaxTime
-		updateIndex = true
 	}
-	if updateIndex {
-		if err = shardBucket.Put(tenantShardIndexKeyNameBytes, s.ShardIndex.MarshalBinary()); err != nil {
-			return err
-		}
+	if err = shardBucket.Put(tenantShardIndexKeyNameBytes, s.ShardIndex.MarshalBinary()); err != nil {
+		return err
 	}
 
 	return shardBucket.Put([]byte(md.Id), value)

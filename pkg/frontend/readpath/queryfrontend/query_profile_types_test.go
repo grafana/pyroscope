@@ -2,12 +2,12 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 

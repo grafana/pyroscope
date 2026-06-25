@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
@@ -50,4 +50,10 @@ func (r *RecordingRules) UnmarshalYAML(value *yaml.Node) error {
 func (o *Overrides) RecordingRules(tenantId string) []*settingsv1.RecordingRule {
 	limits := o.getOverridesForTenant(tenantId)
 	return limits.RecordingRules
+}
+
+// MaxRecordingRules returns the maximum number of recording rules a tenant is
+// allowed to create and store. A value of 0 means no limit.
+func (o *Overrides) MaxRecordingRules(tenantId string) int {
+	return o.getOverridesForTenant(tenantId).MaxRecordingRules
 }

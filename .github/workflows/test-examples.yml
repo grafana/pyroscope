@@ -1,18 +1,83 @@
 name: Test Examples
+
+# Builds and runs the examples and verifies that profiling data (and, for tracing
+# examples, span-linked profiling data) can be queried back from Pyroscope.
+#
+# Runs nightly, on manual dispatch, and on any same-repository PR that touches
+# examples/. Fork PRs are excluded: they cannot be trusted to run arbitrary
+# docker-compose workloads on CI runners.
+# These checks are intentionally NOT part of the required status checks and
+# should not block merging.
 on:
   schedule:
     - cron: '13 1 * * *'
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Example dir or path prefix to test (e.g. examples/tracing/java or examples/language-sdk-instrumentation/java). Empty = all examples.'
+        required: false
+        default: ''
+  pull_request:
+    paths:
+      - 'examples/**'
+
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
-  # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
-  # and head_ref (available when CI is triggered by a PR).
-  group: "${{ github.ref_name }}-${{ github.head_ref }}"
+  group: "test-examples-${{ github.ref_name }}-${{ github.head_ref }}"
   cancel-in-progress: true
+
 permissions:
   contents: read
+
 jobs:
+  # Determine which examples to test: the ones changed by the PR, the ones under
+  # the manually dispatched target prefix, or all of them (scheduled runs).
+  detect:
+    # On PRs, only run for same-repository PRs (not forks): running arbitrary
+    # docker-compose workloads from untrusted forks on CI runners is unsafe.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      examples: ${{ steps.select.outputs.examples }}
+      any: ${{ steps.select.outputs.any }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: 'false'
+          fetch-depth: 0
+      - name: Select examples
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TARGET_INPUT: ${{ github.event.inputs.target }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            export BASE_REF="$BASE_SHA"
+          else
+            export TARGET="$TARGET_INPUT"
+          fi
+          selected="$(bash tools/examples/select-examples.sh)"
+
+          echo "Selected examples:"
+          printf '%s\n' "$selected"
+
+          {
+            echo "examples=$(printf '%s\n' "$selected" | paste -sd, -)"
+            echo "any=$([ -n "$selected" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+  # Bring each selected example up once and verify it: profiles are queried for
+  # every example (Series + SelectSeries); tracing examples additionally get the
+  # trace-to-profile link checked (SelectMergeSpanProfile). The profiles and
+  # trace-link results show up as subtests in this job's output.
   test:
+    needs: detect
+    if: needs.detect.outputs.any == 'true'
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
@@ -22,6 +87,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.10
-      - name: Run tests
+          go-version: 1.25.11
+      - name: Query profiles (and span profiles) for selected examples
+        env:
+          PYROSCOPE_TEST_EXAMPLES: ${{ needs.detect.outputs.examples }}
         run: make examples/test

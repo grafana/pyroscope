@@ -68,7 +68,7 @@ Pyroscope uses a **microservices architecture** where a single binary can run di
 │   ├── objstore/            # Object storage abstraction
 │   ├── api/                 # API definitions and handlers
 │   └── og/                  # Legacy code (original Pyroscope) - DO NOT USE
-├── public/app/              # React/TypeScript frontend
+├── ui/                      # React/TypeScript frontend (Vite) - has its own ui/CLAUDE.md
 ├── api/                     # API definitions (protobuf, OpenAPI)
 ├── docs/                    # Documentation
 ├── operations/              # Deployment configs (jsonnet, helm)
@@ -83,7 +83,7 @@ Pyroscope uses a **microservices architecture** where a single binary can run di
 - **parquet-go**: Parquet file format implementation
 - **go-kit/log**: Structured logging
 - **prometheus/client_golang**: Metrics instrumentation
-- **opentracing-go**: Distributed tracing
+- **opentelemetry**: Distributed tracing
 
 ## Critical Rules
 
@@ -100,4 +100,4 @@ Pyroscope uses a **microservices architecture** where a single binary can run di
 3. **Don't** create unbounded goroutines - use worker pools or semaphores
 4. **Don't** log PII or sensitive data
 5. **Don't** commit changes to `node_modules/` or generated code without source changes
-6. **Don't** modify frontend code (`public/app/`) - the frontend is not actively developed and changes are discouraged
+6. **Don't** modify frontend code (`ui/`) - the frontend is not actively developed and changes are discouraged; if you do need to change it, read `ui/CLAUDE.md` first

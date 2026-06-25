@@ -6,10 +6,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -27,10 +27,10 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -48,10 +48,10 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -69,10 +69,10 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -90,10 +90,10 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -111,10 +111,10 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -132,10 +132,10 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -176,10 +176,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/charts/minio/templates/secrets.yaml
@@ -523,10 +523,10 @@ metadata:
   name: alloy-config-pyroscope
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.alloy: |
@@ -1381,10 +1381,10 @@ metadata:
   name: pyroscope-dev-overrides-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -1398,10 +1398,10 @@ metadata:
   name: pyroscope-dev-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -1550,6 +1550,51 @@ subjects:
     name: pyroscope-dev-alloy
     namespace: default
 ---
+# Source: pyroscope/templates/rbac-discovery.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pyroscope-dev-discovery
+  labels:
+    helm.sh/chart: pyroscope-2.1.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "2.1.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups:
+  - ""
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  - endpoints
+  - services
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+---
+# Source: pyroscope/templates/rbac-discovery.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pyroscope-dev-discovery
+  labels:
+    helm.sh/chart: pyroscope-2.1.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "2.1.0"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pyroscope-dev-discovery
+subjects:
+- kind: ServiceAccount
+  name: pyroscope-dev
+  namespace: default
+---
 # Source: pyroscope/charts/alloy/templates/cluster_service.yaml
 apiVersion: v1
 kind: Service
@@ -1683,10 +1728,10 @@ metadata:
   name: pyroscope-dev-memberlist
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1710,10 +1755,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -1723,6 +1768,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1735,10 +1784,10 @@ metadata:
   name: pyroscope-dev-compactor-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -1749,6 +1798,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1761,10 +1814,10 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -1774,6 +1827,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1786,10 +1843,10 @@ metadata:
   name: pyroscope-dev-distributor-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -1800,6 +1857,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1812,10 +1873,10 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -1825,6 +1886,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1837,10 +1902,10 @@ metadata:
   name: pyroscope-dev-ingester-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -1851,6 +1916,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1863,10 +1932,10 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -1876,6 +1945,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1888,10 +1961,10 @@ metadata:
   name: pyroscope-dev-querier-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -1902,6 +1975,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1914,10 +1991,10 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -1927,6 +2004,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1939,10 +2020,10 @@ metadata:
   name: pyroscope-dev-query-frontend-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -1953,6 +2034,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1965,10 +2050,10 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -1978,6 +2063,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1990,10 +2079,10 @@ metadata:
   name: pyroscope-dev-query-scheduler-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -2004,6 +2093,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2016,10 +2109,10 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -2029,6 +2122,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2041,10 +2138,10 @@ metadata:
   name: pyroscope-dev-store-gateway-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -2055,6 +2152,10 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
+    - port: 9095
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -2067,10 +2168,10 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -2082,9 +2183,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5f99e75b792a411f69b791544f3283bf17a662201303db642b329e942b52298
+        checksum/config: 20c57cee48587a8c7031bd9e58ae818ee8c3b13214bc7a2d8807b8a1c39a4d3a
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.1"
+        profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2107,7 +2208,7 @@ spec:
         - name: "distributor"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.1"
+          image: "grafana/pyroscope:2.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
@@ -2119,8 +2220,9 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-architecture.storage=v1"
-            - "-write-path=ingester"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-architecture.storage=v2"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2128,12 +2230,17 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2171,10 +2278,10 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -2186,9 +2293,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5f99e75b792a411f69b791544f3283bf17a662201303db642b329e942b52298
+        checksum/config: 20c57cee48587a8c7031bd9e58ae818ee8c3b13214bc7a2d8807b8a1c39a4d3a
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.1"
+        profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2211,7 +2318,7 @@ spec:
         - name: "querier"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.1"
+          image: "grafana/pyroscope:2.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
@@ -2223,8 +2330,9 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-architecture.storage=v1"
-            - "-write-path=ingester"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-architecture.storage=v2"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2232,12 +2340,17 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2275,10 +2388,10 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -2290,9 +2403,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5f99e75b792a411f69b791544f3283bf17a662201303db642b329e942b52298
+        checksum/config: 20c57cee48587a8c7031bd9e58ae818ee8c3b13214bc7a2d8807b8a1c39a4d3a
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.1"
+        profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2315,7 +2428,7 @@ spec:
         - name: "query-frontend"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.1"
+          image: "grafana/pyroscope:2.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
@@ -2327,8 +2440,9 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-architecture.storage=v1"
-            - "-write-path=ingester"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-architecture.storage=v2"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2336,12 +2450,17 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2379,10 +2498,10 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -2394,9 +2513,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5f99e75b792a411f69b791544f3283bf17a662201303db642b329e942b52298
+        checksum/config: 20c57cee48587a8c7031bd9e58ae818ee8c3b13214bc7a2d8807b8a1c39a4d3a
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.1"
+        profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2419,7 +2538,7 @@ spec:
         - name: "query-scheduler"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.1"
+          image: "grafana/pyroscope:2.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-scheduler"
@@ -2431,8 +2550,9 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-architecture.storage=v1"
-            - "-write-path=ingester"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-architecture.storage=v2"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2440,12 +2560,17 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2483,10 +2608,10 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -2511,10 +2636,10 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -2542,10 +2667,10 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -2570,10 +2695,10 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -2781,10 +2906,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -2799,9 +2924,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5f99e75b792a411f69b791544f3283bf17a662201303db642b329e942b52298
+        checksum/config: 20c57cee48587a8c7031bd9e58ae818ee8c3b13214bc7a2d8807b8a1c39a4d3a
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.1"
+        profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2824,7 +2949,7 @@ spec:
         - name: "compactor"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.1"
+          image: "grafana/pyroscope:2.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=compactor"
@@ -2836,8 +2961,9 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-architecture.storage=v1"
-            - "-write-path=ingester"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-architecture.storage=v2"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2845,12 +2971,17 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -2893,10 +3024,10 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -2911,9 +3042,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5f99e75b792a411f69b791544f3283bf17a662201303db642b329e942b52298
+        checksum/config: 20c57cee48587a8c7031bd9e58ae818ee8c3b13214bc7a2d8807b8a1c39a4d3a
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.1"
+        profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2936,7 +3067,7 @@ spec:
         - name: "ingester"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.1"
+          image: "grafana/pyroscope:2.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
@@ -2948,8 +3079,9 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-architecture.storage=v1"
-            - "-write-path=ingester"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-architecture.storage=v2"
           env:
             - name: POD_NAME
               valueFrom:
@@ -2957,12 +3089,17 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -3001,10 +3138,10 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.1
+    helm.sh/chart: pyroscope-2.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.1"
+    app.kubernetes.io/version: "2.1.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -3019,9 +3156,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: c5f99e75b792a411f69b791544f3283bf17a662201303db642b329e942b52298
+        checksum/config: 20c57cee48587a8c7031bd9e58ae818ee8c3b13214bc7a2d8807b8a1c39a4d3a
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.1"
+        profiles.grafana.com/service_git_ref: "v2.1.0"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -3044,7 +3181,7 @@ spec:
         - name: "store-gateway"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.1"
+          image: "grafana/pyroscope:2.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=store-gateway"
@@ -3056,8 +3193,9 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-architecture.storage=v1"
-            - "-write-path=ingester"
+            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-architecture.storage=v2"
           env:
             - name: POD_NAME
               valueFrom:
@@ -3065,12 +3203,17 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
+            - name: PYROSCOPE_METASTORE_SERVICE
+              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
               protocol: TCP
           readinessProbe:
             httpGet:

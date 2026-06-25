@@ -890,8 +890,13 @@ type ExecutionStats struct {
 	BlocksRead        int64                  `protobuf:"varint,1,opt,name=blocks_read,json=blocksRead,proto3" json:"blocks_read,omitempty"`
 	DatasetsProcessed int64                  `protobuf:"varint,2,opt,name=datasets_processed,json=datasetsProcessed,proto3" json:"datasets_processed,omitempty"`
 	BlockExecutions   []*BlockExecution      `protobuf:"bytes,3,rep,name=block_executions,json=blockExecutions,proto3" json:"block_executions,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// bytes_fetched is the total number of bytes requested from object storage
+	// during this invocation. It counts only the bytes from this single,
+	// successful Invoke call: retried or hedged calls that did not produce a
+	// response are not included, so the value is deterministic across retries.
+	BytesFetched  uint64 `protobuf:"varint,4,opt,name=bytes_fetched,json=bytesFetched,proto3" json:"bytes_fetched,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExecutionStats) Reset() {
@@ -943,6 +948,13 @@ func (x *ExecutionStats) GetBlockExecutions() []*BlockExecution {
 		return x.BlockExecutions
 	}
 	return nil
+}
+
+func (x *ExecutionStats) GetBytesFetched() uint64 {
+	if x != nil {
+		return x.BytesFetched
+	}
+	return 0
 }
 
 // BlockExecution captures execution details for a single block.
@@ -1788,7 +1800,8 @@ type PprofQuery struct {
 	state              protoimpl.MessageState  `protogen:"open.v1"`
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
-	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
+	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
+	SpanSelector       []string                `protobuf:"bytes,4,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1840,6 +1853,13 @@ func (x *PprofQuery) GetStackTraceSelector() *v11.StackTraceSelector {
 func (x *PprofQuery) GetProfileIdSelector() []string {
 	if x != nil {
 		return x.ProfileIdSelector
+	}
+	return nil
+}
+
+func (x *PprofQuery) GetSpanSelector() []string {
+	if x != nil {
+		return x.SpanSelector
 	}
 	return nil
 }
@@ -2538,12 +2558,13 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\vend_time_ns\x18\x04 \x01(\x03R\tendTimeNs\x123\n" +
 	"\bchildren\x18\x05 \x03(\v2\x17.query.v1.ExecutionNodeR\bchildren\x12.\n" +
 	"\x05stats\x18\x06 \x01(\v2\x18.query.v1.ExecutionStatsR\x05stats\x12\x14\n" +
-	"\x05error\x18\a \x01(\tR\x05error\"\xa5\x01\n" +
+	"\x05error\x18\a \x01(\tR\x05error\"\xca\x01\n" +
 	"\x0eExecutionStats\x12\x1f\n" +
 	"\vblocks_read\x18\x01 \x01(\x03R\n" +
 	"blocksRead\x12-\n" +
 	"\x12datasets_processed\x18\x02 \x01(\x03R\x11datasetsProcessed\x12C\n" +
-	"\x10block_executions\x18\x03 \x03(\v2\x18.query.v1.BlockExecutionR\x0fblockExecutions\"\xf3\x01\n" +
+	"\x10block_executions\x18\x03 \x03(\v2\x18.query.v1.BlockExecutionR\x0fblockExecutions\x12#\n" +
+	"\rbytes_fetched\x18\x04 \x01(\x04R\fbytesFetched\"\xf3\x01\n" +
 	"\x0eBlockExecution\x12\x19\n" +
 	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\"\n" +
 	"\rstart_time_ns\x18\x02 \x01(\x03R\vstartTimeNs\x12\x1e\n" +
@@ -2613,12 +2634,13 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x04tree\x18\x02 \x01(\fR\x04tree\x124\n" +
 	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01B\n" +
 	"\n" +
-	"\b_symbols\"\xc7\x01\n" +
+	"\b_symbols\"\xec\x01\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +
 	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
-	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelectorB\x17\n" +
+	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelector\x12#\n" +
+	"\rspan_selector\x18\x04 \x03(\tR\fspanSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"O\n" +
 	"\vPprofReport\x12*\n" +
 	"\x05query\x18\x01 \x01(\v2\x14.query.v1.PprofQueryR\x05query\x12\x14\n" +

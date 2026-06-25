@@ -112,7 +112,7 @@ func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
 	}
 }
 
-func (p *RawProfile) Parse(_ context.Context, _ storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+func (p *RawProfile) Parse(_ context.Context, _ storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata, _ ingestion.Limits) error {
 	return fmt.Errorf("parsing pprof to tree/storage.Putter is no longer supported")
 }
 

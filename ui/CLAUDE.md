@@ -1,6 +1,6 @@
 # Pyroscope UI
 
-React + Vite + TypeScript frontend for Pyroscope. This frontend is a rewrite of the old UI (found in ../public/app). The objective of the app is to provide a single page query UI to query Pyroscope profiling data. The canonical implementation can be found in the old UI. When in doubt, try model behaviors found there.
+React + Vite + TypeScript frontend for Pyroscope. This frontend is a rewrite of the old UI that lived in `public/app` (removed in the ui v2 migration; still available in git history). The objective of the app is to provide a single page query UI to query Pyroscope profiling data. The old UI remains the canonical reference for behavior — when in doubt, check it out from git history and mirror what it did.
 
 ## Philosophy and ethos
 
@@ -58,9 +58,17 @@ The entire design system lives in `src/theme.css`. Read `DESIGN.md` for the full
 
 ```
 src/
-  main.tsx    # Entry point — imports theme.css once here
-  App.tsx     # Current: design system kitchen sink
-  theme.css   # All CSS custom properties (single source of truth)
+  main.tsx        # Entry point — imports theme.css once here
+  App.tsx         # Root component for the query UI
+  App.css         # Layout styles for App.tsx
+  theme.css       # All CSS custom properties (single source of truth)
+  api/            # Pyroscope API client and static metadata
+  hooks/          # Shared React hooks (query, tenant, click-outside)
+  components/     # Feature components (NavBar, QueryBar, TimeSeries, FlameGraph, Panel, …)
+    core/         # Reusable primitives (Button, Dropdown, Select, Icon, Empty, CascadeSelect)
+  lib/            # Vendored third-party code
+    flamegraph/   # Vendored @grafana/flamegraph, stripped to what we use
+  admin/          # Separate admin bundle (loaded from Go-rendered HTML templates)
 ```
 
 ## Linting
@@ -84,38 +92,6 @@ Banner comments are not allowed. Do not use decorative section dividers such as:
 ```ts
 // ─── Section name ────────────────────────
 ```
-
-## Documenting non-obvious tradeoffs
-
-The default is no comments — well-named identifiers and obvious code don't need narration. But when a piece of code makes a **specific, non-obvious tradeoff** that a future maintainer might reasonably want to revisit, leave a comment that captures the decision.
-
-A tradeoff comment should answer three questions:
-
-1. **What is this doing that looks unusual?** Name the pattern or shape directly.
-2. **Why this instead of the obvious alternative?** Identify the alternative and the specific reason it was rejected (a lint rule, a performance constraint, a library quirk, a known bug).
-3. **What would have to change for the alternative to win?** Give the maintainer a concrete trigger for reconsidering.
-
-This kind of comment is the opposite of describing *what* the code does — it documents the *decision* behind the code so the decision can be re-litigated later with full context.
-
-**When to write one:**
-
-- A workaround for a lint rule or framework quirk.
-- A pattern that differs from how the same problem is solved elsewhere in this codebase.
-- A choice that trades simplicity for performance, or vice versa.
-- A deviation from React/TypeScript idioms (e.g. unused state setters as re-render triggers, reading mutable module state during render, using refs to bypass exhaustive-deps).
-- Anything where a careful reader would reasonably ask "why isn't this written the obvious way?"
-
-**When NOT to write one:**
-
-- The code is the obvious solution.
-- The "why" is captured by the function name or a nearby type signature.
-- The reason is the current task or PR (that belongs in the commit message).
-
-See `src/hooks/useLabelSuggestions.ts` for an example.
-
-## Dependency workarounds
-
-Several packages are patched via `yarn patch` due to incompatibilities with our stack. Before debugging a dependency issue, read `WORKAROUNDS.md` — it documents each patch, why it exists, and when it can be removed. Patch files live in `.yarn/patches/`.
 
 ## Components
 

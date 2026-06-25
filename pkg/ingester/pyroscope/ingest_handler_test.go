@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"slices"
@@ -210,6 +211,45 @@ func BenchmarkIngestJFR(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestParseInputMetadataFromRequest_InvalidSampleRateDefaults(t *testing.T) {
+	t.Parallel()
+
+	h := ingestHandler{log: log.NewNopLogger()}
+
+	tests := []struct {
+		name       string
+		sampleRate string
+		expect     uint32
+	}{
+		{name: "negative", sampleRate: "-1", expect: 100},
+		{name: "zero", sampleRate: "0", expect: 0},
+		{name: "non numeric", sampleRate: "abc", expect: 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodPost, "/ingest?name=test-app&sampleRate="+tt.sampleRate, nil)
+
+			input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.Equal(t, tt.expect, input.Metadata.SampleRate)
+		})
+	}
+}
+
+func TestParseInputMetadataFromRequest_ValidSampleRatePreserved(t *testing.T) {
+	t.Parallel()
+
+	h := ingestHandler{log: log.NewNopLogger()}
+	req := httptest.NewRequest(http.MethodPost, "/ingest?name=test-app&sampleRate=97", nil)
+
+	input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.EqualValues(t, 97, input.Metadata.SampleRate)
 }
 
 func TestIngestPPROFFixtures(t *testing.T) {

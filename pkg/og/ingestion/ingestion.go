@@ -35,11 +35,13 @@ const (
 )
 
 type RawProfile interface {
-	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata) error
+	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata, Limits) error
 }
 
 type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
 }
 
 type ParseableToPprof interface {

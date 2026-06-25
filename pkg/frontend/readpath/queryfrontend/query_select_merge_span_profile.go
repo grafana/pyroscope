@@ -13,8 +13,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
-// TODO(kolesnikovae): Implement span selector.
-
 func (q *QueryFrontend) SelectMergeSpanProfile(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeSpanProfileRequest],

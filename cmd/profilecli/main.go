@@ -75,6 +75,7 @@ func main() {
 	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
 	queryProfileForce := queryProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
 	queryProfileFunctionNamesOnly := queryProfileCmd.Flag("function-names-only", "Faster call, without details about mappings, line number, and inlining").Default("false").Bool()
+	queryProfileAsync := queryProfileCmd.Flag("async", "Force async query execution, polling until results are ready.").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryProfileCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Repeatable for multiple IDs. Use 'query exemplars profile' to find IDs.").StringsVar(&queryProfileParams.ProfileIDs)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
@@ -146,6 +147,10 @@ func main() {
 	debuginfoCmd := app.Command("debuginfo", "Operations on debuginfo (experimental).")
 	debuginfoUploadCmd := debuginfoCmd.Command("upload", "Upload debuginfo.")
 	debuginfoUploadParams := addDebuginfoUploadParams(debuginfoUploadCmd)
+	debuginfoListCmd := debuginfoCmd.Command("list", "List debuginfo.")
+	debuginfoListParams := addDebuginfoListParams(debuginfoListCmd)
+	debuginfoDeleteCmd := debuginfoCmd.Command("delete", "Delete debuginfo by GNU build ID.")
+	debuginfoDeleteParams := addDebuginfoDeleteParams(debuginfoDeleteCmd)
 
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -171,7 +176,7 @@ func main() {
 			}
 		}
 	case queryProfileCmd.FullCommand():
-		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly); err != nil {
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly, *queryProfileAsync); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
@@ -276,6 +281,14 @@ func main() {
 		}
 	case debuginfoUploadCmd.FullCommand():
 		if err := uploadDebuginfo(ctx, debuginfoUploadParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case debuginfoListCmd.FullCommand():
+		if err := listDebuginfo(ctx, debuginfoListParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case debuginfoDeleteCmd.FullCommand():
+		if err := deleteDebuginfo(ctx, debuginfoDeleteParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:

@@ -4,12 +4,12 @@ package servicediscovery
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -47,11 +47,19 @@ func NewRing(ringClient *ring.Ring, ringCheckPeriod time.Duration, maxUsedInstan
 func (r *ringServiceDiscovery) starting(ctx context.Context) error {
 	r.subservicesWatcher.WatchService(r.ringClient)
 
-	return errors.Wrap(services.StartAndAwaitRunning(ctx, r.ringClient), "failed to start ring client")
+	err := services.StartAndAwaitRunning(ctx, r.ringClient)
+	if err != nil {
+		return fmt.Errorf("failed to start ring client: %w", err)
+	}
+	return nil
 }
 
 func (r *ringServiceDiscovery) stopping(_ error) error {
-	return errors.Wrap(services.StopAndAwaitTerminated(context.Background(), r.ringClient), "failed to stop ring client")
+	err := services.StopAndAwaitTerminated(context.Background(), r.ringClient)
+	if err != nil {
+		return fmt.Errorf("failed to stop ring client: %w", err)
+	}
+	return nil
 }
 
 func (r *ringServiceDiscovery) running(ctx context.Context) error {
@@ -70,7 +78,7 @@ func (r *ringServiceDiscovery) running(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-r.subservicesWatcher.Chan():
-			return errors.Wrap(err, "a subservice of ring-based service discovery has failed")
+			return fmt.Errorf("a subservice of ring-based service discovery has failed: %w", err)
 		}
 	}
 }

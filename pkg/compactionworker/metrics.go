@@ -42,7 +42,7 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 			Name: "time_to_compaction_seconds",
 			Help: "The time elapsed since the oldest compacted block was created.",
 
-			Buckets:                         prometheus.ExponentialBuckets(1, 3600, 16),
+			Buckets:                         prometheus.ExponentialBucketsRange(1, 14400, 16),
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  50,
 			NativeHistogramMinResetDuration: time.Hour,

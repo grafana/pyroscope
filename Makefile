@@ -19,7 +19,7 @@ GOPRIVATE=github.com/grafana/frostdb
 
 # Boiler plate for building Docker containers.
 # All this must go at top of file I'm afraid.
-IMAGE_PREFIX ?= docker.io/grafana/
+IMAGE_PREFIX ?= us-docker.pkg.dev/grafanalabs-global/dockerhub-pyroscope-prod-mirror/
 
 IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
@@ -91,13 +91,23 @@ go/test: $(BIN)/gotestsum
 go/test-integration: $(BIN)/gotestsum
 	$(BIN)/gotestsum --rerun-fails=2 --packages './pkg/test/integration/...' -- $(GO_TEST_FLAGS)
 
-# Run test on examples
-# This can also be used to run it on a subset of tests
-# $ make examples/test RUN=TestDockerComposeBuildRun/tracing/java
+# Run tests on examples. These build and run each example via docker-compose,
+# verify the containers stay up, and query the ingested profiling data back
+# (profiles for every example; the trace-to-profile link for tracing examples).
+#
+# Scope to specific examples with PYROSCOPE_TEST_EXAMPLES (comma-separated,
+# repository-relative dirs), and/or to specific tests with RUN. For example:
+# $ make examples/test PYROSCOPE_TEST_EXAMPLES=examples/tracing/java
+# $ make examples/test RUN=TestExamples/examples/language-sdk-instrumentation/rust/basic
+#
+# The default verbose format surfaces what each check verified (discovered
+# services, profile types, point/sample counts). Override with
+# GOTESTSUM_FORMAT=testname for terse one-line-per-test output.
+GOTESTSUM_FORMAT ?= standard-verbose
 .PHONY: examples/test
 examples/test: RUN := .*
 examples/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --format testname --rerun-fails=2 --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
+	$(BIN)/gotestsum --format $(GOTESTSUM_FORMAT) --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
@@ -460,9 +470,12 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	cat operations/pyroscope/helm/pyroscope/values.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values.json
-	# Generate dashboards and rules
+	# Generate dashboards and rules (native histograms, default)
 	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml --show-only templates/rules.yaml operations/monitoring/helm/pyroscope-monitoring \
 		| go run ./tools/monitoring-chart-extractor
+	# Generate dashboards for classic histograms (--set dashboards.nativeHistograms=false)
+	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml operations/monitoring/helm/pyroscope-monitoring --set dashboards.nativeHistograms=false \
+		| go run ./tools/monitoring-chart-extractor --output.dashboards.path ./operations/monitoring/dashboards-classic-histogram/
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build

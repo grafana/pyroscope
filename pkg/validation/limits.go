@@ -7,10 +7,8 @@ import (
 	"iter"
 	"time"
 
-	"gopkg.in/yaml.v3"
-
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
@@ -95,8 +93,9 @@ type Limits struct {
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
 	// Query frontend.
-	QuerySplitDuration   model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
-	QuerySanitizeOnMerge bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
+	QuerySplitDuration       model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+	QuerySanitizeOnMerge     bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
+	MaxAsyncQueryConcurrency int            `yaml:"max_async_query_concurrency" json:"max_async_query_concurrency"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
@@ -134,6 +133,9 @@ type Limits struct {
 	// RecordingRules allow to specify static recording rules. This is not compatible with recording rules
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
+
+	// MaxRecordingRules is the maximum number of recording rules a tenant can create and store.
+	MaxRecordingRules int `yaml:"max_recording_rules" json:"max_recording_rules"`
 
 	// Symbolizer.
 	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
@@ -174,6 +176,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	_ = l.QuerySplitDuration.Set("0s")
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
+	f.IntVar(&l.MaxAsyncQueryConcurrency, "query-frontend.max-async-query-concurrency", 5, "Maximum number of concurrent async queries per tenant. 0 to disable async queries.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
@@ -218,6 +221,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.Var(&l.IngestionArtificialDelay, "distributor.ingestion-artificial-delay", "Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.")
 
+	f.IntVar(&l.MaxRecordingRules, "recording-rules.max-rules-per-tenant", 25, "Maximum number of recording rules a tenant can create. 0 to disable.")
+
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -231,10 +236,10 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if defaultLimits != nil {
 		b, err := yaml.Marshal(defaultLimits)
 		if err != nil {
-			return errors.Wrap(err, "cloning limits (marshaling)")
+			return fmt.Errorf("cloning limits (marshaling): %w", err)
 		}
 		if err := yaml.Unmarshal(b, (*plain)(l)); err != nil {
-			return errors.Wrap(err, "cloning limits (unmarshaling)")
+			return fmt.Errorf("cloning limits (unmarshaling): %w", err)
 		}
 	}
 	return unmarshal((*plain)(l))
@@ -453,6 +458,11 @@ func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 // QuerySanitizeOnMerge returns whether profiles should be sanitized in the read path.
 func (o *Overrides) QuerySanitizeOnMerge(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QuerySanitizeOnMerge
+}
+
+// MaxAsyncQueryConcurrency returns the maximum number of concurrent async queries per tenant.
+func (o *Overrides) MaxAsyncQueryConcurrency(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxAsyncQueryConcurrency
 }
 
 // CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.

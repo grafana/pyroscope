@@ -123,6 +123,8 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`left.start` | Milliseconds since epoch. | `1676282400000` |
 |`left.end` | Milliseconds since epoch. | `1676289600000` |
+|`left.async.requestId` | If set, this is a polling request. |  |
+|`left.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
@@ -133,6 +135,8 @@ A request body with the following fields is required:
 |`left.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
 |`right.start` | Milliseconds since epoch. | `1676282400000` |
 |`right.end` | Milliseconds since epoch. | `1676289600000` |
+|`right.async.requestId` | If set, this is a polling request. |  |
+|`right.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
@@ -492,6 +496,8 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`start` | Milliseconds since epoch. | `1676282400000` |
 |`end` | Milliseconds since epoch. | `1676289600000` |
+|`async.requestId` | If set, this is a polling request. |  |
+|`async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |

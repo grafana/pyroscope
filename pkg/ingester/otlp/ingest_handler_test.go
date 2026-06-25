@@ -30,7 +30,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockotlp"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -1014,7 +1014,7 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 	httpReq.Header.Set(user.OrgIDHeaderName, "json-tenant")
 
 	w := httptest.NewRecorder()
-	util.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+	httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "json-tenant", capturedTenantID)
@@ -1067,7 +1067,7 @@ func TestHTTPRequestWithGzipCompression(t *testing.T) {
 	httpReq.Header.Set("Content-Encoding", "gzip")
 
 	w := httptest.NewRecorder()
-	util.AuthenticateUser(false).Wrap(h).ServeHTTP(w, httpReq)
+	httputil.AuthenticateUser(false).Wrap(h).ServeHTTP(w, httpReq)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, tenant.DefaultTenantID, capturedTenantID)
@@ -1117,7 +1117,7 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 	httpReq.Header.Set(user.OrgIDHeaderName, "gzip-json-tenant")
 
 	w := httptest.NewRecorder()
-	util.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+	httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "gzip-json-tenant", capturedTenantID)

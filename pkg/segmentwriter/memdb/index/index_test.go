@@ -15,26 +15,24 @@ package index
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"math/rand"
 	"sort"
 	"testing"
 
-	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
-
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
-
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb/encoding"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 )
 
 func TestMain(m *testing.M) {
@@ -79,7 +77,7 @@ func (m mockIndex) AddSeries(ref storage.SeriesRef, l phlaremodel.Labels, chunks
 	allPostingsKeyName, allPostingsKeyValue := index.AllPostingsKey()
 
 	if _, ok := m.series[ref]; ok {
-		return errors.Errorf("series with reference %d already added", ref)
+		return fmt.Errorf("series with reference %d already added", ref)
 	}
 	for _, lbl := range l {
 		m.symbols[lbl.Name] = struct{}{}

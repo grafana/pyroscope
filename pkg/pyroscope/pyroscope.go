@@ -48,6 +48,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
 	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	asyncquery "github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
@@ -76,6 +77,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/cli"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
@@ -110,7 +112,8 @@ type Config struct {
 	ShutdownDelay       time.Duration     `yaml:"shutdown_delay,omitempty"`
 	ArchitectureStorage StorageLayer      `yaml:"architecture_storage,omitempty"`
 
-	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
+	AdminServer     AdminServerConfig `yaml:"admin_server,omitempty"`
+	EmbeddedGrafana grafana.Config    `yaml:"embedded_grafana,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
@@ -138,6 +141,57 @@ type StorageConfig struct {
 
 func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
 	c.Bucket.RegisterFlagsWithPrefix("storage.", f)
+}
+
+// AdminServerMode controls how the optional admin HTTP server behaves.
+type AdminServerMode string
+
+const (
+	// AdminServerDisabled is the default: no secondary server, all routes on the main port.
+	AdminServerDisabled AdminServerMode = "disabled"
+	// AdminServerAdditional starts the admin server and registers operational
+	// routes on both ports (main port keeps them too).
+	AdminServerAdditional AdminServerMode = "additional"
+	// AdminServerExclusive starts the admin server and moves operational routes
+	// exclusively to it, removing them from the main port.
+	AdminServerExclusive AdminServerMode = "exclusive"
+)
+
+func (m AdminServerMode) IsEnabled() bool {
+	return m == AdminServerAdditional || m == AdminServerExclusive
+}
+
+func (m *AdminServerMode) String() string { return string(*m) }
+func (m *AdminServerMode) Set(v string) error {
+	switch AdminServerMode(v) {
+	case AdminServerDisabled, AdminServerAdditional, AdminServerExclusive:
+		*m = AdminServerMode(v)
+		return nil
+	default:
+		return fmt.Errorf("invalid admin-server mode %q: must be disabled, additional, or exclusive", v)
+	}
+}
+
+// AdminServerConfig configures an optional secondary HTTP server that exposes
+// metrics, pprof/debug and admin/ops endpoints on a separate port so they can be
+// firewalled independently from the public-facing API port.
+type AdminServerConfig struct {
+	Mode        AdminServerMode `yaml:"mode"`
+	HTTPAddress string          `yaml:"http_listen_address"`
+	HTTPPort    int             `yaml:"http_listen_port"`
+}
+
+func (c *AdminServerConfig) RegisterFlags(f *flag.FlagSet) {
+	c.Mode = AdminServerDisabled
+	f.Var(&c.Mode, "admin-server.mode",
+		"Controls the admin server for metrics, pprof and admin endpoints. "+
+			"'disabled': all routes on the main port (default). "+
+			"'additional': admin server started, operational routes served on both ports. "+
+			"'exclusive': admin server started, operational routes removed from main port.")
+	f.StringVar(&c.HTTPAddress, "admin-server.http-listen-address", "localhost",
+		"Address for the admin HTTP server. Defaults to localhost so the port is not exposed externally. Use :: or 0.0.0.0 to listen on all interfaces.")
+	f.IntVar(&c.HTTPPort, "admin-server.http-listen-port", 4042,
+		"Port for the admin HTTP server (metrics, pprof, admin).")
 }
 
 type SelfProfilingConfig struct {
@@ -209,6 +263,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
 	c.API.RegisterFlags(f)
+	c.AdminServer.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
 
@@ -375,6 +430,7 @@ type Pyroscope struct {
 
 	API            *api.API
 	Server         *server.Server
+	adminRouter    *mux.Router
 	SignalHandler  *signals.Handler
 	MemberlistKV   *memberlist.KVInitService
 	ingesterRing   *ring.Ring
@@ -412,6 +468,7 @@ type Pyroscope struct {
 	symbolizer            *symbolizer.Symbolizer
 	queryDiagnosticsStore *diagnostics.Store
 	queryDiagnosticsAdmin *querydiagnostics.Admin
+	asyncQueryStore       *asyncquery.Store
 
 	// legacy modules.
 	ingester *ingester.Ingester
@@ -453,7 +510,7 @@ func New(cfg Config) (*Pyroscope, error) {
 	}
 
 	phlare.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.MultitenancyEnabled))
-	phlare.Cfg.API.HTTPAuthMiddleware = util.AuthenticateUser(cfg.MultitenancyEnabled)
+	phlare.Cfg.API.HTTPAuthMiddleware = httputil.AuthenticateUser(cfg.MultitenancyEnabled)
 	phlare.Cfg.API.GrpcAuthMiddleware = phlare.auth
 
 	return phlare, nil
@@ -470,6 +527,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(Overrides, f.initOverrides, modules.UserInvisibleModule)
 	mm.RegisterModule(OverridesExporter, f.initOverridesExporter)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
+	mm.RegisterModule(AdminServer, f.initAdminServer, modules.UserInvisibleModule)
 	mm.RegisterModule(API, f.initAPI, modules.UserInvisibleModule)
 	mm.RegisterModule(Version, f.initVersion, modules.UserInvisibleModule)
 	mm.RegisterModule(Metastore, f.initMetastore)
@@ -497,6 +555,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
+	mm.RegisterModule(AsyncQueryStore, f.initAsyncQueryStore, modules.UserInvisibleModule)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -513,7 +572,8 @@ func (f *Pyroscope) setupModuleManager() error {
 		},
 
 		Server:                {GRPCGateway, HealthServer},
-		API:                   {Server},
+		AdminServer:           {},
+		API:                   {Server, AdminServer},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
 		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing},
@@ -523,7 +583,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		SegmentWriterRing:     {Overrides, API, MemberlistKV},
 		SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
 		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore},
+		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
 		QueryDiagnosticsStore: {Storage},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
@@ -540,6 +600,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		AdHocProfiles:         {API, Overrides, Storage},
 		EmbeddedGrafana:       {API},
 		FeatureFlags:          {API},
+		AsyncQueryStore:       {Storage},
 	}
 
 	if f.Cfg.ArchitectureStorage == V1V2Dual || f.Cfg.ArchitectureStorage == V1 {
@@ -592,13 +653,14 @@ func (f *Pyroscope) setupModuleManager() error {
 // made here https://patorjk.com/software/taag/#p=display&f=Doom&t=grafana%20pyroscope
 // also needed to replace all ` with '
 var banner = `
-                 / _|
-  __ _ _ __ __ _| |_ __ _ _ __   __ _   _ __  _   _ _ __ ___  ___  ___ ___  _ __   ___
+                  __                                                                   
+                 / _|                                                                  
+  __ _ _ __ __ _| |_ __ _ _ __   __ _   _ __  _   _ _ __ ___  ___  ___ ___  _ __   ___ 
  / _' | '__/ _' |  _/ _' | '_ \ / _' | | '_ \| | | | '__/ _ \/ __|/ __/ _ \| '_ \ / _ \
 | (_| | | | (_| | || (_| | | | | (_| | | |_) | |_| | | | (_) \__ \ (_| (_) | |_) |  __/
  \__, |_|  \__,_|_| \__,_|_| |_|\__,_| | .__/ \__, |_|  \___/|___/\___\___/| .__/ \___|
-  __/ |                                | |     __/ |                       | |
- |___/                                 |_|    |___/                        |_|
+  __/ |                                | |     __/ |                       | |         
+ |___/                                 |_|    |___/                        |_|         
  `
 
 func (f *Pyroscope) Run() error {
@@ -796,7 +858,7 @@ func (f *Pyroscope) readyHandler(sm *services.Manager) http.HandlerFunc {
 			}
 		}
 
-		util.WriteTextResponse(w, "ready")
+		httputil.WriteTextResponse(w, "ready")
 	}
 }
 
@@ -846,6 +908,9 @@ func (f *Pyroscope) initAPI() (services.Service, error) {
 	a, err := api.New(f.Cfg.API, f.Server, f.grpcGatewayMux, f.Server.Log)
 	if err != nil {
 		return nil, err
+	}
+	if f.adminRouter != nil {
+		a.SetAdminRouter(f.adminRouter, string(f.Cfg.AdminServer.Mode))
 	}
 	f.API = a
 

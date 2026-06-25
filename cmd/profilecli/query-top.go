@@ -11,7 +11,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -64,18 +63,18 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 		GroupBy:       params.LabelNames,
 	}))
 	if err != nil {
-		return errors.Wrap(err, "failed to query series")
+		return fmt.Errorf("failed to query series: %w", err)
 	}
-
 	logDiagnostics(params.phlareClient, resp.Header())
+	series := resp.Msg.Series
 
 	type seriesTotal struct {
 		labelValues []string
 		total       float64
 	}
 
-	totals := make([]seriesTotal, 0, len(resp.Msg.Series))
-	for _, s := range resp.Msg.Series {
+	totals := make([]seriesTotal, 0, len(series))
+	for _, s := range series {
 		var total float64
 		for _, p := range s.Points {
 			total += p.Value
@@ -102,7 +101,7 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 
 	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile type")
+		return fmt.Errorf("failed to parse profile type: %w", err)
 	}
 
 	switch params.Output {

@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
-RUN pip3 install flask pyroscope-io==0.8.14 pyroscope-otel==0.4.1
-RUN pip3 install opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-flask opentelemetry-exporter-otlp-proto-grpc
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
 
 ENV FLASK_ENV=development
 ENV PYTHONUNBUFFERED=1

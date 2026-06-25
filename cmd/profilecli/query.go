@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -11,7 +12,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -71,15 +71,15 @@ type queryParams struct {
 func (p *queryParams) parseFromTo() (from time.Time, to time.Time, err error) {
 	from, err = operations.ParseTime(p.From)
 	if err != nil {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse from")
+		return time.Time{}, time.Time{}, fmt.Errorf("failed to parse from: %w", err)
 	}
 	to, err = operations.ParseTime(p.To)
 	if err != nil {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse to")
+		return time.Time{}, time.Time{}, fmt.Errorf("failed to parse to: %w", err)
 	}
 
 	if to.Before(from) {
-		return time.Time{}, time.Time{}, errors.Wrap(err, "from cannot be after")
+		return time.Time{}, time.Time{}, errors.New("from cannot be after")
 	}
 
 	return from, to, nil
@@ -138,7 +138,7 @@ func validateQueryProfileParams(params *queryProfileParams) error {
 	return nil
 }
 
-func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool, async bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -150,8 +150,19 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	}
 
 	var profile *googlev1.Profile
-
-	if len(params.SpanSelector) > 0 {
+	if async {
+		if len(params.SpanSelector) > 0 {
+			return errors.New("--async is not supported with --span-selector (only SelectMergeStacktraces queries can run async)")
+		}
+		var locations []*typesv1.Location
+		if len(params.StacktraceSelector) > 0 {
+			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+			for _, cs := range params.StacktraceSelector {
+				locations = append(locations, &typesv1.Location{Name: cs})
+			}
+		}
+		profile, err = asyncQueryProfileTree(ctx, params, from, to, locations)
+	} else if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)
 	} else {
@@ -159,13 +170,10 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		if len(params.StacktraceSelector) > 0 {
 			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
 			for _, cs := range params.StacktraceSelector {
-				locations = append(locations, &typesv1.Location{
-					Name: cs,
-				})
+				locations = append(locations, &typesv1.Location{Name: cs})
 			}
 			level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
 		}
-
 		if profileTree {
 			profile, err = queryProfileTree(ctx, params, from, to, locations)
 		} else {
@@ -196,14 +204,14 @@ func querySpanProfile(ctx context.Context, params *queryProfileParams, from time
 	qc := params.phlareClient.queryClient()
 	resp, err := qc.SelectMergeSpanProfile(ctx, connect.NewRequest(req))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to query span profile")
+		return nil, fmt.Errorf("failed to query span profile: %w", err)
 	}
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
 	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal tree")
+		return nil, fmt.Errorf("failed to unmarshal tree: %w", err)
 	}
 
 	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
@@ -276,14 +284,14 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	qc := params.phlareClient.queryClient()
 	resp, err := qc.SelectMergeStacktraces(ctx, connect.NewRequest(req))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to query")
+		return nil, fmt.Errorf("failed to query: %w", err)
 	}
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
 	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal tree")
+		return nil, fmt.Errorf("failed to unmarshal tree: %w", err)
 	}
 
 	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
@@ -298,7 +306,7 @@ func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag st
 	qc := client.queryClient()
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
 	if err != nil {
-		return errors.Wrap(err, "failed to query")
+		return fmt.Errorf("failed to query: %w", err)
 	}
 
 	logDiagnostics(client, resp.Header())
@@ -350,19 +358,21 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force,
-		&querierv1.SelectMergeProfileRequest{
-			ProfileTypeID: params.ProfileType,
-			Start:         from.UnixMilli(),
-			End:           to.UnixMilli(),
-			LabelSelector: params.Query,
-			StackTraceSelector: &typesv1.StackTraceSelector{
-				GoPgo: &typesv1.GoPGO{
-					KeepLocations:    params.KeepLocations,
-					AggregateCallees: params.AggregateCallees,
-				},
-			},
-		})
+	stackTraceSelector := &typesv1.StackTraceSelector{
+		GoPgo: &typesv1.GoPGO{
+			KeepLocations:    params.KeepLocations,
+			AggregateCallees: params.AggregateCallees,
+		},
+	}
+
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID:      params.ProfileType,
+		Start:              from.UnixMilli(),
+		End:                to.UnixMilli(),
+		LabelSelector:      params.Query,
+		StackTraceSelector: stackTraceSelector,
+	}
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
 }
 
 type querySeriesParams struct {
@@ -400,7 +410,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
-			return errors.Wrap(err, "failed to query")
+			return fmt.Errorf("failed to query: %w", err)
 		}
 		logDiagnostics(params.phlareClient, resp.Header())
 		result = resp.Msg.LabelsSet
@@ -413,7 +423,7 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
-			return errors.Wrap(err, "failed to query")
+			return fmt.Errorf("failed to query: %w", err)
 		}
 		result = resp.Msg.LabelsSet
 	case "store-gateway":
@@ -425,11 +435,11 @@ func querySeries(ctx context.Context, params *querySeriesParams) (err error) {
 			LabelNames: params.LabelNames,
 		}))
 		if err != nil {
-			return errors.Wrap(err, "failed to query")
+			return fmt.Errorf("failed to query: %w", err)
 		}
 		result = resp.Msg.LabelsSet
 	default:
-		return errors.Errorf("unknown api type %s", params.APIType)
+		return fmt.Errorf("unknown api type %s", params.APIType)
 	}
 
 	return outputSeries(ctx, result, params.Output, from, to)
@@ -462,7 +472,7 @@ func queryLabelValuesCardinality(ctx context.Context, params *queryLabelValuesCa
 		Matchers: []string{params.Query},
 	}))
 	if err != nil {
-		return errors.Wrap(err, "failed to query")
+		return fmt.Errorf("failed to query: %w", err)
 	}
 	logDiagnostics(params.phlareClient, resp.Header())
 

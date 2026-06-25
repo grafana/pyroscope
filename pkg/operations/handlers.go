@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"errors"
 	"math"
 	"net/http"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
@@ -46,7 +46,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 		vars := mux.Vars(r)
 		tenantId := vars["tenant"]
 		if tenantId == "" {
-			httputil.Error(w, errors.New("No tenant id provided"))
+			httputil.Error(w, errors.New("no tenant id provided"))
 			return
 		}
 		index, err := bucketindex.ReadIndex(r.Context(), h.Bucket, tenantId, nil, h.Logger)
@@ -141,12 +141,12 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 		vars := mux.Vars(r)
 		tenantId := vars["tenant"]
 		if tenantId == "" {
-			httputil.Error(w, errors.New("No tenant id provided"))
+			httputil.Error(w, errors.New("no tenant id provided"))
 			return
 		}
 		blockId := vars["block"]
 		if blockId == "" {
-			httputil.Error(w, errors.New("No block id provided"))
+			httputil.Error(w, errors.New("no block id provided"))
 			return
 		}
 		bId, err := ulid.Parse(blockId)
@@ -176,7 +176,7 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 				return
 			}
 		} else {
-			httputil.Error(w, errors.New("Could not find block"))
+			httputil.Error(w, errors.New("could not find block"))
 			return
 		}
 	}

@@ -115,7 +115,7 @@ func resolveRefs(refs []int64, table *queryv1.AttributeTable) []string {
 }
 
 func TestTimeSeriesCompactAggregator(t *testing.T) {
-	agg, query := newTestCompactAggregator(1000, 2000)
+	agg, query := newTestCompactAggregator(0, 2000)
 
 	// Report 1: exemplar with 3 attributes (pod, version, region) at timestamp 1000
 	report1 := makeCompactReport(query, &queryv1.AttributeTable{
@@ -207,7 +207,7 @@ func TestTimeSeriesCompactAggregator(t *testing.T) {
 
 func TestTimeSeriesCompactAnnotations(t *testing.T) {
 	t.Run("same_timestamp_merges_annotations", func(t *testing.T) {
-		agg, query := newTestCompactAggregator(1000, 2000)
+		agg, query := newTestCompactAggregator(0, 2000)
 
 		// Report 1: annotations error=true, host=server-1
 		report1 := makeCompactReport(query, &queryv1.AttributeTable{
@@ -251,7 +251,7 @@ func TestTimeSeriesCompactAnnotations(t *testing.T) {
 
 	t.Run("different_timestamps_no_corruption", func(t *testing.T) {
 		// annotations at different timestamps should not be corrupted by later points.
-		agg, query := newTestCompactAggregator(1000, 3000)
+		agg, query := newTestCompactAggregator(0, 3000)
 
 		report := makeCompactReport(query, &queryv1.AttributeTable{
 			Keys:   []string{"service_name", "error", "host", "region"},
@@ -277,6 +277,82 @@ func TestTimeSeriesCompactAnnotations(t *testing.T) {
 		assert.ElementsMatch(t, []string{"host=server-1"}, resolveRefs(series.Points[1].AnnotationRefs, attrTable))
 		assert.ElementsMatch(t, []string{"region=us-east"}, resolveRefs(series.Points[2].AnnotationRefs, attrTable))
 	})
+}
+
+func TestTimeSeriesCompactAggregator_FirstSampleNotLost(t *testing.T) {
+	agg, query := newTestCompactAggregator(1000, 5000)
+
+	report := makeCompactReport(query, &queryv1.AttributeTable{
+		Keys:   []string{"service_name"},
+		Values: []string{"test-svc"},
+	}, []*queryv1.Series{{
+		AttributeRefs: []int64{0},
+		Points: []*queryv1.Point{
+			{Timestamp: 1000, Value: 100},
+			{Timestamp: 2500, Value: 200},
+			{Timestamp: 3500, Value: 300},
+		},
+	}})
+
+	require.NoError(t, agg.aggregate(report))
+	result := agg.build()
+
+	require.NotNil(t, result.TimeSeriesCompact)
+	require.Len(t, result.TimeSeriesCompact.TimeSeries, 1)
+
+	series := result.TimeSeriesCompact.TimeSeries[0]
+
+	require.Len(t, series.Points, 3, "all three samples should produce visible points; first sample at Ts==startTime must not be lost")
+	assert.Equal(t, int64(2000), series.Points[0].Timestamp)
+	assert.Equal(t, 100.0, series.Points[0].Value)
+	assert.Equal(t, int64(3000), series.Points[1].Timestamp)
+	assert.Equal(t, 200.0, series.Points[1].Value)
+	assert.Equal(t, int64(4000), series.Points[2].Timestamp)
+	assert.Equal(t, 300.0, series.Points[2].Value)
+}
+
+func TestTimeSeriesAggregator_FirstSampleNotLost(t *testing.T) {
+	query := &queryv1.TimeSeriesQuery{
+		GroupBy: []string{"service_name"},
+		Step:    1.0,
+	}
+	req := &queryv1.InvokeRequest{
+		StartTime: 1000,
+		EndTime:   5000,
+		Query: []*queryv1.Query{{
+			TimeSeries: query,
+		}},
+	}
+	agg := newTimeSeriesAggregator(req).(*timeSeriesAggregator)
+
+	report := &queryv1.Report{
+		TimeSeries: &queryv1.TimeSeriesReport{
+			Query: query,
+			TimeSeries: []*typesv1.Series{{
+				Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "test-svc"}},
+				Points: []*typesv1.Point{
+					{Timestamp: 1000, Value: 100},
+					{Timestamp: 2500, Value: 200},
+					{Timestamp: 3500, Value: 300},
+				},
+			}},
+		},
+	}
+
+	require.NoError(t, agg.aggregate(report))
+	result := agg.build()
+
+	require.NotNil(t, result.TimeSeries)
+	require.Len(t, result.TimeSeries.TimeSeries, 1)
+
+	series := result.TimeSeries.TimeSeries[0]
+	require.Len(t, series.Points, 3, "all three samples should produce visible points; first sample at Ts==startTime must not be lost")
+	assert.Equal(t, int64(2000), series.Points[0].Timestamp)
+	assert.Equal(t, 100.0, series.Points[0].Value)
+	assert.Equal(t, int64(3000), series.Points[1].Timestamp)
+	assert.Equal(t, 200.0, series.Points[1].Value)
+	assert.Equal(t, int64(4000), series.Points[2].Timestamp)
+	assert.Equal(t, 300.0, series.Points[2].Value)
 }
 
 type benchmarkFixture struct {

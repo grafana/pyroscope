@@ -12,9 +12,10 @@
    > ✅ Correct: `release/v1.3`
    >
    > ⚠️  Incorrect: `release/v1.3.0`  
-3. Create the tag for the release (e.g., `vX.Y.Z`)
-4. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
-5. Create a GitHub label for backports:
+3. Update `renovate.json` so `baseBranchPatterns` includes the new release branch and only the latest two release branches.
+4. Create the tag for the release (e.g., `vX.Y.Z`)
+5. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
+6. Create a GitHub label for backports:
 
    ```gh label create "backport release/vX.Y" -d "This label will backport a merged PR to the release/vX.Y branch" -c "#0052cc"```
 
@@ -32,6 +33,10 @@ Once the release is published, you should edit the release notes in GitHub. Use 
 Keep the generated changelog as is, after the summary sections.
 
 Make sure each release note has full links to the relevant pull requests.
+
+### Homebrew
+
+For releases that publish the `latest` tag (`IMAGE_PUBLISH_LATEST=true`), the release workflow regenerates the Homebrew formulas and opens a pull request against [grafana/homebrew-pyroscope](https://github.com/grafana/homebrew-pyroscope). The tap's `main` branch requires reviewed PRs (org ruleset), so the workflow cannot push to it directly. **A maintainer must review and merge that PR to publish the new version via `brew`.** This step does not block the rest of the release; the binaries, container images, and GitHub release are published regardless.
 
 ### Website Release Notes
 

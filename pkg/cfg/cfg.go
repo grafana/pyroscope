@@ -1,11 +1,11 @@
 package cfg
 
 import (
+	"errors"
 	"flag"
 	"reflect"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/pkg/errors"
 )
 
 // Source is a generic configuration source. This function may do whatever is

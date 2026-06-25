@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
@@ -26,7 +25,7 @@ var ShardLabelRE = regexp.MustCompile("^[0-9]+_of_[0-9]+$")
 // ParseShard will extract the shard information encoded in ShardLabelFmt
 func ParseShard(input string) (parsed Annotation, err error) {
 	if !ShardLabelRE.MatchString(input) {
-		return parsed, errors.Errorf("Invalid ShardLabel value: [%s]", input)
+		return parsed, fmt.Errorf("invalid ShardLabel value: [%s]", input)
 	}
 
 	matches := strings.Split(input, "_")
@@ -40,7 +39,7 @@ func ParseShard(input string) (parsed Annotation, err error) {
 	}
 
 	if x >= of {
-		return parsed, errors.Errorf("Shards out of bounds: [%d] >= [%d]", x, of)
+		return parsed, fmt.Errorf("shards out of bounds: [%d] >= [%d]", x, of)
 	}
 	return Annotation{
 		Shard: x,

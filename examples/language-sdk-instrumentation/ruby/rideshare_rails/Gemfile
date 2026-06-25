@@ -20,9 +20,9 @@ gem "sqlite3", "~> 1.4"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", "~> 6.0"
 
-gem 'pyroscope', '= 0.6.7'
+gem 'pyroscope', '= 1.0.1'
 
-gem "pyroscope-otel", "~> 0.1.1"
+gem "pyroscope-otel", "~> 0.2.0"
 gem 'opentelemetry-sdk', "~> 1.2.0"
 gem 'opentelemetry-exporter-jaeger', '~> 0.22.0'
 gem 'opentelemetry-instrumentation-rails' # it's top span is "http get" which is not super usefull for demo

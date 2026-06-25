@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { FlameGraph as GrafanaFlameGraph } from '@grafana/flamegraph';
-import { createTheme, FieldType } from '@grafana/data';
-import type { DataFrame } from '@grafana/data';
+import {
+  type DataFrame,
+  FlameGraph as GrafanaFlameGraph,
+  FieldType,
+} from '@lib/flamegraph';
 import type { FlamegraphData } from '@api/client';
 import { profileTypeUnit } from '@api/client';
 import { Empty } from '@components/core/Empty';
@@ -92,8 +94,6 @@ function toDataFrame(
   if (labelVals.length === 0) return undefined;
 
   return {
-    name: 'flamegraph',
-    refId: 'A',
     fields: [
       { name: 'level', values: levelVals, type: FieldType.number, config: {} },
       {
@@ -111,24 +111,18 @@ function toDataFrame(
       { name: 'label', values: labelVals, type: FieldType.string, config: {} },
     ],
     length: labelVals.length,
-  } as unknown as DataFrame;
+  };
 }
 
 export function FlameGraph({
   data,
-  theme,
   profileTypeId,
 }: {
   data: FlamegraphData;
-  theme: 'dark' | 'light';
   profileTypeId: string;
 }) {
   const unit = toGrafanaUnit(profileTypeUnit(profileTypeId));
   const dataFrame = useMemo(() => toDataFrame(data, unit), [data, unit]);
-  const getTheme = useMemo(
-    () => () => createTheme({ colors: { mode: theme } }),
-    [theme],
-  );
 
   if (!dataFrame) {
     return <Empty />;
@@ -136,7 +130,7 @@ export function FlameGraph({
 
   return (
     <div className="flamegraph-wrapper">
-      <GrafanaFlameGraph data={dataFrame} getTheme={getTheme} />
+      <GrafanaFlameGraph data={dataFrame} />
     </div>
   );
 }

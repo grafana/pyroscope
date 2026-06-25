@@ -15,11 +15,18 @@ a piece of work is finished it should:
 - Have unit for new functionality or tests that would have caught the bug being fixed.
 - If you have made any changes to flags, configs and/or protobuf definitions, run `make generate` and commit the changed files.
 
+### Use signed commits in PRs
+
+Effective June 22, 2026, all Grafana Labs repositories, including Pyroscope, [require signed commits](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-signed-commits).
+To learn how to enable commit verification, refer to [about commit signature verification](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification) and this page to learn about [checking your commit signature verification status](https://docs.github.com/en/authentication/troubleshooting-commit-signature-verification/checking-your-commit-and-tag-signature-verification-status).
+
+**NOTE** Unsigned commits and pull requests will be rejected and closed. This includes pull requests that have been authored by Agents.
+
 ## Requirement
 
 To be able to run make targets you'll need to install:
 
-- [Go](https://go.dev/doc/install) (>= 1.24)
+- [Go](https://go.dev/doc/install) (>= 1.25, see `go.mod`)
 - [Docker](https://docs.docker.com/engine/install/)
 
 All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.
@@ -89,45 +96,30 @@ This will Pyroscope on `:4040` and the embedded Grafana on port `:4041`.
 #### Frontend development
 
 The frontend application is not in active development. While the UI it provides is usable and stable,
-the recommended way to view and analyze profiling data is to use the 
+the recommended way to view and analyze profiling data is to use the
 [Profiles Drilldown](https://grafana.com/docs/grafana/latest/visualizations/simplified-exploration/profiles/) Grafana app (pre-installed in recent Grafana versions).
 
 If you do need to make changes to the frontend code, the following instructions should get you started.
 
-**Versions for development tools**:
-- Node v18
-- Yarn v1.22
+The web UI lives in the `ui/` directory and is a dependency-minimal rewrite (React + Vite + TypeScript)
+of the older `public/app` UI. See [`ui/CLAUDE.md`](../../../ui/CLAUDE.md) and
+[`ui/DESIGN.md`](../../../ui/DESIGN.md) for the authoritative frontend guide.
 
-The frontend code is located in the `public/app` directory, although its `package.json` file is at the repository root.
-
-To run the local frontend application in development mode:
+The frontend uses **Yarn 4 (Berry)** and its `package.json` lives in `ui/` (not at the repository root).
+To run it in development mode:
 
 ```sh
+cd ui
 yarn install
 yarn dev
 ```
 
-This will:
-- install and update frontend dependencies
-- launch a process that will build the frontend code
-- serve the built app at `http://localhost:4041`
-- keep the web app updated any time you update the frontend source code
+This serves the app at `http://localhost:5173` and proxies API requests to a Pyroscope server at
+`http://localhost:4040`. In a separate terminal, start a server for it to talk to, for example:
 
-The web app will not initially be connected to a Pyroscope server, so all attempts to fetch data will fail.
-
-To launch a pyroscope server for development purposes:
 ```sh
-yarn backend:dev
+go run ./cmd/pyroscope
 ```
-
-This yarn script actually runs the following:
-```sh
-make build run 'PARAMS=--config.file ./cmd/pyroscope/pyroscope.yaml'
-```
-
-It can take a while for this process to build and start serving pyroscope data, but
-once it is fully active, the pyroscope web app service at `http://localhost:4041`
-will be able to interact with it.
 
 ### Dependency management
 

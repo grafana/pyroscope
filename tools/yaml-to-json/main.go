@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"sigs.k8s.io/yaml"
+	"go.yaml.in/yaml/v3"
 )
 
 func main() {
@@ -16,25 +16,22 @@ func main() {
 }
 
 func run() error {
-	yamlBody, err := io.ReadAll(os.Stdin)
+	yamlBytes, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return err
 	}
 
-	jsonBody, err := yaml.YAMLToJSON(yamlBody)
+	var object any
+	err = yaml.Unmarshal(yamlBytes, &object)
 	if err != nil {
 		return err
 	}
 
-	var jsonStruct interface{}
-	if err := json.Unmarshal(jsonBody, &jsonStruct); err != nil {
-		return err
-	}
-	jsonBody, err = json.MarshalIndent(&jsonStruct, "", "  ")
+	jsonBytes, err := json.MarshalIndent(object, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	_, err = os.Stdout.Write(jsonBody)
+	_, err = os.Stdout.Write(jsonBytes)
 	return err
 }

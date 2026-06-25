@@ -1,0 +1,134 @@
+.fg-tt-container {
+  height: 100%;
+  min-width: 0;
+  background-color: var(--bg-secondary);
+  overflow: hidden;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.fg-tt-scroll {
+  flex: 1;
+  overflow: auto;
+  min-width: 0;
+}
+
+.fg-tt-table {
+  width: 100%;
+  /* Action (60) + Self (120) + Total (120) + Symbol (160 minimum) = 460.
+     Below this the Symbol column would collapse to zero with tableLayout:
+     fixed; the parent scroll container will horizontally scroll instead. */
+  min-width: 460px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--text-sm);
+}
+
+.fg-tt-thead {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-secondary);
+  z-index: 1;
+}
+
+.fg-tt-header-row {
+  border-bottom: 1px solid var(--border-weak);
+}
+
+.fg-tt-action-header {
+  width: 60px;
+  padding: 0;
+}
+
+.fg-tt-symbol-header {
+  text-align: left;
+  padding: 4px 8px;
+}
+
+.fg-tt-numeric-header {
+  text-align: right;
+  padding: 4px 8px;
+  width: 120px;
+}
+
+.fg-tt-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+  padding: 0;
+}
+
+.fg-tt-sort-btn:hover {
+  color: var(--text-primary);
+}
+
+.fg-tt-row {
+  /* height set via inline style because ROW_HEIGHT also drives the
+     virtualizer's spacer math and we want a single source of truth. */
+  border-bottom: 1px solid var(--border-weak);
+}
+
+.fg-tt-row:hover {
+  background-color: var(--action-hover);
+}
+
+.fg-tt-action-cell {
+  width: 60px;
+  padding: 2px 4px;
+  display: flex;
+  gap: 2px;
+}
+
+.fg-tt-action-btn {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 0;
+}
+
+.fg-tt-action-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--action-hover);
+}
+
+.fg-tt-action-btn[data-active='true'] {
+  color: var(--color-primary-text);
+}
+
+.fg-tt-symbol-cell {
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fg-tt-symbol-link {
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.fg-tt-symbol-link:hover {
+  text-decoration: underline;
+}
+
+.fg-tt-numeric-cell {
+  text-align: right;
+  padding: 4px 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  width: 120px;
+}

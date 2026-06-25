@@ -15,7 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
@@ -126,9 +126,7 @@ func (e *UsageGroupEvaluator) GetMatch(tenantID string, c *UsageGroupConfig, lbl
 
 func (c *UsageGroupConfig) UnmarshalYAML(value *yaml.Node) error {
 	m := make(map[string]string)
-	err := value.DecodeWithOptions(&m, yaml.DecodeOptions{
-		KnownFields: true,
-	})
+	err := value.Decode(&m)
 	if err != nil {
 		return fmt.Errorf("malformed usage group config: %w", err)
 	}

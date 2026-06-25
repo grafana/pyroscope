@@ -168,6 +168,14 @@ runtime_config:
     # CLI flag: -runtime-config.http-client-cluster-validation.label
     [label: <string> | default = ""]
 
+  # (advanced) Disable HTTP keep-alives for the runtime config HTTP client. When
+  # enabled, each reload opens a new connection, which prevents long-lived
+  # connections from being pinned to a single backend when the runtime config
+  # URL is served by multiple replicas behind a connection-level (L4) load
+  # balancer, such as a Kubernetes Service.
+  # CLI flag: -runtime-config.http-client-disable-keep-alives
+  [http_client_disable_keep_alives: <boolean> | default = true]
+
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]
 
@@ -324,6 +332,23 @@ self_profiling:
 # query old data.
 # CLI flag: -architecture.storage
 [architecture_storage: <string> | default = "v1-v2-dual"]
+
+admin_server:
+  # Controls the admin server for metrics, pprof and admin endpoints.
+  # 'disabled': all routes on the main port (default). 'additional': admin
+  # server started, operational routes served on both ports. 'exclusive': admin
+  # server started, operational routes removed from main port.
+  # CLI flag: -admin-server.mode
+  [mode: <string> | default = "disabled"]
+
+  # Address for the admin HTTP server. Defaults to localhost so the port is not
+  # exposed externally. Use :: or 0.0.0.0 to listen on all interfaces.
+  # CLI flag: -admin-server.http-listen-address
+  [http_listen_address: <string> | default = "localhost"]
+
+  # Port for the admin HTTP server (metrics, pprof, admin).
+  # CLI flag: -admin-server.http-listen-port
+  [http_listen_port: <int> | default = 4042]
 
 embedded_grafana:
   # The directory where the Grafana data will be stored.
@@ -1301,7 +1326,7 @@ index:
 
   # (advanced) Interval for index cleanup check. 0 to disable.
   # CLI flag: -metastore.index.cleanup-interval
-  [cleanup_interval: <duration> | default = 0s]
+  [cleanup_interval: <duration> | default = 15m]
 
   # (advanced) Dead Letter Queue check interval. 0 to disable.
   # CLI flag: -metastore.index.dlq-recovery-check-interval
@@ -1672,6 +1697,11 @@ The `query_frontend` block configures the query-frontend.
 # The CLI flags prefix for this block configuration is:
 # query-frontend.grpc-client-config
 [grpc_client_config: <grpc_client>]
+
+# (experimental) Enable the experimental asynchronous query path on
+# SelectMergeStacktraces (default false)
+# CLI flag: -query-frontend.async-queries-enabled
+[async_queries_enabled: <boolean> | default = false]
 
 # (advanced) List of network interface names to look up when finding the
 # instance IP address. This address is sent to query-scheduler and querier,
@@ -2807,6 +2837,18 @@ The `memberlist` block configures the Gossip memberlist.
 # CLI flag: -memberlist.received-messages-queue-size
 [received_messages_queue_size: <int> | default = 1024]
 
+# (advanced) Size of the per-key internal queue for processing messages received
+# from other nodes. Increasing this value may help to avoid dropping per-key
+# updates when the node is processing many updates for the same key.
+# CLI flag: -memberlist.processed-messages-queue-size
+[processed_messages_queue_size: <int> | default = 1024]
+
+# (advanced) Compression algorithm used for outgoing messages when
+# -memberlist.compression-enabled is true. Supported values: lzw, snappy.
+# Ignored when -memberlist.compression-enabled is false.
+# CLI flag: -memberlist.compression-algorithm
+[compression_algorithm: <string> | default = "lzw"]
+
 # Gossip address to advertise to other members in the cluster. Used for NAT
 # traversal.
 # CLI flag: -memberlist.advertise-addr
@@ -3236,6 +3278,11 @@ distributor_usage_groups:
 # CLI flag: -querier.sanitize-on-merge
 [query_sanitize_on_merge: <boolean> | default = true]
 
+# Maximum number of concurrent async queries per tenant. 0 to disable async
+# queries.
+# CLI flag: -query-frontend.max-async-query-concurrency
+[max_async_query_concurrency: <int> | default = 5]
+
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.
 # CLI flag: -compactor.blocks-retention-period
@@ -3298,6 +3345,10 @@ distributor_usage_groups:
 # is enforced in the distributor. 0 to disable, defaults to 10m.
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
+
+# Maximum number of recording rules a tenant can create. 0 to disable.
+# CLI flag: -recording-rules.max-rules-per-tenant
+[max_recording_rules: <int> | default = 25]
 ```
 
 ### s3_storage_backend

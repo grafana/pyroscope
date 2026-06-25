@@ -143,9 +143,24 @@ dashboards:
   # ingest label selector
   ingestSelector: container=~"pyroscope|distributor|query-frontend"
 
+  # Set to true when Prometheus scrapes native histograms (scrape_native_histograms: true).
+  # When false, dashboards use classic _bucket/_sum/_count suffix queries instead.
+  nativeHistograms: true
+
+  # Matcher appended to ingest queries. Set to "" to omit it.
+  ingestNamespaceSelector: namespace=~"$namespace"
+
+  # Optional namespace regex overrides keyed by dashboard name.
+  namespaceRegexPerDashboard: {}
+
+  # Tenant query rendered with Helm tpl.
   tenantQuery: |
     sum by (tenant, slug, org_name, environment) (
+      {{- if .Values.dashboards.nativeHistograms }}
+      histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval]))
+      {{- else }}
       rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~"$cluster",namespace=~"$namespace"}[$__rate_interval])
+      {{- end }}
     )
 
   # -- @ignored
@@ -171,8 +186,7 @@ monitoring:
     # This enables scraping of native histograms
     scrapeProtocols: ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
     scrapeClassicHistograms: true
-    # TODO: Enable after https://github.com/grafana/k8s-monitoring-helm/pull/2071 merges
-    # scrapeNativeHistograms: true
+    scrapeNativeHistograms: true
   cluster:
     name: pyroscope-dev
 
