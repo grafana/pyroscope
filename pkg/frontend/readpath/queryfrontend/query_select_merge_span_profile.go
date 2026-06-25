@@ -77,12 +77,13 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 	switch c.Msg.Format {
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = report.Tree.Tree
+		resp.Mapping = report.Tree.MappingNames
 	default:
 		t, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](report.Tree.Tree)
 		if err != nil {
 			return nil, err
 		}
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, report.Tree.MappingNames, c.Msg.GetMaxNodes())
 	}
 	return connect.NewResponse(&resp), nil
 }

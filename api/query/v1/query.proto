@@ -237,6 +237,7 @@ message TreeReport {
   TreeQuery query = 1;
   bytes tree = 2;
   optional TreeSymbols symbols = 3;
+  map<string, string> mapping_names = 4;
 }
 
 message PprofQuery {

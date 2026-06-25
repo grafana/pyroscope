@@ -78,13 +78,25 @@ func (r *Router) SelectMergeStacktraces(
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
+            mapping := map[string]string{}
+            for k, v := range a.Mapping {
+                mapping[k] = v
+            }
+            for k, v := range b.Mapping {
+                mapping[k] = v
+            }
 			tree := m.Tree().Bytes(c.Msg.GetMaxNodes(), nil)
-			return &querierv1.SelectMergeStacktracesResponse{Tree: tree}, nil
+			return &querierv1.SelectMergeStacktracesResponse{
+			    Tree: tree,
+			    Mapping: mapping,
+			}, nil
 		},
 	)
+
 	if err == nil && f != c.Msg.Format {
 		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
 			phlaremodel.MustUnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree),
+			resp.Msg.Mapping,
 			c.Msg.GetMaxNodes())
 	}
 	return resp, err
@@ -108,13 +120,24 @@ func (r *Router) SelectMergeSpanProfile(
 			if err := m.MergeTreeBytes(b.Tree); err != nil {
 				return nil, err
 			}
-			tree := m.Tree().Bytes(c.Msg.GetMaxNodes(), nil)
-			return &querierv1.SelectMergeSpanProfileResponse{Tree: tree}, nil
+            mapping := map[string]string{}
+            for k, v := range a.Mapping {
+                mapping[k] = v
+            }
+            for k, v := range b.Mapping {
+                mapping[k] = v
+            }
+            tree := m.Tree().Bytes(c.Msg.GetMaxNodes(), nil)
+			return &querierv1.SelectMergeSpanProfileResponse{
+			    Tree: tree,
+			    Mapping: mapping,
+			}, nil
 		},
 	)
 	if err == nil && f != c.Msg.Format {
 		resp.Msg.Flamegraph = phlaremodel.NewFlameGraph(
 			phlaremodel.MustUnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree),
+			resp.Msg.Mapping,
 			c.Msg.GetMaxNodes())
 	}
 	return resp, err

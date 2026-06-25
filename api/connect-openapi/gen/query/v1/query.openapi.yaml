@@ -1289,7 +1289,24 @@ components:
           title: symbols
           nullable: true
           $ref: '#/components/schemas/query.v1.TreeSymbols'
+        mappingNames:
+          type: object
+          title: mapping_names
+          additionalProperties:
+            type: string
+            title: value
       title: TreeReport
+      additionalProperties: false
+    query.v1.TreeReport.MappingNamesEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: MappingNamesEntry
       additionalProperties: false
     query.v1.TreeSymbols:
       type: object
