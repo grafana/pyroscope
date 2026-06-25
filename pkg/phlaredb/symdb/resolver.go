@@ -185,10 +185,9 @@ func (r *Resolver) AddSamplesWithTraceSelectorFromParquetRow(partition uint64, s
 			if stackID == 0 {
 				continue
 			}
-			// TraceID is an optional FixedLenByteArray(16) column; rows without
-			// a trace id yield a null/empty value which can never match.
 			b := traces[i].ByteArray()
 			if len(b) != len(model.TraceID{}) {
+				// Null (no trace id on this sample): cannot match.
 				continue
 			}
 			var t model.TraceID

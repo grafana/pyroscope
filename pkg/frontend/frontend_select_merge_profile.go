@@ -24,10 +24,7 @@ func (f *Frontend) SelectMergeProfile(
 	c *connect.Request[querierv1.SelectMergeProfileRequest],
 ) (*connect.Response[profilev1.Profile], error) {
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeProfileProcedure)
-	// trace_id_selector is a sample-level filter applied only by the v2 query
-	// backend. This legacy frontend rebuilds (and would drop) the selector when
-	// splitting by time, which would silently return unfiltered results, so we
-	// reject it here rather than answer the wrong question.
+	// trace_id_selector is v2-only; this legacy frontend would drop it on split.
 	if len(c.Msg.TraceIdSelector) > 0 {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
 	}

@@ -64,11 +64,8 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 
-	// span_selector and trace_id_selector both filter at the sample level but
-	// via different columns, and no public RPC sets both (span_id is exclusive
-	// to SelectMergeSpanProfile; trace_id to SelectMergeProfile/Stacktraces).
-	// Combining them here would mean an internal query plan built them both, so
-	// fail loudly rather than silently honour one and drop the other.
+	// Mutually exclusive: no public RPC sets both, so reject an internal query
+	// plan that does rather than silently apply one and drop the other.
 	if len(spanSelector) > 0 && len(traceSelector) > 0 {
 		return nil, fmt.Errorf("span_selector and trace_id_selector cannot be combined")
 	}

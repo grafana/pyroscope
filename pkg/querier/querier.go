@@ -547,6 +547,11 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 		sp.Finish()
 	}()
 
+	// trace_id_selector is v2-only; selectTree would drop it.
+	if len(req.Msg.Left.GetTraceIdSelector()) > 0 || len(req.Msg.Right.GetTraceIdSelector()) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
+	}
+
 	var leftTree, rightTree *phlaremodel.FunctionNameTree
 	g, gCtx := errgroup.WithContext(ctx)
 

@@ -68,9 +68,7 @@ func (t TraceID) String() string {
 	return hex.EncodeToString(t[:])
 }
 
-// TraceSelector is a set of trace IDs used to filter samples. Unlike
-// SpanSelector (an 8-byte uint64 keyed map), trace IDs are 128-bit and stored
-// as a fixed 16-byte array, so the selector is keyed by the raw TraceID.
+// TraceSelector keys on the raw 128-bit TraceID, unlike SpanSelector's uint64.
 type TraceSelector map[TraceID]struct{}
 
 func NewTraceSelector(traces []string) (TraceSelector, error) {
