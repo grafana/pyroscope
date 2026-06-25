@@ -30,7 +30,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	"github.com/grafana/pyroscope/api/gen/proto/go/query/v1/queryv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
@@ -310,10 +309,6 @@ func (a *API) RegisterIngesterRing(r http.Handler) {
 
 func (a *API) RegisterQuerierServiceHandler(svc querierv1connect.QuerierServiceHandler) {
 	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogDiagnosticsRecovery()...)
-}
-
-func (a *API) RegisterQueryFrontendServiceHandler(svc queryv1connect.QueryFrontendServiceHandler) {
-	queryv1connect.RegisterQueryFrontendServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthLogRecovery()...)
 }
 
 func (a *API) RegisterVCSServiceHandler(svc vcsv1connect.VCSServiceHandler) {
