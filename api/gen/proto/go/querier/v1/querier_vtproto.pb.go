@@ -218,6 +218,15 @@ func (m *AsyncQueryRequest_SelectMergeStacktraces) CloneVT() isAsyncQueryRequest
 	return r
 }
 
+func (m *AsyncQueryRequest_SelectMergeSpanProfile) CloneVT() isAsyncQueryRequest_Query {
+	if m == nil {
+		return (*AsyncQueryRequest_SelectMergeSpanProfile)(nil)
+	}
+	r := new(AsyncQueryRequest_SelectMergeSpanProfile)
+	r.SelectMergeSpanProfile = m.SelectMergeSpanProfile.CloneVT()
+	return r
+}
+
 func (m *AsyncQueryResponse) CloneVT() *AsyncQueryResponse {
 	if m == nil {
 		return (*AsyncQueryResponse)(nil)
@@ -248,6 +257,15 @@ func (m *AsyncQueryResponse_SelectMergeStacktraces) CloneVT() isAsyncQueryRespon
 	}
 	r := new(AsyncQueryResponse_SelectMergeStacktraces)
 	r.SelectMergeStacktraces = m.SelectMergeStacktraces.CloneVT()
+	return r
+}
+
+func (m *AsyncQueryResponse_SelectMergeSpanProfile) CloneVT() isAsyncQueryResponse_Result {
+	if m == nil {
+		return (*AsyncQueryResponse_SelectMergeSpanProfile)(nil)
+	}
+	r := new(AsyncQueryResponse_SelectMergeSpanProfile)
+	r.SelectMergeSpanProfile = m.SelectMergeSpanProfile.CloneVT()
 	return r
 }
 
@@ -941,6 +959,31 @@ func (this *AsyncQueryRequest_SelectMergeStacktraces) EqualVT(thatIface isAsyncQ
 	return true
 }
 
+func (this *AsyncQueryRequest_SelectMergeSpanProfile) EqualVT(thatIface isAsyncQueryRequest_Query) bool {
+	that, ok := thatIface.(*AsyncQueryRequest_SelectMergeSpanProfile)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.SelectMergeSpanProfile, that.SelectMergeSpanProfile; p != q {
+		if p == nil {
+			p = &SelectMergeSpanProfileRequest{}
+		}
+		if q == nil {
+			q = &SelectMergeSpanProfileRequest{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
 func (this *AsyncQueryResponse) EqualVT(that *AsyncQueryResponse) bool {
 	if this == that {
 		return true
@@ -995,6 +1038,31 @@ func (this *AsyncQueryResponse_SelectMergeStacktraces) EqualVT(thatIface isAsync
 		}
 		if q == nil {
 			q = &SelectMergeStacktracesResponse{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *AsyncQueryResponse_SelectMergeSpanProfile) EqualVT(thatIface isAsyncQueryResponse_Result) bool {
+	that, ok := thatIface.(*AsyncQueryResponse_SelectMergeSpanProfile)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.SelectMergeSpanProfile, that.SelectMergeSpanProfile; p != q {
+		if p == nil {
+			p = &SelectMergeSpanProfileResponse{}
+		}
+		if q == nil {
+			q = &SelectMergeSpanProfileResponse{}
 		}
 		if !p.EqualVT(q) {
 			return false
@@ -2604,6 +2672,25 @@ func (m *AsyncQueryRequest_SelectMergeStacktraces) MarshalToSizedBufferVT(dAtA [
 	}
 	return len(dAtA) - i, nil
 }
+func (m *AsyncQueryRequest_SelectMergeSpanProfile) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AsyncQueryRequest_SelectMergeSpanProfile) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SelectMergeSpanProfile != nil {
+		size, err := m.SelectMergeSpanProfile.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
 func (m *AsyncQueryResponse) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -2681,6 +2768,25 @@ func (m *AsyncQueryResponse_SelectMergeStacktraces) MarshalToSizedBufferVT(dAtA 
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0x22
+	}
+	return len(dAtA) - i, nil
+}
+func (m *AsyncQueryResponse_SelectMergeSpanProfile) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *AsyncQueryResponse_SelectMergeSpanProfile) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SelectMergeSpanProfile != nil {
+		size, err := m.SelectMergeSpanProfile.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x2a
 	}
 	return len(dAtA) - i, nil
 }
@@ -3924,6 +4030,18 @@ func (m *AsyncQueryRequest_SelectMergeStacktraces) SizeVT() (n int) {
 	}
 	return n
 }
+func (m *AsyncQueryRequest_SelectMergeSpanProfile) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SelectMergeSpanProfile != nil {
+		l = m.SelectMergeSpanProfile.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
 func (m *AsyncQueryResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -3956,6 +4074,18 @@ func (m *AsyncQueryResponse_SelectMergeStacktraces) SizeVT() (n int) {
 	_ = l
 	if m.SelectMergeStacktraces != nil {
 		l = m.SelectMergeStacktraces.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *AsyncQueryResponse_SelectMergeSpanProfile) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SelectMergeSpanProfile != nil {
+		l = m.SelectMergeSpanProfile.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	return n
@@ -5354,6 +5484,47 @@ func (m *AsyncQueryRequest) UnmarshalVT(dAtA []byte) error {
 				m.Query = &AsyncQueryRequest_SelectMergeStacktraces{SelectMergeStacktraces: v}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectMergeSpanProfile", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Query.(*AsyncQueryRequest_SelectMergeSpanProfile); ok {
+				if err := oneof.SelectMergeSpanProfile.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &SelectMergeSpanProfileRequest{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Query = &AsyncQueryRequest_SelectMergeSpanProfile{SelectMergeSpanProfile: v}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -5527,6 +5698,47 @@ func (m *AsyncQueryResponse) UnmarshalVT(dAtA []byte) error {
 					return err
 				}
 				m.Result = &AsyncQueryResponse_SelectMergeStacktraces{SelectMergeStacktraces: v}
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectMergeSpanProfile", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Result.(*AsyncQueryResponse_SelectMergeSpanProfile); ok {
+				if err := oneof.SelectMergeSpanProfile.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &SelectMergeSpanProfileResponse{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Result = &AsyncQueryResponse_SelectMergeSpanProfile{SelectMergeSpanProfile: v}
 			}
 			iNdEx = postIndex
 		default:

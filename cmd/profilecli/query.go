@@ -152,16 +152,18 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	var profile *googlev1.Profile
 	if async {
 		if len(params.SpanSelector) > 0 {
-			return fmt.Errorf("--async does not support --span-selector")
-		}
-		var locations []*typesv1.Location
-		if len(params.StacktraceSelector) > 0 {
-			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
-			for _, cs := range params.StacktraceSelector {
-				locations = append(locations, &typesv1.Location{Name: cs})
+			level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
+			profile, err = asyncQuerySpanProfile(ctx, params, from, to)
+		} else {
+			var locations []*typesv1.Location
+			if len(params.StacktraceSelector) > 0 {
+				locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+				for _, cs := range params.StacktraceSelector {
+					locations = append(locations, &typesv1.Location{Name: cs})
+				}
 			}
+			profile, err = asyncQueryProfileTree(ctx, params, from, to, locations)
 		}
-		profile, err = asyncQueryProfileTree(ctx, params, from, to, locations)
 	} else if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)

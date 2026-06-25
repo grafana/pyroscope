@@ -84,7 +84,7 @@ func (h *Handler) dispatcherFor(
 	case *querierv1.AsyncQueryRequest_SelectMergeStacktraces:
 		inner := connect.NewRequest(q.SelectMergeStacktraces)
 		return func() {
-			resp, err := h.QuerierServiceHandler.SelectMergeStacktraces(ctx, inner)
+			resp, err := h.SelectMergeStacktraces(ctx, inner)
 			if err != nil {
 				resultCh <- QueryResult{Err: err}
 				return
@@ -92,6 +92,20 @@ func (h *Handler) dispatcherFor(
 			resultCh <- QueryResult{Response: &querierv1.AsyncQueryResponse{
 				Result: &querierv1.AsyncQueryResponse_SelectMergeStacktraces{
 					SelectMergeStacktraces: resp.Msg,
+				},
+			}}
+		}, nil
+	case *querierv1.AsyncQueryRequest_SelectMergeSpanProfile:
+		inner := connect.NewRequest(q.SelectMergeSpanProfile)
+		return func() {
+			resp, err := h.SelectMergeSpanProfile(ctx, inner)
+			if err != nil {
+				resultCh <- QueryResult{Err: err}
+				return
+			}
+			resultCh <- QueryResult{Response: &querierv1.AsyncQueryResponse{
+				Result: &querierv1.AsyncQueryResponse_SelectMergeSpanProfile{
+					SelectMergeSpanProfile: resp.Msg,
 				},
 			}}
 		}, nil

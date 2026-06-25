@@ -148,6 +148,7 @@ message AsyncQueryRequest {
   string request_id = 1;
   oneof query {
     SelectMergeStacktracesRequest select_merge_stacktraces = 2;
+    SelectMergeSpanProfileRequest select_merge_span_profile = 3;
   }
 }
 
@@ -159,6 +160,7 @@ message AsyncQueryResponse {
   // Populated on SUCCESS. The variant matches the submission's query oneof.
   oneof result {
     SelectMergeStacktracesResponse select_merge_stacktraces = 4;
+    SelectMergeSpanProfileResponse select_merge_span_profile = 5;
   }
 }
 
@@ -333,4 +335,3 @@ message QueryImpact {
   uint64 total_queried_series = 3;
   bool deduplication_needed = 4;
 }
-

@@ -1026,6 +1026,13 @@ components:
               title: request_id
         - oneOf:
             - properties:
+                selectMergeSpanProfile:
+                  title: select_merge_span_profile
+                  $ref: '#/components/schemas/querier.v1.SelectMergeSpanProfileRequest'
+              title: select_merge_span_profile
+              required:
+                - selectMergeSpanProfile
+            - properties:
                 selectMergeStacktraces:
                   title: select_merge_stacktraces
                   $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
@@ -1053,6 +1060,13 @@ components:
               title: error_message
               description: Populated on FAILURE.
         - oneOf:
+            - properties:
+                selectMergeSpanProfile:
+                  title: select_merge_span_profile
+                  $ref: '#/components/schemas/querier.v1.SelectMergeSpanProfileResponse'
+              title: select_merge_span_profile
+              required:
+                - selectMergeSpanProfile
             - properties:
                 selectMergeStacktraces:
                   title: select_merge_stacktraces
