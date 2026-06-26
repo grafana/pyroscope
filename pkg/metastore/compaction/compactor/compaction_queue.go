@@ -201,6 +201,14 @@ func (q *blockQueue) removeStaged(s *stagedBlocks) {
 		panic("bug: attempt to delete compaction queue with an invalid priority index")
 	}
 	heap.Remove(q.updates, s.heapIndex)
+	// Account for any blocks and batches the staged structure still holds.
+	// In the normal delete path these are already zero, as blocks are removed
+	// one by one (each decrementing the global stats) before the staged
+	// structure is dropped. However, when the queue is discarded wholesale
+	// (reset, e.g. on FSM restore or leadership change), these counts would
+	// otherwise leak into the global gauges and accumulate across restores.
+	q.globalStats.AddBlocks(s.key, -s.stats.blocks.Load())
+	q.globalStats.AddBatches(s.key, -s.stats.batches.Load())
 	q.globalStats.AddQueues(s.key, -1)
 }
 

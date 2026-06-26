@@ -295,6 +295,78 @@ func TestBlockQueue_BatchIterator(t *testing.T) {
 	assert.False(t, ok)
 }
 
+type globalStatSnapshot struct {
+	blocks, queues, batches int32
+}
+
+func snapshotGlobalStats(q *compactionQueue, levels int) []globalStatSnapshot {
+	out := make([]globalStatSnapshot, levels)
+	for i := range out {
+		out[i] = globalStatSnapshot{
+			blocks:  q.globalStats.blocksPerLevel[i].Load(),
+			queues:  q.globalStats.queuesPerLevel[i].Load(),
+			batches: q.globalStats.batchesPerLevel[i].Load(),
+		}
+	}
+	return out
+}
+
+func TestCompactionQueue_ResetConservesGlobalStats(t *testing.T) {
+	cfg := Config{
+		Levels: []LevelConfig{
+			{MaxBlocks: 3},
+			{MaxBlocks: 5},
+			{MaxBlocks: 10},
+		},
+	}
+	entries := []compaction.BlockEntry{
+		// L0: one staged batch with 2 blocks (no flush; MaxBlocks=3).
+		{Tenant: "A", Shard: 1, Level: 0, Index: 1, AppendedAt: 1, ID: "a1"},
+		{Tenant: "A", Shard: 1, Level: 0, Index: 2, AppendedAt: 2, ID: "a2"},
+		// L1: one full batch (3 blocks flushed) plus 2 staged.
+		{Tenant: "B", Shard: 0, Level: 1, Index: 3, AppendedAt: 3, ID: "b1"},
+		{Tenant: "B", Shard: 0, Level: 1, Index: 4, AppendedAt: 4, ID: "b2"},
+		{Tenant: "B", Shard: 0, Level: 1, Index: 5, AppendedAt: 5, ID: "b3"},
+		{Tenant: "B", Shard: 0, Level: 1, Index: 6, AppendedAt: 6, ID: "b4"},
+		{Tenant: "B", Shard: 0, Level: 1, Index: 7, AppendedAt: 7, ID: "b5"},
+		// L1: second compaction key, one staged batch with 1 block.
+		{Tenant: "C", Shard: 2, Level: 1, Index: 8, AppendedAt: 8, ID: "c1"},
+	}
+
+	q := newCompactionQueue(cfg, nil)
+	for _, e := range entries {
+		q.push(e)
+	}
+	before := snapshotGlobalStats(q, len(cfg.Levels))
+
+	// Restore semantics: reset() then push the same entries.
+	// Without the fix, blocks/batches gauges double on each cycle.
+	q.reset()
+	for _, e := range entries {
+		q.push(e)
+	}
+	after := snapshotGlobalStats(q, len(cfg.Levels))
+
+	assert.Equal(t, before, after, "global stats should be conserved across reset")
+}
+
+func TestCompactionQueue_ResetZeroesEmptyState(t *testing.T) {
+	cfg := Config{Levels: []LevelConfig{{MaxBlocks: 3}, {MaxBlocks: 5}}}
+	q := newCompactionQueue(cfg, nil)
+
+	q.push(compaction.BlockEntry{Tenant: "A", Shard: 1, Level: 0, Index: 1, AppendedAt: 1, ID: "a1"})
+	q.push(compaction.BlockEntry{Tenant: "B", Shard: 0, Level: 1, Index: 2, AppendedAt: 2, ID: "b1"})
+	q.push(compaction.BlockEntry{Tenant: "B", Shard: 0, Level: 1, Index: 3, AppendedAt: 3, ID: "b2"})
+
+	q.reset()
+
+	for _, s := range snapshotGlobalStats(q, len(cfg.Levels)) {
+		assert.Zero(t, s.blocks)
+		assert.Zero(t, s.queues)
+		assert.Zero(t, s.batches)
+	}
+}
+
 func remove(q *blockQueue, key compactionKey, block ...string) {
 	staged, ok := q.staged[key]
 	if !ok {
