@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-// Provides the ablility to query the Pyroscope database. Most of the calls in
+// Provides the ability to query the Pyroscope database. Most of the calls in
 // this group are considered public.
 package querier.v1;
 
