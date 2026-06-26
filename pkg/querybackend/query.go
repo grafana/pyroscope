@@ -94,6 +94,8 @@ type blockContext struct {
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
 	metrics         *metrics
+
+	symbolServiceCandidates map[*queryv1.SymbolServicesQuery][]*queryv1.SymbolBloomCandidate
 }
 
 func (b *blockContext) execute() error {
@@ -124,18 +126,23 @@ func (b *blockContext) execute() error {
 				return err
 			}
 		case queryv1.QueryType_QUERY_SYMBOL_SERVICES:
-			if err := b.executeSymbolServices(query); err != nil {
+			if err := b.prepareSymbolServices(query); err != nil {
 				return err
 			}
 		default:
 			continue
 		}
 	}
-	for _, ds := range md.Datasets {
-		q := b.newQueryContext(ds)
+	for i, ds := range md.Datasets {
+		q := b.newQueryContext(uint32(i), ds)
 		for _, query := range b.req.src.Query {
-			if query.QueryType == queryv1.QueryType_QUERY_SYMBOL_SERVICES || query.QueryType == queryv1.QueryType_QUERY_SYMBOL_BLOOM_CANDIDATES {
+			if query.QueryType == queryv1.QueryType_QUERY_SYMBOL_BLOOM_CANDIDATES {
 				continue
+			}
+			if query.QueryType == queryv1.QueryType_QUERY_SYMBOL_SERVICES {
+				if block.DatasetFormat(ds.Format) != block.DatasetFormat0 || !b.hasSymbolServiceCandidates(query.GetSymbolServices(), uint32(i)) {
+					continue
+				}
 			}
 			q.grp.Go(util.RecoverPanic(func() error {
 				return q.execute(query)
@@ -198,7 +205,7 @@ func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 	// If the query only requires TSDB data, we can serve it directly
 	// from each Format1 dataset's TSDB section (which is aliased to the
 	// dataset_index) without resolving real datasets.
-	s := (&queryContext{blockContext: b}).sections()
+	s := b.sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
 	if indexOnly {
 		oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
@@ -206,6 +213,22 @@ func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 	}
 
 	return indices
+}
+
+func (b *blockContext) hasSymbolServiceCandidates(query *queryv1.SymbolServicesQuery, datasetIndex uint32) bool {
+	if query == nil {
+		return false
+	}
+	candidates := query.GetCandidates()
+	if len(candidates) == 0 && b.symbolServiceCandidates != nil {
+		candidates = b.symbolServiceCandidates[query]
+	}
+	for _, candidate := range candidates {
+		if candidate.GetBlockId() == b.obj.Metadata().GetId() && candidate.GetDatasetIndex() == datasetIndex {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
@@ -270,17 +293,32 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	return nil
 }
 
-func (b *blockContext) newQueryContext(ds *metastorev1.Dataset) *queryContext {
-	q := &queryContext{blockContext: b, ds: block.NewDataset(ds, b.obj)}
+func (b *blockContext) sections() []block.Section {
+	sections := make(map[block.Section]struct{}, 3)
+	for _, qt := range b.req.src.Query {
+		for _, s := range queryDependencies[qt.QueryType] {
+			sections[s] = struct{}{}
+		}
+	}
+	unique := make([]block.Section, 0, len(sections))
+	for s := range sections {
+		unique = append(unique, s)
+	}
+	return unique
+}
+
+func (b *blockContext) newQueryContext(datasetIndex uint32, ds *metastorev1.Dataset) *queryContext {
+	q := &queryContext{blockContext: b, datasetIndex: datasetIndex, ds: block.NewDataset(ds, b.obj)}
 	q.grp, q.ctx = errgroup.WithContext(b.ctx)
 	return q
 }
 
 type queryContext struct {
 	*blockContext
-	ctx context.Context
-	grp *errgroup.Group
-	ds  *block.Dataset
+	ctx          context.Context
+	grp          *errgroup.Group
+	datasetIndex uint32
+	ds           *block.Dataset
 }
 
 func (q *queryContext) execute(query *queryv1.Query) error {
@@ -292,7 +330,7 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 		return err
 	}
 
-	if err = q.ds.Open(q.ctx, q.sections()...); err != nil {
+	if err = q.ds.Open(q.ctx, q.sections(query.QueryType)...); err != nil {
 		if q.obj.IsNotExists(err) {
 			level.Warn(q.log).Log("msg", "object not found", "err", err)
 			return nil
@@ -315,12 +353,10 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 	return nil
 }
 
-func (q *queryContext) sections() []block.Section {
+func (q *queryContext) sections(queryType queryv1.QueryType) []block.Section {
 	sections := make(map[block.Section]struct{}, 3)
-	for _, qt := range q.req.src.Query {
-		for _, s := range queryDependencies[qt.QueryType] {
-			sections[s] = struct{}{}
-		}
+	for _, s := range queryDependencies[queryType] {
+		sections[s] = struct{}{}
 	}
 	unique := make([]block.Section, 0, len(sections))
 	for s := range sections {

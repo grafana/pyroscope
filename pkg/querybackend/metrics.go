@@ -34,7 +34,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Namespace:                       "pyroscope",
 			Subsystem:                       "query_backend",
 			Name:                            "symbol_services_verify_duration_seconds",
-			Help:                            "Duration of the symbol-services verification phase (LookupSymbolBloomServices) per block.",
+			Help:                            "Duration of the symbol-services verification phase per dataset.",
 			Buckets:                         []float64{.05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
