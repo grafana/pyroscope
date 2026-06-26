@@ -4,7 +4,7 @@
 // 	protoc        (unknown)
 // source: querier/v1/querier.proto
 
-// Provides the ablility to query the Pyroscope database. Most of the calls in
+// Provides the ability to query the Pyroscope database. Most of the calls in
 // this group are considered public.
 
 package querierv1
