@@ -411,7 +411,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		}
 	})
 
-	// Note: Some ProfileTypes API clients rely on the ablility to call it without start/end.
+	// Note: Some ProfileTypes API clients rely on the ability to call it without start/end.
 	// See https://github.com/grafana/grafana/issues/110211
 	t.Run("QueryProfileTypesWithoutTimeRange", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
