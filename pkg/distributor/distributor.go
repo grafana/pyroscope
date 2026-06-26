@@ -604,8 +604,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		"sample_count", len(p.Sample),
 		"parse_duration", parseDuration,
 	)
-	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
-	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
+	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize)) //todo use req.TotalBytesUncompressed to include labels siz
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 	groups.CountReceivedBytes(profName, int64(decompressedSize))
