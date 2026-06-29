@@ -41,7 +41,7 @@
     "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1"
   },
-  "packageManager": "yarn@4.13.0",
+  "packageManager": "yarn@4.17.0",
   "engines": {
     "node": ">=24"
   },
