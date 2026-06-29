@@ -4,9 +4,9 @@ dependencies:
   version: 0.44.2
 - name: alloy
   repository: https://grafana.github.io/helm-charts
-  version: 1.5.2
+  version: 1.10.0
 - name: minio
   repository: https://charts.min.io/
   version: 4.1.0
-digest: sha256:6539cf3e08af8a90406747cea8b186872b43b8cd33b19bb479e5d011daa90b7e
-generated: "2026-01-19T02:29:04.501652875Z"
+digest: sha256:1de7b5890b27464b8175433e22b44a8298f0528ce03769eb1159002521ae831c
+generated: "2026-06-29T02:05:14.66545687Z"
