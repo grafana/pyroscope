@@ -177,7 +177,7 @@ jobs:
         with:
           go-version: 1.25.11
       - name: Log into GAR
-        uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
+        uses: grafana/shared-workflows/actions/login-to-gar@1f541877ceb22c7be7667d8a8df04984aeac9f9d # login-to-gar/v1.0.3
         with:
           registry: us-docker.pkg.dev
       - name: Pyroscope Build & push multi-arch image
