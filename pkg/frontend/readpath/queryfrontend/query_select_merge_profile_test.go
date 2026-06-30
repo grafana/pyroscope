@@ -197,12 +197,14 @@ func TestSelectMergeProfile_PprofPath_SendsQueryPprof(t *testing.T) {
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
 
 	var observedQueryType queryv1.QueryType
+	var observedTraceIDSelector []string
 	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
 	mockBackend.On("Invoke", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			req := args.Get(1).(*queryv1.InvokeRequest)
 			if len(req.Query) > 0 {
 				observedQueryType = req.Query[0].QueryType
+				observedTraceIDSelector = req.Query[0].Pprof.GetTraceIdSelector()
 			}
 		}).
 		Return(&queryv1.InvokeResponse{
@@ -216,15 +218,20 @@ func TestSelectMergeProfile_PprofPath_SendsQueryPprof(t *testing.T) {
 	ctx := user.InjectOrgID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 
+	traceID := "0123456789abcdef0123456789abcdef"
 	_, err := qf.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: smpProfileType,
-		LabelSelector: "{}",
-		Start:         start,
-		End:           end,
+		ProfileTypeID:   smpProfileType,
+		LabelSelector:   "{}",
+		Start:           start,
+		End:             end,
+		TraceIdSelector: []string{traceID},
 	}))
 
 	require.NoError(t, err)
 	assert.Equal(t, queryv1.QueryType_QUERY_PPROF, observedQueryType)
+	// The trace_id selector must reach the backend query plan; dropping it here
+	// would silently return an unfiltered profile.
+	assert.Equal(t, []string{traceID}, observedTraceIDSelector)
 }
 
 func TestSelectMergeProfile_TreePath_NoBlocks(t *testing.T) {

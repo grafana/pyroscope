@@ -1,6 +1,7 @@
 package querybackend
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -58,6 +59,17 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 
+	traceSelector, err := model.NewTraceSelector(query.Tree.TraceIdSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	// Mutually exclusive: no public RPC sets both, so reject an internal query
+	// plan that does rather than silently apply one and drop the other.
+	if len(spanSelector) > 0 && len(traceSelector) > 0 {
+		return nil, fmt.Errorf("span_selector and trace_id_selector cannot be combined")
+	}
+
 	var columns v1.SampleColumns
 	if err = columns.Resolve(q.ds.Profiles().Schema()); err != nil {
 		return nil, err
@@ -67,12 +79,19 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		columns.StacktraceID.ColumnIndex,
 		columns.Value.ColumnIndex,
 	}
-	if len(spanSelector) > 0 {
+	switch {
+	case len(spanSelector) > 0:
 		if !columns.HasSpanID() {
 			// Block has no SpanID column: no samples can match the span selector.
 			return &queryv1.Report{Tree: &queryv1.TreeReport{Query: query.Tree.CloneVT()}}, nil
 		}
 		indices = append(indices, columns.SpanID.ColumnIndex)
+	case len(traceSelector) > 0:
+		if !columns.HasTraceID() {
+			// Block has no TraceID column: no samples can match the trace selector.
+			return &queryv1.Report{Tree: &queryv1.TreeReport{Query: query.Tree.CloneVT()}}, nil
+		}
+		indices = append(indices, columns.TraceID.ColumnIndex)
 	}
 
 	resolverOptions := []symdb.ResolverOption{
@@ -88,7 +107,8 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
 	defer resolver.Release()
 
-	if len(spanSelector) > 0 {
+	switch {
+	case len(spanSelector) > 0:
 		for profiles.Next() {
 			p := profiles.At()
 			resolver.AddSamplesWithSpanSelectorFromParquetRow(
@@ -99,7 +119,18 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 				spanSelector,
 			)
 		}
-	} else {
+	case len(traceSelector) > 0:
+		for profiles.Next() {
+			p := profiles.At()
+			resolver.AddSamplesWithTraceSelectorFromParquetRow(
+				p.Row.Partition,
+				p.Values[0],
+				p.Values[1],
+				p.Values[2],
+				traceSelector,
+			)
+		}
+	default:
 		for profiles.Next() {
 			p := profiles.At()
 			resolver.AddSamplesFromParquetRow(p.Row.Partition, p.Values[0], p.Values[1])

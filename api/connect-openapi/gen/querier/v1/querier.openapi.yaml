@@ -1392,6 +1392,16 @@ components:
               - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
           title: profile_id_selector
           description: List of Profile UUIDs to query
+        traceIdSelector:
+          type: array
+          examples:
+            - - 7c9e66797425440de944be07fc1f90ae
+          items:
+            type: string
+            examples:
+              - - 7c9e66797425440de944be07fc1f90ae
+          title: trace_id_selector
+          description: List of trace IDs (32 hex characters, 128-bit) to filter samples by.
       title: SelectMergeProfileRequest
       additionalProperties: false
     querier.v1.SelectMergeSpanProfileRequest:
@@ -1543,6 +1553,16 @@ components:
           description: (experimental) Used for making and polling async queries.
           nullable: true
           $ref: '#/components/schemas/querier.v1.AsyncQueryRequest'
+        traceIdSelector:
+          type: array
+          examples:
+            - - 7c9e66797425440de944be07fc1f90ae
+          items:
+            type: string
+            examples:
+              - - 7c9e66797425440de944be07fc1f90ae
+          title: trace_id_selector
+          description: List of trace IDs (32 hex characters, 128-bit) to filter samples by.
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:

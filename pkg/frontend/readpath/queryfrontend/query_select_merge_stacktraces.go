@@ -66,6 +66,7 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 		MaxNodes:           &sourceMaxNodes,
 		StackTraceSelector: c.Msg.StackTraceSelector,
 		ProfileIdSelector:  c.Msg.ProfileIdSelector,
+		TraceIdSelector:    c.Msg.TraceIdSelector,
 	}))
 	if err != nil {
 		return nil, err
@@ -122,6 +123,7 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 					MaxNodes:           maxNodes,
 					StackTraceSelector: c.Msg.StackTraceSelector,
 					ProfileIdSelector:  c.Msg.ProfileIdSelector,
+					TraceIdSelector:    c.Msg.TraceIdSelector,
 				},
 			}},
 		},

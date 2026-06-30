@@ -51,6 +51,7 @@ func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeR
 				ProfileIdSelector:  q.Tree.GetProfileIdSelector(),
 				StackTraceSelector: q.Tree.GetStackTraceSelector(),
 				SpanSelector:       q.Tree.GetSpanSelector(),
+				TraceIdSelector:    q.Tree.GetTraceIdSelector(),
 			}
 			q.Tree = nil
 		}
