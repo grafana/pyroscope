@@ -98,4 +98,49 @@ func TestQueryProfileParams_MutualExclusion(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--span-selector and --stacktrace-selector cannot be used together")
+
+	// --trace-id and --span-selector cannot be used together.
+	err = validateQueryProfileParams(&queryProfileParams{
+		TraceIDs:     []string{"0123456789abcdef0123456789abcdef"},
+		SpanSelector: []string{"deadbeef12345678"},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--trace-id and --span-selector cannot be used together")
+
+	// --trace-id and --profile-id cannot be used together.
+	err = validateQueryProfileParams(&queryProfileParams{
+		TraceIDs:   []string{"0123456789abcdef0123456789abcdef"},
+		ProfileIDs: []string{"550e8400-e29b-41d4-a716-446655440000"},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--trace-id and --profile-id cannot be used together")
+}
+
+func TestQueryProfileParams_TraceIDValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		traceIDs []string
+		wantErr  bool
+	}{
+		{name: "valid 32-char hex", traceIDs: []string{"0123456789abcdef0123456789abcdef"}, wantErr: false},
+		{name: "multiple valid", traceIDs: []string{"0123456789abcdef0123456789abcdef", "ffffffffffffffffffffffffffffffff"}, wantErr: false},
+		{name: "too short (span id)", traceIDs: []string{"deadbeef12345678"}, wantErr: true},
+		{name: "invalid hex", traceIDs: []string{"0123456789abcdef0123456789abcdeg"}, wantErr: true},
+		{name: "empty slice is valid", traceIDs: nil, wantErr: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateQueryProfileParams(&queryProfileParams{TraceIDs: tt.traceIDs})
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "--trace-id must be a 32-character hex string")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
