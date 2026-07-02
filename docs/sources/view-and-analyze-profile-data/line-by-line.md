@@ -416,7 +416,7 @@ The system extracts Go version information from paths like `/usr/local/go/go1.24
 
 Java applications **require** explicit mappings in `.pyroscope.yaml`:
 
-- **Function name conversion**: Java function names like `org/example/App$Inner.method` are automatically converted to `org/example/App.java`
+- **Function name conversion**: Java function names like `org/example/App$Inner.method` are automatically converted to `org/example/App.java`. If the Java source file is not found, Pyroscope also tries the Kotlin `.kt` extension for JVM applications written in Kotlin.
 - **No fallback**: Unlike Go and Python, Java files cannot be resolved without configuration
 - **Inner classes**: Automatically handled (inner class markers are stripped)
 
