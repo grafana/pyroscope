@@ -193,21 +193,33 @@ func (c *PyroscopeConfig) FindMapping(file FileSpec) *MappingConfig {
 	return bestMatch
 }
 
+func matchPrefix(value, prefix string) int {
+	if !strings.HasPrefix(value, prefix) {
+		return -1
+	}
+
+	if len(value) == len(prefix) || strings.HasSuffix(prefix, "/") {
+		return len(prefix)
+	}
+
+	if value[len(prefix)] == '/' {
+		return len(prefix)
+	}
+
+	return -1
+}
+
 // Returns -1 if no match, otherwise the number of characters that matched
 func (m *MappingConfig) Match(file FileSpec) int {
 	result := -1
 	for _, fun := range m.FunctionName {
-		if strings.HasPrefix(file.FunctionName, fun.Prefix) {
-			if len(fun.Prefix) > result {
-				result = len(fun.Prefix)
-			}
+		if matched := matchPrefix(file.FunctionName, fun.Prefix); matched > result {
+			result = matched
 		}
 	}
 	for _, path := range m.Path {
-		if strings.HasPrefix(file.Path, path.Prefix) {
-			if len(path.Prefix) > result {
-				result = len(path.Prefix)
-			}
+		if matched := matchPrefix(file.Path, path.Prefix); matched > result {
+			result = matched
 		}
 	}
 	return result
