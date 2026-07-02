@@ -243,20 +243,22 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing resource profiles")
 	}
 
+	req := &distributormodel.PushRequest{
+		RawProfileType: distributormodel.RawProfileTypeOTEL,
+	}
+
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
 		for _, sp := range rp.ScopeProfiles {
 			for _, p := range sp.Profiles {
+				sz := proto.Size(p)
+				req.ReceivedCompressedProfileSize += sz
+				req.ReceivedDecompressedProfileSize += sz
+
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
 					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
-				}
-
-				req := &distributormodel.PushRequest{
-					ReceivedCompressedProfileSize:   proto.Size(p),
-					ReceivedDecompressedProfileSize: proto.Size(p),
-					RawProfileType:                  distributormodel.RawProfileTypeOTEL,
 				}
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
@@ -282,18 +284,19 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					}
 					req.Series = append(req.Series, s)
 				}
-				if len(req.Series) == 0 {
-					continue
-				}
-				err = h.svc.PushBatch(ctx, req)
-				if err != nil {
-					h.log.Log("msg", "failed to push profile", "err", err)
-					// Note: Validation metrics are already tracked by the distributor for errors
-					// returned from PushBatch, so we don't track them here to avoid double-counting.
-					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
-				}
 			}
 		}
+	}
+
+	if len(req.Series) == 0 {
+		return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+	}
+
+	if err := h.svc.PushBatch(ctx, req); err != nil {
+		h.log.Log("msg", "failed to push profile", "err", err)
+		// Note: Validation metrics are already tracked by the distributor for errors
+		// returned from PushBatch, so we don't track them here to avoid double-counting.
+		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
 	}
 
 	return &pprofileotlp.ExportProfilesServiceResponse{}, nil

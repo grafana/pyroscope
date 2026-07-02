@@ -1122,3 +1122,230 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "gzip-json-tenant", capturedTenantID)
 }
+
+// TestExport_SinglePushBatchPerExport verifies that profiles spread across
+// multiple ResourceProfiles/ScopeProfiles collapse into exactly one PushBatch
+// call, with every converted profile accumulated into that single request.
+func TestExport_SinglePushBatchPerExport(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	p0 := newCPUProfile(b, 5, 100, 10)
+	p1 := newCPUProfile(b, 7, 200, 20)
+	p2 := newCPUProfile(b, 9, 300, 30)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{
+				{Profiles: []*v1experimental.Profile{p0}},
+				{Profiles: []*v1experimental.Profile{p1}},
+			},
+		}, {
+			ScopeProfiles: []*v1experimental.ScopeProfiles{
+				{Profiles: []*v1experimental.Profile{p2}},
+			},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(*profiles), "PushBatch must be called exactly once per export")
+	require.Equal(t, 3, len((*profiles)[0].Series), "every converted profile must accumulate into the single request")
+	assert.Equal(t, model.RawProfileTypeOTEL, (*profiles)[0].RawProfileType)
+}
+
+// TestExport_SeriesCountEqualsConvertedProfiles verifies that N messages with
+// distinct services produce N separate series in a single PushBatch call.
+func TestExport_SeriesCountEqualsConvertedProfiles(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	services := []string{"svc-a", "svc-b", "svc-c"}
+
+	b := new(otlpbuilder)
+	sps := make([]*v1experimental.ScopeProfiles, 0, len(services))
+	for i, name := range services {
+		p := newCPUProfile(b, uint64(5+i), uint64(100+i*10), 10)
+		attrIdx := int32(len(b.dictionary.AttributeTable))
+		b.dictionary.AttributeTable = append(b.dictionary.AttributeTable, &v1experimental.KeyValueAndUnit{
+			KeyStrindex: b.addstr("service.name"),
+			Value:       &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: name}},
+		})
+		p.Samples[0].AttributeIndices = []int32{attrIdx}
+		sps = append(sps, &v1experimental.ScopeProfiles{Profiles: []*v1experimental.Profile{p}})
+	}
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{ScopeProfiles: sps}},
+		Dictionary:       &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(*profiles), "PushBatch must be called exactly once")
+	require.Equal(t, len(services), len((*profiles)[0].Series), "series count must equal the number of converted profiles")
+
+	got := map[string]bool{}
+	for _, s := range (*profiles)[0].Series {
+		for _, l := range s.Labels {
+			if l.Name == phlaremodel.LabelNameServiceName {
+				got[l.Value] = true
+			}
+		}
+	}
+	assert.Equal(t, map[string]bool{"svc-a": true, "svc-b": true, "svc-c": true}, got)
+}
+
+// TestExport_SumsReceivedSizesAcrossMessages verifies that both
+// Received{Compressed,Decompressed}ProfileSize equal the sum of proto.Size over
+// every Profile message, measured before conversion (ConvertOtelToGoogle mutates
+// the profile in place, so measuring after would misreport the size).
+func TestExport_SumsReceivedSizesAcrossMessages(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedReq *model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		capturedReq = args.Get(1).(*model.PushRequest)
+	}).Return(nil)
+
+	b := new(otlpbuilder)
+	p0 := newCPUProfile(b, 5, 100, 10)
+	p1 := newCPUProfile(b, 7, 200, 20)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p0, p1},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	// Measured before Export: ConvertOtelToGoogle mutates the profiles in place.
+	expectedSize := proto.Size(p0) + proto.Size(p1)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.NotNil(t, capturedReq)
+	assert.Equal(t, expectedSize, capturedReq.ReceivedDecompressedProfileSize)
+	assert.Equal(t, expectedSize, capturedReq.ReceivedCompressedProfileSize)
+}
+
+// TestExport_EmptyRequest_NoPushBatch_Success verifies that a request whose
+// profiles yield zero series does NOT call PushBatch and returns success (a
+// zero-series PushBatch would otherwise be a spurious error).
+func TestExport_EmptyRequest_NoPushBatch_Success(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var profiles []*model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		profiles = append(profiles, args.Get(1).(*model.PushRequest))
+	}).Return(nil).Maybe()
+
+	b := new(otlpbuilder)
+	// A profile with no samples converts to zero series.
+	p := &v1experimental.Profile{TimeUnixNano: 239}
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(profiles), "PushBatch must not be called when there are no series")
+}
+
+// TestExport_PushBatchError_Propagates verifies that an error from PushBatch is
+// propagated (wrapped) back out of Export.
+func TestExport_PushBatchError_Propagates(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	svc.On("PushBatch", mock.Anything, mock.Anything).Return(assert.AnError)
+
+	req := createValidOTLPRequest()
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to make a GRPC request")
+}
+
+// recordPushBatch wires a mock PushService that records every PushRequest it
+// receives (labels sorted for deterministic comparison).
+func recordPushBatch(t *testing.T) (*mockotlp.MockPushService, *[]*model.PushRequest) {
+	t.Helper()
+	svc := mockotlp.NewMockPushService(t)
+	var profiles []*model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*model.PushRequest)
+		for _, series := range c.Series {
+			sort.Sort(phlaremodel.Labels(series.Labels))
+		}
+		profiles = append(profiles, c)
+	}).Return(nil)
+	return svc, &profiles
+}
+
+// newCPUProfile builds a minimal profile that references the shared builder's
+// dictionary. value is the single sample value; the SampleType/PeriodType are
+// fixed to "samples"/"count" and "cpu"/"nanoseconds" so repeated calls share a
+// label set.
+func newCPUProfile(b *otlpbuilder, value, timeUnixNano, durationNanos uint64) *v1experimental.Profile {
+	stackIdx := int32(len(b.dictionary.StackTable))
+	locIdx := int32(len(b.dictionary.LocationTable))
+	mapIdx := int32(len(b.dictionary.MappingTable))
+	funcIdx := int32(len(b.dictionary.FunctionTable))
+
+	b.dictionary.FunctionTable = append(b.dictionary.FunctionTable, &v1experimental.Function{
+		NameStrindex:       b.addstr("shared_func"),
+		SystemNameStrindex: b.addstr("shared_func"),
+		FilenameStrindex:   b.addstr("shared.go"),
+	})
+	b.dictionary.MappingTable = append(b.dictionary.MappingTable, &v1experimental.Mapping{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x2000,
+		FilenameStrindex: b.addstr("shared.so"),
+	})
+	b.dictionary.LocationTable = append(b.dictionary.LocationTable, &v1experimental.Location{
+		MappingIndex: mapIdx,
+		Address:      0x1100,
+		Lines: []*v1experimental.Line{{
+			FunctionIndex: funcIdx,
+			Line:          10,
+		}},
+	})
+	b.dictionary.StackTable = append(b.dictionary.StackTable, &v1experimental.Stack{
+		LocationIndices: []int32{locIdx},
+	})
+
+	return &v1experimental.Profile{
+		SampleType: &v1experimental.ValueType{
+			TypeStrindex: b.addstr("samples"),
+			UnitStrindex: b.addstr("count"),
+		},
+		PeriodType: &v1experimental.ValueType{
+			TypeStrindex: b.addstr("cpu"),
+			UnitStrindex: b.addstr("nanoseconds"),
+		},
+		Period:       10000000,
+		TimeUnixNano: timeUnixNano,
+		DurationNano: durationNanos,
+		Samples: []*v1experimental.Sample{{
+			StackIndex: stackIdx,
+			Values:     []int64{int64(value)},
+		}},
+	}
+}
