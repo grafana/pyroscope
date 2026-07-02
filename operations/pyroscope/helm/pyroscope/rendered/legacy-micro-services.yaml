@@ -2381,7 +2381,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2492,7 +2492,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2603,7 +2603,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2714,7 +2714,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2825,7 +2825,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2936,7 +2936,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -3232,7 +3232,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -3350,7 +3350,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -3464,7 +3464,7 @@ spec:
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
             - "-store-gateway.sharding-ring.replication-factor=3"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
