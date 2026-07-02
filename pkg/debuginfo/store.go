@@ -80,6 +80,7 @@ const (
 	ReasonUploadInProgress       = "A previous upload is still in-progress and not stale yet (only stale uploads can be retried)."
 	ReasonDebuginfoAlreadyExists = "Debuginfo already exists and is not marked as invalid, therefore no new upload is needed."
 	ReasonDisabled               = "DebugInfo upload disabled"
+	ReasonEmptyBuildID           = "Empty GNU build ID, therefore no upload is needed."
 )
 
 func (s *Store) checkShouldInitiateUpload(
@@ -216,6 +217,13 @@ func (s *Store) ShouldInitiateUpload(
 		return connect.NewResponse(&debuginfov1alpha1.ShouldInitiateUploadResponse{
 			ShouldInitiateUpload: false,
 			Reason:               ReasonDisabled,
+		}), nil
+	}
+
+	if req.Msg != nil && req.Msg.File != nil && req.Msg.File.GnuBuildId == "" {
+		return connect.NewResponse(&debuginfov1alpha1.ShouldInitiateUploadResponse{
+			ShouldInitiateUpload: false,
+			Reason:               ReasonEmptyBuildID,
 		}), nil
 	}
 
