@@ -27,6 +27,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/util/body"
@@ -250,6 +251,112 @@ func TestParseInputMetadataFromRequest_ValidSampleRatePreserved(t *testing.T) {
 	input, err := h.parseInputMetadataFromRequest(context.Background(), req)
 	require.NoError(t, err)
 	require.EqualValues(t, 97, input.Metadata.SampleRate)
+}
+
+func TestParseInputMetadataFromRequest_UnitsValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		queryUnits    string
+		expectUnits   metadata.Units
+		expectDefault bool
+	}{
+		// Positive cases
+		{name: "valid samples", queryUnits: "samples", expectUnits: metadata.SamplesUnits},
+		{name: "valid bytes", queryUnits: "bytes", expectUnits: metadata.BytesUnits},
+		{name: "valid goroutines", queryUnits: "goroutines", expectUnits: metadata.GoroutinesUnits},
+		{name: "valid objects", queryUnits: "objects", expectUnits: metadata.ObjectsUnits},
+		{name: "valid lock_nanoseconds", queryUnits: "lock_nanoseconds", expectUnits: metadata.LockNanosecondsUnits},
+		{name: "valid lock_samples", queryUnits: "lock_samples", expectUnits: metadata.LockSamplesUnits},
+
+		// Negative cases — should fall back to default
+		{name: "invalid random", queryUnits: "invalid_units", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "empty string", queryUnits: "", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "case mismatch", queryUnits: "SAMPLES", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "leading space", queryUnits: "%20samples", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "trailing space", queryUnits: "samples%20", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "numeric only", queryUnits: "42", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "boolean like", queryUnits: "true", expectUnits: metadata.SamplesUnits, expectDefault: true},
+
+		// Edge cases
+		{name: "unicode", queryUnits: "%C3%A9chantillons", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "newline in value", queryUnits: "samples%0A", expectUnits: metadata.SamplesUnits, expectDefault: true},
+		{name: "SQL injection attempt", queryUnits: "%27%20OR%201%3D1%20--", expectUnits: metadata.SamplesUnits, expectDefault: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := ingestHandler{log: log.NewNopLogger()}
+			url := "/ingest?name=test-app"
+			if tt.queryUnits != "" {
+				url += "&units=" + tt.queryUnits
+			}
+			req := httptest.NewRequest(http.MethodPost, url, nil)
+
+			input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectUnits, input.Metadata.Units)
+		})
+	}
+}
+
+func TestParseInputMetadataFromRequest_AggregationTypeValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		queryAggType  string
+		expectAggType metadata.AggregationType
+		expectDefault bool
+	}{
+		// Positive cases
+		{name: "valid sum", queryAggType: "sum", expectAggType: metadata.SumAggregationType},
+		{name: "valid average", queryAggType: "average", expectAggType: metadata.AverageAggregationType},
+
+		// Negative cases — should fall back to default
+		{name: "invalid median", queryAggType: "median", expectAggType: metadata.SumAggregationType, expectDefault: true},
+		{name: "empty string", queryAggType: "", expectAggType: metadata.SumAggregationType, expectDefault: true},
+		{name: "case mismatch SUM", queryAggType: "SUM", expectAggType: metadata.SumAggregationType, expectDefault: true},
+		{name: "leading space", queryAggType: "%20sum", expectAggType: metadata.SumAggregationType, expectDefault: true},
+		{name: "trailing space", queryAggType: "sum%20", expectAggType: metadata.SumAggregationType, expectDefault: true},
+		{name: "numeric only", queryAggType: "3", expectAggType: metadata.SumAggregationType, expectDefault: true},
+
+		// Edge cases
+		{name: "newline in value", queryAggType: "sum%0A", expectAggType: metadata.SumAggregationType, expectDefault: true},
+		{name: "XSS attempt", queryAggType: "%3Cscript%3E", expectAggType: metadata.SumAggregationType, expectDefault: true},
+		{name: "empty params entirely", queryAggType: "", expectAggType: metadata.SumAggregationType, expectDefault: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := ingestHandler{log: log.NewNopLogger()}
+			url := "/ingest?name=test-app"
+			if tt.queryAggType != "" {
+				url += "&aggregationType=" + tt.queryAggType
+			}
+			req := httptest.NewRequest(http.MethodPost, url, nil)
+
+			input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectAggType, input.Metadata.AggregationType)
+		})
+	}
+}
+
+func TestParseInputMetadataFromRequest_BothInvalid(t *testing.T) {
+	t.Parallel()
+
+	h := ingestHandler{log: log.NewNopLogger()}
+	req := httptest.NewRequest(http.MethodPost,
+		"/ingest?name=test-app&units=bogus&aggregationType=nope", nil)
+
+	input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+	require.NoError(t, err)
+
+	// Both should fall back to defaults
+	assert.Equal(t, metadata.SamplesUnits, input.Metadata.Units)
+	assert.Equal(t, metadata.SumAggregationType, input.Metadata.AggregationType)
 }
 
 func TestIngestPPROFFixtures(t *testing.T) {

@@ -159,15 +159,29 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 	}
 
 	if u := q.Get("units"); u != "" {
-		// TODO(petethepig): add validation for these?
-		input.Metadata.Units = metadata.Units(u)
+		if !metadata.IsValidUnit(u) {
+			_ = h.log.Log(
+				"err", fmt.Errorf("invalid units: %q", u),
+				"msg", fmt.Sprintf("invalid units: %q, falling back to %q", u, metadata.SamplesUnits),
+			)
+			input.Metadata.Units = metadata.SamplesUnits
+		} else {
+			input.Metadata.Units = metadata.Units(u)
+		}
 	} else {
 		input.Metadata.Units = metadata.SamplesUnits
 	}
 
 	if at := q.Get("aggregationType"); at != "" {
-		// TODO(petethepig): add validation for these?
-		input.Metadata.AggregationType = metadata.AggregationType(at)
+		if !metadata.IsValidAggregationType(at) {
+			_ = h.log.Log(
+				"err", fmt.Errorf("invalid aggregation type: %q", at),
+				"msg", fmt.Sprintf("invalid aggregation type: %q, falling back to %q", at, metadata.SumAggregationType),
+			)
+			input.Metadata.AggregationType = metadata.SumAggregationType
+		} else {
+			input.Metadata.AggregationType = metadata.AggregationType(at)
+		}
 	} else {
 		input.Metadata.AggregationType = metadata.SumAggregationType
 	}
