@@ -3,6 +3,7 @@ package otlp
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"net/http"
 	"net/http/httptest"
@@ -1121,4 +1122,448 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "gzip-json-tenant", capturedTenantID)
+}
+
+// recordingPushService captures every PushRequest passed to PushBatch and can be
+// configured to return an error.
+func recordPushBatch(t *testing.T) (*mockotlp.MockPushService, *[]*model.PushRequest) {
+	t.Helper()
+	svc := mockotlp.NewMockPushService(t)
+	var profiles []*model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*model.PushRequest)
+		for _, series := range c.Series {
+			sort.Sort(phlaremodel.Labels(series.Labels))
+		}
+		profiles = append(profiles, c)
+	}).Return(nil)
+	return svc, &profiles
+}
+
+// newCPUProfile builds a minimal profile that references the shared builder's
+// dictionary. value is the single sample value; the SampleType/PeriodType are
+// keyed by the provided unit strings so callers can force compatible/incompatible
+// merges.
+func newCPUProfile(b *otlpbuilder, sampleUnit, periodUnit string, value, timeUnixNano, durationNanos uint64) *v1experimental.Profile {
+	stackIdx := int32(len(b.dictionary.StackTable))
+	locIdx := int32(len(b.dictionary.LocationTable))
+	mapIdx := int32(len(b.dictionary.MappingTable))
+	funcIdx := int32(len(b.dictionary.FunctionTable))
+
+	b.dictionary.FunctionTable = append(b.dictionary.FunctionTable, &v1experimental.Function{
+		NameStrindex:       b.addstr("shared_func"),
+		SystemNameStrindex: b.addstr("shared_func"),
+		FilenameStrindex:   b.addstr("shared.go"),
+	})
+	b.dictionary.MappingTable = append(b.dictionary.MappingTable, &v1experimental.Mapping{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x2000,
+		FilenameStrindex: b.addstr("shared.so"),
+	})
+	b.dictionary.LocationTable = append(b.dictionary.LocationTable, &v1experimental.Location{
+		MappingIndex: mapIdx,
+		Address:      0x1100,
+		Lines: []*v1experimental.Line{{
+			FunctionIndex: funcIdx,
+			Line:          10,
+		}},
+	})
+	b.dictionary.StackTable = append(b.dictionary.StackTable, &v1experimental.Stack{
+		LocationIndices: []int32{locIdx},
+	})
+
+	return &v1experimental.Profile{
+		SampleType: &v1experimental.ValueType{
+			TypeStrindex: b.addstr("samples"),
+			UnitStrindex: b.addstr(sampleUnit),
+		},
+		PeriodType: &v1experimental.ValueType{
+			TypeStrindex: b.addstr("cpu"),
+			UnitStrindex: b.addstr(periodUnit),
+		},
+		Period:       10000000,
+		TimeUnixNano: timeUnixNano,
+		DurationNano: durationNanos,
+		Samples: []*v1experimental.Sample{{
+			StackIndex: stackIdx,
+			Values:     []int64{int64(value)},
+		}},
+	}
+}
+
+// reproducing test: two identical Profile messages in a single
+// ScopeProfiles must produce a single PushBatch call with a single merged series.
+func TestExport_BatchesAcrossProfileMessages(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	p0 := newCPUProfile(b, "count", "nanoseconds", 5, 100, 10)
+	p1 := newCPUProfile(b, "count", "nanoseconds", 7, 200, 20)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p0, p1},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(*profiles), "PushBatch must be called exactly once")
+	require.Equal(t, 1, len((*profiles)[0].Series), "identical series must merge into one")
+	assert.Equal(t, model.RawProfileTypeOTEL, (*profiles)[0].RawProfileType)
+}
+
+// merging the same series sums sample values and combines headers
+// (smallest TimeNanos, summed DurationNanos).
+func TestExport_MergesSameSeriesValues(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	p0 := newCPUProfile(b, "count", "nanoseconds", 5, 100, 10)
+	p1 := newCPUProfile(b, "count", "nanoseconds", 7, 50, 20)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p0, p1},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(*profiles))
+	require.Equal(t, 1, len((*profiles)[0].Series))
+
+	gp := (*profiles)[0].Series[0].Profile.Profile
+	require.Equal(t, 1, len(gp.Sample), "the shared stack must collapse to one sample")
+	var total int64
+	for _, v := range gp.Sample[0].Value {
+		total += v
+	}
+	// The "samples:count:cpu:nanoseconds" conversion scales each value by the
+	// period (10ms here); the merge then sums them: (5+7)*10000000.
+	assert.Equal(t, int64(12*10000000), total, "merged sample value must be the sum of inputs")
+	assert.Equal(t, int64(50), gp.TimeNanos, "TimeNanos must be the smallest")
+	assert.Equal(t, int64(30), gp.DurationNanos, "DurationNanos must be summed")
+}
+
+// Received{Compressed,Decompressed}ProfileSize must be the sum of
+// proto.Size over every Profile message.
+func TestExport_SumsReceivedSizesAcrossMessages(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedReq *model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		capturedReq = args.Get(1).(*model.PushRequest)
+	}).Return(nil)
+
+	b := new(otlpbuilder)
+	p0 := newCPUProfile(b, "count", "nanoseconds", 5, 100, 10)
+	p1 := newCPUProfile(b, "count", "nanoseconds", 7, 200, 20)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p0, p1},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	expectedSize := proto.Size(p0) + proto.Size(p1)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.NotNil(t, capturedReq)
+	assert.Equal(t, expectedSize, capturedReq.ReceivedDecompressedProfileSize)
+	assert.Equal(t, expectedSize, capturedReq.ReceivedCompressedProfileSize)
+}
+
+// distinct services across messages stay separate but collapse into a
+// single PushBatch call.
+func TestExport_DistinctServicesAcrossMessages(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	p0 := newCPUProfile(b, "count", "nanoseconds", 5, 100, 10)
+	p1 := newCPUProfile(b, "count", "nanoseconds", 7, 200, 20)
+
+	// Give each profile a per-sample service.name attribute so they key to
+	// distinct services in conversion.
+	attrA := int32(len(b.dictionary.AttributeTable))
+	b.dictionary.AttributeTable = append(b.dictionary.AttributeTable, &v1experimental.KeyValueAndUnit{
+		KeyStrindex: b.addstr("service.name"),
+		Value:       &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: "service-a"}},
+	})
+	attrB := int32(len(b.dictionary.AttributeTable))
+	b.dictionary.AttributeTable = append(b.dictionary.AttributeTable, &v1experimental.KeyValueAndUnit{
+		KeyStrindex: b.addstr("service.name"),
+		Value:       &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: "service-b"}},
+	})
+	p0.Samples[0].AttributeIndices = []int32{attrA}
+	p1.Samples[0].AttributeIndices = []int32{attrB}
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{
+				{Profiles: []*v1experimental.Profile{p0}},
+				{Profiles: []*v1experimental.Profile{p1}},
+			},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(*profiles), "PushBatch must be called exactly once")
+	require.Equal(t, 2, len((*profiles)[0].Series), "distinct services must not merge")
+
+	services := map[string]bool{}
+	for _, s := range (*profiles)[0].Series {
+		for _, l := range s.Labels {
+			if l.Name == phlaremodel.LabelNameServiceName {
+				services[l.Value] = true
+			}
+		}
+	}
+	assert.Equal(t, map[string]bool{"service-a": true, "service-b": true}, services)
+}
+
+// identical label sets across distinct ScopeProfiles merge into one series.
+func TestExport_MergesAcrossScopeProfiles(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	p0 := newCPUProfile(b, "count", "nanoseconds", 5, 100, 10)
+	p1 := newCPUProfile(b, "count", "nanoseconds", 7, 200, 20)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{
+				{Profiles: []*v1experimental.Profile{p0}},
+				{Profiles: []*v1experimental.Profile{p1}},
+			},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(*profiles))
+	require.Equal(t, 1, len((*profiles)[0].Series))
+}
+
+// two messages with the same label set but incompatible headers
+// (differing period unit) must each be emitted as their own series, with no
+// error and a single PushBatch call.
+func TestExport_IncompatibleSampleTypesFallBack(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	// Same sample type / profile-name label, but different period unit ->
+	// combineHeaders' compatible() check fails on the second merge.
+	p0 := newCPUProfile(b, "count", "nanoseconds", 5, 100, 10)
+	p1 := newCPUProfile(b, "count", "milliseconds", 7, 200, 20)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p0, p1},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err, "incompatible profiles must not fail the request")
+
+	require.Equal(t, 1, len(*profiles), "PushBatch must be called exactly once")
+	require.Equal(t, 2, len((*profiles)[0].Series), "incompatible profiles must be emitted separately")
+}
+
+// a known validation error from PushBatch maps to HTTP 400; an unknown
+// error maps to HTTP 500. With a single PushBatch the error may be a multierror;
+// isKnownValidationError inspects only the top-level error, so these tests pin
+// the single-error cases. Mixed validation+internal errors are classified by the
+// top-level wrapper (documented, not asserted).
+func TestExport_ValidationErrorMapsTo400(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	svc.On("PushBatch", mock.Anything, mock.Anything).
+		Return(validation.NewErrorf(validation.BodySizeLimit, "too big"))
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	w := doValidOTLPHTTPRequest(t, h)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestExport_InternalErrorMapsTo500(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	svc.On("PushBatch", mock.Anything, mock.Anything).
+		Return(errors.New("boom"))
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	w := doValidOTLPHTTPRequest(t, h)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// doValidOTLPHTTPRequest drives a valid protobuf OTLP request through the HTTP
+// handler and returns the recorder.
+func doValidOTLPHTTPRequest(t *testing.T, h Handler) *httptest.ResponseRecorder {
+	t.Helper()
+	req := createValidOTLPRequest()
+	body, err := proto.Marshal(req)
+	require.NoError(t, err)
+
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+	httpReq.Header.Set(user.OrgIDHeaderName, "test-tenant")
+
+	w := httptest.NewRecorder()
+	httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+	return w
+}
+
+// newNilPeriodTypeProfile builds a minimal profile WITHOUT a PeriodType,
+// matching the shape produced by createValidOTLPRequest() and the common
+// OTLP/eBPF case. All such profiles share one stack/location so they merge into
+// a single series.
+func newNilPeriodTypeProfile(b *otlpbuilder, value, timeUnixNano uint64) *v1experimental.Profile {
+	stackIdx := int32(len(b.dictionary.StackTable))
+	locIdx := int32(len(b.dictionary.LocationTable))
+	mapIdx := int32(len(b.dictionary.MappingTable))
+	funcIdx := int32(len(b.dictionary.FunctionTable))
+
+	b.dictionary.FunctionTable = append(b.dictionary.FunctionTable, &v1experimental.Function{
+		NameStrindex:       b.addstr("nilpt_func"),
+		SystemNameStrindex: b.addstr("nilpt_func"),
+		FilenameStrindex:   b.addstr("nilpt.go"),
+	})
+	b.dictionary.MappingTable = append(b.dictionary.MappingTable, &v1experimental.Mapping{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x2000,
+		FilenameStrindex: b.addstr("nilpt.so"),
+	})
+	b.dictionary.LocationTable = append(b.dictionary.LocationTable, &v1experimental.Location{
+		MappingIndex: mapIdx,
+		Address:      0x1100,
+		Lines: []*v1experimental.Line{{
+			FunctionIndex: funcIdx,
+			Line:          10,
+		}},
+	})
+	b.dictionary.StackTable = append(b.dictionary.StackTable, &v1experimental.Stack{
+		LocationIndices: []int32{locIdx},
+	})
+
+	return &v1experimental.Profile{
+		SampleType: &v1experimental.ValueType{
+			TypeStrindex: b.addstr("samples"),
+			UnitStrindex: b.addstr("count"),
+		},
+		// No PeriodType — the common OTLP/eBPF shape.
+		TimeUnixNano: timeUnixNano,
+		Samples: []*v1experimental.Sample{{
+			StackIndex: stackIdx,
+			Values:     []int64{int64(value)},
+		}},
+	}
+}
+
+// TestExport_ThreeIncompatibleSameLabelSet_NoHang guards CRITICAL #1: three
+// Profile messages sharing one label set but pairwise-incompatible headers must
+// not hang the export call (the old constant-XOR fallback-key search looped
+// forever on the 3rd message). The call must complete and emit one PushBatch
+// with three separate series. This calls Export synchronously; if an unbounded
+// loop is reintroduced, the go test package timeout will hang the test binary
+// and fail here.
+func TestExport_ThreeIncompatibleSameLabelSet_NoHang(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	// Same profile-name label (the sample unit avoids the special
+	// "samples:count:cpu:nanoseconds" case, so all three land on the custom
+	// "cpu" profile name and thus share one label set), but three distinct
+	// period units, so each fails to merge into the previous accumulator.
+	p0 := newCPUProfile(b, "milliseconds", "nanoseconds", 5, 100, 10)
+	p1 := newCPUProfile(b, "milliseconds", "milliseconds", 7, 200, 20)
+	p2 := newCPUProfile(b, "milliseconds", "microseconds", 9, 300, 30)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p0, p1, p2},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err, "incompatible profiles must not fail the request")
+
+	require.Equal(t, 1, len(*profiles), "PushBatch must be called exactly once")
+	require.Equal(t, 3, len((*profiles)[0].Series), "three incompatible profiles must be emitted separately")
+}
+
+// TestExport_NilPeriodType_MergesToOneSeries guards CRITICAL #2 / HIGH #3: two
+// Profile messages sharing a label set with a nil PeriodType (the common
+// OTLP/eBPF shape, matching createValidOTLPRequest) must merge into a single
+// series with summed values, in one PushBatch call. Before the equalValueType
+// fix this produced two series.
+func TestExport_NilPeriodType_MergesToOneSeries(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+
+	b := new(otlpbuilder)
+	p0 := newNilPeriodTypeProfile(b, 5, 100)
+	p1 := newNilPeriodTypeProfile(b, 7, 200)
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{p0, p1},
+			}},
+		}},
+		Dictionary: &b.dictionary,
+	}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(*profiles), "PushBatch must be called exactly once")
+	require.Equal(t, 1, len((*profiles)[0].Series), "nil-PeriodType profiles with the same label set must merge into one series")
+
+	gp := (*profiles)[0].Series[0].Profile.Profile
+	require.Equal(t, 1, len(gp.Sample), "the shared stack must collapse to one sample")
+	var total int64
+	for _, v := range gp.Sample[0].Value {
+		total += v
+	}
+	assert.Equal(t, int64(12), total, "merged sample value must be the sum of inputs (5+7)")
 }

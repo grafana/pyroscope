@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,7 @@ import (
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -243,20 +245,78 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing resource profiles")
 	}
 
+	req := &distributormodel.PushRequest{RawProfileType: distributormodel.RawProfileTypeOTEL}
+
+	// Accumulate all converted pprof profiles across the whole
+	// ResourceProfiles -> ScopeProfiles -> Profiles walk into a single
+	// PushRequest, merging profiles that share the same (sorted) label set so
+	// that PushBatch is called at most once per export.
+	//
+	// Each accumulator emits one ProfileSeries. Profiles are merged via
+	// pprof.ProfileMerge when compatible. A profile that cannot be merged
+	// (genuinely incompatible sample/period type, or a degenerate header that
+	// the merge rejects on its own) is emitted as its own standalone series via
+	// the raw field rather than dropped or failing the request.
+	type seriesAccumulator struct {
+		labels []*typesv1.LabelPair
+		merge  *pprof.ProfileMerge
+		raw    *googlev1.Profile // set only for standalone (unmergeable) profiles
+	}
+
+	// Coarse upper bound on the number of distinct series, used only as a sizing
+	// hint for the containers below.
+	estimatedSeries := 0
+	for _, rp := range rps {
+		for _, sp := range rp.ScopeProfiles {
+			estimatedSeries += len(sp.Profiles)
+		}
+	}
+	order := make([]*seriesAccumulator, 0, estimatedSeries)
+	byKey := make(map[uint64]*seriesAccumulator, estimatedSeries)
+
+	// addProfile merges prof into the mergeable accumulator for the given
+	// label-set key, creating one if absent. A profile that is genuinely
+	// incompatible (or degenerate on its own) is appended to order as a
+	// standalone raw accumulator and is NOT registered in byKey, so a later
+	// compatible profile for the same label set still finds or creates the real
+	// merge accumulator.
+	addProfile := func(key uint64, labels []*typesv1.LabelPair, prof *googlev1.Profile) {
+		if acc, ok := byKey[key]; ok {
+			if err := acc.merge.Merge(prof, true); err != nil {
+				level.Warn(h.log).Log("msg", "otlp: incompatible profile for label set, emitting unmerged", "err", err)
+				order = append(order, &seriesAccumulator{labels: labels, raw: prof})
+			}
+			return
+		}
+		// First profile for this label set.
+		m := new(pprof.ProfileMerge)
+		if err := m.Merge(prof, true); err != nil {
+			// Degenerate profile that fails even on its own merge. Emit it raw,
+			// and do not register it in byKey so it is never reused as a target.
+			level.Warn(h.log).Log("msg", "otlp: profile not mergeable, emitting unmerged", "err", err)
+			order = append(order, &seriesAccumulator{labels: labels, raw: prof})
+			return
+		}
+		acc := &seriesAccumulator{labels: labels, merge: m}
+		byKey[key] = acc
+		order = append(order, acc)
+	}
+
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
 		for _, sp := range rp.ScopeProfiles {
 			for _, p := range sp.Profiles {
+				// Account for the size of every message walked, regardless of
+				// whether it produces any series. Measure before conversion, which
+				// mutates the message in place.
+				size := proto.Size(p)
+				req.ReceivedCompressedProfileSize += size
+				req.ReceivedDecompressedProfileSize += size
+
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
 					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
-				}
-
-				req := &distributormodel.PushRequest{
-					ReceivedCompressedProfileSize:   proto.Size(p),
-					ReceivedDecompressedProfileSize: proto.Size(p),
-					RawProfileType:                  distributormodel.RawProfileTypeOTEL,
 				}
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
@@ -274,26 +334,36 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Value: svc,
 					})
 
-					s := &distributormodel.ProfileSeries{
-						Labels:     labels,
-						RawProfile: nil,
-						Profile:    pprof.RawFromProto(pprofProfile.profile),
-						ID:         uuid.New().String(),
-					}
-					req.Series = append(req.Series, s)
-				}
-				if len(req.Series) == 0 {
-					continue
-				}
-				err = h.svc.PushBatch(ctx, req)
-				if err != nil {
-					h.log.Log("msg", "failed to push profile", "err", err)
-					// Note: Validation metrics are already tracked by the distributor for errors
-					// returned from PushBatch, so we don't track them here to avoid double-counting.
-					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
+					sort.Sort(model.Labels(labels))
+					key := model.Labels(labels).Hash()
+					addProfile(key, labels, pprofProfile.profile)
 				}
 			}
 		}
+	}
+
+	for _, acc := range order {
+		profile := acc.raw
+		if profile == nil {
+			profile = acc.merge.Profile()
+		}
+		req.Series = append(req.Series, &distributormodel.ProfileSeries{
+			Labels:     acc.labels,
+			RawProfile: nil,
+			Profile:    pprof.RawFromProto(profile),
+			ID:         uuid.New().String(),
+		})
+	}
+
+	if len(req.Series) == 0 {
+		return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+	}
+
+	if err := h.svc.PushBatch(ctx, req); err != nil {
+		h.log.Log("msg", "failed to push profile", "err", err)
+		// Note: Validation metrics are already tracked by the distributor for errors
+		// returned from PushBatch, so we don't track them here to avoid double-counting.
+		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
 	}
 
 	return &pprofileotlp.ExportProfilesServiceResponse{}, nil
