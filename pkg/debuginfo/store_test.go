@@ -629,6 +629,25 @@ func TestUploadE2E(t *testing.T) {
 		assert.Equal(t, ReasonDebuginfoAlreadyExists, resp.Msg.Reason)
 	})
 
+	t.Run("empty build id returns should not initiate", func(t *testing.T) {
+		t.Parallel()
+		store, bucket := newTestStore(t, Config{Enabled: true, UploadStalePeriod: time.Minute})
+		ts := startTestServer(t, store)
+
+		ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+		resp, err := ts.client.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
+			File: &debuginfov1alpha1.FileMetadata{
+				GnuBuildId: "",
+				Name:       "my-binary",
+				Type:       debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_FULL,
+			},
+		}))
+		require.NoError(t, err)
+		assert.False(t, resp.Msg.ShouldInitiateUpload)
+		assert.Equal(t, ReasonEmptyBuildID, resp.Msg.Reason)
+		assert.Empty(t, bucket.Objects())
+	})
+
 	t.Run("disabled service returns should not initiate", func(t *testing.T) {
 		t.Parallel()
 		store, _ := newTestStore(t, Config{Enabled: false, UploadStalePeriod: time.Minute})
