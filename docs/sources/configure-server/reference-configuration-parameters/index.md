@@ -3122,6 +3122,12 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -validation.disable-label-sanitization
 [disable_label_sanitization: <boolean> | default = true]
 
+# Maximum number of series within a single batched push that are processed
+# concurrently. 0 = unbounded (legacy behavior); 1 = serialize pushes (kill
+# switch).
+# CLI flag: -distributor.push.max-concurrency
+[push_max_concurrency: <int> | default = 256]
+
 # Maximum size of a profile in bytes. This is based off the uncompressed size. 0
 # to disable.
 # CLI flag: -validation.max-profile-size-bytes

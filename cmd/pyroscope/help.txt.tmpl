@@ -67,6 +67,8 @@ Usage of ./pyroscope:
     	Per-tenant ingestion rate limit in sample size per second. Units in MB. (default 4)
   -distributor.ingestion-tenant-shard-size int
     	The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.
+  -distributor.push.max-concurrency int
+    	Maximum number of series within a single batched push that are processed concurrently. 0 = unbounded (legacy behavior); 1 = serialize pushes (kill switch). (default 256)
   -distributor.push.timeout duration
     	Timeout when pushing data to ingester. (default 5s)
   -distributor.replication-factor int

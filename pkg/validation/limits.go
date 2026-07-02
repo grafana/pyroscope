@@ -45,6 +45,7 @@ type Limits struct {
 	MaxSessionsPerSeries     int                  `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
 	EnforceLabelsOrder       bool                 `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 	DisableLabelSanitization bool                 `yaml:"disable_label_sanitization" json:"disable_label_sanitization"`
+	PushMaxConcurrency       int                  `yaml:"push_max_concurrency" json:"push_max_concurrency"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -154,6 +155,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
 	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 256, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
 	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
+	f.IntVar(&l.PushMaxConcurrency, "distributor.push.max-concurrency", 256, "Maximum number of series within a single batched push that are processed concurrently. 0 = unbounded (legacy behavior); 1 = serialize pushes (kill switch).")
 
 	f.IntVar(&l.MaxLabelNameLength, "validation.max-length-label-name", 1024, "Maximum length accepted for label names.")
 	f.IntVar(&l.MaxLabelValueLength, "validation.max-length-label-value", 2048, "Maximum length accepted for label value. This setting also applies to the metric name.")
@@ -423,6 +425,13 @@ func (o *Overrides) MaxQueryLength(tenantID string) time.Duration {
 // frontend will process in parallel.
 func (o *Overrides) MaxQueryParallelism(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxQueryParallelism
+}
+
+// PushMaxConcurrency returns the maximum number of series within a single
+// batched push that the distributor processes concurrently. 0 means unbounded
+// (legacy behavior); 1 serializes pushes (kill switch).
+func (o *Overrides) PushMaxConcurrency(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).PushMaxConcurrency
 }
 
 // MaxQueryLookback returns the max lookback period of queries.

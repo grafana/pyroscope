@@ -325,6 +325,11 @@ limits:
   # disabled, labels with dots are accepted as-is using UTF-8 validation.
   # disable_label_sanitization: true
 
+  # Maximum number of series within a single batched push that are processed
+  # concurrently. 0 = unbounded (legacy behavior); 1 = serialize pushes (kill
+  # switch).
+  # push_max_concurrency: 256
+
   # Maximum size of a profile in bytes. This is based off the uncompressed size.
   # 0 to disable.
   # max_profile_size_bytes: 4194304
