@@ -40,6 +40,7 @@ type metrics struct {
 	replicationFactor              prometheus.Gauge
 	receivedDecompressedBytesTotal *prometheus.HistogramVec
 	parseDuration                  *prometheus.HistogramVec
+	pushBatchSeries                *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -139,6 +140,18 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"type", "tenant"},
 		),
+		pushBatchSeries: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace:                       "pyroscope",
+				Name:                            "distributor_push_batch_series",
+				Help:                            "Number of series per batched push request (PushBatch call).",
+				Buckets:                         prometheus.ExponentialBuckets(1, 2, 13),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  50,
+				NativeHistogramMinResetDuration: time.Hour,
+			},
+			[]string{"tenant"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(
@@ -150,6 +163,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.replicationFactor,
 			m.receivedDecompressedBytesTotal,
 			m.parseDuration,
+			m.pushBatchSeries,
 		)
 	}
 	return m
