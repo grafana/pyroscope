@@ -78,6 +78,7 @@ func main() {
 	queryProfileAsync := queryProfileCmd.Flag("async", "Force async query execution, polling until results are ready.").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryProfileCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Repeatable for multiple IDs. Use 'query exemplars profile' to find IDs.").StringsVar(&queryProfileParams.ProfileIDs)
+	queryProfileCmd.Flag("trace-id", "Trace ID (32 hex characters) to filter samples by. Repeatable for multiple traces.").StringsVar(&queryProfileParams.TraceIDs)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
 	queryGoPGOForce := queryGoPGOCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()

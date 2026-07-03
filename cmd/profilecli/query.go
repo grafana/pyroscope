@@ -101,6 +101,7 @@ type queryProfileParams struct {
 	StacktraceSelector []string
 	SpanSelector       []string
 	ProfileIDs         []string
+	TraceIDs           []string
 	MaxNodes           int64
 }
 
@@ -128,10 +129,25 @@ func validateQueryProfileParams(params *queryProfileParams) error {
 		return errors.New("--profile-id and --span-selector cannot be used together. --profile-id selects a specific profile by UUID (from exemplar queries). --span-selector filters by trace span ID.")
 	}
 
+	// --trace-id is a sample-level filter; it can't combine with span or profile selectors.
+	if len(params.TraceIDs) > 0 && len(params.SpanSelector) > 0 {
+		return errors.New("--trace-id and --span-selector cannot be used together")
+	}
+	if len(params.TraceIDs) > 0 && len(params.ProfileIDs) > 0 {
+		return errors.New("--trace-id and --profile-id cannot be used together. --profile-id selects a whole profile by UUID; --trace-id filters samples by trace id.")
+	}
+
 	// Validate each --profile-id is a valid UUID if provided.
 	for _, id := range params.ProfileIDs {
 		if _, err := uuid.Parse(id); err != nil {
 			return errors.New("--profile-id must be a valid UUID (e.g. 550e8400-e29b-41d4-a716-446655440000). Did you mean --span-selector for span IDs?")
+		}
+	}
+
+	// Validate each --trace-id is a 32-character hex trace id.
+	for _, id := range params.TraceIDs {
+		if _, err := model.DecodeTraceID(id); err != nil {
+			return fmt.Errorf("--trace-id must be a 32-character hex string (128-bit trace id): %w", err)
 		}
 	}
 
@@ -245,6 +261,10 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 		req.ProfileIdSelector = params.ProfileIDs
 	}
 
+	if len(params.TraceIDs) > 0 {
+		req.TraceIdSelector = params.TraceIDs
+	}
+
 	qc := params.phlareClient.queryClient()
 
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
@@ -279,6 +299,10 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
 	if len(params.ProfileIDs) > 0 {
 		req.ProfileIdSelector = params.ProfileIDs
+	}
+
+	if len(params.TraceIDs) > 0 {
+		req.TraceIdSelector = params.TraceIDs
 	}
 
 	qc := params.phlareClient.queryClient()
