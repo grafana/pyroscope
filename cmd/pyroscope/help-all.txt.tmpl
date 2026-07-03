@@ -78,131 +78,131 @@ Usage of ./pyroscope:
   -compaction-worker.temp-dir string
     	Temporary directory for compaction jobs. (default "/tmp")
   -compactor.block-ranges value
-    	List of compaction time ranges. (default 1h0m0s,2h0m0s,8h0m0s)
+    	[v1 storage only] List of compaction time ranges. (default 1h0m0s,2h0m0s,8h0m0s)
   -compactor.block-sync-concurrency int
-    	Number of Go routines to use when downloading blocks for compaction and uploading resulting blocks. (default 8)
+    	[v1 storage only] Number of Go routines to use when downloading blocks for compaction and uploading resulting blocks. (default 8)
   -compactor.blocks-retention-period duration
-    	Delete blocks containing samples older than the specified retention period. 0 to disable.
+    	[v1 storage only] Delete blocks containing samples older than the specified retention period. 0 to disable.
   -compactor.cleanup-concurrency int
-    	Max number of tenants for which blocks cleanup and maintenance should run concurrently. (default 20)
+    	[v1 storage only] Max number of tenants for which blocks cleanup and maintenance should run concurrently. (default 20)
   -compactor.cleanup-interval duration
-    	How frequently compactor should run blocks cleanup and maintenance, as well as update the bucket index. (default 15m0s)
+    	[v1 storage only] How frequently compactor should run blocks cleanup and maintenance, as well as update the bucket index. (default 15m0s)
   -compactor.compaction-concurrency int
-    	Max number of concurrent compactions running. (default 1)
+    	[v1 storage only] Max number of concurrent compactions running. (default 1)
   -compactor.compaction-interval duration
-    	The frequency at which the compaction runs (default 30m0s)
+    	[v1 storage only] The frequency at which the compaction runs (default 30m0s)
   -compactor.compaction-jobs-order string
-    	The sorting to use when deciding which compaction jobs should run first for a given tenant. Supported values are: smallest-range-oldest-blocks-first, newest-blocks-first. (default "smallest-range-oldest-blocks-first")
+    	[v1 storage only] The sorting to use when deciding which compaction jobs should run first for a given tenant. Supported values are: smallest-range-oldest-blocks-first, newest-blocks-first. (default "smallest-range-oldest-blocks-first")
   -compactor.compaction-retries int
-    	How many times to retry a failed compaction within a single compaction run. (default 3)
+    	[v1 storage only] How many times to retry a failed compaction within a single compaction run. (default 3)
   -compactor.compaction-split-by string
-    	Experimental: The strategy to use when splitting blocks during compaction. Supported values are: fingerprint, stacktracePartition. (default "fingerprint")
+    	[v1 storage only] Experimental: The strategy to use when splitting blocks during compaction. Supported values are: fingerprint, stacktracePartition. (default "fingerprint")
   -compactor.compactor-downsampler-enabled
-    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true. (default true)
+    	[v1 storage only] If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true. (default true)
   -compactor.compactor-tenant-shard-size int
-    	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
+    	[v1 storage only] Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
-    	Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "./data-compactor")
+    	[v1 storage only] Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "./data-compactor")
   -compactor.deletion-delay duration
-    	Time before a block marked for deletion is deleted from bucket. If not 0, blocks will be marked for deletion and compactor component will permanently delete blocks marked for deletion from the bucket. If 0, blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures. (default 12h0m0s)
+    	[v1 storage only] Time before a block marked for deletion is deleted from bucket. If not 0, blocks will be marked for deletion and compactor component will permanently delete blocks marked for deletion from the bucket. If 0, blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures. (default 12h0m0s)
   -compactor.disabled-tenants comma-separated-list-of-strings
-    	Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.
+    	[v1 storage only] Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.
   -compactor.downsampler-enabled
-    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.
+    	[v1 storage only] If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.
   -compactor.enabled-tenants comma-separated-list-of-strings
-    	Comma separated list of tenants that can be compacted. If specified, only these tenants will be compacted by compactor, otherwise all tenants can be compacted. Subject to sharding.
+    	[v1 storage only] Comma separated list of tenants that can be compacted. If specified, only these tenants will be compacted by compactor, otherwise all tenants can be compacted. Subject to sharding.
   -compactor.first-level-compaction-wait-period duration
-    	How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage. (default 25m0s)
+    	[v1 storage only] How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage. (default 25m0s)
   -compactor.max-compaction-time duration
-    	Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled. (default 1h0m0s)
+    	[v1 storage only] Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled. (default 1h0m0s)
   -compactor.max-opening-blocks-concurrency int
-    	Number of goroutines opening blocks before compaction. (default 16)
+    	[v1 storage only] Number of goroutines opening blocks before compaction. (default 16)
   -compactor.meta-sync-concurrency int
-    	Number of Go routines to use when syncing block meta files from the long term storage. (default 20)
+    	[v1 storage only] Number of Go routines to use when syncing block meta files from the long term storage. (default 20)
   -compactor.no-blocks-file-cleanup-enabled
-    	[experimental] If enabled, will delete the bucket-index, markers and debug files in the tenant bucket when there are no blocks left in the index.
+    	[experimental] [v1 storage only] If enabled, will delete the bucket-index, markers and debug files in the tenant bucket when there are no blocks left in the index.
   -compactor.partial-block-deletion-delay duration
-    	If a partial block (unfinished block without meta.json file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to disable. (default 1d)
+    	[v1 storage only] If a partial block (unfinished block without meta.json file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to disable. (default 1d)
   -compactor.ring.consul.acl-token string
-    	ACL Token used to interact with Consul.
+    	[v1 storage only] ACL Token used to interact with Consul.
   -compactor.ring.consul.cas-retry-delay duration
-    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+    	[v1 storage only] Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
   -compactor.ring.consul.client-timeout duration
-    	HTTP timeout when talking to Consul (default 20s)
+    	[v1 storage only] HTTP timeout when talking to Consul (default 20s)
   -compactor.ring.consul.consistent-reads
-    	Enable consistent reads to Consul.
+    	[v1 storage only] Enable consistent reads to Consul.
   -compactor.ring.consul.hostname string
-    	Hostname and port of Consul. (default "localhost:8500")
+    	[v1 storage only] Hostname and port of Consul. (default "localhost:8500")
   -compactor.ring.consul.watch-burst-size int
-    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+    	[v1 storage only] Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
   -compactor.ring.consul.watch-rate-limit float
-    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+    	[v1 storage only] Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
   -compactor.ring.etcd.dial-timeout duration
-    	The dial timeout for the etcd connection. (default 10s)
+    	[v1 storage only] The dial timeout for the etcd connection. (default 10s)
   -compactor.ring.etcd.endpoints string
-    	The etcd endpoints to connect to.
+    	[v1 storage only] The etcd endpoints to connect to.
   -compactor.ring.etcd.max-retries int
-    	The maximum number of retries to do for failed ops. (default 10)
+    	[v1 storage only] The maximum number of retries to do for failed ops. (default 10)
   -compactor.ring.etcd.password string
-    	Etcd password.
+    	[v1 storage only] Etcd password.
   -compactor.ring.etcd.tls-ca-path string
-    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
+    	[v1 storage only] Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -compactor.ring.etcd.tls-cert-path string
-    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	[v1 storage only] Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -compactor.ring.etcd.tls-cipher-suites string
-    	Override the default cipher suite list (separated by commas).
+    	[v1 storage only] Override the default cipher suite list (separated by commas).
   -compactor.ring.etcd.tls-enabled
-    	Enable TLS.
+    	[v1 storage only] Enable TLS.
   -compactor.ring.etcd.tls-insecure-skip-verify
-    	Skip validating server certificate.
+    	[v1 storage only] Skip validating server certificate.
   -compactor.ring.etcd.tls-key-path string
-    	Path to the key for the client certificate. Also requires the client certificate to be configured.
+    	[v1 storage only] Path to the key for the client certificate. Also requires the client certificate to be configured.
   -compactor.ring.etcd.tls-min-version string
-    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+    	[v1 storage only] Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -compactor.ring.etcd.tls-server-name string
-    	Override the expected name on the server certificate.
+    	[v1 storage only] Override the expected name on the server certificate.
   -compactor.ring.etcd.username string
-    	Etcd username.
+    	[v1 storage only] Etcd username.
   -compactor.ring.heartbeat-period duration
-    	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
+    	[v1 storage only] Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
   -compactor.ring.heartbeat-timeout duration
-    	The heartbeat timeout after which compactors are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
+    	[v1 storage only] The heartbeat timeout after which compactors are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
   -compactor.ring.instance-addr string
-    	IP address to advertise in the ring. Default is auto-detected.
+    	[v1 storage only] IP address to advertise in the ring. Default is auto-detected.
   -compactor.ring.instance-enable-ipv6
-    	Enable using a IPv6 instance address. (default false)
+    	[v1 storage only] Enable using a IPv6 instance address. (default false)
   -compactor.ring.instance-id string
-    	Instance ID to register in the ring. (default "<hostname>")
+    	[v1 storage only] Instance ID to register in the ring. (default "<hostname>")
   -compactor.ring.instance-interface-names string
-    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+    	[v1 storage only] List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -compactor.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.http-listen-port).
+    	[v1 storage only] Port to advertise in the ring (defaults to -server.http-listen-port).
   -compactor.ring.multi.mirror-enabled
-    	Mirror writes to the secondary store.
+    	[v1 storage only] Mirror writes to the secondary store.
   -compactor.ring.multi.mirror-timeout duration
-    	Timeout for storing a value to the secondary store. (default 2s)
+    	[v1 storage only] Timeout for storing a value to the secondary store. (default 2s)
   -compactor.ring.multi.primary string
-    	Primary backend storage used by multi-client.
+    	[v1 storage only] Primary backend storage used by multi-client.
   -compactor.ring.multi.secondary string
-    	Secondary backend storage used by multi-client.
+    	[v1 storage only] Secondary backend storage used by multi-client.
   -compactor.ring.prefix string
-    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+    	[v1 storage only] The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -compactor.ring.store string
-    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+    	[v1 storage only] Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -compactor.ring.wait-active-instance-timeout duration
-    	Timeout for waiting on compactor to become ACTIVE in the ring. (default 10m0s)
+    	[v1 storage only] Timeout for waiting on compactor to become ACTIVE in the ring. (default 10m0s)
   -compactor.ring.wait-stability-max-duration duration
-    	Maximum time to wait for ring stability at startup. If the compactor ring keeps changing after this period of time, the compactor will start anyway. (default 5m0s)
+    	[v1 storage only] Maximum time to wait for ring stability at startup. If the compactor ring keeps changing after this period of time, the compactor will start anyway. (default 5m0s)
   -compactor.ring.wait-stability-min-duration duration
-    	Minimum time to wait for ring stability at startup. 0 to disable.
+    	[v1 storage only] Minimum time to wait for ring stability at startup. 0 to disable.
   -compactor.shutdown-timeout duration
-    	Maximum time to wait for in-flight cleanup and ring operations to finish during shutdown. If the timeout is reached, the compactor will forcefully stop. 0 = no timeout (wait indefinitely).
+    	[v1 storage only] Maximum time to wait for in-flight cleanup and ring operations to finish during shutdown. If the timeout is reached, the compactor will forcefully stop. 0 = no timeout (wait indefinitely).
   -compactor.split-and-merge-shards int
-    	The number of shards to use when splitting blocks. 0 to disable splitting.
+    	[v1 storage only] The number of shards to use when splitting blocks. 0 to disable splitting.
   -compactor.split-and-merge-stage-size int
-    	Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.
+    	[v1 storage only] Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.
   -compactor.split-groups int
-    	Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
+    	[v1 storage only] Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
   -config.expand-env
     	Expands ${var} in config according to the values of the environment variables.
   -config.file string
@@ -374,41 +374,41 @@ Usage of ./pyroscope:
   -help-all
     	Print help, also including advanced and experimental parameters.
   -ingester.availability-zone string
-    	The availability zone where this instance is running.
+    	[v1 storage only] The availability zone where this instance is running.
   -ingester.enable-inet6
-    	Enable IPv6 support. Required to make use of IP addresses from IPv6 interfaces.
+    	[v1 storage only] Enable IPv6 support. Required to make use of IP addresses from IPv6 interfaces.
   -ingester.final-sleep duration
-    	Duration to sleep for before exiting, to ensure metrics are scraped.
+    	[v1 storage only] Duration to sleep for before exiting, to ensure metrics are scraped.
   -ingester.heartbeat-period duration
-    	Period at which to heartbeat to consul. (default 5s)
+    	[v1 storage only] Period at which to heartbeat to consul. (default 5s)
   -ingester.heartbeat-timeout duration
-    	Heartbeat timeout after which instance is assumed to be unhealthy. (default 1m0s)
+    	[v1 storage only] Heartbeat timeout after which instance is assumed to be unhealthy. (default 1m0s)
   -ingester.join-after duration
-    	Period to wait for a claim from another member; will join automatically after this.
+    	[v1 storage only] Period to wait for a claim from another member; will join automatically after this.
   -ingester.lifecycler.ID string
-    	ID to register in the ring. (default "<hostname>")
+    	[v1 storage only] ID to register in the ring. (default "<hostname>")
   -ingester.lifecycler.addr string
-    	IP address to advertise in the ring.
+    	[v1 storage only] IP address to advertise in the ring.
   -ingester.lifecycler.interface string
-    	Name of network interface to read address from. (default [<private network interfaces>])
+    	[v1 storage only] Name of network interface to read address from. (default [<private network interfaces>])
   -ingester.lifecycler.port int
-    	port to advertise in consul (defaults to server.grpc-listen-port).
+    	[v1 storage only] port to advertise in consul (defaults to server.grpc-listen-port).
   -ingester.max-global-series-per-tenant int
-    	Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change. (default 5000)
+    	[v1 storage only] Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change. (default 5000)
   -ingester.max-local-series-per-tenant int
-    	Maximum number of active series of profiles per tenant, per ingester. 0 to disable.
+    	[v1 storage only] Maximum number of active series of profiles per tenant, per ingester. 0 to disable.
   -ingester.min-ready-duration duration
-    	Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive ring updates. (default 15s)
+    	[v1 storage only] Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive ring updates. (default 15s)
   -ingester.num-tokens int
-    	Number of tokens for each ingester. (default 128)
+    	[v1 storage only] Number of tokens for each ingester. (default 128)
   -ingester.observe-period duration
-    	Observe tokens after generating to resolve collisions. Useful when using gossiping ring.
+    	[v1 storage only] Observe tokens after generating to resolve collisions. Useful when using gossiping ring.
   -ingester.readiness-check-ring-health
-    	When enabled the readiness probe succeeds only after all instances are ACTIVE and healthy in the ring, otherwise only the instance itself is checked. This option should be disabled if in your cluster multiple instances can be rolled out simultaneously, otherwise rolling updates may be slowed down. (default true)
+    	[v1 storage only] When enabled the readiness probe succeeds only after all instances are ACTIVE and healthy in the ring, otherwise only the instance itself is checked. This option should be disabled if in your cluster multiple instances can be rolled out simultaneously, otherwise rolling updates may be slowed down. (default true)
   -ingester.tokens-file-path string
-    	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
+    	[v1 storage only] File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
   -ingester.unregister-on-shutdown
-    	Unregister from the ring upon clean shutdown. It can be useful to disable for rolling restarts with consistent naming in conjunction with -distributor.extend-writes=false. (default true)
+    	[v1 storage only] Unregister from the ring upon clean shutdown. It can be useful to disable for rolling restarts with consistent naming in conjunction with -distributor.extend-writes=false. (default true)
   -log.format string
     	Output log messages in the given format. Valid formats: [logfmt, json] (default "logfmt")
   -log.level value
@@ -722,21 +722,21 @@ Usage of ./pyroscope:
   -overrides-exporter.ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.
   -pyroscopedb.data-path string
-    	Directory used for local storage. (default "./data")
+    	[v1 storage only] Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
-    	Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
+    	[v1 storage only] Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
   -pyroscopedb.retention-policy-disable
-    	Disable retention policy enforcement
+    	[v1 storage only] Disable retention policy enforcement
   -pyroscopedb.retention-policy-enforcement-interval duration
-    	How often to enforce disk retention (default 5m0s)
+    	[v1 storage only] How often to enforce disk retention (default 5m0s)
   -pyroscopedb.retention-policy-min-disk-available-percentage float
-    	Which percentage of free disk space to keep (default 0.05)
+    	[v1 storage only] Which percentage of free disk space to keep (default 0.05)
   -pyroscopedb.retention-policy-min-free-disk-gb uint
-    	How much available disk space to keep in GiB (default 10)
+    	[v1 storage only] How much available disk space to keep in GiB (default 10)
   -pyroscopedb.row-group-target-size uint
-    	How big should a single row group be uncompressed (default 1342177280)
+    	[v1 storage only] How big should a single row group be uncompressed (default 1342177280)
   -pyroscopedb.symbols-partition-label string
-    	Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.
+    	[v1 storage only] Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -querier.frontend-client.backoff-max-period duration

@@ -9,10 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
+	configpkg "github.com/grafana/pyroscope/v2/pkg/cfg"
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 )
 
@@ -136,6 +138,69 @@ func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 	})
 }
 
+func TestRegisterFlags_MarksV1StorageOnlyFlags(t *testing.T) {
+	cfg := Config{}
+	fs := flag.NewFlagSet("test", flag.PanicOnError)
+	cfg.RegisterFlags(fs)
+
+	seenPrefixes := make(map[string]bool, len(v1StorageOnlyFlagPrefixes))
+	fs.VisitAll(func(f *flag.Flag) {
+		for _, prefix := range v1StorageOnlyFlagPrefixes {
+			if strings.HasPrefix(f.Name, prefix) {
+				seenPrefixes[prefix] = true
+				assert.Contains(t, f.Usage, v1StorageOnlyFlagUsagePrefix, "flag %s should be marked as V1-only", f.Name)
+			}
+		}
+	})
+
+	for _, prefix := range v1StorageOnlyFlagPrefixes {
+		assert.True(t, seenPrefixes[prefix], "expected at least one registered flag with prefix %s", prefix)
+	}
+}
+
+func TestDynamicUnmarshalRecordsSetFlags(t *testing.T) {
+	var cfg Config
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+
+	require.NoError(t, configpkg.DynamicUnmarshal(&cfg, []string{
+		"-architecture.storage=v2",
+		"-compactor.data-dir=/tmp/compactor",
+		"-pyroscopedb.data-path=/tmp/pyroscopedb",
+	}, fs))
+
+	assert.Contains(t, cfg.SetFlags, "architecture.storage")
+	assert.Contains(t, cfg.SetFlags, "compactor.data-dir")
+	assert.Contains(t, cfg.SetFlags, "pyroscopedb.data-path")
+	assert.ElementsMatch(t, []string{"compactor.data-dir", "pyroscopedb.data-path"}, cfg.setV1StorageOnlyFlags())
+}
+
+func TestConfig_WarnAboutV1StorageOnlyFlags(t *testing.T) {
+	t.Run("warns when v1-only flags are set with v2 storage", func(t *testing.T) {
+		cfg := Config{ArchitectureStorage: V2}
+		cfg.RecordSetFlag("compactor.data-dir")
+		cfg.RecordSetFlag("pyroscopedb.data-path")
+		cfg.RecordSetFlag("query-frontend.max-async-query-concurrency")
+
+		var buf bytes.Buffer
+		cfg.warnAboutV1StorageOnlyFlags(log.NewLogfmtLogger(&buf))
+
+		output := buf.String()
+		assert.Contains(t, output, "flag=compactor.data-dir")
+		assert.Contains(t, output, "flag=pyroscopedb.data-path")
+		assert.NotContains(t, output, "query-frontend.max-async-query-concurrency")
+	})
+
+	t.Run("does not warn when v1 storage is active", func(t *testing.T) {
+		cfg := Config{ArchitectureStorage: V1}
+		cfg.RecordSetFlag("compactor.data-dir")
+
+		var buf bytes.Buffer
+		cfg.warnAboutV1StorageOnlyFlags(log.NewLogfmtLogger(&buf))
+
+		assert.Empty(t, buf.String())
+	})
+}
+
 func TestConfigDiff(t *testing.T) {
 	defaultCfg := Config{}
 	f := flag.NewFlagSet("test", flag.PanicOnError)
@@ -207,4 +272,27 @@ func TestConfigValidate_StorageBackendRequired(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConfigValidate_V2IgnoresV1OnlyCompactorConfig(t *testing.T) {
+	t.Run("v2 ignores invalid V1 compactor block range", func(t *testing.T) {
+		cfg := newTestConfig(t, []string{
+			"-architecture.storage=v2",
+			"-storage.backend=" + objstoreclient.Filesystem,
+			"-write-path=segment-writer",
+			"-compactor.block-ranges=30m",
+		})
+
+		require.NoError(t, cfg.Validate())
+	})
+
+	t.Run("v1 validates invalid V1 compactor block range", func(t *testing.T) {
+		cfg := newTestConfig(t, []string{
+			"-architecture.storage=v1",
+			"-write-path=ingester",
+			"-compactor.block-ranges=30m",
+		})
+
+		require.Error(t, cfg.Validate())
+	})
 }
