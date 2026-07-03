@@ -1237,6 +1237,8 @@ Usage of ./pyroscope:
     	When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.
   -self-profiling.mutex-profile-fraction int
     	 (default 5)
+  -self-profiling.push-url string
+    	URL where single-binary self-profiling profiles are pushed. If empty, Pyroscope pushes to itself using the HTTP listen port and the scheme implied by server HTTP TLS.
   -self-profiling.tenant-id string
     	Tenant ID for self-profiling data. If empty, no tenant header is sent (anonymous).
   -self-profiling.use-k6-middleware

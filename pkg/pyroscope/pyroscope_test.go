@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafana/dskit/server"
+	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -134,6 +136,74 @@ func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 		require.NotNil(t, grpcRecv)
 		assert.Equal(t, "104857600", grpcRecv.DefValue)
 	})
+}
+
+func TestSelfProfilingConfig_ServerAddress(t *testing.T) {
+	tests := []struct {
+		name               string
+		selfProfiling      SelfProfilingConfig
+		server             server.Config
+		expectedAddress    string
+		expectedTLSEnabled bool
+	}{
+		{
+			name:            "defaults to local HTTP listener",
+			server:          server.Config{HTTPListenPort: 4040},
+			expectedAddress: "http://localhost:4040",
+		},
+		{
+			name:            "custom push URL overrides local listener",
+			selfProfiling:   SelfProfilingConfig{PushURL: "https://profiles.example.test"},
+			server:          server.Config{HTTPListenPort: 4040},
+			expectedAddress: "https://profiles.example.test",
+		},
+		{
+			name: "uses HTTPS when HTTP TLS files are configured",
+			server: server.Config{
+				HTTPListenPort: 4040,
+				HTTPTLSConfig: server.TLSConfig{
+					TLSCertPath: "server.crt",
+					TLSKeyPath:  "server.key",
+				},
+			},
+			expectedAddress:    "https://localhost:4040",
+			expectedTLSEnabled: true,
+		},
+		{
+			name: "uses HTTPS when inline HTTP TLS config is configured",
+			server: server.Config{
+				HTTPListenPort: 4040,
+				HTTPTLSConfig: server.TLSConfig{
+					TLSCert: "cert",
+					TLSKey:  config.Secret("key"),
+				},
+			},
+			expectedAddress:    "https://localhost:4040",
+			expectedTLSEnabled: true,
+		},
+		{
+			name: "keeps HTTP when TLS config is incomplete",
+			server: server.Config{
+				HTTPListenPort: 4040,
+				HTTPTLSConfig: server.TLSConfig{
+					TLSCertPath: "server.crt",
+				},
+			},
+			expectedAddress: "http://localhost:4040",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedAddress, tt.selfProfiling.serverAddress(tt.server))
+			assert.Equal(t, tt.expectedTLSEnabled, httpTLSEnabled(tt.server.HTTPTLSConfig))
+		})
+	}
+}
+
+func TestSelfProfilingConfig_PushURLFlag(t *testing.T) {
+	cfg := newTestConfig(t, []string{"-self-profiling.push-url=https://profiles.example.test"})
+	require.Equal(t, "https://profiles.example.test", cfg.SelfProfiling.PushURL)
 }
 
 func TestConfigDiff(t *testing.T) {
