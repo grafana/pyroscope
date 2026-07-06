@@ -150,13 +150,15 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		lastLabelName            = ""
 		idx                      = 0
 		disableLabelSanitization = limits.DisableLabelSanitization(tenantID)
+		maxLabelNameLength       = limits.MaxLabelNameLength(tenantID)
+		maxLabelValueLength      = limits.MaxLabelValueLength(tenantID)
 	)
 	for idx < len(ls) {
 		l := ls[idx]
-		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
+		if len(l.Name) > maxLabelNameLength {
 			return nil, NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
-		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
+		if len(l.Value) > maxLabelValueLength {
 			return nil, NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
 		if disableLabelSanitization {
