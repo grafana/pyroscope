@@ -626,7 +626,6 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 	// profile target dataset.
 	// TODO: Replace with pprof.GroupSamples
 	_ = pprofsplit.VisitSampleSeries(p, labels, nil, appender)
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(p.SizeVT()))
 }
 
 type sampleAppender struct {

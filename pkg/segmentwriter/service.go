@@ -261,6 +261,9 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	i.segmentWriter.metrics.segmentIngestBytes.
+		WithLabelValues(fmt.Sprintf("%d", shardKey(req.Shard)), req.TenantId).
+		Observe(float64(p.RawSize()))
 
 	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
 		segment.ingest(req.TenantId, p.Profile, id, req.Labels, req.Annotations)
