@@ -1,8 +1,8 @@
 package timeseries
 
 import (
+	"cmp"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 
@@ -58,8 +58,8 @@ func (m *Merger) IsEmpty() bool {
 
 func (m *Merger) TimeSeries() []*typesv1.Series {
 	r := m.mergeTimeSeries()
-	sort.Slice(r, func(i, j int) bool {
-		return phlaremodel.CompareLabelPairs(r[i].Labels, r[j].Labels) < 0
+	slices.SortFunc(r, func(a, b *typesv1.Series) int {
+		return phlaremodel.CompareLabelPairs(a.Labels, b.Labels)
 	})
 	return r
 }
@@ -87,8 +87,8 @@ func (m *Merger) mergePoints(points []*typesv1.Point) int {
 	if l < 2 {
 		return l
 	}
-	sort.Slice(points, func(i, j int) bool {
-		return points[i].Timestamp < points[j].Timestamp
+	slices.SortFunc(points, func(a, b *typesv1.Point) int {
+		return cmp.Compare(a.Timestamp, b.Timestamp)
 	})
 	var j int
 	for i := 1; i < l; i++ {
@@ -188,8 +188,8 @@ func mergeExemplars(a, b []*typesv1.Exemplar) []*typesv1.Exemplar {
 		result = append(result, ex)
 	}
 
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].ProfileId < result[j].ProfileId
+	slices.SortFunc(result, func(a, b *typesv1.Exemplar) int {
+		return strings.Compare(a.ProfileId, b.ProfileId)
 	})
 
 	return result
