@@ -32,6 +32,73 @@ type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
 }
 
+// Resolver resolves debug symbols for addresses within a single binary (identified by
+// buildID). result[i] is aligned to addrs[i]; a nil/empty slice at index i means address i
+// could not be resolved. A non-nil error is returned only when ctx is done
+// (context.Canceled or context.DeadlineExceeded), in which case result is nil.
+// A buildID that is empty or fails validation resolves nothing: every result slot is nil.
+type Resolver interface {
+	Resolve(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error)
+}
+
+var _ Resolver = (*Symbolizer)(nil)
+
+// Resolve implements Resolver.
+func (s *Symbolizer) Resolve(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("resolve symbols: %w", err)
+	}
+
+	if buildID == "" {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("empty_build_id").Inc()
+		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
+	}
+
+	if _, err := sanitizeBuildID(buildID); err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("invalid_build_id").Inc()
+		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
+	}
+
+	lidiaBytes, err := s.getLidiaBytes(ctx, buildID)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("resolve symbols: %w", err)
+		}
+		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", buildID, "binaryName", binaryName, "err", err)
+		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
+	}
+
+	lidiaReader := NewReaderAtCloser(lidiaBytes)
+	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
+	if err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("lidia_error").Inc()
+		level.Warn(s.logger).Log("msg", "Failed to open Lidia file", "err", err)
+		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
+	}
+	defer table.Close()
+
+	return s.resolveWithTable(table, addrs), nil
+}
+
+func (s *Symbolizer) resolveWithTable(table *lidia.Table, addrs []uint64) [][]lidia.SourceInfoFrame {
+	result := make([][]lidia.SourceInfoFrame, len(addrs))
+	var framesBuf []lidia.SourceInfoFrame
+
+	resolveStart := time.Now()
+	defer func() {
+		s.metrics.debugSymbolResolution.WithLabelValues(statusSuccess).Observe(time.Since(resolveStart).Seconds())
+	}()
+
+	for i, addr := range addrs {
+		frames, err := table.Lookup(framesBuf, addr)
+		if err != nil || len(frames) == 0 {
+			continue // result[i] stays nil
+		}
+		result[i] = frames
+	}
+	return result
+}
+
 type Config struct {
 	DebuginfodURL            string `yaml:"debuginfod_url" category:"advanced"`
 	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
@@ -180,15 +247,26 @@ func (s *Symbolizer) symbolizeMappingsConcurrently(
 				return fmt.Errorf("extract build ID for mapping %d: %w", job.mappingID, err)
 			}
 
-			req := s.createSymbolizationRequest(binaryName, buildID, job.locations)
-			s.symbolize(ctx, &req)
+			addrs := make([]uint64, len(job.locations))
+			for i, loc := range job.locations {
+				addrs[i] = loc.Address
+			}
+
+			frames, err := s.Resolve(ctx, buildID, binaryName, addrs)
+			if err != nil {
+				return fmt.Errorf("resolve mapping %d: %w", job.mappingID, err)
+			}
 
 			// Collect symbolized locations for this mapping
 			symbolizedLocs := make([]symbolizedLocation, len(job.locations))
 			for i, loc := range job.locations {
+				lines := frames[i]
+				if len(lines) == 0 {
+					lines = s.createFallbackSymbol(binaryName, loc.Address)
+				}
 				symbolizedLocs[i] = symbolizedLocation{
 					loc:     loc,
-					symLoc:  req.locations[i],
+					lines:   lines,
 					mapping: mapping,
 				}
 			}
@@ -273,23 +351,6 @@ func (s *Symbolizer) extractBuildID(profile *googlev1.Profile, mapping *googlev1
 	return sanitizedBuildID, nil
 }
 
-// createSymbolizationRequest creates a symbolization request for a mapping group
-func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, locs []*googlev1.Location) request {
-	req := request{
-		buildID:    buildID,
-		binaryName: binaryName,
-		locations:  make([]*location, len(locs)),
-	}
-
-	for i, loc := range locs {
-		req.locations[i] = &location{
-			address: loc.Address,
-		}
-	}
-
-	return req
-}
-
 func (s *Symbolizer) updateAllSymbolsInProfile(
 	profile *googlev1.Profile,
 	symbolizedLocs []symbolizedLocation,
@@ -301,7 +362,7 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 
 	for _, item := range symbolizedLocs {
 		loc := item.loc
-		symLoc := item.symLoc
+		lines := item.lines
 		mapping := item.mapping
 
 		locIdx := loc.Id - 1
@@ -309,9 +370,9 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 			continue
 		}
 
-		profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.lines))
+		profile.Location[locIdx].Line = make([]*googlev1.Line, len(lines))
 
-		for j, line := range symLoc.lines {
+		for j, line := range lines {
 			nameIdx, ok := stringMap[line.FunctionName]
 			if !ok {
 				nameIdx = int64(len(profile.StringTable))
@@ -360,63 +421,6 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 		}
 
 		mapping.HasFunctions = true
-	}
-}
-
-func (s *Symbolizer) symbolize(ctx context.Context, req *request) {
-	if req.buildID == "" {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("empty_build_id").Inc()
-		s.setFallbackSymbols(req)
-		return
-	}
-
-	lidiaBytes, err := s.getLidiaBytes(ctx, req.buildID)
-	if err != nil {
-		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", req.buildID, "err", err)
-		s.setFallbackSymbols(req)
-		return
-	}
-
-	lidiaReader := NewReaderAtCloser(lidiaBytes)
-	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
-	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("lidia_error").Inc()
-		level.Warn(s.logger).Log("msg", "Failed to open Lidia file", "err", err)
-		s.setFallbackSymbols(req)
-		return
-	}
-	defer table.Close()
-
-	s.symbolizeWithTable(table, req)
-}
-
-// setFallbackSymbols sets fallback symbols for all locations in the request
-func (s *Symbolizer) setFallbackSymbols(req *request) {
-	for _, loc := range req.locations {
-		loc.lines = s.createFallbackSymbol(req.binaryName, loc)
-	}
-}
-
-func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
-	var framesBuf []lidia.SourceInfoFrame
-
-	resolveStart := time.Now()
-	defer func() {
-		s.metrics.debugSymbolResolution.WithLabelValues(statusSuccess).Observe(time.Since(resolveStart).Seconds())
-	}()
-
-	for _, loc := range req.locations {
-		frames, err := table.Lookup(framesBuf, loc.address)
-		if err != nil {
-			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
-			continue
-		}
-
-		if len(frames) == 0 {
-			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
-			continue
-		}
-		loc.lines = frames
 	}
 }
 
@@ -561,14 +565,14 @@ func (s *Symbolizer) processELFData(data []byte, maxSize int64) (lidiaData []byt
 	return memBuffer.Bytes(), nil
 }
 
-func (s *Symbolizer) createFallbackSymbol(binaryName string, loc *location) []lidia.SourceInfoFrame {
+func (s *Symbolizer) createFallbackSymbol(binaryName string, address uint64) []lidia.SourceInfoFrame {
 	prefix := "unknown"
 	if binaryName != "" {
 		prefix = binaryName
 	}
 
 	return []lidia.SourceInfoFrame{{
-		FunctionName: fmt.Sprintf("%s!0x%x", prefix, loc.address),
+		FunctionName: fmt.Sprintf("%s!0x%x", prefix, address),
 		LineNumber:   0,
 	}}
 }
