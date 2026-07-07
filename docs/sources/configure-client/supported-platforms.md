@@ -47,8 +47,6 @@ macOS is intended for local development, not production. The Go, Java, Python, R
 
 The Go and Node.js SDKs run on Windows. The .NET SDK supports Windows x64 in [public preview](https://grafana.com/docs/release-life-cycle/) (see the note under the support matrix). The Java, Python, Ruby, and Rust SDKs don't support Windows.
 
-Windows ARM64 isn't supported by any SDK.
-
 ## Auto-instrumentation with Grafana Alloy and eBPF
 
 The support above applies to the language SDKs, which instrument your application in-process. [Auto-instrumentation with Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/), including the eBPF profiler, runs only on Linux because it depends on Linux kernel features. It isn't available on macOS or Windows.
