@@ -44,6 +44,8 @@ Our .NET profiler works with the following .NET versions:
 Windows support is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with version 1.3.0 of the profiler. On .NET 8 and later, all profiling types work the same as on Linux. On .NET Framework 4.8, only CPU profiling is available.
 {{< /admonition >}}
 
+For platform support across all SDKs, refer to [Supported operating systems and architectures](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/supported-platforms/).
+
 
 ## Before you begin
 
