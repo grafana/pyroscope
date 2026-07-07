@@ -1,0 +1,150 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Collections;
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+
+using OpenTelemetry.Trace;
+
+using Pyroscope.OpenTelemetry;
+
+namespace Example;
+
+public static class Program
+{
+    private static readonly List<FileStream> Files = new();
+    public const string CustomActivitySourceName = "Example.ScooterService";
+    public static void Main(string[] args)
+    {
+        // /dev/null on Unix, NUL on Windows. Opening a batch of handles just
+        // gives the profiler something recognizable to show.
+        var nullDevice = OperatingSystem.IsWindows() ? "NUL" : "/dev/null";
+        for (int i = 0; i < 1024; i++)
+        {
+            Files.Add(File.Open(nullDevice, FileMode.Open, FileAccess.Read, FileShare.Read));
+        }
+        object globalLock = new();
+        var strings = new List<string>();
+
+        var orderService = new OrderService();
+        var bikeService = new BikeService(orderService);
+        var scooterService = new ScooterService(orderService);
+        var carService = new CarService(orderService);
+
+        var builder = WebApplication.CreateBuilder(args);
+        // The Pyroscope span processor tags CPU profiles with the active span so
+        // profiles can be correlated with traces. No OTLP exporter is wired up
+        // here (this example has no collector); add one if you want traces too.
+        builder.Services.AddOpenTelemetry()
+            .WithTracing(b =>
+            {
+                b
+                .AddAspNetCoreInstrumentation()
+                .AddSource(CustomActivitySourceName)
+                .AddProcessor(new PyroscopeSpanProcessor());
+            });
+        var app = builder.Build();
+
+        app.MapGet("/bike", () =>
+        {
+            bikeService.Order(1);
+            return "Bike ordered";
+        });
+        app.MapGet("/scooter", () =>
+        {
+            scooterService.Order(2);
+            return "Scooter ordered";
+        });
+        app.MapGet("/car", () =>
+        {
+            carService.Order(3);
+            return "Car ordered";
+        });
+
+
+        app.MapGet("/pyroscope/cpu", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetCPUTrackingEnabled(enable);
+            return "OK";
+        });
+        app.MapGet("/pyroscope/allocation", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetAllocationTrackingEnabled(enable);
+            return "OK";
+        });
+        app.MapGet("/pyroscope/contention", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enable);
+            return "OK";
+        });
+        app.MapGet("/pyroscope/exception", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enable);
+            return "OK";
+        });
+
+
+        app.MapGet("/playground/allocation", (HttpRequest request) =>
+        {
+            var strings = new List<string>();
+            for (var i = 0; i < 10000; i++)
+            {
+                strings.Add("foobar" + i);
+            }
+
+            return "OK";
+        });
+        app.MapGet("/playground/contention", (HttpRequest request) =>
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                lock (globalLock)
+                {
+                    Thread.Sleep(10);
+                }
+            }
+            return "OK";
+        });
+        app.MapGet("/playground/exception", (HttpRequest request) =>
+        {
+            for (var i = 0; i < 1000; i++)
+            {
+                try
+                {
+                    throw new Exception("foobar" + i);
+                }
+                catch (Exception)
+                {
+                }
+            }
+            return "OK";
+        });
+        app.MapGet("/playground/leak", (HttpRequest request) =>
+        {
+            for (var i = 0; i < 1000; i++)
+            {
+                strings.Add("leak " + i);
+            }
+            return "OK";
+        });
+        app.MapGet("/", () =>
+        {
+            string env = "";
+            foreach (DictionaryEntry e in System.Environment.GetEnvironmentVariables())
+            {
+                env += e.Key + " = " + e.Value + "<br>\n";
+            }
+            return env;
+        });
+
+        app.Run();
+    }
+}

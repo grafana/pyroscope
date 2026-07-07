@@ -1,0 +1,28 @@
+# The server half of the example: Pyroscope + Grafana. These images are
+# Linux-only, so this file runs on a Linux Docker engine (Docker Desktop in
+# Linux-containers mode, or Docker inside WSL2) while docker-compose.yml runs
+# the app on the Windows engine. Ports are published on the host so the
+# Windows containers can reach them.
+#
+#   docker compose -f docker-compose.server.yml up
+services:
+  pyroscope:
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: grafana/pyroscope:latest
+    ports:
+    - 4040:4040
+  grafana:
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: grafana/grafana:latest
+    environment:
+    - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000

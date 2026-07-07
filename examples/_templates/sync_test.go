@@ -62,6 +62,11 @@ type example struct {
 	// compose is the path to the folder containing the docker-compose file,
 	// relative to examples/.
 	compose string
+	// composeFile optionally names the compose file inside the compose
+	// directory that holds the templated services. Use this when an example
+	// splits its setup across multiple compose files (e.g., rideshare-windows).
+	// When empty, the default docker-compose.yml/.yaml lookup applies.
+	composeFile string
 	// templates lists template directory names (under examples/templates/) that
 	// govern this example. For each template:
 	//   - docker-compose.yml → the service it defines is checked structurally.
@@ -161,6 +166,11 @@ var examples = []example{
 	{
 		compose:   "language-sdk-instrumentation/dotnet/rideshare",
 		templates: []string{"grafana", "pyroscope"},
+	},
+	{
+		compose:     "language-sdk-instrumentation/dotnet/rideshare-windows",
+		composeFile: "docker-compose.server.yml",
+		templates:   []string{"grafana", "pyroscope"},
 	},
 	{
 		compose:   "language-sdk-instrumentation/dotnet/web-new",
@@ -291,7 +301,7 @@ func TestExamplesConsistency(t *testing.T) {
 		ex := ex
 		t.Run(ex.compose, func(t *testing.T) {
 			exDir := j("..", ex.compose)
-			composePath := findCompose(t, exDir)
+			composePath := findCompose(t, exDir, ex.composeFile)
 
 			for _, tmplName := range ex.templates {
 				tmplName := tmplName
@@ -392,9 +402,17 @@ func injectVolumes(t *testing.T, block string, extra []string) string {
 	return strings.Join(result, "\n")
 }
 
-// findCompose returns the path to the docker-compose file inside dir.
-func findCompose(t *testing.T, dir string) string {
+// findCompose returns the path to the docker-compose file inside dir. A
+// non-empty override selects that file explicitly and must exist.
+func findCompose(t *testing.T, dir, override string) string {
 	t.Helper()
+	if override != "" {
+		p := j(dir, override)
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("compose file %s not found: %v", p, err)
+		}
+		return p
+	}
 	for _, name := range []string{"docker-compose.yml", "docker-compose.yaml"} {
 		p := j(dir, name)
 		if _, err := os.Stat(p); err == nil {

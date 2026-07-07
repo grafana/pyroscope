@@ -1,0 +1,10 @@
+# escape=`
+# The .NET SDK Windows images ship pwsh, so reuse the image already pulled for
+# the app build instead of adding another base.
+ARG SDK_VERSION=8.0
+ARG WINDOWS_BASE_TAG=nanoserver-ltsc2022
+FROM mcr.microsoft.com/dotnet/sdk:$SDK_VERSION-$WINDOWS_BASE_TAG
+
+COPY load-generator.ps1 C:/load-generator.ps1
+
+ENTRYPOINT ["pwsh", "-File", "C:/load-generator.ps1"]

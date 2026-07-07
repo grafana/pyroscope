@@ -1,0 +1,54 @@
+# The app half of the example: rideshare regions + load generator, all Windows
+# containers. Run this on a Docker engine in Windows-containers mode, with the
+# server half (docker-compose.server.yml) already up on the Linux engine.
+#
+#   docker compose up --build
+#
+# PYROSCOPE_SERVER_ADDRESS must be reachable from inside a Windows container.
+# The host.docker.internal default works with Docker Desktop; on a plain
+# Windows Server docker engine set it to the host's IP, e.g.:
+#   PYROSCOPE_SERVER_ADDRESS=http://10.0.0.5:4040 docker compose up --build
+services:
+  us-east:
+    ports:
+    - "5000"
+    environment:
+    - REGION=us-east
+    - PYROSCOPE_LABELS=region:us-east
+    - PYROSCOPE_SERVER_ADDRESS=${PYROSCOPE_SERVER_ADDRESS:-http://host.docker.internal:4040}
+    build:
+      context: .
+      args:
+        WINDOWS_BASE_TAG: ${WINDOWS_BASE_TAG:-nanoserver-ltsc2022}
+  eu-north:
+    ports:
+    - "5000"
+    environment:
+    - REGION=eu-north
+    - PYROSCOPE_LABELS=region:eu-north
+    - PYROSCOPE_SERVER_ADDRESS=${PYROSCOPE_SERVER_ADDRESS:-http://host.docker.internal:4040}
+    build:
+      context: .
+      args:
+        WINDOWS_BASE_TAG: ${WINDOWS_BASE_TAG:-nanoserver-ltsc2022}
+  ap-south:
+    ports:
+    - "5000"
+    environment:
+    - REGION=ap-south
+    - PYROSCOPE_LABELS=region:ap-south
+    - PYROSCOPE_SERVER_ADDRESS=${PYROSCOPE_SERVER_ADDRESS:-http://host.docker.internal:4040}
+    build:
+      context: .
+      args:
+        WINDOWS_BASE_TAG: ${WINDOWS_BASE_TAG:-nanoserver-ltsc2022}
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
+      args:
+        WINDOWS_BASE_TAG: ${WINDOWS_BASE_TAG:-nanoserver-ltsc2022}
+    depends_on:
+    - us-east
+    - eu-north
+    - ap-south
