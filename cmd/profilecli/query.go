@@ -101,6 +101,7 @@ type queryProfileParams struct {
 	StacktraceSelector []string
 	SpanSelector       []string
 	ProfileIDs         []string
+	TraceIDs           []string
 	MaxNodes           int64
 }
 
@@ -128,6 +129,14 @@ func validateQueryProfileParams(params *queryProfileParams) error {
 		return errors.New("--profile-id and --span-selector cannot be used together. --profile-id selects a specific profile by UUID (from exemplar queries). --span-selector filters by trace span ID.")
 	}
 
+	// --trace-id is a sample-level filter; it can't combine with span or profile selectors.
+	if len(params.TraceIDs) > 0 && len(params.SpanSelector) > 0 {
+		return errors.New("--trace-id and --span-selector cannot be used together")
+	}
+	if len(params.TraceIDs) > 0 && len(params.ProfileIDs) > 0 {
+		return errors.New("--trace-id and --profile-id cannot be used together. --profile-id selects a whole profile by UUID; --trace-id filters samples by trace id.")
+	}
+
 	// Validate each --profile-id is a valid UUID if provided.
 	for _, id := range params.ProfileIDs {
 		if _, err := uuid.Parse(id); err != nil {
@@ -135,10 +144,17 @@ func validateQueryProfileParams(params *queryProfileParams) error {
 		}
 	}
 
+	// Validate each --trace-id is a 32-character hex trace id.
+	for _, id := range params.TraceIDs {
+		if _, err := model.DecodeTraceID(id); err != nil {
+			return fmt.Errorf("--trace-id must be a 32-character hex string (128-bit trace id): %w", err)
+		}
+	}
+
 	return nil
 }
 
-func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool) (err error) {
+func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag string, force bool, profileTree bool, async bool) (err error) {
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -150,8 +166,19 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 	}
 
 	var profile *googlev1.Profile
-
-	if len(params.SpanSelector) > 0 {
+	if async {
+		if len(params.SpanSelector) > 0 {
+			return errors.New("--async is not supported with --span-selector (only SelectMergeStacktraces queries can run async)")
+		}
+		var locations []*typesv1.Location
+		if len(params.StacktraceSelector) > 0 {
+			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
+			for _, cs := range params.StacktraceSelector {
+				locations = append(locations, &typesv1.Location{Name: cs})
+			}
+		}
+		profile, err = asyncQueryProfileTree(ctx, params, from, to, locations)
+	} else if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)
 	} else {
@@ -159,13 +186,10 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 		if len(params.StacktraceSelector) > 0 {
 			locations = make([]*typesv1.Location, 0, len(params.StacktraceSelector))
 			for _, cs := range params.StacktraceSelector {
-				locations = append(locations, &typesv1.Location{
-					Name: cs,
-				})
+				locations = append(locations, &typesv1.Location{Name: cs})
 			}
 			level.Info(logger).Log("msg", "selecting with stackstrace selector", "call-site", fmt.Sprintf("%#+v", params.StacktraceSelector))
 		}
-
 		if profileTree {
 			profile, err = queryProfileTree(ctx, params, from, to, locations)
 		} else {
@@ -237,6 +261,10 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 		req.ProfileIdSelector = params.ProfileIDs
 	}
 
+	if len(params.TraceIDs) > 0 {
+		req.TraceIdSelector = params.TraceIDs
+	}
+
 	qc := params.phlareClient.queryClient()
 
 	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
@@ -271,6 +299,10 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	// ProfileIdSelector uses profile_id (UUID), NOT span_id. See PR #4872.
 	if len(params.ProfileIDs) > 0 {
 		req.ProfileIdSelector = params.ProfileIDs
+	}
+
+	if len(params.TraceIDs) > 0 {
+		req.TraceIdSelector = params.TraceIDs
 	}
 
 	qc := params.phlareClient.queryClient()
@@ -350,19 +382,21 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		"keep-locations", params.KeepLocations,
 		"aggregate-callees", params.AggregateCallees,
 	)
-	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force,
-		&querierv1.SelectMergeProfileRequest{
-			ProfileTypeID: params.ProfileType,
-			Start:         from.UnixMilli(),
-			End:           to.UnixMilli(),
-			LabelSelector: params.Query,
-			StackTraceSelector: &typesv1.StackTraceSelector{
-				GoPgo: &typesv1.GoPGO{
-					KeepLocations:    params.KeepLocations,
-					AggregateCallees: params.AggregateCallees,
-				},
-			},
-		})
+	stackTraceSelector := &typesv1.StackTraceSelector{
+		GoPgo: &typesv1.GoPGO{
+			KeepLocations:    params.KeepLocations,
+			AggregateCallees: params.AggregateCallees,
+		},
+	}
+
+	req := &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID:      params.ProfileType,
+		Start:              from.UnixMilli(),
+		End:                to.UnixMilli(),
+		LabelSelector:      params.Query,
+		StackTraceSelector: stackTraceSelector,
+	}
+	return selectMergeProfile(ctx, params.phlareClient, outputFlag, force, req)
 }
 
 type querySeriesParams struct {

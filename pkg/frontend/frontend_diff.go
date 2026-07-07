@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
@@ -31,6 +32,11 @@ func (f *Frontend) Diff(
 
 	if c.Msg.Right == nil {
 		c.Msg.Right = &querierv1.SelectMergeStacktracesRequest{}
+	}
+
+	// trace_id_selector is v2-only; the legacy diff path would drop it.
+	if len(c.Msg.Left.GetTraceIdSelector()) > 0 || len(c.Msg.Right.GetTraceIdSelector()) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
 	}
 
 	maxNodes := c.Msg.Left.GetMaxNodes()

@@ -123,6 +123,8 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`left.start` | Milliseconds since epoch. | `1676282400000` |
 |`left.end` | Milliseconds since epoch. | `1676289600000` |
+|`left.async.requestId` | If set, this is a polling request. |  |
+|`left.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
@@ -131,8 +133,11 @@ A request body with the following fields is required:
 |`left.stackTraceSelector.callSite[].name` |  |  |
 |`left.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`left.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+|`left.traceIdSelector` | List of trace IDs (32 hex characters, 128-bit) to filter samples by. | `["7c9e66797425440de944be07fc1f90ae"]` |
 |`right.start` | Milliseconds since epoch. | `1676282400000` |
 |`right.end` | Milliseconds since epoch. | `1676289600000` |
+|`right.async.requestId` | If set, this is a polling request. |  |
+|`right.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
@@ -141,6 +146,7 @@ A request body with the following fields is required:
 |`right.stackTraceSelector.callSite[].name` |  |  |
 |`right.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`right.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+|`right.traceIdSelector` | List of trace IDs (32 hex characters, 128-bit) to filter samples by. | `["7c9e66797425440de944be07fc1f90ae"]` |
 
 {{< code >}}
 ```curl
@@ -154,7 +160,10 @@ curl \
           "7c9e6679-7425-40de-944b-e07fc1f90ae7"
         ],
         "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-        "start": '$(expr $(date +%s) - 3600 )000'
+        "start": '$(expr $(date +%s) - 3600 )000',
+        "traceIdSelector": [
+          "7c9e66797425440de944be07fc1f90ae"
+        ]
       },
       "right": {
         "end": '$(date +%s)000',
@@ -163,7 +172,10 @@ curl \
           "7c9e6679-7425-40de-944b-e07fc1f90ae7"
         ],
         "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-        "start": '$(expr $(date +%s) - 3600 )000'
+        "start": '$(expr $(date +%s) - 3600 )000',
+        "traceIdSelector": [
+          "7c9e66797425440de944be07fc1f90ae"
+        ]
       }
     }' \
   http://localhost:4040/querier.v1.QuerierService/Diff
@@ -180,7 +192,10 @@ body = {
         "7c9e6679-7425-40de-944b-e07fc1f90ae7"
       ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-      "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+      "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000),
+      "traceIdSelector": [
+        "7c9e66797425440de944be07fc1f90ae"
+      ]
     },
     "right": {
       "end": int(datetime.datetime.now().timestamp() * 1000),
@@ -189,7 +204,10 @@ body = {
         "7c9e6679-7425-40de-944b-e07fc1f90ae7"
       ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-      "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+      "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000),
+      "traceIdSelector": [
+        "7c9e66797425440de944be07fc1f90ae"
+      ]
     }
   }
 url = 'http://localhost:4040/querier.v1.QuerierService/Diff'
@@ -389,6 +407,7 @@ A request body with the following fields is required:
 |`stackTraceSelector.callSite[].name` |  |  |
 |`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+|`traceIdSelector` | List of trace IDs (32 hex characters, 128-bit) to filter samples by. | `["7c9e66797425440de944be07fc1f90ae"]` |
 
 {{< code >}}
 ```curl
@@ -401,7 +420,10 @@ curl \
         "7c9e6679-7425-40de-944b-e07fc1f90ae7"
       ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-      "start": '$(expr $(date +%s) - 3600 )000'
+      "start": '$(expr $(date +%s) - 3600 )000',
+      "traceIdSelector": [
+        "7c9e66797425440de944be07fc1f90ae"
+      ]
     }' \
   http://localhost:4040/querier.v1.QuerierService/SelectMergeProfile
 ```
@@ -416,7 +438,10 @@ body = {
       "7c9e6679-7425-40de-944b-e07fc1f90ae7"
     ],
     "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000),
+    "traceIdSelector": [
+      "7c9e66797425440de944be07fc1f90ae"
+    ]
   }
 url = 'http://localhost:4040/querier.v1.QuerierService/SelectMergeProfile'
 resp = requests.post(url, json=body)
@@ -492,6 +517,8 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`start` | Milliseconds since epoch. | `1676282400000` |
 |`end` | Milliseconds since epoch. | `1676289600000` |
+|`async.requestId` | If set, this is a polling request. |  |
+|`async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
@@ -500,6 +527,7 @@ A request body with the following fields is required:
 |`stackTraceSelector.callSite[].name` |  |  |
 |`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
+|`traceIdSelector` | List of trace IDs (32 hex characters, 128-bit) to filter samples by. | `["7c9e66797425440de944be07fc1f90ae"]` |
 
 {{< code >}}
 ```curl
@@ -512,7 +540,10 @@ curl \
         "7c9e6679-7425-40de-944b-e07fc1f90ae7"
       ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-      "start": '$(expr $(date +%s) - 3600 )000'
+      "start": '$(expr $(date +%s) - 3600 )000',
+      "traceIdSelector": [
+        "7c9e66797425440de944be07fc1f90ae"
+      ]
     }' \
   http://localhost:4040/querier.v1.QuerierService/SelectMergeStacktraces
 ```
@@ -527,7 +558,10 @@ body = {
       "7c9e6679-7425-40de-944b-e07fc1f90ae7"
     ],
     "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000)
+    "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000),
+    "traceIdSelector": [
+      "7c9e66797425440de944be07fc1f90ae"
+    ]
   }
 url = 'http://localhost:4040/querier.v1.QuerierService/SelectMergeStacktraces'
 resp = requests.post(url, json=body)

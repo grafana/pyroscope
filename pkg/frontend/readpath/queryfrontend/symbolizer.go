@@ -50,9 +50,8 @@ func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeR
 				MaxNodes:           q.Tree.GetMaxNodes(),
 				ProfileIdSelector:  q.Tree.GetProfileIdSelector(),
 				StackTraceSelector: q.Tree.GetStackTraceSelector(),
-				// SpanSelector is not forwarded: PprofQuery has no span_selector field.
-				// To support span-filtered symbolization, span_selector must be added to
-				// the PprofQuery proto and the backend must handle it.
+				SpanSelector:       q.Tree.GetSpanSelector(),
+				TraceIdSelector:    q.Tree.GetTraceIdSelector(),
 			}
 			q.Tree = nil
 		}

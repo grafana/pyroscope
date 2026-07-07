@@ -633,6 +633,11 @@ func examplesToTest(t *testing.T) []*env {
 		if path == "" {
 			continue
 		}
+		// Skip the _templates directory: its docker-compose files are partial
+		// (single-service stubs) and are not runnable examples.
+		if strings.Contains(path, "/_templates/") || strings.HasPrefix(path, "_templates/") {
+			continue
+		}
 		e := &env{dir: filepath.Dir(path), path: path}
 		if requested != nil {
 			matched := false

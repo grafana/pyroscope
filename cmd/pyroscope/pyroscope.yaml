@@ -408,6 +408,10 @@ limits:
   # Whether profiles should be sanitized when merging.
   # query_sanitize_on_merge: true
 
+  # Maximum number of concurrent async queries per tenant. 0 to disable async
+  # queries.
+  # max_async_query_concurrency: 5
+
   # Delete blocks containing samples older than the specified retention period.
   # 0 to disable.
   # compactor_blocks_retention_period: 0s
@@ -794,6 +798,20 @@ analytics:
 # 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to
 # query old data.
 # architecture_storage: "v1-v2-dual"
+
+admin_server:
+  # Controls the admin server for metrics, pprof and admin endpoints.
+  # 'disabled': all routes on the main port (default). 'additional': admin
+  # server started, operational routes served on both ports. 'exclusive': admin
+  # server started, operational routes removed from main port.
+  # mode: "disabled"
+
+  # Address for the admin HTTP server. Defaults to localhost so the port is not
+  # exposed externally. Use :: or 0.0.0.0 to listen on all interfaces.
+  # http_listen_address: "localhost"
+
+  # Port for the admin HTTP server (metrics, pprof, admin).
+  # http_listen_port: 4042
 
 embedded_grafana:
   # The directory where the Grafana data will be stored.

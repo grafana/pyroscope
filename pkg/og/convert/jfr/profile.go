@@ -74,7 +74,7 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, li
 	return res, err
 }
 
-func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata, _ ingestion.Limits) error {
 	return fmt.Errorf("parsing to Tree/storage.Putter is no longer supported")
 }
 

@@ -547,6 +547,11 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 		sp.Finish()
 	}()
 
+	// trace_id_selector is v2-only; selectTree would drop it.
+	if len(req.Msg.Left.GetTraceIdSelector()) > 0 || len(req.Msg.Right.GetTraceIdSelector()) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
+	}
+
 	var leftTree, rightTree *phlaremodel.FunctionNameTree
 	g, gCtx := errgroup.WithContext(ctx)
 
@@ -659,6 +664,10 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 
 	if len(req.Msg.ProfileIdSelector) > 0 {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("profile_id_selector is only supported with the v2 query backend"))
+	}
+
+	if len(req.Msg.TraceIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
 	}
 
 	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
@@ -918,6 +927,10 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 	sp.SetTag("max_nodes", req.Msg.GetMaxNodes())
 	sp.SetTag("profile_type", req.Msg.ProfileTypeID)
 	defer sp.Finish()
+
+	if len(req.Msg.TraceIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
+	}
 
 	profile, err := q.selectProfile(ctx, req.Msg)
 	if err != nil {

@@ -978,6 +978,50 @@ components:
           $ref: '#/components/schemas/querier.v1.QueryImpact'
       title: AnalyzeQueryResponse
       additionalProperties: false
+    querier.v1.AsyncQueryRequest:
+      type: object
+      properties:
+        requestId:
+          type: string
+          title: request_id
+          description: If set, this is a polling request.
+        type:
+          title: type
+          description: Sets the kind of async query.
+          $ref: '#/components/schemas/querier.v1.AsyncQueryType'
+      title: AsyncQueryRequest
+      additionalProperties: false
+    querier.v1.AsyncQueryResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          title: request_id
+          description: Id of the async query.
+        status:
+          title: status
+          description: 'Status of the query: unknown, in_progress, success, failed'
+          $ref: '#/components/schemas/querier.v1.AsyncQueryStatus'
+        errorMessage:
+          type: string
+          title: error_message
+          description: Populated on FAILURE.
+      title: AsyncQueryResponse
+      additionalProperties: false
+    querier.v1.AsyncQueryStatus:
+      type: string
+      title: AsyncQueryStatus
+      enum:
+        - ASYNC_QUERY_STATUS_UNKNOWN
+        - ASYNC_QUERY_STATUS_IN_PROGRESS
+        - ASYNC_QUERY_STATUS_SUCCESS
+        - ASYNC_QUERY_STATUS_FAILURE
+    querier.v1.AsyncQueryType:
+      type: string
+      title: AsyncQueryType
+      enum:
+        - ASYNC_QUERY_TYPE_DISABLED
+        - ASYNC_QUERY_TYPE_FORCE
     querier.v1.DiffRequest:
       type: object
       properties:
@@ -1348,6 +1392,16 @@ components:
               - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
           title: profile_id_selector
           description: List of Profile UUIDs to query
+        traceIdSelector:
+          type: array
+          examples:
+            - - 7c9e66797425440de944be07fc1f90ae
+          items:
+            type: string
+            examples:
+              - - 7c9e66797425440de944be07fc1f90ae
+          title: trace_id_selector
+          description: List of trace IDs (32 hex characters, 128-bit) to filter samples by.
       title: SelectMergeProfileRequest
       additionalProperties: false
     querier.v1.SelectMergeSpanProfileRequest:
@@ -1494,6 +1548,21 @@ components:
               - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
           title: profile_id_selector
           description: List of Profile UUIDs to query
+        async:
+          title: async
+          description: (experimental) Used for making and polling async queries.
+          nullable: true
+          $ref: '#/components/schemas/querier.v1.AsyncQueryRequest'
+        traceIdSelector:
+          type: array
+          examples:
+            - - 7c9e66797425440de944be07fc1f90ae
+          items:
+            type: string
+            examples:
+              - - 7c9e66797425440de944be07fc1f90ae
+          title: trace_id_selector
+          description: List of trace IDs (32 hex characters, 128-bit) to filter samples by.
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:
@@ -1511,6 +1580,11 @@ components:
           type: string
           title: dot
           description: DOT graph representation.
+        async:
+          title: async
+          description: (experimental) Used for responding to async queries.
+          nullable: true
+          $ref: '#/components/schemas/querier.v1.AsyncQueryResponse'
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectSeriesRequest:

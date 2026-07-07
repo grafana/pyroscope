@@ -956,6 +956,16 @@ components:
           items:
             type: string
           title: profile_id_selector
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
           description: 'TODO(kolesnikovae): Go PGO options.'
       title: PprofQuery
       additionalProperties: false
@@ -1268,6 +1278,11 @@ components:
         fullSymbols:
           type: boolean
           title: full_symbols
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:

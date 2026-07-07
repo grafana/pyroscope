@@ -12,9 +12,10 @@
    > ✅ Correct: `release/v1.3`
    >
    > ⚠️  Incorrect: `release/v1.3.0`  
-3. Create the tag for the release (e.g., `vX.Y.Z`)
-4. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
-5. Create a GitHub label for backports:
+3. Update `renovate.json` so `baseBranchPatterns` includes the new release branch and only the latest two release branches.
+4. Create a signed tag for the release using the version as the tag message (e.g., `git tag -s "vX.Y.Z" -m "vX.Y.Z"`)
+5. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
+6. Create a GitHub label for backports:
 
    ```gh label create "backport release/vX.Y" -d "This label will backport a merged PR to the release/vX.Y branch" -c "#0052cc"```
 
@@ -89,7 +90,7 @@ the version number. These documentation changes should be done with a PR against
 
 Before tagging, check for open security PRs from Dependabot or Renovate. Review, merge, and backport any applicable security fixes to the `release/vX.Y` branch.
 
-Once the release notes are merged, a `vX.Y.Z` patch release tag must be created and pushed to remote to create a new release.
+Once the release notes are merged, a signed `vX.Y.Z` patch release tag must be created using the version as the tag message and pushed to remote to create a new release.
 
 > [!WARNING]
 > If you are releasing a patch version, for an older major/minor version (example:
@@ -112,10 +113,10 @@ make release/prepare
 
 This will build and packages all artifacts without pushing or creating the GitHub release.
 
-Once you're ready you can then tag your release.
+Once you're ready you can then create a signed tag for your release.
 
 ```bash
-git tag v0.1.0
+git tag -s "v0.1.0" -m "v0.1.0"
 ```
 
 And finally push the release using:

@@ -3,9 +3,11 @@ name: Test Examples
 # Builds and runs the examples and verifies that profiling data (and, for tracing
 # examples, span-linked profiling data) can be queried back from Pyroscope.
 #
-# Runs nightly, on manual dispatch, and on the automated examples-update PRs
-# (head branch gh_bot_examples_update). These checks are intentionally NOT part
-# of the required status checks and should not block merging.
+# Runs nightly, on manual dispatch, and on any same-repository PR that touches
+# examples/. Fork PRs are excluded: they cannot be trusted to run arbitrary
+# docker-compose workloads on CI runners.
+# These checks are intentionally NOT part of the required status checks and
+# should not block merging.
 on:
   schedule:
     - cron: '13 1 * * *'
@@ -31,12 +33,11 @@ jobs:
   # Determine which examples to test: the ones changed by the PR, the ones under
   # the manually dispatched target prefix, or all of them (scheduled runs).
   detect:
-    # On PRs, only run for the automated examples-update branch in this repo
-    # (a fork can name its branch the same, so also require a same-repo PR).
+    # On PRs, only run for same-repository PRs (not forks): running arbitrary
+    # docker-compose workloads from untrusted forks on CI runners is unsafe.
     if: >-
       github.event_name != 'pull_request' ||
-      (github.head_ref == 'gh_bot_examples_update' &&
-       github.event.pull_request.head.repo.full_name == github.repository)
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       examples: ${{ steps.select.outputs.examples }}

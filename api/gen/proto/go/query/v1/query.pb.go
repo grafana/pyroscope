@@ -1567,6 +1567,7 @@ type TreeQuery struct {
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,3,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	ProfileIdSelector  []string                `protobuf:"bytes,4,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
 	FullSymbols        bool                    `protobuf:"varint,5,opt,name=full_symbols,json=fullSymbols,proto3" json:"full_symbols,omitempty"`
+	TraceIdSelector    []string                `protobuf:"bytes,6,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1634,6 +1635,13 @@ func (x *TreeQuery) GetFullSymbols() bool {
 		return x.FullSymbols
 	}
 	return false
+}
+
+func (x *TreeQuery) GetTraceIdSelector() []string {
+	if x != nil {
+		return x.TraceIdSelector
+	}
+	return nil
 }
 
 type TreeSymbols struct {
@@ -1800,7 +1808,9 @@ type PprofQuery struct {
 	state              protoimpl.MessageState  `protogen:"open.v1"`
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,2,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
-	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
+	ProfileIdSelector  []string                `protobuf:"bytes,3,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
+	SpanSelector       []string                `protobuf:"bytes,4,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
+	TraceIdSelector    []string                `protobuf:"bytes,5,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"` // TODO(kolesnikovae): Go PGO options.
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1852,6 +1862,20 @@ func (x *PprofQuery) GetStackTraceSelector() *v11.StackTraceSelector {
 func (x *PprofQuery) GetProfileIdSelector() []string {
 	if x != nil {
 		return x.ProfileIdSelector
+	}
+	return nil
+}
+
+func (x *PprofQuery) GetSpanSelector() []string {
+	if x != nil {
+		return x.SpanSelector
+	}
+	return nil
+}
+
+func (x *PprofQuery) GetTraceIdSelector() []string {
+	if x != nil {
+		return x.TraceIdSelector
 	}
 	return nil
 }
@@ -2603,13 +2627,14 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x10TimeSeriesReport\x12/\n" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.types.v1.SeriesR\n" +
-	"timeSeries\"\x8e\x02\n" +
+	"timeSeries\"\xba\x02\n" +
 	"\tTreeQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12#\n" +
 	"\rspan_selector\x18\x02 \x03(\tR\fspanSelector\x12S\n" +
 	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
 	"\x13profile_id_selector\x18\x04 \x03(\tR\x11profileIdSelector\x12!\n" +
-	"\ffull_symbols\x18\x05 \x01(\bR\vfullSymbolsB\x17\n" +
+	"\ffull_symbols\x18\x05 \x01(\bR\vfullSymbols\x12*\n" +
+	"\x11trace_id_selector\x18\x06 \x03(\tR\x0ftraceIdSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"\xdb\x02\n" +
 	"\vTreeSymbols\x12.\n" +
 	"\bmappings\x18\x01 \x03(\v2\x12.google.v1.MappingR\bmappings\x121\n" +
@@ -2626,12 +2651,14 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x04tree\x18\x02 \x01(\fR\x04tree\x124\n" +
 	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01B\n" +
 	"\n" +
-	"\b_symbols\"\xc7\x01\n" +
+	"\b_symbols\"\x98\x02\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +
 	"\x14stack_trace_selector\x18\x02 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
-	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelectorB\x17\n" +
+	"\x13profile_id_selector\x18\x03 \x03(\tR\x11profileIdSelector\x12#\n" +
+	"\rspan_selector\x18\x04 \x03(\tR\fspanSelector\x12*\n" +
+	"\x11trace_id_selector\x18\x05 \x03(\tR\x0ftraceIdSelectorB\x17\n" +
 	"\x15_stack_trace_selector\"O\n" +
 	"\vPprofReport\x12*\n" +
 	"\x05query\x18\x01 \x01(\v2\x14.query.v1.PprofQueryR\x05query\x12\x14\n" +

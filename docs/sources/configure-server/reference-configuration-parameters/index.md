@@ -333,6 +333,23 @@ self_profiling:
 # CLI flag: -architecture.storage
 [architecture_storage: <string> | default = "v1-v2-dual"]
 
+admin_server:
+  # Controls the admin server for metrics, pprof and admin endpoints.
+  # 'disabled': all routes on the main port (default). 'additional': admin
+  # server started, operational routes served on both ports. 'exclusive': admin
+  # server started, operational routes removed from main port.
+  # CLI flag: -admin-server.mode
+  [mode: <string> | default = "disabled"]
+
+  # Address for the admin HTTP server. Defaults to localhost so the port is not
+  # exposed externally. Use :: or 0.0.0.0 to listen on all interfaces.
+  # CLI flag: -admin-server.http-listen-address
+  [http_listen_address: <string> | default = "localhost"]
+
+  # Port for the admin HTTP server (metrics, pprof, admin).
+  # CLI flag: -admin-server.http-listen-port
+  [http_listen_port: <int> | default = 4042]
+
 embedded_grafana:
   # The directory where the Grafana data will be stored.
   # CLI flag: -embedded-grafana.data-path
@@ -1309,7 +1326,7 @@ index:
 
   # (advanced) Interval for index cleanup check. 0 to disable.
   # CLI flag: -metastore.index.cleanup-interval
-  [cleanup_interval: <duration> | default = 0s]
+  [cleanup_interval: <duration> | default = 15m]
 
   # (advanced) Dead Letter Queue check interval. 0 to disable.
   # CLI flag: -metastore.index.dlq-recovery-check-interval
@@ -1680,6 +1697,11 @@ The `query_frontend` block configures the query-frontend.
 # The CLI flags prefix for this block configuration is:
 # query-frontend.grpc-client-config
 [grpc_client_config: <grpc_client>]
+
+# (experimental) Enable the experimental asynchronous query path on
+# SelectMergeStacktraces (default false)
+# CLI flag: -query-frontend.async-queries-enabled
+[async_queries_enabled: <boolean> | default = false]
 
 # (advanced) List of network interface names to look up when finding the
 # instance IP address. This address is sent to query-scheduler and querier,
@@ -3255,6 +3277,11 @@ distributor_usage_groups:
 # Whether profiles should be sanitized when merging.
 # CLI flag: -querier.sanitize-on-merge
 [query_sanitize_on_merge: <boolean> | default = true]
+
+# Maximum number of concurrent async queries per tenant. 0 to disable async
+# queries.
+# CLI flag: -query-frontend.max-async-query-concurrency
+[max_async_query_concurrency: <int> | default = 5]
 
 # Delete blocks containing samples older than the specified retention period. 0
 # to disable.

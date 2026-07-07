@@ -31,6 +31,12 @@ Usage of ./pyroscope:
     	Number of shards per tenant. If 0, the limit is not applied.
   -adaptive-placement.unit-size-bytes uint
     	Shards are allocated based on the utilisation of units per second. The option specifies the unit size in bytes. (default 131072)
+  -admin-server.http-listen-address string
+    	Address for the admin HTTP server. Defaults to localhost so the port is not exposed externally. Use :: or 0.0.0.0 to listen on all interfaces. (default "localhost")
+  -admin-server.http-listen-port int
+    	Port for the admin HTTP server (metrics, pprof, admin). (default 4042)
+  -admin-server.mode value
+    	Controls the admin server for metrics, pprof and admin endpoints. 'disabled': all routes on the main port (default). 'additional': admin server started, operational routes served on both ports. 'exclusive': admin server started, operational routes removed from main port. (default "disabled")
   -api.base-url string
     	base URL for when the server is behind a reverse proxy with a different path
   -architecture.storage value
@@ -580,7 +586,7 @@ Usage of ./pyroscope:
   -metastore.index.cleanup-grace-period duration
     	After a partition is eligible for deletion, it will be kept for this period before actually being evaluated. The period should cover the time difference between the block creation time and the data timestamps. Blocks are only deleted if all data in the block has passed the retention period, and the grace period delays the moment when the partition is evaluated for deletion. (default 6h0m0s)
   -metastore.index.cleanup-interval duration
-    	Interval for index cleanup check. 0 to disable.
+    	Interval for index cleanup check. 0 to disable. (default 15m0s)
   -metastore.index.cleanup-max-partitions int
     	Maximum number of partitions to cleanup at once. A partition is qualified by partition key, tenant, and shard. (default 32)
   -metastore.index.dlq-recovery-check-interval duration
@@ -861,6 +867,8 @@ Usage of ./pyroscope:
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -query-backend.grpc-client-config.tls-server-name string
     	Override the expected name on the server certificate.
+  -query-frontend.async-queries-enabled
+    	[experimental] Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)
   -query-frontend.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-frontend.grpc-client-config.backoff-min-period duration
@@ -915,6 +923,8 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. This address is sent to query-scheduler and querier, which uses it to send the query response back to query-frontend. (default [<private network interfaces>])
   -query-frontend.instance-port int
     	Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).
+  -query-frontend.max-async-query-concurrency int
+    	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
   -query-frontend.scheduler-worker-concurrency int
     	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
   -query-scheduler.grpc-client-config.backoff-max-period duration

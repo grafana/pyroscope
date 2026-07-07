@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -241,6 +242,15 @@ func (s *testSuite) Test_SeriesLabels() {
 }
 
 var startTime = time.Unix(1739263329, 0)
+
+const (
+	fixtureMatchingSpanID    = "0000000000000001"
+	fixtureNonMatchingSpanID = "ffffffffffffffff"
+
+	spanSelectorWantBaseline = "baseline"
+	spanSelectorWantEmpty    = "empty"
+	spanSelectorWantFiltered = "filtered"
+)
 
 func (s *testSuite) Test_QueryTimeSeries() {
 	query := &queryv1.Query{
@@ -533,6 +543,178 @@ func (s *testSuite) Test_BytesFetched_ConsistentAcrossInvocations() {
 	s.Assert().InEpsilon(float64(first), float64(second), 0.10)
 }
 
+func (s *testSuite) Test_SpanAndTraceSelector_Combined_Errors() {
+	// No public RPC sets both; both being set is an internal-plan bug.
+	span := []string{fixtureMatchingSpanID}
+	trace := []string{"0123456789abcdef0123456789abcdef"}
+
+	for _, tt := range []struct {
+		name  string
+		query *queryv1.Query
+	}{
+		{"tree", &queryv1.Query{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16, SpanSelector: span, TraceIdSelector: trace},
+		}},
+		{"pprof", &queryv1.Query{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     &queryv1.PprofQuery{SpanSelector: span, TraceIdSelector: trace},
+		}},
+	} {
+		s.Run(tt.name, func() {
+			_, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+				StartTime:     startTime.UnixMilli(),
+				EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+				LabelSelector: "{}",
+				QueryPlan:     s.plan,
+				Query:         []*queryv1.Query{tt.query},
+				Tenant:        s.tenant,
+			})
+			s.Require().Error(err)
+			s.Require().Contains(err.Error(), "span_selector and trace_id_selector cannot be combined")
+		})
+	}
+}
+
+func (s *testSuite) Test_SpanSelector() {
+	// Capture baselines used to verify that an empty/nil selector returns
+	// the full (unfiltered) result.
+	baselineTree, err := os.ReadFile("testdata/fixtures/tree_16.txt")
+	s.Require().NoError(err)
+
+	allTreeResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	allTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](allTreeResp.Reports[0].Tree.Tree)
+	s.Require().NoError(err)
+
+	allPprofResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     &queryv1.PprofQuery{},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	var allProfile profilev1.Profile
+	s.Require().NoError(pprof.Unmarshal(allPprofResp.Reports[0].Pprof.Pprof, &allProfile))
+
+	tests := []struct {
+		queryType    queryv1.QueryType
+		name         string
+		spanSelector []string
+		wantErr      error
+		want         string
+	}{
+		// Tree tests
+		{queryv1.QueryType_QUERY_TREE, "tree/invalid span ID returns error", []string{"tooshort"}, errors.New(`invalid span id length: "tooshort"`), ""},
+		{queryv1.QueryType_QUERY_TREE, "tree/empty selector returns baseline", []string{}, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_TREE, "tree/nil selector returns baseline", nil, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_TREE, "tree/non-matching span returns empty", []string{fixtureNonMatchingSpanID}, nil, spanSelectorWantEmpty},
+		{queryv1.QueryType_QUERY_TREE, "tree/matching span filters result", []string{fixtureMatchingSpanID}, nil, spanSelectorWantFiltered},
+
+		// Pprof tests
+		{queryv1.QueryType_QUERY_PPROF, "pprof/invalid span ID returns error", []string{"tooshort"}, errors.New(`invalid span id length: "tooshort"`), ""},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/empty selector returns baseline", []string{}, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/nil selector returns baseline", nil, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/non-matching span returns empty", []string{fixtureNonMatchingSpanID}, nil, spanSelectorWantEmpty},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/matching span filters result", []string{fixtureMatchingSpanID}, nil, spanSelectorWantFiltered},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			var (
+				query                    *queryv1.Query
+				reqStartTime, reqEndTime int64
+			)
+
+			if tt.queryType == queryv1.QueryType_QUERY_TREE {
+				reqEndTime = time.Now().UnixMilli()
+				query = &queryv1.Query{
+					QueryType: queryv1.QueryType_QUERY_TREE,
+					Tree: &queryv1.TreeQuery{
+						MaxNodes:     16,
+						SpanSelector: tt.spanSelector,
+					},
+				}
+			} else {
+				reqStartTime = startTime.UnixMilli()
+				reqEndTime = startTime.Add(5 * time.Minute).UnixMilli()
+				query = &queryv1.Query{
+					QueryType: queryv1.QueryType_QUERY_PPROF,
+					Pprof: &queryv1.PprofQuery{
+						SpanSelector: tt.spanSelector,
+					},
+				}
+			}
+
+			resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+				StartTime:     reqStartTime,
+				EndTime:       reqEndTime,
+				LabelSelector: "{}",
+				QueryPlan:     s.plan,
+				Query:         []*queryv1.Query{query},
+				Tenant:        s.tenant,
+			})
+
+			if tt.wantErr != nil {
+				s.Require().Error(err)
+				s.Require().EqualError(err, tt.wantErr.Error())
+				s.Require().Nil(resp)
+				return
+			}
+
+			s.Require().NoError(err)
+			s.Require().NotNil(resp)
+			s.Require().Len(resp.Reports, 1)
+
+			if tt.queryType == queryv1.QueryType_QUERY_TREE {
+				tree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Reports[0].Tree.Tree)
+				s.Require().NoError(err)
+
+				switch tt.want {
+				case spanSelectorWantBaseline:
+					s.Assert().Equal(string(baselineTree), tree.String())
+				case spanSelectorWantEmpty:
+					s.Assert().Zero(tree.Total())
+				case spanSelectorWantFiltered:
+					s.Assert().NotZero(tree.Total())
+					s.Assert().Less(tree.Total(), allTree.Total())
+				default:
+					s.Require().Fail("unknown span selector expectation", tt.want)
+				}
+			} else {
+				var profile profilev1.Profile
+				s.Require().NoError(pprof.Unmarshal(resp.Reports[0].Pprof.Pprof, &profile))
+
+				switch tt.want {
+				case spanSelectorWantBaseline:
+					s.Assert().Equal(len(allProfile.Sample), len(profile.Sample))
+				case spanSelectorWantEmpty:
+					s.Assert().Zero(len(profile.Sample))
+				case spanSelectorWantFiltered:
+					s.Assert().NotZero(len(profile.Sample))
+					s.Assert().Less(len(profile.Sample), len(allProfile.Sample))
+				default:
+					s.Require().Fail("unknown span selector expectation", tt.want)
+				}
+			}
+		})
+	}
+}
+
 func (s *testSuite) getProfileIDFromExemplars(t *testing.T) string {
 	t.Helper()
 
@@ -563,4 +745,146 @@ func (s *testSuite) getProfileIDFromExemplars(t *testing.T) string {
 	}
 	s.Require().FailNow("no profile ID found in exemplars")
 	return ""
+}
+
+const (
+	fixtureMatchingTraceID    = "00000000000000000000000000000001"
+	fixtureNonMatchingTraceID = "ffffffffffffffffffffffffffffffff"
+)
+
+func (s *testSuite) Test_TraceSelector() {
+	baselineTree, err := os.ReadFile("testdata/fixtures/tree_16.txt")
+	s.Require().NoError(err)
+
+	allTreeResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	allTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](allTreeResp.Reports[0].Tree.Tree)
+	s.Require().NoError(err)
+
+	allPprofResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_PPROF,
+			Pprof:     &queryv1.PprofQuery{},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	var allProfile profilev1.Profile
+	s.Require().NoError(pprof.Unmarshal(allPprofResp.Reports[0].Pprof.Pprof, &allProfile))
+
+	tests := []struct {
+		queryType     queryv1.QueryType
+		name          string
+		traceSelector []string
+		wantErr       error
+		want          string
+	}{
+		// Tree tests
+		{queryv1.QueryType_QUERY_TREE, "tree/invalid trace ID returns error", []string{"tooshort"}, errors.New(`invalid trace id length: "tooshort"`), ""},
+		{queryv1.QueryType_QUERY_TREE, "tree/empty selector returns baseline", []string{}, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_TREE, "tree/nil selector returns baseline", nil, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_TREE, "tree/non-matching trace returns empty", []string{fixtureNonMatchingTraceID}, nil, spanSelectorWantEmpty},
+		{queryv1.QueryType_QUERY_TREE, "tree/matching trace filters result", []string{fixtureMatchingTraceID}, nil, spanSelectorWantFiltered},
+
+		// Pprof tests
+		{queryv1.QueryType_QUERY_PPROF, "pprof/invalid trace ID returns error", []string{"tooshort"}, errors.New(`invalid trace id length: "tooshort"`), ""},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/empty selector returns baseline", []string{}, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/nil selector returns baseline", nil, nil, spanSelectorWantBaseline},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/non-matching trace returns empty", []string{fixtureNonMatchingTraceID}, nil, spanSelectorWantEmpty},
+		{queryv1.QueryType_QUERY_PPROF, "pprof/matching trace filters result", []string{fixtureMatchingTraceID}, nil, spanSelectorWantFiltered},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			var (
+				query                    *queryv1.Query
+				reqStartTime, reqEndTime int64
+			)
+
+			if tt.queryType == queryv1.QueryType_QUERY_TREE {
+				reqEndTime = time.Now().UnixMilli()
+				query = &queryv1.Query{
+					QueryType: queryv1.QueryType_QUERY_TREE,
+					Tree: &queryv1.TreeQuery{
+						MaxNodes:        16,
+						TraceIdSelector: tt.traceSelector,
+					},
+				}
+			} else {
+				reqStartTime = startTime.UnixMilli()
+				reqEndTime = startTime.Add(5 * time.Minute).UnixMilli()
+				query = &queryv1.Query{
+					QueryType: queryv1.QueryType_QUERY_PPROF,
+					Pprof: &queryv1.PprofQuery{
+						TraceIdSelector: tt.traceSelector,
+					},
+				}
+			}
+
+			resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+				StartTime:     reqStartTime,
+				EndTime:       reqEndTime,
+				LabelSelector: "{}",
+				QueryPlan:     s.plan,
+				Query:         []*queryv1.Query{query},
+				Tenant:        s.tenant,
+			})
+
+			if tt.wantErr != nil {
+				s.Require().Error(err)
+				s.Require().EqualError(err, tt.wantErr.Error())
+				s.Require().Nil(resp)
+				return
+			}
+
+			s.Require().NoError(err)
+			s.Require().NotNil(resp)
+			s.Require().Len(resp.Reports, 1)
+
+			if tt.queryType == queryv1.QueryType_QUERY_TREE {
+				tree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Reports[0].Tree.Tree)
+				s.Require().NoError(err)
+
+				switch tt.want {
+				case spanSelectorWantBaseline:
+					s.Assert().Equal(string(baselineTree), tree.String())
+				case spanSelectorWantEmpty:
+					s.Assert().Zero(tree.Total())
+				case spanSelectorWantFiltered:
+					s.Assert().NotZero(tree.Total())
+					s.Assert().Less(tree.Total(), allTree.Total())
+				default:
+					s.Require().Fail("unknown trace selector expectation", tt.want)
+				}
+			} else {
+				var profile profilev1.Profile
+				s.Require().NoError(pprof.Unmarshal(resp.Reports[0].Pprof.Pprof, &profile))
+
+				switch tt.want {
+				case spanSelectorWantBaseline:
+					s.Assert().Equal(len(allProfile.Sample), len(profile.Sample))
+				case spanSelectorWantEmpty:
+					s.Assert().Zero(len(profile.Sample))
+				case spanSelectorWantFiltered:
+					s.Assert().NotZero(len(profile.Sample))
+					s.Assert().Less(len(profile.Sample), len(allProfile.Sample))
+				default:
+					s.Require().Fail("unknown trace selector expectation", tt.want)
+				}
+			}
+		})
+	}
 }

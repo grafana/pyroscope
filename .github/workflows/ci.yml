@@ -43,6 +43,19 @@ jobs:
           go-version: 1.25.11
       - name: Check generated files
         run: make generate check/unstaged-changes
+  check-example-templates:
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-large' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Install Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version: 1.25.11
+      - name: Check example templates
+        run: make examples/check-templates
   test:
     strategy:
       fail-fast: false

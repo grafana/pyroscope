@@ -220,6 +220,7 @@ message TreeQuery {
   optional types.v1.StackTraceSelector stack_trace_selector = 3;
   repeated string profile_id_selector = 4;
   bool full_symbols = 5;
+  repeated string trace_id_selector = 6;
 }
 
 message TreeSymbols {
@@ -243,6 +244,8 @@ message PprofQuery {
   int64 max_nodes = 1;
   optional types.v1.StackTraceSelector stack_trace_selector = 2;
   repeated string profile_id_selector = 3;
+  repeated string span_selector = 4;
+  repeated string trace_id_selector = 5;
   // TODO(kolesnikovae): Go PGO options.
 }
 

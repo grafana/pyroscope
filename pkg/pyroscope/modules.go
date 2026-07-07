@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	gorillaMux "github.com/gorilla/mux"
 	"github.com/grafana/dskit/dns"
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
@@ -25,6 +28,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.yaml.in/yaml/v3"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -100,10 +104,12 @@ const (
 	PlacementAgent        string = "placement-agent"
 	PlacementManager      string = "placement-manager"
 	HealthServer          string = "health-server"
+	AdminServer           string = "admin-server"
 	RecordingRulesClient  string = "recording-rules-client"
 	Symbolizer            string = "symbolizer"
 	QueryDiagnosticsStore string = "query-diagnostics-store"
 	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
+	AsyncQueryStore       string = "async-query-store"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -482,6 +488,12 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		}
 	}
 
+	// In exclusive mode, operational endpoints (/metrics, /debug/pprof) move to the
+	// admin server only; remove them from the main port.
+	if f.Cfg.AdminServer.Mode == AdminServerExclusive {
+		f.Cfg.Server.RegisterInstrumentation = false
+	}
+
 	f.setupWorkerTimeout()
 	if f.isModuleActive(QueryScheduler) || f.isModuleActive(QueryFrontend) {
 		// to ensure that the query scheduler is always able to handle the request, we need to double the timeout
@@ -539,6 +551,52 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Server.HTTPServer.Handler = util.RecoveryHTTPMiddleware.Wrap(f.Server.HTTPServer.Handler)
 
 	return s, nil
+}
+
+func (f *Pyroscope) initAdminServer() (services.Service, error) {
+	// Always create the router so route-registration calls in API are safe to call
+	// regardless of mode; they just won't be reachable if no listener is started.
+	router := gorillaMux.NewRouter()
+	f.adminRouter = router
+
+	if !f.Cfg.AdminServer.Mode.IsEnabled() {
+		return nil, nil
+	}
+
+	// /metrics
+	router.Handle("/metrics", promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		EnableOpenMetrics: true,
+	})).Methods("GET")
+	// /debug/pprof — net/http/pprof registers its handlers on http.DefaultServeMux,
+	// so we just forward the whole prefix there.
+	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	router.Handle("/debug/pprof", http.DefaultServeMux)
+
+	addr := net.JoinHostPort(f.Cfg.AdminServer.HTTPAddress, fmt.Sprintf("%d", f.Cfg.AdminServer.HTTPPort))
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("admin server: listen %s: %w", addr, err)
+	}
+
+	srv := &http.Server{
+		Handler: router,
+	}
+
+	return services.NewIdleService(
+		func(_ context.Context) error {
+			level.Info(f.logger).Log("msg", "admin server listening on addresses", "http", addr)
+			go func() {
+				if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+					level.Error(f.logger).Log("msg", "admin server error", "err", err)
+				}
+			}()
+			return nil
+		},
+		func(_ error) error {
+			return srv.Shutdown(context.Background())
+		},
+	), nil
 }
 
 func (f *Pyroscope) initUsageReport() (services.Service, error) {
