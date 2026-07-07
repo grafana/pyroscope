@@ -28,13 +28,21 @@ The .NET Profiler supports the following profiling types:
 
 ### Compatibility
 
-The only compatible operating system and architecture combination is Linux running on amd64 architecture.
+The .NET Profiler supports the following operating systems and architectures:
+
+* Linux on `x86_64` and `aarch64`, with both `glibc` and `musl` builds
+* Windows on `x64` (public preview)
 
 Our .NET profiler works with the following .NET versions:
 
 * .NET 8
 * .NET 9
 * .NET 10
+* .NET Framework 4.8 (Windows only)
+
+{{< admonition type="caution" >}}
+Windows support is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with version 1.3.0 of the profiler. On .NET 8 and later, all profiling types work the same as on Linux. On .NET Framework 4.8, only CPU profiling is available.
+{{< /admonition >}}
 
 
 ## Before you begin
@@ -44,6 +52,8 @@ To capture and analyze profiling data, you need either a hosted Pyroscope OSS se
 The Pyroscope server can be a local server for development or a remote server for production use.
 
 ## Configure the .NET client
+
+### Linux
 
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/grafana/pyroscope-dotnet/releases/):
 
@@ -68,6 +78,34 @@ LD_LIBRARY_PATH=/dotnet
 {{< admonition type="note" >}}
 The `LD_LIBRARY_PATH` environment variable should point to the directory containing the `Pyroscope.Profiler.Native.so` file. This ensures that the dynamic linker can locate the profiler's shared libraries at runtime.
 {{< /admonition >}}
+
+### Windows (public preview)
+
+1. Obtain `Pyroscope.Profiler.Native.dll` from the [latest release](https://github.com/grafana/pyroscope-dotnet/releases/). The profiler is a single DLL, signed by Grafana Labs; no other native libraries are needed:
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.3.0/pyroscope.1.3.0-windows-x64.zip -OutFile pyroscope-windows-x64.zip
+Expand-Archive pyroscope-windows-x64.zip -DestinationPath C:\pyroscope
+```
+
+2. Set the following required environment variables to enable the profiler:
+
+```shell
+PYROSCOPE_APPLICATION_NAME=rideshare.dotnet.app
+PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
+PYROSCOPE_PROFILING_ENABLED=1
+CORECLR_ENABLE_PROFILING=1
+CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
+CORECLR_PROFILER_PATH=C:\pyroscope\Pyroscope.Profiler.Native.dll
+```
+
+For .NET Framework 4.8 applications, use the `COR_*` attach variables instead of the `CORECLR_*` ones:
+
+```shell
+COR_ENABLE_PROFILING=1
+COR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
+COR_PROFILER_PATH=C:\pyroscope\Pyroscope.Profiler.Native.dll
+```
 
 {{< admonition type="note" >}}
 Since .NET version 8 the environment variable `DOTNET_EnableDiagnostics=0` (or its legacy equivalent `COMPlus_EnableDiagnostics=0`) will also disable the profiler. In order to get the previous behaviour (allowing profiling, but switch off IPC and Debugging) the following environment variables should be set instead:
@@ -167,7 +205,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 
 | ENVIRONMENT VARIABLE                   | Type         | DESCRIPTION                                                                                                                       |
 |----------------------------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| PYROSCOPE_PROFILING_LOG_DIR            | String       | Sets the directory for .NET Profiler logs. Defaults to /var/log/pyroscope/.                                                       |
+| PYROSCOPE_PROFILING_LOG_DIR            | String       | Sets the directory for .NET Profiler logs. Defaults to `/var/log/pyroscope/` on Linux and `%PROGRAMDATA%\Pyroscope\logs` on Windows. |
 | PYROSCOPE_LABELS                       | String       | Static labels to apply to an uploaded profile. Must be a list of key:value separated by commas such as: layer:api or team:intake. |
 | PYROSCOPE_SERVER_ADDRESS               | String       | Address of the Pyroscope Server                                                                                                   |
 | PYROSCOPE_PROFILING_ENABLED            | Boolean      | If set to true, enables the .NET Profiler. Defaults to false.                                                                     |
