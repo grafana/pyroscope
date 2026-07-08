@@ -200,16 +200,27 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 	return nil
 }
 
+// defaultMaxDebuginfodConcurrency is used whenever Config.MaxDebuginfodConcurrency
+// is not positive, so every concurrency-bounded caller normalizes the same way.
+const defaultMaxDebuginfodConcurrency = 10
+
+// ResolveConcurrency returns the maximum number of concurrent Resolve calls
+// (or debuginfod fetches) this symbolizer allows, normalizing a non-positive
+// configured value to defaultMaxDebuginfodConcurrency.
+func (s *Symbolizer) ResolveConcurrency() int {
+	if s.cfg.MaxDebuginfodConcurrency <= 0 {
+		return defaultMaxDebuginfodConcurrency
+	}
+	return s.cfg.MaxDebuginfodConcurrency
+}
+
 // symbolizeMappingsConcurrently symbolizes multiple mappings concurrently with a concurrency limit.
 func (s *Symbolizer) symbolizeMappingsConcurrently(
 	ctx context.Context,
 	profile *googlev1.Profile,
 	locationsByMapping map[uint64][]*googlev1.Location,
 ) ([]symbolizedLocation, error) {
-	maxConcurrency := s.cfg.MaxDebuginfodConcurrency
-	if maxConcurrency <= 0 {
-		maxConcurrency = 10
-	}
+	maxConcurrency := s.ResolveConcurrency()
 
 	type mappingJob struct {
 		mappingID uint64
