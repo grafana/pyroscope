@@ -195,6 +195,7 @@ func TestTreeSymbolMode(t *testing.T) {
 		{name: "unset defaults to name", query: &queryv1.TreeQuery{}, want: queryv1.SymbolMode_SYMBOL_MODE_NAME},
 		{name: "name", query: &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_NAME}, want: queryv1.SymbolMode_SYMBOL_MODE_NAME},
 		{name: "full", query: &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL}, want: queryv1.SymbolMode_SYMBOL_MODE_FULL},
+		{name: "refs", query: &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_REFS}, want: queryv1.SymbolMode_SYMBOL_MODE_REFS},
 		{
 			name:  "deprecated full_symbols maps to full",
 			query: &queryv1.TreeQuery{FullSymbols: true}, //nolint:staticcheck // exercises the deprecated bridge
@@ -204,11 +205,6 @@ func TestTreeSymbolMode(t *testing.T) {
 			name:    "full_symbols combined with symbol_mode is rejected",
 			query:   &queryv1.TreeQuery{FullSymbols: true, SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL}, //nolint:staticcheck // exercises the deprecated bridge
 			wantErr: "must not be combined",
-		},
-		{
-			name:    "refs is not implemented yet",
-			query:   &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_REFS},
-			wantErr: "unsupported symbol_mode",
 		},
 		{
 			name:    "unknown mode is rejected",
@@ -226,4 +222,55 @@ func TestTreeSymbolMode(t *testing.T) {
 			require.Equal(t, tc.want, mode)
 		})
 	}
+}
+
+// Test_QueryTree_SymbolModeConflict verifies that a query combining the
+// deprecated full_symbols bool with an explicit symbol_mode is rejected end
+// to end, rather than silently preferring one and dropping the other.
+func (s *testSuite) Test_QueryTree_SymbolModeConflict() {
+	_, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{FullSymbols: true, SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_REFS}, //nolint:staticcheck // exercises the deprecated bridge
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().Error(err)
+	s.Assert().Contains(err.Error(), "full_symbols must not be combined with symbol_mode")
+}
+
+// Test_QueryTree_SymbolRefs_NativeDatasetKeepsPlainPath verifies that a
+// SYMBOL_MODE_REFS query against a dataset not labeled unsymbolized (every
+// dataset in the test fixtures) keeps today's FunctionName path exactly:
+// no SymbolRefTable is attached, and the tree matches a names-only query
+// byte for byte in structure (same totals, no TREE->PPROF detour).
+func (s *testSuite) Test_QueryTree_SymbolRefs_NativeDatasetKeepsPlainPath() {
+	invoke := func(mode queryv1.SymbolMode) *queryv1.TreeReport {
+		resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+			EndTime:       time.Now().UnixMilli(),
+			LabelSelector: "{}",
+			QueryPlan:     s.plan,
+			Query: []*queryv1.Query{{
+				QueryType: queryv1.QueryType_QUERY_TREE,
+				Tree:      &queryv1.TreeQuery{MaxNodes: 16, SymbolMode: mode},
+			}},
+			Tenant: s.tenant,
+		})
+		s.Require().NoError(err)
+		s.Require().Len(resp.Reports, 1)
+		return resp.Reports[0].Tree
+	}
+
+	plain := invoke(queryv1.SymbolMode_SYMBOL_MODE_NAME)
+	symbolRefs := invoke(queryv1.SymbolMode_SYMBOL_MODE_REFS)
+	s.Assert().Nil(symbolRefs.SymbolRefs, "a native dataset must not attach a SymbolRefTable")
+
+	plainTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](plain.Tree)
+	s.Require().NoError(err)
+	symbolRefsTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](symbolRefs.Tree)
+	s.Require().NoError(err)
+	s.Assert().Equal(plainTree.String(), symbolRefsTree.String())
 }
