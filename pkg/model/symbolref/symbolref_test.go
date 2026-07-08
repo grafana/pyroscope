@@ -1,0 +1,437 @@
+package symbolref_test
+
+// Jobs and Rebuild are not implemented in this package yet; tests exercising
+// them, and the parts of the tests below that would need them, are deferred
+// to a follow-up change.
+
+import (
+	"fmt"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
+)
+
+// identity renders ref as a string uniquely identifying the resolved name or
+// (buildID, address) location it stands for, for stack-shape comparisons
+// that must survive a change of ref space.
+func identity(t *testing.T, pb *queryv1.SymbolRefTable, ref model.LocationRefName) string {
+	t.Helper()
+	if ref == model.OtherLocationRef {
+		return "other"
+	}
+	names := pb.GetNames()
+	if int(ref) < len(names) {
+		return "name:" + names[ref]
+	}
+	i := int(ref) - len(names)
+	require.Less(t, i, len(pb.GetUnresolvedAddress()), "ref %d out of range", ref)
+	bi := pb.GetUnresolvedBuildId()[i]
+	require.Less(t, int(bi), len(pb.GetBuildIds()), "build id index %d out of range", bi)
+	return fmt.Sprintf("loc:%s@%#x", pb.GetBuildIds()[bi], pb.GetUnresolvedAddress()[i])
+}
+
+// stacksByIdentity walks every stack in tree and sums self values keyed by
+// the root-to-leaf sequence of identity() strings, so two trees using
+// different (arbitrary) ref numbering can be compared for the same logical
+// content. Drops a spurious root-most ref-0 frame that a tree carries after
+// going through UnmarshalTree; safe since Table reserves ref 0.
+func stacksByIdentity(t *testing.T, tree *model.LocationRefNameTree, pb *queryv1.SymbolRefTable) map[string]int64 {
+	t.Helper()
+	out := make(map[string]int64)
+	tree.IterateStacks(func(_ model.LocationRefName, self int64, stack []model.LocationRefName) {
+		slices.Reverse(stack)
+		if len(stack) > 0 && stack[0] == 0 {
+			stack = stack[1:]
+		}
+		ids := make([]string, len(stack))
+		for i, ref := range stack {
+			ids[i] = identity(t, pb, ref)
+		}
+		out[strings.Join(ids, "/")] += self
+	})
+	return out
+}
+
+// marshalWire marshals tree via rb.KeepRef and unmarshals the result,
+// returning both the marshaled bytes and a tree whose node names are in the
+// wire encoding (matching whatever rb.Build subsequently writes), unlike
+// tree's own (Table-internal) node names.
+func marshalWire(t *testing.T, tree *model.LocationRefNameTree, rb *symbolref.ResultBuilder) ([]byte, *model.LocationRefNameTree) {
+	t.Helper()
+	b := tree.Bytes(0, rb.KeepRef)
+	out, err := model.UnmarshalTree[model.LocationRefName, model.LocationRefNameI](b)
+	require.NoError(t, err)
+	return b, out
+}
+
+// testPartial is a marshaled (tree, table) pair, as a producer would send
+// one over the wire in a queryv1.TreeReport.
+type testPartial struct {
+	tree []byte
+	pb   *queryv1.SymbolRefTable
+}
+
+// buildPartial constructs a fresh Table, lets build populate a tree using
+// the table's Intern* methods, and marshals both via ResultBuilder — the
+// same sequence a real producer would follow.
+func buildPartial(build func(*symbolref.Table) *model.LocationRefNameTree) testPartial {
+	table := symbolref.NewTable()
+	tree := build(table)
+	rb := table.ResultBuilder()
+	treeBytes := tree.Bytes(0, rb.KeepRef)
+	pb := new(queryv1.SymbolRefTable)
+	rb.Build(pb)
+	return testPartial{tree: treeBytes, pb: pb}
+}
+
+// TestInternIdempotencyAndDedup verifies InternName and InternUnresolved are
+// idempotent and content-addressed, and that the wire encoding they end up
+// producing splits resolved and unresolved refs into disjoint ranges.
+func TestInternIdempotencyAndDedup(t *testing.T) {
+	table := symbolref.NewTable()
+
+	foo1 := table.InternName("foo")
+	bar := table.InternName("bar")
+	loc2000a := table.InternUnresolved("build1", "bin1", 0x2000)
+	foo2 := table.InternName("foo")
+	loc1000a := table.InternUnresolved("build1", "bin1", 0x1000)
+	foo3 := table.InternName("foo")
+	loc2000b := table.InternUnresolved("build1", "bin1", 0x2000)
+	loc1000b := table.InternUnresolved("build1", "bin1", 0x1000)
+	loc1000c := table.InternUnresolved("build1", "bin1", 0x1000)
+
+	require.Equal(t, foo1, foo2)
+	require.Equal(t, foo1, foo3)
+	require.Equal(t, loc1000a, loc1000b)
+	require.Equal(t, loc1000a, loc1000c)
+	require.Equal(t, loc2000a, loc2000b)
+	require.NotEqual(t, foo1, bar)
+	require.NotEqual(t, loc1000a, loc2000a)
+
+	tree := new(model.LocationRefNameTree)
+	tree.InsertStack(1, foo1)
+	tree.InsertStack(1, bar)
+	tree.InsertStack(1, loc1000a)
+	tree.InsertStack(1, loc2000a)
+
+	// InternName/InternUnresolved's return values are Table's internal
+	// representation, meaningful only as tree node names; the resolved/
+	// unresolved range split applies to the wire encoding
+	// ResultBuilder.KeepRef produces during a real marshal, so capture what
+	// it actually assigns each ref.
+	rb := table.ResultBuilder()
+	wireOf := make(map[model.LocationRefName]model.LocationRefName)
+	keepRef := func(ref model.LocationRefName) model.LocationRefName {
+		out := rb.KeepRef(ref)
+		wireOf[ref] = out
+		return out
+	}
+	tree.Bytes(0, keepRef)
+	pb := new(queryv1.SymbolRefTable)
+	rb.Build(pb)
+
+	for _, resolved := range []model.LocationRefName{foo1, bar} {
+		require.Less(t, int(wireOf[resolved]), len(pb.GetNames()), "resolved ref %d must be < len(pb.Names)", resolved)
+	}
+	for _, unresolved := range []model.LocationRefName{loc1000a, loc2000a} {
+		require.GreaterOrEqual(t, int(wireOf[unresolved]), len(pb.GetNames()), "unresolved ref %d must be >= len(pb.Names)", unresolved)
+	}
+}
+
+// TestAddRemapRoundTrip verifies Add's returned remap function, used with
+// model.TreeMerger.MergeTreeBytes, preserves per-stack identity and values
+// across a change of ref space.
+func TestAddRemapRoundTrip(t *testing.T) {
+	src := symbolref.NewTable()
+	nameA := src.InternName("a")
+	nameB := src.InternName("b")
+	loc := src.InternUnresolved("build1", "bin1", 0x1000)
+
+	srcTree := new(model.LocationRefNameTree)
+	srcTree.InsertStack(3, nameA, nameB)
+	srcTree.InsertStack(5, nameA, loc)
+	srcTree.InsertStack(2, loc)
+
+	srcRB := src.ResultBuilder()
+	treeBytes, srcWireTree := marshalWire(t, srcTree, srcRB)
+	srcPB := new(queryv1.SymbolRefTable)
+	srcRB.Build(srcPB)
+	want := stacksByIdentity(t, srcWireTree, srcPB)
+
+	dst := symbolref.NewTable()
+	remap, err := dst.Add(srcPB)
+	require.NoError(t, err)
+
+	merger := model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
+	require.NoError(t, merger.MergeTreeBytes(treeBytes, model.WithTreeMergeFormatNodeNames(remap)))
+
+	dstRB := dst.ResultBuilder()
+	_, dstWireTree := marshalWire(t, merger.Tree(), dstRB)
+	dstPB := new(queryv1.SymbolRefTable)
+	dstRB.Build(dstPB)
+
+	got := stacksByIdentity(t, dstWireTree, dstPB)
+	require.Equal(t, want, got)
+}
+
+// TestMergeDeterminismUnderPermutedArrival verifies that merging the same
+// set of partials in any order produces the same per-stack values, the same
+// set of resolved names, and the same unresolved wire encoding.
+func TestMergeDeterminismUnderPermutedArrival(t *testing.T) {
+	partials := []testPartial{
+		buildPartial(func(table *symbolref.Table) *model.LocationRefNameTree {
+			shared := table.InternName("shared_fn")
+			p1 := table.InternName("p1_fn")
+			loc := table.InternUnresolved("buildA", "binA", 0x100)
+			tree := new(model.LocationRefNameTree)
+			tree.InsertStack(3, shared, p1)
+			tree.InsertStack(1, shared, loc)
+			return tree
+		}),
+		buildPartial(func(table *symbolref.Table) *model.LocationRefNameTree {
+			shared := table.InternName("shared_fn")
+			p2 := table.InternName("p2_fn")
+			locA := table.InternUnresolved("buildA", "binA", 0x100)
+			locB := table.InternUnresolved("buildB", "binB", 0x200)
+			tree := new(model.LocationRefNameTree)
+			tree.InsertStack(4, shared, p2)
+			tree.InsertStack(2, shared, locA)
+			tree.InsertStack(6, p2, locB)
+			return tree
+		}),
+		buildPartial(func(table *symbolref.Table) *model.LocationRefNameTree {
+			p3 := table.InternName("p3_fn")
+			locB := table.InternUnresolved("buildB", "binB", 0x200)
+			tree := new(model.LocationRefNameTree)
+			tree.InsertStack(5, p3, locB)
+			return tree
+		}),
+	}
+
+	orderings := [][3]int{
+		{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0},
+	}
+
+	// merge reports the merged result's logical content: per-stack values,
+	// the set of resolved names, and pb's content-sorted unresolved fields.
+	// tree.Bytes' raw output and pb.Names' order are deliberately not
+	// compared: both depend on the merged tree's sibling order, which
+	// pkg/model's Tree sorts by raw ref value — and that raw value depends
+	// on how many other names had already been interned in the destination
+	// table, which is arrival-order-dependent even though the underlying
+	// data is not.
+	type mergeResult struct {
+		stacks     map[string]int64
+		names      map[string]struct{}
+		unresolved *queryv1.SymbolRefTable
+	}
+
+	merge := func(ordering [3]int) mergeResult {
+		dst := symbolref.NewTable()
+		merger := model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
+		for _, i := range ordering {
+			remap, err := dst.Add(partials[i].pb)
+			require.NoError(t, err)
+			require.NoError(t, merger.MergeTreeBytes(partials[i].tree, model.WithTreeMergeFormatNodeNames(remap)))
+		}
+		rb := dst.ResultBuilder()
+		_, wire := marshalWire(t, merger.Tree(), rb)
+		pb := new(queryv1.SymbolRefTable)
+		rb.Build(pb)
+
+		names := make(map[string]struct{}, len(pb.GetNames()))
+		for _, n := range pb.GetNames() {
+			names[n] = struct{}{}
+		}
+		return mergeResult{
+			stacks: stacksByIdentity(t, wire, pb),
+			names:  names,
+			unresolved: &queryv1.SymbolRefTable{
+				BuildIds:          pb.GetBuildIds(),
+				BinaryNames:       pb.GetBinaryNames(),
+				UnresolvedBuildId: pb.GetUnresolvedBuildId(),
+				UnresolvedAddress: pb.GetUnresolvedAddress(),
+			},
+		}
+	}
+
+	want := merge(orderings[0])
+	for _, ordering := range orderings[1:] {
+		got := merge(ordering)
+		require.Equal(t, want.stacks, got.stacks, "ordering %v produced different stack values", ordering)
+		require.Equal(t, want.names, got.names, "ordering %v produced a different set of resolved names", ordering)
+		require.True(t, proto.Equal(want.unresolved, got.unresolved),
+			"ordering %v produced different unresolved wire ordering (the (buildID, address) sort should make this arrival-independent): %v vs %v",
+			ordering, want.unresolved, got.unresolved)
+	}
+}
+
+// TestWireOrderingMultipleBuildIDs verifies unresolved wire entries are
+// sorted by (buildID, address) regardless of intern order, and that
+// resolved names never contain a build ID string.
+func TestWireOrderingMultipleBuildIDs(t *testing.T) {
+	table := symbolref.NewTable()
+
+	n1 := table.InternName("n1")
+	locBbb2 := table.InternUnresolved("bbb", "bin-bbb", 0x2000)
+	n2 := table.InternName("n2")
+	locAaa1 := table.InternUnresolved("aaa", "bin-aaa", 0x1000)
+	locCcc1 := table.InternUnresolved("ccc", "bin-ccc", 0x1000)
+	locBbb1 := table.InternUnresolved("bbb", "bin-bbb", 0x1000)
+	locAaa2 := table.InternUnresolved("aaa", "bin-aaa", 0x2000)
+
+	tree := new(model.LocationRefNameTree)
+	for _, ref := range []model.LocationRefName{n1, n2, locBbb2, locAaa1, locCcc1, locBbb1, locAaa2} {
+		tree.InsertStack(1, ref)
+	}
+
+	rb := table.ResultBuilder()
+	tree.Bytes(0, rb.KeepRef)
+	pb := new(queryv1.SymbolRefTable)
+	rb.Build(pb)
+
+	for _, name := range pb.GetNames() {
+		require.NotContains(t, []string{"aaa", "bbb", "ccc"}, name, "pb.Names must never contain an unresolved build ID")
+	}
+
+	require.Equal(t, len(pb.GetUnresolvedBuildId()), len(pb.GetUnresolvedAddress()))
+	for i := 1; i < len(pb.GetUnresolvedAddress()); i++ {
+		prevKey := fmt.Sprintf("%s|%020d", pb.GetBuildIds()[pb.GetUnresolvedBuildId()[i-1]], pb.GetUnresolvedAddress()[i-1])
+		key := fmt.Sprintf("%s|%020d", pb.GetBuildIds()[pb.GetUnresolvedBuildId()[i]], pb.GetUnresolvedAddress()[i])
+		require.LessOrEqual(t, prevKey, key, "unresolved entries must be sorted by (buildID, address)")
+	}
+}
+
+// TestNegativeRefPassthrough verifies model.OtherLocationRef is never
+// remapped, reassigned, or dropped by ResultBuilder.KeepRef or by an
+// Add-returned remap function.
+func TestNegativeRefPassthrough(t *testing.T) {
+	table := symbolref.NewTable()
+	table.InternName("foo")
+	table.InternUnresolved("build1", "bin1", 0x1000)
+
+	rb := table.ResultBuilder()
+	require.Equal(t, model.OtherLocationRef, rb.KeepRef(model.OtherLocationRef))
+
+	remap, err := table.Add(&queryv1.SymbolRefTable{
+		Names:             []string{"bar"},
+		BuildIds:          []string{"build2"},
+		BinaryNames:       []string{"bin2"},
+		UnresolvedBuildId: []uint32{0},
+		UnresolvedAddress: []uint64{0x2000},
+	})
+	require.NoError(t, err)
+	require.Equal(t, model.OtherLocationRef, remap(model.OtherLocationRef))
+}
+
+// TestEmptyTable verifies a fresh Table and its ResultBuilder behave safely
+// with nothing interned. Jobs and Rebuild are not implemented in this
+// package yet, so their behavior on an empty table is not covered here.
+func TestEmptyTable(t *testing.T) {
+	table := symbolref.NewTable()
+	require.False(t, table.HasUnresolved())
+
+	rb := table.ResultBuilder()
+	require.NotPanics(t, func() { rb.Build(nil) })
+
+	pb := new(queryv1.SymbolRefTable)
+	symbolref.NewTable().ResultBuilder().Build(pb)
+	require.Empty(t, pb.GetNames())
+	require.Empty(t, pb.GetBuildIds())
+	require.Empty(t, pb.GetBinaryNames())
+	require.Empty(t, pb.GetUnresolvedBuildId())
+	require.Empty(t, pb.GetUnresolvedAddress())
+}
+
+// TestOnlyResolvedTable verifies a table built purely from InternName calls
+// reports HasUnresolved() == false and produces no unresolved wire fields.
+func TestOnlyResolvedTable(t *testing.T) {
+	table := symbolref.NewTable()
+	a := table.InternName("a")
+	b := table.InternName("b")
+	c := table.InternName("c")
+	require.False(t, table.HasUnresolved())
+
+	tree := new(model.LocationRefNameTree)
+	tree.InsertStack(1, a)
+	tree.InsertStack(1, b)
+	tree.InsertStack(1, c)
+
+	rb := table.ResultBuilder()
+	// HasUnresolved() is false here, so real truncation (maxNodes > 0) is a
+	// legitimate use of this same ResultBuilder.
+	tree.Bytes(2, rb.KeepRef)
+	pb := new(queryv1.SymbolRefTable)
+	rb.Build(pb)
+
+	require.False(t, table.HasUnresolved())
+	require.Empty(t, pb.GetBuildIds())
+	require.Empty(t, pb.GetBinaryNames())
+	require.Empty(t, pb.GetUnresolvedBuildId())
+	require.Empty(t, pb.GetUnresolvedAddress())
+}
+
+// TestPlainFunctionNameAbsorption verifies a plain FunctionName-tree partial
+// (as an old backend, or a fully-symbolized dataset, would produce) can be
+// absorbed into the symbol-ref space via InternName and merged alongside a
+// genuine unresolved partial without sample loss. The Rebuild-dependent
+// assertion (that the absorbed samples also survive a final rebuild) is
+// deferred: Rebuild is not implemented in this package yet.
+func TestPlainFunctionNameAbsorption(t *testing.T) {
+	plainTree := new(model.FunctionNameTree)
+	plainTree.InsertStack(7, model.FunctionName("main"), model.FunctionName("plainFn"))
+	plainTreeBytes := plainTree.Bytes(0, nil)
+
+	refTable := symbolref.NewTable()
+	locName := refTable.InternName("main")
+	locUnresolved := refTable.InternUnresolved("buildB", "binB", 0x9000)
+	refTree := new(model.LocationRefNameTree)
+	refTree.InsertStack(4, locName, locUnresolved)
+	refRB := refTable.ResultBuilder()
+	refTreeBytes := refTree.Bytes(0, refRB.KeepRef)
+	refPB := new(queryv1.SymbolRefTable)
+	refRB.Build(refPB)
+
+	dst := symbolref.NewTable()
+	merger := model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
+
+	// Unmarshal the plain partial and re-insert every stack into a
+	// LocationRefNameTree via InternName, dropping the spurious root-most
+	// "" frame that pkg/model's Tree marshal format introduces on unmarshal.
+	plain, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](plainTreeBytes)
+	require.NoError(t, err)
+	absorbed := new(model.LocationRefNameTree)
+	plain.IterateStacks(func(_ model.FunctionName, self int64, stack []model.FunctionName) {
+		slices.Reverse(stack)
+		if len(stack) > 0 && stack[0] == "" {
+			stack = stack[1:]
+		}
+		refs := make([]model.LocationRefName, len(stack))
+		for i, n := range stack {
+			refs[i] = dst.InternName(string(n))
+		}
+		absorbed.InsertStack(self, refs...)
+	})
+	merger.MergeTree(absorbed)
+
+	remap, err := dst.Add(refPB)
+	require.NoError(t, err)
+	require.NoError(t, merger.MergeTreeBytes(refTreeBytes, model.WithTreeMergeFormatNodeNames(remap)))
+
+	require.True(t, dst.HasUnresolved())
+
+	rb := dst.ResultBuilder()
+	_, mergedWireTree := marshalWire(t, merger.Tree(), rb)
+	mergedPB := new(queryv1.SymbolRefTable)
+	rb.Build(mergedPB)
+
+	stacks := stacksByIdentity(t, mergedWireTree, mergedPB)
+	require.Equal(t, int64(7), stacks["name:main/name:plainFn"], "partial A's stack must survive absorption with its original self value")
+}
