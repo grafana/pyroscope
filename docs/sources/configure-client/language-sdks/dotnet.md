@@ -83,7 +83,7 @@ The `LD_LIBRARY_PATH` environment variable should point to the directory contain
 
 ### Windows (public preview)
 
-1. Obtain `Pyroscope.Profiler.Native.dll` from the [latest release](https://github.com/grafana/pyroscope-dotnet/releases/). The profiler is a single DLL, signed by Grafana Labs; no other native libraries are needed:
+1. Obtain `Pyroscope.Profiler.Native.dll` from the [latest release](https://github.com/grafana/pyroscope-dotnet/releases/). The profiler is a single DLL, signed by Grafana Labs. No other native libraries are needed: 
 
 ```powershell
 Invoke-WebRequest -Uri https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.3.0/pyroscope.1.3.0-windows-x64.zip -OutFile pyroscope-windows-x64.zip

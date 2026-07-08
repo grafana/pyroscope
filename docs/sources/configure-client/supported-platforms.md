@@ -29,19 +29,22 @@ For the list of profile types each SDK produces, refer to [Profile types and ins
 | Rust | Yes | Yes | Yes | Yes | No |
 | Node.js | Yes | Yes | Yes | Yes | Yes |
 
-Note: Windows support for the .NET SDK is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with profiler version 1.3.0. On .NET 8 and later it has full parity with Linux; on .NET Framework 4.8 only CPU profiling is available. Refer to the [.NET SDK documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/dotnet/).
+{{< admonition type="note" >}}
+Windows support for the .NET SDK is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with profiler version 1.3.0. On .NET 8 and later it has full parity with Linux; on .NET Framework 4.8 only CPU profiling is available. Refer to the [.NET SDK documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/dotnet/).
+{{< /admonition >}}
+
 
 ## Linux libc: glibc and musl (Alpine)
 
-Most containerized deployments run on either glibc (for example Debian or Ubuntu) or musl (Alpine) Linux. All SDKs support both, but they package it differently:
+Most containerized deployments run on either `glibc` (for example, Debian or Ubuntu) or `musl` (Alpine) Linux. All SDKs support both, but they package it differently:
 
-* **Go** and **Java** work on both from a single build. Go is pure Go, and the Java agent bundles one native library per architecture that runs on either libc.
-* **.NET**, **Python**, and **Node.js** publish separate glibc and musl builds. For .NET, download the tarball that matches your base image; for Python (pip) and Node.js (npm), the matching build is selected automatically.
-* **Ruby** ships precompiled gems for glibc Linux only. On Alpine, the gem compiles its native extension at install time, which requires a Rust toolchain.
+* **Go** and **Java** work on both from a single build. Go is pure Go, and the Java agent bundles one native library per architecture that runs on either `libc`.
+* **.NET**, **Python**, and **Node.js** publish separate `glibc` and `musl` builds. For .NET, download the tarball that matches your base image; for Python (`pip`) and Node.js (`npm`), the matching build is selected automatically.
+* **Ruby** ships precompiled gems for `glibc` Linux only. On Alpine, the `gem` compiles its native extension at install time, which requires a Rust toolchain.
 
 ## macOS
 
-macOS is intended for local development, not production. The Go, Java, Python, Ruby, and Rust SDKs run on macOS (both Intel and Apple Silicon). The .NET SDK does not support macOS.
+macOS is intended for local development, not production. The Go, Java, Python, Ruby, and Rust SDKs run on macOS for both Intel and Apple Silicon. The .NET SDK does not support macOS.
 
 ## Windows
 
