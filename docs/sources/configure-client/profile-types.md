@@ -67,7 +67,7 @@ This table lists the available profile types based on auto instrumentation using
 
 Using the Pyroscope language SDKs lets you instrument your application directly for precise profiling. You can customize the profiling process according to your application’s specific requirements.
 
-For more information on the language SDKs, refer to [Pyroscope language SDKs](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/).
+For more information on the language SDKs, refer to [Pyroscope language SDKs](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/). For the operating systems and CPU architectures each SDK supports, refer to [Supported operating systems and architectures](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/supported-platforms/).
 
 This table lists the available profile types based on the language SDK.
 
