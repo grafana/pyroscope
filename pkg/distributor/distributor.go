@@ -412,6 +412,8 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		return noNewProfilesReceivedError()
 	}
 
+	d.metrics.pushBatchSeries.WithLabelValues(tenantID).Observe(float64(len(req.Series)))
+
 	d.bytesReceivedTotalStats.Inc(int64(req.ReceivedCompressedProfileSize))
 	d.bytesReceivedStats.Record(float64(req.ReceivedCompressedProfileSize))
 	if req.RawProfileType != distributormodel.RawProfileTypePPROF {

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
@@ -2096,6 +2098,61 @@ func TestPush_Aggregation(t *testing.T) {
 	// RF * samples_per_profile * clients * requests
 	assert.Equal(t, int64(3*2*clients*requests), sum)
 	assert.Equal(t, len(sessions), maxSessions)
+}
+
+func TestPushBatch_SeriesHistogram(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	ing := newFakeIngester(t, false)
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		tenantLimits["user-1"] = validation.MockDefaultLimits()
+	})
+	d, err := New(
+		Config{DistributorRing: ringConfig},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{func(addr string) (client.PoolClient, error) { return ing, nil }},
+		overrides,
+		reg,
+		log.NewLogfmtLogger(os.Stdout),
+		nil,
+	)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+
+	// makeRequest builds a push request carrying the given number of series.
+	makeRequest := func(series int) *distributormodel.PushRequest {
+		req := &distributormodel.PushRequest{RawProfileType: distributormodel.RawProfileTypePPROF}
+		for i := 0; i < series; i++ {
+			req.Series = append(req.Series, &distributormodel.ProfileSeries{
+				Labels: []*typesv1.LabelPair{
+					{Name: "cluster", Value: "us-central1"},
+					{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "series", Value: strconv.Itoa(i)},
+				},
+				Profile: &pprof2.Profile{Profile: testProfile(0)},
+			})
+		}
+		return req
+	}
+
+	// Two non-empty calls: the histogram observes N per call, so sum = 3 + 1
+	// and count = 2 (one observation per PushBatch call).
+	require.NoError(t, d.PushBatch(ctx, makeRequest(3)))
+	require.NoError(t, d.PushBatch(ctx, makeRequest(1)))
+
+	// An empty request returns before the observation, so it is not counted.
+	require.Error(t, d.PushBatch(ctx, makeRequest(0)))
+
+	bs, err := testutil.CollectAndFormat(reg, expfmt.TypeTextPlain, "pyroscope_distributor_push_batch_series")
+	require.NoError(t, err)
+
+	got := regexp.MustCompile(`pyroscope_distributor_push_batch_series_(sum|count).*`).
+		FindAllString(string(bs), -1)
+	assert.Equal(t, []string{
+		`pyroscope_distributor_push_batch_series_sum{tenant="user-1"} 4`,
+		`pyroscope_distributor_push_batch_series_count{tenant="user-1"} 2`,
+	}, got)
 }
 
 func testProfile(t int64) *profilev1.Profile {
