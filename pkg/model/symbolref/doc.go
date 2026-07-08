@@ -13,8 +13,8 @@
 // partitioning (resolved vs. unresolved vs. the truncation "other"
 // sentinel), merge-time ref rebasing, marshal-time compaction and
 // ordering, deferred-truncation bookkeeping, grouping unresolved
-// references into per-build-ID resolution jobs, and rebuilding/truncating
-// the final resolved tree.
+// references by binary for resolution, and rebuilding/truncating the final
+// resolved tree.
 //
 // Does NOT own: the generic tree node/marshal format (pkg/model's Tree,
 // reused unchanged), building per-dataset trees from block data

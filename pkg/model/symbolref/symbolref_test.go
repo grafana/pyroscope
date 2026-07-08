@@ -1,9 +1,5 @@
 package symbolref_test
 
-// Jobs and Rebuild are not implemented in this package yet; tests exercising
-// them, and the parts of the tests below that would need them, are deferred
-// to a follow-up change.
-
 import (
 	"cmp"
 	"fmt"
@@ -86,6 +82,31 @@ func buildPartial(build func(*symbolref.Table) *model.LocationRefNameTree) testP
 	pb := new(queryv1.SymbolRefTable)
 	rb.Build(pb)
 	return testPartial{tree: treeBytes, pb: pb}
+}
+
+// absorbPlainTree unmarshals a plain FunctionNameTree and re-inserts every
+// stack into a LocationRefNameTree via dst.InternName. It maps
+// model.OtherFunctionName to model.OtherLocationRef directly rather than
+// through InternName, since both are the truncation sentinel in their
+// respective node-name spaces.
+func absorbPlainTree(t *testing.T, dst *symbolref.Table, plainTreeBytes []byte) *model.LocationRefNameTree {
+	t.Helper()
+	plain, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](plainTreeBytes)
+	require.NoError(t, err)
+	absorbed := new(model.LocationRefNameTree)
+	plain.IterateStacks(func(_ model.FunctionName, self int64, stack []model.FunctionName) {
+		slices.Reverse(stack)
+		refs := make([]model.LocationRefName, len(stack))
+		for i, n := range stack {
+			if n == model.OtherFunctionName {
+				refs[i] = model.OtherLocationRef
+				continue
+			}
+			refs[i] = dst.InternName(string(n))
+		}
+		absorbed.InsertStack(self, refs...)
+	})
+	return absorbed
 }
 
 // TestInternIdempotencyAndDedup verifies InternName and InternUnresolved are
@@ -375,9 +396,8 @@ func TestNegativeRefPassthrough(t *testing.T) {
 	require.Equal(t, model.OtherLocationRef, remap(model.OtherLocationRef))
 }
 
-// TestEmptyTable verifies a fresh Table and its ResultBuilder behave safely
-// with nothing interned. Jobs and Rebuild are not implemented in this
-// package yet, so their behavior on an empty table is not covered here.
+// TestEmptyTable verifies a fresh Table, its ResultBuilder,
+// UnresolvedBinaries, and Rebuild all behave safely with nothing interned.
 func TestEmptyTable(t *testing.T) {
 	table := symbolref.NewTable()
 	require.False(t, table.HasUnresolved())
@@ -397,6 +417,13 @@ func TestEmptyTable(t *testing.T) {
 	require.Empty(t, pb.GetBinaryNames())
 	require.Empty(t, pb.GetUnresolvedBuildId())
 	require.Empty(t, pb.GetUnresolvedAddress())
+
+	require.Empty(t, symbolref.UnresolvedBinaries(pb))
+
+	emptyTreeBytes := new(model.LocationRefNameTree).Bytes(0, nil)
+	rebuilt, err := symbolref.Rebuild(emptyTreeBytes, pb, func(string, uint64) []symbolref.Frame { return nil }, 0)
+	require.NoError(t, err)
+	require.Empty(t, rebuilt)
 }
 
 // TestOnlyResolvedTable verifies a table built purely from InternName calls
@@ -491,10 +518,9 @@ func TestAddRemapIsTotal(t *testing.T) {
 
 // TestPlainFunctionNameAbsorption verifies a plain FunctionName-tree partial
 // (as an old backend, or a fully-symbolized dataset, would produce) can be
-// absorbed into the symbol-ref space via InternName and merged alongside a
-// genuine unresolved partial without sample loss. The Rebuild-dependent
-// assertion (that the absorbed samples also survive a final rebuild) is
-// deferred: Rebuild is not implemented in this package yet.
+// absorbed into the symbol-ref space via InternName, merged alongside a
+// genuine unresolved partial, resolved, and rebuilt — with no sample loss
+// or misattribution across the FunctionName/LocationRefName shape boundary.
 func TestPlainFunctionNameAbsorption(t *testing.T) {
 	plainTree := new(model.FunctionNameTree)
 	plainTree.InsertStack(7, model.FunctionName("main"), model.FunctionName("plainFn"))
@@ -512,21 +538,7 @@ func TestPlainFunctionNameAbsorption(t *testing.T) {
 
 	dst := symbolref.NewTable()
 	merger := model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
-
-	// Unmarshal the plain partial and re-insert every stack into a
-	// LocationRefNameTree via InternName.
-	plain, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](plainTreeBytes)
-	require.NoError(t, err)
-	absorbed := new(model.LocationRefNameTree)
-	plain.IterateStacks(func(_ model.FunctionName, self int64, stack []model.FunctionName) {
-		slices.Reverse(stack)
-		refs := make([]model.LocationRefName, len(stack))
-		for i, n := range stack {
-			refs[i] = dst.InternName(string(n))
-		}
-		absorbed.InsertStack(self, refs...)
-	})
-	merger.MergeTree(absorbed)
+	merger.MergeTree(absorbPlainTree(t, dst, plainTreeBytes))
 
 	remap, err := dst.Add(refPB)
 	require.NoError(t, err)
@@ -535,12 +547,27 @@ func TestPlainFunctionNameAbsorption(t *testing.T) {
 	require.True(t, dst.HasUnresolved())
 
 	rb := dst.ResultBuilder()
-	_, mergedWireTree := marshalWire(t, merger.Tree(), rb)
+	mergedTreeBytes, mergedWireTree := marshalWire(t, merger.Tree(), rb)
 	mergedPB := new(queryv1.SymbolRefTable)
 	rb.Build(mergedPB)
 
 	stacks := stacksByIdentity(t, mergedWireTree, mergedPB)
 	require.Equal(t, int64(7), stacks["name:main/name:plainFn"], "partial A's stack must survive absorption with its original self value")
+
+	resolve := func(buildID string, addr uint64) []symbolref.Frame {
+		require.Equal(t, "buildB", buildID)
+		require.Equal(t, uint64(0x9000), addr)
+		return []symbolref.Frame{{Name: "resolved_b"}}
+	}
+	rebuiltBytes, err := symbolref.Rebuild(mergedTreeBytes, mergedPB, resolve, 0)
+	require.NoError(t, err)
+
+	rebuiltTree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](rebuiltBytes)
+	require.NoError(t, err)
+
+	rebuiltStacks := functionStacks(t, rebuiltTree)
+	require.Equal(t, int64(7), rebuiltStacks["main/plainFn"], "partial A's stack must survive the final rebuild")
+	require.Equal(t, int64(4), rebuiltStacks["main/resolved_b"], "partial B's stack must resolve correctly in the final rebuild")
 }
 
 // Wire refs must decode to the right SymbolRefTable rows regardless of
