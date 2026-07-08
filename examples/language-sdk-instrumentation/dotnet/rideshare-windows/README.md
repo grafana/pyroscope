@@ -22,7 +22,18 @@ two compose files:
 
 ## Run it
 
-1. Start the server half on the Linux engine:
+Two supported setups, differing only in where the two Docker engines come from.
+Either way, the first build pulls Windows base images, which are considerably
+larger than Linux ones — expect the first `docker compose up --build` to take a
+while.
+
+### With Docker Desktop
+
+The defaults are tuned for Docker Desktop: images use `ltsc2022` bases (which
+run on any host under the default Hyper-V isolation) and the apps upload to
+`host.docker.internal`, which Docker Desktop provides.
+
+1. In **Linux containers** mode, start the server half:
 
    ```powershell
    docker compose -f docker-compose.server.yml up -d
@@ -31,7 +42,7 @@ two compose files:
 2. Switch Docker Desktop to **Windows containers** (system tray → "Switch to
    Windows containers..."). The Linux containers keep running.
 
-3. Start the app half on the Windows engine:
+3. Start the app half:
 
    ```powershell
    docker compose up --build
@@ -40,38 +51,59 @@ two compose files:
 4. Open Grafana at http://localhost:3000, go to Drilldown → Profiles, and look
    for `rideshare.dotnet.windows.app`.
 
-The first build pulls Windows base images, which are considerably larger than
-Linux ones — expect the first `docker compose up --build` to take a while.
+### On Windows Server, no Docker Desktop
 
-### Windows base image version
+Verified on Windows Server 2025 with the [static docker-ce
+engine](https://learn.microsoft.com/en-us/virtualization/windowscontainers/quick-start/set-up-environment)
+for Windows containers and Docker inside a WSL2 distro for the Linux half.
+Three things differ from Docker Desktop: process isolation needs
+host-matching image bases, `host.docker.internal` does not exist, and ports
+published inside WSL need a forward to be reachable from Windows containers.
 
-The images default to `ltsc2022` bases, which run everywhere under Docker
-Desktop (Hyper-V isolation). On a Windows Server host with process isolation
-the base must match the host version — the plain multi-arch dotnet tags do not
-even resolve there. On Server 2025:
+Run everything as the user that registered the WSL distro — from another
+account (for example an SSM session, which runs as SYSTEM) `wsl` fails with
+"There is no distribution with the supplied name".
 
-```powershell
-$env:WINDOWS_BASE_TAG = "nanoserver-ltsc2025"; docker compose up --build
-```
+First, keep WSL alive for the whole demo: WSL shuts down seconds after its
+last client exits, taking the Linux containers with it. Open a separate
+terminal, run `wsl -d Ubuntu` (your distro name — see `wsl --list`), and leave
+it open.
 
-### If `host.docker.internal` does not resolve
-
-The app containers default to `http://host.docker.internal:4040`, which Docker
-Desktop provides. On a plain Windows Server docker engine (no Docker Desktop),
-point them at the host's primary IP instead — note that the gateway IP of a
-*different* Docker network won't route from the compose network:
-
-```powershell
-$env:PYROSCOPE_SERVER_ADDRESS = "http://<host-primary-ip>:4040"; docker compose up --build
-```
-
-And if the Linux half runs inside WSL2 (rather than Docker Desktop), its
-published ports are only visible inside WSL — forward the host port to it:
+Then, from this directory in an elevated PowerShell:
 
 ```powershell
-netsh interface portproxy add v4tov4 listenport=4040 listenaddress=0.0.0.0 connectaddress=<wsl-ip> connectport=4040
+# the server half, on the Linux engine inside WSL
+$wslRepo = ((Get-Location).Path -replace '^C:', '/mnt/c') -replace '\\', '/'
+wsl -d Ubuntu -u root -- docker compose -f $wslRepo/docker-compose.server.yml up -d
+
+# allow inbound 4040 (once)
 New-NetFirewallRule -DisplayName pyroscope-4040 -Direction Inbound -Protocol TCP -LocalPort 4040 -Action Allow
+
+# forward host:4040 to WSL, where the Linux engine published it
+# (the WSL IP changes when WSL restarts - re-run these two lines after one)
+$wslIp = (wsl -d Ubuntu -u root -- hostname -I).Trim().Split(' ')[0]
+netsh interface portproxy add v4tov4 listenport=4040 listenaddress=0.0.0.0 connectaddress=$wslIp connectport=4040
+
+# the app half, on the Windows engine:
+# - under process isolation the image base must match the host (Server 2025 below);
+#   the plain multi-arch dotnet tags do not even resolve there, hence explicit tags
+# - containers reach the host by its primary IP; note that the gateway IP of a
+#   *different* Docker network does not route from the compose network
+$env:WINDOWS_BASE_TAG = "nanoserver-ltsc2025"
+$hostIp = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway }).IPv4Address.IPAddress | Select-Object -First 1
+$env:PYROSCOPE_SERVER_ADDRESS = "http://${hostIp}:4040"
+docker compose up -d --build
 ```
+
+Verify profiles are arriving (Pyroscope takes ~45 s to report ready):
+
+```powershell
+curl.exe -s -X POST -H 'Content-Type: application/json' -d '{"name":"service_name"}' http://localhost:4040/querier.v1.QuerierService/LabelValues
+# {"names":["pyroscope","rideshare.dotnet.windows.app"]}
+```
+
+Grafana is reachable at `http://<wsl-ip>:3000` (or forward port 3000 the same
+way as 4040).
 
 ## Run natively (no containers)
 
