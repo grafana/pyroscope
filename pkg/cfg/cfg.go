@@ -21,7 +21,7 @@ type Cloneable interface {
 	Clone() flagext.Registerer
 }
 
-type FlagSetRecorder interface {
+type SetFlagRecorder interface {
 	RecordSetFlag(name string)
 }
 

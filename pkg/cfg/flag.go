@@ -41,7 +41,7 @@ func dFlags(fs *flag.FlagSet, args []string) Source {
 			return err
 		}
 
-		if recorder, ok := dst.(FlagSetRecorder); ok {
+		if recorder, ok := dst.(SetFlagRecorder); ok {
 			fs.Visit(func(f *flag.Flag) {
 				recorder.RecordSetFlag(f.Name)
 			})
