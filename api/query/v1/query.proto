@@ -221,6 +221,8 @@ message TreeQuery {
   repeated string profile_id_selector = 4;
   bool full_symbols = 5;
   repeated string trace_id_selector = 6;
+  // symbol_refs and full_symbols are mutually exclusive.
+  bool symbol_refs = 7;
 }
 
 message TreeSymbols {
@@ -234,10 +236,22 @@ message TreeSymbols {
   repeated uint64 string_hashes = 8;
 }
 
+message SymbolRefTable {
+  // Resolved refs: 0 <= ref < len(names); names[ref] is the frame name.
+  repeated string names = 1;
+  // Unresolved refs: i = ref - len(names);
+  //   build_ids[unresolved_build_id[i]], unresolved_address[i].
+  repeated string build_ids = 2; // distinct, each exactly once
+  repeated string binary_names = 3; // parallel to build_ids; fallback display
+  repeated uint32 unresolved_build_id = 4; // per unresolved entry
+  repeated uint64 unresolved_address = 5; // parallel to unresolved_build_id
+}
+
 message TreeReport {
   TreeQuery query = 1;
   bytes tree = 2;
   optional TreeSymbols symbols = 3;
+  optional SymbolRefTable symbol_refs = 4;
 }
 
 message PprofQuery {

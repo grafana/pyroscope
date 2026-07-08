@@ -536,6 +536,7 @@ func (m *TreeQuery) CloneVT() *TreeQuery {
 	r := new(TreeQuery)
 	r.MaxNodes = m.MaxNodes
 	r.FullSymbols = m.FullSymbols
+	r.SymbolRefs = m.SymbolRefs
 	if rhs := m.SpanSelector; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -645,6 +646,47 @@ func (m *TreeSymbols) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *SymbolRefTable) CloneVT() *SymbolRefTable {
+	if m == nil {
+		return (*SymbolRefTable)(nil)
+	}
+	r := new(SymbolRefTable)
+	if rhs := m.Names; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Names = tmpContainer
+	}
+	if rhs := m.BuildIds; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.BuildIds = tmpContainer
+	}
+	if rhs := m.BinaryNames; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.BinaryNames = tmpContainer
+	}
+	if rhs := m.UnresolvedBuildId; rhs != nil {
+		tmpContainer := make([]uint32, len(rhs))
+		copy(tmpContainer, rhs)
+		r.UnresolvedBuildId = tmpContainer
+	}
+	if rhs := m.UnresolvedAddress; rhs != nil {
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.UnresolvedAddress = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SymbolRefTable) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *TreeReport) CloneVT() *TreeReport {
 	if m == nil {
 		return (*TreeReport)(nil)
@@ -652,6 +694,7 @@ func (m *TreeReport) CloneVT() *TreeReport {
 	r := new(TreeReport)
 	r.Query = m.Query.CloneVT()
 	r.Symbols = m.Symbols.CloneVT()
+	r.SymbolRefs = m.SymbolRefs.CloneVT()
 	if rhs := m.Tree; rhs != nil {
 		tmpBytes := make([]byte, len(rhs))
 		copy(tmpBytes, rhs)
@@ -1755,6 +1798,9 @@ func (this *TreeQuery) EqualVT(that *TreeQuery) bool {
 			return false
 		}
 	}
+	if this.SymbolRefs != that.SymbolRefs {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1889,6 +1935,67 @@ func (this *TreeSymbols) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *SymbolRefTable) EqualVT(that *SymbolRefTable) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Names) != len(that.Names) {
+		return false
+	}
+	for i, vx := range this.Names {
+		vy := that.Names[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.BuildIds) != len(that.BuildIds) {
+		return false
+	}
+	for i, vx := range this.BuildIds {
+		vy := that.BuildIds[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.BinaryNames) != len(that.BinaryNames) {
+		return false
+	}
+	for i, vx := range this.BinaryNames {
+		vy := that.BinaryNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.UnresolvedBuildId) != len(that.UnresolvedBuildId) {
+		return false
+	}
+	for i, vx := range this.UnresolvedBuildId {
+		vy := that.UnresolvedBuildId[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.UnresolvedAddress) != len(that.UnresolvedAddress) {
+		return false
+	}
+	for i, vx := range this.UnresolvedAddress {
+		vy := that.UnresolvedAddress[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SymbolRefTable) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SymbolRefTable)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *TreeReport) EqualVT(that *TreeReport) bool {
 	if this == that {
 		return true
@@ -1902,6 +2009,9 @@ func (this *TreeReport) EqualVT(that *TreeReport) bool {
 		return false
 	}
 	if !this.Symbols.EqualVT(that.Symbols) {
+		return false
+	}
+	if !this.SymbolRefs.EqualVT(that.SymbolRefs) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -3894,6 +4004,16 @@ func (m *TreeQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.SymbolRefs {
+		i--
+		if m.SymbolRefs {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x38
+	}
 	if len(m.TraceIdSelector) > 0 {
 		for iNdEx := len(m.TraceIdSelector) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.TraceIdSelector[iNdEx])
@@ -4155,6 +4275,106 @@ func (m *TreeSymbols) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *SymbolRefTable) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SymbolRefTable) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SymbolRefTable) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.UnresolvedAddress) > 0 {
+		var pksize2 int
+		for _, num := range m.UnresolvedAddress {
+			pksize2 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num := range m.UnresolvedAddress {
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.UnresolvedBuildId) > 0 {
+		var pksize4 int
+		for _, num := range m.UnresolvedBuildId {
+			pksize4 += protohelpers.SizeOfVarint(uint64(num))
+		}
+		i -= pksize4
+		j3 := i
+		for _, num := range m.UnresolvedBuildId {
+			for num >= 1<<7 {
+				dAtA[j3] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j3++
+			}
+			dAtA[j3] = uint8(num)
+			j3++
+		}
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(pksize4))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.BinaryNames) > 0 {
+		for iNdEx := len(m.BinaryNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BinaryNames[iNdEx])
+			copy(dAtA[i:], m.BinaryNames[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.BinaryNames[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.BuildIds) > 0 {
+		for iNdEx := len(m.BuildIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BuildIds[iNdEx])
+			copy(dAtA[i:], m.BuildIds[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.BuildIds[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Names) > 0 {
+		for iNdEx := len(m.Names) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Names[iNdEx])
+			copy(dAtA[i:], m.Names[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Names[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *TreeReport) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -4184,6 +4404,16 @@ func (m *TreeReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.SymbolRefs != nil {
+		size, err := m.SymbolRefs.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
 	}
 	if m.Symbols != nil {
 		size, err := m.Symbols.MarshalToSizedBufferVT(dAtA[:i])
@@ -5526,6 +5756,9 @@ func (m *TreeQuery) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if m.SymbolRefs {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -5610,6 +5843,48 @@ func (m *TreeSymbols) SizeVT() (n int) {
 	return n
 }
 
+func (m *SymbolRefTable) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.BuildIds) > 0 {
+		for _, s := range m.BuildIds {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.BinaryNames) > 0 {
+		for _, s := range m.BinaryNames {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.UnresolvedBuildId) > 0 {
+		l = 0
+		for _, e := range m.UnresolvedBuildId {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	if len(m.UnresolvedAddress) > 0 {
+		l = 0
+		for _, e := range m.UnresolvedAddress {
+			l += protohelpers.SizeOfVarint(uint64(e))
+		}
+		n += 1 + protohelpers.SizeOfVarint(uint64(l)) + l
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *TreeReport) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -5626,6 +5901,10 @@ func (m *TreeReport) SizeVT() (n int) {
 	}
 	if m.Symbols != nil {
 		l = m.Symbols.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.SymbolRefs != nil {
+		l = m.SymbolRefs.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -9345,6 +9624,26 @@ func (m *TreeQuery) UnmarshalVT(dAtA []byte) error {
 			}
 			m.TraceIdSelector = append(m.TraceIdSelector, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolRefs", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.SymbolRefs = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -9880,6 +10179,305 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *SymbolRefTable) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SymbolRefTable: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SymbolRefTable: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BuildIds", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BuildIds = append(m.BuildIds, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BinaryNames", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BinaryNames = append(m.BinaryNames, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType == 0 {
+				var v uint32
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint32(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.UnresolvedBuildId = append(m.UnresolvedBuildId, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.UnresolvedBuildId) == 0 {
+					m.UnresolvedBuildId = make([]uint32, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint32
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint32(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.UnresolvedBuildId = append(m.UnresolvedBuildId, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field UnresolvedBuildId", wireType)
+			}
+		case 5:
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.UnresolvedAddress = append(m.UnresolvedAddress, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protohelpers.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return protohelpers.ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.UnresolvedAddress) == 0 {
+					m.UnresolvedAddress = make([]uint64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return protohelpers.ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.UnresolvedAddress = append(m.UnresolvedAddress, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field UnresolvedAddress", wireType)
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *TreeReport) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -10012,6 +10610,42 @@ func (m *TreeReport) UnmarshalVT(dAtA []byte) error {
 				m.Symbols = &TreeSymbols{}
 			}
 			if err := m.Symbols.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolRefs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SymbolRefs == nil {
+				m.SymbolRefs = &SymbolRefTable{}
+			}
+			if err := m.SymbolRefs.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

@@ -1205,6 +1205,46 @@ components:
           title: series_labels
       title: SeriesLabelsReport
       additionalProperties: false
+    query.v1.SymbolRefTable:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+          description: 'Resolved refs: 0 <= ref < len(names); names[ref] is the frame name.'
+        buildIds:
+          type: array
+          items:
+            type: string
+          title: build_ids
+          description: |-
+            Unresolved refs: i = ref - len(names);
+               build_ids[unresolved_build_id[i]], unresolved_address[i]. distinct, each exactly once
+        binaryNames:
+          type: array
+          items:
+            type: string
+          title: binary_names
+          description: parallel to build_ids; fallback display
+        unresolvedBuildId:
+          type: array
+          items:
+            type: integer
+          title: unresolved_build_id
+          description: per unresolved entry
+        unresolvedAddress:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: unresolved_address
+          description: parallel to unresolved_build_id
+      title: SymbolRefTable
+      additionalProperties: false
     query.v1.TimeSeriesCompactReport:
       type: object
       properties:
@@ -1288,6 +1328,10 @@ components:
           items:
             type: string
           title: trace_id_selector
+        symbolRefs:
+          type: boolean
+          title: symbol_refs
+          description: symbol_refs and full_symbols are mutually exclusive.
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:
@@ -1304,6 +1348,10 @@ components:
           title: symbols
           nullable: true
           $ref: '#/components/schemas/query.v1.TreeSymbols'
+        symbolRefs:
+          title: symbol_refs
+          nullable: true
+          $ref: '#/components/schemas/query.v1.SymbolRefTable'
       title: TreeReport
       additionalProperties: false
     query.v1.TreeSymbols:
