@@ -76,8 +76,7 @@ The Helm chart version and Pyroscope application version are **separate and won'
 
 ## Backport
 
-A PR to be backported must have the appropriate `backport release/vX.Y` label(s) AND one of [these expected labels](https://github.com/grafana/grafana-github-actions/blob/7d2b4af1112747f82e12adfbc00be44fecb3b616/backport/backport.ts#L16):
-`['type/docs', 'type/bug', 'product-approved', 'type/ci']`. Note that these labels must be present before the PR is merged.
+A PR to be backported must have the appropriate `backport release/vX.Y` label(s). Backport PRs are created automatically when the labeled PR is merged, or when the label is added to an already-merged PR.
 
 [Example backport PR](https://github.com/grafana/pyroscope/pull/4352)
 
