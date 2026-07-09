@@ -41,10 +41,13 @@ type MockLimits struct {
 	MaxAsyncQueryConcurrencyValue int
 
 	IngestionBodyLimitBytesValue int64
+
+	PushMaxConcurrencyValue int
 }
 
 func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.QuerySplitDurationValue }
 func (m MockLimits) MaxQueryParallelism(string) int                 { return m.MaxQueryParallelismValue }
+func (m MockLimits) PushMaxConcurrency(string) int                  { return m.PushMaxConcurrencyValue }
 func (m MockLimits) MaxQueryLength(tenantID string) time.Duration   { return m.MaxQueryLengthValue }
 func (m MockLimits) MaxQueryLookback(tenantID string) time.Duration { return m.MaxQueryLookbackValue }
 func (m MockLimits) QueryAnalysisEnabled(tenantID string) bool      { return m.QueryAnalysisEnabledValue }

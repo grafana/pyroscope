@@ -137,6 +137,7 @@ type Limits interface {
 	IngestionBodyLimitBytes(tenantID string) int64
 	DistributorSampling(tenantID string) *sampling.Config
 	IngestionTenantShardSize(tenantID string) int
+	PushMaxConcurrency(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
 	MaxLabelNamesPerSeries(tenantID string) int
@@ -435,11 +436,18 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 
 	res := multierror.New()
 	errorsMutex := new(sync.Mutex)
-	wg := new(sync.WaitGroup)
+	// Bound the per-series fan-out. We use errgroup purely as a limited
+	// WaitGroup: the closures always return nil (errors are funneled into the
+	// multierror below), so a plain Group never cancels siblings and every
+	// series is attempted. The per-tenant limit <= 0 leaves it unbounded (legacy
+	// behavior); SetLimit(0) would block every Go call, so we skip SetLimit
+	// entirely rather than pass a non-positive limit.
+	g := new(errgroup.Group)
+	if limit := d.limits.PushMaxConcurrency(tenantID); limit > 0 {
+		g.SetLimit(limit)
+	}
 	for index, s := range req.Series {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		g.Go(func() error {
 			itErr := util.RecoverPanic(func() error {
 				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration)
 			})()
@@ -450,9 +458,10 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 			errorsMutex.Lock()
 			res.Add(itErr)
 			errorsMutex.Unlock()
-		}()
+			return nil
+		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 	return res.Err()
 }
 
