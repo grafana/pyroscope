@@ -1619,6 +1619,10 @@ Usage of ./pyroscope:
     	[experimental] Enable symbolization for tenants by default.
   -symbolizer.max-debuginfod-concurrency int
     	Maximum number of concurrent symbolization requests to debuginfod server. (default 10)
+  -symbolizer.resolve-timeout duration
+    	Maximum time the query frontend waits to resolve a single binary's unresolved addresses for a symbol-ref tree query, before falling back to binary!0xaddr frames for that binary. (default 20s)
+  -symbolizer.symbol-ref-trees-enabled
+    	[experimental] Enable symbol-aware tree references: tree queries are executed natively and symbolized by the frontend after the final merge, instead of being rewritten to pprof. Requires a symbolizer to be configured.
   -target comma-separated-list-of-strings
     	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tenant-settings.recording-rules.enabled
