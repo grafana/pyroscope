@@ -14,35 +14,35 @@ Usage of ./pyroscope:
   -blocks-storage.bucket-store.sync-dir string
     	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
   -compactor.blocks-retention-period duration
-    	Delete blocks containing samples older than the specified retention period. 0 to disable.
+    	[v1 storage only] Delete blocks containing samples older than the specified retention period. 0 to disable.
   -compactor.compactor-downsampler-enabled
-    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true. (default true)
+    	[v1 storage only] If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. Note: This set the default for the teanant overrides, in order to be effective it also requires compactor.downsampler-enabled to be set to true. (default true)
   -compactor.compactor-tenant-shard-size int
-    	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
+    	[v1 storage only] Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
-    	Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "./data-compactor")
+    	[v1 storage only] Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "./data-compactor")
   -compactor.first-level-compaction-wait-period duration
-    	How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage. (default 25m0s)
+    	[v1 storage only] How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage. (default 25m0s)
   -compactor.partial-block-deletion-delay duration
-    	If a partial block (unfinished block without meta.json file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to disable. (default 1d)
+    	[v1 storage only] If a partial block (unfinished block without meta.json file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to disable. (default 1d)
   -compactor.ring.consul.hostname string
-    	Hostname and port of Consul. (default "localhost:8500")
+    	[v1 storage only] Hostname and port of Consul. (default "localhost:8500")
   -compactor.ring.etcd.endpoints string
-    	The etcd endpoints to connect to.
+    	[v1 storage only] The etcd endpoints to connect to.
   -compactor.ring.etcd.password string
-    	Etcd password.
+    	[v1 storage only] Etcd password.
   -compactor.ring.etcd.username string
-    	Etcd username.
+    	[v1 storage only] Etcd username.
   -compactor.ring.instance-interface-names string
-    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+    	[v1 storage only] List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -compactor.ring.store string
-    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+    	[v1 storage only] Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -compactor.split-and-merge-shards int
-    	The number of shards to use when splitting blocks. 0 to disable splitting.
+    	[v1 storage only] The number of shards to use when splitting blocks. 0 to disable splitting.
   -compactor.split-and-merge-stage-size int
-    	Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.
+    	[v1 storage only] Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.
   -compactor.split-groups int
-    	Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
+    	[v1 storage only] Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
   -config.expand-env
     	Expands ${var} in config according to the values of the environment variables.
   -config.file string
@@ -108,15 +108,15 @@ Usage of ./pyroscope:
   -help-all
     	Print help, also including advanced and experimental parameters.
   -ingester.availability-zone string
-    	The availability zone where this instance is running.
+    	[v1 storage only] The availability zone where this instance is running.
   -ingester.lifecycler.interface string
-    	Name of network interface to read address from. (default [<private network interfaces>])
+    	[v1 storage only] Name of network interface to read address from. (default [<private network interfaces>])
   -ingester.max-global-series-per-tenant int
-    	Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change. (default 5000)
+    	[v1 storage only] Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change. (default 5000)
   -ingester.max-local-series-per-tenant int
-    	Maximum number of active series of profiles per tenant, per ingester. 0 to disable.
+    	[v1 storage only] Maximum number of active series of profiles per tenant, per ingester. 0 to disable.
   -ingester.tokens-file-path string
-    	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
+    	[v1 storage only] File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
   -log.format string
     	Output log messages in the given format. Valid formats: [logfmt, json] (default "logfmt")
   -log.level value
@@ -154,21 +154,21 @@ Usage of ./pyroscope:
   -overrides-exporter.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -pyroscopedb.data-path string
-    	Directory used for local storage. (default "./data")
+    	[v1 storage only] Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
-    	Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
+    	[v1 storage only] Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
   -pyroscopedb.retention-policy-disable
-    	Disable retention policy enforcement
+    	[v1 storage only] Disable retention policy enforcement
   -pyroscopedb.retention-policy-enforcement-interval duration
-    	How often to enforce disk retention (default 5m0s)
+    	[v1 storage only] How often to enforce disk retention (default 5m0s)
   -pyroscopedb.retention-policy-min-disk-available-percentage float
-    	Which percentage of free disk space to keep (default 0.05)
+    	[v1 storage only] Which percentage of free disk space to keep (default 0.05)
   -pyroscopedb.retention-policy-min-free-disk-gb uint
-    	How much available disk space to keep in GiB (default 10)
+    	[v1 storage only] How much available disk space to keep in GiB (default 10)
   -pyroscopedb.row-group-target-size uint
-    	How big should a single row group be uncompressed (default 1342177280)
+    	[v1 storage only] How big should a single row group be uncompressed (default 1342177280)
   -pyroscopedb.symbols-partition-label string
-    	Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.
+    	[v1 storage only] Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -querier.health-check-ingesters

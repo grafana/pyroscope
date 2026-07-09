@@ -1076,51 +1076,6 @@ subjects:
     name: pyroscope-dev-alloy
     namespace: default
 ---
-# Source: pyroscope/templates/rbac-discovery.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: pyroscope-dev-discovery
-  labels:
-    helm.sh/chart: pyroscope-2.1.0
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.1.0"
-    app.kubernetes.io/managed-by: Helm
-rules:
-- apiGroups:
-  - ""
-  - discovery.k8s.io
-  resources:
-  - endpointslices
-  - endpoints
-  - services
-  - pods
-  verbs:
-  - get
-  - watch
-  - list
----
-# Source: pyroscope/templates/rbac-discovery.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: pyroscope-dev-discovery
-  labels:
-    helm.sh/chart: pyroscope-2.1.0
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.1.0"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: pyroscope-dev-discovery
-subjects:
-- kind: ServiceAccount
-  name: pyroscope-dev
-  namespace: default
----
 # Source: pyroscope/charts/alloy/templates/cluster_service.yaml
 apiVersion: v1
 kind: Service
@@ -1226,14 +1181,6 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
-    - port: 9095
-      targetPort: grpc
-      protocol: TCP
-      name: grpc
-    - port: 9099
-      targetPort: raft
-      protocol: TCP
-      name: raft
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1260,15 +1207,6 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
-    - port: 9095
-      targetPort: grpc
-      protocol: TCP
-      name: grpc
-    - port: 9099
-      targetPort: raft
-      protocol: TCP
-      name: raft
-  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1425,16 +1363,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
-            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
-            - "-metastore.data-dir=./data-metastore/data"
-            - "-metastore.raft.dir=./data-metastore/raft"
-            - "-metastore.raft.snapshots-dir=./data-metastore/raft"
-            - "-metastore.raft.bind-address=:9099"
-            - "-metastore.raft.server-id=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
-            - "-metastore.raft.advertise-address=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
-            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.$(PYROSCOPE_METASTORE_SERVICE)"
-            - "-architecture.storage=v2"
+            - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -1442,20 +1372,12 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
-            - name: PYROSCOPE_METASTORE_SERVICE
-              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
-              protocol: TCP
-            - name: grpc
-              containerPort: 9095
-              protocol: TCP
-            - name: raft
-              containerPort: 9099
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -1470,9 +1392,6 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
-            - name: data
-              mountPath: /data-metastore
-              subPath: .metastore
           resources:
             {}
       volumes:

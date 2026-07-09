@@ -45,10 +45,12 @@ GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/ri
 # Add extra arguments to helm commands
 HELM_ARGS =
 
-HELM_FLAGS_V1 :=
-HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
-HELM_FLAGS_V2 := --set architecture.storage.v1=false --set architecture.storage.v2=true
-HELM_FLAGS_V2_MICROSERVICES := $(HELM_FLAGS_V1_MICROSERVICES) $(HELM_FLAGS_V2)
+HELM_FLAGS_V1 := --set architecture.storage.v1=true --set architecture.storage.v2=false
+HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true $(HELM_FLAGS_V1)
+HELM_FLAGS_V1_DEPLOY := $(HELM_FLAGS_V1) --set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
+HELM_FLAGS_V1_MICROSERVICES_DEPLOY := $(HELM_FLAGS_V1_MICROSERVICES) --set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
+HELM_FLAGS_V2 :=
+HELM_FLAGS_V2_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
 
 
 # Local deployment params
@@ -259,8 +261,7 @@ define deploy
 		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/metrics\.scrapeInterval"=15s \
 		--set-string pyroscope.extraEnvVars.JAEGER_AGENT_HOST=pyroscope-monitoring-alloy-receiver \
 		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_TYPE=const \
-		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_PARAM=1 \
-		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
+		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_PARAM=1
 endef
 
 # Function to handle multiarch image build. Depending on the
@@ -483,7 +484,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 
 .PHONY: deploy-v1
 deploy-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1))
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1_DEPLOY))
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
@@ -491,7 +492,7 @@ deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 
 .PHONY: deploy-micro-services-v1
 deploy-micro-services-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES))
+	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES_DEPLOY))
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/kind $(BIN)/helm
