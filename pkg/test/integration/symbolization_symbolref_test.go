@@ -182,6 +182,37 @@ func TestMicroServicesIntegrationV2SymbolRefTrees_Queryless(t *testing.T) {
 	for _, n := range names {
 		assert.NotContains(t, n, "0x", "queryless query must not leave raw addresses unsymbolized: got %q", n)
 	}
+
+	// After L0 compaction rewrites the block symbols, the queryless result
+	// must stay symbolized: compaction deletes the source blocks, so any
+	// address lost in the rewrite is unrecoverable. Age-based batch flushing
+	// is evaluated only when another block arrives at the level, so filler
+	// pushes drive the planner; they carry the same frames and don't change
+	// the expected name set.
+	require.Eventually(t, func() bool {
+		pushProfile(t, tctx, c.PushClient(), buildUnsymbolizedTestProfile(testBuildID), serviceName+"-compaction-filler")
+		n, err := c.CompactionJobsFinished(tctx)
+		return err == nil && n >= 1
+	}, 30*time.Second, time.Second, "no L0 compaction observed")
+
+	queried := false
+	for deadline := time.Now().Add(8 * time.Second); time.Now().Before(deadline); time.Sleep(500 * time.Millisecond) {
+		tree, err := selectMergeStacktracesTree(tctx, t, c, req)
+		if err != nil {
+			t.Logf("query error: %v", err)
+			continue
+		}
+		if tree.Total() == 0 {
+			continue
+		}
+		names = collectNames(tree)
+		require.True(t, containsAll(names, "main", "atoll_b"), "post-compaction queryless names: %v", names)
+		for _, n := range names {
+			require.NotContains(t, n, "0x", "post-compaction fallback frame: %q", n)
+		}
+		queried = true
+	}
+	require.True(t, queried, "no successful queryless query after compaction")
 }
 
 // TestMicroServicesIntegrationV2SymbolRefTrees_SpanFiltered verifies that a
