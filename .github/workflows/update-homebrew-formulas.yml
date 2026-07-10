@@ -1,0 +1,91 @@
+name: update-homebrew-formulas
+
+# Regenerates the Homebrew formulas in grafana/homebrew-pyroscope for a given
+# Pyroscope release tag and opens a PR against the tap. The commit is created
+# through the GitHub API (planetscale/ghcommit-action, as used across Grafana
+# repos), which signs it on behalf of the app — the tap's ruleset requires
+# verified signatures on all branches, so commits pushed with plain git are
+# rejected.
+#
+# Dispatched by the release workflow for `latest` releases, or manually for
+# re-runs (e.g. when a release run failed after publishing).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Pyroscope release tag to generate formulas for (e.g. v2.1.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  update-formulas:
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
+    env:
+      TAP_REPO: grafana/homebrew-pyroscope
+      BRANCH: update-formulas-${{ inputs.tag }}
+    steps:
+      - id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
+        with:
+          github_app: grafana-pyroscope-bot
+      - name: Checkout grafana/homebrew-pyroscope
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: grafana/homebrew-pyroscope
+          token: ${{ steps.get-github-app-token.outputs.token }}
+          persist-credentials: 'false'
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version: stable
+          cache: false
+      - name: Generate formulas
+        env:
+          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+          PYROSCOPE_TAG: ${{ inputs.tag }}
+        run: make generate-formulas
+      - name: Detect formula changes
+        id: changes
+        run: echo "any=$(git status --porcelain -- Formula | grep -q . && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Create branch
+        if: steps.changes.outputs.any == 'true'
+        env:
+          GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+        run: |
+          # (Re)create the branch at the current main head; reset it if a
+          # previous run left it behind.
+          head_oid="$(git rev-parse HEAD)"
+          gh api "repos/${TAP_REPO}/git/refs" --method POST \
+            -f "ref=refs/heads/${BRANCH}" -f "sha=${head_oid}" \
+          || gh api "repos/${TAP_REPO}/git/refs/heads/${BRANCH}" --method PATCH \
+            -f "sha=${head_oid}" -F force=true
+      - name: Commit formula changes
+        if: steps.changes.outputs.any == 'true'
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # v0.2.22
+        with:
+          commit_message: "chore: update formulas to ${{ inputs.tag }}"
+          repo: grafana/homebrew-pyroscope
+          branch: update-formulas-${{ inputs.tag }}
+          file_pattern: "Formula/*.rb"
+        env:
+          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+      - name: Open PR
+        if: steps.changes.outputs.any == 'true'
+        env:
+          GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+          PYROSCOPE_TAG: ${{ inputs.tag }}
+        run: |
+          # The tap's default branch requires reviewed PRs (org ruleset), so we
+          # open a PR for a maintainer to merge instead of pushing to main.
+          existing="$(gh pr list --repo "${TAP_REPO}" --head "${BRANCH}" --state open --json number --jq length)"
+          if [ "${existing}" != "0" ]; then
+            echo "PR for ${BRANCH} already open"
+            exit 0
+          fi
+          gh pr create --repo "${TAP_REPO}" \
+            --base main --head "${BRANCH}" \
+            --title "chore: update formulas to ${PYROSCOPE_TAG}" \
+            --body "Automated formula update for Pyroscope ${PYROSCOPE_TAG}. Review and merge to publish the new version via Homebrew."
