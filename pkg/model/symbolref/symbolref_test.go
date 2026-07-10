@@ -343,7 +343,10 @@ func TestEmptyTable(t *testing.T) {
 
 	pb := new(queryv1.SymbolRefTable)
 	symbolref.NewTable().ResultBuilder().Build(pb)
-	require.Empty(t, pb.GetNames())
+	// Build writes the full name snapshot, which always includes the
+	// reserved ref-0 placeholder, so wire refs stay aligned with
+	// len(pb.Names) no matter which refs a marshaled tree keeps.
+	require.Equal(t, []string{""}, pb.GetNames())
 	require.Empty(t, pb.GetBuildIds())
 	require.Empty(t, pb.GetBinaryNames())
 	require.Empty(t, pb.GetUnresolvedBuildId())
@@ -434,4 +437,34 @@ func TestPlainFunctionNameAbsorption(t *testing.T) {
 
 	stacks := stacksByIdentity(t, mergedWireTree, mergedPB)
 	require.Equal(t, int64(7), stacks["name:main/name:plainFn"], "partial A's stack must survive absorption with its original self value")
+}
+
+// Wire refs must decode to the right SymbolRefTable rows regardless of
+// which refs the marshaled tree keeps: a truncating marshal (or any keep
+// set smaller than the table) must not shift unresolved refs relative to
+// pb.Names, since the wire contract reads unresolved entry i as
+// ref - len(names).
+func TestResultBuilder_wireRefsIndependentOfKeptSet(t *testing.T) {
+	table := symbolref.NewTable()
+	dropped := table.InternName("dropped_by_truncation")
+	kept := table.InternName("kept")
+	droppedU := table.InternUnresolved("build-id-a", "liba.so", 0x10)
+	keptU := table.InternUnresolved("build-id-b", "libb.so", 0x20)
+
+	rb := table.ResultBuilder()
+	keptWire := rb.KeepRef(kept)
+	keptUWire := rb.KeepRef(keptU)
+	pb := new(queryv1.SymbolRefTable)
+	rb.Build(pb)
+
+	require.Less(t, int(keptWire), len(pb.Names))
+	require.Equal(t, "kept", pb.Names[keptWire])
+
+	i := int(keptUWire) - len(pb.Names)
+	require.GreaterOrEqual(t, i, 0, "unresolved wire ref must be >= len(pb.Names)")
+	require.Less(t, i, len(pb.UnresolvedAddress))
+	require.Equal(t, uint64(0x20), pb.UnresolvedAddress[i])
+	require.Equal(t, "build-id-b", pb.BuildIds[pb.UnresolvedBuildId[i]])
+
+	_, _ = dropped, droppedU // interned but never kept: must not shift the wire encoding
 }

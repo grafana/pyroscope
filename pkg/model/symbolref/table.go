@@ -240,19 +240,18 @@ func (c *tableCore) newResultBuilder() *ResultBuilder {
 		binaryNames:      c.binaryNames,
 		unresolvedBI:     c.unresolvedBI,
 		unresolvedAd:     c.unresolvedAd,
-		nameLookup:       make(map[int32]int32),
 		sortedUnresolved: sorted,
 		rank:             rank,
 	}
 }
 
-// ResultBuilder compacts and orders a Table's contents into a
-// queryv1.SymbolRefTable at marshal time. It is built from a point-in-time
-// snapshot of its Table's state, taken under the Table's lock (see
-// tableCore.newResultBuilder); ResultBuilder itself holds no reference back
-// to the Table and takes no lock of its own, so it is not safe for
-// concurrent use — it is meant to be driven single-threaded, once, after
-// every Add/Intern* call on its Table has completed.
+// ResultBuilder encodes a Table's contents into a queryv1.SymbolRefTable at
+// marshal time. It is built from a point-in-time snapshot of its Table's
+// state, taken under the Table's lock (see tableCore.newResultBuilder);
+// ResultBuilder itself holds no reference back to the Table and takes no
+// lock of its own, so it is not safe for concurrent use — it is meant to be
+// driven single-threaded, once, after every Add/Intern* call on its Table
+// has completed.
 type ResultBuilder struct {
 	namesLen int // snapshot of len(names) at construction; the resolved/unresolved dividing line
 
@@ -263,31 +262,28 @@ type ResultBuilder struct {
 	unresolvedBI []int32  // snapshot: build ID index per unresolved entry
 	unresolvedAd []uint64 // snapshot: address per unresolved entry
 
-	nameLookup map[int32]int32 // input name index -> output index, in observation order
-	names      []int32         // ordered list of kept name indices
-
 	sortedUnresolved []int32 // permutation of [0, len(unresolvedBI)), sorted by (buildID, address)
 	rank             []int32 // rank[idx] = position of idx within sortedUnresolved
 }
 
-// KeepRef marks ref as reachable and returns its compacted wire-encoding
-// ref, for use as the keepName callback to Tree.Bytes/MarshalTruncate. ref
-// is Table's internal encoding (resolved: >= 0; model.OtherLocationRef
-// (-1): passed through unchanged; unresolved: <= -2, see
-// tableCore.unresolvedRef).
+// KeepRef returns ref's wire encoding, for use as the keepName callback to
+// Tree.Bytes/MarshalTruncate. ref is Table's internal encoding (resolved:
+// >= 0; model.OtherLocationRef (-1): passed through unchanged; unresolved:
+// <= -2, see tableCore.unresolvedRef).
+//
+// Wire refs are assigned from the snapshot alone — resolved refs keep their
+// table index, unresolved refs are offset by the snapshot's name count —
+// and Build writes the full snapshot, so the encoding does not depend on
+// which refs the marshaled tree keeps. Unresolved wire refs must be final
+// the moment they are first returned, while the kept set is still unknown,
+// so a kept-set-compacted encoding could not be assigned in this single
+// pass without breaking the (buildID, address) wire order.
 func (rb *ResultBuilder) KeepRef(ref model.LocationRefName) model.LocationRefName {
 	switch {
 	case ref == model.OtherLocationRef:
 		return ref
 	case ref >= 0:
-		idx := int32(ref)
-		if out, ok := rb.nameLookup[idx]; ok {
-			return model.LocationRefName(out)
-		}
-		out := int32(len(rb.names))
-		rb.nameLookup[idx] = out
-		rb.names = append(rb.names, idx)
-		return model.LocationRefName(out)
+		return ref
 	default:
 		idx := -2 - int(ref)
 		return model.LocationRefName(rb.namesLen + int(rb.rank[idx]))
@@ -295,20 +291,20 @@ func (rb *ResultBuilder) KeepRef(ref model.LocationRefName) model.LocationRefNam
 }
 
 // Build writes pb.Names, pb.BuildIds, pb.BinaryNames, pb.UnresolvedBuildId
-// and pb.UnresolvedAddress from the refs kept by KeepRef, allocating a new
-// queryv1.SymbolRefTable when pb == nil. Resolved names are written in the
-// order KeepRef first observed them; unresolved entries are sorted by
-// (buildID, address), which is what makes the unresolved side of the wire
-// encoding independent of intern or merge arrival order.
+// and pb.UnresolvedAddress from the snapshot, allocating a new
+// queryv1.SymbolRefTable when pb == nil. Every interned name is written, in
+// intern order, so resolved wire refs are the table's own name indices and
+// len(pb.Names) always equals the offset KeepRef applies to unresolved
+// refs; unresolved entries are sorted by (buildID, address), which is what
+// makes the unresolved side of the wire encoding independent of intern or
+// merge arrival order.
 func (rb *ResultBuilder) Build(pb *queryv1.SymbolRefTable) {
 	if pb == nil {
 		pb = &queryv1.SymbolRefTable{}
 	}
 
-	pb.Names = make([]string, len(rb.names))
-	for out, idx := range rb.names {
-		pb.Names[out] = rb.namesSl[idx]
-	}
+	pb.Names = make([]string, rb.namesLen)
+	copy(pb.Names, rb.namesSl)
 
 	n := len(rb.sortedUnresolved)
 	pb.BuildIds = make([]string, 0, n)
