@@ -35,7 +35,9 @@ Make sure each release note has full links to the relevant pull requests.
 
 ### Homebrew
 
-For releases that publish the `latest` tag (`IMAGE_PUBLISH_LATEST=true`), the release workflow regenerates the Homebrew formulas and opens a pull request against [grafana/homebrew-pyroscope](https://github.com/grafana/homebrew-pyroscope). The tap's `main` branch requires reviewed PRs (org ruleset), so the workflow cannot push to it directly. **A maintainer must review and merge that PR to publish the new version via `brew`.** This step does not block the rest of the release; the binaries, container images, and GitHub release are published regardless.
+For releases that publish the `latest` tag (`IMAGE_PUBLISH_LATEST=true`), the release workflow dispatches the [`update-homebrew-formulas`](../../.github/workflows/update-homebrew-formulas.yml) workflow, which regenerates the Homebrew formulas and opens a pull request against [grafana/homebrew-pyroscope](https://github.com/grafana/homebrew-pyroscope). The tap's ruleset requires verified commit signatures and reviewed PRs on `main`, so the workflow creates the commit through the GitHub API (which signs it on behalf of the app) and opens a PR instead of pushing to `main`. **A maintainer must review and merge that PR to publish the new version via `brew`.** This step does not block the rest of the release; the binaries, container images, and GitHub release are published regardless.
+
+If the formula update needs to be re-run (for example, the release run failed after publishing), dispatch `update-homebrew-formulas` manually with the release tag as input.
 
 ### Website Release Notes
 
