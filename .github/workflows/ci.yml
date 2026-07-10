@@ -27,7 +27,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Format
         run: make fmt check/unstaged-changes
   check-generated:
@@ -40,7 +40,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Check generated files
         run: make generate check/unstaged-changes
   check-example-templates:
@@ -53,7 +53,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Check example templates
         run: make examples/check-templates
   test:
@@ -79,7 +79,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -105,7 +105,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Integration Test
         run: make go/test-integration GO_TEST_FLAGS="${{ matrix.go_test_flags }}"
   lint:
@@ -118,7 +118,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -149,7 +149,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Build image Pyroscope
         run: make docker-image/pyroscope/build-multiarch "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
@@ -175,7 +175,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: 1.25.11
+          go-version: 1.25.12
       - name: Log into GAR
         uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
         with:
