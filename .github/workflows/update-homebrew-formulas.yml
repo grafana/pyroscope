@@ -20,6 +20,8 @@ on:
 
 permissions:
   contents: read
+  # for minting the app token via OIDC
+  id-token: write
 
 jobs:
   update-formulas:
