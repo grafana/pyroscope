@@ -34,8 +34,9 @@ type DebuginfodClient interface {
 
 // Resolver resolves debug symbols for addresses within a single binary (identified by
 // buildID). result[i] is aligned to addrs[i]; a nil/empty slice at index i means address i
-// could not be resolved. A non-nil error is returned only when ctx is done
-// (context.Canceled or context.DeadlineExceeded), in which case result is nil.
+// could not be resolved. A non-nil error is returned only when the caller's own
+// ctx is done (context.Canceled or context.DeadlineExceeded), in which case
+// result is nil; any other failure degrades to unresolved slots.
 // A buildID that is empty or fails validation resolves nothing: every result slot is nil.
 type Resolver interface {
 	Resolve(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error)
@@ -61,8 +62,12 @@ func (s *Symbolizer) Resolve(ctx context.Context, buildID, binaryName string, ad
 
 	lidiaBytes, err := s.getLidiaBytes(ctx, buildID)
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return nil, fmt.Errorf("resolve symbols: %w", err)
+		// Only the caller's own context ends the call: a context error
+		// propagated from below may belong to another caller sharing the
+		// debuginfod flight, and must degrade to fallback like any other
+		// fetch failure.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, fmt.Errorf("resolve symbols: %w", ctxErr)
 		}
 		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", buildID, "binaryName", binaryName, "err", err)
 		return make([][]lidia.SourceInfoFrame, len(addrs)), nil

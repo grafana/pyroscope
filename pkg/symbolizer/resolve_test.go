@@ -103,6 +103,21 @@ func TestResolveContextCancellation(t *testing.T) {
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 		require.Nil(t, frames)
 	})
+
+	t.Run("foreign context error degrades to fallback", func(t *testing.T) {
+		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+		// A debuginfod flight shared with other callers can surface another
+		// caller's cancellation; with this caller's context alive it must
+		// degrade to unresolved slots like any other fetch failure.
+		mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(nil, context.Canceled).Once()
+
+		frames, err := s.Resolve(tenant.InjectTenantID(context.Background(), "tenant"), "build-id", "binary", []uint64{0x1500})
+
+		require.NoError(t, err)
+		require.Len(t, frames, 1)
+		require.Nil(t, frames[0])
+	})
 }
 
 func TestResolveInvalidBuildID(t *testing.T) {
