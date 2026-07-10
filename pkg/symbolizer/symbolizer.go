@@ -64,8 +64,9 @@ func (s *Symbolizer) Resolve(ctx context.Context, buildID, binaryName string, ad
 	if err != nil {
 		// Only the caller's own context ends the call: a context error
 		// propagated from below may belong to another caller sharing the
-		// deduplicated debuginfod fetch, and must degrade to fallback like
-		// any other fetch failure.
+		// deduplicated debuginfod fetch, and must degrade to unresolved
+		// slots like any other fetch failure; callers render those as
+		// fallback symbols.
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, fmt.Errorf("resolve symbols: %w", ctxErr)
 		}
