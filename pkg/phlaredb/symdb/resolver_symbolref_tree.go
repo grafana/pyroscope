@@ -55,11 +55,17 @@ func (r *Symbols) SymbolRefTree(
 
 // unresolvedCap bounds the number of distinct (build ID, address) pairs a
 // single SymbolRefTree call interns as unresolved entries. Once the limit
-// is reached, further distinct pairs are rendered as an inline fallback
-// name instead of being interned, so a pathological input (e.g. a profile
+// is reached, further pairs are rendered as an inline fallback name
+// instead of being interned, so a pathological input (e.g. a profile
 // referencing a huge number of distinct native addresses) can never make
 // the deferred-resolution work list unbounded, fail the query, or drop
 // samples. Safe for concurrent use.
+//
+// exceeded counts each location occurrence rendered as a fallback name —
+// occurrences, not distinct pairs: pairs rejected by the cap are not
+// recorded (remembering them would grow memory without bound, which is
+// what the cap exists to prevent), so a recurring capped pair counts every
+// time it is seen.
 type unresolvedCap struct {
 	mu       sync.Mutex
 	max      int // <= 0 means unlimited.
@@ -77,9 +83,10 @@ func newUnresolvedCap(max int) *unresolvedCap {
 }
 
 // allow reports whether (buildID, addr) may be interned as an unresolved
-// entry: true if the cap is unlimited, the pair was already counted
-// before, or the cap has not been reached yet; false once the cap has been
-// reached for a pair not yet seen, incrementing the exceeded count.
+// entry: true if the cap is unlimited, the pair was interned before the
+// cap was reached, or the cap has not been reached yet; false for every
+// occurrence of any other pair once the cap has been reached, incrementing
+// exceeded each time.
 func (c *unresolvedCap) allow(buildID string, addr uint64) bool {
 	if c.max <= 0 {
 		return true
