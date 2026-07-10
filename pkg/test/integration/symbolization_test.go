@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -68,7 +69,10 @@ func testSymbolizationFlow(t *testing.T, ctx context.Context, c *cluster.Cluster
 		name     string
 		profile  func(now time.Time) *profile.Profile
 		expected string
-		skip     bool
+		// Symbolized frames that must still be present after the pushed
+		// segment has been compacted; nil skips the post-compaction phase.
+		postCompactionSymbols map[string]uint64
+		skip                  bool
 	}{
 		{
 			name: "fully unsymbolized",
@@ -138,6 +142,7 @@ Locations
 Mappings
 1: 0x0/0x1000000/0x0 libfoo.so 2fa2055ef20fabc972d5751147e093275514b142 [FN]
 `,
+			postCompactionSymbols: map[string]uint64{"main": 0x1500, "atoll_b": 0x3c5a},
 		},
 		{
 			name: "partially symbolized",
@@ -279,7 +284,77 @@ Mappings
 				}
 				return true
 			}, 5*time.Second, 100*time.Millisecond)
+
+			if test.postCompactionSymbols == nil {
+				return
+			}
+			// The cluster compacts L0 blocks within seconds, and compaction
+			// deletes the source blocks: if the rewrite loses the addresses
+			// of line-less locations, the profile can never be symbolized
+			// again. The golden comparison above is order-sensitive and
+			// compaction may renumber locations, so past this point only the
+			// symbolized frames are asserted.
+			// Age-based batch flushing is evaluated only when another block
+			// arrives at the same compaction level, so keep pushing filler
+			// blocks — to a service the query below does not select — until
+			// the planner picks up the staged blocks.
+			require.Eventually(t, func() bool {
+				_, err := pusher.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
+					Series: []*pushv1.RawProfileSeries{{
+						Labels: []*typesv1.LabelPair{
+							{Name: "service_name", Value: serviceName + "-compaction-filler"},
+							{Name: "__name__", Value: "process_cpu"},
+						},
+						Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
+					}},
+				}))
+				if err != nil {
+					t.Logf("Error pushing filler profile: %v", err)
+					return false
+				}
+				n, err := c.CompactionJobsFinished(ctx)
+				return err == nil && n >= 1
+			}, 30*time.Second, time.Second, "no L0 compaction observed")
+
+			queried := false
+			for deadline := time.Now().Add(8 * time.Second); time.Now().Before(deadline); time.Sleep(500 * time.Millisecond) {
+				resp, err := querier.SelectMergeProfile(ctx, q)
+				if err != nil {
+					t.Logf("Error querying profile: %v", err)
+					continue
+				}
+				requireSymbolizedFrames(t, resp.Msg, test.postCompactionSymbols)
+				queried = true
+			}
+			require.True(t, queried, "profile was not queryable after compaction")
 		})
 	}
 
+}
+
+// requireSymbolizedFrames asserts that the profile contains a symbolized
+// frame for every expected function name → address pair, and no fallback
+// (binary!0xaddr) frames.
+func requireSymbolizedFrames(t *testing.T, p *profilev1.Profile, symbols map[string]uint64) {
+	t.Helper()
+	names := make(map[uint64]string, len(p.Function))
+	for _, f := range p.Function {
+		names[f.Id] = p.StringTable[f.Name]
+	}
+	type frame struct {
+		name    string
+		address uint64
+	}
+	frames := make(map[frame]struct{})
+	for _, loc := range p.Location {
+		for _, line := range loc.Line {
+			name := names[line.FunctionId]
+			require.NotContains(t, name, "!0x", "unexpected fallback frame")
+			frames[frame{name: name, address: loc.Address}] = struct{}{}
+		}
+	}
+	for name, address := range symbols {
+		_, ok := frames[frame{name: name, address: address}]
+		require.True(t, ok, "missing symbolized frame %s@%#x (got: %v)", name, address, frames)
+	}
 }
