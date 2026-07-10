@@ -127,13 +127,14 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	}
 	c.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 
-	// The flight is shared by every concurrent caller for this build ID:
-	// detach it from the initiating caller's context so that one caller's
-	// cancellation cannot fail the others. The HTTP client's timeout and
-	// the bounded retries keep a detached flight from running unbounded.
-	flightCtx := context.WithoutCancel(ctx)
+	// c.group deduplicates the fetch: every concurrent caller for the same
+	// build ID shares one in-flight request, so it must not run on any
+	// single caller's context — one caller's cancellation would fail all of
+	// them. Detach it (context values are preserved); the HTTP client's
+	// timeout and the bounded retries keep the detached fetch finite.
+	localCtx := context.WithoutCancel(ctx)
 	v, err, _ := c.group.Do(sanitizedBuildID, func() (interface{}, error) {
-		return c.fetchDebugInfoWithRetries(flightCtx, sanitizedBuildID)
+		return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
 	})
 
 	if err != nil {
