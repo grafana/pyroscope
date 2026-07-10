@@ -322,10 +322,11 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 // entries must not be truncated before those entries are resolved, so,
 // unlike Tree/LocationRefNameTree, there is no maxNodes parameter.
 //
-// unresolvedCapExceeded counts locations that would have grown the number
-// of distinct unresolved entries past WithResolverSymbolRefCap; those
-// locations are rendered as an inline fallback name instead, so the call
-// always succeeds and never drops samples.
+// unresolvedCapExceeded counts location occurrences rendered as an inline
+// fallback name because the number of distinct unresolved entries reached
+// WithResolverSymbolRefCap — occurrences, not distinct locations, so a
+// recurring capped location counts every time (see unresolvedCap). The
+// call always succeeds and never drops samples.
 func (r *Resolver) SymbolRefTree() (tree *model.LocationRefNameTree, rb *symbolref.ResultBuilder, unresolvedCapExceeded int64, err error) {
 	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.SymbolRefTree")
 	defer span.Finish()

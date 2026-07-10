@@ -364,3 +364,15 @@ func TestSymbols_SymbolRefTree_UnresolvableStacktrace(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), tree.Total())
 }
+
+// The exceeded count is occurrences, not distinct pairs: capped pairs are
+// not recorded (that would grow memory without bound), so each recurrence
+// counts.
+func TestUnresolvedCap_ExceededCountsOccurrences(t *testing.T) {
+	c := newUnresolvedCap(1)
+	assert.True(t, c.allow("bid", 0x1))
+	assert.True(t, c.allow("bid", 0x1), "an interned pair stays allowed after the cap fills")
+	assert.False(t, c.allow("bid", 0x2))
+	assert.False(t, c.allow("bid", 0x2))
+	assert.Equal(t, int64(2), c.exceededCount())
+}
