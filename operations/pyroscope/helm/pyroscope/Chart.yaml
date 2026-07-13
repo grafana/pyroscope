@@ -1,6 +1,6 @@
 apiVersion: v2
 name: pyroscope
-description: horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
+description: A horizontally scalable, highly available, multi-tenant continuous profiling database.
 home: https://grafana.com/oss/pyroscope/
 type: application
 version: 2.1.1
