@@ -238,6 +238,27 @@ func TestSelectMergeStacktracesTree_SymbolRefResolution(t *testing.T) {
 	mockSymbolizer.AssertExpectations(t)
 }
 
+// TestBuildLookup_ReversesLidiaFrameOrder verifies the lookup reverses each
+// resolved chain from lidia's innermost-first order (pprof Line order) to
+// the root-first order Rebuild splices in: without the reversal, inlined
+// frames render with parent and child flipped relative to the legacy pprof
+// path (see TestRebuildInlineChainExpansionOrder for the Rebuild-side
+// contract).
+func TestBuildLookup_ReversesLidiaFrameOrder(t *testing.T) {
+	qf := NewQueryFrontend(log.NewNopLogger(), nil, nil, nil, nil, nil, nil, nil)
+	lookup := qf.buildLookup([]binaryResolution{{
+		binary: symbolref.UnresolvedBinary{BuildID: "build-a", BinaryName: "libfoo.so", Addresses: []uint64{0x100}},
+		frames: [][]lidia.SourceInfoFrame{{
+			{FunctionName: "inner"},
+			{FunctionName: "inlined_middle"},
+			{FunctionName: "outer"},
+		}},
+	}})
+	require.Equal(t,
+		[]symbolref.Frame{{Name: "outer"}, {Name: "inlined_middle"}, {Name: "inner"}},
+		lookup.resolve("build-a", 0x100))
+}
+
 // TestResolveSymbolRefs_NoSymbolRefTable verifies a report without a
 // symbol-ref table (an old backend, or a fully-symbolized dataset) passes
 // through completely unchanged: no symbolizer call, tree bytes untouched.

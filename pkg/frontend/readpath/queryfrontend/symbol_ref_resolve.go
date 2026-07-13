@@ -151,9 +151,12 @@ func (q *QueryFrontend) buildLookup(results []binaryResolution) symbolRefLookup 
 				missed++
 				continue
 			}
+			// lidia returns frames innermost-first (pprof Line order);
+			// Rebuild splices chains in root-first order, outermost caller
+			// first. Reverse at this boundary.
 			out := make([]symbolref.Frame, len(frames))
 			for j, f := range frames {
-				out[j] = symbolref.Frame{Name: f.FunctionName}
+				out[len(frames)-1-j] = symbolref.Frame{Name: f.FunctionName}
 			}
 			lookup[symbolRefAddr{r.binary.BuildID, addr}] = out
 			resolved++
