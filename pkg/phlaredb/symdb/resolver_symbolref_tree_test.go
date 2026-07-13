@@ -142,7 +142,9 @@ func TestSymbols_SymbolRefTree_FirstMappingResolves(t *testing.T) {
 	assert.Equal(t, "bidA", unresolved[0].BuildID)
 	assert.Equal(t, "libA.so", unresolved[0].BinaryName)
 	assert.Equal(t, []uint64{0x1234}, unresolved[0].Addresses)
-	assert.Empty(t, pb.Names, "nothing should render as a bare hex name")
+	// Build always writes the reserved ref-0 placeholder, so a snapshot
+	// with no real names is [""], not empty.
+	assert.Equal(t, []string{""}, pb.Names, "nothing should render as a bare hex name")
 }
 
 // TestSymbols_SymbolRefTree_NoBuildIDRendersHex covers a line-less location
