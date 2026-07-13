@@ -31,8 +31,10 @@ type resolveKey struct {
 // "could not resolve"; Rebuild then synthesizes exactly one fallback frame
 // named fmt.Sprintf("%s!0x%x", binaryName, addr), substituting "unknown" for
 // an empty binaryName — matching the pprof detour's legacy fallback
-// rendering byte for byte. A resolved chain's frame order is copied through
-// from resolve unchanged, expanding one address into that many tree levels.
+// rendering byte for byte. A resolved chain must be root-first — outermost
+// caller at index 0, innermost frame last, the reverse of lidia's and pprof
+// Line order — and is spliced into the rebuilt stack unchanged, expanding
+// one address into that many tree levels.
 // Because every stack is reinserted from scratch, two refs that expand to
 // the same name at the same position merge structurally, with no separate
 // dedup pass.
