@@ -381,6 +381,54 @@ func TestOnlyResolvedTable(t *testing.T) {
 	require.Empty(t, pb.GetUnresolvedAddress())
 }
 
+// TestAddRemapIsTotal verifies the remap Add returns is safe for any ref,
+// not only those pb describes: the merge machinery invokes it on the marshal
+// format's zero-valued root frame even when pb is nil or empty, and a skewed
+// peer can send a tree whose refs exceed its table. Both must degrade to the
+// reserved ref 0, not panic.
+func TestAddRemapIsTotal(t *testing.T) {
+	t.Run("nil and empty tables", func(t *testing.T) {
+		for name, pb := range map[string]*queryv1.SymbolRefTable{
+			"nil":   nil,
+			"empty": new(queryv1.SymbolRefTable),
+		} {
+			t.Run(name, func(t *testing.T) {
+				remap, err := symbolref.NewTable().Add(pb)
+				require.NoError(t, err)
+				require.Equal(t, model.LocationRefName(0), remap(0))
+				require.Equal(t, model.LocationRefName(0), remap(7))
+				require.Equal(t, model.LocationRefName(-1), remap(-1))
+			})
+		}
+	})
+
+	t.Run("ref beyond the table degrades", func(t *testing.T) {
+		p := buildPartial(func(table *symbolref.Table) *model.LocationRefNameTree {
+			n := table.InternName("fn")
+			tree := new(model.LocationRefNameTree)
+			tree.InsertStack(1, n)
+			return tree
+		})
+		remap, err := symbolref.NewTable().Add(p.pb)
+		require.NoError(t, err)
+		outOfRange := model.LocationRefName(int32(len(p.pb.GetNames())) + int32(len(p.pb.GetUnresolvedAddress())))
+		require.Equal(t, model.LocationRefName(0), remap(outOfRange))
+	})
+
+	t.Run("merging tree bytes against an absent table does not panic", func(t *testing.T) {
+		p := buildPartial(func(table *symbolref.Table) *model.LocationRefNameTree {
+			n := table.InternName("fn")
+			tree := new(model.LocationRefNameTree)
+			tree.InsertStack(1, n)
+			return tree
+		})
+		remap, err := symbolref.NewTable().Add(nil)
+		require.NoError(t, err)
+		merger := model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
+		require.NoError(t, merger.MergeTreeBytes(p.tree, model.WithTreeMergeFormatNodeNames(remap)))
+	})
+}
+
 // TestPlainFunctionNameAbsorption verifies a plain FunctionName-tree partial
 // (as an old backend, or a fully-symbolized dataset, would produce) can be
 // absorbed into the symbol-ref space via InternName and merged alongside a

@@ -139,8 +139,9 @@ func (c *tableCore) hasUnresolved() bool {
 // Add merges pb into t, returning a remap function from pb's ref space into
 // t's ref space, suitable for model.WithTreeMergeFormatNodeNames. The
 // returned remap passes negative refs (model.OtherLocationRef) through
-// unchanged; err is non-nil only for structurally malformed input, never to
-// signal "nothing to merge".
+// unchanged and maps refs pb does not describe — every non-negative ref,
+// when pb is nil or empty — to the reserved ref 0; err is non-nil only for
+// structurally malformed input, never to signal "nothing to merge".
 func (t *Table) Add(pb *queryv1.SymbolRefTable) (func(model.LocationRefName) model.LocationRefName, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -178,7 +179,12 @@ func (c *tableCore) add(pb *queryv1.SymbolRefTable) (func(model.LocationRefName)
 		if int(in) < numNames {
 			return model.LocationRefName(nameRemap[in])
 		}
-		return unresolvedRemap[int(in)-numNames]
+		if u := int(in) - numNames; u < len(unresolvedRemap) {
+			return unresolvedRemap[u]
+		}
+		// A ref pb does not describe (nil/empty or truncated input from a
+		// skewed peer) degrades to the reserved ref 0 instead of panicking.
+		return 0
 	}, nil
 }
 
