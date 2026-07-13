@@ -61,15 +61,13 @@ func (s *Symbolizer) Resolve(ctx context.Context, buildID, binaryName string, ad
 	}
 
 	lidiaBytes, err := s.getLidiaBytes(ctx, buildID)
+	// Whatever the fetch outcome, only this caller's own context ends the
+	// call: errors from below may carry context errors that are not ours,
+	// and the shared fetch can succeed after our context is done.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, fmt.Errorf("resolve symbols: %w", ctxErr)
+	}
 	if err != nil {
-		// Only the caller's own context ends the call: a context error
-		// propagated from below may belong to another caller sharing the
-		// deduplicated debuginfod fetch, and must degrade to unresolved
-		// slots like any other fetch failure; callers render those as
-		// fallback symbols.
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, fmt.Errorf("resolve symbols: %w", ctxErr)
-		}
 		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", buildID, "binaryName", binaryName, "err", err)
 		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
 	}

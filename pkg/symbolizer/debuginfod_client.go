@@ -107,6 +107,13 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
+//
+// Concurrent callers for the same build ID share one fetch, detached from
+// any single caller's cancellation. The error contract follows from that:
+// a done caller gets its own context error without waiting for the shared
+// fetch to finish, and every other error comes from the shared fetch — it
+// may wrap a context error (e.g. the HTTP client's timeout) that says
+// nothing about the caller's own context.
 func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
 	status := statusSuccess
@@ -127,15 +134,22 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	}
 	c.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 
-	// c.group deduplicates the fetch: every concurrent caller for the same
-	// build ID shares one in-flight request, so it must not run on any
-	// single caller's context — one caller's cancellation would fail all of
-	// them. Detach it (context values are preserved); the HTTP client's
-	// timeout and the bounded retries keep the detached fetch finite.
+	// Detached so one caller's cancellation cannot fail the fetch for the
+	// others; context values are preserved, and the HTTP client's timeout
+	// plus bounded retries keep the detached fetch finite.
 	localCtx := context.WithoutCancel(ctx)
-	v, err, _ := c.group.Do(sanitizedBuildID, func() (interface{}, error) {
+	resCh := c.group.DoChan(sanitizedBuildID, func() (interface{}, error) {
 		return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
 	})
+
+	// A done caller stops waiting; the fetch keeps running for the rest.
+	var v interface{}
+	select {
+	case res := <-resCh:
+		v, err = res.Val, res.Err
+	case <-ctx.Done():
+		err = ctx.Err()
+	}
 
 	if err != nil {
 		var bnfErr buildIDNotFoundError

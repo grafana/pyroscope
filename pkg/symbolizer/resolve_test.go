@@ -83,6 +83,43 @@ func TestResolveContextCancellation(t *testing.T) {
 		require.Nil(t, res.frames)
 	})
 
+	t.Run("canceled mid-fetch with successful fetch", func(t *testing.T) {
+		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+
+		// The deduplicated fetch is detached from caller cancellation, so it
+		// can complete successfully after the caller's context is done; the
+		// canceled caller must still get an error, not the fetched result.
+		fetchStarted := make(chan struct{})
+		mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(
+			func(ctx context.Context, buildID string) (io.ReadCloser, error) {
+				close(fetchStarted)
+				<-ctx.Done()
+				return openTestFile(t), nil
+			},
+		).Once()
+		mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Return(nil).Once()
+
+		ctx, cancel := context.WithCancel(tenant.InjectTenantID(context.Background(), "tenant"))
+		type result struct {
+			frames [][]lidia.SourceInfoFrame
+			err    error
+		}
+		resCh := make(chan result, 1)
+		go func() {
+			frames, err := s.Resolve(ctx, "build-id", "binary", []uint64{0x1500})
+			resCh <- result{frames, err}
+		}()
+
+		<-fetchStarted
+		cancel()
+		res := <-resCh
+
+		require.Error(t, res.err)
+		require.ErrorIs(t, res.err, context.Canceled)
+		require.Nil(t, res.frames)
+	})
+
 	t.Run("deadline exceeded mid-fetch", func(t *testing.T) {
 		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
 		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
