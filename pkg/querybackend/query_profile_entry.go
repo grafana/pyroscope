@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
+	"github.com/grafana/pyroscope/v2/pkg/distributor/annotation"
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
@@ -69,6 +70,14 @@ func withFetchProfileIDs(v bool) profileIteratorOption {
 	}
 }
 
+func withFilterStripped() profileIteratorOption {
+	return profileIteratorOption{
+		iterator: func(opts *iteratorOpts) {
+			opts.filterStripped = true
+		},
+	}
+}
+
 func withProfileIDSelector(ids ...string) (profileIteratorOption, error) {
 	// convert profile ids into uuids
 	uuids := make([]string, 0, len(ids))
@@ -91,6 +100,7 @@ type iteratorOpts struct {
 	profileIDSelector []string // this is a slice of the byte form of the UUID
 	fetchProfileIDs   bool
 	fetchPartition    bool
+	filterStripped    bool
 }
 
 func iteratorOptsFromOptions(options []profileIteratorOption) iteratorOpts {
@@ -161,6 +171,7 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 	columns := queryColumns{
 		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
 		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
+		//		{schemav1.AnnotationsColumnName, nil, 25},
 	}
 	processor := []func([][]parquet.Value, *ProfileEntry){}
 
@@ -222,7 +233,54 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		},
 		func([]ProfileEntry) {},
 	)
+
+	if opts.filterStripped {
+		annotationKeyCol, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
+		if err != nil {
+			return nil, err
+		}
+		rows := parquetquery.NewRepeatedRowIteratorBatchSize(
+			q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, annotationKeyCol.ColumnIndex,
+		)
+		return &strippedAnnotationFilterIterator{rows: rows}, nil
+	}
 	return entries, nil
+}
+
+// strippedAnnotationFilterIterator drops profile entries that carry the
+// annotation.ProfileAnnotationKeyStripped annotation. Used by query types
+// that need stacktraces/symbols (stripped profiles have neither).
+type strippedAnnotationFilterIterator struct {
+	rows iter.Iterator[parquetquery.RepeatedRow[ProfileEntry]]
+	cur  ProfileEntry
+}
+
+func (it *strippedAnnotationFilterIterator) Next() bool {
+	for it.rows.Next() {
+		row := it.rows.At()
+		if !rowHasStrippedAnnotation(row.Values) {
+			it.cur = row.Row
+			return true
+		}
+	}
+	return false
+}
+
+func (it *strippedAnnotationFilterIterator) At() ProfileEntry { return it.cur }
+func (it *strippedAnnotationFilterIterator) Err() error       { return it.rows.Err() }
+func (it *strippedAnnotationFilterIterator) Close() error     { return it.rows.Close() }
+
+func rowHasStrippedAnnotation(values [][]parquet.Value) bool {
+	for _, e := range values {
+		if len(e) == 0 {
+			continue
+		}
+		v := e[0]
+		if v.Kind() == parquet.ByteArray && v.String() == annotation.ProfileAnnotationKeyStripped {
+			return true
+		}
+	}
+	return false
 }
 
 type series struct {

@@ -1,0 +1,8 @@
+overrides:
+  "anonymous":
+    distributor_sampling:
+      usage_groups:
+        service/${labels.service_name}:
+          probability: 0.1
+    distributor_usage_groups:
+      service/${labels.service_name}: "{}"

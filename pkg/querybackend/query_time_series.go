@@ -15,6 +15,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/annotation"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/attributetable"
 	"github.com/grafana/pyroscope/v2/pkg/model/timeseries"
@@ -94,13 +95,22 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 	for rows.Next() {
 		row := rows.At()
 		annotations := schemav1.Annotations{Keys: make([]string, 0), Values: make([]string, 0)}
+		stripped := false
 		for _, e := range row.Values {
 			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
-				annotations.Keys = append(annotations.Keys, e[0].String())
+				k := e[0].String()
+				annotations.Keys = append(annotations.Keys, k)
+				if k == annotation.ProfileAnnotationKeyStripped {
+					stripped = true
+				}
 			}
 			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Values = append(annotations.Values, e[0].String())
 			}
+		}
+		exemplarID := row.Row.ID
+		if stripped {
+			exemplarID = ""
 		}
 		builder.Add(
 			row.Row.Fingerprint,
@@ -108,7 +118,7 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
 			annotations,
-			row.Row.ID,
+			exemplarID,
 		)
 	}
 	if err = rows.Err(); err != nil {

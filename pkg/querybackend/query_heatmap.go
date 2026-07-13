@@ -33,7 +33,7 @@ func init() {
 }
 
 func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
-	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withFetchProfileIDs(true))
+	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withFetchProfileIDs(true), withFilterStripped())
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
 }
 
 func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
-	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false))
+	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withFilterStripped())
 	if err != nil {
 		return err
 	}

@@ -132,3 +132,10 @@ func (req *ProfileSeries) MarkSampledRequest(source *sampling.Source) error {
 	})
 	return nil
 }
+
+func (req *ProfileSeries) MarkStrippedRequest() {
+	req.Annotations = append(req.Annotations, &v1.ProfileAnnotation{
+		Key:   annotation.ProfileAnnotationKeyStripped,
+		Value: "1",
+	})
+}

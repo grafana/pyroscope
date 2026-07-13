@@ -579,6 +579,32 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
 	if !willSample {
+		//req.Profile.Sample = nil
+		foo := "foo"
+		foo_i := len(req.Profile.StringTable)
+		req.Profile.StringTable = append(req.Profile.StringTable, foo)
+		req.Profile.Mapping = req.Profile.Mapping[:0]
+		req.Profile.Mapping = append(req.Profile.Mapping, &profilev1.Mapping{
+			Id: 1,
+		})
+		req.Profile.Function = req.Profile.Function[:0]
+		req.Profile.Function = append(req.Profile.Function, &profilev1.Function{
+			Id:   1,
+			Name: int64(foo_i),
+		})
+		req.Profile.Location = req.Profile.Location[:0]
+		req.Profile.Location = append(req.Profile.Location, &profilev1.Location{
+			Id:        1,
+			MappingId: 1,
+			Line: []*profilev1.Line{
+				{FunctionId: 1,
+					Line: 1},
+			},
+		})
+		for i := range len(req.Profile.Sample) {
+			req.Profile.Sample[i].LocationId = req.Profile.Sample[i].LocationId[:0]
+			req.Profile.Sample[i].LocationId = append(req.Profile.Sample[i].LocationId, 1)
+		}
 		finalLog.addFields(
 			"usage_group", samplingSource.UsageGroup,
 			"probability", samplingSource.Probability,
@@ -587,7 +613,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
-		return nil
+		req.MarkStrippedRequest()
 	}
 	if samplingSource != nil {
 		if err := req.MarkSampledRequest(samplingSource); err != nil {

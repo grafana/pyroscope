@@ -3,7 +3,7 @@
     <module name="pyroscope" />
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-tags embedassets" />
-    <parameters value="-storage.backend=filesystem -architecture.storage=v2 -write-path=segment-writer" />
+    <parameters value="-storage.backend=filesystem -architecture.storage=v2 -write-path=segment-writer -runtime-config.file=$PROJECT_DIR$/cmd/pyroscope/pyroscope-overrides.yaml" />
     <kind value="FILE" />
     <package value="github.com/grafana/pyroscope" />
     <directory value="$PROJECT_DIR$" />
