@@ -386,8 +386,10 @@ func TestOnlyResolvedTable(t *testing.T) {
 // TestAddRemapIsTotal verifies the remap Add returns is safe for any ref,
 // not only those pb describes: the merge machinery invokes it on the marshal
 // format's zero-valued root frame even when pb is nil or empty, and a skewed
-// peer can send a tree whose refs exceed its table. Both must degrade to the
-// reserved ref 0, not panic.
+// peer can send a tree whose refs exceed its table or carry negatives other
+// than OtherLocationRef — which would alias the destination table's internal
+// unresolved encoding (-2-idx) if passed through. All must degrade to the
+// reserved ref 0, not panic or alias.
 func TestAddRemapIsTotal(t *testing.T) {
 	t.Run("nil and empty tables", func(t *testing.T) {
 		for name, pb := range map[string]*queryv1.SymbolRefTable{
@@ -399,7 +401,8 @@ func TestAddRemapIsTotal(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, model.LocationRefName(0), remap(0))
 				require.Equal(t, model.LocationRefName(0), remap(7))
-				require.Equal(t, model.LocationRefName(-1), remap(-1))
+				require.Equal(t, model.OtherLocationRef, remap(model.OtherLocationRef))
+				require.Equal(t, model.LocationRefName(0), remap(-2))
 			})
 		}
 	})
@@ -415,6 +418,16 @@ func TestAddRemapIsTotal(t *testing.T) {
 		require.NoError(t, err)
 		outOfRange := model.LocationRefName(int32(len(p.pb.GetNames())) + int32(len(p.pb.GetUnresolvedAddress())))
 		require.Equal(t, model.LocationRefName(0), remap(outOfRange))
+	})
+
+	t.Run("negative wire ref other than OtherLocationRef degrades", func(t *testing.T) {
+		// The destination has an unresolved entry at internal ref -2; a wire
+		// ref -2 from a malformed tree must not alias it.
+		dst := symbolref.NewTable()
+		dst.InternUnresolved("buildA", "binA", 0x100)
+		remap, err := dst.Add(new(queryv1.SymbolRefTable))
+		require.NoError(t, err)
+		require.Equal(t, model.LocationRefName(0), remap(-2))
 	})
 
 	t.Run("merging tree bytes against an absent table does not panic", func(t *testing.T) {

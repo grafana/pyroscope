@@ -138,10 +138,11 @@ func (c *tableCore) hasUnresolved() bool {
 
 // Add merges pb into t, returning a remap function from pb's ref space into
 // t's ref space, suitable for model.WithTreeMergeFormatNodeNames. The
-// returned remap passes negative refs (model.OtherLocationRef) through
-// unchanged and maps refs pb does not describe — every non-negative ref,
-// when pb is nil or empty — to the reserved ref 0; err is non-nil only for
-// structurally malformed input, never to signal "nothing to merge".
+// returned remap passes model.OtherLocationRef through unchanged and maps
+// every other ref pb does not describe — any other negative, or any
+// non-negative when pb is nil or empty — to the reserved ref 0; err is
+// non-nil only for structurally malformed input, never to signal "nothing
+// to merge".
 func (t *Table) Add(pb *queryv1.SymbolRefTable) (func(model.LocationRefName) model.LocationRefName, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -173,17 +174,19 @@ func (c *tableCore) add(pb *queryv1.SymbolRefTable) (func(model.LocationRefName)
 	}
 
 	return func(in model.LocationRefName) model.LocationRefName {
-		if in < 0 {
+		if in == model.OtherLocationRef {
 			return in
 		}
-		if int(in) < numNames {
+		if in >= 0 && int(in) < numNames {
 			return model.LocationRefName(nameRemap[in])
 		}
-		if u := int(in) - numNames; u < len(unresolvedRemap) {
+		if u := int(in) - numNames; in >= 0 && u < len(unresolvedRemap) {
 			return unresolvedRemap[u]
 		}
-		// A ref pb does not describe (nil/empty or truncated input from a
-		// skewed peer) degrades to the reserved ref 0 instead of panicking.
+		// A ref pb does not describe degrades to the reserved ref 0: a
+		// non-negative ref beyond pb's ranges (nil/empty or truncated input
+		// from a skewed peer) would panic, and a negative ref other than
+		// OtherLocationRef would alias t's internal unresolved encoding.
 		return 0
 	}, nil
 }
