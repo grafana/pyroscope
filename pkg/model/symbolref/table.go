@@ -297,14 +297,14 @@ func (rb *ResultBuilder) KeepRef(ref model.LocationRefName) model.LocationRefNam
 }
 
 // Build writes pb.Names, pb.BuildIds, pb.BinaryNames, pb.UnresolvedBuildId
-// and pb.UnresolvedAddress from the snapshot, allocating a new
-// queryv1.SymbolRefTable when pb == nil. Every interned name is written, in
-// intern order, so resolved wire refs are the table's own name indices and
-// len(pb.Names) always equals the offset KeepRef applies to unresolved
-// refs; unresolved entries are sorted by (buildID, address), which is what
-// makes the unresolved side of the wire encoding independent of intern or
-// merge arrival order.
-func (rb *ResultBuilder) Build(pb *queryv1.SymbolRefTable) {
+// and pb.UnresolvedAddress from the snapshot and returns pb, allocating the
+// returned queryv1.SymbolRefTable when pb == nil. Every interned name is
+// written, in intern order, so resolved wire refs are the table's own name
+// indices and len(pb.Names) always equals the offset KeepRef applies to
+// unresolved refs; unresolved entries are sorted by (buildID, address),
+// which is what makes the unresolved side of the wire encoding independent
+// of intern or merge arrival order.
+func (rb *ResultBuilder) Build(pb *queryv1.SymbolRefTable) *queryv1.SymbolRefTable {
 	if pb == nil {
 		pb = &queryv1.SymbolRefTable{}
 	}
@@ -331,6 +331,8 @@ func (rb *ResultBuilder) Build(pb *queryv1.SymbolRefTable) {
 		pb.UnresolvedBuildId[out] = uint32(biOut)
 		pb.UnresolvedAddress[out] = rb.unresolvedAd[idx]
 	}
+
+	return pb
 }
 
 // hashedSlice is a content-addressed intern table for strings: repeated add

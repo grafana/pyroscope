@@ -339,7 +339,9 @@ func TestEmptyTable(t *testing.T) {
 	require.False(t, table.HasUnresolved())
 
 	rb := table.ResultBuilder()
-	require.NotPanics(t, func() { rb.Build(nil) })
+	built := rb.Build(nil)
+	require.NotNil(t, built)
+	require.Equal(t, []string{""}, built.GetNames())
 
 	pb := new(queryv1.SymbolRefTable)
 	symbolref.NewTable().ResultBuilder().Build(pb)
