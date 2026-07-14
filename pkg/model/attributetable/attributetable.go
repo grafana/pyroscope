@@ -175,6 +175,9 @@ func ResolveHeatmapExemplar(point *queryv1.HeatmapPoint, table *queryv1.Attribut
 		profileID = table.Values[point.ProfileId]
 	}
 
+	// TraceId is only populated when it round-trips through model.TraceID (16 bytes).
+	// Silently drop anything else (e.g. absent/empty) rather than emitting a
+	// malformed trace ID that wouldn't satisfy the documented 32-hex-char contract.
 	traceID := ""
 	if len(point.TraceId) == len(model.TraceID{}) {
 		traceID = hex.EncodeToString(point.TraceId)

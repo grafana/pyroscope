@@ -394,8 +394,22 @@ func outputSpanExemplarsJSON(ctx context.Context, entries []exemplarEntry, from,
 }
 
 func outputSpanExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUnit string, labelColumns []string) error {
-	headers := []string{"Trace ID", "Span ID", "Timestamp", fmt.Sprintf("Value (%s)", sampleUnit)}
-	aligns := []int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT}
+	// Only show the Trace ID column when at least one entry actually has one,
+	// since blocks without a trace ID column will leave it empty for every row.
+	hasTraceID := false
+	for _, e := range entries {
+		if e.TraceID != "" {
+			hasTraceID = true
+			break
+		}
+	}
+
+	headers := []string{"Span ID", "Timestamp", fmt.Sprintf("Value (%s)", sampleUnit)}
+	aligns := []int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT}
+	if hasTraceID {
+		headers = append([]string{"Trace ID"}, headers...)
+		aligns = append([]int{tablewriter.ALIGN_LEFT}, aligns...)
+	}
 	for _, name := range labelColumns {
 		headers = append(headers, name)
 		aligns = append(aligns, tablewriter.ALIGN_LEFT)
@@ -406,7 +420,10 @@ func outputSpanExemplarsTable(ctx context.Context, entries []exemplarEntry, samp
 	table.SetColumnAlignment(aligns)
 
 	for _, e := range entries {
-		row := []string{e.TraceID, e.SpanID, e.Timestamp.Format(time.RFC3339), formatUnit(float64(e.Value), sampleUnit)}
+		row := []string{e.SpanID, e.Timestamp.Format(time.RFC3339), formatUnit(float64(e.Value), sampleUnit)}
+		if hasTraceID {
+			row = append([]string{e.TraceID}, row...)
+		}
 		for _, name := range labelColumns {
 			row = append(row, e.Labels[name])
 		}
