@@ -69,6 +69,14 @@ func withFetchProfileIDs(v bool) profileIteratorOption {
 	}
 }
 
+func withExcludeSampled() profileIteratorOption {
+	return profileIteratorOption{
+		iterator: func(opts *iteratorOpts) {
+			opts.excludeSampled = true
+		},
+	}
+}
+
 func withProfileIDSelector(ids ...string) (profileIteratorOption, error) {
 	// convert profile ids into uuids
 	uuids := make([]string, 0, len(ids))
@@ -91,6 +99,7 @@ type iteratorOpts struct {
 	profileIDSelector []string // this is a slice of the byte form of the UUID
 	fetchProfileIDs   bool
 	fetchPartition    bool
+	excludeSampled    bool
 }
 
 func iteratorOptsFromOptions(options []profileIteratorOption) iteratorOpts {
@@ -153,7 +162,12 @@ func (c queryColumns) join(q *queryContext) parquetquery.Iterator {
 func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (iter.Iterator[ProfileEntry], error) {
 	opts := iteratorOptsFromOptions(options)
 
-	series, err := getSeries(q.ds.Index(), q.req.matchers, options...)
+	matchers := q.req.matchers
+	if opts.excludeSampled {
+		matchers = append(matchers[:len(matchers):len(matchers)],
+			labels.MustNewMatcher(labels.MatchNotEqual, phlaremodel.LabelNameSampled, "true"))
+	}
+	series, err := getSeries(q.ds.Index(), matchers, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +175,7 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 	columns := queryColumns{
 		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
 		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
+		//		{schemav1.AnnotationsColumnName, nil, 25},
 	}
 	processor := []func([][]parquet.Value, *ProfileEntry){}
 
@@ -222,6 +237,7 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		},
 		func([]ProfileEntry) {},
 	)
+
 	return entries, nil
 }
 

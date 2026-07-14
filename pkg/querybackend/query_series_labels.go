@@ -74,6 +74,7 @@ func getSeriesLabels(reader phlaredb.IndexReader, matchers []*labels.Matcher, by
 	if err != nil {
 		return nil, err
 	}
+	names = dropSampledLabelName(names)
 	if len(by) > 0 {
 		names = slices.DeleteFunc(names, func(n string) bool {
 			for j := 0; j < len(by); j++ {

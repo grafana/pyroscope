@@ -94,6 +94,7 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 	for rows.Next() {
 		row := rows.At()
 		annotations := schemav1.Annotations{Keys: make([]string, 0), Values: make([]string, 0)}
+		stripped := row.Row.Labels.Get(phlaremodel.LabelNameSampled) == "true"
 		for _, e := range row.Values {
 			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
 				annotations.Keys = append(annotations.Keys, e[0].String())
@@ -102,13 +103,17 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 				annotations.Values = append(annotations.Values, e[0].String())
 			}
 		}
+		exemplarID := row.Row.ID
+		if stripped {
+			exemplarID = ""
+		}
 		builder.Add(
 			row.Row.Fingerprint,
 			row.Row.Labels,
 			int64(row.Row.Timestamp),
 			float64(row.Values[0][0].Int64()),
 			annotations,
-			row.Row.ID,
+			exemplarID,
 		)
 	}
 	if err = rows.Err(); err != nil {
