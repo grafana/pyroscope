@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"context"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,7 +85,8 @@ func TestSymbols_SymbolRefTree_LinedAndUnresolved(t *testing.T) {
 	rb.Build(pb)
 
 	assert.Equal(t, "main", pb.Names[mainIdx])
-	assert.Equal(t, strconv.FormatInt(0xdeadbeef, 16), pb.Names[kernelIdx])
+	assert.Equal(t, ".!0xdeadbeef", pb.Names[kernelIdx],
+		`legacy-parity fallback; "." is filepath.Base of the filename-less mapping the no-mapping frame indexes`)
 
 	unresolved := symbolref.UnresolvedBinaries(pb)
 	require.Len(t, unresolved, 1)
@@ -147,22 +147,25 @@ func TestSymbols_SymbolRefTree_FirstMappingResolves(t *testing.T) {
 	assert.Equal(t, []string{""}, pb.Names, "nothing should render as a bare hex name")
 }
 
-// TestSymbols_SymbolRefTree_NoBuildIDRendersHex covers a line-less location
-// whose mapping carries no build ID (a binary with no GNU build ID, or a
-// genuine no-mapping frame indexing a build-ID-less mapping): it cannot be
-// symbolized and renders as the bare hex address via InternName, matching
-// the legacy path, which leaves such locations unsymbolized.
-func TestSymbols_SymbolRefTree_NoBuildIDRendersHex(t *testing.T) {
+// TestSymbols_SymbolRefTree_NoBuildIDRendersFallback covers line-less
+// locations whose mapping carries no build ID (a binary with no GNU build
+// ID, or a genuine no-mapping frame indexing a build-ID-less mapping): they
+// cannot be symbolized, are not interned as unresolved, and render the same
+// fallback name the legacy symbolizer gives unresolvable frames — keeping
+// the binary-name context when the mapping has a filename.
+func TestSymbols_SymbolRefTree_NoBuildIDRendersFallback(t *testing.T) {
 	p := &profilev1.Profile{
-		StringTable: []string{""},
+		StringTable: []string{"", "/usr/bin/goldpinger"},
 		Mapping: []*profilev1.Mapping{
-			{Id: 1}, // symdb index 0: no filename, no build ID.
+			{Id: 1, Filename: 1}, // filename, no build ID: e.g. a Go binary without a GNU build ID.
+			{Id: 2},              // neither filename nor build ID.
 		},
 		Location: []*profilev1.Location{
 			{Id: 1, MappingId: 1, Address: 0xdeadbeef},
+			{Id: 2, MappingId: 2, Address: 0x1111},
 		},
 		Sample: []*profilev1.Sample{
-			{LocationId: []uint64{1}, Value: []int64{1}},
+			{LocationId: []uint64{2, 1}, Value: []int64{1}},
 		},
 		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
 	}
@@ -175,13 +178,18 @@ func TestSymbols_SymbolRefTree_NoBuildIDRendersHex(t *testing.T) {
 	rb := table.ResultBuilder()
 	stacks, _ := collectStacks(tree)
 	require.Len(t, stacks, 1)
-	require.Len(t, stacks[0], 1)
+	require.Len(t, stacks[0], 2)
 	rb.KeepRef(stacks[0][0])
+	rb.KeepRef(stacks[0][1])
 	pb := &queryv1.SymbolRefTable{}
 	rb.Build(pb)
 
 	assert.Empty(t, symbolref.UnresolvedBinaries(pb), "a mapping with no build ID is not symbolizable")
-	assert.Contains(t, pb.Names, strconv.FormatInt(0xdeadbeef, 16), "renders as the bare hex address")
+	assert.Contains(t, pb.Names, "goldpinger!0xdeadbeef", "keeps the binary-name context, like the legacy fallback")
+	assert.Contains(t, pb.Names, ".!0x1111",
+		`empty filename: "." is filepath.Base(""), byte-for-byte with the legacy fallback derivation`)
+	assert.NotContains(t, pb.Names, "deadbeef", "no bare-hex names")
+	assert.NotContains(t, pb.Names, "1111", "no bare-hex names")
 }
 
 // TestResolver_SymbolRefTree_MultiPartitionRefConsistency verifies that the
