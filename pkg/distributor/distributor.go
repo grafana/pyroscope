@@ -85,12 +85,15 @@ type Config struct {
 
 	// Distributors ring
 	DistributorRing util.CommonRingConfig `yaml:"ring"`
+
+	KeepStrippedProfiles bool `yaml:"keep_stripped_profiles"`
 }
 
 // RegisterFlags registers distributor-related flags.
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
+	fs.BoolVar(&cfg.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals and labels with stacktraces stripped (marked __sampled__) instead of dropping it. Only enable once the read path understands the __sampled__ label.")
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 
@@ -579,10 +582,6 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
 	if !willSample {
-		for _, s := range req.Profile.Sample {
-			s.LocationId = nil
-		}
-		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
 		finalLog.addFields(
 			"usage_group", samplingSource.UsageGroup,
 			"probability", samplingSource.Probability,
@@ -591,6 +590,14 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
+
+		if !d.cfg.KeepStrippedProfiles {
+			return nil
+		}
+		for _, s := range req.Profile.Sample {
+			s.LocationId = nil
+		}
+		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
 	}
 	if samplingSource != nil {
 		if err := req.MarkSampledRequest(samplingSource); err != nil {

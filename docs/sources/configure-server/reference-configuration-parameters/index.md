@@ -909,6 +909,12 @@ ring:
   # (advanced) Enable using a IPv6 instance address. (default false)
   # CLI flag: -distributor.ring.instance-enable-ipv6
   [instance_enable_ipv6: <boolean> | default = false]
+
+# When a profile is sampled out, retain its totals and labels with stacktraces
+# stripped (marked __sampled__) instead of dropping it. Only enable once the
+# read path understands the __sampled__ label.
+# CLI flag: -distributor.sampling.keep-stripped-profiles
+[keep_stripped_profiles: <boolean> | default = false]
 ```
 
 ### segment_writer
