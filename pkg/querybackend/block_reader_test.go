@@ -3,6 +3,7 @@ package querybackend
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
@@ -751,6 +753,35 @@ const (
 	fixtureMatchingTraceID    = "00000000000000000000000000000001"
 	fixtureNonMatchingTraceID = "ffffffffffffffffffffffffffffffff"
 )
+
+func (s *testSuite) Test_SpanHeatmapIncludesTraceID() {
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_HEATMAP,
+			Heatmap: &queryv1.HeatmapQuery{
+				QueryType:    querierv1.HeatmapQueryType_HEATMAP_QUERY_TYPE_SPAN,
+				ExemplarType: typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN,
+			},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Reports, 1)
+
+	for _, series := range resp.Reports[0].Heatmap.HeatmapSeries {
+		for _, point := range series.Points {
+			if hex.EncodeToString(point.TraceId) == fixtureMatchingTraceID {
+				s.Require().NotZero(point.SpanId)
+				return
+			}
+		}
+	}
+	s.Fail("span heatmap did not include the fixture trace ID")
+}
 
 func (s *testSuite) Test_TraceSelector() {
 	baselineTree, err := os.ReadFile("testdata/fixtures/tree_16.txt")
