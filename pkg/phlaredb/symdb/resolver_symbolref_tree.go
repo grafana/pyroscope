@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"sync"
 
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -26,8 +25,9 @@ import (
 // is a real mapping, not a "no mapping" sentinel, so it must not be
 // special-cased. A location whose mapping carries no build ID cannot be
 // symbolized (a genuine no-mapping kernel/JIT frame, or a binary with no
-// GNU build ID): it renders as the bare hex address via InternName,
-// matching the legacy path, which leaves such locations unsymbolized.
+// GNU build ID): it is interned via InternName with the same fallback name
+// the legacy symbolizer gives unresolvable frames (binary!0xaddr, keeping
+// the binary-name context; see fallbackSymbolName).
 //
 // capper bounds the number of distinct unresolved entries table accepts
 // for this call; locations past the cap render an inline fallback name via
@@ -217,8 +217,7 @@ func (b *symbolRefTreeBuilder) appendLocationRefs(dst []int32, locID int32) []in
 		binaryName = filepath.Base(b.symbols.Strings[mapping.Filename])
 	}
 	if buildID == "" {
-		hex := strconv.FormatInt(int64(loc.Address), 16)
-		return append(dst, b.toSlot(b.table.InternName(hex)))
+		return append(dst, b.toSlot(b.table.InternName(fallbackSymbolName(binaryName, loc.Address))))
 	}
 	if b.capper.allow(buildID, loc.Address) {
 		return append(dst, b.toSlot(b.table.InternUnresolved(buildID, binaryName, loc.Address)))
