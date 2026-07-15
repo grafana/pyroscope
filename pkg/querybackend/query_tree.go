@@ -196,7 +196,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	// for: keep the existing FunctionName path unconditionally, same as a
 	// non-symbol-ref query.
 	if mode == queryv1.SymbolMode_SYMBOL_MODE_REFS && datasetUnsymbolized(q.obj.Metadata(), q.ds.Metadata()) {
-		return queryTreeSymbolRefs(q, query, resolver)
+		return queryTreeSymbolRefs(query, resolver)
 	}
 
 	tree, err := resolver.Tree()
@@ -219,7 +219,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 // the selected samples actually resolved to an unresolved location, the
 // dataset falls back to the plain FunctionName path, since there is
 // nothing left to defer.
-func queryTreeSymbolRefs(q *queryContext, query *queryv1.Query, resolver *symdb.Resolver) (*queryv1.Report, error) {
+func queryTreeSymbolRefs(query *queryv1.Query, resolver *symdb.Resolver) (*queryv1.Report, error) {
 	tree, rb, err := resolver.SymbolRefTree()
 	if err != nil {
 		return nil, err
@@ -310,6 +310,8 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 			// A partial from a dataset that took the plain FunctionName
 			// path (native or degenerate, see queryTree): absorb it into
 			// the shared ref space instead of merging it as a plain tree.
+			// Absorption interns resolved names only, so it cannot grow
+			// the unresolved count.
 			absorbed, err := absorbPlainTree(a.symbolRefTable, r.Tree)
 			if err != nil {
 				return err
@@ -319,6 +321,9 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 		}
 		remap, err := a.symbolRefTable.Add(r.SymbolRefs)
 		if err != nil {
+			return err
+		}
+		if err := a.checkUnresolvedLimit(); err != nil {
 			return err
 		}
 		return a.symbolRefTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(remap))
@@ -346,6 +351,21 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 		})
 		return a.tree.MergeTreeBytes(r.Tree)
 	}
+}
+
+// checkUnresolvedLimit fails the query once the merged table's distinct
+// unresolved locations exceed the query's limit: aggregation memory is
+// bounded by the same per-tenant knob that bounds each dataset's build
+// (see symdb.WithResolverSymbolRefCap).
+func (a *treeAggregator) checkUnresolvedLimit() error {
+	limit := a.query.GetMaxUnresolvedLocations()
+	if limit <= 0 {
+		return nil
+	}
+	if n := a.symbolRefTable.UnresolvedCount(); int64(n) > limit {
+		return fmt.Errorf("%w (limit %d)", symdb.ErrTooManyUnresolvedLocations, limit)
+	}
+	return nil
 }
 
 func (a *treeAggregator) build() *queryv1.Report {
@@ -417,53 +437,25 @@ func absorbPlainTree(dst *symbolref.Table, plainTreeBytes []byte) (*model.Locati
 	return absorbed, nil
 }
 
-// stackToInsert is a root-first stack of table refs, paired with its self
-// value, collected from a tree so an intermediate ResultBuilder pass can
-// run before it is known how any given ref renders as a name.
-type stackToInsert struct {
-	self  int64
-	stack []model.LocationRefName
-}
-
-// locationRefTreeToFunctionNameTree converts tree into a FunctionNameTree,
-// resolving every ref through rb. The caller must ensure rb's table has no
-// unresolved entries reachable from tree: any such ref renders as the
-// empty string, since there is no name to fall back to. rb may already
-// have observed refs from an earlier KeepRef/Build pass (e.g. a prior
-// marshal of the same tree): KeepRef is idempotent, so this only adds to
-// rb's state, never invalidates it.
+// locationRefTreeToFunctionNameTree converts tree into a FunctionNameTree
+// in a single pass, resolving every ref to its display name through
+// rb.NameOf. The caller must ensure rb's table has no unresolved entries
+// reachable from tree; a violating ref still renders — as its
+// binary!0xaddr fallback — rather than dropping the frame.
 func locationRefTreeToFunctionNameTree(tree *model.LocationRefNameTree, rb *symbolref.ResultBuilder) *model.FunctionNameTree {
-	var stacks []stackToInsert
-	tree.IterateStacks(func(_ model.LocationRefName, self int64, stack []model.LocationRefName) {
-		cp := append([]model.LocationRefName(nil), stack...)
-		slices.Reverse(cp)
-		stacks = append(stacks, stackToInsert{self: self, stack: cp})
-	})
-
-	kept := make([][]model.LocationRefName, len(stacks))
-	for i, e := range stacks {
-		k := make([]model.LocationRefName, len(e.stack))
-		for j, ref := range e.stack {
-			k[j] = rb.KeepRef(ref)
-		}
-		kept[i] = k
-	}
-	pb := new(queryv1.SymbolRefTable)
-	rb.Build(pb)
-
 	out := new(model.FunctionNameTree)
-	for i, e := range stacks {
-		names := make([]model.FunctionName, len(e.stack))
-		for j, ref := range e.stack {
-			if ref == model.OtherLocationRef {
-				names[j] = model.OtherFunctionName
-				continue
-			}
-			if idx := kept[i][j]; idx >= 0 && int(idx) < len(pb.Names) {
-				names[j] = model.FunctionName(pb.Names[idx])
+	var names []model.FunctionName
+	tree.IterateStacks(func(_ model.LocationRefName, self int64, stack []model.LocationRefName) {
+		names = names[:0]
+		// stack is leaf-first; InsertStack wants root-first.
+		for i := len(stack) - 1; i >= 0; i-- {
+			if stack[i] == model.OtherLocationRef {
+				names = append(names, model.OtherFunctionName)
+			} else {
+				names = append(names, model.FunctionName(rb.NameOf(stack[i])))
 			}
 		}
-		out.InsertStack(e.self, names...)
-	}
+		out.InsertStack(self, names...)
+	})
 	return out
 }
