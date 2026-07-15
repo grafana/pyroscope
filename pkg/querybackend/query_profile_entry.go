@@ -175,7 +175,6 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 	columns := queryColumns{
 		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
 		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
-		//		{schemav1.AnnotationsColumnName, nil, 25},
 	}
 	processor := []func([][]parquet.Value, *ProfileEntry){}
 
@@ -237,7 +236,6 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		},
 		func([]ProfileEntry) {},
 	)
-
 	return entries, nil
 }
 
