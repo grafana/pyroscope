@@ -67,7 +67,7 @@ func TestSymbols_SymbolRefTree_LinedAndUnresolved(t *testing.T) {
 	symbols, appender := symbolsForProfile(t, p)
 	table := symbolref.NewTable()
 
-	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, newUnresolvedCap(0))
+	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, 0)
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), tree.Total())
 
@@ -88,7 +88,8 @@ func TestSymbols_SymbolRefTree_LinedAndUnresolved(t *testing.T) {
 	assert.Equal(t, ".!0xdeadbeef", pb.Names[kernelIdx],
 		`legacy-parity fallback; "." is filepath.Base of the filename-less mapping the no-mapping frame indexes`)
 
-	unresolved := symbolref.UnresolvedBinaries(pb)
+	unresolved, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
 	require.Len(t, unresolved, 1)
 	assert.Equal(t, "bidB", unresolved[0].BuildID)
 	assert.Equal(t, "libB.so", unresolved[0].BinaryName)
@@ -126,7 +127,7 @@ func TestSymbols_SymbolRefTree_FirstMappingResolves(t *testing.T) {
 	symbols, appender := symbolsForProfile(t, p)
 	table := symbolref.NewTable()
 
-	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, newUnresolvedCap(0))
+	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, 0)
 	require.NoError(t, err)
 
 	rb := table.ResultBuilder()
@@ -137,7 +138,8 @@ func TestSymbols_SymbolRefTree_FirstMappingResolves(t *testing.T) {
 	pb := &queryv1.SymbolRefTable{}
 	rb.Build(pb)
 
-	unresolved := symbolref.UnresolvedBinaries(pb)
+	unresolved, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
 	require.Len(t, unresolved, 1, "a line-less location on the first mapping must be symbolizable, not bare hex")
 	assert.Equal(t, "bidA", unresolved[0].BuildID)
 	assert.Equal(t, "libA.so", unresolved[0].BinaryName)
@@ -172,7 +174,7 @@ func TestSymbols_SymbolRefTree_NoBuildIDRendersFallback(t *testing.T) {
 	symbols, appender := symbolsForProfile(t, p)
 	table := symbolref.NewTable()
 
-	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, newUnresolvedCap(0))
+	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, 0)
 	require.NoError(t, err)
 
 	rb := table.ResultBuilder()
@@ -184,7 +186,9 @@ func TestSymbols_SymbolRefTree_NoBuildIDRendersFallback(t *testing.T) {
 	pb := &queryv1.SymbolRefTable{}
 	rb.Build(pb)
 
-	assert.Empty(t, symbolref.UnresolvedBinaries(pb), "a mapping with no build ID is not symbolizable")
+	binaries, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
+	assert.Empty(t, binaries, "a mapping with no build ID is not symbolizable")
 	assert.Contains(t, pb.Names, "goldpinger!0xdeadbeef", "keeps the binary-name context, like the legacy fallback")
 	assert.Contains(t, pb.Names, ".!0x1111",
 		`empty filename: "." is filepath.Base(""), byte-for-byte with the legacy fallback derivation`)
@@ -257,7 +261,8 @@ func TestResolver_SymbolRefTree_MultiPartitionRefConsistency(t *testing.T) {
 	rb.KeepRef(unresolvedRef)
 	rb.Build(pb)
 	assert.Equal(t, "main", pb.Names[mainIdx])
-	unresolved := symbolref.UnresolvedBinaries(pb)
+	unresolved, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
 	require.Len(t, unresolved, 1)
 	assert.Equal(t, "bid-shared", unresolved[0].BuildID)
 	assert.Equal(t, []uint64{0x9000}, unresolved[0].Addresses)
@@ -340,7 +345,7 @@ func TestSymbols_SymbolRefTree_StackTraceSelector(t *testing.T) {
 	t.Run("matching selector keeps only the selected subtree", func(t *testing.T) {
 		sts := &typesv1.StackTraceSelector{CallSite: []*typesv1.Location{{Name: "main"}}}
 		table := symbolref.NewTable()
-		tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, sts), table, newUnresolvedCap(0))
+		tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, sts), table, 0)
 		require.NoError(t, err)
 		assert.Equal(t, int64(5), tree.Total())
 	})
@@ -348,7 +353,7 @@ func TestSymbols_SymbolRefTree_StackTraceSelector(t *testing.T) {
 	t.Run("non-matching selector yields an empty tree without error", func(t *testing.T) {
 		sts := &typesv1.StackTraceSelector{CallSite: []*typesv1.Location{{Name: "no-such-function"}}}
 		table := symbolref.NewTable()
-		tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, sts), table, newUnresolvedCap(0))
+		tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, sts), table, 0)
 		require.NoError(t, err)
 		assert.Equal(t, int64(0), tree.Total())
 	})
@@ -367,18 +372,69 @@ func TestSymbols_SymbolRefTree_UnresolvableStacktrace(t *testing.T) {
 	}
 	symbols, appender := symbolsForProfile(t, p)
 	table := symbolref.NewTable()
-	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, newUnresolvedCap(0))
+	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, 0)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), tree.Total())
 }
 
-// A pair interned before the cap filled stays allowed; any new pair past
-// the cap is rejected, and rejected pairs are not recorded (that would
-// grow memory without bound).
-func TestUnresolvedCap_Allow(t *testing.T) {
-	c := newUnresolvedCap(1)
-	assert.True(t, c.allow("bid", 0x1))
-	assert.True(t, c.allow("bid", 0x1), "an interned pair stays allowed after the cap fills")
-	assert.False(t, c.allow("bid", 0x2))
-	assert.False(t, c.allow("bid", 0x2))
+// TestSymbols_SymbolRefTree_UnresolvedLimit exercises the fail-fast limit
+// through the real build path: two distinct unresolved locations breach a
+// limit of 1 and the whole call fails; the same input passes at 2. A
+// repeated location dedups in the table, so it never counts twice.
+func TestSymbols_SymbolRefTree_UnresolvedLimit(t *testing.T) {
+	// A fresh profile per ingest: WriteProfileSymbols rewrites the
+	// profile's location IDs in place.
+	profile := func() *profilev1.Profile {
+		return &profilev1.Profile{
+			StringTable: []string{"", "libA.so", "bidA"},
+			Mapping: []*profilev1.Mapping{
+				{Id: 1, Filename: 1, BuildId: 2},
+			},
+			Location: []*profilev1.Location{
+				{Id: 1, MappingId: 1, Address: 0x1000},
+				{Id: 2, MappingId: 1, Address: 0x2000},
+			},
+			Sample: []*profilev1.Sample{
+				{LocationId: []uint64{2, 1}, Value: []int64{1}},
+				{LocationId: []uint64{1}, Value: []int64{1}},
+			},
+			SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
+		}
+	}
+
+	symbols, appender := symbolsForProfile(t, profile())
+	_, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), symbolref.NewTable(), 1)
+	require.ErrorIs(t, err, ErrTooManyUnresolvedLocations)
+
+	symbols, appender = symbolsForProfile(t, profile())
+	tree, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), symbolref.NewTable(), 2)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), tree.Total())
+}
+
+// The limit counts what the shared table holds, on the table's own identity
+// — (build ID, binary name, address) — so one build ID mapped under two
+// different file names yields two countable entries for the same address,
+// exactly as the table stores them.
+func TestSymbols_SymbolRefTree_UnresolvedLimitCountsBinaryName(t *testing.T) {
+	p := &profilev1.Profile{
+		StringTable: []string{"", "libA.so", "bidA", "libA-renamed.so"},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, Filename: 1, BuildId: 2},
+			{Id: 2, Filename: 3, BuildId: 2},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Address: 0x1000},
+			{Id: 2, MappingId: 2, Address: 0x1000},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{1}},
+		},
+		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
+	}
+	symbols, appender := symbolsForProfile(t, p)
+	table := symbolref.NewTable()
+	_, err := symbols.SymbolRefTree(context.Background(), appender, SelectStackTraces(symbols, nil), table, 1)
+	require.ErrorIs(t, err, ErrTooManyUnresolvedLocations)
+	assert.Equal(t, 2, table.UnresolvedCount())
 }
