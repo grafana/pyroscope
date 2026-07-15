@@ -10,6 +10,7 @@ import (
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/util/hashedslice"
 )
 
 // Table is a content-addressed intern table pairing a model.LocationRefNameTree
@@ -24,10 +25,10 @@ type Table struct {
 // tableCore is Table's lock-free state; it must only be reached through
 // Table, which guards every access with its mutex.
 type tableCore struct {
-	names   *hashedSlice
-	buildID *hashedSlice
+	names   *hashedslice.Slice[string]
+	buildID *hashedslice.Slice[string]
 
-	binaryNames []string // parallel to buildID.sl; first-writer-wins
+	binaryNames []string // parallel to buildID.Values; first-writer-wins
 
 	unresolved   map[unresolvedKey]int32 // (buildID, addr) -> unresolved index
 	unresolvedBI []int32                 // parallel slices, in intern order
@@ -52,13 +53,15 @@ func NewTable() *Table {
 
 func newTableCore() tableCore {
 	c := tableCore{
-		names:      newHashedSlice(),
-		buildID:    newHashedSlice(),
+		names:      hashedslice.New(stringEq),
+		buildID:    hashedslice.New(stringEq),
 		unresolved: make(map[unresolvedKey]int32),
 	}
-	c.names.add("")
+	c.internName("")
 	return c
 }
+
+func stringEq(a, b string) bool { return a == b }
 
 // InternName idempotently interns a resolved frame name: the same name
 // always returns the same ref, and a name not seen before is assigned a new
@@ -70,7 +73,7 @@ func (t *Table) InternName(name string) model.LocationRefName {
 }
 
 func (c *tableCore) internName(name string) model.LocationRefName {
-	return model.LocationRefName(c.names.add(name))
+	return model.LocationRefName(c.names.Add(xxhash.Sum64String(name), name))
 }
 
 // InternUnresolved idempotently interns an unresolved (buildID, addr)
@@ -106,8 +109,8 @@ func (c *tableCore) internUnresolvedRef(bi int32, addr uint64) model.LocationRef
 // first time a given buildID is seen; later calls for the same buildID
 // keep the first binaryName.
 func (c *tableCore) internBuildID(buildID, binaryName string) int32 {
-	before := c.buildID.len()
-	bi := c.buildID.add(buildID)
+	before := c.buildID.Len()
+	bi := c.buildID.Add(xxhash.Sum64String(buildID), buildID)
 	if int(bi) == before {
 		c.binaryNames = append(c.binaryNames, binaryName)
 	}
@@ -156,7 +159,7 @@ func (c *tableCore) add(pb *queryv1.SymbolRefTable) (func(model.LocationRefName)
 
 	nameRemap := make([]int32, len(pb.GetNames()))
 	for i, name := range pb.GetNames() {
-		nameRemap[i] = c.names.add(name)
+		nameRemap[i] = c.names.Add(xxhash.Sum64String(name), name)
 	}
 
 	buildIDRemap := make([]int32, len(pb.GetBuildIds()))
@@ -233,7 +236,7 @@ func (c *tableCore) newResultBuilder() *ResultBuilder {
 	}
 	slices.SortFunc(sorted, func(a, b int32) int {
 		return cmp.Or(
-			cmp.Compare(c.buildID.sl[c.unresolvedBI[a]], c.buildID.sl[c.unresolvedBI[b]]),
+			cmp.Compare(c.buildID.Values[c.unresolvedBI[a]], c.buildID.Values[c.unresolvedBI[b]]),
 			cmp.Compare(c.unresolvedAd[a], c.unresolvedAd[b]),
 		)
 	})
@@ -243,9 +246,9 @@ func (c *tableCore) newResultBuilder() *ResultBuilder {
 	}
 
 	return &ResultBuilder{
-		namesLen:         c.names.len(),
-		namesSl:          c.names.sl,
-		buildIDSl:        c.buildID.sl,
+		namesLen:         c.names.Len(),
+		namesSl:          c.names.Values,
+		buildIDSl:        c.buildID.Values,
 		binaryNames:      c.binaryNames,
 		unresolvedBI:     c.unresolvedBI,
 		unresolvedAd:     c.unresolvedAd,
@@ -336,38 +339,4 @@ func (rb *ResultBuilder) Build(pb *queryv1.SymbolRefTable) *queryv1.SymbolRefTab
 	}
 
 	return pb
-}
-
-// hashedSlice is a content-addressed intern table for strings: repeated add
-// calls with equal values return the same index. Modeled on the hashedSlice
-// pattern in pkg/phlaredb/symdb/symbol_merger.go, specialized to strings
-// since both names and build IDs interned here are strings.
-type hashedSlice struct {
-	m  map[uint64]int32
-	sl []string
-}
-
-func newHashedSlice() *hashedSlice {
-	return &hashedSlice{m: make(map[uint64]int32)}
-}
-
-func (h *hashedSlice) len() int {
-	return len(h.sl)
-}
-
-func (h *hashedSlice) add(s string) int32 {
-	hash := xxhash.Sum64String(s)
-	for probeHash := hash; ; probeHash++ {
-		idx, found := h.m[probeHash]
-		if !found {
-			idx = int32(len(h.sl))
-			h.m[probeHash] = idx
-			h.sl = append(h.sl, s)
-			return idx
-		}
-		if h.sl[idx] == s {
-			return idx
-		}
-		// hash collision: probe next slot
-	}
 }
