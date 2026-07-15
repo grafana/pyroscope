@@ -581,6 +581,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
+	sampledOut := false
+	var fullBytes int64
 	if !willSample {
 		finalLog.addFields(
 			"usage_group", samplingSource.UsageGroup,
@@ -588,12 +590,14 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		)
 		finalLog.msg = "skipping profile due to sampling"
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
-		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 
 		if !d.cfg.KeepStrippedProfiles {
+			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
+			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
 		}
+		sampledOut = true
+		fullBytes = int64(req.Profile.SizeVT())
 		for _, s := range req.Profile.Sample {
 			s.LocationId = nil
 		}
@@ -625,11 +629,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		"sample_count", len(p.Sample),
 		"parse_duration", parseDuration,
 	)
-	d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
-	d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
-	d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
-	groups.CountReceivedBytes(profName, int64(decompressedSize))
+	if !sampledOut {
+		d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
+		d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
+		d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
+		groups.CountReceivedBytes(profName, int64(decompressedSize))
+	}
 
 	validated, err := validation.ValidateProfile(d.limits, tenantID, p, decompressedSize, req.Labels, now)
 	if err != nil {
@@ -641,9 +647,11 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	symbolsSize, samplesSize := profileSizeBytes(p.Profile)
-	d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
-	d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
+	if !sampledOut {
+		symbolsSize, samplesSize := profileSizeBytes(p.Profile)
+		d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
+		d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
+	}
 
 	// Normalisation is quite an expensive operation,
 	// therefore it should be done after the rate limit check.
@@ -663,7 +671,20 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		req.Profile.Normalize()
 		sp.Finish()
 		finalLog.addFields("normalization_stats", req.Profile.Stats())
-		d.metrics.observeProfileSize(tenantID, StageNormalized, calculateRequestSize(req))
+		if sampledOut {
+			_, normalizedKept := profileSizeBytes(req.Profile.Profile)
+			discardedBytes := fullBytes - normalizedKept
+			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(discardedBytes))
+			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), discardedBytes)
+			d.metrics.observeProfileSize(tenantID, StageNormalized, normalizedKept)
+			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(normalizedKept))
+			d.profileSizeStats.Record(float64(normalizedKept), profLanguage)
+			groups.CountReceivedBytes(profName, normalizedKept)
+			d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(normalizedKept))
+			d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(0)
+		} else {
+			d.metrics.observeProfileSize(tenantID, StageNormalized, calculateRequestSize(req))
+		}
 	}
 
 	if len(req.Profile.Sample) == 0 {
