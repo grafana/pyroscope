@@ -13,6 +13,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
@@ -74,11 +75,9 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 	}
 
 	totals := make([]seriesTotal, 0, len(series))
+	startMs := from.UnixMilli()
 	for _, s := range series {
-		var total float64
-		for _, p := range s.Points {
-			total += p.Value
-		}
+		total := sumPointsAfter(s.Points, startMs)
 		lbls := model.Labels(s.Labels)
 		vals := make([]string, len(params.LabelNames))
 		for i, name := range params.LabelNames {
@@ -157,6 +156,22 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 	}
 
 	return nil
+}
+
+// sumPointsAfter sums point values with timestamps strictly after startMs.
+// SelectSeries fetches one extra step before the window so that the boundary
+// point at `start` renders as a complete bucket in charts; that point
+// aggregates (start-step, start], which lies entirely before the requested
+// window. With step = window size, counting it roughly doubles the total.
+func sumPointsAfter(points []*typesv1.Point, startMs int64) float64 {
+	var total float64
+	for _, p := range points {
+		if p.Timestamp <= startMs {
+			continue
+		}
+		total += p.Value
+	}
+	return total
 }
 
 func formatUnit(v float64, unit string) string {
