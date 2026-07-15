@@ -25,21 +25,41 @@ type Table struct {
 // tableCore is Table's lock-free state; it must only be reached through
 // Table, which guards every access with its mutex.
 type tableCore struct {
-	names   *hashedslice.Slice[string]
-	buildID *hashedslice.Slice[string]
+	names    *hashedslice.Slice[string]
+	binaries *hashedslice.Slice[binaryKey]
 
-	binaryNames []string // parallel to buildID.Values; first-writer-wins
+	unresolved    map[unresolvedKey]int32 // (binary, addr) -> unresolved index
+	unresolvedBin []int32                 // parallel slices, in intern order
+	unresolvedAd  []uint64
+}
 
-	unresolved   map[unresolvedKey]int32 // (buildID, addr) -> unresolved index
-	unresolvedBI []int32                 // parallel slices, in intern order
-	unresolvedAd []uint64
+// binaryKey identifies a binary exactly as stored in the profile data. The
+// same build ID may appear under several binary names (e.g. a binary renamed
+// between deployments); every (build ID, name) combination is a distinct
+// row, so no arrival order can make one stored name overwrite another.
+type binaryKey struct {
+	buildID string
+	name    string
+}
+
+func binaryKeyEq(a, b binaryKey) bool { return a == b }
+
+var binaryKeySep = []byte{0}
+
+func (k binaryKey) hash() uint64 {
+	var d xxhash.Digest
+	d.Reset()
+	_, _ = d.WriteString(k.buildID)
+	_, _ = d.Write(binaryKeySep) // so ("ab","c") and ("a","bc") hash apart
+	_, _ = d.WriteString(k.name)
+	return d.Sum64()
 }
 
 // unresolvedKey identifies a distinct unresolved location by its interned
-// build ID index and address.
+// binary row index and address.
 type unresolvedKey struct {
-	buildID int32
-	addr    uint64
+	binary int32
+	addr   uint64
 }
 
 // NewTable returns an empty table. Ref 0 is reserved as an unused sentinel:
@@ -54,7 +74,7 @@ func NewTable() *Table {
 func newTableCore() tableCore {
 	c := tableCore{
 		names:      hashedslice.New(stringEq),
-		buildID:    hashedslice.New(stringEq),
+		binaries:   hashedslice.New(binaryKeyEq),
 		unresolved: make(map[unresolvedKey]int32),
 	}
 	c.internName("")
@@ -76,10 +96,11 @@ func (c *tableCore) internName(name string) model.LocationRefName {
 	return model.LocationRefName(c.names.Add(xxhash.Sum64String(name), name))
 }
 
-// InternUnresolved idempotently interns an unresolved (buildID, addr)
-// location, keyed on the pair. binaryName is recorded the first time a
-// given buildID is seen; later calls for the same buildID keep that first
-// binaryName even if a different value is passed.
+// InternUnresolved idempotently interns an unresolved location, keyed on the
+// (buildID, binaryName, addr) triple. The binary name is part of the key —
+// the same build ID under two different names yields two distinct refs — so
+// every name is retained exactly as stored and the table's content is
+// independent of intern or merge arrival order.
 func (t *Table) InternUnresolved(buildID, binaryName string, addr uint64) model.LocationRefName {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -87,34 +108,26 @@ func (t *Table) InternUnresolved(buildID, binaryName string, addr uint64) model.
 }
 
 func (c *tableCore) internUnresolved(buildID, binaryName string, addr uint64) model.LocationRefName {
-	bi := c.internBuildID(buildID, binaryName)
-	return c.internUnresolvedRef(bi, addr)
+	bin := c.internBinary(binaryKey{buildID: buildID, name: binaryName})
+	return c.internUnresolvedRef(bin, addr)
 }
 
-// internUnresolvedRef interns (bi, addr), where bi is already an interned
-// build ID index.
-func (c *tableCore) internUnresolvedRef(bi int32, addr uint64) model.LocationRefName {
-	key := unresolvedKey{buildID: bi, addr: addr}
+// internUnresolvedRef interns (bin, addr), where bin is already an interned
+// binary row index.
+func (c *tableCore) internUnresolvedRef(bin int32, addr uint64) model.LocationRefName {
+	key := unresolvedKey{binary: bin, addr: addr}
 	if idx, ok := c.unresolved[key]; ok {
 		return c.unresolvedRef(idx)
 	}
-	idx := int32(len(c.unresolvedBI))
+	idx := int32(len(c.unresolvedBin))
 	c.unresolved[key] = idx
-	c.unresolvedBI = append(c.unresolvedBI, bi)
+	c.unresolvedBin = append(c.unresolvedBin, bin)
 	c.unresolvedAd = append(c.unresolvedAd, addr)
 	return c.unresolvedRef(idx)
 }
 
-// internBuildID interns buildID (deduplicated) and records binaryName the
-// first time a given buildID is seen; later calls for the same buildID
-// keep the first binaryName.
-func (c *tableCore) internBuildID(buildID, binaryName string) int32 {
-	before := c.buildID.Len()
-	bi := c.buildID.Add(xxhash.Sum64String(buildID), buildID)
-	if int(bi) == before {
-		c.binaryNames = append(c.binaryNames, binaryName)
-	}
-	return bi
+func (c *tableCore) internBinary(k binaryKey) int32 {
+	return c.binaries.Add(k.hash(), k)
 }
 
 // unresolvedRef converts an unresolved entry's slot index into Table's
@@ -136,7 +149,7 @@ func (t *Table) HasUnresolved() bool {
 }
 
 func (c *tableCore) hasUnresolved() bool {
-	return len(c.unresolvedBI) > 0
+	return len(c.unresolvedBin) > 0
 }
 
 // Add merges pb into t, returning a remap function from pb's ref space into
@@ -162,18 +175,18 @@ func (c *tableCore) add(pb *queryv1.SymbolRefTable) (func(model.LocationRefName)
 		nameRemap[i] = c.names.Add(xxhash.Sum64String(name), name)
 	}
 
-	buildIDRemap := make([]int32, len(pb.GetBuildIds()))
+	binRemap := make([]int32, len(pb.GetBuildIds()))
 	binaryNames := pb.GetBinaryNames()
 	for i, buildID := range pb.GetBuildIds() {
-		buildIDRemap[i] = c.internBuildID(buildID, binaryNames[i])
+		binRemap[i] = c.internBinary(binaryKey{buildID: buildID, name: binaryNames[i]})
 	}
 
 	numNames := len(pb.GetNames())
 	unresolvedAddr := pb.GetUnresolvedAddress()
 	unresolvedRemap := make([]model.LocationRefName, len(unresolvedAddr))
 	for i, addr := range unresolvedAddr {
-		bi := buildIDRemap[pb.GetUnresolvedBuildId()[i]]
-		unresolvedRemap[i] = c.internUnresolvedRef(bi, addr)
+		bin := binRemap[pb.GetUnresolvedBuildId()[i]]
+		unresolvedRemap[i] = c.internUnresolvedRef(bin, addr)
 	}
 
 	return func(in model.LocationRefName) model.LocationRefName {
@@ -225,18 +238,20 @@ func (t *Table) ResultBuilder() *ResultBuilder {
 }
 
 // newResultBuilder snapshots the state a ResultBuilder needs — including the
-// (buildID, address) sort order over every unresolved entry interned so
-// far — so that ResultBuilder holds no reference back to tableCore and can
-// safely be used without holding Table's lock.
+// (buildID, binaryName, address) sort order over every unresolved entry
+// interned so far — so that ResultBuilder holds no reference back to
+// tableCore and can safely be used without holding Table's lock.
 func (c *tableCore) newResultBuilder() *ResultBuilder {
-	n := len(c.unresolvedBI)
+	n := len(c.unresolvedBin)
 	sorted := make([]int32, n)
 	for i := range sorted {
 		sorted[i] = int32(i)
 	}
 	slices.SortFunc(sorted, func(a, b int32) int {
+		ka, kb := c.binaries.Values[c.unresolvedBin[a]], c.binaries.Values[c.unresolvedBin[b]]
 		return cmp.Or(
-			cmp.Compare(c.buildID.Values[c.unresolvedBI[a]], c.buildID.Values[c.unresolvedBI[b]]),
+			cmp.Compare(ka.buildID, kb.buildID),
+			cmp.Compare(ka.name, kb.name),
 			cmp.Compare(c.unresolvedAd[a], c.unresolvedAd[b]),
 		)
 	})
@@ -248,9 +263,8 @@ func (c *tableCore) newResultBuilder() *ResultBuilder {
 	return &ResultBuilder{
 		namesLen:         c.names.Len(),
 		namesSl:          c.names.Values,
-		buildIDSl:        c.buildID.Values,
-		binaryNames:      c.binaryNames,
-		unresolvedBI:     c.unresolvedBI,
+		binaries:         c.binaries.Values,
+		unresolvedBin:    c.unresolvedBin,
 		unresolvedAd:     c.unresolvedAd,
 		sortedUnresolved: sorted,
 		rank:             rank,
@@ -267,14 +281,13 @@ func (c *tableCore) newResultBuilder() *ResultBuilder {
 type ResultBuilder struct {
 	namesLen int // snapshot of len(names) at construction; the resolved/unresolved dividing line
 
-	namesSl     []string // snapshot of the table's interned names
-	buildIDSl   []string // snapshot of the table's interned build IDs
-	binaryNames []string // snapshot of the table's per-build-ID binary names
+	namesSl  []string    // snapshot of the table's interned names
+	binaries []binaryKey // snapshot of the table's interned (build ID, binary name) rows
 
-	unresolvedBI []int32  // snapshot: build ID index per unresolved entry
-	unresolvedAd []uint64 // snapshot: address per unresolved entry
+	unresolvedBin []int32  // snapshot: binary row index per unresolved entry
+	unresolvedAd  []uint64 // snapshot: address per unresolved entry
 
-	sortedUnresolved []int32 // permutation of [0, len(unresolvedBI)), sorted by (buildID, address)
+	sortedUnresolved []int32 // permutation of [0, len(unresolvedBin)), sorted by (buildID, binaryName, address)
 	rank             []int32 // rank[idx] = position of idx within sortedUnresolved
 }
 
@@ -289,7 +302,7 @@ type ResultBuilder struct {
 // which refs the marshaled tree keeps. Unresolved wire refs must be final
 // the moment they are first returned, while the kept set is still unknown,
 // so a kept-set-compacted encoding could not be assigned in this single
-// pass without breaking the (buildID, address) wire order.
+// pass without breaking the (buildID, binaryName, address) wire order.
 func (rb *ResultBuilder) KeepRef(ref model.LocationRefName) model.LocationRefName {
 	switch {
 	case ref == model.OtherLocationRef:
@@ -307,9 +320,11 @@ func (rb *ResultBuilder) KeepRef(ref model.LocationRefName) model.LocationRefNam
 // returned queryv1.SymbolRefTable when pb == nil. Every interned name is
 // written, in intern order, so resolved wire refs are the table's own name
 // indices and len(pb.Names) always equals the offset KeepRef applies to
-// unresolved refs; unresolved entries are sorted by (buildID, address),
-// which is what makes the unresolved side of the wire encoding independent
-// of intern or merge arrival order.
+// unresolved refs; unresolved entries are sorted by (buildID, binaryName,
+// address), which is what makes the unresolved side of the wire encoding
+// independent of intern or merge arrival order. Equal binary rows form one
+// contiguous run each under that order, so build_ids/binary_names carry
+// exactly one row per distinct (build ID, binary name) pair referenced.
 func (rb *ResultBuilder) Build(pb *queryv1.SymbolRefTable) *queryv1.SymbolRefTable {
 	if pb == nil {
 		pb = &queryv1.SymbolRefTable{}
@@ -319,22 +334,23 @@ func (rb *ResultBuilder) Build(pb *queryv1.SymbolRefTable) *queryv1.SymbolRefTab
 	copy(pb.Names, rb.namesSl)
 
 	n := len(rb.sortedUnresolved)
-	pb.BuildIds = make([]string, 0, n)
-	pb.BinaryNames = make([]string, 0, n)
+	// Reset any rows a reused pb may carry.
+	pb.BuildIds = nil
+	pb.BinaryNames = nil
 	pb.UnresolvedBuildId = make([]uint32, n)
 	pb.UnresolvedAddress = make([]uint64, n)
 
-	buildIDOut := make(map[int32]int32, n)
+	last := int32(-1)
+	var row uint32
 	for out, idx := range rb.sortedUnresolved {
-		bi := rb.unresolvedBI[idx]
-		biOut, ok := buildIDOut[bi]
-		if !ok {
-			biOut = int32(len(pb.BuildIds))
-			buildIDOut[bi] = biOut
-			pb.BuildIds = append(pb.BuildIds, rb.buildIDSl[bi])
-			pb.BinaryNames = append(pb.BinaryNames, rb.binaryNames[bi])
+		if bin := rb.unresolvedBin[idx]; bin != last {
+			row = uint32(len(pb.BuildIds))
+			b := rb.binaries[bin]
+			pb.BuildIds = append(pb.BuildIds, b.buildID)
+			pb.BinaryNames = append(pb.BinaryNames, b.name)
+			last = bin
 		}
-		pb.UnresolvedBuildId[out] = uint32(biOut)
+		pb.UnresolvedBuildId[out] = row
 		pb.UnresolvedAddress[out] = rb.unresolvedAd[idx]
 	}
 

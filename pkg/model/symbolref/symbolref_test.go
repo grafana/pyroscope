@@ -5,6 +5,7 @@ package symbolref_test
 // to a follow-up change.
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -19,8 +20,8 @@ import (
 )
 
 // identity renders ref as a string uniquely identifying the resolved name or
-// (buildID, address) location it stands for, for stack-shape comparisons
-// that must survive a change of ref space.
+// (buildID, binaryName, address) location it stands for, for stack-shape
+// comparisons that must survive a change of ref space.
 func identity(t *testing.T, pb *queryv1.SymbolRefTable, ref model.LocationRefName) string {
 	t.Helper()
 	if ref == model.OtherLocationRef {
@@ -34,7 +35,7 @@ func identity(t *testing.T, pb *queryv1.SymbolRefTable, ref model.LocationRefNam
 	require.Less(t, i, len(pb.GetUnresolvedAddress()), "ref %d out of range", ref)
 	bi := pb.GetUnresolvedBuildId()[i]
 	require.Less(t, int(bi), len(pb.GetBuildIds()), "build id index %d out of range", bi)
-	return fmt.Sprintf("loc:%s@%#x", pb.GetBuildIds()[bi], pb.GetUnresolvedAddress()[i])
+	return fmt.Sprintf("loc:%s|%s@%#x", pb.GetBuildIds()[bi], pb.GetBinaryNames()[bi], pb.GetUnresolvedAddress()[i])
 }
 
 // stacksByIdentity walks every stack in tree and sums self values keyed by
@@ -106,6 +107,7 @@ func TestInternIdempotencyAndDedup(t *testing.T) {
 	loc2000b := table.InternUnresolved("build1", "bin1", 0x2000)
 	loc1000b := table.InternUnresolved("build1", "bin1", 0x1000)
 	loc1000c := table.InternUnresolved("build1", "bin1", 0x1000)
+	loc1000renamed := table.InternUnresolved("build1", "bin1-renamed", 0x1000)
 
 	require.Equal(t, foo1, foo2)
 	require.Equal(t, foo1, foo3)
@@ -114,6 +116,8 @@ func TestInternIdempotencyAndDedup(t *testing.T) {
 	require.Equal(t, loc2000a, loc2000b)
 	require.NotEqual(t, foo1, bar)
 	require.NotEqual(t, loc1000a, loc2000a)
+	require.NotEqual(t, loc1000a, loc1000renamed,
+		"same (buildID, addr) under a different binary name must be a distinct ref")
 
 	tree := new(model.LocationRefNameTree)
 	tree.InsertStack(1, foo1)
@@ -209,8 +213,13 @@ func TestMergeDeterminismUnderPermutedArrival(t *testing.T) {
 		buildPartial(func(table *symbolref.Table) *model.LocationRefNameTree {
 			p3 := table.InternName("p3_fn")
 			locB := table.InternUnresolved("buildB", "binB", 0x200)
+			// Same (buildID, addr) as partials 1 and 2, but stored under a
+			// renamed binary: the kept name must not depend on which partial
+			// arrives first.
+			locA := table.InternUnresolved("buildA", "binA-renamed", 0x100)
 			tree := new(model.LocationRefNameTree)
 			tree.InsertStack(5, p3, locB)
+			tree.InsertStack(7, p3, locA)
 			return tree
 		}),
 	}
@@ -268,14 +277,14 @@ func TestMergeDeterminismUnderPermutedArrival(t *testing.T) {
 		require.Equal(t, want.stacks, got.stacks, "ordering %v produced different stack values", ordering)
 		require.Equal(t, want.names, got.names, "ordering %v produced a different set of resolved names", ordering)
 		require.True(t, proto.Equal(want.unresolved, got.unresolved),
-			"ordering %v produced different unresolved wire ordering (the (buildID, address) sort should make this arrival-independent): %v vs %v",
+			"ordering %v produced different unresolved wire ordering (the (buildID, binaryName, address) sort should make this arrival-independent): %v vs %v",
 			ordering, want.unresolved, got.unresolved)
 	}
 }
 
 // TestWireOrderingMultipleBuildIDs verifies unresolved wire entries are
-// sorted by (buildID, address) regardless of intern order, and that
-// resolved names never contain a build ID string.
+// sorted by (buildID, binaryName, address) regardless of intern order, and
+// that resolved names never contain a build ID string.
 func TestWireOrderingMultipleBuildIDs(t *testing.T) {
 	table := symbolref.NewTable()
 
@@ -286,9 +295,12 @@ func TestWireOrderingMultipleBuildIDs(t *testing.T) {
 	locCcc1 := table.InternUnresolved("ccc", "bin-ccc", 0x1000)
 	locBbb1 := table.InternUnresolved("bbb", "bin-bbb", 0x1000)
 	locAaa2 := table.InternUnresolved("aaa", "bin-aaa", 0x2000)
+	// bbb again under a renamed binary, at an address between bbb's other
+	// two: must sort after both bin-bbb entries, not between them.
+	locBbbRenamed := table.InternUnresolved("bbb", "bin-bbb-renamed", 0x1500)
 
 	tree := new(model.LocationRefNameTree)
-	for _, ref := range []model.LocationRefName{n1, n2, locBbb2, locAaa1, locCcc1, locBbb1, locAaa2} {
+	for _, ref := range []model.LocationRefName{n1, n2, locBbb2, locAaa1, locCcc1, locBbb1, locAaa2, locBbbRenamed} {
 		tree.InsertStack(1, ref)
 	}
 
@@ -302,11 +314,44 @@ func TestWireOrderingMultipleBuildIDs(t *testing.T) {
 	}
 
 	require.Equal(t, len(pb.GetUnresolvedBuildId()), len(pb.GetUnresolvedAddress()))
-	for i := 1; i < len(pb.GetUnresolvedAddress()); i++ {
-		prevKey := fmt.Sprintf("%s|%020d", pb.GetBuildIds()[pb.GetUnresolvedBuildId()[i-1]], pb.GetUnresolvedAddress()[i-1])
-		key := fmt.Sprintf("%s|%020d", pb.GetBuildIds()[pb.GetUnresolvedBuildId()[i]], pb.GetUnresolvedAddress()[i])
-		require.LessOrEqual(t, prevKey, key, "unresolved entries must be sorted by (buildID, address)")
+	keyAt := func(i int) (string, string, uint64) {
+		row := pb.GetUnresolvedBuildId()[i]
+		return pb.GetBuildIds()[row], pb.GetBinaryNames()[row], pb.GetUnresolvedAddress()[i]
 	}
+	for i := 1; i < len(pb.GetUnresolvedAddress()); i++ {
+		prevBuildID, prevName, prevAddr := keyAt(i - 1)
+		buildID, name, addr := keyAt(i)
+		order := cmp.Or(
+			cmp.Compare(prevBuildID, buildID),
+			cmp.Compare(prevName, name),
+			cmp.Compare(prevAddr, addr),
+		)
+		require.LessOrEqual(t, order, 0, "unresolved entries must be sorted by (buildID, binaryName, address); entry %d (%s, %s, %#x) sorts after (%s, %s, %#x)",
+			i, prevBuildID, prevName, prevAddr, buildID, name, addr)
+	}
+}
+
+// TestBinaryNamesRetainedAsStored verifies the renamed-binary case: the same
+// build ID stored under two binary names keeps both rows, exactly as stored,
+// rather than collapsing to whichever name arrived first.
+func TestBinaryNamesRetainedAsStored(t *testing.T) {
+	table := symbolref.NewTable()
+	a := table.InternUnresolved("build1", "pyroscope", 0x100)
+	b := table.InternUnresolved("build1", "pyroscope-server", 0x100)
+	require.NotEqual(t, a, b)
+
+	tree := new(model.LocationRefNameTree)
+	tree.InsertStack(1, a)
+	tree.InsertStack(1, b)
+
+	rb := table.ResultBuilder()
+	tree.Bytes(0, rb.KeepRef)
+	pb := rb.Build(nil)
+
+	require.Equal(t, []string{"build1", "build1"}, pb.GetBuildIds())
+	require.Equal(t, []string{"pyroscope", "pyroscope-server"}, pb.GetBinaryNames())
+	require.Equal(t, []uint32{0, 1}, pb.GetUnresolvedBuildId())
+	require.Equal(t, []uint64{0x100, 0x100}, pb.GetUnresolvedAddress())
 }
 
 // TestNegativeRefPassthrough verifies model.OtherLocationRef is never
