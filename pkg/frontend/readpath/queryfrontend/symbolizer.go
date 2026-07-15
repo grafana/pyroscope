@@ -148,13 +148,13 @@ func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, b
 // useSymbolRefTrees determines whether a tree query should request a
 // symbol-ref report (TreeQuery.SymbolRefs) instead of going through the
 // legacy pprof detour: a symbolizer must be configured, and every tenant on
-// the request must have the feature enabled.
+// the request must have both symbolization and the feature enabled.
 func (q *QueryFrontend) useSymbolRefTrees(tenants []string) bool {
 	if q.symbolizer == nil {
 		return false
 	}
 	for _, t := range tenants {
-		if !q.limits.SymbolRefTreesEnabled(t) {
+		if !q.limits.SymbolizerEnabled(t) || !q.limits.SymbolRefTreesEnabled(t) {
 			return false
 		}
 	}

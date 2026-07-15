@@ -224,7 +224,7 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 			},
 			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
 				l.On("SymbolizerEnabled", "tenant2").Return(false)
-				l.On("SymbolRefTreesEnabled", "tenant2").Return(false)
+				l.On("SymbolRefTreesEnabled", "tenant2").Return(false).Maybe() // short-circuited when symbolization is off
 				l.On("QuerySanitizeOnMerge", "tenant2").Return(false)
 			},
 		},
