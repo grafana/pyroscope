@@ -14,17 +14,21 @@ type UnresolvedBinary struct {
 	Addresses  []uint64 // sorted ascending, deduplicated
 }
 
-// UnresolvedBinaries groups a table's unresolved references by build ID,
-// one entry per distinct binary referenced. ResultBuilder.Build already
-// sorts unresolved entries by (buildID, address), making contiguous-run
-// grouping a single forward pass; a table from a different producer may not
-// be grouped that way, so UnresolvedBinaries falls back to sorting first
-// when it detects that.
-func UnresolvedBinaries(pb *queryv1.SymbolRefTable) []UnresolvedBinary {
+// UnresolvedBinaries groups a table's unresolved references by binary row,
+// one entry per distinct (build ID, binary name) row referenced; err is
+// non-nil only for a structurally malformed pb. ResultBuilder.Build already
+// sorts unresolved entries by (build ID, binary name, address), making
+// contiguous-run grouping a single forward pass; a table from a different
+// producer may not be grouped that way, so UnresolvedBinaries falls back to
+// sorting first when it detects that.
+func UnresolvedBinaries(pb *queryv1.SymbolRefTable) ([]UnresolvedBinary, error) {
+	if err := validateSymbolRefTable(pb); err != nil {
+		return nil, err
+	}
 	buildIdx := pb.GetUnresolvedBuildId()
 	addrs := pb.GetUnresolvedAddress()
 	if len(buildIdx) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	if !groupedByBuildID(buildIdx) {
@@ -40,7 +44,7 @@ func UnresolvedBinaries(pb *queryv1.SymbolRefTable) []UnresolvedBinary {
 		binaries = append(binaries, newUnresolvedBinary(pb, buildIdx[start], addrs[start:i]))
 		start = i
 	}
-	return binaries
+	return binaries, nil
 }
 
 // groupedByBuildID reports whether equal build ID indices in buildIdx always
@@ -83,23 +87,17 @@ func sortByBuildIDAndAddress(buildIdx []uint32, addrs []uint64) ([]uint32, []uin
 
 // newUnresolvedBinary builds one UnresolvedBinary from a contiguous run of
 // addresses sharing build ID index bi, sorting and deduplicating the
-// addresses regardless of the order they arrived in.
+// addresses regardless of the order they arrived in. bi is in range and the
+// build_ids/binary_names slices are parallel: pb was validated before
+// grouping started.
 func newUnresolvedBinary(pb *queryv1.SymbolRefTable, bi uint32, addrs []uint64) UnresolvedBinary {
 	sorted := slices.Clone(addrs)
 	slices.Sort(sorted)
 	sorted = slices.Compact(sorted)
 
-	var buildID, binaryName string
-	if int(bi) < len(pb.GetBuildIds()) {
-		buildID = pb.GetBuildIds()[bi]
-	}
-	if int(bi) < len(pb.GetBinaryNames()) {
-		binaryName = pb.GetBinaryNames()[bi]
-	}
-
 	return UnresolvedBinary{
-		BuildID:    buildID,
-		BinaryName: binaryName,
+		BuildID:    pb.GetBuildIds()[bi],
+		BinaryName: pb.GetBinaryNames()[bi],
 		Addresses:  sorted,
 	}
 }

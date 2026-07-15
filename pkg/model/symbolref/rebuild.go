@@ -63,7 +63,7 @@ func Rebuild(
 	unresolvedAddress := pb.GetUnresolvedAddress()
 	numUnresolved := len(unresolvedAddress)
 
-	cache := make(map[resolveKey][]model.FunctionName)
+	cache := make(map[resolveKey][]model.FunctionName, numUnresolved)
 
 	expand := func(ref model.LocationRefName) ([]model.FunctionName, error) {
 		switch {

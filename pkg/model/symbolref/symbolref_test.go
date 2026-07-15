@@ -418,7 +418,9 @@ func TestEmptyTable(t *testing.T) {
 	require.Empty(t, pb.GetUnresolvedBuildId())
 	require.Empty(t, pb.GetUnresolvedAddress())
 
-	require.Empty(t, symbolref.UnresolvedBinaries(pb))
+	binaries, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
+	require.Empty(t, binaries)
 
 	emptyTreeBytes := new(model.LocationRefNameTree).Bytes(0, nil)
 	rebuilt, err := symbolref.Rebuild(emptyTreeBytes, pb, func(string, uint64) []symbolref.Frame { return nil }, 0)
