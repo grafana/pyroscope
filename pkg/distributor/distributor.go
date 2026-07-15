@@ -93,7 +93,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
-	fs.BoolVar(&cfg.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals and labels with stacktraces stripped (marked __sampled__) instead of dropping it. Only enable once the read path understands the __sampled__ label.")
+	fs.BoolVar(&cfg.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals and labels with stacktraces stripped (marked __sampled__) instead of dropping it.")
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 

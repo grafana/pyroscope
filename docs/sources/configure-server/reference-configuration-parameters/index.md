@@ -911,8 +911,7 @@ ring:
   [instance_enable_ipv6: <boolean> | default = false]
 
 # When a profile is sampled out, retain its totals and labels with stacktraces
-# stripped (marked __sampled__) instead of dropping it. Only enable once the
-# read path understands the __sampled__ label.
+# stripped (marked __sampled__) instead of dropping it.
 # CLI flag: -distributor.sampling.keep-stripped-profiles
 [keep_stripped_profiles: <boolean> | default = false]
 ```

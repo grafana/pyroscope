@@ -296,6 +296,10 @@ distributor:
     # address.
     # instance_interface_names: [<private network interfaces>]
 
+  # When a profile is sampled out, retain its totals and labels with stacktraces
+  # stripped (marked __sampled__) instead of dropping it.
+  # keep_stripped_profiles: false
+
 limits:
   # Per-tenant ingestion rate limit in sample size per second. Units in MB.
   # ingestion_rate_mb: 4
