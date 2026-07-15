@@ -228,9 +228,8 @@ func TestResolver_SymbolRefTree_MultiPartitionRefConsistency(t *testing.T) {
 	r.AddSamples(0, indexed0[0].Samples)
 	r.AddSamples(1, indexed1[0].Samples)
 
-	tree, rb, exceeded, err := r.SymbolRefTree()
+	tree, rb, err := r.SymbolRefTree()
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), exceeded)
 	assert.Equal(t, int64(42), tree.Total())
 
 	stacks, selves := collectStacks(tree)
@@ -264,13 +263,12 @@ func TestResolver_SymbolRefTree_MultiPartitionRefConsistency(t *testing.T) {
 	assert.Equal(t, []uint64{0x9000}, unresolved[0].Addresses)
 }
 
-// TestResolver_SymbolRefTree_UnresolvedCapExceeded verifies the cap-overflow
-// guardrail: once WithResolverSymbolRefCap's limit is reached, further
-// distinct unresolved locations render as an inline fallback name instead
-// of growing the table, no error is returned, and no sample is lost.
-func TestResolver_SymbolRefTree_UnresolvedCapExceeded(t *testing.T) {
+// TestResolver_SymbolRefTree_UnresolvedCap verifies the cap guardrail: a
+// query whose distinct unresolved locations exceed WithResolverSymbolRefCap
+// fails with ErrTooManyUnresolvedLocations instead of returning a partial
+// or mixed-representation result, while a query at the cap succeeds.
+func TestResolver_SymbolRefTree_UnresolvedCap(t *testing.T) {
 	const distinctAddresses = 5
-	const refCap = 2
 
 	locs := make([]*profilev1.Location, 0, distinctAddresses)
 	samples := make([]*profilev1.Sample, 0, distinctAddresses)
@@ -294,25 +292,24 @@ func TestResolver_SymbolRefTree_UnresolvedCapExceeded(t *testing.T) {
 
 	s := newMemSuite(t, nil)
 	indexed := s.db.WriteProfileSymbols(0, p)
-	r := NewResolver(context.Background(), s.db, WithResolverSymbolRefCap(refCap))
-	defer r.Release()
-	r.AddSamples(0, indexed[0].Samples)
 
-	tree, rb, exceeded, err := r.SymbolRefTree()
-	require.NoError(t, err)
-	assert.Equal(t, int64(distinctAddresses-refCap), exceeded)
-	assert.Equal(t, wantTotal, tree.Total(), "no sample is dropped once the cap is exceeded")
-
-	stacks, _ := collectStacks(tree)
-	for _, s := range stacks {
-		require.Len(t, s, 1)
-		rb.KeepRef(s[0])
+	newResolver := func(refCap int) *Resolver {
+		r := NewResolver(context.Background(), s.db, WithResolverSymbolRefCap(refCap))
+		t.Cleanup(r.Release)
+		r.AddSamples(0, indexed[0].Samples)
+		return r
 	}
-	pb := &queryv1.SymbolRefTable{}
-	rb.Build(pb)
-	unresolved := symbolref.UnresolvedBinaries(pb)
-	require.Len(t, unresolved, 1)
-	assert.Len(t, unresolved[0].Addresses, refCap, "only the first refCap distinct addresses are actually interned as unresolved")
+
+	t.Run("at the cap the query succeeds", func(t *testing.T) {
+		tree, _, err := newResolver(distinctAddresses).SymbolRefTree()
+		require.NoError(t, err)
+		assert.Equal(t, wantTotal, tree.Total())
+	})
+
+	t.Run("past the cap the query fails", func(t *testing.T) {
+		_, _, err := newResolver(distinctAddresses - 1).SymbolRefTree()
+		require.ErrorIs(t, err, ErrTooManyUnresolvedLocations)
+	})
 }
 
 // TestSymbols_SymbolRefTree_StackTraceSelector verifies call-site selection
@@ -375,14 +372,13 @@ func TestSymbols_SymbolRefTree_UnresolvableStacktrace(t *testing.T) {
 	assert.Equal(t, int64(0), tree.Total())
 }
 
-// The exceeded count is occurrences, not distinct pairs: capped pairs are
-// not recorded (that would grow memory without bound), so each recurrence
-// counts.
-func TestUnresolvedCap_ExceededCountsOccurrences(t *testing.T) {
+// A pair interned before the cap filled stays allowed; any new pair past
+// the cap is rejected, and rejected pairs are not recorded (that would
+// grow memory without bound).
+func TestUnresolvedCap_Allow(t *testing.T) {
 	c := newUnresolvedCap(1)
 	assert.True(t, c.allow("bid", 0x1))
 	assert.True(t, c.allow("bid", 0x1), "an interned pair stays allowed after the cap fills")
 	assert.False(t, c.allow("bid", 0x2))
 	assert.False(t, c.allow("bid", 0x2))
-	assert.Equal(t, int64(2), c.exceededCount())
 }
