@@ -29,9 +29,7 @@ type resolveKey struct {
 //
 // resolve returning nil or an empty slice for a given (buildID, addr) means
 // "could not resolve"; Rebuild then synthesizes exactly one fallback frame
-// named fmt.Sprintf("%s!0x%x", binaryName, addr), substituting "unknown" for
-// an empty binaryName — matching the pprof detour's legacy fallback
-// rendering byte for byte. A resolved chain must be root-first — outermost
+// named by FallbackSymbolName. A resolved chain must be root-first — outermost
 // caller at index 0, innermost frame last, the reverse of lidia's and pprof
 // Line order — and is spliced into the rebuilt stack unchanged, expanding
 // one address into that many tree levels.
@@ -63,7 +61,7 @@ func Rebuild(
 	unresolvedAddress := pb.GetUnresolvedAddress()
 	numUnresolved := len(unresolvedAddress)
 
-	cache := make(map[resolveKey][]model.FunctionName)
+	cache := make(map[resolveKey][]model.FunctionName, numUnresolved)
 
 	expand := func(ref model.LocationRefName) ([]model.FunctionName, error) {
 		switch {
@@ -123,10 +121,7 @@ func Rebuild(
 // failed.
 func expandOne(resolved []Frame, binaryName string, addr uint64) []model.FunctionName {
 	if len(resolved) == 0 {
-		if binaryName == "" {
-			binaryName = "unknown"
-		}
-		return []model.FunctionName{model.FunctionName(fmt.Sprintf("%s!0x%x", binaryName, addr))}
+		return []model.FunctionName{model.FunctionName(FallbackSymbolName(binaryName, addr))}
 	}
 	frames := make([]model.FunctionName, len(resolved))
 	for i, f := range resolved {

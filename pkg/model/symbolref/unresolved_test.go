@@ -24,7 +24,8 @@ func TestUnresolvedBinariesGrouping(t *testing.T) {
 	built := new(queryv1.SymbolRefTable)
 	rb.Build(built)
 
-	binaries := symbolref.UnresolvedBinaries(built)
+	binaries, err := symbolref.UnresolvedBinaries(built)
+	require.NoError(t, err)
 	require.Len(t, binaries, 2)
 
 	byBuildID := make(map[string]symbolref.UnresolvedBinary, len(binaries))
@@ -54,7 +55,8 @@ func TestUnresolvedBinariesGroupingUnsorted(t *testing.T) {
 		UnresolvedAddress: []uint64{0x20, 0x10, 0x10, 0x30},
 	}
 
-	binaries := symbolref.UnresolvedBinaries(pb)
+	binaries, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
 	require.Len(t, binaries, 2)
 
 	byBuildID := make(map[string]symbolref.UnresolvedBinary, len(binaries))
@@ -69,6 +71,46 @@ func TestUnresolvedBinariesGroupingUnsorted(t *testing.T) {
 // TestUnresolvedBinariesEmpty verifies UnresolvedBinaries returns an empty
 // slice for a table with no unresolved entries.
 func TestUnresolvedBinariesEmpty(t *testing.T) {
-	require.Empty(t, symbolref.UnresolvedBinaries(nil))
-	require.Empty(t, symbolref.UnresolvedBinaries(new(queryv1.SymbolRefTable)))
+	for name, pb := range map[string]*queryv1.SymbolRefTable{
+		"nil":   nil,
+		"empty": new(queryv1.SymbolRefTable),
+	} {
+		t.Run(name, func(t *testing.T) {
+			binaries, err := symbolref.UnresolvedBinaries(pb)
+			require.NoError(t, err)
+			require.Empty(t, binaries)
+		})
+	}
+}
+
+// TestUnresolvedBinariesRejectsMalformed verifies UnresolvedBinaries rejects
+// a structurally malformed table instead of grouping garbage.
+func TestUnresolvedBinariesRejectsMalformed(t *testing.T) {
+	t.Run("mismatched binary_names length", func(t *testing.T) {
+		_, err := symbolref.UnresolvedBinaries(&queryv1.SymbolRefTable{
+			BuildIds:    []string{"aaa"},
+			BinaryNames: []string{"bin-a", "extra"},
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("build ID index out of range", func(t *testing.T) {
+		_, err := symbolref.UnresolvedBinaries(&queryv1.SymbolRefTable{
+			BuildIds:          []string{"aaa"},
+			BinaryNames:       []string{"bin-a"},
+			UnresolvedBuildId: []uint32{1},
+			UnresolvedAddress: []uint64{0x10},
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("mismatched unresolved lengths", func(t *testing.T) {
+		_, err := symbolref.UnresolvedBinaries(&queryv1.SymbolRefTable{
+			BuildIds:          []string{"aaa"},
+			BinaryNames:       []string{"bin-a"},
+			UnresolvedBuildId: []uint32{0, 0},
+			UnresolvedAddress: []uint64{0x10},
+		})
+		require.Error(t, err)
+	})
 }
