@@ -34,7 +34,8 @@ func init() {
 
 // treeSymbolMode resolves the symbol output requested by a tree query. When
 // symbol_mode is unset it falls back to the deprecated full_symbols bool for
-// wire compatibility; setting both is rejected.
+// wire compatibility; setting both is rejected, as is any mode this backend
+// does not implement.
 func treeSymbolMode(t *queryv1.TreeQuery) (queryv1.SymbolMode, error) {
 	mode := t.GetSymbolMode()
 	if t.GetFullSymbols() { //nolint:staticcheck // bridges the deprecated full_symbols bool
@@ -43,10 +44,15 @@ func treeSymbolMode(t *queryv1.TreeQuery) (queryv1.SymbolMode, error) {
 		}
 		return queryv1.SymbolMode_SYMBOL_MODE_FULL, nil
 	}
-	if mode == queryv1.SymbolMode_SYMBOL_MODE_UNSPECIFIED {
+	switch mode {
+	case queryv1.SymbolMode_SYMBOL_MODE_UNSPECIFIED:
 		return queryv1.SymbolMode_SYMBOL_MODE_NAME, nil
+	case queryv1.SymbolMode_SYMBOL_MODE_NAME, queryv1.SymbolMode_SYMBOL_MODE_FULL:
+		return mode, nil
+	default:
+		// SYMBOL_MODE_REFS is schema-defined but not implemented here yet.
+		return 0, fmt.Errorf("unsupported symbol_mode %s", mode)
 	}
-	return mode, nil
 }
 
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
