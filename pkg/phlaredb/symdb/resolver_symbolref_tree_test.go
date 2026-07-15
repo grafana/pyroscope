@@ -88,7 +88,8 @@ func TestSymbols_SymbolRefTree_LinedAndUnresolved(t *testing.T) {
 	assert.Equal(t, ".!0xdeadbeef", pb.Names[kernelIdx],
 		`legacy-parity fallback; "." is filepath.Base of the filename-less mapping the no-mapping frame indexes`)
 
-	unresolved := symbolref.UnresolvedBinaries(pb)
+	unresolved, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
 	require.Len(t, unresolved, 1)
 	assert.Equal(t, "bidB", unresolved[0].BuildID)
 	assert.Equal(t, "libB.so", unresolved[0].BinaryName)
@@ -137,7 +138,8 @@ func TestSymbols_SymbolRefTree_FirstMappingResolves(t *testing.T) {
 	pb := &queryv1.SymbolRefTable{}
 	rb.Build(pb)
 
-	unresolved := symbolref.UnresolvedBinaries(pb)
+	unresolved, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
 	require.Len(t, unresolved, 1, "a line-less location on the first mapping must be symbolizable, not bare hex")
 	assert.Equal(t, "bidA", unresolved[0].BuildID)
 	assert.Equal(t, "libA.so", unresolved[0].BinaryName)
@@ -184,7 +186,9 @@ func TestSymbols_SymbolRefTree_NoBuildIDRendersFallback(t *testing.T) {
 	pb := &queryv1.SymbolRefTable{}
 	rb.Build(pb)
 
-	assert.Empty(t, symbolref.UnresolvedBinaries(pb), "a mapping with no build ID is not symbolizable")
+	binaries, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
+	assert.Empty(t, binaries, "a mapping with no build ID is not symbolizable")
 	assert.Contains(t, pb.Names, "goldpinger!0xdeadbeef", "keeps the binary-name context, like the legacy fallback")
 	assert.Contains(t, pb.Names, ".!0x1111",
 		`empty filename: "." is filepath.Base(""), byte-for-byte with the legacy fallback derivation`)
@@ -257,7 +261,8 @@ func TestResolver_SymbolRefTree_MultiPartitionRefConsistency(t *testing.T) {
 	rb.KeepRef(unresolvedRef)
 	rb.Build(pb)
 	assert.Equal(t, "main", pb.Names[mainIdx])
-	unresolved := symbolref.UnresolvedBinaries(pb)
+	unresolved, err := symbolref.UnresolvedBinaries(pb)
+	require.NoError(t, err)
 	require.Len(t, unresolved, 1)
 	assert.Equal(t, "bid-shared", unresolved[0].BuildID)
 	assert.Equal(t, []uint64{0x9000}, unresolved[0].Addresses)
