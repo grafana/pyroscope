@@ -1356,6 +1356,16 @@ components:
             symbol_mode selects the symbol output. When unset, full_symbols is honored
              for back-compat.
           $ref: '#/components/schemas/query.v1.SymbolMode'
+        maxUnresolvedLocations:
+          type:
+            - integer
+            - string
+          title: max_unresolved_locations
+          format: int64
+          description: |-
+            max_unresolved_locations bounds the distinct unresolved locations a
+             symbol-ref tree result may carry; the query fails past it. Zero means
+             unlimited. Effective only with SYMBOL_MODE_REFS.
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:

@@ -1625,9 +1625,13 @@ type TreeQuery struct {
 	TraceIdSelector []string `protobuf:"bytes,6,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
 	// symbol_mode selects the symbol output. When unset, full_symbols is honored
 	// for back-compat.
-	SymbolMode    SymbolMode `protobuf:"varint,7,opt,name=symbol_mode,json=symbolMode,proto3,enum=query.v1.SymbolMode" json:"symbol_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SymbolMode SymbolMode `protobuf:"varint,7,opt,name=symbol_mode,json=symbolMode,proto3,enum=query.v1.SymbolMode" json:"symbol_mode,omitempty"`
+	// max_unresolved_locations bounds the distinct unresolved locations a
+	// symbol-ref tree result may carry; the query fails past it. Zero means
+	// unlimited. Effective only with SYMBOL_MODE_REFS.
+	MaxUnresolvedLocations int64 `protobuf:"varint,8,opt,name=max_unresolved_locations,json=maxUnresolvedLocations,proto3" json:"max_unresolved_locations,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *TreeQuery) Reset() {
@@ -1707,6 +1711,13 @@ func (x *TreeQuery) GetSymbolMode() SymbolMode {
 		return x.SymbolMode
 	}
 	return SymbolMode_SYMBOL_MODE_UNSPECIFIED
+}
+
+func (x *TreeQuery) GetMaxUnresolvedLocations() int64 {
+	if x != nil {
+		return x.MaxUnresolvedLocations
+	}
+	return 0
 }
 
 type TreeSymbols struct {
@@ -2800,7 +2811,7 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x10TimeSeriesReport\x12/\n" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.types.v1.SeriesR\n" +
-	"timeSeries\"\xf1\x02\n" +
+	"timeSeries\"\xab\x03\n" +
 	"\tTreeQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12#\n" +
 	"\rspan_selector\x18\x02 \x03(\tR\fspanSelector\x12S\n" +
@@ -2809,7 +2820,8 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\ffull_symbols\x18\x05 \x01(\bR\vfullSymbols\x12*\n" +
 	"\x11trace_id_selector\x18\x06 \x03(\tR\x0ftraceIdSelector\x125\n" +
 	"\vsymbol_mode\x18\a \x01(\x0e2\x14.query.v1.SymbolModeR\n" +
-	"symbolModeB\x17\n" +
+	"symbolMode\x128\n" +
+	"\x18max_unresolved_locations\x18\b \x01(\x03R\x16maxUnresolvedLocationsB\x17\n" +
 	"\x15_stack_trace_selector\"\xdb\x02\n" +
 	"\vTreeSymbols\x12.\n" +
 	"\bmappings\x18\x01 \x03(\v2\x12.google.v1.MappingR\bmappings\x121\n" +

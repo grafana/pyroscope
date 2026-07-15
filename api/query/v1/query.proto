@@ -234,6 +234,10 @@ message TreeQuery {
   // symbol_mode selects the symbol output. When unset, full_symbols is honored
   // for back-compat.
   SymbolMode symbol_mode = 7;
+  // max_unresolved_locations bounds the distinct unresolved locations a
+  // symbol-ref tree result may carry; the query fails past it. Zero means
+  // unlimited. Effective only with SYMBOL_MODE_REFS.
+  int64 max_unresolved_locations = 8;
 }
 
 message TreeSymbols {
