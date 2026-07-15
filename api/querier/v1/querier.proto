@@ -32,12 +32,18 @@ service QuerierService {
   rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
+  // Deprecated: Use SelectMergeStacktraces with span_selector instead.
+  // This RPC will remain supported in querier.v1 for backward compatibility;
+  // future breaking API changes may be introduced in querier.v2.
   // SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
   // format. It will combine samples from within the same callstack, with each
   // element being grouped by its function name.
   rpc SelectMergeSpanProfile(SelectMergeSpanProfileRequest) returns (SelectMergeSpanProfileResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
+  // Deprecated: Use SelectMergeStacktraces with PROFILE_FORMAT_PPROF instead.
+  // This RPC will remain supported in querier.v1 for backward compatibility;
+  // future breaking API changes may be introduced in querier.v2.
   // SelectMergeProfile returns matching profiles aggregated in pprof format. It
   // will contain all information stored (so including filenames and line
   // number, if ingested).
@@ -123,13 +129,29 @@ message SelectMergeStacktracesRequest {
   optional AsyncQueryRequest async = 9;
   // List of trace IDs (32 hex characters, 128-bit) to filter samples by.
   repeated string trace_id_selector = 10 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
+  // List of span IDs (16 hex characters, 64-bit) to filter samples by.
+  repeated string span_selector = 11 [(gnostic.openapi.v3.property).example = {yaml: "['9a517183f26a089d','5a4fe264a9c987fe']"}];
 }
 
 enum ProfileFormat {
+  // Equivalent to PROFILE_FORMAT_FLAMEGRAPH. Preserved for backward
+  // compatibility.
   PROFILE_FORMAT_UNSPECIFIED = 0;
+  // Return a Flamebearer-compatible, single-profile flame graph. Samples
+  // sharing the same function-name call stack are aggregated into the names
+  // and levels representation used by the Pyroscope flame graph renderer.
+  // Format: https://github.com/grafana/pyroscope/blob/main/pkg/og/structs/flamebearer/flamebearer.go
   PROFILE_FORMAT_FLAMEGRAPH = 1;
+  // Return a compact, function-name-only Pyroscope tree serialization in
+  // SelectMergeStacktracesResponse.tree.
   PROFILE_FORMAT_TREE = 2;
+  // Return a Graphviz DOT directed graph. Nodes represent functions and edges
+  // represent caller-callee relationships, annotated with aggregated sample
+  // values. The resulting text can be rendered by Graphviz-compatible tools.
   PROFILE_FORMAT_DOT = 3;
+  // Return a pprof profile, including available mappings, locations, filenames,
+  // and line numbers, in SelectMergeStacktracesResponse.pprof.
+  PROFILE_FORMAT_PPROF = 4;
 }
 
 message SelectMergeStacktracesResponse {
@@ -140,6 +162,13 @@ message SelectMergeStacktracesResponse {
   string dot = 3;
   // (experimental) Used for responding to async queries.
   optional AsyncQueryResponse async = 4;
+  // Profile in pprof format.
+  PprofProfile pprof = 5;
+}
+
+// PprofProfile contains pprof output and related response metadata.
+message PprofProfile {
+  google.v1.Profile profile = 1;
 }
 
 message AsyncQueryRequest {
@@ -199,6 +228,7 @@ message SelectMergeSpanProfileResponse {
 }
 
 message DiffRequest {
+  // The format of each request is ignored; diff queries always compare trees.
   SelectMergeStacktracesRequest left = 1;
   SelectMergeStacktracesRequest right = 2;
 }

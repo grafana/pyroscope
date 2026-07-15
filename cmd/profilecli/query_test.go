@@ -1,12 +1,43 @@
 package main
 
 import (
+	"context"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockquerierv1connect"
 )
+
+func TestQueryPprofWithFallback(t *testing.T) {
+	client := mockquerierv1connect.NewMockQuerierServiceClient(t)
+	req := &querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		LabelSelector: "{}",
+		Start:         1,
+		End:           2,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+	}
+	client.On("SelectMergeStacktraces", mock.Anything, connect.NewRequest(req)).
+		Return(connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Flamegraph: &querierv1.FlameGraph{},
+		}), nil).Once()
+	want := &profilev1.Profile{Sample: []*profilev1.Sample{{Value: []int64{1}}}}
+	client.On("SelectMergeProfile", mock.Anything, mock.MatchedBy(func(req *connect.Request[querierv1.SelectMergeProfileRequest]) bool {
+		return req.Msg.ProfileTypeID == "process_cpu:cpu:nanoseconds:cpu:nanoseconds" && req.Msg.Start == 1 && req.Msg.End == 2
+	})).Return(connect.NewResponse(want), nil).Once()
+
+	got, _, err := queryPprofWithFallback(context.Background(), client, req)
+
+	require.NoError(t, err)
+	require.Same(t, want, got)
+}
 
 func TestQueryProfileParams_ProfileIDValidation(t *testing.T) {
 	t.Parallel()

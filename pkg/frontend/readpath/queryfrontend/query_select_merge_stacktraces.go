@@ -18,8 +18,17 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
+	switch c.Msg.Format {
+	case querierv1.ProfileFormat_PROFILE_FORMAT_DOT:
 		return q.selectMergeStacktracesDot(ctx, c)
+	case querierv1.ProfileFormat_PROFILE_FORMAT_PPROF:
+		p, err := q.selectMergeStacktracesPprof(ctx, c.Msg)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Pprof: &querierv1.PprofProfile{Profile: p},
+		}), nil
 	}
 
 	b, err := q.selectMergeStacktracesTree(ctx, c)
@@ -58,7 +67,7 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 		}
 	}
 
-	pprofResp, err := q.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	profile, err := q.selectMergeStacktracesPprof(ctx, &querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID:      c.Msg.ProfileTypeID,
 		LabelSelector:      c.Msg.LabelSelector,
 		Start:              c.Msg.Start,
@@ -67,15 +76,16 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 		StackTraceSelector: c.Msg.StackTraceSelector,
 		ProfileIdSelector:  c.Msg.ProfileIdSelector,
 		TraceIdSelector:    c.Msg.TraceIdSelector,
-	}))
+		SpanSelector:       c.Msg.SpanSelector,
+	})
 	if err != nil {
 		return nil, err
 	}
-	if pprofResp.Msg == nil || len(pprofResp.Msg.Sample) == 0 {
+	if profile == nil || len(profile.Sample) == 0 {
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
 	}
 
-	d, err := dot.FromProfile(pprofResp.Msg, int(dotMaxNodes))
+	d, err := dot.FromProfile(profile, int(dotMaxNodes))
 	if err != nil {
 		return nil, err
 	}
@@ -124,6 +134,7 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 					StackTraceSelector: c.Msg.StackTraceSelector,
 					ProfileIdSelector:  c.Msg.ProfileIdSelector,
 					TraceIdSelector:    c.Msg.TraceIdSelector,
+					SpanSelector:       c.Msg.SpanSelector,
 				},
 			}},
 		},

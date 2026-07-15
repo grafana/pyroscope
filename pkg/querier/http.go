@@ -154,7 +154,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 				sourceProfileMaxNodes = dotProfileMaxNodes
 			}
 		}
-		resp, err := q.client.SelectMergeProfile(req.Context(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		resp, err := q.client.SelectMergeProfile(req.Context(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{ //nolint:staticcheck // Legacy querier.v1 render path.
 			Start:         selectParams.Start,
 			End:           selectParams.End,
 			ProfileTypeID: selectParams.ProfileTypeID,
