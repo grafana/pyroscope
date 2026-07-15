@@ -63,10 +63,11 @@ type unresolvedKey struct {
 }
 
 // NewTable returns an empty table. Ref 0 is reserved as an unused sentinel:
-// pkg/model's Tree marshal format introduces a spurious zero-valued frame at
-// the root of every stack in a tree that has gone through a merge, and
-// reserving ref 0 keeps that frame distinguishable from a genuine name — so
-// InternName's first call for real content returns 1, not 0.
+// the tree-merge machinery invokes remap functions on synthetic zero-valued
+// names (model.Tree.FormatNodeNames visits its virtual root node), and Add
+// remaps refs its input does not describe to the reserved ref — so a real
+// name must never land on ref 0. InternName's first call for real content
+// returns 1, not 0.
 func NewTable() *Table {
 	return &Table{core: newTableCore()}
 }

@@ -41,16 +41,12 @@ func identity(t *testing.T, pb *queryv1.SymbolRefTable, ref model.LocationRefNam
 // stacksByIdentity walks every stack in tree and sums self values keyed by
 // the root-to-leaf sequence of identity() strings, so two trees using
 // different (arbitrary) ref numbering can be compared for the same logical
-// content. Drops a spurious root-most ref-0 frame that a tree carries after
-// going through UnmarshalTree; safe since Table reserves ref 0.
+// content.
 func stacksByIdentity(t *testing.T, tree *model.LocationRefNameTree, pb *queryv1.SymbolRefTable) map[string]int64 {
 	t.Helper()
 	out := make(map[string]int64)
 	tree.IterateStacks(func(_ model.LocationRefName, self int64, stack []model.LocationRefName) {
 		slices.Reverse(stack)
-		if len(stack) > 0 && stack[0] == 0 {
-			stack = stack[1:]
-		}
 		ids := make([]string, len(stack))
 		for i, ref := range stack {
 			ids[i] = identity(t, pb, ref)
@@ -429,8 +425,9 @@ func TestOnlyResolvedTable(t *testing.T) {
 }
 
 // TestAddRemapIsTotal verifies the remap Add returns is safe for any ref,
-// not only those pb describes: the merge machinery invokes it on the marshal
-// format's zero-valued root frame even when pb is nil or empty, and a skewed
+// not only those pb describes: the merge machinery invokes it on a synthetic
+// zero-valued name (model.Tree.FormatNodeNames visits its virtual root node)
+// even when pb is nil or empty, and a skewed
 // peer can send a tree whose refs exceed its table or carry negatives other
 // than OtherLocationRef — which would alias the destination table's internal
 // unresolved encoding (-2-idx) if passed through. All must degrade to the
@@ -514,16 +511,12 @@ func TestPlainFunctionNameAbsorption(t *testing.T) {
 	merger := model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
 
 	// Unmarshal the plain partial and re-insert every stack into a
-	// LocationRefNameTree via InternName, dropping the spurious root-most
-	// "" frame that pkg/model's Tree marshal format introduces on unmarshal.
+	// LocationRefNameTree via InternName.
 	plain, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](plainTreeBytes)
 	require.NoError(t, err)
 	absorbed := new(model.LocationRefNameTree)
 	plain.IterateStacks(func(_ model.FunctionName, self int64, stack []model.FunctionName) {
 		slices.Reverse(stack)
-		if len(stack) > 0 && stack[0] == "" {
-			stack = stack[1:]
-		}
 		refs := make([]model.LocationRefName, len(stack))
 		for i, n := range stack {
 			refs[i] = dst.InternName(string(n))
