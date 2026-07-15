@@ -1205,6 +1205,15 @@ components:
           title: series_labels
       title: SeriesLabelsReport
       additionalProperties: false
+    query.v1.SymbolMode:
+      type: string
+      title: SymbolMode
+      enum:
+        - SYMBOL_MODE_UNSPECIFIED
+        - SYMBOL_MODE_NAME
+        - SYMBOL_MODE_FULL
+        - SYMBOL_MODE_REFS
+      description: SymbolMode selects how a TreeQuery reports frame symbols.
     query.v1.SymbolRefTable:
       type: object
       properties:
@@ -1213,27 +1222,21 @@ components:
           items:
             type: string
           title: names
-          description: 'Resolved refs: 0 <= ref < len(names); names[ref] is the frame name.'
         buildIds:
           type: array
           items:
             type: string
           title: build_ids
-          description: |-
-            Unresolved refs: i = ref - len(names);
-               build_ids[unresolved_build_id[i]], unresolved_address[i]. distinct, each exactly once
         binaryNames:
           type: array
           items:
             type: string
           title: binary_names
-          description: parallel to build_ids; fallback display
         unresolvedBuildId:
           type: array
           items:
             type: integer
           title: unresolved_build_id
-          description: per unresolved entry
         unresolvedAddress:
           type: array
           items:
@@ -1242,9 +1245,23 @@ components:
               - string
             format: int64
           title: unresolved_address
-          description: parallel to unresolved_build_id
       title: SymbolRefTable
       additionalProperties: false
+      description: |-
+        SymbolRefTable resolves the integer frame references in a symbol-ref tree.
+         Each tree node stores one frame reference r; whether r is resolved depends on
+         whether it falls inside the names slice:
+
+           r <  len(names): resolved   -> names[r] is the frame name.
+           r >= len(names): unresolved -> u = r - len(names) indexes the parallel
+                            unresolved_* arrays:
+                              build_ids[unresolved_build_id[u]]  build ID of the binary
+                              unresolved_address[u]              address within it
+
+         build_ids and binary_names are parallel and 1:1 (binary_names[k] is the
+         "binary!0xaddr" fallback display for build_ids[k]); each build ID appears
+         once. unresolved_build_id and unresolved_address are parallel, one pair per
+         unresolved entry, sorted by (build ID, address).
     query.v1.TimeSeriesCompactReport:
       type: object
       properties:
@@ -1323,15 +1340,20 @@ components:
         fullSymbols:
           type: boolean
           title: full_symbols
+          description: |-
+            Deprecated: use symbol_mode = SYMBOL_MODE_FULL. Retained for wire
+             compatibility; will be removed in a couple of releases.
         traceIdSelector:
           type: array
           items:
             type: string
           title: trace_id_selector
-        symbolRefs:
-          type: boolean
-          title: symbol_refs
-          description: symbol_refs and full_symbols are mutually exclusive.
+        symbolMode:
+          title: symbol_mode
+          description: |-
+            symbol_mode selects the symbol output. When unset, full_symbols is honored
+             for back-compat.
+          $ref: '#/components/schemas/query.v1.SymbolMode'
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:

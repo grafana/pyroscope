@@ -16,7 +16,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_Basic() {
 		QueryPlan:     s.plan,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{FullSymbols: true},
+			Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
 		}},
 		Tenant: s.tenant,
 	})
@@ -62,14 +62,14 @@ func (s *testSuite) Test_QueryTree_FullSymbols_NotSetByDefault() {
 // path (LocationRefName tree) and the standard path (FuntionName tree) produce the
 // same total sample count for identical queries, since both resolve the same samples.
 func (s *testSuite) Test_QueryTree_FullSymbols_TotalsMatchNonFullSymbols() {
-	invoke := func(fullSymbols bool) *queryv1.TreeReport {
+	invoke := func(mode queryv1.SymbolMode) *queryv1.TreeReport {
 		resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
 			EndTime:       time.Now().UnixMilli(),
 			LabelSelector: "{}",
 			QueryPlan:     s.plan,
 			Query: []*queryv1.Query{{
 				QueryType: queryv1.QueryType_QUERY_TREE,
-				Tree:      &queryv1.TreeQuery{FullSymbols: fullSymbols},
+				Tree:      &queryv1.TreeQuery{SymbolMode: mode},
 			}},
 			Tenant: s.tenant,
 		})
@@ -78,9 +78,9 @@ func (s *testSuite) Test_QueryTree_FullSymbols_TotalsMatchNonFullSymbols() {
 		return resp.Reports[0].Tree
 	}
 
-	lrTree, err := phlaremodel.UnmarshalTree[phlaremodel.LocationRefName, phlaremodel.LocationRefNameI](invoke(true).Tree)
+	lrTree, err := phlaremodel.UnmarshalTree[phlaremodel.LocationRefName, phlaremodel.LocationRefNameI](invoke(queryv1.SymbolMode_SYMBOL_MODE_FULL).Tree)
 	s.Require().NoError(err)
-	fnTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](invoke(false).Tree)
+	fnTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](invoke(queryv1.SymbolMode_SYMBOL_MODE_NAME).Tree)
 	s.Require().NoError(err)
 
 	s.Assert().Equal(fnTree.Total(), lrTree.Total())
@@ -96,7 +96,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_SymbolConsistency() {
 		QueryPlan:     s.plan,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{FullSymbols: true},
+			Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
 		}},
 		Tenant: s.tenant,
 	})
@@ -135,7 +135,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_NoDuplicateStrings() {
 		QueryPlan:     s.plan,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{FullSymbols: true},
+			Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
 		}},
 		Tenant: s.tenant,
 	})
@@ -161,7 +161,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_Filter() {
 			QueryPlan:     s.plan,
 			Query: []*queryv1.Query{{
 				QueryType: queryv1.QueryType_QUERY_TREE,
-				Tree:      &queryv1.TreeQuery{FullSymbols: true},
+				Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
 			}},
 			Tenant: s.tenant,
 		})

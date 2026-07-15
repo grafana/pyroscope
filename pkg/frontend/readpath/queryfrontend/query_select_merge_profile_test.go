@@ -393,7 +393,7 @@ func TestSelectMergeStacktraces_PprofTreePathForwardsSpanSelector(t *testing.T) 
 	require.NotNil(t, resp.Msg.GetPprof().GetProfile())
 	require.NotNil(t, capturedQuery)
 	assert.Equal(t, queryv1.QueryType_QUERY_TREE, capturedQuery.QueryType)
-	assert.True(t, capturedQuery.Tree.GetFullSymbols(), "tree path must request full symbols")
+	assert.Equal(t, queryv1.SymbolMode_SYMBOL_MODE_FULL, capturedQuery.Tree.GetSymbolMode(), "tree path must request full symbols")
 	assert.Equal(t, spanSelector, capturedQuery.Tree.GetSpanSelector())
 }
 
