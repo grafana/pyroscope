@@ -1820,9 +1820,11 @@ func (x *TreeSymbols) GetStringHashes() []uint64 {
 //	                   unresolved_address[u]              address within it
 //
 // build_ids and binary_names are parallel and 1:1 (binary_names[k] is the
-// "binary!0xaddr" fallback display for build_ids[k]); each build ID appears
-// once. unresolved_build_id and unresolved_address are parallel, one pair per
-// unresolved entry, sorted by (build ID, address).
+// "binary!0xaddr" fallback display for build_ids[k]); each (build ID,
+// binary name) pair appears once — the same build ID may repeat under
+// different binary names, each retained exactly as stored.
+// unresolved_build_id and unresolved_address are parallel, one entry per
+// unresolved location, sorted by (build ID, binary name, address).
 type SymbolRefTable struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Names             []string               `protobuf:"bytes,1,rep,name=names,proto3" json:"names,omitempty"`
