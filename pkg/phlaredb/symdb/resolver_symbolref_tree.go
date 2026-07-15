@@ -164,6 +164,12 @@ func newSymbolRefTreeBuilder(
 
 func (b *symbolRefTreeBuilder) InsertStacktrace(_ uint32, locations []int32) {
 	if b.funcNamesMatcher != nil {
+		// The call-site selection is matched against locally resolved
+		// function names only, mirroring the FunctionName tree path: a
+		// line-less (unsymbolized) location contributes no name here, so a
+		// stack whose match depends on such a frame is not selected.
+		// Lifting that requires propagating every stack that contains an
+		// unsymbolized location and filtering only after symbolization.
 		b.lines = b.lines[:0]
 		for i := 0; i < len(locations); i++ {
 			b.lines = addFunctionNames(b.lines, locations[i], b.symbols)
