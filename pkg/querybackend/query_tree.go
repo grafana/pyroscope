@@ -196,7 +196,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	// for: keep the existing FunctionName path unconditionally, same as a
 	// non-symbol-ref query.
 	if mode == queryv1.SymbolMode_SYMBOL_MODE_REFS && datasetUnsymbolized(q.obj.Metadata(), q.ds.Metadata()) {
-		return queryTreeSymbolRefs(q, query, resolver)
+		return queryTreeSymbolRefs(query, resolver)
 	}
 
 	tree, err := resolver.Tree()
@@ -219,7 +219,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 // the selected samples actually resolved to an unresolved location, the
 // dataset falls back to the plain FunctionName path, since there is
 // nothing left to defer.
-func queryTreeSymbolRefs(q *queryContext, query *queryv1.Query, resolver *symdb.Resolver) (*queryv1.Report, error) {
+func queryTreeSymbolRefs(query *queryv1.Query, resolver *symdb.Resolver) (*queryv1.Report, error) {
 	tree, rb, err := resolver.SymbolRefTree()
 	if err != nil {
 		return nil, err
@@ -310,6 +310,8 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 			// A partial from a dataset that took the plain FunctionName
 			// path (native or degenerate, see queryTree): absorb it into
 			// the shared ref space instead of merging it as a plain tree.
+			// Absorption interns resolved names only, so it cannot grow
+			// the unresolved count.
 			absorbed, err := absorbPlainTree(a.symbolRefTable, r.Tree)
 			if err != nil {
 				return err
@@ -319,6 +321,9 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 		}
 		remap, err := a.symbolRefTable.Add(r.SymbolRefs)
 		if err != nil {
+			return err
+		}
+		if err := a.checkUnresolvedLimit(); err != nil {
 			return err
 		}
 		return a.symbolRefTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(remap))
@@ -346,6 +351,21 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 		})
 		return a.tree.MergeTreeBytes(r.Tree)
 	}
+}
+
+// checkUnresolvedLimit fails the query once the merged table's distinct
+// unresolved locations exceed the query's limit: aggregation memory is
+// bounded by the same per-tenant knob that bounds each dataset's build
+// (see symdb.WithResolverSymbolRefCap).
+func (a *treeAggregator) checkUnresolvedLimit() error {
+	limit := a.query.GetMaxUnresolvedLocations()
+	if limit <= 0 {
+		return nil
+	}
+	if n := a.symbolRefTable.UnresolvedCount(); int64(n) > limit {
+		return fmt.Errorf("%w (limit %d)", symdb.ErrTooManyUnresolvedLocations, limit)
+	}
+	return nil
 }
 
 func (a *treeAggregator) build() *queryv1.Report {

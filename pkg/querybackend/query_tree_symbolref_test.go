@@ -10,6 +10,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 )
 
 // TestDatasetUnsymbolized covers datasetUnsymbolized's label-pair scanning,
@@ -228,4 +229,35 @@ func TestTreeAggregator_SymbolRefs_OtherPreservation(t *testing.T) {
 		}
 	})
 	assert.Equal(t, int64(3), otherSelf, "the sentinel's value must round-trip through OtherLocationRef and back")
+}
+
+// TestTreeAggregator_SymbolRefs_UnresolvedLimit verifies the merged table's
+// distinct unresolved locations are bounded by the query's
+// max_unresolved_locations: aggregation fails once the limit is crossed,
+// while a merge exactly at the limit succeeds.
+func TestTreeAggregator_SymbolRefs_UnresolvedLimit(t *testing.T) {
+	reports := func(limit int64) []*queryv1.Report {
+		rs := []*queryv1.Report{
+			refReport(0, 1, "build-a", "bin-a", 0x100),
+			refReport(0, 2, "build-b", "bin-b", 0x200),
+		}
+		for _, r := range rs {
+			r.Tree.Query.MaxUnresolvedLocations = limit
+		}
+		return rs
+	}
+
+	t.Run("at the limit", func(t *testing.T) {
+		a := newTreeAggregator(&queryv1.InvokeRequest{}).(*treeAggregator)
+		for _, r := range reports(2) {
+			require.NoError(t, a.aggregate(r))
+		}
+	})
+
+	t.Run("past the limit", func(t *testing.T) {
+		a := newTreeAggregator(&queryv1.InvokeRequest{}).(*treeAggregator)
+		rs := reports(1)
+		require.NoError(t, a.aggregate(rs[0]))
+		require.ErrorIs(t, a.aggregate(rs[1]), symdb.ErrTooManyUnresolvedLocations)
+	})
 }
