@@ -383,12 +383,14 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		return nil, err
 	}
 	logger := log.With(f.logger, "component", "query-backend")
+	blockReader := querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg)
+	blockReader.KeepStrippedProfiles = f.Cfg.Distributor.KeepStrippedProfiles
 	b, err := querybackend.New(
 		f.Cfg.QueryBackend,
 		logger,
 		f.reg,
 		f.queryBackendClient,
-		querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg),
+		blockReader,
 	)
 	if err != nil {
 		return nil, err

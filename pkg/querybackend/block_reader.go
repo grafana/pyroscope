@@ -54,6 +54,8 @@ type BlockReader struct {
 	metrics  *metrics
 	hostname string
 
+	KeepStrippedProfiles bool
+
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
 	//  - Reusable query context.
@@ -131,6 +133,7 @@ func (b *BlockReader) Invoke(
 			grp:             g,
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,
+			keepStripped:    b.KeepStrippedProfiles,
 		}).execute))
 	}
 

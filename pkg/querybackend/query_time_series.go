@@ -72,6 +72,9 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 	} else {
 		opts = append(opts, withGroupByLabels(groupBy...))
 	}
+	if !q.keepStripped {
+		opts = append(opts, withExcludeSampled())
+	}
 
 	entries, err := profileEntryIterator(q, opts...)
 	if err != nil {
