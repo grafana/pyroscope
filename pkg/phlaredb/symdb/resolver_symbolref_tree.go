@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -30,8 +31,8 @@ import (
 // the binary-name context; see fallbackSymbolName).
 //
 // capper bounds the number of distinct unresolved entries table accepts
-// for this call; locations past the cap render an inline fallback name via
-// InternName instead of InternUnresolved (see unresolvedCap).
+// for this call; a location past the cap fails the call with
+// ErrTooManyUnresolvedLocations (see unresolvedCap).
 //
 // The tree is always built without truncation (maxNodes 0): a tree with
 // unresolved entries must not be truncated before those are resolved.
@@ -50,27 +51,29 @@ func (r *Symbols) SymbolRefTree(
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
+	if b.err != nil {
+		return nil, b.err
+	}
 	return model.TreeFromStacktraceTree[model.LocationRefName, model.LocationRefNameI](b.tree, 0, b.lookup), nil
 }
 
+// ErrTooManyUnresolvedLocations fails a symbol-ref tree build whose number
+// of distinct unresolved (build ID, address) locations exceeds the
+// configured cap (WithResolverSymbolRefCap).
+var ErrTooManyUnresolvedLocations = errors.New("too many unresolved locations in query")
+
 // unresolvedCap bounds the number of distinct (build ID, address) pairs a
-// single SymbolRefTree call interns as unresolved entries. Once the limit
-// is reached, further pairs are rendered as an inline fallback name
-// instead of being interned, so a pathological input (e.g. a profile
-// referencing a huge number of distinct native addresses) can never make
-// the deferred-resolution work list unbounded, fail the query, or drop
-// samples. Safe for concurrent use.
-//
-// exceeded counts each location occurrence rendered as a fallback name —
-// occurrences, not distinct pairs: pairs rejected by the cap are not
-// recorded (remembering them would grow memory without bound, which is
-// what the cap exists to prevent), so a recurring capped pair counts every
-// time it is seen.
+// single SymbolRefTree call interns as unresolved entries, so a
+// pathological input (e.g. a profile referencing a huge number of distinct
+// native addresses) can never make the deferred-resolution work list
+// unbounded. Exceeding the cap fails the call: rendering the remainder as
+// inline fallback names instead would keep growing the name table without
+// bound and make the result depend on arrival order. Safe for concurrent
+// use.
 type unresolvedCap struct {
-	mu       sync.Mutex
-	max      int // <= 0 means unlimited.
-	seen     map[unresolvedCapKey]struct{}
-	exceeded int64
+	mu   sync.Mutex
+	max  int // <= 0 means unlimited.
+	seen map[unresolvedCapKey]struct{}
 }
 
 type unresolvedCapKey struct {
@@ -84,9 +87,10 @@ func newUnresolvedCap(max int) *unresolvedCap {
 
 // allow reports whether (buildID, addr) may be interned as an unresolved
 // entry: true if the cap is unlimited, the pair was interned before the
-// cap was reached, or the cap has not been reached yet; false for every
-// occurrence of any other pair once the cap has been reached, incrementing
-// exceeded each time.
+// cap was reached, or the cap has not been reached yet; false for any
+// other pair once the cap has been reached. Rejected pairs are not
+// recorded: remembering them would grow memory without bound, which is
+// what the cap exists to prevent.
 func (c *unresolvedCap) allow(buildID string, addr uint64) bool {
 	if c.max <= 0 {
 		return true
@@ -98,17 +102,10 @@ func (c *unresolvedCap) allow(buildID string, addr uint64) bool {
 		return true
 	}
 	if len(c.seen) >= c.max {
-		c.exceeded++
 		return false
 	}
 	c.seen[key] = struct{}{}
 	return true
-}
-
-func (c *unresolvedCap) exceededCount() int64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.exceeded
 }
 
 // symbolRefTreeBuilder is a StacktraceInserter that interns every stack
@@ -129,6 +126,7 @@ type symbolRefTreeBuilder struct {
 	capper  *unresolvedCap
 	tree    *model.StacktraceTree
 	cur     int
+	err     error // first cap breach; set once, the whole call fails.
 
 	refs  []int32 // per-stack ref buffer, as slots.
 	lines []int32 // per-stack string-table-index buffer; only used when funcNamesMatcher is set.
@@ -163,6 +161,10 @@ func newSymbolRefTreeBuilder(
 }
 
 func (b *symbolRefTreeBuilder) InsertStacktrace(_ uint32, locations []int32) {
+	if b.err != nil {
+		b.cur++
+		return
+	}
 	if b.funcNamesMatcher != nil {
 		// The call-site selection is matched against locally resolved
 		// function names only, mirroring the FunctionName tree path: a
@@ -182,6 +184,10 @@ func (b *symbolRefTreeBuilder) InsertStacktrace(_ uint32, locations []int32) {
 	b.refs = b.refs[:0]
 	for i := 0; i < len(locations); i++ {
 		b.refs = b.appendLocationRefs(b.refs, locations[i])
+	}
+	if b.err != nil {
+		b.cur++
+		return
 	}
 	b.tree.Insert(b.refs, int64(b.samples.Values[b.cur]))
 	b.cur++
@@ -225,10 +231,11 @@ func (b *symbolRefTreeBuilder) appendLocationRefs(dst []int32, locID int32) []in
 	if buildID == "" {
 		return append(dst, b.toSlot(b.table.InternName(fallbackSymbolName(binaryName, loc.Address))))
 	}
-	if b.capper.allow(buildID, loc.Address) {
-		return append(dst, b.toSlot(b.table.InternUnresolved(buildID, binaryName, loc.Address)))
+	if !b.capper.allow(buildID, loc.Address) {
+		b.err = fmt.Errorf("%w (limit %d)", ErrTooManyUnresolvedLocations, b.capper.max)
+		return dst
 	}
-	return append(dst, b.toSlot(b.table.InternName(fallbackSymbolName(binaryName, loc.Address))))
+	return append(dst, b.toSlot(b.table.InternUnresolved(buildID, binaryName, loc.Address)))
 }
 
 func (b *symbolRefTreeBuilder) toSlot(ref model.LocationRefName) int32 {
