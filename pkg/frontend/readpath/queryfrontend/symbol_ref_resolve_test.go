@@ -58,11 +58,12 @@ func flameNames(t *testing.T, treeBytes []byte) []string {
 
 func TestUseSymbolRefTrees(t *testing.T) {
 	tests := []struct {
-		name          string
-		noSymbolizer  bool
-		tenants       []string
-		enabledPerTID map[string]bool
-		want          bool
+		name             string
+		noSymbolizer     bool
+		tenants          []string
+		enabledPerTID    map[string]bool
+		symbolizerPerTID map[string]bool // SymbolizerEnabled per tenant; defaults to true
+		want             bool
 	}{
 		{
 			name:         "no symbolizer configured",
@@ -94,12 +95,31 @@ func TestUseSymbolRefTrees(t *testing.T) {
 			enabledPerTID: map[string]bool{"tenant-a": true, "tenant-b": false},
 			want:          false,
 		},
+		{
+			name:             "flag on but symbolization disabled for the tenant",
+			tenants:          []string{"tenant-a"},
+			enabledPerTID:    map[string]bool{"tenant-a": true},
+			symbolizerPerTID: map[string]bool{"tenant-a": false},
+			want:             false,
+		},
+		{
+			name:             "symbolization disabled for one of several tenants",
+			tenants:          []string{"tenant-a", "tenant-b"},
+			enabledPerTID:    map[string]bool{"tenant-a": true, "tenant-b": true},
+			symbolizerPerTID: map[string]bool{"tenant-a": true, "tenant-b": false},
+			want:             false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockLimits := mockfrontend.NewMockLimits(t)
 			for _, tid := range tt.tenants {
+				symbolizerEnabled, ok := tt.symbolizerPerTID[tid]
+				if !ok {
+					symbolizerEnabled = true
+				}
+				mockLimits.On("SymbolizerEnabled", tid).Return(symbolizerEnabled).Maybe()
 				mockLimits.On("SymbolRefTreesEnabled", tid).Return(tt.enabledPerTID[tid]).Maybe()
 			}
 
@@ -125,6 +145,7 @@ func TestSelectMergeStacktracesTree_SymbolRefFlagOn(t *testing.T) {
 	mockLimits.On("MaxQueryLength", "tenant1").Return(time.Duration(0))
 	mockLimits.On("MaxFlameGraphNodesDefault", "tenant1").Return(0)
 	mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(false)
+	mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
 	mockLimits.On("SymbolRefTreesEnabled", "tenant1").Return(true)
 
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
@@ -185,6 +206,7 @@ func TestSelectMergeStacktracesTree_SymbolRefResolution(t *testing.T) {
 	mockLimits.On("MaxQueryLength", "tenant1").Return(time.Duration(0))
 	mockLimits.On("MaxFlameGraphNodesDefault", "tenant1").Return(0)
 	mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(false)
+	mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
 	mockLimits.On("SymbolRefTreesEnabled", "tenant1").Return(true)
 	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Second)
 
