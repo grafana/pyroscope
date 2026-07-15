@@ -153,6 +153,14 @@ func (c *tableCore) hasUnresolved() bool {
 	return len(c.unresolvedBin) > 0
 }
 
+// UnresolvedCount reports the number of distinct unresolved locations
+// interned in t, whether via InternUnresolved directly or absorbed via Add.
+func (t *Table) UnresolvedCount() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.core.unresolvedBin)
+}
+
 // Add merges pb into t, returning a remap function from pb's ref space into
 // t's ref space, suitable for model.WithTreeMergeFormatNodeNames. The
 // returned remap passes model.OtherLocationRef through unchanged and maps

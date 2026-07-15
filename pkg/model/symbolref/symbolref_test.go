@@ -332,9 +332,12 @@ func TestWireOrderingMultipleBuildIDs(t *testing.T) {
 // rather than collapsing to whichever name arrived first.
 func TestBinaryNamesRetainedAsStored(t *testing.T) {
 	table := symbolref.NewTable()
+	require.Zero(t, table.UnresolvedCount())
 	a := table.InternUnresolved("build1", "pyroscope", 0x100)
 	b := table.InternUnresolved("build1", "pyroscope-server", 0x100)
 	require.NotEqual(t, a, b)
+	require.Equal(t, 2, table.UnresolvedCount(),
+		"the same location under two binary names is two distinct unresolved entries")
 
 	tree := new(model.LocationRefNameTree)
 	tree.InsertStack(1, a)
