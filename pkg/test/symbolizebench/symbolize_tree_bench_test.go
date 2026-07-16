@@ -256,7 +256,7 @@ func runPprofDetour(ctx context.Context, resolver *symdb.Resolver, sym *symboliz
 // together today, minus the intermediate report/RPC plumbing between the
 // two (see resolveBinaries).
 func runSymbolRef(ctx context.Context, resolver *symdb.Resolver, sym *symbolizer.Symbolizer) ([]byte, error) {
-	tree, rb, _, err := resolver.SymbolRefTree()
+	tree, rb, err := resolver.SymbolRefTree()
 	if err != nil {
 		return nil, fmt.Errorf("resolver.SymbolRefTree: %w", err)
 	}
@@ -267,7 +267,10 @@ func runSymbolRef(ctx context.Context, resolver *symdb.Resolver, sym *symbolizer
 	pb := new(queryv1.SymbolRefTable)
 	rb.Build(pb)
 
-	binaries := symbolref.UnresolvedBinaries(pb)
+	binaries, err := symbolref.UnresolvedBinaries(pb)
+	if err != nil {
+		return nil, fmt.Errorf("symbolref.UnresolvedBinaries: %w", err)
+	}
 	lookup, err := resolveBinaries(ctx, sym, binaries)
 	if err != nil {
 		return nil, fmt.Errorf("resolveBinaries: %w", err)
