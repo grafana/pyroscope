@@ -90,8 +90,12 @@ export function QueryBar({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       e.preventDefault();
-      const dir = e.key === 'ArrowDown' ? 1 : -1;
       const n = suggestions.length;
+      // Dropdown can be open with an empty list while loading or when
+      // definitelyEmpty. Skip navigation rather than dividing by zero,
+      // which would set highlightedIndex to NaN.
+      if (n === 0) return;
+      const dir = e.key === 'ArrowDown' ? 1 : -1;
       setHighlightedIndex((safeHighlight + dir + n) % n);
       return;
     }
