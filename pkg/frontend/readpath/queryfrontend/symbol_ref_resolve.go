@@ -39,7 +39,10 @@ func (q *QueryFrontend) resolveSymbolRefs(ctx context.Context, tenantIDs []strin
 	if pb == nil {
 		return nil
 	}
-	binaries := symbolref.UnresolvedBinaries(pb)
+	binaries, err := symbolref.UnresolvedBinaries(pb)
+	if err != nil {
+		return err
+	}
 	if len(binaries) == 0 {
 		return nil
 	}

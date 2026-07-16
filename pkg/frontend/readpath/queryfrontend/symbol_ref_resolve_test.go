@@ -147,6 +147,7 @@ func TestSelectMergeStacktracesTree_SymbolRefFlagOn(t *testing.T) {
 	mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(false)
 	mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
 	mockLimits.On("SymbolRefTreesEnabled", "tenant1").Return(true)
+	mockLimits.On("SymbolizerMaxUnresolvedLocations", "tenant1").Return(1_000_000)
 
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 
@@ -157,7 +158,8 @@ func TestSelectMergeStacktracesTree_SymbolRefFlagOn(t *testing.T) {
 	mockQueryBackend.On("Invoke", mock.Anything, mock.MatchedBy(func(req *queryv1.InvokeRequest) bool {
 		require.Len(t, req.Query, 1)
 		require.Equal(t, queryv1.QueryType_QUERY_TREE, req.Query[0].QueryType)
-		require.True(t, req.Query[0].Tree.GetSymbolRefs())
+		require.Equal(t, queryv1.SymbolMode_SYMBOL_MODE_REFS, req.Query[0].Tree.GetSymbolMode())
+		require.Equal(t, int64(1_000_000), req.Query[0].Tree.GetMaxUnresolvedLocations())
 		return true
 	})).Return(&queryv1.InvokeResponse{
 		Reports: []*queryv1.Report{{
@@ -208,8 +210,8 @@ func TestSelectMergeStacktracesTree_SymbolRefResolution(t *testing.T) {
 	mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(false)
 	mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
 	mockLimits.On("SymbolRefTreesEnabled", "tenant1").Return(true)
+	mockLimits.On("SymbolizerMaxUnresolvedLocations", "tenant1").Return(1_000_000)
 	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Second)
-
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(4)
 	mockSymbolizer.On("Resolve", mock.Anything, "build-a", "libfoo.so", []uint64{0x100, 0x200}).
@@ -325,7 +327,6 @@ func TestResolveBinaries_PerBinaryTimeoutFallsBack(t *testing.T) {
 
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Millisecond)
-
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(4)
 	mockSymbolizer.On("Resolve", mock.Anything, "build-a", "libfoo.so", []uint64{0x100, 0x200}).
@@ -362,7 +363,6 @@ func TestResolveBinaries_ParentContextCanceledFailsRequest(t *testing.T) {
 
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Minute)
-
 	fetchStarted := make(chan struct{})
 	var once sync.Once
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
@@ -435,7 +435,6 @@ func TestResolveBinaries_ZeroResolveTimeoutFallsBackToSafeDefault(t *testing.T) 
 func TestResolveBinaries_NonPositiveResolveConcurrencyFallsBackToSafeFloor(t *testing.T) {
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Second)
-
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(0)
 	mockSymbolizer.On("Resolve", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -458,5 +457,33 @@ func TestResolveBinaries_NonPositiveResolveConcurrencyFallsBackToSafeFloor(t *te
 		require.NoError(t, err)
 	case <-time.After(5 * time.Second):
 		t.Fatal("resolveBinaries did not return: a non-positive ResolveConcurrency must fall back to a safe floor, not block forever")
+	}
+}
+
+// TestSymbolRefTreeQueryLimit verifies the limit carried on a symbol-ref
+// query: the largest limit across the request's tenants wins, and a tenant
+// with the limit disabled (0) makes the query unlimited.
+func TestSymbolRefTreeQueryLimit(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		limits map[string]int
+		want   int64
+	}{
+		{name: "single tenant", limits: map[string]int{"a": 300}, want: 300},
+		{name: "largest of two", limits: map[string]int{"a": 100, "b": 200}, want: 200},
+		{name: "disabled tenant makes it unlimited", limits: map[string]int{"a": 100, "b": 0}, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mockLimits := mockfrontend.NewMockLimits(t)
+			tenants := make([]string, 0, len(tc.limits))
+			for tenant, v := range tc.limits {
+				mockLimits.On("SymbolizerMaxUnresolvedLocations", tenant).Return(v).Maybe()
+				tenants = append(tenants, tenant)
+			}
+			tree := new(queryv1.TreeQuery)
+			(&QueryFrontend{limits: mockLimits}).symbolRefTreeQuery(tree, tenants)
+			require.Equal(t, queryv1.SymbolMode_SYMBOL_MODE_REFS, tree.SymbolMode)
+			require.Equal(t, tc.want, tree.MaxUnresolvedLocations)
+		})
 	}
 }
