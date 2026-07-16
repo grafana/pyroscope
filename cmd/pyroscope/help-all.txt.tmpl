@@ -1619,6 +1619,8 @@ Usage of ./pyroscope:
     	[experimental] Enable symbolization for tenants by default.
   -symbolizer.max-debuginfod-concurrency int
     	Maximum number of concurrent symbolization requests to debuginfod server. (default 10)
+  -symbolizer.max-unresolved-locations int
+    	[experimental] Maximum number of distinct unresolved locations a symbol-ref tree query may carry through the read path before symbolization; a query exceeding the limit fails. 0 disables the limit. (default 1000000)
   -symbolizer.resolve-timeout duration
     	Maximum time the query frontend waits to resolve a single binary's unresolved addresses for a symbol-ref tree query, before falling back to binary!0xaddr frames for that binary. (default 20s)
   -symbolizer.symbol-ref-trees-enabled

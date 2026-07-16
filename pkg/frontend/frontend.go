@@ -123,6 +123,7 @@ type Limits interface {
 	QueryTreeEnabled(string) bool
 	SymbolRefTreesEnabled(string) bool
 	SymbolizerResolveTimeout(string) time.Duration
+	SymbolizerMaxUnresolvedLocations(string) int
 	validation.FlameGraphLimits
 }
 
