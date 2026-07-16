@@ -154,8 +154,14 @@ export function useLabelSuggestions({
   // can't observe — memoization would return a stale empty array after the
   // fetch resolved and called setFetchTick. Filtering up to 200 strings on
   // every render is cheap enough that the memo wasn't earning its keep.
+  //
+  // Gate on `requestKey === debouncedKey` so we never surface results from
+  // the previous slot during the debounce window. Without this, moving from
+  // a name slot to a value slot (or changing matchers) would show the old
+  // slot's names until the debounce settled, and Enter would insert them
+  // into the new slot via the current `context`.
   let suggestions: string[] = [];
-  if (context.kind !== 'none') {
+  if (context.kind !== 'none' && requestKey === debouncedKey) {
     const results = cache.get(debouncedKey) ?? [];
     const prefixLower = context.prefix.toLowerCase();
     const filtered = prefixLower
