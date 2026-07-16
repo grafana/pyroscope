@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
@@ -18,6 +19,10 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if len(c.Msg.SpanSelector) > 0 && len(c.Msg.TraceIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("span_selector and trace_id_selector cannot be combined"))
+	}
+
 	switch c.Msg.Format {
 	case querierv1.ProfileFormat_PROFILE_FORMAT_DOT:
 		return q.selectMergeStacktracesDot(ctx, c)

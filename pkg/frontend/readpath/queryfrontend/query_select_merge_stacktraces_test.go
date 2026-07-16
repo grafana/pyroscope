@@ -24,6 +24,18 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
 )
 
+func TestSelectMergeStacktraces_RejectsSpanAndTraceSelectors(t *testing.T) {
+	qf := new(QueryFrontend)
+	resp, err := qf.SelectMergeStacktraces(context.Background(), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		SpanSelector:    []string{"0000000000000001"},
+		TraceIdSelector: []string{"00000000000000000000000000000001"},
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.ErrorContains(t, err, "span_selector and trace_id_selector cannot be combined")
+}
+
 func TestSelectMergeStacktraces_SpanSelectorTreeFormats(t *testing.T) {
 	spanSelector := []string{"0000000000000001"}
 	tree := new(phlaremodel.FunctionNameTree)
