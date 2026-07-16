@@ -273,6 +273,7 @@ message HeatmapPoint {
   uint64 span_id = 3; // Span ID if this profile was split by span during ingestion
   int64 value = 4; // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
   repeated int64 attribute_refs = 5; // labels as references into AttributeTable
+  bytes trace_id = 6; // Trace ID associated with the span, if present.
 }
 
 message HeatmapSeries {

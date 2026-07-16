@@ -30,16 +30,16 @@ func TestPointsBuilder_SameFingerprintDifferentExemplars(t *testing.T) {
 	fp := model.Fingerprint(commonLabels.Hash())
 
 	// Add three exemplars with the same fingerprint but different timestamps
-	pb.add(fp, labels1, 100, "profile1", 0, 1000)
-	pb.add(fp, labels2, 200, "profile2", 0, 2000)
-	pb.add(fp, labels3, 300, "profile3", 0, 3000)
+	pb.add(fp, labels1, 100, "profile1", 0, pkgmodel.TraceID{}, 1000)
+	pb.add(fp, labels2, 200, "profile2", 0, pkgmodel.TraceID{}, 2000)
+	pb.add(fp, labels3, 300, "profile3", 0, pkgmodel.TraceID{}, 3000)
 
 	// Verify we have 3 exemplars
 	assert.Equal(t, 3, pb.count())
 
 	// Verify they all share the same labelSet (only common labels)
 	var collectedLabels []pkgmodel.Labels
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, traceID pkgmodel.TraceID, value int64) {
 		collectedLabels = append(collectedLabels, labels)
 	})
 
@@ -64,19 +64,39 @@ func TestPointsBuilder_DuplicateExemplarsSum(t *testing.T) {
 	fp := model.Fingerprint(labels.Hash())
 
 	// Add the same exemplar 3 times
-	pb.add(fp, labels, 100, "profile1", 123, 1000)
-	pb.add(fp, labels, 100, "profile1", 123, 2000)
-	pb.add(fp, labels, 100, "profile1", 123, 3000)
+	pb.add(fp, labels, 100, "profile1", 123, pkgmodel.TraceID{}, 1000)
+	pb.add(fp, labels, 100, "profile1", 123, pkgmodel.TraceID{}, 2000)
+	pb.add(fp, labels, 100, "profile1", 123, pkgmodel.TraceID{}, 3000)
 
 	// Should only have 1 exemplar with summed value
 	assert.Equal(t, 1, pb.count())
 
 	var totalValue int64
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, traceID pkgmodel.TraceID, value int64) {
 		totalValue = value
 	})
 
 	assert.Equal(t, int64(6000), totalValue, "Values should be summed")
+}
+
+func TestPointsBuilder_SameSpanDifferentTraceIDs(t *testing.T) {
+	pb := newPointsBuilder()
+	labels := pkgmodel.Labels{
+		&typesv1.LabelPair{Name: "service", Value: "api"},
+	}
+	fp := model.Fingerprint(labels.Hash())
+	traceID1 := pkgmodel.TraceID{15: 1}
+	traceID2 := pkgmodel.TraceID{15: 2}
+
+	pb.add(fp, labels, 100, "profile1", 123, traceID1, 1000)
+	pb.add(fp, labels, 100, "profile1", 123, traceID2, 2000)
+
+	require.Equal(t, 2, pb.count())
+	var traceIDs []pkgmodel.TraceID
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, traceID pkgmodel.TraceID, value int64) {
+		traceIDs = append(traceIDs, traceID)
+	})
+	assert.Equal(t, []pkgmodel.TraceID{traceID1, traceID2}, traceIDs)
 }
 
 func TestPointsBuilder_LabelIntersection(t *testing.T) {
@@ -108,9 +128,9 @@ func TestPointsBuilder_LabelIntersection(t *testing.T) {
 	fp := model.Fingerprint(12345)
 
 	// Add exemplars with different labels
-	pb.add(fp, labels1, 100, "profile1", 0, 1000)
-	pb.add(fp, labels2, 200, "profile2", 0, 2000)
-	pb.add(fp, labels3, 300, "profile3", 0, 3000)
+	pb.add(fp, labels1, 100, "profile1", 0, pkgmodel.TraceID{}, 1000)
+	pb.add(fp, labels2, 200, "profile2", 0, pkgmodel.TraceID{}, 2000)
+	pb.add(fp, labels3, 300, "profile3", 0, pkgmodel.TraceID{}, 3000)
 
 	// Verify we have 3 exemplars
 	assert.Equal(t, 3, pb.count())
@@ -121,7 +141,7 @@ func TestPointsBuilder_LabelIntersection(t *testing.T) {
 		&typesv1.LabelPair{Name: "cluster", Value: "prod"},
 	}
 
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, traceID pkgmodel.TraceID, value int64) {
 		assert.Equal(t, expectedCommonLabels, labels,
 			"Should only contain labels common to all exemplars")
 	})
@@ -137,7 +157,7 @@ func TestPointsBuilder_EmptyProfileIDAndSpanID(t *testing.T) {
 	fp := model.Fingerprint(labels.Hash())
 
 	// Try to add exemplar with empty profileID and zero spanID
-	pb.add(fp, labels, 100, "", 0, 1000)
+	pb.add(fp, labels, 100, "", 0, pkgmodel.TraceID{}, 1000)
 
 	// Should have no exemplars
 	assert.Equal(t, 0, pb.count())
@@ -152,7 +172,7 @@ func TestPointsBuilder_OnlyProfileID(t *testing.T) {
 	}
 	fp := model.Fingerprint(labels.Hash())
 
-	pb.add(fp, labels, 100, "profile1", 0, 1000)
+	pb.add(fp, labels, 100, "profile1", 0, pkgmodel.TraceID{}, 1000)
 
 	// Should have 1 exemplar
 	assert.Equal(t, 1, pb.count())
@@ -167,7 +187,7 @@ func TestPointsBuilder_OnlySpanID(t *testing.T) {
 	}
 	fp := model.Fingerprint(labels.Hash())
 
-	pb.add(fp, labels, 100, "", 123, 1000)
+	pb.add(fp, labels, 100, "", 123, pkgmodel.TraceID{}, 1000)
 
 	// Should have 1 exemplar
 	assert.Equal(t, 1, pb.count())
@@ -183,13 +203,13 @@ func TestPointsBuilder_Sorting(t *testing.T) {
 	fp := model.Fingerprint(labels.Hash())
 
 	// Add exemplars in non-sorted order
-	pb.add(fp, labels, 300, "profile3", 0, 3000)
-	pb.add(fp, labels, 100, "profile1", 0, 1000)
-	pb.add(fp, labels, 200, "profile2", 0, 2000)
+	pb.add(fp, labels, 300, "profile3", 0, pkgmodel.TraceID{}, 3000)
+	pb.add(fp, labels, 100, "profile1", 0, pkgmodel.TraceID{}, 1000)
+	pb.add(fp, labels, 200, "profile2", 0, pkgmodel.TraceID{}, 2000)
 
 	// Verify they come out sorted
 	var timestamps []int64
-	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, value int64) {
+	pb.forEach(func(labels pkgmodel.Labels, ts int64, profileID string, spanID uint64, traceID pkgmodel.TraceID, value int64) {
 		timestamps = append(timestamps, ts)
 	})
 

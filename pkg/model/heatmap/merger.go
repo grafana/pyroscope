@@ -1,6 +1,7 @@
 package heatmap
 
 import (
+	"bytes"
 	"slices"
 	"sort"
 	"strconv"
@@ -65,6 +66,7 @@ func (m *Merger) MergeHeatmap(report *queryv1.HeatmapReport) {
 					Timestamp:     p.Timestamp,
 					ProfileId:     remapper.Ref(p.ProfileId),
 					SpanId:        p.SpanId,
+					TraceId:       p.TraceId,
 					Value:         p.Value,
 					AttributeRefs: remapper.Refs(p.AttributeRefs),
 				}
@@ -128,20 +130,23 @@ func seriesKey(refs []int64) string {
 	return sb.String()
 }
 
-// mergePoints merges points with the same timestamp/profileID/spanID
+// mergePoints merges points with the same timestamp/profileID/spanID/traceID
 func (m *Merger) mergePoints(points []*queryv1.HeatmapPoint) int {
 	l := len(points)
 	if l < 2 {
 		return l
 	}
 
-	// Sort by timestamp, then spanID, then profileID
+	// Sort by timestamp, then spanID, traceID, and profileID.
 	slices.SortFunc(points, func(a, b *queryv1.HeatmapPoint) int {
 		if a.Timestamp != b.Timestamp {
 			return int(a.Timestamp - b.Timestamp)
 		}
 		if a.SpanId != b.SpanId {
 			return int(a.SpanId - b.SpanId)
+		}
+		if c := bytes.Compare(a.TraceId, b.TraceId); c != 0 {
+			return c
 		}
 		if a.ProfileId != b.ProfileId {
 			return int(a.ProfileId - b.ProfileId)
@@ -155,6 +160,7 @@ func (m *Merger) mergePoints(points []*queryv1.HeatmapPoint) int {
 		if points[j].Timestamp != points[i].Timestamp ||
 			points[j].ProfileId != points[i].ProfileId ||
 			points[j].SpanId != points[i].SpanId ||
+			!bytes.Equal(points[j].TraceId, points[i].TraceId) ||
 			!m.sum {
 			j++
 			points[j] = points[i]

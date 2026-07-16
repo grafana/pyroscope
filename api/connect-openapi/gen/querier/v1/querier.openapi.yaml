@@ -1763,6 +1763,12 @@ components:
           description: |-
             Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
              label overlaps with the series label, it is not included here.
+        traceId:
+          type: string
+          examples:
+            - 4bf92f3577b34da6a3ce929d0e0e4736
+          title: trace_id
+          description: Trace ID associated with the span, encoded as 32 lowercase hexadecimal characters.
       title: Exemplar
       additionalProperties: false
       description: |-
