@@ -556,7 +556,7 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		res, err := q.selectTree(gCtx, req.Msg.Left)
+		res, err := q.selectStacktracesTree(gCtx, req.Msg.Left)
 		if err != nil {
 			return err
 		}
@@ -566,7 +566,7 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 	})
 
 	g.Go(func() error {
-		res, err := q.selectTree(gCtx, req.Msg.Right)
+		res, err := q.selectStacktracesTree(gCtx, req.Msg.Right)
 		if err != nil {
 			return err
 		}
@@ -657,11 +657,6 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		sp.Finish()
 	}()
 
-	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
-		mn := maxNodesDefault
-		req.Msg.MaxNodes = &mn
-	}
-
 	if len(req.Msg.ProfileIdSelector) > 0 {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("profile_id_selector is only supported with the v2 query backend"))
 	}
@@ -673,8 +668,32 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dot format is only supported with the v2 query backend"))
 	}
+	if len(req.Msg.SpanSelector) > 0 && req.Msg.StackTraceSelector != nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("combining span_selector with stack_trace_selector is only supported with the v2 query backend"))
+	}
+	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF && len(req.Msg.SpanSelector) == 0 {
+		resp, err := q.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+			ProfileTypeID:      req.Msg.ProfileTypeID,
+			LabelSelector:      req.Msg.LabelSelector,
+			Start:              req.Msg.Start,
+			End:                req.Msg.End,
+			MaxNodes:           req.Msg.MaxNodes,
+			StackTraceSelector: req.Msg.StackTraceSelector,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Pprof: &querierv1.PprofProfile{Profile: resp.Msg},
+		}), nil
+	}
 
-	t, err := q.selectTree(ctx, req.Msg)
+	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
+		mn := maxNodesDefault
+		req.Msg.MaxNodes = &mn
+	}
+
+	t, err := q.selectStacktracesTree(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -685,6 +704,12 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
+	case querierv1.ProfileFormat_PROFILE_FORMAT_PPROF:
+		profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		resp.Pprof = &querierv1.PprofProfile{Profile: pprof.FromTree(t, profileType, req.Msg.End*1e6)}
 	}
 	return connect.NewResponse(&resp), nil
 }
@@ -789,6 +814,24 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 	}
 	storegatewayTree.Merge(ingesterTree)
 	return storegatewayTree, nil
+}
+
+func (q *Querier) selectStacktracesTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.FunctionNameTree, error) {
+	if len(req.SpanSelector) == 0 {
+		return q.selectTree(ctx, req)
+	}
+	if req.StackTraceSelector != nil || len(req.ProfileIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("combining span_selector with stack_trace_selector or profile_id_selector is only supported with the v2 query backend"))
+	}
+	return q.selectSpanProfile(ctx, &querierv1.SelectMergeSpanProfileRequest{
+		ProfileTypeID: req.ProfileTypeID,
+		LabelSelector: req.LabelSelector,
+		SpanSelector:  req.SpanSelector,
+		Start:         req.Start,
+		End:           req.End,
+		MaxNodes:      req.MaxNodes,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+	})
 }
 
 type storeQuery struct {

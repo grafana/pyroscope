@@ -16,12 +16,147 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
 )
+
+func TestSelectMergeStacktraces_RejectsSpanAndTraceSelectors(t *testing.T) {
+	qf := new(QueryFrontend)
+	resp, err := qf.SelectMergeStacktraces(context.Background(), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		SpanSelector:    []string{"0000000000000001"},
+		TraceIdSelector: []string{"00000000000000000000000000000001"},
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.ErrorContains(t, err, "span_selector and trace_id_selector cannot be combined")
+}
+
+func TestSelectMergeStacktraces_SpanSelectorTreeFormats(t *testing.T) {
+	spanSelector := []string{"0000000000000001"}
+	tree := new(phlaremodel.FunctionNameTree)
+	tree.InsertStack(1, "foo")
+	treeBytes := tree.Bytes(-1, nil)
+
+	tests := []struct {
+		name   string
+		format querierv1.ProfileFormat
+		check  func(*testing.T, *querierv1.SelectMergeStacktracesResponse)
+	}{
+		{
+			name: "unspecified returns flamegraph",
+			check: func(t *testing.T, resp *querierv1.SelectMergeStacktracesResponse) {
+				require.NotNil(t, resp.Flamegraph)
+				require.Empty(t, resp.Tree)
+				require.Nil(t, resp.Pprof)
+			},
+		},
+		{
+			name:   "flamegraph",
+			format: querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH,
+			check: func(t *testing.T, resp *querierv1.SelectMergeStacktracesResponse) {
+				require.NotNil(t, resp.Flamegraph)
+				require.Empty(t, resp.Tree)
+				require.Nil(t, resp.Pprof)
+			},
+		},
+		{
+			name:   "tree",
+			format: querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+			check: func(t *testing.T, resp *querierv1.SelectMergeStacktracesResponse) {
+				require.Equal(t, treeBytes, resp.Tree)
+				require.Nil(t, resp.Flamegraph)
+				require.Nil(t, resp.Pprof)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockLimits := mockfrontend.NewMockLimits(t)
+			mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+			mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+			mockLimits.On("MaxFlameGraphNodesDefault", smpTenant).Return(0)
+			mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+			mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+			mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+			mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+			mockBackend.On("Invoke", mock.Anything, mock.Anything).
+				Run(func(args mock.Arguments) {
+					req := args.Get(1).(*queryv1.InvokeRequest)
+					require.Equal(t, spanSelector, req.Query[0].Tree.GetSpanSelector())
+				}).
+				Return(&queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_TREE,
+					Tree:       &queryv1.TreeReport{Tree: treeBytes},
+				}}}, nil)
+
+			qf := newSMPQueryFrontend(t, mockLimits, mockMetadata, mockBackend)
+			ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+			start, end := smpValidTimeRange()
+			resp, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+				ProfileTypeID: smpProfileType,
+				LabelSelector: "{}",
+				Start:         start,
+				End:           end,
+				Format:        tt.format,
+				SpanSelector:  spanSelector,
+			}))
+
+			require.NoError(t, err)
+			tt.check(t, resp.Msg)
+		})
+	}
+}
+
+func TestSelectMergeStacktraces_SpanSelectorPprof(t *testing.T) {
+	spanSelector := []string{"0000000000000001"}
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxFlameGraphNodesOnSelectMergeProfile", smpTenant).Return(false)
+	mockLimits.On("QueryTreeEnabled", smpTenant).Return(false)
+	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			req := args.Get(1).(*queryv1.InvokeRequest)
+			require.Equal(t, queryv1.QueryType_QUERY_PPROF, req.Query[0].QueryType)
+			require.Equal(t, spanSelector, req.Query[0].Pprof.GetSpanSelector())
+		}).
+		Return(&queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+			ReportType: queryv1.ReportType_REPORT_PPROF,
+			Pprof:      &queryv1.PprofReport{Pprof: createProfile(t)},
+		}}}, nil)
+
+	qf := newSMPQueryFrontend(t, mockLimits, mockMetadata, mockBackend)
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	start, end := smpValidTimeRange()
+	resp, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: smpProfileType,
+		LabelSelector: "{}",
+		Start:         start,
+		End:           end,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+		SpanSelector:  spanSelector,
+	}))
+
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.GetPprof().GetProfile())
+	require.Len(t, resp.Msg.Pprof.Profile.Sample, 1)
+	require.Nil(t, resp.Msg.Flamegraph)
+	require.Empty(t, resp.Msg.Tree)
+}
 
 func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 	// pprofBytes contains a profile with one sample at location 1, where location 1
@@ -175,6 +310,7 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 }
 
 func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
+	spanSelector := []string{"0000000000000001"}
 	p := &profilev1.Profile{
 		StringTable: []string{"", "my_func", "samples", "count", "", ""},
 		Function:    []*profilev1.Function{{Id: 1, Name: 1}},
@@ -195,7 +331,10 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 	mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(false)
 
 	mockQueryBackend := mockqueryfrontend.NewMockQueryBackend(t)
-	mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{
+	mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		req := args.Get(1).(*queryv1.InvokeRequest)
+		require.Equal(t, spanSelector, req.Query[0].Pprof.GetSpanSelector())
+	}).Return(&queryv1.InvokeResponse{
 		Reports: []*queryv1.Report{{
 			ReportType: queryv1.ReportType_REPORT_PPROF,
 			Pprof:      &queryv1.PprofReport{Pprof: pprofBytes},
@@ -222,6 +361,7 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 		Start:         start,
 		End:           end,
 		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_DOT,
+		SpanSelector:  spanSelector,
 	}))
 
 	require.NoError(t, err)
