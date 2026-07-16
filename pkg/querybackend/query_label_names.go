@@ -1,7 +1,6 @@
 package querybackend
 
 import (
-	"slices"
 	"sort"
 	"sync"
 
@@ -35,7 +34,6 @@ func queryLabelNames(q *queryContext, query *queryv1.Query) (*queryv1.Report, er
 	if err != nil {
 		return nil, err
 	}
-	names = dropSampledLabelName(names)
 	resp := &queryv1.Report{
 		LabelNames: &queryv1.LabelNamesReport{
 			Query:      query.LabelNames.CloneVT(),
@@ -43,12 +41,6 @@ func queryLabelNames(q *queryContext, query *queryv1.Query) (*queryv1.Report, er
 		},
 	}
 	return resp, nil
-}
-
-func dropSampledLabelName(names []string) []string {
-	return slices.DeleteFunc(names, func(n string) bool {
-		return n == model.LabelNameSampled
-	})
 }
 
 func labelNamesForMatchers(reader phlaredb.IndexReader, matchers []*labels.Matcher) ([]string, error) {
