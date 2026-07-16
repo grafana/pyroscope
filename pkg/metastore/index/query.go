@@ -99,10 +99,10 @@ func (q *metadataQuery) overlapsUnixMilli(start, end int64) bool {
 	return q.overlaps(time.UnixMilli(start), time.UnixMilli(end))
 }
 
-func newBlockMetadataQuerier(tx *bbolt.Tx, q *metadataQuery) *blockMetadataQuerier {
+func newBlockMetadataQuerier(ctx context.Context, tx *bbolt.Tx, q *metadataQuery) *blockMetadataQuerier {
 	return &blockMetadataQuerier{
 		query:  q,
-		shards: newShardIterator(tx, q.index, q.startTime, q.endTime, q.tenants...),
+		shards: newShardIterator(ctx, tx, q.index, q.startTime, q.endTime, q.tenants...),
 		metas:  make([]*metastorev1.BlockMeta, 0, 256),
 	}
 }
@@ -216,10 +216,10 @@ func cloneDatasetMetadataForQuery(ds *metastorev1.Dataset) *metastorev1.Dataset 
 	}
 }
 
-func newMetadataLabelQuerier(tx *bbolt.Tx, q *metadataQuery) *metadataLabelQuerier {
+func newMetadataLabelQuerier(ctx context.Context, tx *bbolt.Tx, q *metadataQuery) *metadataLabelQuerier {
 	return &metadataLabelQuerier{
 		query:  q,
-		shards: newShardIterator(tx, q.index, q.startTime, q.endTime, q.tenants...),
+		shards: newShardIterator(ctx, tx, q.index, q.startTime, q.endTime, q.tenants...),
 		labels: metadata.NewLabelsCollector(q.labels...),
 	}
 }
@@ -283,10 +283,7 @@ type shardIterator struct {
 	endTime   time.Time
 }
 
-func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) *shardIterator {
-	// See comment in DefaultConfig.queryLookaroundPeriod.
-	startTime = startTime.Add(-index.config.queryLookaroundPeriod)
-	endTime = endTime.Add(index.config.queryLookaroundPeriod)
+func newShardIterator(ctx context.Context, tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) *shardIterator {
 	si := shardIterator{
 		tx:        tx,
 		tenants:   tenants,
@@ -294,11 +291,29 @@ func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, 
 		startTime: startTime,
 		endTime:   endTime,
 	}
-	for p := range index.store.Partitions(tx) {
-		if !p.Overlaps(startTime, endTime) {
-			continue
+	if shards, ok, err := index.intervals.candidates(tx, index.store, startTime.UnixMilli(), endTime.UnixMilli(), tenants...); err != nil {
+		si.err = err
+	} else if ok {
+		si.shards = shards
+	} else {
+		// A concurrent retention deletion may have removed a tree node that is
+		// still visible to this older Bolt snapshot.
+		si.collectShards(ctx)
+	}
+	slices.SortFunc(si.shards, compareShards)
+	si.shards = slices.Compact(si.shards)
+	return &si
+}
+
+func (si *shardIterator) collectShards(ctx context.Context) {
+	// Partition timestamps come from block ULIDs and represent creation time,
+	// which may differ arbitrarily from the profile data time during backfills.
+	for p := range si.index.store.Partitions(si.tx) {
+		if err := ctx.Err(); err != nil {
+			si.err = err
+			break
 		}
-		q := p.Query(tx)
+		q := p.Query(si.tx)
 		if q == nil {
 			continue
 		}
@@ -310,9 +325,6 @@ func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, 
 			}
 		}
 	}
-	slices.SortFunc(si.shards, compareShards)
-	si.shards = slices.Compact(si.shards)
-	return &si
 }
 
 func (si *shardIterator) Err() error { return si.err }
@@ -332,7 +344,20 @@ func (si *shardIterator) Next() bool {
 func compareShards(a, b store.Shard) int {
 	cmp := strings.Compare(a.Tenant, b.Tenant)
 	if cmp == 0 {
-		return int(a.Shard) - int(b.Shard)
+		if a.Shard != b.Shard {
+			if a.Shard < b.Shard {
+				return -1
+			}
+			return 1
+		}
+		if cmp = a.Partition.Timestamp.Compare(b.Partition.Timestamp); cmp == 0 {
+			if a.Partition.Duration < b.Partition.Duration {
+				return -1
+			}
+			if a.Partition.Duration > b.Partition.Duration {
+				return 1
+			}
+		}
 	}
 	return cmp
 }
