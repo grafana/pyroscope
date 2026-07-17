@@ -124,6 +124,7 @@ type Distributor struct {
 	bytesReceivedStats      *usagestats.Statistics
 	bytesReceivedTotalStats *usagestats.Counter
 	profileReceivedStats    *usagestats.MultiCounter
+	profileScopeStats       *usagestats.MultiCounter
 	profileSizeStats        *usagestats.MultiStatistics
 
 	router        *writepath.Router
@@ -191,6 +192,7 @@ func New(
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
+		profileScopeStats:       usagestats.NewMultiCounter("distributor_profiles_received_by_scope", "scope"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
 	}
 
@@ -527,7 +529,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	now := model.Now()
 
 	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
-	finalLog := newPushLog(13)
+	finalLog := newPushLog(15)
 	defer func() {
 		finalLog.log(logger, err)
 	}()
@@ -540,6 +542,15 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.addFields("service_name", serviceName)
 	}
 	sort.Sort(phlaremodel.Labels(req.Labels))
+	labels := phlaremodel.Labels(req.Labels)
+	scopeName := labels.Get(phlaremodel.LabelNameOTELScopeName)
+	scopeVersion := labels.Get(phlaremodel.LabelNameOTELScopeVersion)
+	if scopeName != "" {
+		finalLog.addFields("otel_scope_name", scopeName)
+	}
+	if scopeVersion != "" {
+		finalLog.addFields("otel_scope_version", scopeVersion)
+	}
 
 	if req.ID != "" {
 		finalLog.addFields("profile_id", req.ID)
@@ -602,6 +613,10 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
+	if scopeName != "" {
+		d.metrics.profilesReceived.WithLabelValues(tenantID, scopeName, scopeVersion).Inc()
+		d.profileScopeStats.Inc(1, scopeName)
+	}
 	if origin == distributormodel.RawProfileTypePPROF {
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}

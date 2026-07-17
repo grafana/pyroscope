@@ -47,6 +47,8 @@ const (
 	LabelNameServiceName       = "service_name"
 	LabelNameServiceRepository = "service_repository"
 	LabelNameServiceRootPath   = "service_root_path"
+	LabelNameOTELScopeName     = "otel.scope.name"
+	LabelNameOTELScopeVersion  = "otel.scope.version"
 
 	LabelNameOrder     = "__order__"
 	LabelOrderEnforced = "enforced"
