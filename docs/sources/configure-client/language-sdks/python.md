@@ -82,6 +82,11 @@ pyroscope.configure(
 )
 ```
 
+{{< admonition type="caution" >}}
+If your application forks processes, initialize the Python client after the fork.
+Refer to [Use the Python client with forked processes](#use-the-python-client-with-forked-processes) for details.
+{{< /admonition >}}
+
 ## Add profiling labels to Python applications
 
 You can add tags to certain parts of your code:
@@ -91,6 +96,56 @@ You can add tags to certain parts of your code:
 with pyroscope.tag_wrapper({ "controller": "slow_controller_i_want_to_profile" }):
     slow_code()
 ```
+
+## Use the Python client with forked processes
+
+The Python client starts background threads when you call `pyroscope.configure()`.
+The client isn't fork-safe after those threads have started.
+If a process calls `fork()` after configuring the client, the child can inherit locks and other synchronization state from threads that no longer exist.
+This can cause the child to deadlock or behave unpredictably.
+
+{{< admonition type="caution" >}}
+Call `pyroscope.configure()` only after the last fork in each process that you want to profile.
+Don't initialize the client in a parent process that later forks.
+{{< /admonition >}}
+
+For pre-fork application servers such as Gunicorn, initialize Pyroscope in a post-fork hook.
+For example:
+
+```python
+# gunicorn.conf.py
+import os
+
+import pyroscope
+
+preload_app = True
+
+
+def post_fork(server, worker):
+    pyroscope.configure(
+        application_name="my.python.app",
+        server_address=os.getenv(
+            "PYROSCOPE_SERVER_ADDRESS",
+            "http://my-pyroscope-server:4040",
+        ),
+    )
+```
+
+Start Gunicorn with the configuration file:
+
+```bash
+gunicorn --config gunicorn.conf.py myapp.wsgi:application
+```
+
+When `preload_app` is enabled, Gunicorn imports application modules in the parent process before it forks workers.
+Keep `pyroscope.configure()` out of those modules and call it only from `post_fork`.
+The same rule applies to other pre-fork servers and direct uses of `os.fork()`: initialize the client separately in each child after the fork.
+
+If you can't avoid forking after profiling has started, stop all code that interacts with the Pyroscope client, call `pyroscope.shutdown()`, perform the fork, and call `pyroscope.configure()` again in each process that you want to profile.
+You must synchronize this sequence with every thread that can use the client.
+Prefer initializing after the fork because forking a multithreaded process can also be unsafe for libraries other than Pyroscope.
+
+For a runnable configuration, refer to the [Django and Gunicorn example](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/python/rideshare/django).
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Python SDK
 

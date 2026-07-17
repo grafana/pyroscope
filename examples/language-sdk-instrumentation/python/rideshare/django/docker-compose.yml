@@ -14,7 +14,7 @@ services:
       - db
   us-east:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
       - ./.env.dev
     environment:
@@ -24,7 +24,7 @@ services:
         condition: service_completed_successfully
   eu-north:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
       - ./.env.dev
     environment:
@@ -34,7 +34,7 @@ services:
         condition: service_completed_successfully
   ap-south:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
     - ./.env.dev
     environment:
