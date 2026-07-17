@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -200,10 +201,15 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 
 	resp, err := h.export(r.Context(), req)
 	if err != nil {
-		level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
-		if isKnownValidationError(err) {
+		switch {
+		case isKnownValidationError(err):
+			level.Warn(h.log).Log("msg", "rejecting invalid profiles", "err", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
-		} else {
+		case connect.CodeOf(err) == connect.CodeResourceExhausted:
+			level.Warn(h.log).Log("msg", "rejecting profiles over ingestion limit", "err", err)
+			http.Error(w, err.Error(), http.StatusTooManyRequests)
+		default:
+			level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return

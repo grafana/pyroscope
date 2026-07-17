@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/user"
 	"github.com/klauspost/compress/gzip"
@@ -978,20 +980,7 @@ func createValidOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
 	}
 }
 
-func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
-	svc := mockotlp.NewMockPushService(t)
-	var capturedTenantID string
-	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
-		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
-		require.NoError(t, err)
-		capturedTenantID = tenantID
-	}).Return(nil, nil)
-
-	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
-
-	jsonRequest := `{
+const otlpProfileJSON = `{
 		"resourceProfiles": [{
 			"scopeProfiles": [{
 				"profiles": [{
@@ -1009,6 +998,21 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 		}
 	}`
 
+func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedTenantID string
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		require.NoError(t, err)
+		capturedTenantID = tenantID
+	}).Return(nil, nil)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	jsonRequest := otlpProfileJSON
+
 	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(jsonRequest)))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set(user.OrgIDHeaderName, "json-tenant")
@@ -1018,6 +1022,49 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "json-tenant", capturedTenantID)
+}
+
+func TestHTTPExportErrorStatusCodes(t *testing.T) {
+	jsonRequest := otlpProfileJSON
+
+	for _, tc := range []struct {
+		name       string
+		pushErr    error
+		wantStatus int
+	}{
+		{
+			name:       "tenant over ingestion limit is a client error (429)",
+			pushErr:    connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("limit of 0 B/month reached, next reset at 2026-08-01T00:00:00Z")),
+			wantStatus: http.StatusTooManyRequests,
+		},
+		{
+			name:       "validation failure is a client error (400)",
+			pushErr:    validation.NewErrorf(validation.ProfileSizeLimit, "profile size exceeds limit"),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "unexpected push failure is a server error (500)",
+			pushErr:    fmt.Errorf("ingester unreachable"),
+			wantStatus: http.StatusInternalServerError,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			svc.On("PushBatch", mock.Anything, mock.Anything).Return(tc.pushErr)
+
+			logger := test.NewTestingLogger(t)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+			httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(jsonRequest)))
+			httpReq.Header.Set("Content-Type", "application/json")
+			httpReq.Header.Set(user.OrgIDHeaderName, "tenant-a")
+
+			w := httptest.NewRecorder()
+			httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+
+			assert.Equal(t, tc.wantStatus, w.Code)
+		})
+	}
 }
 
 func TestExportSetsDecompressedSizeForOTLP(t *testing.T) {
@@ -1086,23 +1133,7 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
-	jsonRequest := `{
-		"resourceProfiles": [{
-			"scopeProfiles": [{
-				"profiles": [{
-					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
-					"samples": [{"stackIndex": 0, "values": [100]}],
-					"timeUnixNano": "1234567890"
-				}]
-			}]
-		}],
-		"dictionary": {
-			"stringTable": ["samples", "count", "test.so"],
-			"mappingTable": [{"memoryStart": "4096", "memoryLimit": "8192", "filenameStrindex": 2}],
-			"locationTable": [{"mappingIndex": 0, "address": "4352"}],
-			"stackTable": [{"locationIndices": [0]}]
-		}
-	}`
+	jsonRequest := otlpProfileJSON
 
 	var gzipBuf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&gzipBuf)
