@@ -549,7 +549,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	req.TotalProfiles = 1
-	req.TotalBytesUncompressed = calculateRequestSize(req)
+	decompressedSize := req.Profile.SizeVT()
+	req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
@@ -581,14 +582,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	willSample, samplingSource := d.shouldSample(tenantID, groups.Names())
-	sampledOut := false
-	var fullBytes int64
+	stripped := false
 	if !willSample {
 		finalLog.addFields(
 			"usage_group", samplingSource.UsageGroup,
 			"probability", samplingSource.Probability,
 		)
-		finalLog.msg = "skipping profile due to sampling"
+		finalLog.msg = "sampling profile"
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 
 		if !d.cfg.KeepStrippedProfiles {
@@ -596,12 +596,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
 		}
-		sampledOut = true
-		fullBytes = int64(req.Profile.SizeVT())
-		for _, s := range req.Profile.Sample {
-			s.LocationId = nil
-		}
-		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
+		stripped = true
 	}
 	if samplingSource != nil {
 		if err := req.MarkSampledRequest(samplingSource); err != nil {
@@ -614,13 +609,18 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.addFields("detected_language", profLanguage)
 	}
 
+	if stripped {
+		stripProfileStacktraces(req.Profile.Profile)
+
+		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
+	}
+
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
 	if origin == distributormodel.RawProfileTypePPROF {
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}
 	p := req.Profile
-	decompressedSize := p.SizeVT()
 	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
 	finalLog.addFields(
 		"profile_time", profTime,
@@ -630,7 +630,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		"parse_duration", parseDuration,
 	)
 	d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
-	if !sampledOut {
+	if !stripped {
 		d.metrics.observeProfileSize(tenantID, StageSampled, int64(decompressedSize))                              //todo use req.TotalBytesUncompressed to include labels siz
 		d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize)) // deprecated TODO remove
 		d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
@@ -647,8 +647,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if !sampledOut {
-		symbolsSize, samplesSize := profileSizeBytes(p.Profile)
+	if !stripped {
+		symbolsSize, samplesSize := profileSizeBytes(p.Profile, int64(decompressedSize))
 		d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
 		d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
 	}
@@ -671,17 +671,19 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		req.Profile.Normalize()
 		sp.Finish()
 		finalLog.addFields("normalization_stats", req.Profile.Stats())
-		if sampledOut {
-			_, normalizedKept := profileSizeBytes(req.Profile.Profile)
-			discardedBytes := fullBytes - normalizedKept
+		if stripped {
+			normalizedSize := int64(req.Profile.SizeVT())
+			discardedBytes := int64(decompressedSize) - normalizedSize
 			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(discardedBytes))
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), discardedBytes)
-			d.metrics.observeProfileSize(tenantID, StageNormalized, normalizedKept)
-			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(normalizedKept))
-			d.profileSizeStats.Record(float64(normalizedKept), profLanguage)
-			groups.CountReceivedBytes(profName, normalizedKept)
-			d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(normalizedKept))
-			d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(0)
+			d.metrics.observeProfileSize(tenantID, StageNormalized, normalizedSize+labelsSize(req.Labels))
+			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(normalizedSize))
+			d.profileSizeStats.Record(float64(normalizedSize), profLanguage)
+			groups.CountReceivedBytes(profName, normalizedSize)
+
+			symbolsSize, samplesSize := profileSizeBytes(req.Profile.Profile, normalizedSize)
+			d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
+			d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
 		} else {
 			d.metrics.observeProfileSize(tenantID, StageNormalized, calculateRequestSize(req))
 		}
@@ -951,9 +953,52 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
-// profileSizeBytes returns the size of symbols and samples in bytes.
-func profileSizeBytes(p *profilev1.Profile) (symbols, samples int64) {
-	fullSize := p.SizeVT()
+func stripProfileStacktraces(p *profilev1.Profile) {
+	for _, s := range p.Sample {
+		s.LocationId = nil
+	}
+	p.Location = nil
+	p.Function = nil
+	p.Mapping = nil
+
+	oldStrings := p.StringTable
+	newStrings := []string{""}
+	remap := map[int64]int64{0: 0}
+	intern := func(old int64) int64 {
+		if n, ok := remap[old]; ok {
+			return n
+		}
+		n := int64(len(newStrings))
+		newStrings = append(newStrings, oldStrings[old])
+		remap[old] = n
+		return n
+	}
+	p.DropFrames = intern(p.DropFrames)
+	p.KeepFrames = intern(p.KeepFrames)
+	p.DefaultSampleType = intern(p.DefaultSampleType)
+	for _, vt := range p.SampleType {
+		vt.Type = intern(vt.Type)
+		vt.Unit = intern(vt.Unit)
+	}
+	if p.PeriodType != nil {
+		p.PeriodType.Type = intern(p.PeriodType.Type)
+		p.PeriodType.Unit = intern(p.PeriodType.Unit)
+	}
+	for i, c := range p.Comment {
+		p.Comment[i] = intern(c)
+	}
+	for _, s := range p.Sample {
+		for _, l := range s.Label {
+			l.Key = intern(l.Key)
+			l.Str = intern(l.Str)
+			l.NumUnit = intern(l.NumUnit)
+		}
+	}
+	p.StringTable = newStrings
+}
+
+// profileSizeBytes returns the size of symbols and samples in bytes from a given fullSize.
+func profileSizeBytes(p *profilev1.Profile, fullSize int64) (symbols, samples int64) {
 	// remove samples
 	samplesSlice := p.Sample
 	p.Sample = nil
@@ -1104,13 +1149,15 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.ProfileSe
 
 func calculateRequestSize(req *distributormodel.ProfileSeries) int64 {
 	// include the labels in the size calculation
-	bs := int64(0)
-	for _, lbs := range req.Labels {
-		bs += int64(len(lbs.Name))
-		bs += int64(len(lbs.Value))
-	}
+	return labelsSize(req.Labels) + int64(req.Profile.SizeVT())
+}
 
-	bs += int64(req.Profile.SizeVT())
+func labelsSize(lbs []*typesv1.LabelPair) int64 {
+	bs := int64(0)
+	for _, l := range lbs {
+		bs += int64(len(l.Name))
+		bs += int64(len(l.Value))
+	}
 	return bs
 }
 
