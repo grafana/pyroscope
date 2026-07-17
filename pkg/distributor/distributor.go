@@ -546,7 +546,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	req.TotalProfiles = 1
-	req.TotalBytesUncompressed = calculateRequestSize(req)
+	// SizeVT is expensive; computed once and reused below (the profile is not mutated until normalization).
+	decompressedSize := req.Profile.SizeVT()
+	req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
@@ -606,7 +608,6 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}
 	p := req.Profile
-	decompressedSize := p.SizeVT()
 	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
 	finalLog.addFields(
 		"profile_time", profTime,
@@ -1073,13 +1074,15 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.ProfileSe
 
 func calculateRequestSize(req *distributormodel.ProfileSeries) int64 {
 	// include the labels in the size calculation
-	bs := int64(0)
-	for _, lbs := range req.Labels {
-		bs += int64(len(lbs.Name))
-		bs += int64(len(lbs.Value))
-	}
+	return labelsSize(req.Labels) + int64(req.Profile.SizeVT())
+}
 
-	bs += int64(req.Profile.SizeVT())
+func labelsSize(lbs []*typesv1.LabelPair) int64 {
+	bs := int64(0)
+	for _, l := range lbs {
+		bs += int64(len(l.Name))
+		bs += int64(len(l.Value))
+	}
 	return bs
 }
 
