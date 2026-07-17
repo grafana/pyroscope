@@ -82,6 +82,21 @@ pyroscope.configure(
 )
 ```
 
+{{< admonition type="caution" >}}
+If your application forks processes, initialize the Python client after the fork.
+Refer to [Use the Python client with forked processes](#use-the-python-client-with-forked-processes) for details.
+{{< /admonition >}}
+
+## Add profiling labels to Python applications
+
+You can add tags to certain parts of your code:
+
+```python
+# You can use a wrapper:
+with pyroscope.tag_wrapper({ "controller": "slow_controller_i_want_to_profile" }):
+    slow_code()
+```
+
 ## Use the Python client with forked processes
 
 The Python client starts background threads when you call `pyroscope.configure()`.
@@ -131,16 +146,6 @@ You must synchronize this sequence with every thread that can use the client.
 Prefer initializing after the fork because forking a multithreaded process can also be unsafe for libraries other than Pyroscope.
 
 For a runnable configuration, refer to the [Django and Gunicorn example](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/python/rideshare/django).
-
-## Add profiling labels to Python applications
-
-You can add tags to certain parts of your code:
-
-```python
-# You can use a wrapper:
-with pyroscope.tag_wrapper({ "controller": "slow_controller_i_want_to_profile" }):
-    slow_code()
-```
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Python SDK
 
