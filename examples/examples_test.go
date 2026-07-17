@@ -85,8 +85,9 @@ func TestMain(m *testing.M) {
 }
 
 type env struct {
-	dir  string // project dir of docker-compose, relative to the test working directory
-	path string // path to docker-compose file
+	dir                   string // project dir of docker-compose, relative to the test working directory
+	path                  string // path to docker-compose file
+	completedSuccessfully map[string]struct{}
 }
 
 func (e *env) repoDir() string {
@@ -94,8 +95,10 @@ func (e *env) repoDir() string {
 }
 
 type status struct {
-	Name  string `json:"Name"`
-	State string `json:"State"`
+	Name     string `json:"Name"`
+	Service  string `json:"Service"`
+	State    string `json:"State"`
+	ExitCode int    `json:"ExitCode"`
 }
 
 func (e *env) projectName() string {
@@ -151,23 +154,59 @@ func (e *env) containerStatus(ctx context.Context) ([]status, error) {
 	return stats, nil
 }
 
-func (e *env) containersAllRunning(ctx context.Context) error {
-	status, err := e.containerStatus(ctx)
+func (e *env) containersReady(ctx context.Context) error {
+	statuses, err := e.containerStatus(ctx)
 	if err != nil {
 		return err
 	}
-	if len(status) == 0 {
+	return containerStatusesReady(statuses, e.completedSuccessfully)
+}
+
+func containerStatusesReady(statuses []status, completedSuccessfully map[string]struct{}) error {
+	if len(statuses) == 0 {
 		return errors.New("no containers found")
 	}
 
 	var errs []error
-	for _, s := range status {
-		if s.State != "running" {
-			errs = append(errs, fmt.Errorf("container %s is not running (state=%s)", s.Name, s.State))
+	for _, s := range statuses {
+		if s.State == "running" {
+			continue
 		}
+		_, isCompletedService := completedSuccessfully[s.Service]
+		if isCompletedService && s.State == "exited" && s.ExitCode == 0 {
+			continue
+		}
+		errs = append(errs, fmt.Errorf(
+			"container %s is not ready (service=%s, state=%s, exit_code=%d)",
+			s.Name, s.Service, s.State, s.ExitCode,
+		))
 	}
 
 	return errors.Join(errs...)
+}
+
+func completedSuccessfullyServices(services map[string]interface{}) map[string]struct{} {
+	completed := make(map[string]struct{})
+	for _, service := range services {
+		params, ok := service.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		dependencies, ok := params["depends_on"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for serviceName, dependency := range dependencies {
+			config, ok := dependency.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if config["condition"] == "service_completed_successfully" {
+				completed[serviceName] = struct{}{}
+			}
+		}
+	}
+	return completed
 }
 
 // prepareCompose rewrites the docker-compose file into a temporary copy so that:
@@ -185,6 +224,7 @@ func (e *env) prepareCompose(t testing.TB) *env {
 
 	services, ok := obj["services"].(map[string]interface{})
 	require.True(t, ok, "docker-compose file has no services map")
+	completedSuccessfully := completedSuccessfullyServices(services)
 
 	for serviceName, service := range services {
 		params, ok := service.(map[string]interface{})
@@ -209,7 +249,11 @@ func (e *env) prepareCompose(t testing.TB) *env {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
-	return &env{dir: e.dir, path: path}
+	return &env{
+		dir:                   e.dir,
+		path:                  path,
+		completedSuccessfully: completedSuccessfully,
+	}
 }
 
 // containerPortOf returns the container-side port of a docker-compose ports
@@ -295,13 +339,12 @@ func (e *env) bringUp(t *testing.T, ctx context.Context) {
 	require.NoError(t, e.run(t, ctx, "up", "--detach"))
 }
 
-// waitRunning waits until all containers report a running state, failing the
-// test if they don't within runningTimeout. A container that exits during this
-// window (e.g. a crash on startup) is caught here.
-func (e *env) waitRunning(t testing.TB, ctx context.Context) {
+// waitReady waits until all regular containers are running and all init
+// services have completed successfully. Unexpected exits are caught here.
+func (e *env) waitReady(t testing.TB, ctx context.Context) {
 	poll(t, ctx, runningTimeout, func(progress func(string, ...any)) error {
-		progress("[%s] waiting for all containers to be running...", e.repoDir())
-		return e.containersAllRunning(ctx)
+		progress("[%s] waiting for all containers to be ready...", e.repoDir())
+		return e.containersReady(ctx)
 	})
 }
 
@@ -672,6 +715,71 @@ func (e *env) isTracing() bool {
 	return strings.HasPrefix(e.repoDir(), filepath.Join("examples", "tracing")+string(filepath.Separator))
 }
 
+func TestContainerStatusesReady(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                  string
+		statuses              []status
+		completedSuccessfully map[string]struct{}
+		wantErr               string
+	}{
+		{
+			name:     "running service",
+			statuses: []status{{Name: "app-1", Service: "app", State: "running"}},
+		},
+		{
+			name:                  "successfully completed init service",
+			statuses:              []status{{Name: "migrate-1", Service: "migrate", State: "exited", ExitCode: 0}},
+			completedSuccessfully: map[string]struct{}{"migrate": {}},
+		},
+		{
+			name:                  "failed init service",
+			statuses:              []status{{Name: "migrate-1", Service: "migrate", State: "exited", ExitCode: 1}},
+			completedSuccessfully: map[string]struct{}{"migrate": {}},
+			wantErr:               "container migrate-1 is not ready (service=migrate, state=exited, exit_code=1)",
+		},
+		{
+			name:     "unexpected normal service exit",
+			statuses: []status{{Name: "app-1", Service: "app", State: "exited", ExitCode: 0}},
+			wantErr:  "container app-1 is not ready (service=app, state=exited, exit_code=0)",
+		},
+		{
+			name:    "no containers",
+			wantErr: "no containers found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := containerStatusesReady(tt.statuses, tt.completedSuccessfully)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.EqualError(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestCompletedSuccessfullyServices(t *testing.T) {
+	t.Parallel()
+
+	services := map[string]interface{}{
+		"app": map[string]interface{}{
+			"depends_on": map[string]interface{}{
+				"db":      map[string]interface{}{"condition": "service_started"},
+				"migrate": map[string]interface{}{"condition": "service_completed_successfully"},
+			},
+		},
+		"other": map[string]interface{}{
+			"depends_on": []interface{}{"db"},
+		},
+	}
+
+	require.Equal(t, map[string]struct{}{"migrate": {}}, completedSuccessfullyServices(services))
+}
+
 // TestExamples brings each selected example up once and verifies it: profiles
 // are always checked (Series + SelectSeries); tracing examples additionally get
 // the trace-to-profile link checked (SelectMergeSpanProfile).
@@ -689,10 +797,10 @@ func TestExamples(t *testing.T) {
 
 			e := e.prepareCompose(t)
 			e.bringUp(t, ctx)
-			e.waitRunning(t, ctx)
+			e.waitReady(t, ctx)
 
 			pyroHost := "127.0.0.1:" + e.hostPort(t, ctx, pyroscopeService, pyroscopePort)
-			t.Logf("[%s] all containers running; pyroscope on %s", e.repoDir(), pyroHost)
+			t.Logf("[%s] all containers ready; pyroscope on %s", e.repoDir(), pyroHost)
 
 			t.Run("profiles", func(t *testing.T) {
 				e.checkProfilesQueryable(t, ctx, pyroHost)
@@ -705,7 +813,7 @@ func TestExamples(t *testing.T) {
 				})
 			}
 
-			require.NoError(t, e.containersAllRunning(ctx), "containers must stay running through the run")
+			require.NoError(t, e.containersReady(ctx), "containers must stay ready through the run")
 		})
 	}
 }
