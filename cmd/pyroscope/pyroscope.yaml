@@ -309,10 +309,6 @@ limits:
   # stripped (marked __sampled__) instead of dropping it.
   # keep_stripped_profiles: false
 
-  # Include profiles that were sampled out and stored with stacktraces stripped
-  # (marked __sampled__) in query results.
-  # include_stripped_profiles: false
-
   # Maximum length accepted for label names.
   # max_label_name_length: 1024
 
@@ -402,6 +398,10 @@ limits:
   # series data (e.g., series count) will be calculated by the /AnalyzeQuery
   # endpoint.
   # query_analysis_series_enabled: false
+
+  # Include profiles that were sampled out and stored with stacktraces stripped
+  # (marked __sampled__) in query results.
+  # include_stripped_profiles: false
 
   # Maximum number of flame graph nodes by default. 0 to disable.
   # max_flamegraph_nodes_default: 8192

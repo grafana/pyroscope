@@ -69,13 +69,14 @@ type BlockReader struct {
 	//    Instead, they should share the processing pipeline, if possible.
 }
 
-func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer) *BlockReader {
+func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer, overrides Overrides) *BlockReader {
 	hostname, _ := os.Hostname()
 	return &BlockReader{
-		log:      logger,
-		storage:  storage,
-		metrics:  newMetrics(reg),
-		hostname: hostname,
+		log:       logger,
+		storage:   storage,
+		metrics:   newMetrics(reg),
+		hostname:  hostname,
+		Overrides: overrides,
 	}
 }
 

@@ -383,8 +383,7 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		return nil, err
 	}
 	logger := log.With(f.logger, "component", "query-backend")
-	blockReader := querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg)
-	blockReader.Overrides = f.Overrides
+	blockReader := querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg, f.Overrides)
 	b, err := querybackend.New(
 		f.Cfg.QueryBackend,
 		logger,

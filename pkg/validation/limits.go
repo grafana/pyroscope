@@ -40,7 +40,6 @@ type Limits struct {
 	IngestionBodyLimitMB     float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
 	DistributorSampling      *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
 	KeepStrippedProfiles     bool                 `yaml:"keep_stripped_profiles" json:"keep_stripped_profiles"`
-	IncludeStrippedProfiles  bool                 `yaml:"include_stripped_profiles" json:"include_stripped_profiles"`
 	MaxLabelNameLength       int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength      int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries   int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
@@ -87,6 +86,7 @@ type Limits struct {
 	MaxQueryParallelism        int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
 	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
+	IncludeStrippedProfiles    bool           `yaml:"include_stripped_profiles" json:"include_stripped_profiles"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
