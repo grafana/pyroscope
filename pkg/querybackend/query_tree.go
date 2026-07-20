@@ -35,7 +35,7 @@ func init() {
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	otelSpan := trace.SpanFromContext(q.ctx)
 
-	var profileOpts []profileIteratorOption
+	profileOpts := []profileIteratorOption{withExcludeSampled()}
 	if len(query.Tree.ProfileIdSelector) > 0 {
 		opt, err := withProfileIDSelector(query.Tree.ProfileIdSelector...)
 		if err != nil {
