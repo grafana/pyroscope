@@ -19,6 +19,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
@@ -1063,6 +1066,41 @@ func TestHTTPExportErrorStatusCodes(t *testing.T) {
 			httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
 
 			assert.Equal(t, tc.wantStatus, w.Code)
+		})
+	}
+}
+
+func TestExportGRPCStatusCodes(t *testing.T) {
+	req := &v1experimental2.ExportProfilesServiceRequest{}
+	require.NoError(t, protojson.Unmarshal([]byte(otlpProfileJSON), req))
+
+	for _, tc := range []struct {
+		name     string
+		pushErr  error
+		wantCode codes.Code
+	}{
+		{
+			name:     "tenant over ingestion limit maps to ResourceExhausted",
+			pushErr:  connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("limit of 0 B/month reached")),
+			wantCode: codes.ResourceExhausted,
+		},
+		{
+			name:     "unexpected push failure stays Unknown",
+			pushErr:  fmt.Errorf("ingester unreachable"),
+			wantCode: codes.Unknown,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			svc.On("PushBatch", mock.Anything, mock.Anything).Return(tc.pushErr)
+
+			logger := test.NewTestingLogger(t)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+			ctx := user.InjectOrgID(context.Background(), "tenant-a")
+			_, err := h.Export(ctx, req)
+			require.Error(t, err)
+			assert.Equal(t, tc.wantCode, status.Code(err))
 		})
 	}
 }

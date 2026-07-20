@@ -230,7 +230,21 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	return h.export(ctx, er)
+	resp, err := h.export(ctx, er)
+	if err != nil {
+		return resp, toGRPCStatus(err)
+	}
+	return resp, nil
+}
+
+// toGRPCStatus maps push errors that carry a Connect code (e.g. ResourceExhausted
+// when a tenant exceeds its ingestion limit) to the matching gRPC status; errors
+// that already carry a gRPC status pass through unchanged.
+func toGRPCStatus(err error) error {
+	if _, ok := status.FromError(err); ok {
+		return err
+	}
+	return status.Error(codes.Code(connect.CodeOf(err)), err.Error())
 }
 
 func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
