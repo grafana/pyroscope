@@ -1014,9 +1014,7 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
-	jsonRequest := otlpProfileJSON
-
-	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(jsonRequest)))
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(otlpProfileJSON)))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set(user.OrgIDHeaderName, "json-tenant")
 
@@ -1028,8 +1026,6 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 }
 
 func TestHTTPExportErrorStatusCodes(t *testing.T) {
-	jsonRequest := otlpProfileJSON
-
 	for _, tc := range []struct {
 		name       string
 		pushErr    error
@@ -1058,7 +1054,7 @@ func TestHTTPExportErrorStatusCodes(t *testing.T) {
 			logger := test.NewTestingLogger(t)
 			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
-			httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(jsonRequest)))
+			httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(otlpProfileJSON)))
 			httpReq.Header.Set("Content-Type", "application/json")
 			httpReq.Header.Set(user.OrgIDHeaderName, "tenant-a")
 
@@ -1171,11 +1167,9 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
-	jsonRequest := otlpProfileJSON
-
 	var gzipBuf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&gzipBuf)
-	_, err := gzipWriter.Write([]byte(jsonRequest))
+	_, err := gzipWriter.Write([]byte(otlpProfileJSON))
 	require.NoError(t, err)
 	err = gzipWriter.Close()
 	require.NoError(t, err)
