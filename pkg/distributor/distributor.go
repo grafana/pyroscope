@@ -136,6 +136,7 @@ type Limits interface {
 	IngestionLimit(tenantID string) *ingestlimits.Config
 	IngestionBodyLimitBytes(tenantID string) int64
 	DistributorSampling(tenantID string) *sampling.Config
+	KeepStrippedProfiles(tenantID string) bool
 	IngestionTenantShardSize(tenantID string) int
 	PushMaxConcurrency(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
@@ -546,7 +547,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	req.TotalProfiles = 1
-	req.TotalBytesUncompressed = calculateRequestSize(req)
+	decompressedSize := req.Profile.SizeVT()
+	req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
@@ -585,9 +587,27 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		)
 		finalLog.msg = "skipping profile due to sampling"
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
-		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
-		return nil
+
+		if !d.limits.KeepStrippedProfiles(tenantID) {
+			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
+			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
+			return nil
+		}
+		finalLog.msg = "stripping profile stacktraces, keeping samples and labels"
+
+		// Language detection reads the string table, which is about to be
+		// stripped; the result is cached in the request.
+		d.GetProfileLanguage(req)
+		stripProfileToTotals(req.Profile.Profile)
+		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
+
+		// The stripped part of the profile is discarded, and from here on
+		// the remainder is accounted for like a regular profile.
+		keptSize := req.Profile.SizeVT()
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(decompressedSize - keptSize))
+		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), int64(decompressedSize-keptSize))
+		decompressedSize = keptSize
+		req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	}
 	if samplingSource != nil {
 		if err := req.MarkSampledRequest(samplingSource); err != nil {
@@ -606,7 +626,6 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}
 	p := req.Profile
-	decompressedSize := p.SizeVT()
 	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
 	finalLog.addFields(
 		"profile_time", profTime,
@@ -631,7 +650,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	symbolsSize, samplesSize := profileSizeBytes(p.Profile)
+	symbolsSize, samplesSize := profileSizeBytes(p.Profile, int64(decompressedSize))
 	d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
 	d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
 
@@ -920,15 +939,106 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
-// profileSizeBytes returns the size of symbols and samples in bytes.
-func profileSizeBytes(p *profilev1.Profile) (symbols, samples int64) {
-	fullSize := p.SizeVT()
+// stripProfileToTotals reduces the profile to one sample per distinct
+// sample label set, each holding the summed values of its group:
+// stacktraces and symbols are dropped, only the totals are kept.
+// Sample labels survive so that span- and trace-attributed totals
+// remain distinguishable.
+func stripProfileToTotals(p *profilev1.Profile) {
+	kept := p.Sample[:0]
+	for _, s := range p.Sample {
+		// Mirror Normalize: non-string labels are unsupported, and samples
+		// it would drop (value length mismatch, negative values) must not
+		// contribute to the totals.
+		if len(s.Value) != len(p.SampleType) || hasNegativeValue(s) {
+			continue
+		}
+		s.Label = dropNonStringLabels(s.Label)
+		sort.Sort(pprof.LabelsByKeyValue(s.Label))
+		kept = append(kept, s)
+	}
+	p.Sample = kept
+	sort.Sort(pprof.SamplesByLabels(p.Sample))
+	groups := pprof.GroupSamplesByLabels(p)
+	totals := make([]*profilev1.Sample, len(groups))
+	for i, g := range groups {
+		total := &profilev1.Sample{Value: make([]int64, len(p.SampleType)), Label: g.Labels}
+		for _, s := range g.Samples {
+			for j, v := range s.Value {
+				total.Value[j] += v
+			}
+		}
+		totals[i] = total
+	}
+	p.Sample = totals
+
+	p.Location = nil
+	p.Function = nil
+	p.Mapping = nil
+
+	oldStrings := p.StringTable
+	newStrings := []string{""}
+	remap := map[int64]int64{0: 0}
+	intern := func(old int64) int64 {
+		if n, ok := remap[old]; ok {
+			return n
+		}
+		n := int64(len(newStrings))
+		newStrings = append(newStrings, oldStrings[old])
+		remap[old] = n
+		return n
+	}
+	p.DropFrames = intern(p.DropFrames)
+	p.KeepFrames = intern(p.KeepFrames)
+	p.DefaultSampleType = intern(p.DefaultSampleType)
+	for _, vt := range p.SampleType {
+		vt.Type = intern(vt.Type)
+		vt.Unit = intern(vt.Unit)
+	}
+	if p.PeriodType != nil {
+		p.PeriodType.Type = intern(p.PeriodType.Type)
+		p.PeriodType.Unit = intern(p.PeriodType.Unit)
+	}
+	for i, c := range p.Comment {
+		p.Comment[i] = intern(c)
+	}
+	for _, s := range p.Sample {
+		for _, l := range s.Label {
+			l.Key = intern(l.Key)
+			l.Str = intern(l.Str)
+			l.NumUnit = intern(l.NumUnit)
+		}
+	}
+	p.StringTable = newStrings
+}
+
+func dropNonStringLabels(labels []*profilev1.Label) []*profilev1.Label {
+	kept := labels[:0]
+	for _, l := range labels {
+		if l.Str != 0 {
+			kept = append(kept, l)
+		}
+	}
+	return kept
+}
+
+func hasNegativeValue(s *profilev1.Sample) bool {
+	for _, v := range s.Value {
+		if v < 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// profileSizeBytes returns the size of symbols and samples in bytes from a given fullSize.
+func profileSizeBytes(p *profilev1.Profile, fullSize int64) (symbols, samples int64) {
 	// remove samples
 	samplesSlice := p.Sample
 	p.Sample = nil
 
 	symbols = int64(p.SizeVT())
-	samples = int64(fullSize) - symbols
+	samples = fullSize - symbols
 
 	// count labels in samples
 	samplesLabels := 0
@@ -1073,13 +1183,15 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.ProfileSe
 
 func calculateRequestSize(req *distributormodel.ProfileSeries) int64 {
 	// include the labels in the size calculation
-	bs := int64(0)
-	for _, lbs := range req.Labels {
-		bs += int64(len(lbs.Name))
-		bs += int64(len(lbs.Value))
-	}
+	return labelsSize(req.Labels) + int64(req.Profile.SizeVT())
+}
 
-	bs += int64(req.Profile.SizeVT())
+func labelsSize(lbs []*typesv1.LabelPair) int64 {
+	bs := int64(0)
+	for _, l := range lbs {
+		bs += int64(len(l.Name))
+		bs += int64(len(l.Value))
+	}
 	return bs
 }
 
