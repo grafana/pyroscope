@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/v2/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func TestValidateExemplarType(t *testing.T) {
@@ -391,6 +392,7 @@ func setupBenchmarkFixture(b *testing.B) *benchmarkFixture {
 
 	logger := test.NewTestingLogger(b)
 	reader := NewBlockReader(logger, &objstore.ReaderAtBucket{Bucket: bucket}, nil)
+	reader.Overrides = validation.MockDefaultOverrides()
 
 	meta := make([]*metastorev1.BlockMeta, len(blocks))
 	for i, block := range blocks {

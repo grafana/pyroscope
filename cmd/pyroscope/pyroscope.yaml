@@ -296,10 +296,6 @@ distributor:
     # address.
     # instance_interface_names: [<private network interfaces>]
 
-  # When a profile is sampled out, retain its totals and labels with stacktraces
-  # stripped (marked __sampled__) instead of dropping it.
-  # keep_stripped_profiles: false
-
 limits:
   # Per-tenant ingestion rate limit in sample size per second. Units in MB.
   # ingestion_rate_mb: 4
@@ -308,6 +304,14 @@ limits:
   # burst size refers to the per-distributor local rate limiter, and should be
   # set at least to the maximum profile size expected in a single push request.
   # ingestion_burst_size_mb: 2
+
+  # When a profile is sampled out, retain its totals and labels with stacktraces
+  # stripped (marked __sampled__) instead of dropping it.
+  # keep_stripped_profiles: false
+
+  # Include profiles that were sampled out and stored with stacktraces stripped
+  # (marked __sampled__) in query results.
+  # include_stripped_profiles: false
 
   # Maximum length accepted for label names.
   # max_label_name_length: 1024

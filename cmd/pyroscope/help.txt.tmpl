@@ -195,6 +195,8 @@ Usage of ./pyroscope:
     	Whether profiles should be sanitized when merging. (default true)
   -querier.split-queries-by-interval duration
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
+  -query-backend.include-stripped-profiles
+    	Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.
   -query-frontend.max-async-query-concurrency int
     	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
   -query-scheduler.max-outstanding-requests-per-tenant int

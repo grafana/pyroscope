@@ -909,11 +909,6 @@ ring:
   # (advanced) Enable using a IPv6 instance address. (default false)
   # CLI flag: -distributor.ring.instance-enable-ipv6
   [instance_enable_ipv6: <boolean> | default = false]
-
-# When a profile is sampled out, retain its totals and labels with stacktraces
-# stripped (marked __sampled__) instead of dropping it.
-# CLI flag: -distributor.sampling.keep-stripped-profiles
-[keep_stripped_profiles: <boolean> | default = false]
 ```
 
 ### segment_writer
@@ -3116,6 +3111,16 @@ The `limits` block configures default and per-tenant limits imposed by component
 # at least to the maximum profile size expected in a single push request.
 # CLI flag: -distributor.ingestion-burst-size-mb
 [ingestion_burst_size_mb: <float> | default = 2]
+
+# When a profile is sampled out, retain its totals and labels with stacktraces
+# stripped (marked __sampled__) instead of dropping it.
+# CLI flag: -distributor.sampling.keep-stripped-profiles
+[keep_stripped_profiles: <boolean> | default = false]
+
+# Include profiles that were sampled out and stored with stacktraces stripped
+# (marked __sampled__) in query results.
+# CLI flag: -query-backend.include-stripped-profiles
+[include_stripped_profiles: <boolean> | default = false]
 
 # Maximum length accepted for label names.
 # CLI flag: -validation.max-length-label-name

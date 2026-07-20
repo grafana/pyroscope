@@ -871,6 +871,8 @@ Usage of ./pyroscope:
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -query-backend.grpc-client-config.tls-server-name string
     	Override the expected name on the server certificate.
+  -query-backend.include-stripped-profiles
+    	Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.
   -query-frontend.async-queries-enabled
     	[experimental] Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)
   -query-frontend.grpc-client-config.backoff-max-period duration

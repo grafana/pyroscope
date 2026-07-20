@@ -72,7 +72,7 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 	} else {
 		opts = append(opts, withGroupByLabels(groupBy...))
 	}
-	if !q.keepStripped {
+	if !q.includeStripped {
 		opts = append(opts, withExcludeSampled())
 	}
 

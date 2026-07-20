@@ -27,6 +27,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 // BlockReader reads blocks from object storage. Each block is represented by
@@ -47,6 +48,10 @@ import (
 //                         query-b
 //
 
+type Overrides interface {
+	IncludeStrippedProfiles(tenantID string) bool
+}
+
 type BlockReader struct {
 	log     log.Logger
 	storage objstore.Bucket
@@ -54,7 +59,7 @@ type BlockReader struct {
 	metrics  *metrics
 	hostname string
 
-	KeepStrippedProfiles bool
+	Overrides Overrides
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -98,6 +103,8 @@ func (b *BlockReader) Invoke(
 		tenantMap[tenant] = struct{}{}
 	}
 
+	includeStripped := validationutil.AllTruePerTenant(req.Tenant, b.Overrides.IncludeStrippedProfiles)
+
 	var blockExecCollector *blockExecutionCollector
 	if collectDiag {
 		blockExecCollector = &blockExecutionCollector{}
@@ -133,7 +140,7 @@ func (b *BlockReader) Invoke(
 			grp:             g,
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,
-			keepStripped:    b.KeepStrippedProfiles,
+			includeStripped: includeStripped,
 		}).execute))
 	}
 

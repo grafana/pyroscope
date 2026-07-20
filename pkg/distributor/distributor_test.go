@@ -2736,12 +2736,12 @@ func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distribu
 				"svc": {Probability: 0},
 			},
 		}
+		l.KeepStrippedProfiles = keepStrippedProfiles
 		tenantLimits["user-1"] = l
 	})
 	ing := newFakeIngester(t, false)
 	d, err := New(Config{
-		DistributorRing:      ringConfig,
-		KeepStrippedProfiles: keepStrippedProfiles,
+		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {

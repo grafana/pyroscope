@@ -91,7 +91,7 @@ type blockContext struct {
 	grp             *errgroup.Group
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
-	keepStripped    bool
+	includeStripped bool
 }
 
 func (b *blockContext) execute() error {

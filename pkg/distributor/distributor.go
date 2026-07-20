@@ -85,15 +85,12 @@ type Config struct {
 
 	// Distributors ring
 	DistributorRing util.CommonRingConfig `yaml:"ring"`
-
-	KeepStrippedProfiles bool `yaml:"keep_stripped_profiles"`
 }
 
 // RegisterFlags registers distributor-related flags.
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
-	fs.BoolVar(&cfg.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals and labels with stacktraces stripped (marked __sampled__) instead of dropping it.")
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 
@@ -139,6 +136,7 @@ type Limits interface {
 	IngestionLimit(tenantID string) *ingestlimits.Config
 	IngestionBodyLimitBytes(tenantID string) int64
 	DistributorSampling(tenantID string) *sampling.Config
+	KeepStrippedProfiles(tenantID string) bool
 	IngestionTenantShardSize(tenantID string) int
 	PushMaxConcurrency(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
@@ -590,7 +588,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.msg = "sampling profile"
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 
-		if !d.cfg.KeepStrippedProfiles {
+		if !d.limits.KeepStrippedProfiles(tenantID) {
 			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
