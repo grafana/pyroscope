@@ -585,7 +585,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 			"usage_group", samplingSource.UsageGroup,
 			"probability", samplingSource.Probability,
 		)
-		finalLog.msg = "sampling profile"
+		finalLog.msg = "skipping profile due to sampling"
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
 
 		if !d.limits.KeepStrippedProfiles(tenantID) {
@@ -593,6 +593,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
 		}
+		finalLog.msg = "stripping profile stacktraces, keeping samples and labels"
 
 		// Language detection reads the string table, which is about to be
 		// stripped; the result is cached in the request.
@@ -1037,7 +1038,7 @@ func profileSizeBytes(p *profilev1.Profile, fullSize int64) (symbols, samples in
 	p.Sample = nil
 
 	symbols = int64(p.SizeVT())
-	samples = int64(fullSize) - symbols
+	samples = fullSize - symbols
 
 	// count labels in samples
 	samplesLabels := 0
