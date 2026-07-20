@@ -309,7 +309,7 @@ func (ce *canaryExporter) testIngestOTLPHttpProtobuf(ctx context.Context, now ti
 	return nil
 }
 func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, now time.Time) error {
-	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{ //nolint:staticcheck // Legacy querier.v1 compatibility probe.
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
@@ -366,7 +366,7 @@ func (ce *canaryExporter) testSelectMergeOTLPProfile(ctx context.Context, now ti
 	// Query specifically for OTLP gRPC ingested profiles using the custom profile type
 	//labelSelector := fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname)
 
-	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{ //nolint:staticcheck // Legacy querier.v1 compatibility probe.
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
@@ -617,7 +617,7 @@ func (ce *canaryExporter) testSelectMergeStacktraces(ctx context.Context, now ti
 }
 
 func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, now time.Time) error {
-	respQuery, err := ce.params.queryClient().SelectMergeSpanProfile(ctx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{
+	respQuery, err := ce.params.queryClient().SelectMergeSpanProfile(ctx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{ //nolint:staticcheck // Legacy querier.v1 compatibility probe.
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),

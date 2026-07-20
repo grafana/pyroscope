@@ -22,19 +22,39 @@ func (q *QueryFrontend) SelectMergeProfile(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeProfileRequest],
 ) (*connect.Response[profilev1.Profile], error) {
+	p, err := q.selectMergeStacktracesPprof(ctx, &querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID:      c.Msg.ProfileTypeID,
+		LabelSelector:      c.Msg.LabelSelector,
+		Start:              c.Msg.Start,
+		End:                c.Msg.End,
+		MaxNodes:           c.Msg.MaxNodes,
+		StackTraceSelector: c.Msg.StackTraceSelector,
+		ProfileIdSelector:  c.Msg.ProfileIdSelector,
+		TraceIdSelector:    c.Msg.TraceIdSelector,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(p), nil
+}
+
+func (q *QueryFrontend) selectMergeStacktracesPprof(
+	ctx context.Context,
+	req *querierv1.SelectMergeStacktracesRequest,
+) (*profilev1.Profile, error) {
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &c.Msg.Start, &c.Msg.End)
+	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &req.Start, &req.End)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if empty {
-		return connect.NewResponse(&profilev1.Profile{}), nil
+		return &profilev1.Profile{}, nil
 	}
 
-	profileType, err := phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -49,15 +69,15 @@ func (q *QueryFrontend) SelectMergeProfile(
 		}
 	}
 
-	maxNodes := c.Msg.GetMaxNodes()
+	maxNodes := req.GetMaxNodes()
 	if maxNodesEnabled {
-		maxNodes, err = validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
+		maxNodes, err = validation.ValidateMaxNodes(q.limits, tenantIDs, req.GetMaxNodes())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	}
 
-	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	labelSelector, err := buildLabelSelectorWithProfileType(req.LabelSelector, req.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -65,7 +85,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 	// TODO: Remove this path and answer all queries using the tree
 	// PGO queries always use the pprof path, as query tree doesn't support the truncation
 	useQueryTree := false
-	if c.Msg.StackTraceSelector.GetGoPgo() == nil {
+	if req.StackTraceSelector.GetGoPgo() == nil {
 		for _, tenantID := range tenantIDs {
 			if q.limits.QueryTreeEnabled(tenantID) {
 				useQueryTree = true
@@ -79,16 +99,17 @@ func (q *QueryFrontend) SelectMergeProfile(
 		shouldSymbolize := false
 		report, err := q.querySingle(ctx,
 			&queryv1.QueryRequest{
-				StartTime:     c.Msg.Start,
-				EndTime:       c.Msg.End,
+				StartTime:     req.Start,
+				EndTime:       req.End,
 				LabelSelector: labelSelector,
 				Query: []*queryv1.Query{{
 					QueryType: queryv1.QueryType_QUERY_PPROF,
 					Pprof: &queryv1.PprofQuery{
 						MaxNodes:           maxNodes,
-						StackTraceSelector: c.Msg.StackTraceSelector,
-						ProfileIdSelector:  c.Msg.ProfileIdSelector,
-						TraceIdSelector:    c.Msg.TraceIdSelector,
+						StackTraceSelector: req.StackTraceSelector,
+						ProfileIdSelector:  req.ProfileIdSelector,
+						TraceIdSelector:    req.TraceIdSelector,
+						SpanSelector:       req.SpanSelector,
 					},
 				}},
 			},
@@ -102,7 +123,7 @@ func (q *QueryFrontend) SelectMergeProfile(
 			return nil, err
 		}
 		if report == nil {
-			return connect.NewResponse(&profilev1.Profile{}), nil
+			return &profilev1.Profile{}, nil
 		}
 		var p profilev1.Profile
 		if err = pprof.Unmarshal(report.Pprof.Pprof, &p); err != nil {
@@ -113,21 +134,21 @@ func (q *QueryFrontend) SelectMergeProfile(
 				return nil, fmt.Errorf("failed to symbolize profile: %w", err)
 			}
 		}
-		return connect.NewResponse(&p), nil
+		return &p, nil
 	}
 
 	// From now on answer using the more experimental tree based approach
-	return q.selectMergeProfileTree(ctx, c.Msg, labelSelector, maxNodes, profileType, tenantIDs)
+	return q.selectMergeProfileTree(ctx, req, labelSelector, maxNodes, profileType, tenantIDs)
 }
 
 func (q *QueryFrontend) selectMergeProfileTree(
 	ctx context.Context,
-	req *querierv1.SelectMergeProfileRequest,
+	req *querierv1.SelectMergeStacktracesRequest,
 	labelSelector string,
 	maxNodes int64,
 	profileType *typesv1.ProfileType,
 	tenantIDs []string,
-) (*connect.Response[profilev1.Profile], error) {
+) (*profilev1.Profile, error) {
 	level.Info(q.logger).Log("msg", "use tree query-backend based query")
 	shouldSymbolize := false
 	report, err := q.querySingle(ctx,
@@ -142,6 +163,7 @@ func (q *QueryFrontend) selectMergeProfileTree(
 					StackTraceSelector: req.StackTraceSelector,
 					ProfileIdSelector:  req.ProfileIdSelector,
 					TraceIdSelector:    req.TraceIdSelector,
+					SpanSelector:       req.SpanSelector,
 					FullSymbols:        true,
 				},
 			}},
@@ -156,7 +178,7 @@ func (q *QueryFrontend) selectMergeProfileTree(
 		return nil, err
 	}
 	if report == nil {
-		return connect.NewResponse(&profilev1.Profile{}), nil
+		return &profilev1.Profile{}, nil
 	}
 
 	var p profilev1.Profile
@@ -239,5 +261,5 @@ func (q *QueryFrontend) selectMergeProfileTree(
 		}
 	}
 
-	return connect.NewResponse(&p), nil
+	return &p, nil
 }

@@ -261,7 +261,7 @@ Mappings
 				LabelSelector: `{service_name="` + serviceName + `"}`,
 			})
 			require.Eventually(t, func() bool {
-				resp, err := querier.SelectMergeProfile(ctx, q)
+				resp, err := querier.SelectMergeProfile(ctx, q) //nolint:staticcheck // Legacy querier.v1 integration coverage.
 				if err != nil {
 					t.Logf("Error querying profile: %v", err)
 					return false
@@ -318,7 +318,7 @@ Mappings
 
 			queried := false
 			for deadline := time.Now().Add(8 * time.Second); time.Now().Before(deadline); time.Sleep(500 * time.Millisecond) {
-				resp, err := querier.SelectMergeProfile(ctx, q)
+				resp, err := querier.SelectMergeProfile(ctx, q) //nolint:staticcheck // Legacy querier.v1 integration coverage.
 				if err != nil {
 					t.Logf("Error querying profile: %v", err)
 					continue

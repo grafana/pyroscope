@@ -115,7 +115,7 @@ func (w *Wrapper) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 }
 
 func (w *Wrapper) SelectMergeSpanProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
-	resp, err := w.client.SelectMergeSpanProfile(ctx, req)
+	resp, err := w.client.SelectMergeSpanProfile(ctx, req) //nolint:staticcheck // Required querier.v1 compatibility wrapper.
 	if resp != nil {
 		flushDiagnostics(w, ctx, "SelectMergeSpanProfile", req, resp)
 	}
@@ -123,7 +123,7 @@ func (w *Wrapper) SelectMergeSpanProfile(ctx context.Context, req *connect.Reque
 }
 
 func (w *Wrapper) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {
-	resp, err := w.client.SelectMergeProfile(ctx, req)
+	resp, err := w.client.SelectMergeProfile(ctx, req) //nolint:staticcheck // Required querier.v1 compatibility wrapper.
 	if resp != nil {
 		flushDiagnostics(w, ctx, "SelectMergeProfile", req, resp)
 	}

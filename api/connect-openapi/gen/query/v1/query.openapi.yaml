@@ -742,6 +742,11 @@ components:
             format: int64
           title: attribute_refs
           description: labels as references into AttributeTable
+        traceId:
+          type: string
+          title: trace_id
+          format: byte
+          description: Trace ID associated with the span, if present.
       title: HeatmapPoint
       additionalProperties: false
     query.v1.HeatmapQuery:
@@ -1399,6 +1404,12 @@ components:
           description: |-
             Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
              label overlaps with the series label, it is not included here.
+        traceId:
+          type: string
+          examples:
+            - 4bf92f3577b34da6a3ce929d0e0e4736
+          title: trace_id
+          description: Trace ID associated with the span, encoded as 32 lowercase hexadecimal characters.
       title: Exemplar
       additionalProperties: false
       description: |-

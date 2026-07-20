@@ -13,6 +13,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
 	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
@@ -28,6 +29,12 @@ func (f *Frontend) SelectMergeStacktraces(
 	// trace_id_selector is v2-only; this legacy frontend would drop it on split.
 	if len(c.Msg.TraceIdSelector) > 0 {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
+	}
+	if len(c.Msg.SpanSelector) > 0 && (c.Msg.StackTraceSelector != nil || len(c.Msg.ProfileIdSelector) > 0) {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("combining span_selector with stack_trace_selector or profile_id_selector is only supported with the v2 query backend"))
+	}
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
+		return f.selectMergeStacktracesPprof(ctx, c)
 	}
 	t, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
@@ -47,6 +54,22 @@ func (f *Frontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*phlaremodel.FunctionNameTree, error) {
+	if len(c.Msg.SpanSelector) > 0 {
+		resp, err := f.SelectMergeSpanProfile(ctx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{
+			ProfileTypeID: c.Msg.ProfileTypeID,
+			LabelSelector: c.Msg.LabelSelector,
+			SpanSelector:  c.Msg.SpanSelector,
+			Start:         c.Msg.Start,
+			End:           c.Msg.End,
+			MaxNodes:      c.Msg.MaxNodes,
+			Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree)
+	}
+
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
@@ -106,4 +129,40 @@ func (f *Frontend) selectMergeStacktracesTree(
 	}
 
 	return m.Tree(), nil
+}
+
+func (f *Frontend) selectMergeStacktracesPprof(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
+) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if len(c.Msg.SpanSelector) == 0 {
+		resp, err := f.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+			ProfileTypeID:      c.Msg.ProfileTypeID,
+			LabelSelector:      c.Msg.LabelSelector,
+			Start:              c.Msg.Start,
+			End:                c.Msg.End,
+			MaxNodes:           c.Msg.MaxNodes,
+			StackTraceSelector: c.Msg.StackTraceSelector,
+			ProfileIdSelector:  c.Msg.ProfileIdSelector,
+			TraceIdSelector:    c.Msg.TraceIdSelector,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Pprof: &querierv1.PprofProfile{Profile: resp.Msg},
+		}), nil
+	}
+
+	tree, err := f.selectMergeStacktracesTree(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	profileType, err := phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+		Pprof: &querierv1.PprofProfile{Profile: pprof.FromTree(tree, profileType, c.Msg.End*1e6)},
+	}), nil
 }

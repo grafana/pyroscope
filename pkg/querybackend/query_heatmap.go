@@ -13,6 +13,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/heatmap"
 	parquetquery "github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
@@ -61,6 +62,7 @@ func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
 			int64(row.Row.Timestamp),
 			row.Row.ID,
 			0,
+			model.TraceID{},
 			row.Values[0][0].Int64(),
 		)
 	}
@@ -88,13 +90,20 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 		return nil
 	}
 
+	indices := []int{
+		columns.SpanID.ColumnIndex,
+		columns.Value.ColumnIndex,
+	}
+	if columns.HasTraceID() {
+		indices = append(indices, columns.TraceID.ColumnIndex)
+	}
+
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
 		entries,
 		q.ds.Profiles().RowGroups(),
 		bigBatchSize,
-		columns.SpanID.ColumnIndex,
-		columns.Value.ColumnIndex,
+		indices...,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
@@ -102,12 +111,20 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 		row := rows.At()
 
 		for idx := range row.Values[0] {
+			var traceID model.TraceID
+			if columns.HasTraceID() {
+				traceIDBytes := row.Values[2][idx].Bytes()
+				if len(traceIDBytes) == len(traceID) {
+					copy(traceID[:], traceIDBytes)
+				}
+			}
 			b.Add(
 				row.Row.Fingerprint,
 				row.Row.Labels,
 				int64(row.Row.Timestamp),
 				"",
 				row.Values[0][idx].Uint64(),
+				traceID,
 				row.Values[1][idx].Int64(),
 			)
 		}

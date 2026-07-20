@@ -4,85 +4,33 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/dskit/tenant"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
-	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 func (q *QueryFrontend) SelectMergeSpanProfile(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeSpanProfileRequest],
 ) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
-	tenantIDs, err := tenant.TenantIDs(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	format := c.Msg.Format
+	if format != querierv1.ProfileFormat_PROFILE_FORMAT_TREE {
+		// The deprecated RPC historically treated every non-tree format as a flamegraph.
+		format = querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH
 	}
-	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &c.Msg.Start, &c.Msg.End)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	if empty {
-		return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{}), nil
-	}
-
-	_, err = phlaremodel.ParseProfileTypeSelector(c.Msg.ProfileTypeID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-
-	maxNodes, err := validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	labelSelector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	report, err := q.querySingle(ctx,
-		&queryv1.QueryRequest{
-			StartTime:     c.Msg.Start,
-			EndTime:       c.Msg.End,
-			LabelSelector: labelSelector,
-			Query: []*queryv1.Query{{
-				QueryType: queryv1.QueryType_QUERY_TREE,
-				Tree: &queryv1.TreeQuery{
-					MaxNodes:     maxNodes,
-					SpanSelector: c.Msg.SpanSelector,
-				},
-			}},
-		},
-		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
-			shouldSymbolize := q.shouldSymbolize(ctx, tenantIDs, blocks)
-			if !shouldSymbolize {
-				return upstream
-			}
-			return &backendTreeSymbolizer{
-				upstream:   upstream,
-				symbolizer: q.symbolizer,
-			}
-		},
-	)
+	resp, err := q.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: c.Msg.ProfileTypeID,
+		LabelSelector: c.Msg.LabelSelector,
+		Start:         c.Msg.Start,
+		End:           c.Msg.End,
+		MaxNodes:      c.Msg.MaxNodes,
+		Format:        format,
+		SpanSelector:  c.Msg.SpanSelector,
+	}))
 	if err != nil {
 		return nil, err
 	}
-	if report == nil {
-		return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{}), nil
-	}
-
-	var resp querierv1.SelectMergeSpanProfileResponse
-	switch c.Msg.Format {
-	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = report.Tree.Tree
-	default:
-		t, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](report.Tree.Tree)
-		if err != nil {
-			return nil, err
-		}
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
-	}
-	return connect.NewResponse(&resp), nil
+	return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{
+		Flamegraph: resp.Msg.Flamegraph,
+		Tree:       resp.Msg.Tree,
+	}), nil
 }

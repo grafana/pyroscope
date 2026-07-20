@@ -2067,6 +2067,7 @@ type HeatmapPoint struct {
 	SpanId        uint64                 `protobuf:"varint,3,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`                             // Span ID if this profile was split by span during ingestion
 	Value         int64                  `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`                                             // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
 	AttributeRefs []int64                `protobuf:"varint,5,rep,packed,name=attribute_refs,json=attributeRefs,proto3" json:"attribute_refs,omitempty"` // labels as references into AttributeTable
+	TraceId       []byte                 `protobuf:"bytes,6,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`                           // Trace ID associated with the span, if present.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2132,6 +2133,13 @@ func (x *HeatmapPoint) GetValue() int64 {
 func (x *HeatmapPoint) GetAttributeRefs() []int64 {
 	if x != nil {
 		return x.AttributeRefs
+	}
+	return nil
+}
+
+func (x *HeatmapPoint) GetTraceId() []byte {
+	if x != nil {
+		return x.TraceId
 	}
 	return nil
 }
@@ -2672,14 +2680,15 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\rexemplar_type\x18\x05 \x01(\x0e2\x16.types.v1.ExemplarTypeR\fexemplarType\"<\n" +
 	"\x0eAttributeTable\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\x12\x16\n" +
-	"\x06values\x18\x02 \x03(\tR\x06values\"\xa1\x01\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\xbc\x01\n" +
 	"\fHeatmapPoint\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x1d\n" +
 	"\n" +
 	"profile_id\x18\x02 \x01(\x03R\tprofileId\x12\x17\n" +
 	"\aspan_id\x18\x03 \x01(\x04R\x06spanId\x12\x14\n" +
 	"\x05value\x18\x04 \x01(\x03R\x05value\x12%\n" +
-	"\x0eattribute_refs\x18\x05 \x03(\x03R\rattributeRefs\"f\n" +
+	"\x0eattribute_refs\x18\x05 \x03(\x03R\rattributeRefs\x12\x19\n" +
+	"\btrace_id\x18\x06 \x01(\fR\atraceId\"f\n" +
 	"\rHeatmapSeries\x12%\n" +
 	"\x0eattribute_refs\x18\x01 \x03(\x03R\rattributeRefs\x12.\n" +
 	"\x06points\x18\x02 \x03(\v2\x16.query.v1.HeatmapPointR\x06points\"\xc0\x01\n" +
