@@ -613,10 +613,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
-	if scopeName != "" {
-		d.metrics.profilesReceived.WithLabelValues(tenantID, scopeName, scopeVersion).Inc()
-		d.profileScopeStats.Inc(1, scopeName)
-	}
+	usageScopeName, usageScopeVersion := sanitizeScopeForUsage(scopeName, scopeVersion)
+	d.metrics.profilesReceived.WithLabelValues(tenantID, usageScopeName, usageScopeVersion).Inc()
+	d.profileScopeStats.Inc(1, usageScopeName)
 	if origin == distributormodel.RawProfileTypePPROF {
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}

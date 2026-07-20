@@ -38,7 +38,7 @@ When the usage statistics reporting is enabled, Grafana Pyroscope collects the f
 - Information about the Pyroscope **cluster scale**:
   - Distributor:
     - Bytes received.
-    - Profiles received with breakdown by profile type, programming language, and SDK OpenTelemetry instrumentation scope name. The scope breakdown does not include tenant identifiers or instrumentation scope versions.
+    - Profiles received with breakdown by profile type, programming language, and recognized Grafana Pyroscope SDK or Grafana Alloy OpenTelemetry instrumentation scope name. Missing and unrecognized scope names are grouped as `unknown`. The scope breakdown does not include tenant identifiers or instrumentation scope versions.
     - Profile sizes with breakdown by programming language.
   - Ingester:
     - Number of active tenants.

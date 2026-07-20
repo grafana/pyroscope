@@ -21,14 +21,76 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
+func TestSanitizeScopeForUsage(t *testing.T) {
+	t.Parallel()
+
+	allowedScopeNames := []string{
+		"com.grafana.pyroscope/go",
+		"com.grafana.pyroscope/godeltaprof",
+		"com.grafana.pyroscope/java",
+		"com.grafana.pyroscope/dotnet",
+		"com.grafana.pyroscope/rust",
+		"com.grafana.pyroscope/python",
+		"com.grafana.pyroscope/ruby",
+		"com.grafana.pyroscope/nodejs",
+		"com.grafana.alloy/pyroscope.scrape",
+		"com.grafana.alloy/pyroscope.ebpf",
+		"com.grafana.alloy/pyroscope.java",
+	}
+	for _, scopeName := range allowedScopeNames {
+		t.Run(scopeName, func(t *testing.T) {
+			gotName, gotVersion := sanitizeScopeForUsage(scopeName, "v1.2.3")
+			require.Equal(t, scopeName, gotName)
+			require.Equal(t, "v1.2.3", gotVersion)
+		})
+	}
+
+	tests := []struct {
+		name         string
+		scopeName    string
+		scopeVersion string
+		wantName     string
+		wantVersion  string
+	}{
+		{name: "empty name", scopeVersion: "1.2.3", wantName: unknownScopeName, wantVersion: "1.2.3"},
+		{name: "unknown name", scopeName: "custom.scope", scopeVersion: "1.2.3", wantName: unknownScopeName, wantVersion: "1.2.3"},
+		{name: "name with allowed prefix", scopeName: "com.grafana.pyroscope/custom", scopeVersion: "1.2.3", wantName: unknownScopeName, wantVersion: "1.2.3"},
+		{name: "case modified name", scopeName: "com.grafana.pyroscope/Go", scopeVersion: "1.2.3", wantName: unknownScopeName, wantVersion: "1.2.3"},
+		{name: "missing version", scopeName: "com.grafana.pyroscope/go", wantName: "com.grafana.pyroscope/go"},
+		{name: "version without prefix", scopeName: "com.grafana.pyroscope/go", scopeVersion: "1.2.3", wantName: "com.grafana.pyroscope/go", wantVersion: "1.2.3"},
+		{name: "zero version", scopeName: "com.grafana.pyroscope/go", scopeVersion: "0.0.0", wantName: "com.grafana.pyroscope/go", wantVersion: "0.0.0"},
+		{name: "multi-digit version", scopeName: "com.grafana.pyroscope/go", scopeVersion: "12.345.6789", wantName: "com.grafana.pyroscope/go", wantVersion: "12.345.6789"},
+		{name: "leading zeros", scopeName: "com.grafana.pyroscope/go", scopeVersion: "v01.002.0003", wantName: "com.grafana.pyroscope/go", wantVersion: "v01.002.0003"},
+		{name: "uppercase prefix", scopeName: "com.grafana.pyroscope/go", scopeVersion: "V1.2.3", wantName: "com.grafana.pyroscope/go"},
+		{name: "partial version", scopeName: "com.grafana.pyroscope/go", scopeVersion: "1.2", wantName: "com.grafana.pyroscope/go"},
+		{name: "extra component", scopeName: "com.grafana.pyroscope/go", scopeVersion: "1.2.3.4", wantName: "com.grafana.pyroscope/go"},
+		{name: "prerelease", scopeName: "com.grafana.pyroscope/go", scopeVersion: "1.2.3-beta.1", wantName: "com.grafana.pyroscope/go"},
+		{name: "build metadata", scopeName: "com.grafana.pyroscope/go", scopeVersion: "1.2.3+build", wantName: "com.grafana.pyroscope/go"},
+		{name: "surrounding spaces", scopeName: "com.grafana.pyroscope/go", scopeVersion: " 1.2.3 ", wantName: "com.grafana.pyroscope/go"},
+		{name: "newline", scopeName: "com.grafana.pyroscope/go", scopeVersion: "1.2.3\n", wantName: "com.grafana.pyroscope/go"},
+		{name: "unicode digits", scopeName: "com.grafana.pyroscope/go", scopeVersion: "１.２.３", wantName: "com.grafana.pyroscope/go"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gotName, gotVersion := sanitizeScopeForUsage(test.scopeName, test.scopeVersion)
+			require.Equal(t, test.wantName, gotName)
+			require.Equal(t, test.wantVersion, gotVersion)
+		})
+	}
+}
+
 func TestDistributor_ScopeUsage(t *testing.T) {
-	const scopeName = "com.grafana.pyroscope/test-scope"
+	const (
+		scopeName        = "com.grafana.pyroscope/go"
+		unrecognizedName = "custom.instrumentation.scope"
+	)
 
 	var logs bytes.Buffer
 	d, _, err := newTestDistributor(t, log.NewLogfmtLogger(&logs), validation.MockDefaultOverrides())
 	require.NoError(t, err)
 
 	scopeUsageBefore, _ := scopeUsageTotal(t, d, scopeName)
+	unknownUsageBefore, _ := scopeUsageTotal(t, d, unknownScopeName)
 	languageUsageBefore := multiCounterTotal(t, d.profileReceivedStats.Value())
 
 	for _, push := range []struct {
@@ -41,6 +103,9 @@ func TestDistributor_ScopeUsage(t *testing.T) {
 		{tenantID: "tenant-a", scopeName: scopeName},
 		{tenantID: "tenant-b", scopeName: scopeName, scopeVersion: "1.2.3"},
 		{tenantID: "tenant-a", scopeVersion: "version-without-name"},
+		{tenantID: "tenant-a", scopeName: scopeName, scopeVersion: "1.2.3-beta"},
+		{tenantID: "tenant-a", scopeName: unrecognizedName, scopeVersion: "v2.3.4"},
+		{tenantID: "tenant-a", scopeName: unrecognizedName, scopeVersion: "invalid-version"},
 	} {
 		require.NoError(t, pushScopeProfile(t, d, push.tenantID, push.scopeName, push.scopeVersion))
 	}
@@ -49,24 +114,31 @@ func TestDistributor_ScopeUsage(t *testing.T) {
 		d.metrics.profilesReceived,
 		strings.NewReader(`# HELP pyroscope_distributor_profiles_received_total The total number of profiles received by the distributor, broken down by OpenTelemetry instrumentation scope.
 # TYPE pyroscope_distributor_profiles_received_total counter
-pyroscope_distributor_profiles_received_total{scope_name="com.grafana.pyroscope/test-scope",scope_version="",tenant="tenant-a"} 1
-pyroscope_distributor_profiles_received_total{scope_name="com.grafana.pyroscope/test-scope",scope_version="1.2.3",tenant="tenant-a"} 2
-pyroscope_distributor_profiles_received_total{scope_name="com.grafana.pyroscope/test-scope",scope_version="1.2.3",tenant="tenant-b"} 1
+pyroscope_distributor_profiles_received_total{scope_name="com.grafana.pyroscope/go",scope_version="",tenant="tenant-a"} 2
+pyroscope_distributor_profiles_received_total{scope_name="com.grafana.pyroscope/go",scope_version="1.2.3",tenant="tenant-a"} 2
+pyroscope_distributor_profiles_received_total{scope_name="com.grafana.pyroscope/go",scope_version="1.2.3",tenant="tenant-b"} 1
+pyroscope_distributor_profiles_received_total{scope_name="unknown",scope_version="",tenant="tenant-a"} 2
+pyroscope_distributor_profiles_received_total{scope_name="unknown",scope_version="v2.3.4",tenant="tenant-a"} 1
 `),
 		"pyroscope_distributor_profiles_received_total",
 	))
 
 	scopeUsageAfter, scopeEntry := scopeUsageTotal(t, d, scopeName)
-	require.Equal(t, int64(4), scopeUsageAfter-scopeUsageBefore)
+	require.Equal(t, int64(5), scopeUsageAfter-scopeUsageBefore)
 	require.NotContains(t, scopeEntry, "tenant")
 	require.NotContains(t, scopeEntry, "scope_version")
-	require.Equal(t, int64(5), multiCounterTotal(t, d.profileReceivedStats.Value())-languageUsageBefore)
+	unknownUsageAfter, _ := scopeUsageTotal(t, d, unknownScopeName)
+	require.Equal(t, int64(3), unknownUsageAfter-unknownUsageBefore)
+	require.Equal(t, int64(8), multiCounterTotal(t, d.profileReceivedStats.Value())-languageUsageBefore)
 
 	logOutput := logs.String()
-	require.Equal(t, 5, strings.Count(logOutput, `msg="profile accepted"`))
+	require.Equal(t, 8, strings.Count(logOutput, `msg="profile accepted"`))
 	require.Contains(t, logOutput, "otel_scope_name="+scopeName)
 	require.Contains(t, logOutput, "otel_scope_version=1.2.3")
 	require.Contains(t, logOutput, "otel_scope_version=version-without-name")
+	require.Contains(t, logOutput, "otel_scope_name="+unrecognizedName)
+	require.Contains(t, logOutput, "otel_scope_version=1.2.3-beta")
+	require.Contains(t, logOutput, "otel_scope_version=invalid-version")
 }
 
 func TestDistributor_ScopeUsageNotCountedBeforeExistingUsagePoint(t *testing.T) {
@@ -115,7 +187,7 @@ func TestDistributor_ScopeUsageNotCountedBeforeExistingUsagePoint(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			testID := strings.ReplaceAll(test.name, " ", "-")
 			tenantID := "tenant-" + testID
-			scopeName := "com.grafana.pyroscope/test-" + testID
+			scopeName := "com.grafana.pyroscope/java"
 			overrides := validation.MockOverrides(func(_ *validation.Limits, tenantLimits map[string]*validation.Limits) {
 				limits := validation.MockDefaultLimits()
 				test.configure(t, limits)
