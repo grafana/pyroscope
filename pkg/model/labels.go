@@ -42,6 +42,7 @@ const (
 	LabelNameSessionID          = "__session_id__"
 	LabelNameType               = "__type__"
 	LabelNameUnit               = "__unit__"
+	LabelNameSampled            = "__sampled__"
 
 	LabelNameServiceGitRef     = "service_git_ref"
 	LabelNameServiceName       = "service_name"

@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/v2/pkg/test"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 type testSuite struct {
@@ -52,7 +53,7 @@ func (s *testSuite) SetupSuite() {
 func (s *testSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.logger = test.NewTestingLogger(s.T())
-	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket}, nil)
+	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket}, nil, validation.MockDefaultOverrides())
 	s.meta = make([]*metastorev1.BlockMeta, len(s.blocks))
 	for i, b := range s.blocks {
 		s.meta[i] = b.CloneVT()

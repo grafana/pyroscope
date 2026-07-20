@@ -2633,3 +2633,234 @@ func TestDistributor_shouldSample_Probability(t *testing.T) {
 		})
 	}
 }
+
+// stripTestProfile returns a deterministic profile without sample labels,
+// so it maps to a single series. The "app.py" filename makes language
+// detection resolve to "python" while the symbols are present.
+func stripTestProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+			{Type: 3, Unit: 4},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1, 2}, Value: []int64{10, 1000}},
+			{LocationId: []uint64{2}, Value: []int64{5, 500}},
+			// Dropped by Normalize (negative value): must not count towards totals.
+			{LocationId: []uint64{1}, Value: []int64{-1, 100}},
+			// Dropped by sanitization (value length mismatch): must not count either.
+			{LocationId: []uint64{1}, Value: []int64{7}},
+		},
+		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 5, SystemName: 5, Filename: 6},
+			{Id: 2, Name: 7, SystemName: 7, Filename: 8},
+		},
+		StringTable: []string{
+			"",
+			"samples",
+			"count",
+			"cpu",
+			"nanoseconds",
+			"func-a",
+			"app.py",
+			"func-b",
+			"path-b",
+		},
+		TimeNanos:     1000000000,
+		DurationNanos: 10000000000,
+		PeriodType:    &profilev1.ValueType{Type: 3, Unit: 4},
+		Period:        10000000,
+	}
+}
+
+// strippedTestProfile is what stripTestProfile must be reduced to when it
+// is sampled out: a single sample with the totals and a string table that
+// holds only the sample type units.
+func strippedTestProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+			{Type: 3, Unit: 4},
+		},
+		Sample:        []*profilev1.Sample{{Value: []int64{15, 1500}}},
+		StringTable:   []string{"", "samples", "count", "cpu", "nanoseconds"},
+		TimeNanos:     1000000000,
+		DurationNanos: 10000000000,
+		PeriodType:    &profilev1.ValueType{Type: 3, Unit: 4},
+		Period:        10000000,
+	}
+}
+
+func TestStripProfileToTotals(t *testing.T) {
+	p := stripTestProfile()
+	stripProfileToTotals(p)
+
+	want := strippedTestProfile()
+	require.Len(t, p.Sample, 1)
+	assert.Equal(t, want.Sample[0].Value, p.Sample[0].Value)
+	assert.Empty(t, p.Sample[0].LocationId)
+	assert.Empty(t, p.Sample[0].Label)
+	assert.Empty(t, p.Location)
+	assert.Empty(t, p.Function)
+	assert.Empty(t, p.Mapping)
+	assert.Equal(t, want.StringTable, p.StringTable)
+	assert.Equal(t, want.SampleType, p.SampleType)
+	assert.Equal(t, want.PeriodType, p.PeriodType)
+	assert.Equal(t, want.SizeVT(), p.SizeVT())
+}
+
+func TestStripProfileToTotals_NoSamples(t *testing.T) {
+	p := stripTestProfile()
+	p.Sample = nil
+	stripProfileToTotals(p)
+	assert.Empty(t, p.Sample)
+	assert.Empty(t, p.Location)
+}
+
+func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distributor, *fakeIngester) {
+	t.Helper()
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		l := validation.MockDefaultLimits()
+		usageGroups, err := validation.NewUsageGroupConfig(map[string]string{
+			"svc": `{service_name="svc"}`,
+		})
+		require.NoError(t, err)
+		l.DistributorUsageGroups = usageGroups
+		l.DistributorSampling = &sampling.Config{
+			UsageGroups: map[string]sampling.UsageGroupSampling{
+				"svc": {Probability: 0},
+			},
+		}
+		l.KeepStrippedProfiles = keepStrippedProfiles
+		tenantLimits["user-1"] = l
+	})
+	ing := newFakeIngester(t, false)
+	d, err := New(Config{
+		DistributorRing: ringConfig,
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
+		{Addr: "foo"},
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+		return ing, nil
+	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+	require.NoError(t, err)
+	return d, ing
+}
+
+func TestPushSeries_KeepStrippedProfiles(t *testing.T) {
+	d, ing := newStripTestDistributor(t, true)
+
+	prof := stripTestProfile()
+	originalSize := prof.SizeVT()
+	keptSize := strippedTestProfile().SizeVT()
+
+	req := &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+		},
+		Profile: pprof2.RawFromProto(prof),
+	}
+
+	expectedMetricDelta := map[prometheus.Collector]float64{
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"):    float64(originalSize - keptSize),
+		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"): 1,
+	}
+	before := metricsDump(expectedMetricDelta)
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	// The stripped part is discarded, the kept part continues as a regular profile.
+	expectMetricsChange(t, before, metricsDump(expectedMetricDelta), expectedMetricDelta)
+
+	// Language detection ran before the symbols were stripped.
+	assert.Equal(t, "python", req.Language)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	require.Len(t, ing.requests, 1)
+	require.NotEmpty(t, ing.requests[0].Series)
+	series := ing.requests[0].Series[0]
+	assert.Equal(t, "true", phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameSampled))
+
+	received, err := pprof2.RawFromBytes(series.Samples[0].RawProfile)
+	require.NoError(t, err)
+	want := strippedTestProfile()
+	require.Len(t, received.Sample, 1)
+	assert.Equal(t, want.Sample[0].Value, received.Sample[0].Value)
+	assert.Empty(t, received.Sample[0].LocationId)
+	assert.Empty(t, received.Location)
+	assert.Empty(t, received.Function)
+	assert.Empty(t, received.Mapping)
+	assert.Equal(t, want.StringTable, received.StringTable)
+	assert.Equal(t, keptSize, received.SizeVT())
+}
+
+func TestPushSeries_DropSampledOutProfiles(t *testing.T) {
+	d, ing := newStripTestDistributor(t, false)
+
+	prof := stripTestProfile()
+	labels := []*typesv1.LabelPair{
+		{Name: "__name__", Value: "cpu"},
+		{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+	}
+	req := &distributormodel.ProfileSeries{
+		Labels:  labels,
+		Profile: pprof2.RawFromProto(prof),
+	}
+
+	expectedMetricDelta := map[prometheus.Collector]float64{
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"):    float64(labelsSize(labels) + int64(prof.SizeVT())),
+		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"): 1,
+	}
+	before := metricsDump(expectedMetricDelta)
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	expectMetricsChange(t, before, metricsDump(expectedMetricDelta), expectedMetricDelta)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	assert.Empty(t, ing.requests)
+}
+
+func TestStripProfileToTotals_SampleLabels(t *testing.T) {
+	p := stripTestProfile()
+	// Indices into the extended string table: span_id=9, abc=10, def=11.
+	p.StringTable = append(p.StringTable, "span_id", "abc", "def")
+	p.Sample = []*profilev1.Sample{
+		{LocationId: []uint64{1}, Value: []int64{1, 10}, Label: []*profilev1.Label{{Key: 9, Str: 10}}},
+		{LocationId: []uint64{2}, Value: []int64{2, 20}, Label: []*profilev1.Label{{Key: 9, Str: 10}}},
+		{LocationId: []uint64{1}, Value: []int64{4, 40}, Label: []*profilev1.Label{{Key: 9, Str: 11}}},
+		{LocationId: []uint64{2}, Value: []int64{8, 80}},
+		// Numeric labels are dropped (as Normalize would do), so this
+		// sample must aggregate with the unlabeled one.
+		{LocationId: []uint64{1}, Value: []int64{16, 160}, Label: []*profilev1.Label{{Key: 9, Num: 42}}},
+	}
+
+	stripProfileToTotals(p)
+
+	require.Len(t, p.Sample, 3)
+	assert.Equal(t, []int64{24, 240}, p.Sample[0].Value)
+	assert.Empty(t, p.Sample[0].Label)
+	assert.Equal(t, []int64{3, 30}, p.Sample[1].Value)
+	require.Len(t, p.Sample[1].Label, 1)
+	assert.Equal(t, "span_id", p.StringTable[p.Sample[1].Label[0].Key])
+	assert.Equal(t, "abc", p.StringTable[p.Sample[1].Label[0].Str])
+	assert.Equal(t, []int64{4, 40}, p.Sample[2].Value)
+	require.Len(t, p.Sample[2].Label, 1)
+	assert.Equal(t, "def", p.StringTable[p.Sample[2].Label[0].Str])
+	for _, s := range p.Sample {
+		assert.Empty(t, s.LocationId)
+	}
+	assert.Empty(t, p.Location)
+	assert.Empty(t, p.Function)
+	assert.Empty(t, p.Mapping)
+	assert.Equal(t, []string{"", "samples", "count", "cpu", "nanoseconds", "span_id", "abc", "def"}, p.StringTable)
+}

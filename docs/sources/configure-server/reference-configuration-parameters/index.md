@@ -3112,6 +3112,11 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -distributor.ingestion-burst-size-mb
 [ingestion_burst_size_mb: <float> | default = 2]
 
+# When a profile is sampled out, retain its totals and labels with stacktraces
+# stripped (marked __sampled__) instead of dropping it.
+# CLI flag: -distributor.sampling.keep-stripped-profiles
+[keep_stripped_profiles: <boolean> | default = false]
+
 # Maximum length accepted for label names.
 # CLI flag: -validation.max-length-label-name
 [max_label_name_length: <int> | default = 1024]
@@ -3276,6 +3281,11 @@ distributor_usage_groups:
 # endpoint.
 # CLI flag: -querier.query-analysis-series-enabled
 [query_analysis_series_enabled: <boolean> | default = false]
+
+# Include profiles that were sampled out and stored with stacktraces stripped
+# (marked __sampled__) in query results.
+# CLI flag: -query-backend.include-stripped-profiles
+[include_stripped_profiles: <boolean> | default = false]
 
 # Maximum number of flame graph nodes by default. 0 to disable.
 # CLI flag: -querier.max-flamegraph-nodes-default

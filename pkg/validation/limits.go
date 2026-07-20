@@ -39,6 +39,7 @@ type Limits struct {
 	IngestionLimit           *ingestlimits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
 	IngestionBodyLimitMB     float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
 	DistributorSampling      *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
+	KeepStrippedProfiles     bool                 `yaml:"keep_stripped_profiles" json:"keep_stripped_profiles"`
 	MaxLabelNameLength       int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength      int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries   int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
@@ -85,6 +86,7 @@ type Limits struct {
 	MaxQueryParallelism        int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
 	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
+	IncludeStrippedProfiles    bool           `yaml:"include_stripped_profiles" json:"include_stripped_profiles"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
@@ -195,6 +197,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
 	f.BoolVar(&l.MaxFlameGraphNodesOnSelectMergeProfile, "querier.max-flamegraph-nodes-on-select-merge-profile", false, "Enforce the max nodes limits and defaults on SelectMergeProfile API. Historically this limit was not enforced to enable to gather full pprof profiles without truncation.")
 
+	f.BoolVar(&l.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals and labels with stacktraces stripped (marked __sampled__) instead of dropping it.")
+	f.BoolVar(&l.IncludeStrippedProfiles, "query-backend.include-stripped-profiles", false, "Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.")
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
 
@@ -330,6 +334,14 @@ func (o *Overrides) IngestionLimit(tenantID string) *ingestlimits.Config {
 
 func (o *Overrides) DistributorSampling(tenantID string) *sampling.Config {
 	return o.getOverridesForTenant(tenantID).DistributorSampling
+}
+
+func (o *Overrides) KeepStrippedProfiles(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).KeepStrippedProfiles
+}
+
+func (o *Overrides) IncludeStrippedProfiles(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).IncludeStrippedProfiles
 }
 
 // IngestionArtificialDelay returns the artificial ingestion latency for a given user.
