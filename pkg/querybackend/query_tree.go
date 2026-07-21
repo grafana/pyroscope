@@ -32,7 +32,35 @@ func init() {
 	)
 }
 
+// treeSymbolMode resolves the symbol output requested by a tree query. When
+// symbol_mode is unset it falls back to the deprecated full_symbols bool for
+// wire compatibility; setting both is rejected, as is any mode this backend
+// does not implement.
+func treeSymbolMode(t *queryv1.TreeQuery) (queryv1.SymbolMode, error) {
+	mode := t.GetSymbolMode()
+	if t.GetFullSymbols() { //nolint:staticcheck // bridges the deprecated full_symbols bool
+		if mode != queryv1.SymbolMode_SYMBOL_MODE_UNSPECIFIED {
+			return 0, fmt.Errorf("full_symbols must not be combined with symbol_mode")
+		}
+		return queryv1.SymbolMode_SYMBOL_MODE_FULL, nil
+	}
+	switch mode {
+	case queryv1.SymbolMode_SYMBOL_MODE_UNSPECIFIED:
+		return queryv1.SymbolMode_SYMBOL_MODE_NAME, nil
+	case queryv1.SymbolMode_SYMBOL_MODE_NAME, queryv1.SymbolMode_SYMBOL_MODE_FULL:
+		return mode, nil
+	default:
+		// SYMBOL_MODE_REFS is schema-defined but not implemented here yet.
+		return 0, fmt.Errorf("unsupported symbol_mode %s", mode)
+	}
+}
+
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
+	mode, err := treeSymbolMode(query.Tree)
+	if err != nil {
+		return nil, err
+	}
+
 	otelSpan := trace.SpanFromContext(q.ctx)
 
 	profileOpts := []profileIteratorOption{withExcludeSampled()}
@@ -142,7 +170,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	}
 
 	// output full pprof tree if that's requested
-	if query.Tree.FullSymbols {
+	if mode == queryv1.SymbolMode_SYMBOL_MODE_FULL {
 		tree, symbolBuilder, err := resolver.LocationRefNameTree()
 		if err != nil {
 			return nil, err
@@ -174,6 +202,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 
 type treeAggregator struct {
 	init  sync.Once
+	mode  queryv1.SymbolMode
 	query *queryv1.TreeQuery
 	tree  *model.TreeMerger[model.FunctionName, model.FunctionNameI]
 
@@ -186,8 +215,13 @@ func newTreeAggregator(*queryv1.InvokeRequest) aggregator { return new(treeAggre
 
 func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	r := report.Tree
-	if r.Query.FullSymbols {
+	mode, err := treeSymbolMode(r.Query)
+	if err != nil {
+		return err
+	}
+	if mode == queryv1.SymbolMode_SYMBOL_MODE_FULL {
 		a.init.Do(func() {
+			a.mode = mode
 			a.lrTree = model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
 			a.query = r.Query.CloneVT()
 			a.symbolMerger = symdb.NewSymbolMerger()
@@ -202,6 +236,7 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	}
 
 	a.init.Do(func() {
+		a.mode = mode
 		a.tree = model.NewTreeMerger[model.FunctionName, model.FunctionNameI]()
 		a.query = r.Query.CloneVT()
 	})
@@ -215,7 +250,7 @@ func (a *treeAggregator) build() *queryv1.Report {
 		},
 	}
 
-	if a.query.FullSymbols {
+	if a.mode == queryv1.SymbolMode_SYMBOL_MODE_FULL {
 		builder := a.symbolMerger.ResultBuilder()
 		result.Tree.Tree = a.lrTree.Tree().Bytes(a.query.GetMaxNodes(), builder.KeepSymbol)
 		result.Tree.Symbols = new(queryv1.TreeSymbols)

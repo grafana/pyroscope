@@ -214,13 +214,30 @@ message TimeSeriesReport {
   repeated types.v1.Series time_series = 2;
 }
 
+// SymbolMode selects how a TreeQuery reports frame symbols.
+enum SymbolMode {
+  SYMBOL_MODE_UNSPECIFIED = 0;
+  SYMBOL_MODE_NAME = 1; // frame names only
+  SYMBOL_MODE_FULL = 2; // full pprof symbol tables alongside the tree
+  SYMBOL_MODE_REFS = 3; // compact symbol-ref side table for deferred resolution
+}
+
 message TreeQuery {
   int64 max_nodes = 1;
   repeated string span_selector = 2;
   optional types.v1.StackTraceSelector stack_trace_selector = 3;
   repeated string profile_id_selector = 4;
+  // Deprecated: use symbol_mode = SYMBOL_MODE_FULL. Retained for wire
+  // compatibility; will be removed in a couple of releases.
   bool full_symbols = 5;
   repeated string trace_id_selector = 6;
+  // symbol_mode selects the symbol output. When unset, full_symbols is honored
+  // for back-compat.
+  SymbolMode symbol_mode = 7;
+  // max_unresolved_locations bounds the distinct unresolved locations a
+  // symbol-ref tree result may carry; the query fails past it. Zero means
+  // unlimited. Effective only with SYMBOL_MODE_REFS.
+  int64 max_unresolved_locations = 8;
 }
 
 message TreeSymbols {
@@ -234,10 +251,35 @@ message TreeSymbols {
   repeated uint64 string_hashes = 8;
 }
 
+// SymbolRefTable resolves the integer frame references in a symbol-ref tree.
+// Each tree node stores one frame reference r; whether r is resolved depends on
+// whether it falls inside the names slice:
+//
+//   r <  len(names): resolved   -> names[r] is the frame name.
+//   r >= len(names): unresolved -> u = r - len(names) indexes the parallel
+//                    unresolved_* arrays:
+//                      build_ids[unresolved_build_id[u]]  build ID of the binary
+//                      unresolved_address[u]              address within it
+//
+// build_ids and binary_names are parallel and 1:1 (binary_names[k] is the
+// "binary!0xaddr" fallback display for build_ids[k]); each (build ID,
+// binary name) pair appears once — the same build ID may repeat under
+// different binary names, each retained exactly as stored.
+// unresolved_build_id and unresolved_address are parallel, one entry per
+// unresolved location, sorted by (build ID, binary name, address).
+message SymbolRefTable {
+  repeated string names = 1;
+  repeated string build_ids = 2;
+  repeated string binary_names = 3;
+  repeated uint32 unresolved_build_id = 4;
+  repeated uint64 unresolved_address = 5;
+}
+
 message TreeReport {
   TreeQuery query = 1;
   bytes tree = 2;
   optional TreeSymbols symbols = 3;
+  optional SymbolRefTable symbol_refs = 4;
 }
 
 message PprofQuery {

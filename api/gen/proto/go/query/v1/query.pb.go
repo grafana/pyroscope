@@ -159,6 +159,59 @@ func (ReportType) EnumDescriptor() ([]byte, []int) {
 	return file_query_v1_query_proto_rawDescGZIP(), []int{1}
 }
 
+// SymbolMode selects how a TreeQuery reports frame symbols.
+type SymbolMode int32
+
+const (
+	SymbolMode_SYMBOL_MODE_UNSPECIFIED SymbolMode = 0
+	SymbolMode_SYMBOL_MODE_NAME        SymbolMode = 1 // frame names only
+	SymbolMode_SYMBOL_MODE_FULL        SymbolMode = 2 // full pprof symbol tables alongside the tree
+	SymbolMode_SYMBOL_MODE_REFS        SymbolMode = 3 // compact symbol-ref side table for deferred resolution
+)
+
+// Enum value maps for SymbolMode.
+var (
+	SymbolMode_name = map[int32]string{
+		0: "SYMBOL_MODE_UNSPECIFIED",
+		1: "SYMBOL_MODE_NAME",
+		2: "SYMBOL_MODE_FULL",
+		3: "SYMBOL_MODE_REFS",
+	}
+	SymbolMode_value = map[string]int32{
+		"SYMBOL_MODE_UNSPECIFIED": 0,
+		"SYMBOL_MODE_NAME":        1,
+		"SYMBOL_MODE_FULL":        2,
+		"SYMBOL_MODE_REFS":        3,
+	}
+)
+
+func (x SymbolMode) Enum() *SymbolMode {
+	p := new(SymbolMode)
+	*p = x
+	return p
+}
+
+func (x SymbolMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SymbolMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_query_v1_query_proto_enumTypes[2].Descriptor()
+}
+
+func (SymbolMode) Type() protoreflect.EnumType {
+	return &file_query_v1_query_proto_enumTypes[2]
+}
+
+func (x SymbolMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SymbolMode.Descriptor instead.
+func (SymbolMode) EnumDescriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{2}
+}
+
 type QueryNode_Type int32
 
 const (
@@ -192,11 +245,11 @@ func (x QueryNode_Type) String() string {
 }
 
 func (QueryNode_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_query_v1_query_proto_enumTypes[2].Descriptor()
+	return file_query_v1_query_proto_enumTypes[3].Descriptor()
 }
 
 func (QueryNode_Type) Type() protoreflect.EnumType {
-	return &file_query_v1_query_proto_enumTypes[2]
+	return &file_query_v1_query_proto_enumTypes[3]
 }
 
 func (x QueryNode_Type) Number() protoreflect.EnumNumber {
@@ -1566,10 +1619,19 @@ type TreeQuery struct {
 	SpanSelector       []string                `protobuf:"bytes,2,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
 	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,3,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	ProfileIdSelector  []string                `protobuf:"bytes,4,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
-	FullSymbols        bool                    `protobuf:"varint,5,opt,name=full_symbols,json=fullSymbols,proto3" json:"full_symbols,omitempty"`
-	TraceIdSelector    []string                `protobuf:"bytes,6,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Deprecated: use symbol_mode = SYMBOL_MODE_FULL. Retained for wire
+	// compatibility; will be removed in a couple of releases.
+	FullSymbols     bool     `protobuf:"varint,5,opt,name=full_symbols,json=fullSymbols,proto3" json:"full_symbols,omitempty"`
+	TraceIdSelector []string `protobuf:"bytes,6,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
+	// symbol_mode selects the symbol output. When unset, full_symbols is honored
+	// for back-compat.
+	SymbolMode SymbolMode `protobuf:"varint,7,opt,name=symbol_mode,json=symbolMode,proto3,enum=query.v1.SymbolMode" json:"symbol_mode,omitempty"`
+	// max_unresolved_locations bounds the distinct unresolved locations a
+	// symbol-ref tree result may carry; the query fails past it. Zero means
+	// unlimited. Effective only with SYMBOL_MODE_REFS.
+	MaxUnresolvedLocations int64 `protobuf:"varint,8,opt,name=max_unresolved_locations,json=maxUnresolvedLocations,proto3" json:"max_unresolved_locations,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *TreeQuery) Reset() {
@@ -1642,6 +1704,20 @@ func (x *TreeQuery) GetTraceIdSelector() []string {
 		return x.TraceIdSelector
 	}
 	return nil
+}
+
+func (x *TreeQuery) GetSymbolMode() SymbolMode {
+	if x != nil {
+		return x.SymbolMode
+	}
+	return SymbolMode_SYMBOL_MODE_UNSPECIFIED
+}
+
+func (x *TreeQuery) GetMaxUnresolvedLocations() int64 {
+	if x != nil {
+		return x.MaxUnresolvedLocations
+	}
+	return 0
 }
 
 type TreeSymbols struct {
@@ -1744,18 +1820,111 @@ func (x *TreeSymbols) GetStringHashes() []uint64 {
 	return nil
 }
 
+// SymbolRefTable resolves the integer frame references in a symbol-ref tree.
+// Each tree node stores one frame reference r; whether r is resolved depends on
+// whether it falls inside the names slice:
+//
+//	r <  len(names): resolved   -> names[r] is the frame name.
+//	r >= len(names): unresolved -> u = r - len(names) indexes the parallel
+//	                 unresolved_* arrays:
+//	                   build_ids[unresolved_build_id[u]]  build ID of the binary
+//	                   unresolved_address[u]              address within it
+//
+// build_ids and binary_names are parallel and 1:1 (binary_names[k] is the
+// "binary!0xaddr" fallback display for build_ids[k]); each (build ID,
+// binary name) pair appears once — the same build ID may repeat under
+// different binary names, each retained exactly as stored.
+// unresolved_build_id and unresolved_address are parallel, one entry per
+// unresolved location, sorted by (build ID, binary name, address).
+type SymbolRefTable struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Names             []string               `protobuf:"bytes,1,rep,name=names,proto3" json:"names,omitempty"`
+	BuildIds          []string               `protobuf:"bytes,2,rep,name=build_ids,json=buildIds,proto3" json:"build_ids,omitempty"`
+	BinaryNames       []string               `protobuf:"bytes,3,rep,name=binary_names,json=binaryNames,proto3" json:"binary_names,omitempty"`
+	UnresolvedBuildId []uint32               `protobuf:"varint,4,rep,packed,name=unresolved_build_id,json=unresolvedBuildId,proto3" json:"unresolved_build_id,omitempty"`
+	UnresolvedAddress []uint64               `protobuf:"varint,5,rep,packed,name=unresolved_address,json=unresolvedAddress,proto3" json:"unresolved_address,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *SymbolRefTable) Reset() {
+	*x = SymbolRefTable{}
+	mi := &file_query_v1_query_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SymbolRefTable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SymbolRefTable) ProtoMessage() {}
+
+func (x *SymbolRefTable) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SymbolRefTable.ProtoReflect.Descriptor instead.
+func (*SymbolRefTable) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SymbolRefTable) GetNames() []string {
+	if x != nil {
+		return x.Names
+	}
+	return nil
+}
+
+func (x *SymbolRefTable) GetBuildIds() []string {
+	if x != nil {
+		return x.BuildIds
+	}
+	return nil
+}
+
+func (x *SymbolRefTable) GetBinaryNames() []string {
+	if x != nil {
+		return x.BinaryNames
+	}
+	return nil
+}
+
+func (x *SymbolRefTable) GetUnresolvedBuildId() []uint32 {
+	if x != nil {
+		return x.UnresolvedBuildId
+	}
+	return nil
+}
+
+func (x *SymbolRefTable) GetUnresolvedAddress() []uint64 {
+	if x != nil {
+		return x.UnresolvedAddress
+	}
+	return nil
+}
+
 type TreeReport struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Query         *TreeQuery             `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
 	Tree          []byte                 `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
 	Symbols       *TreeSymbols           `protobuf:"bytes,3,opt,name=symbols,proto3,oneof" json:"symbols,omitempty"`
+	SymbolRefs    *SymbolRefTable        `protobuf:"bytes,4,opt,name=symbol_refs,json=symbolRefs,proto3,oneof" json:"symbol_refs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TreeReport) Reset() {
 	*x = TreeReport{}
-	mi := &file_query_v1_query_proto_msgTypes[23]
+	mi := &file_query_v1_query_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1767,7 +1936,7 @@ func (x *TreeReport) String() string {
 func (*TreeReport) ProtoMessage() {}
 
 func (x *TreeReport) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[23]
+	mi := &file_query_v1_query_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1780,7 +1949,7 @@ func (x *TreeReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TreeReport.ProtoReflect.Descriptor instead.
 func (*TreeReport) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{23}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *TreeReport) GetQuery() *TreeQuery {
@@ -1804,6 +1973,13 @@ func (x *TreeReport) GetSymbols() *TreeSymbols {
 	return nil
 }
 
+func (x *TreeReport) GetSymbolRefs() *SymbolRefTable {
+	if x != nil {
+		return x.SymbolRefs
+	}
+	return nil
+}
+
 type PprofQuery struct {
 	state              protoimpl.MessageState  `protogen:"open.v1"`
 	MaxNodes           int64                   `protobuf:"varint,1,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
@@ -1817,7 +1993,7 @@ type PprofQuery struct {
 
 func (x *PprofQuery) Reset() {
 	*x = PprofQuery{}
-	mi := &file_query_v1_query_proto_msgTypes[24]
+	mi := &file_query_v1_query_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1829,7 +2005,7 @@ func (x *PprofQuery) String() string {
 func (*PprofQuery) ProtoMessage() {}
 
 func (x *PprofQuery) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[24]
+	mi := &file_query_v1_query_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1842,7 +2018,7 @@ func (x *PprofQuery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PprofQuery.ProtoReflect.Descriptor instead.
 func (*PprofQuery) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{24}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PprofQuery) GetMaxNodes() int64 {
@@ -1890,7 +2066,7 @@ type PprofReport struct {
 
 func (x *PprofReport) Reset() {
 	*x = PprofReport{}
-	mi := &file_query_v1_query_proto_msgTypes[25]
+	mi := &file_query_v1_query_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1902,7 +2078,7 @@ func (x *PprofReport) String() string {
 func (*PprofReport) ProtoMessage() {}
 
 func (x *PprofReport) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[25]
+	mi := &file_query_v1_query_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1915,7 +2091,7 @@ func (x *PprofReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PprofReport.ProtoReflect.Descriptor instead.
 func (*PprofReport) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{25}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *PprofReport) GetQuery() *PprofQuery {
@@ -1945,7 +2121,7 @@ type HeatmapQuery struct {
 
 func (x *HeatmapQuery) Reset() {
 	*x = HeatmapQuery{}
-	mi := &file_query_v1_query_proto_msgTypes[26]
+	mi := &file_query_v1_query_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1957,7 +2133,7 @@ func (x *HeatmapQuery) String() string {
 func (*HeatmapQuery) ProtoMessage() {}
 
 func (x *HeatmapQuery) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[26]
+	mi := &file_query_v1_query_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1970,7 +2146,7 @@ func (x *HeatmapQuery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapQuery.ProtoReflect.Descriptor instead.
 func (*HeatmapQuery) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{26}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *HeatmapQuery) GetStep() float64 {
@@ -2018,7 +2194,7 @@ type AttributeTable struct {
 
 func (x *AttributeTable) Reset() {
 	*x = AttributeTable{}
-	mi := &file_query_v1_query_proto_msgTypes[27]
+	mi := &file_query_v1_query_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2030,7 +2206,7 @@ func (x *AttributeTable) String() string {
 func (*AttributeTable) ProtoMessage() {}
 
 func (x *AttributeTable) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[27]
+	mi := &file_query_v1_query_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2043,7 +2219,7 @@ func (x *AttributeTable) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttributeTable.ProtoReflect.Descriptor instead.
 func (*AttributeTable) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{27}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *AttributeTable) GetKeys() []string {
@@ -2074,7 +2250,7 @@ type HeatmapPoint struct {
 
 func (x *HeatmapPoint) Reset() {
 	*x = HeatmapPoint{}
-	mi := &file_query_v1_query_proto_msgTypes[28]
+	mi := &file_query_v1_query_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2086,7 +2262,7 @@ func (x *HeatmapPoint) String() string {
 func (*HeatmapPoint) ProtoMessage() {}
 
 func (x *HeatmapPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[28]
+	mi := &file_query_v1_query_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2099,7 +2275,7 @@ func (x *HeatmapPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapPoint.ProtoReflect.Descriptor instead.
 func (*HeatmapPoint) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{28}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *HeatmapPoint) GetTimestamp() int64 {
@@ -2154,7 +2330,7 @@ type HeatmapSeries struct {
 
 func (x *HeatmapSeries) Reset() {
 	*x = HeatmapSeries{}
-	mi := &file_query_v1_query_proto_msgTypes[29]
+	mi := &file_query_v1_query_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2166,7 +2342,7 @@ func (x *HeatmapSeries) String() string {
 func (*HeatmapSeries) ProtoMessage() {}
 
 func (x *HeatmapSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[29]
+	mi := &file_query_v1_query_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2179,7 +2355,7 @@ func (x *HeatmapSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapSeries.ProtoReflect.Descriptor instead.
 func (*HeatmapSeries) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{29}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *HeatmapSeries) GetAttributeRefs() []int64 {
@@ -2207,7 +2383,7 @@ type HeatmapReport struct {
 
 func (x *HeatmapReport) Reset() {
 	*x = HeatmapReport{}
-	mi := &file_query_v1_query_proto_msgTypes[30]
+	mi := &file_query_v1_query_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2219,7 +2395,7 @@ func (x *HeatmapReport) String() string {
 func (*HeatmapReport) ProtoMessage() {}
 
 func (x *HeatmapReport) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[30]
+	mi := &file_query_v1_query_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2232,7 +2408,7 @@ func (x *HeatmapReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapReport.ProtoReflect.Descriptor instead.
 func (*HeatmapReport) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{30}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *HeatmapReport) GetQuery() *HeatmapQuery {
@@ -2270,7 +2446,7 @@ type Exemplar struct {
 
 func (x *Exemplar) Reset() {
 	*x = Exemplar{}
-	mi := &file_query_v1_query_proto_msgTypes[31]
+	mi := &file_query_v1_query_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2282,7 +2458,7 @@ func (x *Exemplar) String() string {
 func (*Exemplar) ProtoMessage() {}
 
 func (x *Exemplar) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[31]
+	mi := &file_query_v1_query_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2295,7 +2471,7 @@ func (x *Exemplar) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Exemplar.ProtoReflect.Descriptor instead.
 func (*Exemplar) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{31}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *Exemplar) GetTimestamp() int64 {
@@ -2348,7 +2524,7 @@ type Point struct {
 
 func (x *Point) Reset() {
 	*x = Point{}
-	mi := &file_query_v1_query_proto_msgTypes[32]
+	mi := &file_query_v1_query_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2360,7 +2536,7 @@ func (x *Point) String() string {
 func (*Point) ProtoMessage() {}
 
 func (x *Point) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[32]
+	mi := &file_query_v1_query_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2373,7 +2549,7 @@ func (x *Point) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Point.ProtoReflect.Descriptor instead.
 func (*Point) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{32}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *Point) GetValue() float64 {
@@ -2417,7 +2593,7 @@ type Series struct {
 
 func (x *Series) Reset() {
 	*x = Series{}
-	mi := &file_query_v1_query_proto_msgTypes[33]
+	mi := &file_query_v1_query_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2429,7 +2605,7 @@ func (x *Series) String() string {
 func (*Series) ProtoMessage() {}
 
 func (x *Series) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[33]
+	mi := &file_query_v1_query_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2442,7 +2618,7 @@ func (x *Series) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Series.ProtoReflect.Descriptor instead.
 func (*Series) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{33}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *Series) GetAttributeRefs() []int64 {
@@ -2470,7 +2646,7 @@ type TimeSeriesCompactReport struct {
 
 func (x *TimeSeriesCompactReport) Reset() {
 	*x = TimeSeriesCompactReport{}
-	mi := &file_query_v1_query_proto_msgTypes[34]
+	mi := &file_query_v1_query_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2482,7 +2658,7 @@ func (x *TimeSeriesCompactReport) String() string {
 func (*TimeSeriesCompactReport) ProtoMessage() {}
 
 func (x *TimeSeriesCompactReport) ProtoReflect() protoreflect.Message {
-	mi := &file_query_v1_query_proto_msgTypes[34]
+	mi := &file_query_v1_query_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2495,7 +2671,7 @@ func (x *TimeSeriesCompactReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimeSeriesCompactReport.ProtoReflect.Descriptor instead.
 func (*TimeSeriesCompactReport) Descriptor() ([]byte, []int) {
-	return file_query_v1_query_proto_rawDescGZIP(), []int{34}
+	return file_query_v1_query_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *TimeSeriesCompactReport) GetQuery() *TimeSeriesQuery {
@@ -2635,14 +2811,17 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x10TimeSeriesReport\x12/\n" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.types.v1.SeriesR\n" +
-	"timeSeries\"\xba\x02\n" +
+	"timeSeries\"\xab\x03\n" +
 	"\tTreeQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12#\n" +
 	"\rspan_selector\x18\x02 \x03(\tR\fspanSelector\x12S\n" +
 	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
 	"\x13profile_id_selector\x18\x04 \x03(\tR\x11profileIdSelector\x12!\n" +
 	"\ffull_symbols\x18\x05 \x01(\bR\vfullSymbols\x12*\n" +
-	"\x11trace_id_selector\x18\x06 \x03(\tR\x0ftraceIdSelectorB\x17\n" +
+	"\x11trace_id_selector\x18\x06 \x03(\tR\x0ftraceIdSelector\x125\n" +
+	"\vsymbol_mode\x18\a \x01(\x0e2\x14.query.v1.SymbolModeR\n" +
+	"symbolMode\x128\n" +
+	"\x18max_unresolved_locations\x18\b \x01(\x03R\x16maxUnresolvedLocationsB\x17\n" +
 	"\x15_stack_trace_selector\"\xdb\x02\n" +
 	"\vTreeSymbols\x12.\n" +
 	"\bmappings\x18\x01 \x03(\v2\x12.google.v1.MappingR\bmappings\x121\n" +
@@ -2652,14 +2831,23 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x0emapping_hashes\x18\x05 \x03(\x04R\rmappingHashes\x12'\n" +
 	"\x0flocation_hashes\x18\x06 \x03(\x04R\x0elocationHashes\x12'\n" +
 	"\x0ffunction_hashes\x18\a \x03(\x04R\x0efunctionHashes\x12#\n" +
-	"\rstring_hashes\x18\b \x03(\x04R\fstringHashes\"\x8d\x01\n" +
+	"\rstring_hashes\x18\b \x03(\x04R\fstringHashes\"\xc5\x01\n" +
+	"\x0eSymbolRefTable\x12\x14\n" +
+	"\x05names\x18\x01 \x03(\tR\x05names\x12\x1b\n" +
+	"\tbuild_ids\x18\x02 \x03(\tR\bbuildIds\x12!\n" +
+	"\fbinary_names\x18\x03 \x03(\tR\vbinaryNames\x12.\n" +
+	"\x13unresolved_build_id\x18\x04 \x03(\rR\x11unresolvedBuildId\x12-\n" +
+	"\x12unresolved_address\x18\x05 \x03(\x04R\x11unresolvedAddress\"\xdd\x01\n" +
 	"\n" +
 	"TreeReport\x12)\n" +
 	"\x05query\x18\x01 \x01(\v2\x13.query.v1.TreeQueryR\x05query\x12\x12\n" +
 	"\x04tree\x18\x02 \x01(\fR\x04tree\x124\n" +
-	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01B\n" +
+	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01\x12>\n" +
+	"\vsymbol_refs\x18\x04 \x01(\v2\x18.query.v1.SymbolRefTableH\x01R\n" +
+	"symbolRefs\x88\x01\x01B\n" +
 	"\n" +
-	"\b_symbols\"\x98\x02\n" +
+	"\b_symbolsB\x0e\n" +
+	"\f_symbol_refs\"\x98\x02\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +
@@ -2737,7 +2925,13 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\vREPORT_TREE\x10\x05\x12\x10\n" +
 	"\fREPORT_PPROF\x10\x06\x12\x12\n" +
 	"\x0eREPORT_HEATMAP\x10\a\x12\x1e\n" +
-	"\x1aREPORT_TIME_SERIES_COMPACT\x10\b2R\n" +
+	"\x1aREPORT_TIME_SERIES_COMPACT\x10\b*k\n" +
+	"\n" +
+	"SymbolMode\x12\x1b\n" +
+	"\x17SYMBOL_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10SYMBOL_MODE_NAME\x10\x01\x12\x14\n" +
+	"\x10SYMBOL_MODE_FULL\x10\x02\x12\x14\n" +
+	"\x10SYMBOL_MODE_REFS\x10\x032R\n" +
 	"\x14QueryFrontendService\x12:\n" +
 	"\x05Query\x12\x16.query.v1.QueryRequest\x1a\x17.query.v1.QueryResponse\"\x002T\n" +
 	"\x13QueryBackendService\x12=\n" +
@@ -2757,128 +2951,132 @@ func file_query_v1_query_proto_rawDescGZIP() []byte {
 	return file_query_v1_query_proto_rawDescData
 }
 
-var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_query_v1_query_proto_goTypes = []any{
 	(QueryType)(0),                  // 0: query.v1.QueryType
 	(ReportType)(0),                 // 1: query.v1.ReportType
-	(QueryNode_Type)(0),             // 2: query.v1.QueryNode.Type
-	(*QueryRequest)(nil),            // 3: query.v1.QueryRequest
-	(*QueryResponse)(nil),           // 4: query.v1.QueryResponse
-	(*InvokeOptions)(nil),           // 5: query.v1.InvokeOptions
-	(*InvokeRequest)(nil),           // 6: query.v1.InvokeRequest
-	(*QueryPlan)(nil),               // 7: query.v1.QueryPlan
-	(*QueryNode)(nil),               // 8: query.v1.QueryNode
-	(*Query)(nil),                   // 9: query.v1.Query
-	(*InvokeResponse)(nil),          // 10: query.v1.InvokeResponse
-	(*Diagnostics)(nil),             // 11: query.v1.Diagnostics
-	(*ExecutionNode)(nil),           // 12: query.v1.ExecutionNode
-	(*ExecutionStats)(nil),          // 13: query.v1.ExecutionStats
-	(*BlockExecution)(nil),          // 14: query.v1.BlockExecution
-	(*Report)(nil),                  // 15: query.v1.Report
-	(*LabelNamesQuery)(nil),         // 16: query.v1.LabelNamesQuery
-	(*LabelNamesReport)(nil),        // 17: query.v1.LabelNamesReport
-	(*LabelValuesQuery)(nil),        // 18: query.v1.LabelValuesQuery
-	(*LabelValuesReport)(nil),       // 19: query.v1.LabelValuesReport
-	(*SeriesLabelsQuery)(nil),       // 20: query.v1.SeriesLabelsQuery
-	(*SeriesLabelsReport)(nil),      // 21: query.v1.SeriesLabelsReport
-	(*TimeSeriesQuery)(nil),         // 22: query.v1.TimeSeriesQuery
-	(*TimeSeriesReport)(nil),        // 23: query.v1.TimeSeriesReport
-	(*TreeQuery)(nil),               // 24: query.v1.TreeQuery
-	(*TreeSymbols)(nil),             // 25: query.v1.TreeSymbols
-	(*TreeReport)(nil),              // 26: query.v1.TreeReport
-	(*PprofQuery)(nil),              // 27: query.v1.PprofQuery
-	(*PprofReport)(nil),             // 28: query.v1.PprofReport
-	(*HeatmapQuery)(nil),            // 29: query.v1.HeatmapQuery
-	(*AttributeTable)(nil),          // 30: query.v1.AttributeTable
-	(*HeatmapPoint)(nil),            // 31: query.v1.HeatmapPoint
-	(*HeatmapSeries)(nil),           // 32: query.v1.HeatmapSeries
-	(*HeatmapReport)(nil),           // 33: query.v1.HeatmapReport
-	(*Exemplar)(nil),                // 34: query.v1.Exemplar
-	(*Point)(nil),                   // 35: query.v1.Point
-	(*Series)(nil),                  // 36: query.v1.Series
-	(*TimeSeriesCompactReport)(nil), // 37: query.v1.TimeSeriesCompactReport
-	(*v1.BlockMeta)(nil),            // 38: metastore.v1.BlockMeta
-	(*v11.Labels)(nil),              // 39: types.v1.Labels
-	(v11.ExemplarType)(0),           // 40: types.v1.ExemplarType
-	(*v11.Series)(nil),              // 41: types.v1.Series
-	(*v11.StackTraceSelector)(nil),  // 42: types.v1.StackTraceSelector
-	(*v12.Mapping)(nil),             // 43: google.v1.Mapping
-	(*v12.Location)(nil),            // 44: google.v1.Location
-	(*v12.Function)(nil),            // 45: google.v1.Function
-	(v13.HeatmapQueryType)(0),       // 46: querier.v1.HeatmapQueryType
+	(SymbolMode)(0),                 // 2: query.v1.SymbolMode
+	(QueryNode_Type)(0),             // 3: query.v1.QueryNode.Type
+	(*QueryRequest)(nil),            // 4: query.v1.QueryRequest
+	(*QueryResponse)(nil),           // 5: query.v1.QueryResponse
+	(*InvokeOptions)(nil),           // 6: query.v1.InvokeOptions
+	(*InvokeRequest)(nil),           // 7: query.v1.InvokeRequest
+	(*QueryPlan)(nil),               // 8: query.v1.QueryPlan
+	(*QueryNode)(nil),               // 9: query.v1.QueryNode
+	(*Query)(nil),                   // 10: query.v1.Query
+	(*InvokeResponse)(nil),          // 11: query.v1.InvokeResponse
+	(*Diagnostics)(nil),             // 12: query.v1.Diagnostics
+	(*ExecutionNode)(nil),           // 13: query.v1.ExecutionNode
+	(*ExecutionStats)(nil),          // 14: query.v1.ExecutionStats
+	(*BlockExecution)(nil),          // 15: query.v1.BlockExecution
+	(*Report)(nil),                  // 16: query.v1.Report
+	(*LabelNamesQuery)(nil),         // 17: query.v1.LabelNamesQuery
+	(*LabelNamesReport)(nil),        // 18: query.v1.LabelNamesReport
+	(*LabelValuesQuery)(nil),        // 19: query.v1.LabelValuesQuery
+	(*LabelValuesReport)(nil),       // 20: query.v1.LabelValuesReport
+	(*SeriesLabelsQuery)(nil),       // 21: query.v1.SeriesLabelsQuery
+	(*SeriesLabelsReport)(nil),      // 22: query.v1.SeriesLabelsReport
+	(*TimeSeriesQuery)(nil),         // 23: query.v1.TimeSeriesQuery
+	(*TimeSeriesReport)(nil),        // 24: query.v1.TimeSeriesReport
+	(*TreeQuery)(nil),               // 25: query.v1.TreeQuery
+	(*TreeSymbols)(nil),             // 26: query.v1.TreeSymbols
+	(*SymbolRefTable)(nil),          // 27: query.v1.SymbolRefTable
+	(*TreeReport)(nil),              // 28: query.v1.TreeReport
+	(*PprofQuery)(nil),              // 29: query.v1.PprofQuery
+	(*PprofReport)(nil),             // 30: query.v1.PprofReport
+	(*HeatmapQuery)(nil),            // 31: query.v1.HeatmapQuery
+	(*AttributeTable)(nil),          // 32: query.v1.AttributeTable
+	(*HeatmapPoint)(nil),            // 33: query.v1.HeatmapPoint
+	(*HeatmapSeries)(nil),           // 34: query.v1.HeatmapSeries
+	(*HeatmapReport)(nil),           // 35: query.v1.HeatmapReport
+	(*Exemplar)(nil),                // 36: query.v1.Exemplar
+	(*Point)(nil),                   // 37: query.v1.Point
+	(*Series)(nil),                  // 38: query.v1.Series
+	(*TimeSeriesCompactReport)(nil), // 39: query.v1.TimeSeriesCompactReport
+	(*v1.BlockMeta)(nil),            // 40: metastore.v1.BlockMeta
+	(*v11.Labels)(nil),              // 41: types.v1.Labels
+	(v11.ExemplarType)(0),           // 42: types.v1.ExemplarType
+	(*v11.Series)(nil),              // 43: types.v1.Series
+	(*v11.StackTraceSelector)(nil),  // 44: types.v1.StackTraceSelector
+	(*v12.Mapping)(nil),             // 45: google.v1.Mapping
+	(*v12.Location)(nil),            // 46: google.v1.Location
+	(*v12.Function)(nil),            // 47: google.v1.Function
+	(v13.HeatmapQueryType)(0),       // 48: querier.v1.HeatmapQueryType
 }
 var file_query_v1_query_proto_depIdxs = []int32{
-	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
-	15, // 1: query.v1.QueryResponse.reports:type_name -> query.v1.Report
-	9,  // 2: query.v1.InvokeRequest.query:type_name -> query.v1.Query
-	7,  // 3: query.v1.InvokeRequest.query_plan:type_name -> query.v1.QueryPlan
-	5,  // 4: query.v1.InvokeRequest.options:type_name -> query.v1.InvokeOptions
-	8,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
-	2,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
-	8,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
-	38, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
+	10, // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
+	16, // 1: query.v1.QueryResponse.reports:type_name -> query.v1.Report
+	10, // 2: query.v1.InvokeRequest.query:type_name -> query.v1.Query
+	8,  // 3: query.v1.InvokeRequest.query_plan:type_name -> query.v1.QueryPlan
+	6,  // 4: query.v1.InvokeRequest.options:type_name -> query.v1.InvokeOptions
+	9,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
+	3,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
+	9,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
+	40, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
 	0,  // 9: query.v1.Query.query_type:type_name -> query.v1.QueryType
-	16, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
-	18, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
-	20, // 12: query.v1.Query.series_labels:type_name -> query.v1.SeriesLabelsQuery
-	22, // 13: query.v1.Query.time_series:type_name -> query.v1.TimeSeriesQuery
-	24, // 14: query.v1.Query.tree:type_name -> query.v1.TreeQuery
-	27, // 15: query.v1.Query.pprof:type_name -> query.v1.PprofQuery
-	29, // 16: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
-	22, // 17: query.v1.Query.time_series_compact:type_name -> query.v1.TimeSeriesQuery
-	15, // 18: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
-	11, // 19: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
-	7,  // 20: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
-	12, // 21: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
-	2,  // 22: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
-	12, // 23: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
-	13, // 24: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
-	14, // 25: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
+	17, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
+	19, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
+	21, // 12: query.v1.Query.series_labels:type_name -> query.v1.SeriesLabelsQuery
+	23, // 13: query.v1.Query.time_series:type_name -> query.v1.TimeSeriesQuery
+	25, // 14: query.v1.Query.tree:type_name -> query.v1.TreeQuery
+	29, // 15: query.v1.Query.pprof:type_name -> query.v1.PprofQuery
+	31, // 16: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
+	23, // 17: query.v1.Query.time_series_compact:type_name -> query.v1.TimeSeriesQuery
+	16, // 18: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
+	12, // 19: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
+	8,  // 20: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
+	13, // 21: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
+	3,  // 22: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
+	13, // 23: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
+	14, // 24: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
+	15, // 25: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
 	1,  // 26: query.v1.Report.report_type:type_name -> query.v1.ReportType
-	17, // 27: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
-	19, // 28: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
-	21, // 29: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
-	23, // 30: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
-	26, // 31: query.v1.Report.tree:type_name -> query.v1.TreeReport
-	28, // 32: query.v1.Report.pprof:type_name -> query.v1.PprofReport
-	33, // 33: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
-	37, // 34: query.v1.Report.time_series_compact:type_name -> query.v1.TimeSeriesCompactReport
-	16, // 35: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
-	18, // 36: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
-	20, // 37: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
-	39, // 38: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	40, // 39: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	22, // 40: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	41, // 41: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	42, // 42: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	43, // 43: query.v1.TreeSymbols.mappings:type_name -> google.v1.Mapping
-	44, // 44: query.v1.TreeSymbols.locations:type_name -> google.v1.Location
-	45, // 45: query.v1.TreeSymbols.functions:type_name -> google.v1.Function
-	24, // 46: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
-	25, // 47: query.v1.TreeReport.symbols:type_name -> query.v1.TreeSymbols
-	42, // 48: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	27, // 49: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	46, // 50: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	40, // 51: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	31, // 52: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	29, // 53: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	32, // 54: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	30, // 55: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	34, // 56: query.v1.Point.exemplars:type_name -> query.v1.Exemplar
-	35, // 57: query.v1.Series.points:type_name -> query.v1.Point
-	22, // 58: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
-	36, // 59: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
-	30, // 60: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 61: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 62: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 63: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 64: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	63, // [63:65] is the sub-list for method output_type
-	61, // [61:63] is the sub-list for method input_type
-	61, // [61:61] is the sub-list for extension type_name
-	61, // [61:61] is the sub-list for extension extendee
-	0,  // [0:61] is the sub-list for field type_name
+	18, // 27: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
+	20, // 28: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
+	22, // 29: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
+	24, // 30: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
+	28, // 31: query.v1.Report.tree:type_name -> query.v1.TreeReport
+	30, // 32: query.v1.Report.pprof:type_name -> query.v1.PprofReport
+	35, // 33: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
+	39, // 34: query.v1.Report.time_series_compact:type_name -> query.v1.TimeSeriesCompactReport
+	17, // 35: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
+	19, // 36: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
+	21, // 37: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
+	41, // 38: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
+	42, // 39: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	23, // 40: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
+	43, // 41: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	44, // 42: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	2,  // 43: query.v1.TreeQuery.symbol_mode:type_name -> query.v1.SymbolMode
+	45, // 44: query.v1.TreeSymbols.mappings:type_name -> google.v1.Mapping
+	46, // 45: query.v1.TreeSymbols.locations:type_name -> google.v1.Location
+	47, // 46: query.v1.TreeSymbols.functions:type_name -> google.v1.Function
+	25, // 47: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
+	26, // 48: query.v1.TreeReport.symbols:type_name -> query.v1.TreeSymbols
+	27, // 49: query.v1.TreeReport.symbol_refs:type_name -> query.v1.SymbolRefTable
+	44, // 50: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	29, // 51: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
+	48, // 52: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	42, // 53: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	33, // 54: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	31, // 55: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	34, // 56: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	32, // 57: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	36, // 58: query.v1.Point.exemplars:type_name -> query.v1.Exemplar
+	37, // 59: query.v1.Series.points:type_name -> query.v1.Point
+	23, // 60: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
+	38, // 61: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
+	32, // 62: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
+	4,  // 63: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	7,  // 64: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	5,  // 65: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	11, // 66: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	65, // [65:67] is the sub-list for method output_type
+	63, // [63:65] is the sub-list for method input_type
+	63, // [63:63] is the sub-list for extension type_name
+	63, // [63:63] is the sub-list for extension extendee
+	0,  // [0:63] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }
@@ -2887,15 +3085,15 @@ func file_query_v1_query_proto_init() {
 		return
 	}
 	file_query_v1_query_proto_msgTypes[21].OneofWrappers = []any{}
-	file_query_v1_query_proto_msgTypes[23].OneofWrappers = []any{}
 	file_query_v1_query_proto_msgTypes[24].OneofWrappers = []any{}
+	file_query_v1_query_proto_msgTypes[25].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_query_v1_query_proto_rawDesc), len(file_query_v1_query_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   35,
+			NumEnums:      4,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
