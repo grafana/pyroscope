@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package metastore.index;
+
+// BlockMetaTimeBounds decodes the same wire format as metastore.v1.BlockMeta,
+// reading only the block time bounds. Trimmed-message decoding relies on the
+// field numbers and types matching BlockMeta exactly; this correspondence is
+// enforced by TestBlockMetaTimeBounds_FieldNumbers.
+//
+// Decode with proto.UnmarshalOptions{DiscardUnknown: true}: the generated
+// UnmarshalVT retains unknown fields, which defeats the purpose of the
+// trimmed message.
+message BlockMetaTimeBounds {
+  int64 min_time = 6;
+  int64 max_time = 7;
+}
