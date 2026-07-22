@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"io"
+	"slices"
 	"sort"
 	"sync"
 
@@ -71,7 +72,7 @@ func (rw *DatasetIndexWriter) reset() {
 // writer (e.g. by deduplicating consecutive rows with the same
 // fingerprint at compaction time).
 func (rw *DatasetIndexWriter) AddSeries(idx uint32, labels phlaremodel.Labels, fp model.Fingerprint) {
-	cloned := labels.Clone()
+	cloned := slices.Clone(labels)
 	for _, l := range cloned {
 		rw.symbols[l.Name] = struct{}{}
 		rw.symbols[l.Value] = struct{}{}
