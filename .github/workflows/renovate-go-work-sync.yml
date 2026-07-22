@@ -23,8 +23,10 @@ jobs:
   sync-go-work-sum:
     # Run only for pushes made by the Renovate app itself: this skips forks,
     # leaves manually-edited Renovate branches alone, and avoids re-running
-    # on the fixup commit created below (authored by a different app).
-    if: github.repository == 'grafana/pyroscope' && github.actor == 'renovate-sh-app[bot]'
+    # on the fixup commit created below (authored by a different app). The
+    # actor is matched by immutable numeric ID (renovate-sh-app[bot]) rather
+    # than by name, which can be re-registered (zizmor bot-conditions).
+    if: github.repository == 'grafana/pyroscope' && github.actor_id == '219655108'
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
