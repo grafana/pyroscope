@@ -1,0 +1,60 @@
+name: renovate-go-work-sync
+
+# Renovate's gomod manager updates one module's go.mod/go.sum at a time and
+# knows nothing about go.work: bumping a single workspace member can leave
+# go.work.sum missing hashes, which fails CI's check/unstaged-changes. The
+# org-wide Renovate config force-disables postUpgradeTasks (allowedCommands
+# is emptied in grafana/deployment_tools), so instead we regenerate the
+# workspace sums here and commit the fix back to the Renovate branch. The
+# commit is created through the GitHub API (planetscale/ghcommit-action, as
+# used across Grafana repos), which signs it on behalf of the app.
+
+on:
+  push:
+    branches:
+      - 'renovate/**'
+
+permissions:
+  contents: read
+  # for minting the app token via OIDC
+  id-token: write
+
+jobs:
+  sync-go-work-sum:
+    # Run only for pushes made by the Renovate app itself: this skips forks,
+    # leaves manually-edited Renovate branches alone, and avoids re-running
+    # on the fixup commit created below (authored by a different app).
+    if: github.repository == 'grafana/pyroscope' && github.actor == 'renovate-sh-app[bot]'
+    runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: 'false'
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version: 1.25.12
+      - name: Sync go workspace sums
+        run: make go/mod
+      - name: Detect changes
+        id: changes
+        run: echo "any=$(git status --porcelain -- go.work go.work.sum go.mod go.sum api/ lidia/ | grep -q . && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - id: get-github-app-token
+        if: steps.changes.outputs.any == 'true'
+        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
+        with:
+          github_app: pyroscope-development-app
+      # Renovate treats branches that other authors have committed to as
+      # modified and stops updating them (rebases drop this commit and
+      # re-trigger the workflow, so the fix re-applies). Once this flow has
+      # proven itself, add the app's git author to gitIgnoredAuthors in
+      # renovate.json so Renovate keeps maintaining fixed-up branches.
+      - name: Commit workspace sum fix
+        if: steps.changes.outputs.any == 'true'
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # v0.2.22
+        with:
+          commit_message: 'chore: sync go workspace sums'
+          repo: ${{ github.repository }}
+          branch: ${{ github.ref_name }}
+          file_pattern: 'go.work go.work.sum go.mod go.sum api/go.mod api/go.sum lidia/go.mod lidia/go.sum'
+        env:
+          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
