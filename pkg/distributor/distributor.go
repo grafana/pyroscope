@@ -957,18 +957,22 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 // sum of all sample values: stacktraces, symbols, and sample labels are
 // dropped, only the series totals are kept.
 func stripProfileToTotals(p *profilev1.Profile) {
-	if len(p.Sample) > 0 {
-		total := &profilev1.Sample{Value: make([]int64, len(p.SampleType))}
-		for _, s := range p.Sample {
-			// Samples that Normalize would drop (value length mismatch,
-			// negative values) must not contribute to the totals.
-			if len(s.Value) != len(total.Value) || hasNegativeValue(s) {
-				continue
-			}
-			for i, v := range s.Value {
-				total.Value[i] += v
-			}
+	var total *profilev1.Sample
+	for _, s := range p.Sample {
+		// Samples that Normalize would drop (value length mismatch,
+		// negative values) must not contribute to the totals.
+		if len(s.Value) != len(p.SampleType) || hasNegativeValue(s) {
+			continue
 		}
+		if total == nil {
+			total = &profilev1.Sample{Value: make([]int64, len(p.SampleType))}
+		}
+		for i, v := range s.Value {
+			total.Value[i] += v
+		}
+	}
+	p.Sample = nil
+	if total != nil {
 		p.Sample = []*profilev1.Sample{total}
 	}
 	p.Location = nil

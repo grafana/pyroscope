@@ -2722,6 +2722,17 @@ func TestStripProfileToTotals_NoSamples(t *testing.T) {
 	assert.Empty(t, p.Location)
 }
 
+func TestStripProfileToTotals_AllSamplesInvalid(t *testing.T) {
+	p := stripTestProfile()
+	p.Sample = []*profilev1.Sample{
+		{LocationId: []uint64{1}, Value: []int64{-1, 100}},
+		{LocationId: []uint64{1}, Value: []int64{7}},
+	}
+	stripProfileToTotals(p)
+	assert.Empty(t, p.Sample)
+	assert.Empty(t, p.Location)
+}
+
 func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distributor, *fakeIngester) {
 	t.Helper()
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
