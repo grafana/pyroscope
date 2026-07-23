@@ -254,8 +254,12 @@ type ProfileEntry struct {
 
 	Timestamp   int64
 	Fingerprint model.Fingerprint
-	Labels      phlaremodel.Labels
-	Row         schemav1.ProfileRow
+	// Labels' backing array is reused by the row iterator on advance, but
+	// the label pairs themselves are immutable: consumers that retain
+	// labels beyond the current row must copy the slice (shallow copy is
+	// sufficient), and must never modify the pairs.
+	Labels phlaremodel.Labels
+	Row    schemav1.ProfileRow
 }
 
 func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], error) {

@@ -21,7 +21,9 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/metrics"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetrics"
 )
 
@@ -340,4 +342,73 @@ func (*stringExporter) Flush() {}
 
 func (e *stringExporter) String() string {
 	return e.output
+}
+
+// collectSeriesLabels reads the TSDB index of every named dataset in the
+// given blocks and returns the labels of each series, keyed by
+// (tenant, dataset, fingerprint). Anonymous datasets (the per-tenant
+// dataset-index pseudo-dataset) are skipped: they aggregate series of the
+// tenant's real datasets and would double-count them.
+func collectSeriesLabels(ctx context.Context, t *testing.T, storage objstore.Bucket, metas []*metastorev1.BlockMeta) map[string]string {
+	out := make(map[string]string)
+	for _, md := range metas {
+		obj := block.NewObject(storage, md)
+		require.NoError(t, obj.Open(ctx))
+		for _, dsMeta := range md.Datasets {
+			ds := block.NewDataset(dsMeta, obj)
+			if ds.Name() == "" {
+				continue
+			}
+			require.NoError(t, ds.Open(ctx, block.SectionTSDB))
+			k, v := index.AllPostingsKey()
+			postings, err := ds.Index().Postings(k, nil, v)
+			require.NoError(t, err)
+			var lbls phlaremodel.Labels
+			var chks []index.ChunkMeta
+			for postings.Next() {
+				fp, err := ds.Index().Series(postings.At(), &lbls, &chks)
+				require.NoError(t, err)
+				key := fmt.Sprintf("%s/%s/%016x", ds.TenantID(), ds.Name(), fp)
+				val := phlaremodel.LabelPairsString(lbls)
+				if prev, ok := out[key]; ok {
+					require.Equal(t, prev, val, "same series with diverging labels: %s", key)
+				}
+				out[key] = val
+			}
+			require.NoError(t, postings.Err())
+		}
+		require.NoError(t, obj.Close())
+	}
+	return out
+}
+
+// Test_Compact_PreservesSeriesLabels verifies, end to end, that compaction
+// writes every input series' labels to the output block unmodified: the
+// (tenant, dataset, fingerprint) -> labels mapping of the compacted block
+// must equal the union of the source blocks'. This exercises the expectation
+// that ProfileEntry.Labels are not mutated.
+func Test_Compact_PreservesSeriesLabels(t *testing.T) {
+	ctx := context.Background()
+	bucket, _ := testutil.NewFilesystemBucket(t, ctx, "testdata")
+
+	var resp metastorev1.GetBlockMetadataResponse
+	raw, err := os.ReadFile("testdata/block-metas.json")
+	require.NoError(t, err)
+	require.NoError(t, protojson.Unmarshal(raw, &resp))
+
+	expected := collectSeriesLabels(ctx, t, bucket, resp.Blocks)
+	require.NotEmpty(t, expected)
+
+	dst, tempdir := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
+	compacted, err := block.Compact(ctx, resp.Blocks, bucket,
+		block.WithCompactionDestination(dst),
+		block.WithCompactionTempDir(tempdir),
+		block.WithCompactionObjectOptions(
+			block.WithObjectDownload(filepath.Join(tempdir, "source")),
+			block.WithObjectMaxSizeLoadInMemory(0)),
+	)
+	require.NoError(t, err)
+
+	actual := collectSeriesLabels(ctx, t, dst, compacted)
+	require.Equal(t, expected, actual)
 }

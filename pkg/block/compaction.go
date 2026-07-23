@@ -510,7 +510,7 @@ type seriesLabels struct {
 
 func (rw *indexRewriter) rewriteRow(e ProfileEntry) {
 	if rw.previousFp != e.Fingerprint || len(rw.series) == 0 {
-		series := e.Labels.Clone()
+		series := slices.Clone(e.Labels)
 		for _, l := range series {
 			rw.symbols[l.Name] = struct{}{}
 			rw.symbols[l.Value] = struct{}{}
