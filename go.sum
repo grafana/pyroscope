@@ -421,8 +421,6 @@ github.com/grafana/pyroscope-go/godeltaprof v0.1.11 h1:el5LYpXissAiCKZ5/6yjlr6mh
 github.com/grafana/pyroscope-go/godeltaprof v0.1.11/go.mod h1:jl1V8M4cWsXciROCPIDDG7CtjSjT/ECbp6eLVuMxYRI=
 github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3 h1:GtwQDlBz8aJHMy2Ko28UDRGgGzi7v4Vf20+ZyXaGy7M=
 github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3/go.mod h1:nfbW6/4ke3ywlqLb+Zgr9t1z9Zv3m+2ImUp+vbkzHpc=
-github.com/grafana/pyroscope/lidia v0.0.2 h1:DsZiUjWfB+6w9wKGosEQQTFuDvkay7kUECw3Os7Xno0=
-github.com/grafana/pyroscope/lidia v0.0.2/go.mod h1:4AxmVrn7RJPBStqSw+0erQN2kr+I6MW6LmaawOM8Nlo=
 github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 h1:cLN4IBkmkYZNnk7EAJ0BHIethd+J6LqxFNw5mSiI2bM=
 github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDaL56wXCB/5+wF6uHfaI=
