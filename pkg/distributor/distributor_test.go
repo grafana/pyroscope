@@ -2864,3 +2864,59 @@ func TestStripProfileToTotals_SampleLabels(t *testing.T) {
 	assert.Empty(t, p.Mapping)
 	assert.Equal(t, []string{"", "samples", "count", "cpu", "nanoseconds", "span_id", "abc", "def"}, p.StringTable)
 }
+
+func TestPushSeries_KeepStrippedProfiles_SampleSeries(t *testing.T) {
+	d, ing := newStripTestDistributor(t, true)
+
+	prof := stripTestProfile()
+	// Indices into the extended string table: user_id=9, u1=10, u2=11, bytes=12.
+	prof.StringTable = append(prof.StringTable, "user_id", "u1", "u2", "bytes")
+	prof.Sample = []*profilev1.Sample{
+		{LocationId: []uint64{1}, Value: []int64{10, 1000}, Label: []*profilev1.Label{
+			{Key: 9, Str: 10},
+			{Key: 12, Num: 42},
+		}},
+		{LocationId: []uint64{2}, Value: []int64{5, 500}, Label: []*profilev1.Label{
+			{Key: 9, Str: 11},
+		}},
+	}
+
+	req := &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+		},
+		Profile: pprof2.RawFromProto(prof),
+	}
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	byUser := make(map[string]*pushv1.RawProfileSeries)
+	for _, r := range ing.requests {
+		for _, s := range r.Series {
+			byUser[phlaremodel.Labels(s.Labels).Get("user_id")] = s
+		}
+	}
+	require.Len(t, byUser, 2)
+
+	wantValues := map[string][]int64{
+		"u1": {10, 1000},
+		"u2": {5, 500},
+	}
+	for user, want := range wantValues {
+		series := byUser[user]
+		require.NotNil(t, series, "missing series for user_id=%s", user)
+		assert.Equal(t, "true", phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameSampled))
+
+		received, err := pprof2.RawFromBytes(series.Samples[0].RawProfile)
+		require.NoError(t, err)
+		require.Len(t, received.Sample, 1)
+		assert.Equal(t, want, received.Sample[0].Value)
+		assert.Empty(t, received.Sample[0].LocationId)
+		assert.Empty(t, received.Sample[0].Label)
+		assert.NotContains(t, received.StringTable, "bytes")
+	}
+}

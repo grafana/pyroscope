@@ -962,7 +962,10 @@ func stripProfileToTotals(p *profilev1.Profile) {
 	groups := pprof.GroupSamplesByLabels(p)
 	totals := make([]*profilev1.Sample, len(groups))
 	for i, g := range groups {
-		total := &profilev1.Sample{Value: make([]int64, len(p.SampleType)), Label: g.Labels}
+		// The pprof split reads label slices beyond len(): do not alias g.Labels.
+		labels := make([]*profilev1.Label, len(g.Labels))
+		copy(labels, g.Labels)
+		total := &profilev1.Sample{Value: make([]int64, len(p.SampleType)), Label: labels}
 		for _, s := range g.Samples {
 			for j, v := range s.Value {
 				total.Value[j] += v
