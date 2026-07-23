@@ -1,13 +1,15 @@
 package symbolref_test
 
-// Benchmarks below cover Table's intern/merge throughput and
-// ResultBuilder's marshal-time compaction. Rebuild's own memory/throughput
-// benchmark, and a wire-size-vs-literal-encoding benchmark, are deferred
-// until Rebuild is implemented.
+// Benchmarks below cover Table's intern/merge throughput, ResultBuilder's
+// marshal-time compaction, Rebuild's throughput on a deferred-truncation-
+// shaped tree, and the interned wire encoding's size relative to the
+// design's literal (repeated build-ID string per reference) encoding.
 
 import (
 	"fmt"
 	"testing"
+
+	"google.golang.org/protobuf/proto"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -102,4 +104,86 @@ func BenchmarkResultBuilderBuild(b *testing.B) {
 	}
 
 	b.ReportMetric(float64(numNodes), "input_size")
+}
+
+// BenchmarkRebuild is the deferred-truncation guardrail baseline: it
+// rebuilds a large tree whose table has never been truncated (the worst
+// case a query plan carrying unresolved locations through every merge
+// allows), against a resolve stub with a realistic hit/fallback mix (1 in
+// 10 addresses fails to resolve).
+func BenchmarkRebuild(b *testing.B) {
+	const (
+		numNodes      = 1_000_000
+		numBuildIDs   = 10
+		fallbackEvery = 10
+	)
+	table := symbolref.NewTable()
+	tree := buildBenchTree(table, numNodes, numBuildIDs, 0)
+	rb := table.ResultBuilder()
+	treeBytes := tree.Bytes(0, rb.KeepRef)
+	pb := new(queryv1.SymbolRefTable)
+	rb.Build(pb)
+
+	resolve := func(buildID string, addr uint64) []symbolref.Frame {
+		if addr%fallbackEvery == 0 {
+			return nil
+		}
+		return []symbolref.Frame{{Name: "resolved_" + buildID}}
+	}
+
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := symbolref.Rebuild(treeBytes, pb, resolve, 0); err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	b.ReportMetric(float64(numNodes), "input_size")
+}
+
+// BenchmarkWireSize reports the interned SymbolRefTable wire encoding's size
+// against the design's literal (repeated build-ID string + address per
+// reference, undeduplicated) encoding, for an eBPF-shaped fixture: 5 build
+// IDs, 50,000 addresses each, with realistic reuse of the same physical
+// address across several different stacks. It runs once (no b.Loop) and
+// reports a size ratio rather than a timing.
+func BenchmarkWireSize(b *testing.B) {
+	const (
+		numBuildIDs        = 5
+		addressesPerID     = 50_000
+		referencesPerEntry = 4 // realistic reuse: each address seen under several stacks
+	)
+
+	table := symbolref.NewTable()
+	buildIDLen := 0
+	for bi := range numBuildIDs {
+		buildID := fmt.Sprintf("%040x", bi) // GNU build-ID-shaped: 40 hex chars
+		binaryName := fmt.Sprintf("binary-%d", bi)
+		buildIDLen = len(buildID)
+		for a := range addressesPerID {
+			table.InternUnresolved(buildID, binaryName, uint64(a))
+		}
+	}
+
+	rb := table.ResultBuilder()
+	pb := new(queryv1.SymbolRefTable)
+	rb.Build(pb)
+
+	internedBytes, err := proto.Marshal(pb)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	entryCount := numBuildIDs * addressesPerID
+	referenceCount := entryCount * referencesPerEntry
+
+	// Reference computation of the design's literal encoding: a build ID
+	// string and an 8-byte address repeated once per tree reference,
+	// undeduplicated.
+	literalBytes := (buildIDLen + 8) * referenceCount
+
+	b.ReportMetric(float64(entryCount), "input_size")
+	b.ReportMetric(float64(len(internedBytes))/float64(entryCount), "interned_bytes_per_ref")
+	b.ReportMetric(float64(literalBytes)/float64(referenceCount), "literal_bytes_per_ref")
+	b.ReportMetric(float64(literalBytes)/float64(len(internedBytes)), "size_ratio")
 }

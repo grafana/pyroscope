@@ -2,6 +2,7 @@ package querybackend
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -9,9 +10,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
 	parquetquery "github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
 	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
@@ -47,10 +51,9 @@ func treeSymbolMode(t *queryv1.TreeQuery) (queryv1.SymbolMode, error) {
 	switch mode {
 	case queryv1.SymbolMode_SYMBOL_MODE_UNSPECIFIED:
 		return queryv1.SymbolMode_SYMBOL_MODE_NAME, nil
-	case queryv1.SymbolMode_SYMBOL_MODE_NAME, queryv1.SymbolMode_SYMBOL_MODE_FULL:
+	case queryv1.SymbolMode_SYMBOL_MODE_NAME, queryv1.SymbolMode_SYMBOL_MODE_FULL, queryv1.SymbolMode_SYMBOL_MODE_REFS:
 		return mode, nil
 	default:
-		// SYMBOL_MODE_REFS is schema-defined but not implemented here yet.
 		return 0, fmt.Errorf("unsupported symbol_mode %s", mode)
 	}
 }
@@ -128,6 +131,9 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	if query.Tree.StackTraceSelector != nil {
 		resolverOptions = append(resolverOptions, symdb.WithResolverStackTraceSelector(query.Tree.StackTraceSelector))
 	}
+	if mode == queryv1.SymbolMode_SYMBOL_MODE_REFS {
+		resolverOptions = append(resolverOptions, symdb.WithResolverSymbolRefCap(int(query.Tree.GetMaxUnresolvedLocations())))
+	}
 
 	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
@@ -186,6 +192,13 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return resp, nil
 	}
 
+	// A dataset not labeled unsymbolized has nothing to defer resolution
+	// for: keep the existing FunctionName path unconditionally, same as a
+	// non-symbol-ref query.
+	if mode == queryv1.SymbolMode_SYMBOL_MODE_REFS && datasetUnsymbolized(q.obj.Metadata(), q.ds.Metadata()) {
+		return queryTreeSymbolRefs(query, resolver)
+	}
+
 	tree, err := resolver.Tree()
 	if err != nil {
 		return nil, err
@@ -200,6 +213,69 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	return resp, nil
 }
 
+// queryTreeSymbolRefs builds the report for a dataset labeled unsymbolized:
+// the resolver defers resolution of frames it cannot symbolize locally into
+// a SymbolRefTable instead of dropping or approximating them. If none of
+// the selected samples actually resolved to an unresolved location, the
+// dataset falls back to the plain FunctionName path, since there is
+// nothing left to defer.
+func queryTreeSymbolRefs(query *queryv1.Query, resolver *symdb.Resolver) (*queryv1.Report, error) {
+	tree, rb, err := resolver.SymbolRefTree()
+	if err != nil {
+		return nil, err
+	}
+
+	// tree.Bytes must run before rb.Build: Build only reports the refs
+	// KeepRef (invoked from Bytes as it marshals) has observed as reachable.
+	treeBytes := tree.Bytes(0, rb.KeepRef)
+	symbolRefs := new(queryv1.SymbolRefTable)
+	rb.Build(symbolRefs)
+
+	if len(symbolRefs.UnresolvedBuildId) == 0 {
+		// Labeled unsymbolized, but nothing the query selected actually
+		// resolved to an unresolved location (e.g. rollout skew, or a
+		// selector that only matched already-resolved stacks): convert back
+		// to a plain, truncatable FunctionName report via the same rb,
+		// rather than re-resolving the stack traces from scratch.
+		plain := locationRefTreeToFunctionNameTree(tree, rb)
+		return &queryv1.Report{
+			Tree: &queryv1.TreeReport{
+				Query: query.Tree.CloneVT(),
+				Tree:  plain.Bytes(query.Tree.GetMaxNodes(), nil),
+			},
+		}, nil
+	}
+
+	return &queryv1.Report{
+		Tree: &queryv1.TreeReport{
+			Query:      query.Tree.CloneVT(),
+			Tree:       treeBytes,
+			SymbolRefs: symbolRefs,
+		},
+	}, nil
+}
+
+// datasetUnsymbolized reports whether any of the dataset's label sets
+// carries __unsymbolized__="true". A compacted dataset accumulates the
+// label sets of all its sources, so every set must be checked, not just
+// the first.
+func datasetUnsymbolized(md *metastorev1.BlockMeta, ds *metastorev1.Dataset) bool {
+	pairs := metadata.LabelPairs(ds.Labels)
+	for pairs.Next() {
+		p := pairs.At()
+		for k := 0; k+1 < len(p); k += 2 {
+			n, v := p[k], p[k+1]
+			if n < 0 || int(n) >= len(md.StringTable) || v < 0 || int(v) >= len(md.StringTable) {
+				continue
+			}
+			if md.StringTable[n] == metadata.LabelNameUnsymbolized && md.StringTable[v] == "true" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type treeAggregator struct {
 	init  sync.Once
 	mode  queryv1.SymbolMode
@@ -209,6 +285,9 @@ type treeAggregator struct {
 	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
 	symbolLock   sync.Mutex
 	symbolMerger *symdb.SymbolMerger
+
+	symbolRefTable *symbolref.Table
+	symbolRefTree  *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
 }
 
 func newTreeAggregator(*queryv1.InvokeRequest) aggregator { return new(treeAggregator) }
@@ -219,7 +298,37 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	if err != nil {
 		return err
 	}
-	if mode == queryv1.SymbolMode_SYMBOL_MODE_FULL {
+	switch mode {
+	case queryv1.SymbolMode_SYMBOL_MODE_REFS:
+		a.init.Do(func() {
+			a.mode = mode
+			a.symbolRefTable = symbolref.NewTable()
+			a.symbolRefTree = model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
+			a.query = r.Query.CloneVT()
+		})
+		if r.SymbolRefs == nil {
+			// A partial from a dataset that took the plain FunctionName
+			// path (native or degenerate, see queryTree): absorb it into
+			// the shared ref space instead of merging it as a plain tree.
+			// Absorption interns resolved names only, so it cannot grow
+			// the unresolved count.
+			absorbed, err := absorbPlainTree(a.symbolRefTable, r.Tree)
+			if err != nil {
+				return err
+			}
+			a.symbolRefTree.MergeTree(absorbed)
+			return nil
+		}
+		remap, err := a.symbolRefTable.Add(r.SymbolRefs)
+		if err != nil {
+			return err
+		}
+		if err := a.checkUnresolvedLimit(); err != nil {
+			return err
+		}
+		return a.symbolRefTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(remap))
+
+	case queryv1.SymbolMode_SYMBOL_MODE_FULL:
 		a.init.Do(func() {
 			a.mode = mode
 			a.lrTree = model.NewTreeMerger[model.LocationRefName, model.LocationRefNameI]()
@@ -233,14 +342,30 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 			return err
 		}
 		return a.lrTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(adder))
-	}
 
-	a.init.Do(func() {
-		a.mode = mode
-		a.tree = model.NewTreeMerger[model.FunctionName, model.FunctionNameI]()
-		a.query = r.Query.CloneVT()
-	})
-	return a.tree.MergeTreeBytes(r.Tree)
+	default:
+		a.init.Do(func() {
+			a.mode = mode
+			a.tree = model.NewTreeMerger[model.FunctionName, model.FunctionNameI]()
+			a.query = r.Query.CloneVT()
+		})
+		return a.tree.MergeTreeBytes(r.Tree)
+	}
+}
+
+// checkUnresolvedLimit fails the query once the merged table's distinct
+// unresolved locations exceed the query's limit: aggregation memory is
+// bounded by the same per-tenant knob that bounds each dataset's build
+// (see symdb.WithResolverSymbolRefCap).
+func (a *treeAggregator) checkUnresolvedLimit() error {
+	limit := a.query.GetMaxUnresolvedLocations()
+	if limit <= 0 {
+		return nil
+	}
+	if n := a.symbolRefTable.UnresolvedCount(); int64(n) > limit {
+		return fmt.Errorf("%w (limit %d)", symdb.ErrTooManyUnresolvedLocations, limit)
+	}
+	return nil
 }
 
 func (a *treeAggregator) build() *queryv1.Report {
@@ -250,14 +375,87 @@ func (a *treeAggregator) build() *queryv1.Report {
 		},
 	}
 
-	if a.mode == queryv1.SymbolMode_SYMBOL_MODE_FULL {
+	switch a.mode {
+	case queryv1.SymbolMode_SYMBOL_MODE_REFS:
+		if !a.symbolRefTable.HasUnresolved() {
+			// Every partial absorbed cleanly (native datasets, or degenerate
+			// ones): there is nothing left to defer, so collapse back to a
+			// plain, truncatable FunctionName report instead of forcing the
+			// SymbolRefTable format on a query that never needed it. This
+			// keeps a symbol-ref query over an otherwise fully-symbolized
+			// tenant no more expensive than a plain one, and matches
+			// queryTree's own degenerate case (see queryTreeSymbolRefs).
+			plain := locationRefTreeToFunctionNameTree(a.symbolRefTree.Tree(), a.symbolRefTable.ResultBuilder())
+			result.Tree.Tree = plain.Bytes(a.query.GetMaxNodes(), nil)
+			return result
+		}
+		// A tree with unresolved entries must not be truncated before those
+		// are resolved: truncation is deferred to a later symbolref.Rebuild
+		// call, once resolution has happened.
+		rb := a.symbolRefTable.ResultBuilder()
+		result.Tree.Tree = a.symbolRefTree.Tree().Bytes(0, rb.KeepRef)
+		result.Tree.SymbolRefs = new(queryv1.SymbolRefTable)
+		rb.Build(result.Tree.SymbolRefs)
+		return result
+
+	case queryv1.SymbolMode_SYMBOL_MODE_FULL:
 		builder := a.symbolMerger.ResultBuilder()
 		result.Tree.Tree = a.lrTree.Tree().Bytes(a.query.GetMaxNodes(), builder.KeepSymbol)
 		result.Tree.Symbols = new(queryv1.TreeSymbols)
 		builder.Build(result.Tree.Symbols)
 		return result
-	}
 
-	result.Tree.Tree = a.tree.Tree().Bytes(a.query.GetMaxNodes(), nil)
-	return result
+	default:
+		result.Tree.Tree = a.tree.Tree().Bytes(a.query.GetMaxNodes(), nil)
+		return result
+	}
+}
+
+// absorbPlainTree unmarshals a plain FunctionNameTree and re-inserts every
+// stack into a LocationRefNameTree via dst.InternName. It maps
+// model.OtherFunctionName to model.OtherLocationRef directly rather than
+// through InternName, since both are the truncation sentinel in their
+// respective node-name spaces.
+func absorbPlainTree(dst *symbolref.Table, plainTreeBytes []byte) (*model.LocationRefNameTree, error) {
+	plain, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](plainTreeBytes)
+	if err != nil {
+		return nil, err
+	}
+	absorbed := new(model.LocationRefNameTree)
+	plain.IterateStacks(func(_ model.FunctionName, self int64, stack []model.FunctionName) {
+		slices.Reverse(stack)
+		refs := make([]model.LocationRefName, len(stack))
+		for i, n := range stack {
+			if n == model.OtherFunctionName {
+				refs[i] = model.OtherLocationRef
+				continue
+			}
+			refs[i] = dst.InternName(string(n))
+		}
+		absorbed.InsertStack(self, refs...)
+	})
+	return absorbed, nil
+}
+
+// locationRefTreeToFunctionNameTree converts tree into a FunctionNameTree
+// in a single pass, resolving every ref to its display name through
+// rb.NameOf. The caller must ensure rb's table has no unresolved entries
+// reachable from tree; a violating ref still renders — as its
+// binary!0xaddr fallback — rather than dropping the frame.
+func locationRefTreeToFunctionNameTree(tree *model.LocationRefNameTree, rb *symbolref.ResultBuilder) *model.FunctionNameTree {
+	out := new(model.FunctionNameTree)
+	var names []model.FunctionName
+	tree.IterateStacks(func(_ model.LocationRefName, self int64, stack []model.LocationRefName) {
+		names = names[:0]
+		// stack is leaf-first; InsertStack wants root-first.
+		for i := len(stack) - 1; i >= 0; i-- {
+			if stack[i] == model.OtherLocationRef {
+				names = append(names, model.OtherFunctionName)
+			} else {
+				names = append(names, model.FunctionName(rb.NameOf(stack[i])))
+			}
+		}
+		out.InsertStack(self, names...)
+	})
+	return out
 }

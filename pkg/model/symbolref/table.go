@@ -324,6 +324,25 @@ func (rb *ResultBuilder) KeepRef(ref model.LocationRefName) model.LocationRefNam
 	}
 }
 
+// NameOf returns ref's display name from the snapshot: the interned name of
+// a resolved ref, or the FallbackSymbolName rendering of an unresolved
+// entry's (binary name, address). Refs the snapshot does not describe —
+// model.OtherLocationRef and out-of-range values — render as the empty
+// string; a caller that special-cases the truncation sentinel must do so
+// before calling. ref is Table's internal encoding, as with KeepRef.
+func (rb *ResultBuilder) NameOf(ref model.LocationRefName) string {
+	switch {
+	case ref >= 0 && int(ref) < rb.namesLen:
+		return rb.namesSl[ref]
+	case ref <= -2:
+		if idx := -2 - int(ref); idx < len(rb.unresolvedBin) {
+			b := rb.binaries[rb.unresolvedBin[idx]]
+			return FallbackSymbolName(b.name, rb.unresolvedAd[idx])
+		}
+	}
+	return ""
+}
+
 // Build writes pb.Names, pb.BuildIds, pb.BinaryNames, pb.UnresolvedBuildId
 // and pb.UnresolvedAddress from the snapshot and returns pb, allocating the
 // returned queryv1.SymbolRefTable when pb == nil. Every interned name is
