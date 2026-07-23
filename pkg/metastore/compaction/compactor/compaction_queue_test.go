@@ -229,7 +229,9 @@ func TestBlockQueue_FlushByAge(t *testing.T) {
 		batches = append(batches, b.blocks...)
 	}
 
-	expected := []blockEntry{{"1", 1}, {"2", 2}, {"3", 3}, {"4", 4}}
+	expected := []blockEntry{
+		{id: "1", index: 1}, {id: "2", index: 2}, {id: "3", index: 3}, {id: "4", index: 4},
+	}
 	// "5" remains staged as we need another push to evict it.
 	assert.Equal(t, expected, batches)
 
@@ -293,6 +295,15 @@ func TestBlockQueue_BatchIterator(t *testing.T) {
 
 	_, ok := iter.next()
 	assert.False(t, ok)
+}
+
+func TestBlockQueue_Push_PropagatesSize(t *testing.T) {
+	q := newCompactionQueue(Config{Levels: []LevelConfig{{MaxBlocks: 10}}}, nil)
+	q.push(compaction.BlockEntry{Tenant: "A", Shard: 1, Level: 0, Index: 1, ID: "1", Size: 42})
+
+	staged := q.blockQueue(0).stagedBlocks(compactionKey{tenant: "A", shard: 1, level: 0})
+	require.Len(t, staged.batch.blocks, 1)
+	require.Equal(t, uint64(42), staged.batch.blocks[0].size)
 }
 
 func remove(q *blockQueue, key compactionKey, block ...string) {

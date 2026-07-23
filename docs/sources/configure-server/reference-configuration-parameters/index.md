@@ -1334,6 +1334,14 @@ index:
 
 [levels: <list of LevelConfigs> | default = ]
 
+# (advanced) Maximum estimated total input size, in bytes, of a compaction job
+# for levels above 0. A job completes once either the block count or this byte
+# limit is reached, whichever happens first; a single block already larger than
+# this limit still forms a valid, single-block job. Does not apply to level 0. 0
+# disables the size-based limit.
+# CLI flag: -metastore.compaction-max-job-bytes
+[compaction_max_job_bytes: <int> | default = 2147483648]
+
 [cleanupbatchsize: <int> | default = ]
 
 [cleanupdelay: <duration> | default = ]

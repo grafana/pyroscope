@@ -107,9 +107,17 @@ sequenceDiagram
 # Job Planner
 
 The compactor is responsible for maintaining a queue of source blocks eligible for compaction. Currently, this queue
-is a simple doubly-linked FIFO structure, populated with new block batches as they are added to the index. In the
-current implementation, a new compaction job is created once the sufficient number of blocks have been enqueued.
+is a simple doubly-linked FIFO structure, populated with new block batches as they are added to the index.
 Compaction jobs are planned on demand when requests are received from the compaction service.
+
+A job is complete once any of the following is reached:
+
+1. Block count: the level's `MaxBlocks` threshold.
+2. Total input size: the accumulated on-disk size (`BlockMeta.Size`) of the job's source blocks reaches
+   `-metastore.compaction-max-job-bytes` (default 2 GiB, levels above 0 only, 0 disables). Compaction worker
+   memory scales with job input size rather than block count; this bounds it. A single block larger than the
+   limit still forms a valid single-block job, and blocks with no recorded size count as 0 bytes.
+3. Age: the level's `MaxAge` threshold forces completion of a partial job.
 
 The queue is segmented by the `Tenant`, `Shard`, and `Level` attributes of the block metadata entries, meaning that
 a block compaction never crosses these boundaries. This segmentation helps avoid unnecessary compactions of unrelated

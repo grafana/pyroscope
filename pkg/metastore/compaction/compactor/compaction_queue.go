@@ -88,6 +88,7 @@ type blockRef struct {
 type blockEntry struct {
 	id    string // Block ID.
 	index uint64 // Index of the command in the raft log.
+	size  uint64 // Estimated on-disk size of the block, in bytes.
 }
 
 type batch struct {
@@ -142,6 +143,7 @@ func (q *compactionQueue) push(e compaction.BlockEntry) bool {
 	pushed := staged.push(blockEntry{
 		id:    e.ID,
 		index: e.Index,
+		size:  e.Size,
 	})
 	heap.Fix(level.updates, staged.heapIndex)
 	level.flushOldest(e.AppendedAt)
@@ -479,6 +481,13 @@ func (it *blockIter) more() bool {
 }
 
 func (it *blockIter) peek() (string, bool) {
+	entry, ok := it.peekEntry()
+	return entry.id, ok
+}
+
+// peekEntry returns the next unvisited block entry without advancing the
+// iterator.
+func (it *blockIter) peekEntry() (blockEntry, bool) {
 	for it.batch != nil {
 		if it.i >= len(it.batch.blocks) {
 			it.setBatch(it.batch.next)
@@ -489,9 +498,9 @@ func (it *blockIter) peek() (string, bool) {
 			it.i++
 			continue
 		}
-		return entry.id, true
+		return entry, true
 	}
-	return "", false
+	return blockEntry{}, false
 }
 
 func (it *blockIter) advance() {

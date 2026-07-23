@@ -49,6 +49,7 @@ type jobPlan struct {
 	name       string
 	minT       int64
 	maxT       int64
+	bytes      uint64
 	tombstones []*metastorev1.Tombstones
 	blocks     []string
 }
@@ -95,7 +96,7 @@ func (p *plan) nextJob() *jobPlan {
 			// previously, the iterator will proceed to the next batch with
 			// this compaction key. The call to peek() will return false, if
 			// only no blocks eligible for compaction are left in the queue.
-			block, found := p.blocks.peek()
+			entry, found := p.blocks.peekEntry()
 			if !found {
 				// No more blocks with this compaction key at the level.
 				// We may want to force compaction even if the current job
@@ -107,7 +108,7 @@ func (p *plan) nextJob() *jobPlan {
 				force = p.compactor.config.exceedsMaxAge(b, p.now)
 				break
 			}
-			if !job.tryAdd(block) {
+			if !job.tryAdd(entry) {
 				// We may not want to add a bock to the job if it extends the
 				// compacted block time range beyond the desired limit.
 				// In this case, we need to force compaction of incomplete job.
@@ -128,7 +129,7 @@ func (p *plan) nextJob() *jobPlan {
 			// but if the batch is not empty (i.e., we could not put all
 			// the blocks into the job), we must finish it first.
 			if p.blocks.more() {
-				// There are more blocks in the current batch: p.blocks.peek()
+				// There are more blocks in the current batch: p.blocks.peekEntry()
 				// reported a block is found, but we could not add it to the job.
 				//
 				// We need to reset the batch iterator to continue from the oldest
@@ -139,7 +140,7 @@ func (p *plan) nextJob() *jobPlan {
 				// Block iterator ensures that each block is only accessed once.
 				//
 				// If the queue that b points to has any unvisited blocks,
-				// p.blocks.peek() will return them. Otherwise, we continue
+				// p.blocks.peekEntry() will return them. Otherwise, we continue
 				// iterating over the in-order queue of batches (different
 				// compaction queues have distinct compaction keys).
 				//
@@ -187,14 +188,16 @@ func (job *jobPlan) reset(k compactionKey) {
 	job.blocks = job.blocks[:0]
 	job.minT = math.MaxInt64
 	job.maxT = math.MinInt64
+	job.bytes = 0
 }
 
-func (job *jobPlan) tryAdd(block string) bool {
-	t := util.ULIDStringUnixNano(block)
+func (job *jobPlan) tryAdd(entry blockEntry) bool {
+	t := util.ULIDStringUnixNano(entry.id)
 	if len(job.blocks) > 0 && !job.isInAllowedTimeRange(t) {
 		return false
 	}
-	job.blocks = append(job.blocks, block)
+	job.blocks = append(job.blocks, entry.id)
+	job.bytes += entry.size
 	job.maxT = max(job.maxT, t)
 	job.minT = min(job.minT, t)
 	return true
@@ -216,13 +219,18 @@ func (job *jobPlan) isInAllowedTimeRange(t int64) bool {
 }
 
 func (job *jobPlan) isComplete() bool {
-	return uint(len(job.blocks)) >= job.config.maxBlocks(job.level)
+	if uint(len(job.blocks)) >= job.config.maxBlocks(job.level) {
+		return true
+	}
+	maxBytes := job.config.maxBytes(job.level)
+	return maxBytes > 0 && job.bytes >= maxBytes
 }
 
 func (job *jobPlan) finalize() {
 	nameJob(job)
 	job.minT = 0
 	job.maxT = 0
+	job.bytes = 0
 	job.config = nil
 }
 
