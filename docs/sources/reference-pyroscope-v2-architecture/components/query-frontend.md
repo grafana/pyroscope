@@ -51,3 +51,11 @@ The query-frontend can scale independently of the write path:
 ## Load balancing
 
 Query-frontends can be load balanced using standard HTTP load balancers. Each instance can handle any query, making round-robin load balancing effective.
+
+## Symbolization of native profiles
+
+Profiles collected from native code (for example, eBPF-based profiling) can contain stack frames that only carry a build ID and an address, without a resolved function name. Pyroscope resolves these frames using [debuginfod](https://sourceware.org/elfutils/Debuginfod.html): it fetches debug information for the build ID, extracts function names from it, and caches the result in object storage for reuse.
+
+Symbolization is disabled by default. `-symbolizer.enabled=true` turns it on — the flag sets the default for all tenants and can be overridden per tenant — and `-symbolizer.debuginfod-url` selects the debuginfod server to fetch debug information from (default `https://debuginfod.elfutils.org`).
+
+With symbolization enabled, the per-tenant flag `symbolizer.symbol-ref-trees-enabled` (default `false`) makes the query backend emit tree-query results with unresolved native frames carried in the tree itself, and has the query frontend resolve them once after merging results from all query backends. Resolution of a single binary's addresses is bounded by `symbolizer.resolve-timeout` (default `20s`).
