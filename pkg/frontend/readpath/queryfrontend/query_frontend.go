@@ -23,6 +23,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
@@ -40,6 +41,10 @@ type QueryBackend interface {
 
 type Symbolizer interface {
 	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
+	Resolve(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error)
+	// ResolveConcurrency is the maximum number of concurrent Resolve calls
+	// the symbolizer allows.
+	ResolveConcurrency() int
 }
 
 // DiagnosticsStore provides the ability to store query diagnostics.
@@ -65,6 +70,8 @@ type QueryFrontend struct {
 type queryFrontendMetrics struct {
 	fetchedBytesTotal       *prometheus.CounterVec
 	estimationAccuracyRatio prometheus.Histogram
+
+	symbolRefLocationsTotal *prometheus.CounterVec
 }
 
 func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
@@ -99,9 +106,22 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			NativeHistogramMaxBucketNumber:  100,
 			NativeHistogramMinResetDuration: time.Hour,
 		}),
+		symbolRefLocationsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Subsystem: "query_frontend",
+				Name:      "symbol_ref_locations_total",
+				Help:      "Total number of unresolved symbol-ref locations processed by the query frontend, by outcome (resolved, a symbolizer miss, or a per-binary resolve timeout).",
+			},
+			[]string{"result"},
+		),
 	}
 	if reg != nil {
-		reg.MustRegister(m.fetchedBytesTotal, m.estimationAccuracyRatio)
+		reg.MustRegister(
+			m.fetchedBytesTotal,
+			m.estimationAccuracyRatio,
+			m.symbolRefLocationsTotal,
+		)
 	}
 	return m
 }

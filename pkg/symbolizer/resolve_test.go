@@ -158,6 +158,25 @@ func TestResolveContextCancellation(t *testing.T) {
 	})
 }
 
+func TestResolveConcurrency(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured int
+		want       int
+	}{
+		{"positive value passes through", 4, 4},
+		{"zero normalizes to default", 0, defaultMaxDebuginfodConcurrency},
+		{"negative normalizes to default", -1, defaultMaxDebuginfodConcurrency},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, _, _ := newSymbolizerTest(t, nil)
+			s.cfg.MaxDebuginfodConcurrency = tt.configured
+			require.Equal(t, tt.want, s.ResolveConcurrency())
+		})
+	}
+}
+
 func TestResolveInvalidBuildID(t *testing.T) {
 	s, mockClient, mockBucket := newSymbolizerTest(t, nil)
 	ctx := tenant.InjectTenantID(context.Background(), "tenant")

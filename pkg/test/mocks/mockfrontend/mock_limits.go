@@ -481,6 +481,52 @@ func (_c *MockLimits_QueryTreeEnabled_Call) RunAndReturn(run func(string) bool) 
 	return _c
 }
 
+// SymbolRefTreesEnabled provides a mock function with given fields: _a0
+func (_m *MockLimits) SymbolRefTreesEnabled(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SymbolRefTreesEnabled")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockLimits_SymbolRefTreesEnabled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SymbolRefTreesEnabled'
+type MockLimits_SymbolRefTreesEnabled_Call struct {
+	*mock.Call
+}
+
+// SymbolRefTreesEnabled is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) SymbolRefTreesEnabled(_a0 interface{}) *MockLimits_SymbolRefTreesEnabled_Call {
+	return &MockLimits_SymbolRefTreesEnabled_Call{Call: _e.mock.On("SymbolRefTreesEnabled", _a0)}
+}
+
+func (_c *MockLimits_SymbolRefTreesEnabled_Call) Run(run func(_a0 string)) *MockLimits_SymbolRefTreesEnabled_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_SymbolRefTreesEnabled_Call) Return(_a0 bool) *MockLimits_SymbolRefTreesEnabled_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_SymbolRefTreesEnabled_Call) RunAndReturn(run func(string) bool) *MockLimits_SymbolRefTreesEnabled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SymbolizerEnabled provides a mock function with given fields: _a0
 func (_m *MockLimits) SymbolizerEnabled(_a0 string) bool {
 	ret := _m.Called(_a0)
@@ -523,6 +569,98 @@ func (_c *MockLimits_SymbolizerEnabled_Call) Return(_a0 bool) *MockLimits_Symbol
 }
 
 func (_c *MockLimits_SymbolizerEnabled_Call) RunAndReturn(run func(string) bool) *MockLimits_SymbolizerEnabled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SymbolizerMaxUnresolvedLocations provides a mock function with given fields: _a0
+func (_m *MockLimits) SymbolizerMaxUnresolvedLocations(_a0 string) int {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SymbolizerMaxUnresolvedLocations")
+	}
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func(string) int); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// MockLimits_SymbolizerMaxUnresolvedLocations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SymbolizerMaxUnresolvedLocations'
+type MockLimits_SymbolizerMaxUnresolvedLocations_Call struct {
+	*mock.Call
+}
+
+// SymbolizerMaxUnresolvedLocations is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) SymbolizerMaxUnresolvedLocations(_a0 interface{}) *MockLimits_SymbolizerMaxUnresolvedLocations_Call {
+	return &MockLimits_SymbolizerMaxUnresolvedLocations_Call{Call: _e.mock.On("SymbolizerMaxUnresolvedLocations", _a0)}
+}
+
+func (_c *MockLimits_SymbolizerMaxUnresolvedLocations_Call) Run(run func(_a0 string)) *MockLimits_SymbolizerMaxUnresolvedLocations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_SymbolizerMaxUnresolvedLocations_Call) Return(_a0 int) *MockLimits_SymbolizerMaxUnresolvedLocations_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_SymbolizerMaxUnresolvedLocations_Call) RunAndReturn(run func(string) int) *MockLimits_SymbolizerMaxUnresolvedLocations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SymbolizerResolveTimeout provides a mock function with given fields: _a0
+func (_m *MockLimits) SymbolizerResolveTimeout(_a0 string) time.Duration {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SymbolizerResolveTimeout")
+	}
+
+	var r0 time.Duration
+	if rf, ok := ret.Get(0).(func(string) time.Duration); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	return r0
+}
+
+// MockLimits_SymbolizerResolveTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SymbolizerResolveTimeout'
+type MockLimits_SymbolizerResolveTimeout_Call struct {
+	*mock.Call
+}
+
+// SymbolizerResolveTimeout is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) SymbolizerResolveTimeout(_a0 interface{}) *MockLimits_SymbolizerResolveTimeout_Call {
+	return &MockLimits_SymbolizerResolveTimeout_Call{Call: _e.mock.On("SymbolizerResolveTimeout", _a0)}
+}
+
+func (_c *MockLimits_SymbolizerResolveTimeout_Call) Run(run func(_a0 string)) *MockLimits_SymbolizerResolveTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_SymbolizerResolveTimeout_Call) Return(_a0 time.Duration) *MockLimits_SymbolizerResolveTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_SymbolizerResolveTimeout_Call) RunAndReturn(run func(string) time.Duration) *MockLimits_SymbolizerResolveTimeout_Call {
 	_c.Call.Return(run)
 	return _c
 }
