@@ -73,18 +73,66 @@ pyroscope.configure(
     application_name    = "my.python.app", # replace this with some name for your application
     server_address      = "http://my-pyroscope-server:4040", # replace this with the address of your Pyroscope server
     sample_rate         = 100, # default is 100
+    cpu_enabled         = True, # enable CPU profiling; default is True
     oncpu               = True, # report cpu time only; default is True
     gil_only            = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
+    mem_enabled         = True, # enable memory profiling; default is False
+    mem_max_nframe      = 128, # maximum number of frames in memory allocation stack traces; default is 128
+    mem_heap_sample_size = 512 * 1024, # average number of bytes between memory samples; default is 512 KiB
+    mem_enable_mem_domain = True, # include the Python memory allocator domain on Python 3.12 and later; default is True
     enable_logging      = True, # does enable logging facility; default is False
     tags                = {
         "region": f'{os.getenv("REGION")}',
-    }
+    },
 )
 ```
 
 {{< admonition type="caution" >}}
 If your application forks processes, initialize the Python client after the fork.
 Refer to [Use the Python client with forked processes](#use-the-python-client-with-forked-processes) for details.
+{{< /admonition >}}
+
+## Configure memory profiling
+
+Memory profiling is disabled by default.
+Set `mem_enabled=True` to collect the following profile types:
+
+* Allocated objects: Estimated number of allocated objects.
+* Allocated space: Estimated number of allocated bytes.
+* Objects in use: Estimated number of live objects.
+* Space in use: Estimated number of live bytes.
+
+The memory profiler samples allocations made after `pyroscope.configure()` starts it.
+CPU profiling remains enabled when you enable memory profiling.
+
+To collect memory profiles without starting the CPU sampler, set `cpu_enabled=False`:
+
+```python
+import pyroscope
+
+pyroscope.configure(
+    application_name="my.python.app",
+    server_address="http://my-pyroscope-server:4040",
+    cpu_enabled=False,
+    mem_enabled=True,
+)
+```
+
+At least one of `cpu_enabled` or `mem_enabled` must be `True`.
+The client rejects configurations that disable both profiling types.
+
+The following options control CPU and memory profiling:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `cpu_enabled` | `True` | Enables CPU profiling. Disable it to avoid starting the CPU sampler when collecting memory profiles only. |
+| `mem_enabled` | `False` | Enables memory profiling. |
+| `mem_max_nframe` | `128` | Sets the maximum number of frames captured for each sampled allocation. Valid values are from `1` through `600`. |
+| `mem_heap_sample_size` | `512 * 1024` | Sets the average number of allocated bytes between samples. Smaller values provide more detail but increase profiler overhead. |
+| `mem_enable_mem_domain` | `True` | On Python 3.12 and later, tracks allocations from the Python memory allocator domain in addition to the object allocator domain. This option has no effect on earlier Python versions. |
+
+{{< admonition type="note" >}}
+Memory profiling isn't available in free-threaded Python builds.
 {{< /admonition >}}
 
 ## Add profiling labels to Python applications

@@ -74,10 +74,10 @@ This table lists the available profile types based on the language SDK.
 | Profile type   | Go (push) | Java | .NET       | Ruby | Python | Rust | Node.js |
 | -------------- | --------- | ---- | ---------- | ---- | ------ | ---- | ------- |
 | CPU            | Yes       | Yes  | Yes        | Yes  | Yes    | Yes  | Yes     |
-| Alloc Objects  | Yes       | Yes  | Yes        |      |        |      |         |
-| Alloc Space    | Yes       | Yes  | Yes        |      |        |      |         |
-| Inuse Objects  | Yes       |      | Yes (7.0+) |      |        |      |         |
-| Inuse Space    | Yes       |      | Yes (7.0+) |      |        |      |         |
+| Alloc Objects  | Yes       | Yes  | Yes        |      | Yes    |      |         |
+| Alloc Space    | Yes       | Yes  | Yes        |      | Yes    |      |         |
+| Inuse Objects  | Yes       |      | Yes (7.0+) |      | Yes    |      |         |
+| Inuse Space    | Yes       |      | Yes (7.0+) |      | Yes    |      |         |
 | Goroutines     | Yes       |      |            |      |        |      |         |
 | Mutex Count    | Yes       |      | Yes        |      |        |      |         |
 | Mutex Duration | Yes       |      | Yes        |      |        |      |         |
