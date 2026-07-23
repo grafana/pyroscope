@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"io"
-	"slices"
 	"sort"
 	"sync"
 
@@ -39,6 +38,7 @@ type DatasetIndexWriter struct {
 	series  []seriesLabels
 	chunks  []index.ChunkMeta
 	symbols map[string]struct{}
+	labels  immutableLabels
 }
 
 var datasetIndexWriterPool = sync.Pool{
@@ -62,8 +62,11 @@ func (rw *DatasetIndexWriter) Close() {
 }
 
 func (rw *DatasetIndexWriter) reset() {
+	clear(rw.series)
 	rw.series = rw.series[:0]
 	rw.chunks = rw.chunks[:0]
+	clear(rw.labels)
+	rw.labels = rw.labels[:0]
 	clear(rw.symbols)
 }
 
@@ -72,13 +75,24 @@ func (rw *DatasetIndexWriter) reset() {
 // writer (e.g. by deduplicating consecutive rows with the same
 // fingerprint at compaction time).
 func (rw *DatasetIndexWriter) AddSeries(idx uint32, labels phlaremodel.Labels, fp model.Fingerprint) {
-	cloned := slices.Clone(labels)
-	for _, l := range cloned {
-		rw.symbols[l.Name] = struct{}{}
-		rw.symbols[l.Value] = struct{}{}
+	rw.addSeries(idx, rw.snapshotLabels(labels), fp)
+}
+
+func (rw *DatasetIndexWriter) snapshotLabels(labels phlaremodel.Labels) immutableLabels {
+	start := len(rw.labels)
+	for _, label := range labels {
+		rw.labels = append(rw.labels, immutableLabel{name: label.Name, value: label.Value})
+	}
+	return rw.labels[start:]
+}
+
+func (rw *DatasetIndexWriter) addSeries(idx uint32, labels immutableLabels, fp model.Fingerprint) {
+	for _, label := range labels {
+		rw.symbols[label.name] = struct{}{}
+		rw.symbols[label.value] = struct{}{}
 	}
 	rw.series = append(rw.series, seriesLabels{
-		labels:      cloned,
+		labels:      labels,
 		fingerprint: fp,
 	})
 	rw.chunks = append(rw.chunks, index.ChunkMeta{
