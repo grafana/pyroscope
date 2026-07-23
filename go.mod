@@ -343,6 +343,7 @@ require (
 
 replace (
 	github.com/grafana/pyroscope/api => ./api
+	github.com/grafana/pyroscope/lidia => ./lidia
 
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
