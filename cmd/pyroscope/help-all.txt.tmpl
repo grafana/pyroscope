@@ -533,6 +533,8 @@ Usage of ./pyroscope:
     	 (default 15s)
   -metastore.compaction-max-failures uint
     	 (default 3)
+  -metastore.compaction-max-job-bytes uint
+    	Maximum estimated total input size, in bytes, of a compaction job for levels above 0. A job completes once either the block count or this byte limit is reached, whichever happens first; a single block already larger than this limit still forms a valid, single-block job. Does not apply to level 0. 0 disables the size-based limit. (default 2147483648)
   -metastore.compaction-max-job-queue-size uint
     	 (default 10000)
   -metastore.data-dir string

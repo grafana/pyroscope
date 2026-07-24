@@ -8,6 +8,13 @@ import (
 type Config struct {
 	Levels []LevelConfig
 
+	// MaxJobBytes bounds the total estimated input size (bytes) of a
+	// compaction job, for levels above 0. A job completes once either
+	// MaxBlocks or MaxJobBytes is reached, whichever happens first.
+	// Level 0 is always exempt - see (*Config).maxBytes. 0 disables the
+	// size-based limit.
+	MaxJobBytes uint64 `yaml:"compaction_max_job_bytes" category:"advanced" doc:""`
+
 	CleanupBatchSize   int32
 	CleanupDelay       time.Duration
 	CleanupJobMinLevel int32
@@ -26,6 +33,7 @@ func DefaultConfig() Config {
 			{MaxBlocks: 10, MaxAge: int64(2 * 360 * time.Second)},
 			{MaxBlocks: 10, MaxAge: int64(3 * 3600 * time.Second)},
 		},
+		MaxJobBytes: 2 << 30,
 
 		CleanupBatchSize:   2,
 		CleanupDelay:       15 * time.Minute,
@@ -34,11 +42,16 @@ func DefaultConfig() Config {
 	}
 }
 
-func (c *Config) RegisterFlagsWithPrefix(string, *flag.FlagSet) {
+func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	// NOTE(kolesnikovae): I'm not sure if making this configurable
 	// is a good idea; however, we might want to add a flag to tune
 	// the parameters based on e.g., segment size or max duration.
 	*c = DefaultConfig()
+	f.Uint64Var(&c.MaxJobBytes, prefix+"compaction-max-job-bytes", c.MaxJobBytes,
+		"Maximum estimated total input size, in bytes, of a compaction job for levels above 0. "+
+			"A job completes once either the block count or this byte limit is reached, whichever happens "+
+			"first; a single block already larger than this limit still forms a valid, single-block job. "+
+			"Does not apply to level 0. 0 disables the size-based limit.")
 }
 
 // exceedsSize is called after the block has been added to the batch.
@@ -78,4 +91,13 @@ func (c *Config) maxAge(l uint32) int64 {
 func (c *Config) maxLevel() uint32 {
 	// Assuming that there is at least one level.
 	return uint32(len(c.Levels) - 1)
+}
+
+// maxBytes returns the job byte limit for level l;
+// level 0 and unconfigured levels return 0 (no limit).
+func (c *Config) maxBytes(l uint32) uint64 {
+	if l == 0 || l >= uint32(len(c.Levels)) {
+		return 0
+	}
+	return c.MaxJobBytes
 }

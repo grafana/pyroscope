@@ -13,7 +13,12 @@ import (
 
 var ErrInvalidBlockEntry = errors.New("invalid block entry")
 
-var blockQueueBucketName = []byte("compaction_block_queue")
+var (
+	blockQueueBucketName = []byte("compaction_block_queue")
+	// Block sizes are stored separately, keyed identically to the block
+	// entries; an entry without a size record loads with Size 0.
+	blockQueueSizeBucketName = []byte("compaction_block_queue_size")
+)
 
 // BlockQueueStore provides methods to store and retrieve block queues.
 // The store is optimized for two cases: load the entire queue (preserving
@@ -26,45 +31,66 @@ var blockQueueBucketName = []byte("compaction_block_queue")
 // always ordered in ascending order by index and use the same cursor when
 // removing entries from the database:
 // DeleteEntry(*bbolt.Tx, ...store.BlockEntry) error
-type BlockQueueStore struct{ bucketName []byte }
+type BlockQueueStore struct {
+	bucketName     []byte
+	sizeBucketName []byte
+}
 
 func NewBlockQueueStore() *BlockQueueStore {
-	return &BlockQueueStore{bucketName: blockQueueBucketName}
+	return &BlockQueueStore{
+		bucketName:     blockQueueBucketName,
+		sizeBucketName: blockQueueSizeBucketName,
+	}
 }
 
 func (s BlockQueueStore) CreateBuckets(tx *bbolt.Tx) error {
-	_, err := tx.CreateBucketIfNotExists(s.bucketName)
+	if _, err := tx.CreateBucketIfNotExists(s.bucketName); err != nil {
+		return err
+	}
+	_, err := tx.CreateBucketIfNotExists(s.sizeBucketName)
 	return err
 }
 
 func (s BlockQueueStore) StoreEntry(tx *bbolt.Tx, entry compaction.BlockEntry) error {
 	e := marshalBlockEntry(entry)
-	return tx.Bucket(s.bucketName).Put(e.Key, e.Value)
+	if err := tx.Bucket(s.bucketName).Put(e.Key, e.Value); err != nil {
+		return err
+	}
+	return tx.Bucket(s.sizeBucketName).Put(e.Key, marshalBlockEntrySize(entry.Size))
 }
 
 func (s BlockQueueStore) DeleteEntry(tx *bbolt.Tx, index uint64, id string) error {
-	return tx.Bucket(s.bucketName).Delete(marshalBlockEntryKey(index, id))
+	k := marshalBlockEntryKey(index, id)
+	if err := tx.Bucket(s.bucketName).Delete(k); err != nil {
+		return err
+	}
+	return tx.Bucket(s.sizeBucketName).Delete(k)
 }
 
 func (s BlockQueueStore) ListEntries(tx *bbolt.Tx) iter.Iterator[compaction.BlockEntry] {
-	return newBlockEntriesIterator(tx.Bucket(s.bucketName))
+	return newBlockEntriesIterator(tx.Bucket(s.bucketName), tx.Bucket(s.sizeBucketName))
 }
 
 type blockEntriesIterator struct {
-	iter *store.CursorIterator
-	cur  compaction.BlockEntry
-	err  error
+	iter  *store.CursorIterator
+	sizes *bbolt.Bucket
+	cur   compaction.BlockEntry
+	err   error
 }
 
-func newBlockEntriesIterator(bucket *bbolt.Bucket) *blockEntriesIterator {
-	return &blockEntriesIterator{iter: store.NewCursorIter(bucket.Cursor())}
+func newBlockEntriesIterator(bucket, sizes *bbolt.Bucket) *blockEntriesIterator {
+	return &blockEntriesIterator{iter: store.NewCursorIter(bucket.Cursor()), sizes: sizes}
 }
 
 func (x *blockEntriesIterator) Next() bool {
 	if x.err != nil || !x.iter.Next() {
 		return false
 	}
-	x.err = unmarshalBlockEntry(&x.cur, x.iter.At())
+	kv := x.iter.At()
+	if x.err = unmarshalBlockEntry(&x.cur, kv); x.err != nil {
+		return false
+	}
+	x.cur.Size, x.err = unmarshalBlockEntrySize(x.sizes, kv.Key)
 	return x.err == nil
 }
 
@@ -107,4 +133,30 @@ func unmarshalBlockEntry(dst *compaction.BlockEntry, e store.KV) error {
 	dst.Shard = binary.BigEndian.Uint32(e.Value[12:16])
 	dst.Tenant = string(e.Value[16:])
 	return nil
+}
+
+// blockEntrySizeValueLen is the fixed length of a size bucket value: an
+// 8-byte big-endian Size.
+const blockEntrySizeValueLen = 8
+
+func marshalBlockEntrySize(size uint64) []byte {
+	b := make([]byte, blockEntrySizeValueLen)
+	binary.BigEndian.PutUint64(b, size)
+	return b
+}
+
+// unmarshalBlockEntrySize decodes the size bucket value for key;
+// a missing record loads as size 0.
+func unmarshalBlockEntrySize(sizes *bbolt.Bucket, key []byte) (uint64, error) {
+	if sizes == nil {
+		return 0, nil
+	}
+	v := sizes.Get(key)
+	if v == nil {
+		return 0, nil
+	}
+	if len(v) != blockEntrySizeValueLen {
+		return 0, ErrInvalidBlockEntry
+	}
+	return binary.BigEndian.Uint64(v), nil
 }

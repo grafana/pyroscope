@@ -366,6 +366,159 @@ func TestPlan_time_split(t *testing.T) {
 	assert.Equal(t, 15, n)
 }
 
+func TestJobPlan_isComplete(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   Config
+		level    uint32
+		blocks   int
+		bytes    uint64
+		expected bool
+	}{
+		{
+			name:   "below both thresholds",
+			config: Config{Levels: []LevelConfig{{}, {MaxBlocks: 10}}, MaxJobBytes: 100},
+			level:  1, blocks: 3, bytes: 10, expected: false,
+		},
+		{
+			name:   "count threshold reached, bytes below",
+			config: Config{Levels: []LevelConfig{{}, {MaxBlocks: 5}}, MaxJobBytes: 1000},
+			level:  1, blocks: 5, bytes: 10, expected: true,
+		},
+		{
+			name:   "bytes threshold reached, count below",
+			config: Config{Levels: []LevelConfig{{}, {MaxBlocks: 100}}, MaxJobBytes: 100},
+			level:  1, blocks: 2, bytes: 150, expected: true,
+		},
+		{
+			name:   "byte cap disabled at level 0 regardless of MaxJobBytes",
+			config: Config{Levels: []LevelConfig{{MaxBlocks: 100}}, MaxJobBytes: 10},
+			blocks: 1, bytes: 1_000_000, expected: false,
+		},
+		{
+			name:   "byte cap disabled globally when MaxJobBytes is 0",
+			config: Config{Levels: []LevelConfig{{}, {MaxBlocks: 100}}, MaxJobBytes: 0},
+			level:  1, blocks: 1, bytes: 1_000_000, expected: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			job := &jobPlan{config: &tt.config, blocks: make([]string, tt.blocks), bytes: tt.bytes}
+			job.level = tt.level
+			require.Equal(t, tt.expected, job.isComplete())
+		})
+	}
+}
+
+// TestPlan_compact_by_size enqueues 4 blocks sharing a compaction key, with
+// MaxBlocks set to the batch size (4) so the whole batch is flushed to the
+// queue atomically (batches only become visible to the planner once
+// flushed - see (*Config).exceedsMaxSize). The byte cap (100) is
+// deliberately reached (at 120 bytes) before the block-count limit (4) is,
+// so completing after 3 blocks is attributable to the byte cap alone, not
+// to MaxBlocks.
+func TestPlan_compact_by_size(t *testing.T) {
+	c := NewCompactor(Config{
+		Levels:      []LevelConfig{{MaxBlocks: 10}, {MaxBlocks: 4}}, // L0 (unused), L1
+		MaxJobBytes: 100,
+	}, nil, nil, nil)
+
+	for _, e := range []compaction.BlockEntry{
+		{Tenant: "A", Shard: 1, Level: 1, Index: 1, ID: "1", Size: 40},
+		{Tenant: "A", Shard: 1, Level: 1, Index: 2, ID: "2", Size: 40},
+		{Tenant: "A", Shard: 1, Level: 1, Index: 3, ID: "3", Size: 40}, // 120 >= 100: completes here.
+		{Tenant: "A", Shard: 1, Level: 1, Index: 4, ID: "4", Size: 10}, // remains in the batch, alone.
+	} {
+		c.enqueue(e)
+	}
+
+	p := &plan{compactor: c, blocks: newBlockIter()}
+	job := p.nextJob()
+	require.NotNil(t, job)
+	assert.Equal(t, []string{"1", "2", "3"}, job.blocks)
+	require.Nil(t, p.nextJob()) // "4" alone hasn't completed the next job yet.
+}
+
+// TestPlan_compact_by_size_oversized_block enqueues 2 blocks (MaxBlocks: 2,
+// so the batch flushes once both have arrived), the first of which alone
+// already exceeds MaxJobBytes. isComplete() must trip immediately after
+// this single block is added (len(blocks) == 1 < MaxBlocks == 2, so this is
+// attributable to the byte cap, not the block count), proving a single
+// oversized block always forms a valid job on its own.
+func TestPlan_compact_by_size_oversized_block(t *testing.T) {
+	c := NewCompactor(Config{
+		Levels:      []LevelConfig{{MaxBlocks: 10}, {MaxBlocks: 2}},
+		MaxJobBytes: 100,
+	}, nil, nil, nil)
+
+	c.enqueue(compaction.BlockEntry{Tenant: "A", Shard: 1, Level: 1, Index: 1, ID: "1", Size: 500})
+	c.enqueue(compaction.BlockEntry{Tenant: "A", Shard: 1, Level: 1, Index: 2, ID: "2", Size: 10})
+
+	p := &plan{compactor: c, blocks: newBlockIter()}
+	job := p.nextJob()
+	require.NotNil(t, job, "a single oversized block must still form a valid job, never a stuck/empty plan")
+	assert.Equal(t, []string{"1"}, job.blocks)
+	require.Nil(t, p.nextJob())
+}
+
+// TestPlan_compact_by_size_excludes_level_zero enqueues 2 L0 blocks
+// (MaxBlocks: 2, so the batch flushes once both arrive) whose combined size
+// vastly exceeds MaxJobBytes. If the byte cap applied at level 0, the job
+// would complete after just the first block (500 >= 10); instead both
+// blocks must be included, proving the byte cap is exempted at level 0.
+func TestPlan_compact_by_size_excludes_level_zero(t *testing.T) {
+	c := NewCompactor(Config{
+		Levels:      []LevelConfig{{MaxBlocks: 2}},
+		MaxJobBytes: 10, // would trip after a single block at any other level.
+	}, nil, nil, nil)
+
+	for _, e := range []compaction.BlockEntry{
+		{Tenant: "A", Shard: 1, Level: 0, Index: 1, ID: "1", Size: 1000},
+		{Tenant: "A", Shard: 1, Level: 0, Index: 2, ID: "2", Size: 1000},
+	} {
+		c.enqueue(e)
+	}
+
+	p := &plan{compactor: c, blocks: newBlockIter()}
+	job := p.nextJob()
+	require.NotNil(t, job)
+	assert.Equal(t, []string{"1", "2"}, job.blocks)
+}
+
+// TestPlan_compact_by_size_mixed_with_legacy_zero_size_block enqueues a
+// Size:0 block (as a queue snapshot restored before size tracking existed
+// would produce, see README.md's "Job Planner" section) alongside sized
+// blocks in the same job. MaxBlocks (6) is kept above the number of blocks
+// needed to trip the byte cap (4), so completion after 4 blocks is
+// attributable to the byte cap, not the block count. The zero-size block
+// must be included in the job like any other block, contributing nothing
+// to the byte accumulator (not causing early completion, and not being
+// skipped or excluded).
+func TestPlan_compact_by_size_mixed_with_legacy_zero_size_block(t *testing.T) {
+	c := NewCompactor(Config{
+		Levels:      []LevelConfig{{MaxBlocks: 10}, {MaxBlocks: 6}}, // L0 (unused), L1
+		MaxJobBytes: 100,
+	}, nil, nil, nil)
+
+	for _, e := range []compaction.BlockEntry{
+		{Tenant: "A", Shard: 1, Level: 1, Index: 1, ID: "1", Size: 0}, // legacy-restored: no recorded size.
+		{Tenant: "A", Shard: 1, Level: 1, Index: 2, ID: "2", Size: 40},
+		{Tenant: "A", Shard: 1, Level: 1, Index: 3, ID: "3", Size: 40},
+		{Tenant: "A", Shard: 1, Level: 1, Index: 4, ID: "4", Size: 40}, // 120 >= 100: completes here (4 < MaxBlocks 6).
+		{Tenant: "A", Shard: 1, Level: 1, Index: 5, ID: "5", Size: 10}, // remains in the batch.
+		{Tenant: "A", Shard: 1, Level: 1, Index: 6, ID: "6", Size: 10}, // flushes the batch (size == MaxBlocks).
+	} {
+		c.enqueue(e)
+	}
+
+	p := &plan{compactor: c, blocks: newBlockIter()}
+	job := p.nextJob()
+	require.NotNil(t, job)
+	assert.Equal(t, []string{"1", "2", "3", "4"}, job.blocks,
+		"the zero-size block is included in the job like any other block")
+	require.Nil(t, p.nextJob(), "the remaining two blocks (20 bytes, 2 < MaxBlocks) haven't completed a job yet")
+}
+
 func TestPlan_remove_staged_batch_corrupts_queue(t *testing.T) {
 	c := NewCompactor(testConfig, nil, nil, nil)
 

@@ -71,6 +71,7 @@ type BlockEntry struct {
 	Tenant     string
 	Shard      uint32
 	Level      uint32
+	Size       uint64
 }
 
 func NewBlockEntry(cmd *raft.Log, md *metastorev1.BlockMeta) BlockEntry {
@@ -81,5 +82,6 @@ func NewBlockEntry(cmd *raft.Log, md *metastorev1.BlockMeta) BlockEntry {
 		Tenant:     metadata.Tenant(md),
 		Shard:      md.Shard,
 		Level:      md.CompactionLevel,
+		Size:       md.Size,
 	}
 }
