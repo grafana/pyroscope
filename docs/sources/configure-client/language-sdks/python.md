@@ -70,18 +70,18 @@ import os
 import pyroscope
 
 pyroscope.configure(
-    application_name    = "my.python.app", # replace this with some name for your application
-    server_address      = "http://my-pyroscope-server:4040", # replace this with the address of your Pyroscope server
-    sample_rate         = 100, # default is 100
-    cpu_enabled         = True, # enable CPU profiling; default is True
-    oncpu               = True, # report cpu time only; default is True
-    gil_only            = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
-    mem_enabled         = True, # enable memory profiling; default is False
-    mem_max_nframe      = 128, # maximum number of frames in memory allocation stack traces; default is 128
-    mem_heap_sample_size = 512 * 1024, # average number of bytes between memory samples; default is 512 KiB
+    application_name      = "my.python.app", # replace this with some name for your application
+    server_address        = "http://my-pyroscope-server:4040", # replace this with the address of your Pyroscope server
+    sample_rate           = 100, # default is 100
+    cpu_enabled           = True, # enable CPU profiling; default is True
+    oncpu                 = True, # report cpu time only; default is True
+    gil_only              = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
+    mem_enabled           = True, # enable memory profiling; default is False
+    mem_max_nframe        = 128, # maximum number of frames in memory allocation stack traces; default is 128
+    mem_heap_sample_size  = 512 * 1024, # average number of bytes between memory samples; default is 512 KiB
     mem_enable_mem_domain = True, # include the Python memory allocator domain on Python 3.12 and later; default is True
-    enable_logging      = True, # does enable logging facility; default is False
-    tags                = {
+    enable_logging        = True, # does enable logging facility; default is False
+    tags                  = {
         "region": f'{os.getenv("REGION")}',
     },
 )
