@@ -3380,6 +3380,14 @@ distributor_usage_groups:
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
 
+# (advanced) If true, the write path does not wait for the segment-writer to
+# durably store and index the profile before responding. This reduces ingestion
+# latency and allows a larger -segment-writer.segment-duration, but removes the
+# read-after-write consistency and synchronous durability guarantee. Writes to
+# the ingester are always synchronous.
+# CLI flag: -async-ingest
+[async_ingest: <boolean> | default = false]
+
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]
