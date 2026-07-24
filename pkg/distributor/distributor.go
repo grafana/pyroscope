@@ -604,7 +604,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
 		}
-		finalLog.msg = "stripping profile stacktraces, keeping samples and labels"
+		finalLog.msg = "stripping profile stacktraces, keeping totals"
 
 		// Language detection reads the string table, which is about to be
 		// stripped; the result is cached in the request.
@@ -953,39 +953,28 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
-// stripProfileToTotals reduces the profile to one sample per distinct
-// sample label set, each holding the summed values of its group:
-// stacktraces and symbols are dropped, only the totals are kept.
-// Sample labels survive so that span- and trace-attributed totals
-// remain distinguishable.
+// stripProfileToTotals reduces the profile to a single sample holding the
+// sum of all sample values: stacktraces, symbols, and sample labels are
+// dropped, only the series totals are kept.
 func stripProfileToTotals(p *profilev1.Profile) {
-	kept := p.Sample[:0]
+	var total *profilev1.Sample
 	for _, s := range p.Sample {
-		// Mirror Normalize: non-string labels are unsupported, and samples
-		// it would drop (value length mismatch, negative values) must not
-		// contribute to the totals.
+		// Samples that Normalize would drop (value length mismatch,
+		// negative values) must not contribute to the totals.
 		if len(s.Value) != len(p.SampleType) || hasNegativeValue(s) {
 			continue
 		}
-		s.Label = dropNonStringLabels(s.Label)
-		sort.Sort(pprof.LabelsByKeyValue(s.Label))
-		kept = append(kept, s)
-	}
-	p.Sample = kept
-	sort.Sort(pprof.SamplesByLabels(p.Sample))
-	groups := pprof.GroupSamplesByLabels(p)
-	totals := make([]*profilev1.Sample, len(groups))
-	for i, g := range groups {
-		total := &profilev1.Sample{Value: make([]int64, len(p.SampleType)), Label: g.Labels}
-		for _, s := range g.Samples {
-			for j, v := range s.Value {
-				total.Value[j] += v
-			}
+		if total == nil {
+			total = &profilev1.Sample{Value: make([]int64, len(p.SampleType))}
 		}
-		totals[i] = total
+		for i, v := range s.Value {
+			total.Value[i] += v
+		}
 	}
-	p.Sample = totals
-
+	p.Sample = nil
+	if total != nil {
+		p.Sample = []*profilev1.Sample{total}
+	}
 	p.Location = nil
 	p.Function = nil
 	p.Mapping = nil
@@ -1016,24 +1005,7 @@ func stripProfileToTotals(p *profilev1.Profile) {
 	for i, c := range p.Comment {
 		p.Comment[i] = intern(c)
 	}
-	for _, s := range p.Sample {
-		for _, l := range s.Label {
-			l.Key = intern(l.Key)
-			l.Str = intern(l.Str)
-			l.NumUnit = intern(l.NumUnit)
-		}
-	}
 	p.StringTable = newStrings
-}
-
-func dropNonStringLabels(labels []*profilev1.Label) []*profilev1.Label {
-	kept := labels[:0]
-	for _, l := range labels {
-		if l.Str != 0 {
-			kept = append(kept, l)
-		}
-	}
-	return kept
 }
 
 func hasNegativeValue(s *profilev1.Sample) bool {

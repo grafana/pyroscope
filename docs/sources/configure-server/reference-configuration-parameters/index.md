@@ -3112,8 +3112,9 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -distributor.ingestion-burst-size-mb
 [ingestion_burst_size_mb: <float> | default = 2]
 
-# When a profile is sampled out, retain its totals and labels with stacktraces
-# stripped (marked __sampled__) instead of dropping it.
+# When a profile is sampled out, retain its totals as a single sample with
+# stacktraces and sample labels stripped (marked __sampled__) instead of
+# dropping it.
 # CLI flag: -distributor.sampling.keep-stripped-profiles
 [keep_stripped_profiles: <boolean> | default = false]
 
