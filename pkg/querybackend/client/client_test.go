@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -98,7 +99,7 @@ func Test_Concurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < nServers; i++ {
-		gclInterceptor, err := querybackend.CreateConcurrencyInterceptor(log.NewNopLogger())
+		gclInterceptor, err := querybackend.CreateConcurrencyInterceptor(log.NewNopLogger(), prometheus.NewRegistry())
 		require.NoError(t, err)
 
 		b, err := querybackend.New(querybackend.Config{
