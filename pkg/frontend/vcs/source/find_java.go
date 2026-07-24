@@ -15,10 +15,17 @@ import (
 )
 
 const (
-	ExtJava = ".java"
+	ExtJava   = ".java"
+	ExtKotlin = ".kt"
 )
 
+var javaSourceFileExtensions = []string{ExtJava, ExtKotlin}
+
 func convertJavaFunctionNameToPath(functionName string) string {
+	return convertJavaFunctionNameToPathWithExt(functionName, ExtJava)
+}
+
+func convertJavaFunctionNameToPathWithExt(functionName, ext string) string {
 	pathSegments := strings.Split(functionName, "/")
 	last := len(pathSegments) - 1
 
@@ -43,7 +50,7 @@ func convertJavaFunctionNameToPath(functionName string) string {
 		pathSegments[last] = pathSegments[last][:pos]
 	}
 
-	pathSegments[last] = pathSegments[last] + ExtJava
+	pathSegments[last] = pathSegments[last] + ext
 	return strings.Join(pathSegments, "/")
 }
 
@@ -54,17 +61,19 @@ func (ff FileFinder) findJavaFile(ctx context.Context, mappings ...*config.Mappi
 	sp.SetTag("file.function_name", ff.file.FunctionName)
 	sp.SetTag("file.path", ff.file.Path)
 
-	javaPath := convertJavaFunctionNameToPath(ff.file.FunctionName)
-	for _, m := range mappings {
-		resp, err := ff.fetchMappingFile(ctx, m, javaPath)
-		if err != nil {
-			if errors.Is(err, client.ErrNotFound) {
+	for _, ext := range javaSourceFileExtensions {
+		javaPath := convertJavaFunctionNameToPathWithExt(ff.file.FunctionName, ext)
+		for _, m := range mappings {
+			resp, err := ff.fetchMappingFile(ctx, m, javaPath)
+			if err != nil {
+				if errors.Is(err, client.ErrNotFound) {
+					continue
+				}
+				level.Warn(ff.logger).Log("msg", "failed to fetch mapping file", "err", err)
 				continue
 			}
-			level.Warn(ff.logger).Log("msg", "failed to fetch mapping file", "err", err)
-			continue
+			return resp, nil
 		}
-		return resp, nil
 	}
 
 	return nil, connect.NewError(connect.CodeNotFound, errors.New("no mappings provided, file not resolvable"))
