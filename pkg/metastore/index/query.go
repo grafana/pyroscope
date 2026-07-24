@@ -140,7 +140,11 @@ func (q *blockMetadataQuerier) collectBlockMetadata(s *store.Shard) error {
 		return nil
 	}
 	for blocks.Next() {
-		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
+		kv := blocks.At()
+		if minTime, maxTime, err := blockMetaTimeBounds(kv.Value); err == nil && !q.query.overlapsUnixMilli(minTime, maxTime) {
+			continue
+		}
+		md := q.shards.index.blocks.getOrCreate(s, kv)
 		if m := q.collectMatched(s.StringTable, matcher, md); m != nil {
 			q.metas = append(q.metas, m)
 		}
@@ -256,15 +260,17 @@ func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
 		return nil
 	}
 	for blocks.Next() {
-		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
-		if q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
-			for _, ds := range md.Datasets {
-				if _, ok := q.query.tenantMap[s.StringTable.Lookup(ds.Tenant)]; !ok {
-					continue
-				}
-				if q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
-					matcher.Matches(ds.Labels)
-				}
+		kv := blocks.At()
+		if minTime, maxTime, err := blockMetaTimeBounds(kv.Value); err == nil && !q.query.overlapsUnixMilli(minTime, maxTime) {
+			continue
+		}
+		md := q.shards.index.blocks.getOrCreate(s, kv)
+		for _, ds := range md.Datasets {
+			if _, ok := q.query.tenantMap[s.StringTable.Lookup(ds.Tenant)]; !ok {
+				continue
+			}
+			if q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+				matcher.Matches(ds.Labels)
 			}
 		}
 	}
