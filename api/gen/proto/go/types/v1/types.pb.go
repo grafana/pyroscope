@@ -495,7 +495,11 @@ func (x *ProfileAnnotation) GetValue() string {
 type ProfileSampling struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// True when adaptive sampling affected this response: the query matched
-	// profiles that were sampled out at ingest and are not part of the result.
+	// profiles that were sampled out at ingest, or aggregated profiles that
+	// carry a sampling annotation. The annotation-based signal also covers
+	// deployments where sampled-out profiles are discarded entirely rather
+	// than stripped to totals; stripped_profiles is then zero even though
+	// sampling was in force.
 	Sampled bool `protobuf:"varint,1,opt,name=sampled,proto3" json:"sampled,omitempty"`
 	// Number of stack-bearing profiles aggregated into the result.
 	KeptProfiles int64 `protobuf:"varint,2,opt,name=kept_profiles,json=keptProfiles,proto3" json:"kept_profiles,omitempty"`

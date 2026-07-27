@@ -11,11 +11,14 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/parquet-go/parquet-go"
+
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/annotation"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
 	parquetquery "github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
@@ -132,6 +135,31 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		indices = append(indices, columns.TraceID.ColumnIndex)
 	}
 
+	// Annotation keys are the secondary signal for the sampling report:
+	// profiles that were kept by a sampling rule carry an ingest annotation,
+	// which is the only stored trace of sampling when sampled-out profiles
+	// are discarded entirely instead of being stripped to totals
+	// (distributor.sampling.keep-stripped-profiles is off). The column is
+	// appended last so the positional accesses above stay valid; blocks
+	// written before annotations existed simply skip the check.
+	annotationColumn := -1
+	if c, err := v1.ResolveColumnByPath(q.ds.Profiles().Schema(), v1.AnnotationKeyColumnPath); err == nil {
+		annotationColumn = len(indices)
+		indices = append(indices, c.ColumnIndex)
+	}
+	sampledAnnotated := false
+	checkAnnotations := func(values [][]parquet.Value) {
+		if sampledAnnotated || annotationColumn < 0 {
+			return
+		}
+		for _, v := range values[annotationColumn] {
+			if v.Kind() == parquet.ByteArray && v.String() == annotation.ProfileAnnotationKeySampled {
+				sampledAnnotated = true
+				return
+			}
+		}
+	}
+
 	resolverOptions := []symdb.ResolverOption{
 		symdb.WithResolverMaxNodes(query.Tree.MaxNodes),
 	}
@@ -152,6 +180,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	case len(spanSelector) > 0:
 		for profiles.Next() {
 			p := profiles.At()
+			checkAnnotations(p.Values)
 			resolver.AddSamplesWithSpanSelectorFromParquetRow(
 				p.Row.Partition,
 				p.Values[0],
@@ -163,6 +192,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	case len(traceSelector) > 0:
 		for profiles.Next() {
 			p := profiles.At()
+			checkAnnotations(p.Values)
 			resolver.AddSamplesWithTraceSelectorFromParquetRow(
 				p.Row.Partition,
 				p.Values[0],
@@ -174,12 +204,18 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	default:
 		for profiles.Next() {
 			p := profiles.At()
+			checkAnnotations(p.Values)
 			resolver.AddSamplesFromParquetRow(p.Row.Partition, p.Values[0], p.Values[1])
 		}
 	}
 
 	if err = profiles.Err(); err != nil {
 		return nil, err
+	}
+
+	sampling := filtered.sampling()
+	if sampledAnnotated {
+		sampling.Sampled = true
 	}
 
 	// output full pprof tree if that's requested
@@ -193,7 +229,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 				Query:    query.Tree.CloneVT(),
 				Tree:     tree.Bytes(query.Tree.GetMaxNodes(), symbolBuilder.KeepSymbol),
 				Symbols:  new(queryv1.TreeSymbols),
-				Sampling: filtered.sampling(),
+				Sampling: sampling,
 			},
 		}
 		symbolBuilder.Build(resp.Tree.Symbols)
@@ -208,7 +244,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		if err != nil {
 			return nil, err
 		}
-		resp.Tree.Sampling = filtered.sampling()
+		resp.Tree.Sampling = sampling
 		return resp, nil
 	}
 
@@ -221,7 +257,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		Tree: &queryv1.TreeReport{
 			Query:    query.Tree.CloneVT(),
 			Tree:     tree.Bytes(query.Tree.GetMaxNodes(), nil),
-			Sampling: filtered.sampling(),
+			Sampling: sampling,
 		},
 	}
 	return resp, nil
