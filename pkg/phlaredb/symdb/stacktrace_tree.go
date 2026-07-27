@@ -11,18 +11,24 @@ import (
 const (
 	defaultStacktraceTreeSize = 0
 	stacktraceTreeNodeSize    = int(unsafe.Sizeof(node{}))
+	stacktraceTreeEdgeSize    = int(unsafe.Sizeof(uint32(0)))
 )
 
 type stacktraceTree struct {
 	nodes []node
+	edges edgeTable
 }
 
 type node struct {
 	p int32 // Parent index.
 	r int32 // Reference the to stack frame data.
-	// Auxiliary members only needed for insertion.
-	fc int32 // First child index.
-	ns int32 // Next sibling index.
+}
+
+// edgeTable maps a (parent, location) pair to its child node index. The pair
+// is reconstructed from nodes[child], keeping the insertion-only index compact.
+type edgeTable struct {
+	slots []uint32
+	count uint32
 }
 
 func newStacktraceTree(size int) *stacktraceTree {
@@ -31,10 +37,9 @@ func newStacktraceTree(size int) *stacktraceTree {
 	}
 	t := stacktraceTree{nodes: make([]node, 1, size)}
 	t.nodes[0] = node{
-		p:  sentinel,
-		fc: sentinel,
-		ns: sentinel,
+		p: sentinel,
 	}
+	t.edges.init(size - 1)
 	return &t
 }
 
@@ -43,47 +48,63 @@ const sentinel = -1
 func (t *stacktraceTree) len() uint32 { return uint32(len(t.nodes)) }
 
 func (t *stacktraceTree) insert(refs []uint64) uint32 {
-	var (
-		n = &t.nodes[0]
-		i = n.fc
-		x int32
-	)
-
-	for j := len(refs) - 1; j >= 0; {
-		r := int32(refs[j])
-		if i == sentinel {
-			ni := int32(len(t.nodes))
-			n.fc = ni
-			t.nodes = append(t.nodes, node{
-				r:  r,
-				p:  x,
-				fc: sentinel,
-				ns: sentinel,
-			})
-			x = ni
-			n = &t.nodes[ni]
-		} else {
-			x = i
-			n = &t.nodes[i]
+	parent := int32(0)
+	for j := len(refs) - 1; j >= 0; j-- {
+		location := int32(refs[j])
+		child, slot := t.edges.lookup(t.nodes, parent, location)
+		if child == 0 {
+			t.edges.grow(t.nodes)
+			child, slot = t.edges.lookup(t.nodes, parent, location)
+			child = uint32(len(t.nodes))
+			t.nodes = append(t.nodes, node{p: parent, r: location})
+			t.edges.slots[slot] = child
+			t.edges.count++
 		}
-		if n.r == r {
-			i = n.fc
-			j--
-			continue
-		}
-		if n.ns < 0 {
-			n.ns = int32(len(t.nodes))
-			t.nodes = append(t.nodes, node{
-				r:  r,
-				p:  n.p,
-				fc: sentinel,
-				ns: sentinel,
-			})
-		}
-		i = n.ns
+		parent = int32(child)
 	}
 
-	return uint32(x)
+	return uint32(parent)
+}
+
+func (t *edgeTable) init(entries int) {
+	if entries < 1 {
+		entries = 1
+	}
+	t.slots = make([]uint32, edgeTableCapacity(entries))
+}
+
+func (t *edgeTable) lookup(nodes []node, parent, location int32) (uint32, int) {
+	mask := uint64(len(t.slots) - 1)
+	for slot := int(edgeHash(parent, location) & mask); ; slot = (slot + 1) & int(mask) {
+		child := t.slots[slot]
+		if child == 0 || (nodes[child].p == parent && nodes[child].r == location) {
+			return child, slot
+		}
+	}
+}
+
+func (t *edgeTable) grow(nodes []node) {
+	if (t.count+1)*4 <= uint32(len(t.slots))*3 {
+		return
+	}
+	t.slots = make([]uint32, len(t.slots)*2)
+	for child := uint32(1); child < uint32(len(nodes)); child++ {
+		n := nodes[child]
+		_, slot := t.lookup(nodes, n.p, n.r)
+		t.slots[slot] = child
+	}
+}
+
+func edgeTableCapacity(entries int) int {
+	capacity := 2
+	for capacity*3/4 < entries {
+		capacity <<= 1
+	}
+	return capacity
+}
+
+func edgeHash(parent, location int32) uint64 {
+	return uint64(uint32(parent))*0x9e3779b185ebca87 + uint64(uint32(location))*0xc2b2ae3d27d4eb4f
 }
 
 func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {
@@ -186,33 +207,21 @@ func (t *parentPointerTree) Nodes() []Node {
 
 func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
 	l := int32(len(t.nodes))
-	x := stacktraceTree{nodes: make([]node, l)}
-	x.nodes[0] = node{
-		p:  sentinel,
-		fc: sentinel,
-		ns: sentinel,
-	}
-	lc := make([]int32, len(t.nodes))
-	var s int32
+	x := newStacktraceTree(int(l))
+	x.nodes = make([]node, l)
+	x.nodes[0].p = sentinel
 	for i := int32(1); i < l; i++ {
 		n := t.nodes[i]
 		x.nodes[i] = node{
-			p:  n.p,
-			r:  n.r,
-			fc: sentinel,
-			ns: sentinel,
+			p: n.p,
+			r: n.r,
 		}
-		// Swap the last child of the parent with self.
-		// If this is the first child, update the parent.
-		// Otherwise, update the sibling.
-		s, lc[n.p] = lc[n.p], i
-		if s == 0 {
-			x.nodes[n.p].fc = i
-		} else {
-			x.nodes[s].ns = i
-		}
+		x.edges.grow(x.nodes[:i])
+		_, slot := x.edges.lookup(x.nodes[:i], n.p, n.r)
+		x.edges.slots[slot] = uint32(i)
+		x.edges.count++
 	}
-	return &x
+	return x
 }
 
 // ReadFrom decodes parent pointer tree from the reader.
