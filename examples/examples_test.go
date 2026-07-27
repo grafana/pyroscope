@@ -715,6 +715,37 @@ func (e *env) isTracing() bool {
 	return strings.HasPrefix(e.repoDir(), filepath.Join("examples", "tracing")+string(filepath.Separator))
 }
 
+func (e *env) profileValidationSkipReason() string {
+	switch e.repoDir() {
+	case filepath.Join("examples", "base-url"):
+		return "the base-url example runs only Pyroscope and nginx, with no profiled application"
+	case filepath.Join("examples", "golang-pgo"):
+		return "the golang-pgo example requires a manually run benchmark to generate profile data"
+	default:
+		return ""
+	}
+}
+
+func TestProfileValidationSkipReason(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		dir      string
+		wantSkip bool
+	}{
+		{dir: "base-url", wantSkip: true},
+		{dir: "golang-pgo", wantSkip: true},
+		{dir: "language-sdk-instrumentation/python/simple", wantSkip: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dir, func(t *testing.T) {
+			e := &env{dir: tt.dir}
+			require.Equal(t, tt.wantSkip, e.profileValidationSkipReason() != "")
+		})
+	}
+}
+
 func TestContainerStatusesReady(t *testing.T) {
 	t.Parallel()
 
@@ -791,6 +822,9 @@ func TestExamples(t *testing.T) {
 	for _, e := range examplesToTest(t) {
 		e := e
 		t.Run(e.repoDir(), func(t *testing.T) {
+			if reason := e.profileValidationSkipReason(); reason != "" {
+				t.Skip(reason)
+			}
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(context.Background(), timeoutPerExample)
 			defer cancel()
