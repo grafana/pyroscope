@@ -73,19 +73,19 @@ type Profile struct {
 	// If one of the values represents the number of events represented
 	// by the sample, by convention it should be at index 0 and use
 	// sample_type.unit == "count".
-	SampleType []*ValueType `protobuf:"bytes,1,rep,name=sample_type,json=sampleType,proto3" json:"sample_type,omitempty" parquet:","`
+	SampleType []*ValueType `protobuf:"bytes,1,rep,name=sample_type,json=sampleType,proto3" json:"sample_type,omitempty" parquet:"SampleType,"`
 	// The set of samples recorded in this profile.
-	Sample []*Sample `protobuf:"bytes,2,rep,name=sample,proto3" json:"sample,omitempty" parquet:","`
+	Sample []*Sample `protobuf:"bytes,2,rep,name=sample,proto3" json:"sample,omitempty" parquet:"Sample,"`
 	// Mapping from address ranges to the image/binary/library mapped
 	// into that address range.  mapping[0] will be the main binary.
-	Mapping []*Mapping `protobuf:"bytes,3,rep,name=mapping,proto3" json:"mapping,omitempty" parquet:","`
+	Mapping []*Mapping `protobuf:"bytes,3,rep,name=mapping,proto3" json:"mapping,omitempty" parquet:"Mapping,"`
 	// Useful program location
-	Location []*Location `protobuf:"bytes,4,rep,name=location,proto3" json:"location,omitempty" parquet:","`
+	Location []*Location `protobuf:"bytes,4,rep,name=location,proto3" json:"location,omitempty" parquet:"Location,"`
 	// Functions referenced by locations
-	Function []*Function `protobuf:"bytes,5,rep,name=function,proto3" json:"function,omitempty" parquet:","`
+	Function []*Function `protobuf:"bytes,5,rep,name=function,proto3" json:"function,omitempty" parquet:"Function,"`
 	// A common table for strings referenced by various messages.
 	// string_table[0] must always be "".
-	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty" parquet:","`
+	StringTable []string `protobuf:"bytes,6,rep,name=string_table,json=stringTable,proto3" json:"string_table,omitempty" parquet:"StringTable,"`
 	// frames with Function.function_name fully matching the following
 	// regexp will be dropped from the samples, along with their successors.
 	DropFrames int64 `protobuf:"varint,7,opt,name=drop_frames,json=dropFrames,proto3" json:"drop_frames,omitempty" parquet:"-"` // Index into string table.
@@ -93,7 +93,7 @@ type Profile struct {
 	// regexp will be kept, even if it matches drop_frames.
 	KeepFrames int64 `protobuf:"varint,8,opt,name=keep_frames,json=keepFrames,proto3" json:"keep_frames,omitempty" parquet:"-"` // Index into string table.
 	// Time of collection (UTC) represented as nanoseconds past the epoch.
-	TimeNanos int64 `protobuf:"varint,9,opt,name=time_nanos,json=timeNanos,proto3" json:"time_nanos,omitempty" parquet:",delta"`
+	TimeNanos int64 `protobuf:"varint,9,opt,name=time_nanos,json=timeNanos,proto3" json:"time_nanos,omitempty" parquet:"TimeNanos,delta"`
 	// Duration of the profile, if a duration makes sense.
 	DurationNanos int64 `protobuf:"varint,10,opt,name=duration_nanos,json=durationNanos,proto3" json:"duration_nanos,omitempty" parquet:"-"`
 	// The kind of events between sampled ocurrences.
@@ -241,8 +241,8 @@ func (x *Profile) GetDefaultSampleType() int64 {
 // ValueType describes the semantics and measurement units of a value.
 type ValueType struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          int64                  `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty" parquet:","` // Index into string table.
-	Unit          int64                  `protobuf:"varint,2,opt,name=unit,proto3" json:"unit,omitempty" parquet:","` // Index into string table.
+	Type          int64                  `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty" parquet:"Type,"` // Index into string table.
+	Unit          int64                  `protobuf:"varint,2,opt,name=unit,proto3" json:"unit,omitempty" parquet:"Unit,"` // Index into string table.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -299,14 +299,14 @@ type Sample struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ids recorded here correspond to a Profile.location.id.
 	// The leaf is at location_id[0].
-	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty" parquet:","`
+	LocationId []uint64 `protobuf:"varint,1,rep,packed,name=location_id,json=locationId,proto3" json:"location_id,omitempty" parquet:"LocationId,"`
 	// The type and unit of each value is defined by the corresponding
 	// entry in Profile.sample_type. All samples must have the same
 	// number of values, the same as the length of Profile.sample_type.
 	// When aggregating multiple samples into a single sample, the
 	// result has a list of values that is the element-wise sum of the
 	// lists of the originals.
-	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:","`
+	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:"Value,"`
 	// label includes additional context for this sample. It can include
 	// things like a thread id, allocation size, etc
 	Label         []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty"`
@@ -367,10 +367,10 @@ func (x *Sample) GetLabel() []*Label {
 
 type Label struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Key   int64                  `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty"` // Index into string table
+	Key   int64                  `protobuf:"varint,1,opt,name=key,proto3" json:"key,omitempty" parquet:"Key,"` // Index into string table
 	// At most one of the following must be present
-	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty" parquet:",optional"` // Index into string table
-	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty" parquet:",optional"`
+	Str int64 `protobuf:"varint,2,opt,name=str,proto3" json:"str,omitempty" parquet:"Str,optional"` // Index into string table
+	Num int64 `protobuf:"varint,3,opt,name=num,proto3" json:"num,omitempty" parquet:"Num,optional"`
 	// Should only be present when num is present.
 	// Specifies the units of num.
 	// Use arbitrary string (for example, "requests") as a custom count unit.
@@ -378,7 +378,7 @@ type Label struct {
 	// Consumers may also  interpret units like "bytes" and "kilobytes" as memory
 	// units and units like "seconds" and "nanoseconds" as time units,
 	// and apply appropriate unit conversions to these.
-	NumUnit       int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty" parquet:",optional"` // Index into string table
+	NumUnit       int64 `protobuf:"varint,4,opt,name=num_unit,json=numUnit,proto3" json:"num_unit,omitempty" parquet:"NumUnit,optional"` // Index into string table
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -444,26 +444,26 @@ func (x *Label) GetNumUnit() int64 {
 type Mapping struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique nonzero id for the mapping.
-	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" parquet:"Id,"`
 	// Address at which the binary (or DLL) is loaded into memory.
-	MemoryStart uint64 `protobuf:"varint,2,opt,name=memory_start,json=memoryStart,proto3" json:"memory_start,omitempty"`
+	MemoryStart uint64 `protobuf:"varint,2,opt,name=memory_start,json=memoryStart,proto3" json:"memory_start,omitempty" parquet:"MemoryStart,"`
 	// The limit of the address range occupied by this mapping.
-	MemoryLimit uint64 `protobuf:"varint,3,opt,name=memory_limit,json=memoryLimit,proto3" json:"memory_limit,omitempty"`
+	MemoryLimit uint64 `protobuf:"varint,3,opt,name=memory_limit,json=memoryLimit,proto3" json:"memory_limit,omitempty" parquet:"MemoryLimit,"`
 	// Offset in the binary that corresponds to the first mapped address.
-	FileOffset uint64 `protobuf:"varint,4,opt,name=file_offset,json=fileOffset,proto3" json:"file_offset,omitempty"`
+	FileOffset uint64 `protobuf:"varint,4,opt,name=file_offset,json=fileOffset,proto3" json:"file_offset,omitempty" parquet:"FileOffset,"`
 	// The object this entry is loaded from.  This can be a filename on
 	// disk for the main binary and shared libraries, or virtual
 	// abstractions like "[vdso]".
-	Filename int64 `protobuf:"varint,5,opt,name=filename,proto3" json:"filename,omitempty"` // Index into string table
+	Filename int64 `protobuf:"varint,5,opt,name=filename,proto3" json:"filename,omitempty" parquet:"Filename,"` // Index into string table
 	// A string that uniquely identifies a particular program version
 	// with high probability. E.g., for binaries generated by GNU tools,
 	// it could be the contents of the .note.gnu.build-id field.
-	BuildId int64 `protobuf:"varint,6,opt,name=build_id,json=buildId,proto3" json:"build_id,omitempty"` // Index into string table
+	BuildId int64 `protobuf:"varint,6,opt,name=build_id,json=buildId,proto3" json:"build_id,omitempty" parquet:"BuildId,"` // Index into string table
 	// The following fields indicate the resolution of symbolic info.
-	HasFunctions    bool `protobuf:"varint,7,opt,name=has_functions,json=hasFunctions,proto3" json:"has_functions,omitempty"`
-	HasFilenames    bool `protobuf:"varint,8,opt,name=has_filenames,json=hasFilenames,proto3" json:"has_filenames,omitempty"`
-	HasLineNumbers  bool `protobuf:"varint,9,opt,name=has_line_numbers,json=hasLineNumbers,proto3" json:"has_line_numbers,omitempty"`
-	HasInlineFrames bool `protobuf:"varint,10,opt,name=has_inline_frames,json=hasInlineFrames,proto3" json:"has_inline_frames,omitempty"`
+	HasFunctions    bool `protobuf:"varint,7,opt,name=has_functions,json=hasFunctions,proto3" json:"has_functions,omitempty" parquet:"HasFunctions,"`
+	HasFilenames    bool `protobuf:"varint,8,opt,name=has_filenames,json=hasFilenames,proto3" json:"has_filenames,omitempty" parquet:"HasFilenames,"`
+	HasLineNumbers  bool `protobuf:"varint,9,opt,name=has_line_numbers,json=hasLineNumbers,proto3" json:"has_line_numbers,omitempty" parquet:"HasLineNumbers,"`
+	HasInlineFrames bool `protobuf:"varint,10,opt,name=has_inline_frames,json=hasInlineFrames,proto3" json:"has_inline_frames,omitempty" parquet:"HasInlineFrames,"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -573,17 +573,17 @@ type Location struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique nonzero id for the location.  A profile could use
 	// instruction addresses or any integer sequence as ids.
-	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" parquet:"Id,"`
 	// The id of the corresponding profile.Mapping for this location.
 	// It can be unset if the mapping is unknown or not applicable for
 	// this profile type.
-	MappingId uint64 `protobuf:"varint,2,opt,name=mapping_id,json=mappingId,proto3" json:"mapping_id,omitempty"`
+	MappingId uint64 `protobuf:"varint,2,opt,name=mapping_id,json=mappingId,proto3" json:"mapping_id,omitempty" parquet:"MappingId,"`
 	// The instruction address for this location, if available.  It
 	// should be within [Mapping.memory_start...Mapping.memory_limit]
 	// for the corresponding mapping. A non-leaf address may be in the
 	// middle of a call instruction. It is up to display tools to find
 	// the beginning of the instruction if necessary.
-	Address uint64 `protobuf:"varint,3,opt,name=address,proto3" json:"address,omitempty"`
+	Address uint64 `protobuf:"varint,3,opt,name=address,proto3" json:"address,omitempty" parquet:"Address,"`
 	// Multiple line indicates this location has inlined functions,
 	// where the last entry represents the caller into which the
 	// preceding entries were inlined.
@@ -592,13 +592,13 @@ type Location struct {
 	//
 	//	line[0].function_name == "memcpy"
 	//	line[1].function_name == "printf"
-	Line []*Line `protobuf:"bytes,4,rep,name=line,proto3" json:"line,omitempty"`
+	Line []*Line `protobuf:"bytes,4,rep,name=line,proto3" json:"line,omitempty" parquet:"Line,"`
 	// Provides an indication that multiple symbols map to this location's
 	// address, for example due to identical code folding by the linker. In that
 	// case the line information above represents one of the multiple
 	// symbols. This field must be recomputed when the symbolization state of the
 	// profile changes.
-	IsFolded      bool `protobuf:"varint,5,opt,name=is_folded,json=isFolded,proto3" json:"is_folded,omitempty"`
+	IsFolded      bool `protobuf:"varint,5,opt,name=is_folded,json=isFolded,proto3" json:"is_folded,omitempty" parquet:"IsFolded,"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -671,9 +671,9 @@ func (x *Location) GetIsFolded() bool {
 type Line struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The id of the corresponding profile.Function for this line.
-	FunctionId uint64 `protobuf:"varint,1,opt,name=function_id,json=functionId,proto3" json:"function_id,omitempty"`
+	FunctionId uint64 `protobuf:"varint,1,opt,name=function_id,json=functionId,proto3" json:"function_id,omitempty" parquet:"FunctionId,"`
 	// Line number in source code.
-	Line          int64 `protobuf:"varint,2,opt,name=line,proto3" json:"line,omitempty"`
+	Line          int64 `protobuf:"varint,2,opt,name=line,proto3" json:"line,omitempty" parquet:"Line,"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -725,16 +725,16 @@ func (x *Line) GetLine() int64 {
 type Function struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique nonzero id for the function.
-	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty" parquet:"Id,"`
 	// Name of the function, in human-readable form if available.
-	Name int64 `protobuf:"varint,2,opt,name=name,proto3" json:"name,omitempty"` // Index into string table
+	Name int64 `protobuf:"varint,2,opt,name=name,proto3" json:"name,omitempty" parquet:"Name,"` // Index into string table
 	// Name of the function, as identified by the system.
 	// For instance, it can be a C++ mangled name.
-	SystemName int64 `protobuf:"varint,3,opt,name=system_name,json=systemName,proto3" json:"system_name,omitempty"` // Index into string table
+	SystemName int64 `protobuf:"varint,3,opt,name=system_name,json=systemName,proto3" json:"system_name,omitempty" parquet:"SystemName,"` // Index into string table
 	// Source file containing the function.
-	Filename int64 `protobuf:"varint,4,opt,name=filename,proto3" json:"filename,omitempty"` // Index into string table
+	Filename int64 `protobuf:"varint,4,opt,name=filename,proto3" json:"filename,omitempty" parquet:"Filename,"` // Index into string table
 	// Line number in source file.
-	StartLine     int64 `protobuf:"varint,5,opt,name=start_line,json=startLine,proto3" json:"start_line,omitempty"`
+	StartLine     int64 `protobuf:"varint,5,opt,name=start_line,json=startLine,proto3" json:"start_line,omitempty" parquet:"StartLine,"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -20,14 +20,11 @@ func TestSchemaMatch(t *testing.T) {
 	// schema of a List of a struct pointer. This replaces this in the schema
 	// comparison, because this has no affect to our construct/reconstruct code
 	// we can simply replace the string in the schema.
-	profilesStructSchema := strings.NewReplacer(
-		"optional group element", "required group element",
-		// The manual schema preserves the historic protobuf field names.
-		"int64 key", "int64 Key",
-		"int64 str", "int64 Str",
-		"int64 num_unit", "int64 NumUnit",
-	).Replace(parquet.SchemaOf(&Profile{}).String())
-	profilesStructSchema = strings.ReplaceAll(profilesStructSchema, "int64 num", "int64 Num")
+	profilesStructSchema := strings.ReplaceAll(
+		parquet.SchemaOf(&Profile{}).String(),
+		"optional group element",
+		"required group element",
+	)
 	// []byte produces "optional binary TraceID" but our schema uses
 	// fixed_len_byte_array(16). We use []byte because parquet-go panics
 	// with [16]byte on null optional FixedLenByteArray values.
@@ -42,6 +39,38 @@ func TestSchemaMatch(t *testing.T) {
 
 	stacktracesStructSchema := parquet.SchemaOf(&storedStacktrace{})
 	require.Equal(t, strings.Replace(stacktracesStructSchema.String(), "message storedStacktrace", "message Stacktrace", 1), stacktracesSchema.String())
+
+	require.Equal(t, `message Location {
+	required int64 Id (INT(64,false));
+	required int64 MappingId (INT(64,false));
+	required int64 Address (INT(64,false));
+	repeated group Line {
+		required int64 FunctionId (INT(64,false));
+		required int64 Line (INT(64,true));
+	}
+	required boolean IsFolded;
+}`, locationsSchema.String())
+
+	require.Equal(t, `message Function {
+	required int64 Id (INT(64,false));
+	required int64 Name (INT(64,true));
+	required int64 SystemName (INT(64,true));
+	required int64 Filename (INT(64,true));
+	required int64 StartLine (INT(64,true));
+}`, functionsSchema.String())
+
+	require.Equal(t, `message Mapping {
+	required int64 Id (INT(64,false));
+	required int64 MemoryStart (INT(64,false));
+	required int64 MemoryLimit (INT(64,false));
+	required int64 FileOffset (INT(64,false));
+	required int64 Filename (INT(64,true));
+	required int64 BuildId (INT(64,true));
+	required boolean HasFunctions;
+	required boolean HasFilenames;
+	required boolean HasLineNumbers;
+	required boolean HasInlineFrames;
+}`, mappingsSchema.String())
 }
 
 func newStacktraces() []*Stacktrace {
