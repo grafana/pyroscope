@@ -1385,6 +1385,11 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # CLI flag: -compaction-worker.cleanup-max-duration
 [cleanup_max_duration: <duration> | default = 15s]
 
+# (advanced) Source of the compaction job source block metadata. Supported
+# values: metastore, object-storage.
+# CLI flag: -compaction-worker.metadata-source
+[metadata_source: <string> | default = "metastore"]
+
 metrics_exporter:
   # (advanced) This parameter specifies whether the metrics exporter is enabled.
   # CLI flag: -compaction-worker.metrics-exporter.enabled
