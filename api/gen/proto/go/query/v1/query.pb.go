@@ -1913,11 +1913,14 @@ func (x *SymbolRefTable) GetUnresolvedAddress() []uint64 {
 }
 
 type TreeReport struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Query         *TreeQuery             `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
-	Tree          []byte                 `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
-	Symbols       *TreeSymbols           `protobuf:"bytes,3,opt,name=symbols,proto3,oneof" json:"symbols,omitempty"`
-	SymbolRefs    *SymbolRefTable        `protobuf:"bytes,4,opt,name=symbol_refs,json=symbolRefs,proto3,oneof" json:"symbol_refs,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Query      *TreeQuery             `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Tree       []byte                 `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
+	Symbols    *TreeSymbols           `protobuf:"bytes,3,opt,name=symbols,proto3,oneof" json:"symbols,omitempty"`
+	SymbolRefs *SymbolRefTable        `protobuf:"bytes,4,opt,name=symbol_refs,json=symbolRefs,proto3,oneof" json:"symbol_refs,omitempty"`
+	// Describes how adaptive sampling affected the profiles that were
+	// aggregated into the tree.
+	Sampling      *v11.ProfileSampling `protobuf:"bytes,5,opt,name=sampling,proto3" json:"sampling,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1976,6 +1979,13 @@ func (x *TreeReport) GetSymbols() *TreeSymbols {
 func (x *TreeReport) GetSymbolRefs() *SymbolRefTable {
 	if x != nil {
 		return x.SymbolRefs
+	}
+	return nil
+}
+
+func (x *TreeReport) GetSampling() *v11.ProfileSampling {
+	if x != nil {
+		return x.Sampling
 	}
 	return nil
 }
@@ -2837,14 +2847,15 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\tbuild_ids\x18\x02 \x03(\tR\bbuildIds\x12!\n" +
 	"\fbinary_names\x18\x03 \x03(\tR\vbinaryNames\x12.\n" +
 	"\x13unresolved_build_id\x18\x04 \x03(\rR\x11unresolvedBuildId\x12-\n" +
-	"\x12unresolved_address\x18\x05 \x03(\x04R\x11unresolvedAddress\"\xdd\x01\n" +
+	"\x12unresolved_address\x18\x05 \x03(\x04R\x11unresolvedAddress\"\x94\x02\n" +
 	"\n" +
 	"TreeReport\x12)\n" +
 	"\x05query\x18\x01 \x01(\v2\x13.query.v1.TreeQueryR\x05query\x12\x12\n" +
 	"\x04tree\x18\x02 \x01(\fR\x04tree\x124\n" +
 	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01\x12>\n" +
 	"\vsymbol_refs\x18\x04 \x01(\v2\x18.query.v1.SymbolRefTableH\x01R\n" +
-	"symbolRefs\x88\x01\x01B\n" +
+	"symbolRefs\x88\x01\x01\x125\n" +
+	"\bsampling\x18\x05 \x01(\v2\x19.types.v1.ProfileSamplingR\bsamplingB\n" +
 	"\n" +
 	"\b_symbolsB\x0e\n" +
 	"\f_symbol_refs\"\x98\x02\n" +
@@ -3002,7 +3013,8 @@ var file_query_v1_query_proto_goTypes = []any{
 	(*v12.Mapping)(nil),             // 45: google.v1.Mapping
 	(*v12.Location)(nil),            // 46: google.v1.Location
 	(*v12.Function)(nil),            // 47: google.v1.Function
-	(v13.HeatmapQueryType)(0),       // 48: querier.v1.HeatmapQueryType
+	(*v11.ProfileSampling)(nil),     // 48: types.v1.ProfileSampling
+	(v13.HeatmapQueryType)(0),       // 49: querier.v1.HeatmapQueryType
 }
 var file_query_v1_query_proto_depIdxs = []int32{
 	10, // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
@@ -3055,28 +3067,29 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	25, // 47: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
 	26, // 48: query.v1.TreeReport.symbols:type_name -> query.v1.TreeSymbols
 	27, // 49: query.v1.TreeReport.symbol_refs:type_name -> query.v1.SymbolRefTable
-	44, // 50: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	29, // 51: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	48, // 52: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	42, // 53: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	33, // 54: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	31, // 55: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	34, // 56: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	32, // 57: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	36, // 58: query.v1.Point.exemplars:type_name -> query.v1.Exemplar
-	37, // 59: query.v1.Series.points:type_name -> query.v1.Point
-	23, // 60: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
-	38, // 61: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
-	32, // 62: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
-	4,  // 63: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	7,  // 64: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	5,  // 65: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	11, // 66: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	65, // [65:67] is the sub-list for method output_type
-	63, // [63:65] is the sub-list for method input_type
-	63, // [63:63] is the sub-list for extension type_name
-	63, // [63:63] is the sub-list for extension extendee
-	0,  // [0:63] is the sub-list for field type_name
+	48, // 50: query.v1.TreeReport.sampling:type_name -> types.v1.ProfileSampling
+	44, // 51: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	29, // 52: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
+	49, // 53: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	42, // 54: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	33, // 55: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	31, // 56: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	34, // 57: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	32, // 58: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	36, // 59: query.v1.Point.exemplars:type_name -> query.v1.Exemplar
+	37, // 60: query.v1.Series.points:type_name -> query.v1.Point
+	23, // 61: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
+	38, // 62: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
+	32, // 63: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
+	4,  // 64: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	7,  // 65: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	5,  // 66: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	11, // 67: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	66, // [66:68] is the sub-list for method output_type
+	64, // [64:66] is the sub-list for method input_type
+	64, // [64:64] is the sub-list for extension type_name
+	64, // [64:64] is the sub-list for extension extendee
+	0,  // [0:64] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }

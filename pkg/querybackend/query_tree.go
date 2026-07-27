@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/grafana/dskit/runutil"
 	"go.opentelemetry.io/otel/attribute"
@@ -12,6 +13,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -66,7 +68,11 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 
 	otelSpan := trace.SpanFromContext(q.ctx)
 
-	profileOpts := []profileIteratorOption{withExcludeSampled()}
+	// Stripped profiles are not excluded via a matcher here: the entries are
+	// filtered (and counted) by strippedProfileFilter below, so the report can
+	// describe how adaptive sampling affected the result. The group-by makes
+	// each entry carry the __sampled__ label the filter keys on.
+	profileOpts := []profileIteratorOption{withGroupByLabels(model.LabelNameSampled)}
 	if len(query.Tree.ProfileIdSelector) > 0 {
 		opt, err := withProfileIDSelector(query.Tree.ProfileIdSelector...)
 		if err != nil {
@@ -84,6 +90,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
+	filtered := newStrippedProfileFilter(entries)
 
 	spanSelector, err := model.NewSpanSelector(query.Tree.SpanSelector)
 	if err != nil {
@@ -135,7 +142,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		resolverOptions = append(resolverOptions, symdb.WithResolverSymbolRefCap(int(query.Tree.GetMaxUnresolvedLocations())))
 	}
 
-	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
+	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, filtered, q.ds.Profiles().RowGroups(), indices...)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
@@ -183,9 +190,10 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		}
 		resp := &queryv1.Report{
 			Tree: &queryv1.TreeReport{
-				Query:   query.Tree.CloneVT(),
-				Tree:    tree.Bytes(query.Tree.GetMaxNodes(), symbolBuilder.KeepSymbol),
-				Symbols: new(queryv1.TreeSymbols),
+				Query:    query.Tree.CloneVT(),
+				Tree:     tree.Bytes(query.Tree.GetMaxNodes(), symbolBuilder.KeepSymbol),
+				Symbols:  new(queryv1.TreeSymbols),
+				Sampling: filtered.sampling(),
 			},
 		}
 		symbolBuilder.Build(resp.Tree.Symbols)
@@ -196,7 +204,12 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	// for: keep the existing FunctionName path unconditionally, same as a
 	// non-symbol-ref query.
 	if mode == queryv1.SymbolMode_SYMBOL_MODE_REFS && datasetUnsymbolized(q.obj.Metadata(), q.ds.Metadata()) {
-		return queryTreeSymbolRefs(query, resolver)
+		resp, err := queryTreeSymbolRefs(query, resolver)
+		if err != nil {
+			return nil, err
+		}
+		resp.Tree.Sampling = filtered.sampling()
+		return resp, nil
 	}
 
 	tree, err := resolver.Tree()
@@ -206,8 +219,9 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 
 	resp := &queryv1.Report{
 		Tree: &queryv1.TreeReport{
-			Query: query.Tree.CloneVT(),
-			Tree:  tree.Bytes(query.Tree.GetMaxNodes(), nil),
+			Query:    query.Tree.CloneVT(),
+			Tree:     tree.Bytes(query.Tree.GetMaxNodes(), nil),
+			Sampling: filtered.sampling(),
 		},
 	}
 	return resp, nil
@@ -288,6 +302,42 @@ type treeAggregator struct {
 
 	symbolRefTable *symbolref.Table
 	symbolRefTree  *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
+
+	sampling samplingAggregator
+}
+
+// samplingAggregator merges ProfileSampling partials. Atomics: aggregate()
+// is called concurrently. A partial without sampling (an older backend
+// during a rollout) contributes nothing; the merged result is then a lower
+// bound, and is only emitted if at least one partial carried sampling.
+type samplingAggregator struct {
+	present  atomic.Bool
+	sampled  atomic.Bool
+	kept     atomic.Int64
+	stripped atomic.Int64
+}
+
+func (a *samplingAggregator) aggregate(s *typesv1.ProfileSampling) {
+	if s == nil {
+		return
+	}
+	a.present.Store(true)
+	if s.Sampled {
+		a.sampled.Store(true)
+	}
+	a.kept.Add(s.KeptProfiles)
+	a.stripped.Add(s.StrippedProfiles)
+}
+
+func (a *samplingAggregator) build() *typesv1.ProfileSampling {
+	if !a.present.Load() {
+		return nil
+	}
+	return &typesv1.ProfileSampling{
+		Sampled:          a.sampled.Load(),
+		KeptProfiles:     a.kept.Load(),
+		StrippedProfiles: a.stripped.Load(),
+	}
 }
 
 func newTreeAggregator(*queryv1.InvokeRequest) aggregator { return new(treeAggregator) }
@@ -298,6 +348,7 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	if err != nil {
 		return err
 	}
+	a.sampling.aggregate(r.Sampling)
 	switch mode {
 	case queryv1.SymbolMode_SYMBOL_MODE_REFS:
 		a.init.Do(func() {
@@ -371,7 +422,8 @@ func (a *treeAggregator) checkUnresolvedLimit() error {
 func (a *treeAggregator) build() *queryv1.Report {
 	result := &queryv1.Report{
 		Tree: &queryv1.TreeReport{
-			Query: a.query,
+			Query:    a.query,
+			Sampling: a.sampling.build(),
 		},
 	}
 

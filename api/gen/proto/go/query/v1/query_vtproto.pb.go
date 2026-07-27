@@ -701,6 +701,13 @@ func (m *TreeReport) CloneVT() *TreeReport {
 		copy(tmpBytes, rhs)
 		r.Tree = tmpBytes
 	}
+	if rhs := m.Sampling; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v11.ProfileSampling }); ok {
+			r.Sampling = vtpb.CloneVT()
+		} else {
+			r.Sampling = proto.Clone(rhs).(*v11.ProfileSampling)
+		}
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -2016,6 +2023,15 @@ func (this *TreeReport) EqualVT(that *TreeReport) bool {
 		return false
 	}
 	if !this.SymbolRefs.EqualVT(that.SymbolRefs) {
+		return false
+	}
+	if equal, ok := interface{}(this.Sampling).(interface {
+		EqualVT(*v11.ProfileSampling) bool
+	}); ok {
+		if !equal.EqualVT(that.Sampling) {
+			return false
+		}
+	} else if !proto.Equal(this.Sampling, that.Sampling) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -4409,6 +4425,28 @@ func (m *TreeReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Sampling != nil {
+		if vtmsg, ok := interface{}(m.Sampling).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Sampling)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
 	if m.SymbolRefs != nil {
 		size, err := m.SymbolRefs.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -5912,6 +5950,16 @@ func (m *TreeReport) SizeVT() (n int) {
 	}
 	if m.SymbolRefs != nil {
 		l = m.SymbolRefs.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Sampling != nil {
+		if size, ok := interface{}(m.Sampling).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Sampling)
+		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -10672,6 +10720,50 @@ func (m *TreeReport) UnmarshalVT(dAtA []byte) error {
 			}
 			if err := m.SymbolRefs.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sampling", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Sampling == nil {
+				m.Sampling = &v11.ProfileSampling{}
+			}
+			if unmarshal, ok := interface{}(m.Sampling).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Sampling); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		default:

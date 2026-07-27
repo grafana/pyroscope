@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
@@ -50,7 +51,7 @@ func (q *QueryFrontend) Diff(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	var left, right []byte
+	var left, right *queryv1.TreeReport
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		var leftErr error
@@ -66,7 +67,7 @@ func (q *QueryFrontend) Diff(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	diff, err := phlaremodel.NewFlamegraphDiffFromBytes(left, right, maxNodes)
+	diff, err := phlaremodel.NewFlamegraphDiffFromBytes(left.GetTree(), right.GetTree(), maxNodes)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

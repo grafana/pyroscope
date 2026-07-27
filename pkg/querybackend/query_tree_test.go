@@ -274,3 +274,28 @@ func (s *testSuite) Test_QueryTree_SymbolRefs_NativeDatasetKeepsPlainPath() {
 	s.Require().NoError(err)
 	s.Assert().Equal(plainTree.String(), symbolRefsTree.String())
 }
+
+// Test_QueryTree_Sampling_NoStrippedProfiles verifies that tree reports carry
+// sampling metadata even when no profiles were sampled out, so clients can
+// distinguish "not sampled" from "server cannot tell". The fixture blocks
+// contain no stripped profiles.
+func (s *testSuite) Test_QueryTree_Sampling_NoStrippedProfiles() {
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		EndTime:       time.Now().UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree:      &queryv1.TreeQuery{},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Reports, 1)
+
+	sampling := resp.Reports[0].Tree.Sampling
+	s.Require().NotNil(sampling)
+	s.Assert().False(sampling.Sampled)
+	s.Assert().Greater(sampling.KeptProfiles, int64(0))
+	s.Assert().Zero(sampling.StrippedProfiles)
+}

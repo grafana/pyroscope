@@ -1618,6 +1618,12 @@ components:
           title: pprof
           description: Profile in pprof format.
           $ref: '#/components/schemas/querier.v1.PprofProfile'
+        sampling:
+          title: sampling
+          description: |-
+            Describes how adaptive sampling affected the profiles backing this
+             response. Currently populated for the flame graph and tree formats.
+          $ref: '#/components/schemas/types.v1.ProfileSampling'
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectSeriesRequest:
@@ -2076,6 +2082,39 @@ components:
 
          Currently annotations are applied internally by distributors,
          any annotation passed via the push API will be dropped.
+    types.v1.ProfileSampling:
+      type: object
+      properties:
+        sampled:
+          type: boolean
+          title: sampled
+          description: |-
+            True when adaptive sampling affected this response: the query matched
+             profiles that were sampled out at ingest and are not part of the result.
+        keptProfiles:
+          type:
+            - integer
+            - string
+          title: kept_profiles
+          format: int64
+          description: Number of stack-bearing profiles aggregated into the result.
+        strippedProfiles:
+          type:
+            - integer
+            - string
+          title: stripped_profiles
+          format: int64
+          description: |-
+            Number of profiles that matched the query but were stripped to totals
+             at ingest and are therefore excluded from the result.
+      title: ProfileSampling
+      additionalProperties: false
+      description: |-
+        ProfileSampling describes how adaptive sampling affected the profiles
+         backing a query response. Stack-based queries (flame graph, tree) only
+         aggregate profiles that retained their stacktraces; profiles sampled out
+         at ingest are stored with their totals kept and stacktraces stripped, and
+         are excluded from such results.
     types.v1.ProfileType:
       type: object
       properties:

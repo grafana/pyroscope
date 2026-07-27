@@ -164,6 +164,25 @@ func (m *ProfileAnnotation) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *ProfileSampling) CloneVT() *ProfileSampling {
+	if m == nil {
+		return (*ProfileSampling)(nil)
+	}
+	r := new(ProfileSampling)
+	r.Sampled = m.Sampled
+	r.KeptProfiles = m.KeptProfiles
+	r.StrippedProfiles = m.StrippedProfiles
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ProfileSampling) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *LabelValuesRequest) CloneVT() *LabelValuesRequest {
 	if m == nil {
 		return (*LabelValuesRequest)(nil)
@@ -705,6 +724,31 @@ func (this *ProfileAnnotation) EqualVT(that *ProfileAnnotation) bool {
 
 func (this *ProfileAnnotation) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*ProfileAnnotation)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ProfileSampling) EqualVT(that *ProfileSampling) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Sampled != that.Sampled {
+		return false
+	}
+	if this.KeptProfiles != that.KeptProfiles {
+		return false
+	}
+	if this.StrippedProfiles != that.StrippedProfiles {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ProfileSampling) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ProfileSampling)
 	if !ok {
 		return false
 	}
@@ -1512,6 +1556,59 @@ func (m *ProfileAnnotation) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Key)))
 		i--
 		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ProfileSampling) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ProfileSampling) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ProfileSampling) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.StrippedProfiles != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.StrippedProfiles))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.KeptProfiles != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.KeptProfiles))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.Sampled {
+		i--
+		if m.Sampled {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -2413,6 +2510,25 @@ func (m *ProfileAnnotation) SizeVT() (n int) {
 	l = len(m.Value)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ProfileSampling) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Sampled {
+		n += 2
+	}
+	if m.KeptProfiles != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.KeptProfiles))
+	}
+	if m.StrippedProfiles != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.StrippedProfiles))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3521,6 +3637,115 @@ func (m *ProfileAnnotation) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Value = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ProfileSampling) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ProfileSampling: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ProfileSampling: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sampled", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Sampled = bool(v != 0)
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field KeptProfiles", wireType)
+			}
+			m.KeptProfiles = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.KeptProfiles |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StrippedProfiles", wireType)
+			}
+			m.StrippedProfiles = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.StrippedProfiles |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

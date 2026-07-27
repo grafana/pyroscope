@@ -15,6 +15,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -372,4 +373,56 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 	require.Contains(t, resp.Msg.Dot, "digraph")
 	require.Nil(t, resp.Msg.Flamegraph)
 	require.Empty(t, resp.Msg.Tree)
+}
+
+// TestSelectMergeStacktraces_SamplingPassthrough verifies that the sampling
+// metadata of the backend tree report is attached to the response for the
+// tree-backed formats.
+func TestSelectMergeStacktraces_SamplingPassthrough(t *testing.T) {
+	tree := new(phlaremodel.FunctionNameTree)
+	tree.InsertStack(1, "foo")
+	treeBytes := tree.Bytes(-1, nil)
+	sampling := &typesv1.ProfileSampling{
+		Sampled:          true,
+		KeptProfiles:     2,
+		StrippedProfiles: 14,
+	}
+
+	for _, format := range []querierv1.ProfileFormat{
+		querierv1.ProfileFormat_PROFILE_FORMAT_UNSPECIFIED,
+		querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH,
+		querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+	} {
+		t.Run(format.String(), func(t *testing.T) {
+			mockLimits := mockfrontend.NewMockLimits(t)
+			mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+			mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+			mockLimits.On("MaxFlameGraphNodesDefault", smpTenant).Return(0)
+			mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+			mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+			mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+			mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+			mockBackend.On("Invoke", mock.Anything, mock.Anything).
+				Return(&queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_TREE,
+					Tree:       &queryv1.TreeReport{Tree: treeBytes, Sampling: sampling},
+				}}}, nil)
+
+			qf := newSMPQueryFrontend(t, mockLimits, mockMetadata, mockBackend)
+			ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+			start, end := smpValidTimeRange()
+			resp, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+				ProfileTypeID: smpProfileType,
+				LabelSelector: "{}",
+				Start:         start,
+				End:           end,
+				Format:        format,
+			}))
+
+			require.NoError(t, err)
+			require.Equal(t, sampling, resp.Msg.Sampling)
+		})
+	}
 }

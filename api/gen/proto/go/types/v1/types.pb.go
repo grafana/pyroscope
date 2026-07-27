@@ -487,6 +487,76 @@ func (x *ProfileAnnotation) GetValue() string {
 	return ""
 }
 
+// ProfileSampling describes how adaptive sampling affected the profiles
+// backing a query response. Stack-based queries (flame graph, tree) only
+// aggregate profiles that retained their stacktraces; profiles sampled out
+// at ingest are stored with their totals kept and stacktraces stripped, and
+// are excluded from such results.
+type ProfileSampling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True when adaptive sampling affected this response: the query matched
+	// profiles that were sampled out at ingest and are not part of the result.
+	Sampled bool `protobuf:"varint,1,opt,name=sampled,proto3" json:"sampled,omitempty"`
+	// Number of stack-bearing profiles aggregated into the result.
+	KeptProfiles int64 `protobuf:"varint,2,opt,name=kept_profiles,json=keptProfiles,proto3" json:"kept_profiles,omitempty"`
+	// Number of profiles that matched the query but were stripped to totals
+	// at ingest and are therefore excluded from the result.
+	StrippedProfiles int64 `protobuf:"varint,3,opt,name=stripped_profiles,json=strippedProfiles,proto3" json:"stripped_profiles,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ProfileSampling) Reset() {
+	*x = ProfileSampling{}
+	mi := &file_types_v1_types_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfileSampling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfileSampling) ProtoMessage() {}
+
+func (x *ProfileSampling) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfileSampling.ProtoReflect.Descriptor instead.
+func (*ProfileSampling) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ProfileSampling) GetSampled() bool {
+	if x != nil {
+		return x.Sampled
+	}
+	return false
+}
+
+func (x *ProfileSampling) GetKeptProfiles() int64 {
+	if x != nil {
+		return x.KeptProfiles
+	}
+	return 0
+}
+
+func (x *ProfileSampling) GetStrippedProfiles() int64 {
+	if x != nil {
+		return x.StrippedProfiles
+	}
+	return 0
+}
+
 type LabelValuesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the label
@@ -503,7 +573,7 @@ type LabelValuesRequest struct {
 
 func (x *LabelValuesRequest) Reset() {
 	*x = LabelValuesRequest{}
-	mi := &file_types_v1_types_proto_msgTypes[6]
+	mi := &file_types_v1_types_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -515,7 +585,7 @@ func (x *LabelValuesRequest) String() string {
 func (*LabelValuesRequest) ProtoMessage() {}
 
 func (x *LabelValuesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[6]
+	mi := &file_types_v1_types_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -528,7 +598,7 @@ func (x *LabelValuesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LabelValuesRequest.ProtoReflect.Descriptor instead.
 func (*LabelValuesRequest) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{6}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LabelValuesRequest) GetName() string {
@@ -568,7 +638,7 @@ type LabelValuesResponse struct {
 
 func (x *LabelValuesResponse) Reset() {
 	*x = LabelValuesResponse{}
-	mi := &file_types_v1_types_proto_msgTypes[7]
+	mi := &file_types_v1_types_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -580,7 +650,7 @@ func (x *LabelValuesResponse) String() string {
 func (*LabelValuesResponse) ProtoMessage() {}
 
 func (x *LabelValuesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[7]
+	mi := &file_types_v1_types_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -593,7 +663,7 @@ func (x *LabelValuesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LabelValuesResponse.ProtoReflect.Descriptor instead.
 func (*LabelValuesResponse) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{7}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *LabelValuesResponse) GetNames() []string {
@@ -617,7 +687,7 @@ type LabelNamesRequest struct {
 
 func (x *LabelNamesRequest) Reset() {
 	*x = LabelNamesRequest{}
-	mi := &file_types_v1_types_proto_msgTypes[8]
+	mi := &file_types_v1_types_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -629,7 +699,7 @@ func (x *LabelNamesRequest) String() string {
 func (*LabelNamesRequest) ProtoMessage() {}
 
 func (x *LabelNamesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[8]
+	mi := &file_types_v1_types_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -642,7 +712,7 @@ func (x *LabelNamesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LabelNamesRequest.ProtoReflect.Descriptor instead.
 func (*LabelNamesRequest) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{8}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *LabelNamesRequest) GetMatchers() []string {
@@ -675,7 +745,7 @@ type LabelNamesResponse struct {
 
 func (x *LabelNamesResponse) Reset() {
 	*x = LabelNamesResponse{}
-	mi := &file_types_v1_types_proto_msgTypes[9]
+	mi := &file_types_v1_types_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -687,7 +757,7 @@ func (x *LabelNamesResponse) String() string {
 func (*LabelNamesResponse) ProtoMessage() {}
 
 func (x *LabelNamesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[9]
+	mi := &file_types_v1_types_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -700,7 +770,7 @@ func (x *LabelNamesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LabelNamesResponse.ProtoReflect.Descriptor instead.
 func (*LabelNamesResponse) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{9}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LabelNamesResponse) GetNames() []string {
@@ -723,7 +793,7 @@ type BlockInfo struct {
 
 func (x *BlockInfo) Reset() {
 	*x = BlockInfo{}
-	mi := &file_types_v1_types_proto_msgTypes[10]
+	mi := &file_types_v1_types_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -735,7 +805,7 @@ func (x *BlockInfo) String() string {
 func (*BlockInfo) ProtoMessage() {}
 
 func (x *BlockInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[10]
+	mi := &file_types_v1_types_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -748,7 +818,7 @@ func (x *BlockInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockInfo.ProtoReflect.Descriptor instead.
 func (*BlockInfo) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{10}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *BlockInfo) GetUlid() string {
@@ -797,7 +867,7 @@ type BlockCompaction struct {
 
 func (x *BlockCompaction) Reset() {
 	*x = BlockCompaction{}
-	mi := &file_types_v1_types_proto_msgTypes[11]
+	mi := &file_types_v1_types_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -809,7 +879,7 @@ func (x *BlockCompaction) String() string {
 func (*BlockCompaction) ProtoMessage() {}
 
 func (x *BlockCompaction) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[11]
+	mi := &file_types_v1_types_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -822,7 +892,7 @@ func (x *BlockCompaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockCompaction.ProtoReflect.Descriptor instead.
 func (*BlockCompaction) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{11}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *BlockCompaction) GetLevel() int32 {
@@ -862,7 +932,7 @@ type StackTraceSelector struct {
 
 func (x *StackTraceSelector) Reset() {
 	*x = StackTraceSelector{}
-	mi := &file_types_v1_types_proto_msgTypes[12]
+	mi := &file_types_v1_types_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +944,7 @@ func (x *StackTraceSelector) String() string {
 func (*StackTraceSelector) ProtoMessage() {}
 
 func (x *StackTraceSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[12]
+	mi := &file_types_v1_types_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +957,7 @@ func (x *StackTraceSelector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StackTraceSelector.ProtoReflect.Descriptor instead.
 func (*StackTraceSelector) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{12}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *StackTraceSelector) GetCallSite() []*Location {
@@ -913,7 +983,7 @@ type Location struct {
 
 func (x *Location) Reset() {
 	*x = Location{}
-	mi := &file_types_v1_types_proto_msgTypes[13]
+	mi := &file_types_v1_types_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -925,7 +995,7 @@ func (x *Location) String() string {
 func (*Location) ProtoMessage() {}
 
 func (x *Location) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[13]
+	mi := &file_types_v1_types_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +1008,7 @@ func (x *Location) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Location.ProtoReflect.Descriptor instead.
 func (*Location) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{13}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Location) GetName() string {
@@ -961,7 +1031,7 @@ type GoPGO struct {
 
 func (x *GoPGO) Reset() {
 	*x = GoPGO{}
-	mi := &file_types_v1_types_proto_msgTypes[14]
+	mi := &file_types_v1_types_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -973,7 +1043,7 @@ func (x *GoPGO) String() string {
 func (*GoPGO) ProtoMessage() {}
 
 func (x *GoPGO) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[14]
+	mi := &file_types_v1_types_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -986,7 +1056,7 @@ func (x *GoPGO) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GoPGO.ProtoReflect.Descriptor instead.
 func (*GoPGO) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{14}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GoPGO) GetKeepLocations() uint32 {
@@ -1011,7 +1081,7 @@ type GetProfileStatsRequest struct {
 
 func (x *GetProfileStatsRequest) Reset() {
 	*x = GetProfileStatsRequest{}
-	mi := &file_types_v1_types_proto_msgTypes[15]
+	mi := &file_types_v1_types_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1023,7 +1093,7 @@ func (x *GetProfileStatsRequest) String() string {
 func (*GetProfileStatsRequest) ProtoMessage() {}
 
 func (x *GetProfileStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[15]
+	mi := &file_types_v1_types_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1036,7 +1106,7 @@ func (x *GetProfileStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetProfileStatsRequest) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{15}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{16}
 }
 
 type GetProfileStatsResponse struct {
@@ -1053,7 +1123,7 @@ type GetProfileStatsResponse struct {
 
 func (x *GetProfileStatsResponse) Reset() {
 	*x = GetProfileStatsResponse{}
-	mi := &file_types_v1_types_proto_msgTypes[16]
+	mi := &file_types_v1_types_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1135,7 @@ func (x *GetProfileStatsResponse) String() string {
 func (*GetProfileStatsResponse) ProtoMessage() {}
 
 func (x *GetProfileStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[16]
+	mi := &file_types_v1_types_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1148,7 @@ func (x *GetProfileStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetProfileStatsResponse) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{16}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetProfileStatsResponse) GetDataIngested() bool {
@@ -1126,7 +1196,7 @@ type Exemplar struct {
 
 func (x *Exemplar) Reset() {
 	*x = Exemplar{}
-	mi := &file_types_v1_types_proto_msgTypes[17]
+	mi := &file_types_v1_types_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1138,7 +1208,7 @@ func (x *Exemplar) String() string {
 func (*Exemplar) ProtoMessage() {}
 
 func (x *Exemplar) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[17]
+	mi := &file_types_v1_types_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1151,7 +1221,7 @@ func (x *Exemplar) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Exemplar.ProtoReflect.Descriptor instead.
 func (*Exemplar) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{17}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Exemplar) GetTimestamp() int64 {
@@ -1206,7 +1276,7 @@ type HeatmapSeries struct {
 
 func (x *HeatmapSeries) Reset() {
 	*x = HeatmapSeries{}
-	mi := &file_types_v1_types_proto_msgTypes[18]
+	mi := &file_types_v1_types_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1218,7 +1288,7 @@ func (x *HeatmapSeries) String() string {
 func (*HeatmapSeries) ProtoMessage() {}
 
 func (x *HeatmapSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[18]
+	mi := &file_types_v1_types_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1231,7 +1301,7 @@ func (x *HeatmapSeries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapSeries.ProtoReflect.Descriptor instead.
 func (*HeatmapSeries) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{18}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *HeatmapSeries) GetLabels() []*LabelPair {
@@ -1265,7 +1335,7 @@ type HeatmapSlot struct {
 
 func (x *HeatmapSlot) Reset() {
 	*x = HeatmapSlot{}
-	mi := &file_types_v1_types_proto_msgTypes[19]
+	mi := &file_types_v1_types_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1277,7 +1347,7 @@ func (x *HeatmapSlot) String() string {
 func (*HeatmapSlot) ProtoMessage() {}
 
 func (x *HeatmapSlot) ProtoReflect() protoreflect.Message {
-	mi := &file_types_v1_types_proto_msgTypes[19]
+	mi := &file_types_v1_types_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1290,7 +1360,7 @@ func (x *HeatmapSlot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeatmapSlot.ProtoReflect.Descriptor instead.
 func (*HeatmapSlot) Descriptor() ([]byte, []int) {
-	return file_types_v1_types_proto_rawDescGZIP(), []int{19}
+	return file_types_v1_types_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *HeatmapSlot) GetTimestamp() int64 {
@@ -1353,7 +1423,11 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\texemplars\x18\x04 \x03(\v2\x12.types.v1.ExemplarR\texemplars\";\n" +
 	"\x11ProfileAnnotation\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xad\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"}\n" +
+	"\x0fProfileSampling\x12\x18\n" +
+	"\asampled\x18\x01 \x01(\bR\asampled\x12#\n" +
+	"\rkept_profiles\x18\x02 \x01(\x03R\fkeptProfiles\x12+\n" +
+	"\x11stripped_profiles\x18\x03 \x01(\x03R\x10strippedProfiles\"\xad\x01\n" +
 	"\x12LabelValuesRequest\x12'\n" +
 	"\x04name\x18\x01 \x01(\tB\x13\xbaG\x10:\x0e\x12\fservice_nameR\x04name\x12\x1a\n" +
 	"\bmatchers\x18\x02 \x03(\tR\bmatchers\x12*\n" +
@@ -1433,7 +1507,7 @@ func file_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_types_v1_types_proto_goTypes = []any{
 	(TimeSeriesAggregationType)(0),  // 0: types.v1.TimeSeriesAggregationType
 	(ExemplarType)(0),               // 1: types.v1.ExemplarType
@@ -1443,35 +1517,36 @@ var file_types_v1_types_proto_goTypes = []any{
 	(*Series)(nil),                  // 5: types.v1.Series
 	(*Point)(nil),                   // 6: types.v1.Point
 	(*ProfileAnnotation)(nil),       // 7: types.v1.ProfileAnnotation
-	(*LabelValuesRequest)(nil),      // 8: types.v1.LabelValuesRequest
-	(*LabelValuesResponse)(nil),     // 9: types.v1.LabelValuesResponse
-	(*LabelNamesRequest)(nil),       // 10: types.v1.LabelNamesRequest
-	(*LabelNamesResponse)(nil),      // 11: types.v1.LabelNamesResponse
-	(*BlockInfo)(nil),               // 12: types.v1.BlockInfo
-	(*BlockCompaction)(nil),         // 13: types.v1.BlockCompaction
-	(*StackTraceSelector)(nil),      // 14: types.v1.StackTraceSelector
-	(*Location)(nil),                // 15: types.v1.Location
-	(*GoPGO)(nil),                   // 16: types.v1.GoPGO
-	(*GetProfileStatsRequest)(nil),  // 17: types.v1.GetProfileStatsRequest
-	(*GetProfileStatsResponse)(nil), // 18: types.v1.GetProfileStatsResponse
-	(*Exemplar)(nil),                // 19: types.v1.Exemplar
-	(*HeatmapSeries)(nil),           // 20: types.v1.HeatmapSeries
-	(*HeatmapSlot)(nil),             // 21: types.v1.HeatmapSlot
+	(*ProfileSampling)(nil),         // 8: types.v1.ProfileSampling
+	(*LabelValuesRequest)(nil),      // 9: types.v1.LabelValuesRequest
+	(*LabelValuesResponse)(nil),     // 10: types.v1.LabelValuesResponse
+	(*LabelNamesRequest)(nil),       // 11: types.v1.LabelNamesRequest
+	(*LabelNamesResponse)(nil),      // 12: types.v1.LabelNamesResponse
+	(*BlockInfo)(nil),               // 13: types.v1.BlockInfo
+	(*BlockCompaction)(nil),         // 14: types.v1.BlockCompaction
+	(*StackTraceSelector)(nil),      // 15: types.v1.StackTraceSelector
+	(*Location)(nil),                // 16: types.v1.Location
+	(*GoPGO)(nil),                   // 17: types.v1.GoPGO
+	(*GetProfileStatsRequest)(nil),  // 18: types.v1.GetProfileStatsRequest
+	(*GetProfileStatsResponse)(nil), // 19: types.v1.GetProfileStatsResponse
+	(*Exemplar)(nil),                // 20: types.v1.Exemplar
+	(*HeatmapSeries)(nil),           // 21: types.v1.HeatmapSeries
+	(*HeatmapSlot)(nil),             // 22: types.v1.HeatmapSlot
 }
 var file_types_v1_types_proto_depIdxs = []int32{
 	2,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
 	2,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
 	6,  // 2: types.v1.Series.points:type_name -> types.v1.Point
 	7,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
-	19, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
-	13, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
+	20, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
+	14, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
 	2,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
-	15, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
-	16, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
+	16, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
+	17, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
 	2,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
 	2,  // 10: types.v1.HeatmapSeries.labels:type_name -> types.v1.LabelPair
-	21, // 11: types.v1.HeatmapSeries.slots:type_name -> types.v1.HeatmapSlot
-	19, // 12: types.v1.HeatmapSlot.exemplars:type_name -> types.v1.Exemplar
+	22, // 11: types.v1.HeatmapSeries.slots:type_name -> types.v1.HeatmapSlot
+	20, // 12: types.v1.HeatmapSlot.exemplars:type_name -> types.v1.Exemplar
 	13, // [13:13] is the sub-list for method output_type
 	13, // [13:13] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name
@@ -1490,7 +1565,7 @@ func file_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_types_v1_types_proto_rawDesc), len(file_types_v1_types_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   20,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

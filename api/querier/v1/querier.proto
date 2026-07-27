@@ -164,6 +164,9 @@ message SelectMergeStacktracesResponse {
   optional AsyncQueryResponse async = 4;
   // Profile in pprof format.
   PprofProfile pprof = 5;
+  // Describes how adaptive sampling affected the profiles backing this
+  // response. Currently populated for the flame graph and tree formats.
+  types.v1.ProfileSampling sampling = 6;
 }
 
 // PprofProfile contains pprof output and related response metadata.

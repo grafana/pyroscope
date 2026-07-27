@@ -55,6 +55,22 @@ message ProfileAnnotation {
   string value = 2;
 }
 
+// ProfileSampling describes how adaptive sampling affected the profiles
+// backing a query response. Stack-based queries (flame graph, tree) only
+// aggregate profiles that retained their stacktraces; profiles sampled out
+// at ingest are stored with their totals kept and stacktraces stripped, and
+// are excluded from such results.
+message ProfileSampling {
+  // True when adaptive sampling affected this response: the query matched
+  // profiles that were sampled out at ingest and are not part of the result.
+  bool sampled = 1;
+  // Number of stack-bearing profiles aggregated into the result.
+  int64 kept_profiles = 2;
+  // Number of profiles that matched the query but were stripped to totals
+  // at ingest and are therefore excluded from the result.
+  int64 stripped_profiles = 3;
+}
+
 message LabelValuesRequest {
   // Name of the label
   string name = 1 [(gnostic.openapi.v3.property).example = {yaml: "service_name"}];

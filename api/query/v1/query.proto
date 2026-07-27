@@ -280,6 +280,9 @@ message TreeReport {
   bytes tree = 2;
   optional TreeSymbols symbols = 3;
   optional SymbolRefTable symbol_refs = 4;
+  // Describes how adaptive sampling affected the profiles that were
+  // aggregated into the tree.
+  types.v1.ProfileSampling sampling = 5;
 }
 
 message PprofQuery {

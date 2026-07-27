@@ -36,16 +36,17 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 		}), nil
 	}
 
-	b, err := q.selectMergeStacktracesTree(ctx, c)
+	r, err := q.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 	var resp querierv1.SelectMergeStacktracesResponse
+	resp.Sampling = r.GetSampling()
 	switch c.Msg.Format {
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = b
+		resp.Tree = r.GetTree()
 	default:
-		t, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](b)
+		t, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](r.GetTree())
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +101,7 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 func (q *QueryFrontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) (tree []byte, err error) {
+) (*queryv1.TreeReport, error) {
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -171,5 +172,5 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 	if err := q.resolveSymbolRefs(ctx, tenantIDs, report, maxNodes); err != nil {
 		return nil, err
 	}
-	return report.Tree.Tree, nil
+	return report.Tree, nil
 }

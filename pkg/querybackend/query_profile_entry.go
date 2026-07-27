@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
@@ -74,6 +75,51 @@ func withExcludeSampled() profileIteratorOption {
 		iterator: func(opts *iteratorOpts) {
 			opts.excludeSampled = true
 		},
+	}
+}
+
+// strippedProfileFilter drops entries of profiles that were sampled out at
+// ingest and stored with stacktraces stripped (__sampled__="true"), while
+// counting both populations. Stack-based queries use it instead of
+// withExcludeSampled when they need to report how adaptive sampling affected
+// the result without a second pass over the index. The source iterator must
+// carry the __sampled__ label on its entries (see withGroupByLabels).
+type strippedProfileFilter struct {
+	src      iter.Iterator[ProfileEntry]
+	cur      ProfileEntry
+	kept     int64
+	stripped int64
+}
+
+func newStrippedProfileFilter(src iter.Iterator[ProfileEntry]) *strippedProfileFilter {
+	return &strippedProfileFilter{src: src}
+}
+
+func (f *strippedProfileFilter) Next() bool {
+	for f.src.Next() {
+		e := f.src.At()
+		if e.Labels.Get(phlaremodel.LabelNameSampled) == "true" {
+			f.stripped++
+			continue
+		}
+		f.kept++
+		f.cur = e
+		return true
+	}
+	return false
+}
+
+func (f *strippedProfileFilter) At() ProfileEntry { return f.cur }
+func (f *strippedProfileFilter) Err() error       { return f.src.Err() }
+func (f *strippedProfileFilter) Close() error     { return f.src.Close() }
+
+// sampling reports the counts observed so far. It is only meaningful once
+// the iterator has been exhausted.
+func (f *strippedProfileFilter) sampling() *typesv1.ProfileSampling {
+	return &typesv1.ProfileSampling{
+		Sampled:          f.stripped > 0,
+		KeptProfiles:     f.kept,
+		StrippedProfiles: f.stripped,
 	}
 }
 
