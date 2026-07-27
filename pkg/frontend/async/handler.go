@@ -125,6 +125,7 @@ func (h *Handler) poll(
 			resp.Tree = result.Response.Tree
 			resp.Dot = result.Response.Dot
 			resp.Pprof = result.Response.Pprof
+			resp.Sampling = result.Response.Sampling
 		}
 	case StatusFailure:
 		resp.Async.Status = querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE

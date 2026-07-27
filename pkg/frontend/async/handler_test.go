@@ -11,6 +11,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func TestHandlerPollCopiesPprofResponse(t *testing.T) {
@@ -32,4 +33,25 @@ func TestHandlerPollCopiesPprofResponse(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.GetAsync().GetStatus())
 	require.True(t, proto.Equal(want, resp.Msg.GetPprof().GetProfile()))
+}
+
+func TestHandlerPollCopiesSampling(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(log.NewNopLogger(), objstore.NewInMemBucket())
+	const (
+		tenantID  = "tenant-a"
+		requestID = "550e8400-e29b-41d4-a716-446655440001"
+	)
+	require.NoError(t, store.create(ctx, tenantID, requestID))
+	want := &typesv1.ProfileSampling{Sampled: true, KeptProfiles: 2, StrippedProfiles: 14}
+	require.NoError(t, store.complete(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesResponse{
+		Sampling: want,
+	}))
+
+	handler := &Handler{coordinator: &Coordinator{store: store}}
+	resp, err := handler.poll(ctx, tenantID, requestID)
+
+	require.NoError(t, err)
+	require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.GetAsync().GetStatus())
+	require.True(t, proto.Equal(want, resp.Msg.GetSampling()))
 }
