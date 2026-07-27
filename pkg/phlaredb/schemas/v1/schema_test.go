@@ -20,11 +20,14 @@ func TestSchemaMatch(t *testing.T) {
 	// schema of a List of a struct pointer. This replaces this in the schema
 	// comparison, because this has no affect to our construct/reconstruct code
 	// we can simply replace the string in the schema.
-	profilesStructSchema := strings.ReplaceAll(
-		parquet.SchemaOf(&Profile{}).String(),
-		"optional group element",
-		"required group element",
-	)
+	profilesStructSchema := strings.NewReplacer(
+		"optional group element", "required group element",
+		// The manual schema preserves the historic protobuf field names.
+		"int64 key", "int64 Key",
+		"int64 str", "int64 Str",
+		"int64 num_unit", "int64 NumUnit",
+	).Replace(parquet.SchemaOf(&Profile{}).String())
+	profilesStructSchema = strings.ReplaceAll(profilesStructSchema, "int64 num", "int64 Num")
 	// []byte produces "optional binary TraceID" but our schema uses
 	// fixed_len_byte_array(16). We use []byte because parquet-go panics
 	// with [16]byte on null optional FixedLenByteArray values.
