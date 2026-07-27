@@ -134,7 +134,7 @@ func (o *SampleObserver) initDatasetState(dataset string) {
 //     depending on the rule.GroupBy space. More info in initState).
 //
 // This call is not thread-safe
-func (o *SampleObserver) Evaluate(row block.ProfileEntry) func() {
+func (o *SampleObserver) Evaluate(row block.ProfileEntryView) func() {
 	// Detect a tenant switch
 	tenant := row.Dataset.TenantID()
 	if o.state.tenant != row.Dataset.TenantID() {
@@ -158,14 +158,12 @@ func (o *SampleObserver) Evaluate(row block.ProfileEntry) func() {
 	}
 }
 
-func (o *SampleObserver) initSeriesState(row block.ProfileEntry) {
+func (o *SampleObserver) initSeriesState(row block.ProfileEntryView) {
 	o.state.fingerprint = row.Fingerprint
 	o.state.recordSymbols = false
 
-	sb := labels.NewScratchBuilder(len(row.Labels))
-	for _, label := range row.Labels {
-		sb.Add(label.Name, label.Value)
-	}
+	sb := labels.NewScratchBuilder(row.Labels.Len())
+	row.Labels.Range(sb.Add)
 	sb.Sort()
 	blockLabels := sb.Labels()
 	lb := labels.NewBuilder(labels.EmptyLabels())
@@ -223,7 +221,7 @@ func (o *SampleObserver) ObserveSymbols(strings []string, functions []schemav1.I
 	}
 }
 
-func (o *SampleObserver) observe(row block.ProfileEntry) {
+func (o *SampleObserver) observe(row block.ProfileEntryView) {
 	// Totals are computed as follows: for every rule that matches the series, we add the TotalValue
 	for _, rec := range o.state.targetRecordings {
 		if rec.state.matches && rec.rule.FunctionName == "" {

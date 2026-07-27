@@ -71,8 +71,7 @@ type SampleObserver interface {
 
 	// Evaluate is called before the compactor rewrites any symbols.
 	// An "observe" callback function is returned to be called after writing the resulting blocks.
-	// This method must not modify the entry.
-	Evaluate(ProfileEntry) (observe func())
+	Evaluate(ProfileEntryView) (observe func())
 }
 
 func Compact(
@@ -255,7 +254,7 @@ func (b *CompactionPlan) Compact(
 // matching fingerprints belong to the same series.
 func (b *CompactionPlan) addRowToDatasetIndex(r ProfileEntry) {
 	if b.lastDatasetIndexFP != r.Fingerprint || b.datasetIndex.Empty() {
-		b.datasetIndex.AddSeries(b.currentDatasetIdx, r.Labels, r.Fingerprint)
+		b.datasetIndex.addSeries(b.currentDatasetIdx, r.labels, r.Fingerprint)
 		b.lastDatasetIndexFP = r.Fingerprint
 	}
 }
@@ -455,7 +454,7 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if m.observer != nil {
-		observe := m.observer.Evaluate(r)
+		observe := m.observer.Evaluate(r.View())
 		defer observe()
 	}
 	m.parent.addRowToDatasetIndex(r)
@@ -504,19 +503,39 @@ type indexRewriter struct {
 }
 
 type seriesLabels struct {
-	labels      phlaremodel.Labels
+	labels      immutableLabels
 	fingerprint model.Fingerprint
+}
+
+type immutableLabel struct {
+	name  string
+	value string
+}
+
+type immutableLabels []immutableLabel
+
+func newImmutableLabels(labels phlaremodel.Labels) immutableLabels {
+	snapshot := make(immutableLabels, len(labels))
+	for i, label := range labels {
+		snapshot[i] = immutableLabel{name: label.Name, value: label.Value}
+	}
+	return snapshot
+}
+
+func (labels immutableLabels) Len() int { return len(labels) }
+
+func (labels immutableLabels) At(i int) (name, value string) {
+	return labels[i].name, labels[i].value
 }
 
 func (rw *indexRewriter) rewriteRow(e ProfileEntry) {
 	if rw.previousFp != e.Fingerprint || len(rw.series) == 0 {
-		series := slices.Clone(e.Labels)
-		for _, l := range series {
-			rw.symbols[l.Name] = struct{}{}
-			rw.symbols[l.Value] = struct{}{}
+		for _, label := range e.labels {
+			rw.symbols[label.name] = struct{}{}
+			rw.symbols[label.value] = struct{}{}
 		}
 		rw.series = append(rw.series, seriesLabels{
-			labels:      series,
+			labels:      e.labels,
 			fingerprint: e.Fingerprint,
 		})
 		rw.chunks = append(rw.chunks, index.ChunkMeta{

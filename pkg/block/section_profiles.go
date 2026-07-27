@@ -254,12 +254,54 @@ type ProfileEntry struct {
 
 	Timestamp   int64
 	Fingerprint model.Fingerprint
-	// Labels' backing array is reused by the row iterator on advance, but
-	// the label pairs themselves are immutable: consumers that retain
-	// labels beyond the current row must copy the slice (shallow copy is
-	// sufficient), and must never modify the pairs.
-	Labels phlaremodel.Labels
-	Row    schemav1.ProfileRow
+	Labels      phlaremodel.Labels
+	Row         schemav1.ProfileRow
+
+	labels immutableLabels
+}
+
+// ProfileEntryView exposes a compaction row to observers without granting
+// access to the mutable label pairs used by the iterator.
+type ProfileEntryView struct {
+	Dataset     *Dataset
+	Timestamp   int64
+	Fingerprint model.Fingerprint
+	Labels      LabelsView
+	Row         schemav1.ProfileRow
+}
+
+// LabelsView is an immutable view of a profile's labels.
+type LabelsView struct{ labels immutableLabels }
+
+func (v LabelsView) Len() int { return len(v.labels) }
+
+func (v LabelsView) Get(name string) string {
+	for _, label := range v.labels {
+		if label.name == name {
+			return label.value
+		}
+	}
+	return ""
+}
+
+func (v LabelsView) Range(f func(name, value string)) {
+	for _, label := range v.labels {
+		f(label.name, label.value)
+	}
+}
+
+func (e ProfileEntry) View() ProfileEntryView {
+	labels := e.labels
+	if labels == nil {
+		labels = newImmutableLabels(e.Labels)
+	}
+	return ProfileEntryView{
+		Dataset:     e.Dataset,
+		Timestamp:   e.Timestamp,
+		Fingerprint: e.Fingerprint,
+		Labels:      LabelsView{labels: labels},
+		Row:         e.Row,
+	}
 }
 
 func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], error) {
@@ -333,6 +375,7 @@ type profileRowIterator struct {
 	currentRow       ProfileEntry
 	currentSeriesIdx uint32
 	chunks           []index.ChunkMeta
+	labels           immutableLabels
 }
 
 func NewProfileRowIterator(s *Dataset) (iter.Iterator[ProfileEntry], error) {
@@ -384,7 +427,16 @@ func (p *profileRowIterator) Next() bool {
 		return false
 	}
 	p.currentRow.Fingerprint = model.Fingerprint(fp)
+	p.currentRow.labels = p.snapshotLabels(p.currentRow.Labels)
 	return true
+}
+
+func (p *profileRowIterator) snapshotLabels(labels phlaremodel.Labels) immutableLabels {
+	start := len(p.labels)
+	for _, label := range labels {
+		p.labels = append(p.labels, immutableLabel{name: label.Name, value: label.Value})
+	}
+	return p.labels[start:]
 }
 
 func (p *profileRowIterator) Err() error {

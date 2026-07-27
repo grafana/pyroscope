@@ -133,7 +133,7 @@ type Writer struct {
 	fingerprintOffsets index.FingerprintOffsets
 
 	// Hold last series to validate that clients insert new series in order.
-	lastSeries     phlaremodel.Labels
+	lastSeriesLen  int
 	lastSeriesHash uint64
 	lastRef        storage.SeriesRef
 
@@ -293,7 +293,7 @@ func (w *Writer) writeMeta() error {
 // fingerprint differs from what labels.Hash() produces. For example,
 // multitenant TSDBs embed a tenant label, but the actual series has no such
 // label and so the derived fingerprint differs.
-func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp model.Fingerprint, chunks ...index.ChunkMeta) error {
+func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.LabelSet, fp model.Fingerprint, chunks ...index.ChunkMeta) error {
 	if err := w.ensureStage(idxStageSeries); err != nil {
 		return err
 	}
@@ -304,7 +304,7 @@ func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp mo
 	// without this label in storage.
 	labelHash := uint64(fp)
 
-	if ref < w.lastRef && len(w.lastSeries) != 0 {
+	if ref < w.lastRef && w.lastSeriesLen != 0 {
 		return fmt.Errorf("series with reference greater than %d already added", ref)
 	}
 	// We add padding to 16 bytes to increase the addressable space we get through 4 byte
@@ -319,30 +319,31 @@ func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp mo
 
 	w.buf2.Reset()
 	w.buf2.PutBE64(labelHash)
-	w.buf2.PutUvarint(len(lset))
+	w.buf2.PutUvarint(lset.Len())
 
-	for _, l := range lset {
+	for i := range lset.Len() {
+		name, value := lset.At(i)
 		var err error
-		cacheEntry, ok := w.symbolCache[l.Name]
+		cacheEntry, ok := w.symbolCache[name]
 		nameIndex := cacheEntry.index
 		if !ok {
-			nameIndex, err = w.symbols.ReverseLookup(l.Name)
+			nameIndex, err = w.symbols.ReverseLookup(name)
 			if err != nil {
-				return fmt.Errorf("symbol entry for %q does not exist, %v", l.Name, err)
+				return fmt.Errorf("symbol entry for %q does not exist, %v", name, err)
 			}
 		}
-		w.labelNames[l.Name]++
+		w.labelNames[name]++
 		w.buf2.PutUvarint32(nameIndex)
 
 		valueIndex := cacheEntry.lastValueIndex
-		if !ok || cacheEntry.lastValue != l.Value {
-			valueIndex, err = w.symbols.ReverseLookup(l.Value)
+		if !ok || cacheEntry.lastValue != value {
+			valueIndex, err = w.symbols.ReverseLookup(value)
 			if err != nil {
-				return fmt.Errorf("symbol entry for %q does not exist, %v", l.Value, err)
+				return fmt.Errorf("symbol entry for %q does not exist, %v", value, err)
 			}
-			w.symbolCache[l.Name] = symbolCacheEntry{
+			w.symbolCache[name] = symbolCacheEntry{
 				index:          nameIndex,
-				lastValue:      l.Value,
+				lastValue:      value,
 				lastValueIndex: valueIndex,
 			}
 		}
@@ -381,7 +382,7 @@ func (w *Writer) AddSeries(ref storage.SeriesRef, lset phlaremodel.Labels, fp mo
 
 	w.buf2.PutHash(w.crc32)
 
-	w.lastSeries = append(w.lastSeries[:0], lset...)
+	w.lastSeriesLen = lset.Len()
 	w.lastSeriesHash = labelHash
 	w.lastRef = ref
 
