@@ -894,51 +894,62 @@ func TestExamples(t *testing.T) {
 func (e *env) checkProfilesQueryable(t *testing.T, ctx context.Context, host string) {
 	dir := e.repoDir()
 	var summary string
-	requiredTypes := map[string]struct{}{}
-	if e.requiresPythonMemoryProfiles() {
+	requireMemoryProfiles := e.requiresPythonMemoryProfiles()
+	requiredMemoryTypes := map[string]struct{}{}
+	if requireMemoryProfiles {
 		for _, profileType := range pythonMemoryProfileTypes {
-			requiredTypes[profileType] = struct{}{}
+			requiredMemoryTypes[profileType] = struct{}{}
 		}
 	}
 	poll(t, ctx, profilesQueryTimeout, func(progress func(string, ...any)) error {
 		progress("[%s] querying Series for ingested profiles...", dir)
-		data, err := e.discoverSeries(ctx, host, includeAllProfileTypes)
+		includeProfileType := isCPUOrWallType
+		if requireMemoryProfiles {
+			includeProfileType = includeAllProfileTypes
+		}
+		data, err := e.discoverSeries(ctx, host, includeProfileType)
 		if err != nil {
 			return err
 		}
 		progress("[%s] Series found %d service(s): %s; querying SelectSeries...", dir, len(data), strings.Join(sortedKeys(data), ", "))
-		foundTypes := map[string]string{}
+		var cpuOrWallSummary string
+		foundMemoryTypes := map[string]string{}
 		for svc, types := range data {
 			for _, pt := range types {
-				if len(requiredTypes) > 0 {
-					if _, required := requiredTypes[pt]; !required {
-						continue
-					}
+				_, requiredMemoryType := requiredMemoryTypes[pt]
+				if !isCPUOrWallType(pt) && !requiredMemoryType {
+					continue
 				}
 				nSeries, nPoints, err := e.selectSeries(ctx, host, svc, pt)
 				if err != nil {
 					return err
 				}
 				if nPoints > 0 {
-					foundTypes[pt] = fmt.Sprintf("service=%q profileType=%q -> %d series, %d points",
+					detail := fmt.Sprintf("service=%q profileType=%q -> %d series, %d points",
 						svc, pt, nSeries, nPoints)
-					if len(requiredTypes) == 0 {
-						summary = foundTypes[pt]
-						return nil
+					if isCPUOrWallType(pt) {
+						cpuOrWallSummary = detail
+						continue
 					}
+					foundMemoryTypes[pt] = detail
 					continue
 				}
 				progress("[%s] SelectSeries service=%q type=%q -> 0 points (waiting for data)", dir, svc, pt)
 			}
 		}
 
+		if cpuOrWallSummary == "" {
+			return errors.New("no CPU or wall profile data points yet")
+		}
+		if !requireMemoryProfiles {
+			summary = cpuOrWallSummary
+			return nil
+		}
+
 		var missing []string
-		var found []string
+		found := []string{cpuOrWallSummary}
 		for _, profileType := range pythonMemoryProfileTypes {
-			if _, required := requiredTypes[profileType]; !required {
-				continue
-			}
-			detail, ok := foundTypes[profileType]
+			detail, ok := foundMemoryTypes[profileType]
 			if !ok {
 				missing = append(missing, profileType)
 				continue
@@ -948,11 +959,8 @@ func (e *env) checkProfilesQueryable(t *testing.T, ctx context.Context, host str
 		if len(missing) > 0 {
 			return fmt.Errorf("memory profile types have no data points yet: %s", strings.Join(missing, ", "))
 		}
-		if len(requiredTypes) > 0 {
-			summary = strings.Join(found, "; ")
-			return nil
-		}
-		return fmt.Errorf("no data points for any of %d discovered series yet", len(data))
+		summary = strings.Join(found, "; ")
+		return nil
 	})
 	t.Logf("[%s] PASS profiles queryable via Series+SelectSeries: %s", dir, summary)
 }
