@@ -22,13 +22,16 @@ func BenchmarkBuilderAdd(b *testing.B) {
 		)
 	}
 
+	const pointsPerSeries = 100
 	b.ReportAllocs()
-	builder := NewBuilder("service_name")
 	for i := 0; i < b.N; i++ {
-		lbs := labelSets[i%numSeries]
-		builder.Add(model.Fingerprint(i%numSeries), lbs, int64(i)*15000, 1.0, schemav1.Annotations{}, "")
-	}
-	if len(builder.Build()) == 0 {
-		b.Fatal("no series built")
+		builder := NewBuilder("service_name")
+		for j := 0; j < numSeries*pointsPerSeries; j++ {
+			lbs := labelSets[j%numSeries]
+			builder.Add(model.Fingerprint(j%numSeries), lbs, int64(j)*15000, 1.0, schemav1.Annotations{}, "")
+		}
+		if len(builder.Build()) == 0 {
+			b.Fatal("no series built")
+		}
 	}
 }
