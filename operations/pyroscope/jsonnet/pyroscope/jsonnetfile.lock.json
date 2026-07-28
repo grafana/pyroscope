@@ -8,8 +8,8 @@
           "subdir": "tanka-util"
         }
       },
-      "version": "9e9d5cddd4f02a25b9dec09a5910878a8ba8e045",
-      "sum": "AGgjH6IJe/1qwNtxFIiG8V1uyOJZascEydQsNrfPQ4c="
+      "version": "17c758609bfd9e37c62668b9778e540256147d75",
+      "sum": "ShSIissXdvCy1izTCDZX6tY7qxCoepE5L+WJ52Hw7ZQ="
     },
     {
       "source": {
@@ -18,8 +18,8 @@
           "subdir": "doc-util"
         }
       },
-      "version": "fedfb4920fae931a27190df0aeec5ef858daf3b5",
-      "sum": "fzESn29CRKzLap9jTpcUNSNBy7MzvzOxZo1LYWyIrGs="
+      "version": "bf6f08ae02a51c48bdcec4629b1c1a5a62c6f803",
+      "sum": "BrAL/k23jq+xy9oA7TWIhUx07dsA/QLm3g7ktCwe//U="
     }
   ],
   "legacyImports": false
