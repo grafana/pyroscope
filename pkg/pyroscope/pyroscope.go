@@ -421,6 +421,10 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := c.CompactionWorker.Validate(); err != nil {
+		return err
+	}
+
 	if c.usesV1Storage() {
 		if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
 			return err
