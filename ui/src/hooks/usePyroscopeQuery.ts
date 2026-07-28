@@ -57,17 +57,19 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
   const { service, profileType, timeRange, absoluteRange, tenantID } = params;
 
   useEffect(() => {
-    setServicesLoading(true);
-    const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
-    fetchServices(start, end)
-      .then((s) => {
-        setServices(s);
+    async function loadServices() {
+      setServicesLoading(true);
+      const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
+      try {
+        setServices(await fetchServices(start, end));
         setError(null);
-      })
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e)),
-      )
-      .finally(() => setServicesLoading(false));
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setServicesLoading(false);
+      }
+    }
+    loadServices();
   }, [timeRange, absoluteRange, tenantID]);
 
   const execute = useCallback(
@@ -102,36 +104,40 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
 
   useEffect(() => {
     if (!service || !profileType) return;
-    const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
-    const labelSelector = `{service_name="${service}"}`;
-    const rangeSeconds = (end - start) / 1000;
-    const step = Math.max(15, Math.ceil(rangeSeconds / 100));
 
-    setLoading(true);
-    Promise.all([
-      fetchFlamegraph({
-        profileTypeID: profileType,
-        labelSelector,
-        start,
-        end,
-      }),
-      fetchTimeline({
-        profileTypeID: profileType,
-        labelSelector,
-        start,
-        end,
-        step,
-      }),
-    ])
-      .then(([fg, tl]) => {
+    async function loadProfile() {
+      const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
+      const labelSelector = `{service_name="${service}"}`;
+      const rangeSeconds = (end - start) / 1000;
+      const step = Math.max(15, Math.ceil(rangeSeconds / 100));
+
+      setLoading(true);
+      try {
+        const [fg, tl] = await Promise.all([
+          fetchFlamegraph({
+            profileTypeID: profileType,
+            labelSelector,
+            start,
+            end,
+          }),
+          fetchTimeline({
+            profileTypeID: profileType,
+            labelSelector,
+            start,
+            end,
+            step,
+          }),
+        ]);
         setFlamegraph(fg);
         setTimeline(tl);
         setError(null);
-      })
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e)),
-      )
-      .finally(() => setLoading(false));
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProfile();
   }, [service, profileType, timeRange, absoluteRange, tenantID]);
 
   const run = useCallback(() => {
