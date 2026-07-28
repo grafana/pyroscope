@@ -558,7 +558,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	req.TotalProfiles = 1
-	// SizeVT is expensive; computed once and reused below (the profile is not mutated until normalization).
+	// SizeVT is expensive; computed once and reused below, re-measured wherever the profile is mutated.
 	decompressedSize := req.Profile.SizeVT()
 	req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
