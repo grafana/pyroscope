@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testInstance1ID   = "instance-1"
+	testInstance1Addr = "127.0.0.1"
+)
+
 func TestOverridesExporter_emptyRing(t *testing.T) {
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
@@ -29,8 +34,8 @@ func TestOverridesExporter_emptyRing(t *testing.T) {
 	cfg := RingConfig{}
 	cfg.Ring.KVStore.Mock = ringStore
 
-	cfg.Ring.InstanceID = "instance-1"
-	cfg.Ring.InstanceAddr = "127.0.0.1"
+	cfg.Ring.InstanceID = testInstance1ID
+	cfg.Ring.InstanceAddr = testInstance1Addr
 	i1, err := newRing(cfg, log.NewNopLogger(), nil)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, i1.client))
@@ -50,9 +55,10 @@ func TestOverridesExporterRing_scaleDown(t *testing.T) {
 	cfg1.Ring.KVStore.Mock = ringStore
 	cfg1.Ring.HeartbeatPeriod = 1 * time.Second
 	cfg1.Ring.HeartbeatTimeout = 15 * time.Second
+	cfg1.UnregisterOnShutdown = false
 
-	cfg1.Ring.InstanceID = "instance-1"
-	cfg1.Ring.InstanceAddr = "127.0.0.1"
+	cfg1.Ring.InstanceID = testInstance1ID
+	cfg1.Ring.InstanceAddr = testInstance1Addr
 	i1, err := newRing(cfg1, log.NewNopLogger(), nil)
 	require.NoError(t, err)
 	l1 := i1.lifecycler
@@ -136,4 +142,70 @@ func TestOverridesExporterRing_scaleDown(t *testing.T) {
 		isLeader, _ := i2.isLeader()
 		return isLeader
 	})
+}
+
+// TestOverridesExporterRing_unregisterOnShutdown tests that an instance
+// removes itself from the ring on shutdown, handing leadership over without
+// waiting for the auto-forget period.
+func TestOverridesExporterRing_unregisterOnShutdown(t *testing.T) {
+	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
+	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
+
+	cfg1 := RingConfig{}
+	cfg1.Ring.KVStore.Mock = ringStore
+	cfg1.Ring.HeartbeatPeriod = 1 * time.Second
+	cfg1.Ring.HeartbeatTimeout = 15 * time.Second
+	cfg1.UnregisterOnShutdown = true
+
+	cfg1.Ring.InstanceID = testInstance1ID
+	cfg1.Ring.InstanceAddr = testInstance1Addr
+	i1, err := newRing(cfg1, log.NewNopLogger(), nil)
+	require.NoError(t, err)
+	l1 := i1.lifecycler
+
+	cfg2 := cfg1
+	cfg2.Ring.InstanceID = "instance-2"
+	cfg2.Ring.InstanceAddr = "127.0.0.2"
+	i2, err := newRing(cfg2, log.NewNopLogger(), nil)
+	require.NoError(t, err)
+	l2 := i2.lifecycler
+
+	// Register instances in the ring (manually, to be able to assign tokens).
+	ctx := context.Background()
+	require.NoError(t, ringStore.CAS(ctx, ringKey, func(in any) (out any, retry bool, err error) {
+		desc := ring.NewDesc()
+		desc.AddIngester(l1.GetInstanceID(), l1.GetInstanceAddr(), "", []uint32{leaderToken + 1}, ring.ACTIVE, time.Now(), false, time.Now(), ring.InstanceVersions{})
+		desc.AddIngester(l2.GetInstanceID(), l2.GetInstanceAddr(), "", []uint32{leaderToken + 2}, ring.ACTIVE, time.Now(), false, time.Now(), ring.InstanceVersions{})
+		return desc, true, nil
+	}))
+
+	require.NoError(t, services.StartAndAwaitRunning(ctx, i1))
+	require.NoError(t, services.StartAndAwaitRunning(ctx, i2))
+	t.Cleanup(func() { require.NoError(t, services.StopAndAwaitTerminated(ctx, i2)) })
+
+	// Wait until the clients have received the ring update.
+	test.Poll(t, time.Second, []int{2, 2}, func() any {
+		rs1, _ := i1.client.GetAllHealthy(ringOp)
+		rs2, _ := i2.client.GetAllHealthy(ringOp)
+		return []int{len(rs1.Instances), len(rs2.Instances)}
+	})
+
+	i1IsLeader, err := i1.isLeader()
+	require.NoError(t, err)
+	require.True(t, i1IsLeader)
+
+	// Stop instance-1: it should unregister from the ring right away, and
+	// instance-2 should take over leadership without any waiting period.
+	require.NoError(t, services.StopAndAwaitTerminated(ctx, i1))
+
+	test.Poll(t, 5*time.Second, true, func() any {
+		isLeader, _ := i2.isLeader()
+		return isLeader
+	})
+
+	v, err := ringStore.Get(ctx, ringKey)
+	require.NoError(t, err)
+	desc, ok := v.(*ring.Desc)
+	require.True(t, ok)
+	require.NotContains(t, desc.Ingesters, l1.GetInstanceID())
 }

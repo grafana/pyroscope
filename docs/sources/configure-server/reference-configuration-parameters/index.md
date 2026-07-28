@@ -1170,6 +1170,13 @@ lifecycler:
   # CLI flag: -segment-writer.lifecycler.ID
   [id: <string> | default = "<hostname>"]
 
+# (advanced) Number of consecutive heartbeat-timeout periods after which a ring
+# member whose heartbeat has gone stale is automatically removed (forgotten)
+# from the ring. This cleans up entries of instances that have left the ring
+# without unregistering, e.g. after a scale-down. 0 disables auto-forget.
+# CLI flag: -segment-writer.auto-forget-unhealthy-periods
+[auto_forget_unhealthy_periods: <int> | default = 0]
+
 # (advanced) Timeout when flushing segments to bucket.
 # CLI flag: -segment-writer.segment-duration
 [segment_duration: <duration> | default = 500ms]
@@ -2637,6 +2644,13 @@ ring:
   # start anyway.
   # CLI flag: -overrides-exporter.ring.wait-stability-max-duration
   [wait_stability_max_duration: <duration> | default = 5m]
+
+  # (advanced) Unregister from the ring upon clean shutdown. Disabling it keeps
+  # the instance in the ring in LEAVING state until it is auto-forgotten, which
+  # minimises leader changes when the instance is expected to rejoin with the
+  # same ID shortly.
+  # CLI flag: -overrides-exporter.ring.unregister-on-shutdown
+  [unregister_on_shutdown: <boolean> | default = true]
 ```
 
 ### grpc_client
