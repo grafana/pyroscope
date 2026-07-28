@@ -63,6 +63,8 @@ Usage of ./pyroscope:
     	Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.
   -compaction-worker.job-poll-interval duration
     	Interval between job requests (default 5s)
+  -compaction-worker.metadata-fetch-timeout duration
+    	Timeout for reading the metadata of a single block from object storage. Only effective when metadata-source is object-storage. 0 disables the timeout. (default 30s)
   -compaction-worker.metadata-source string
     	Source of the compaction job source block metadata. Supported values: metastore, object-storage. (default "metastore")
   -compaction-worker.metrics-exporter.enabled

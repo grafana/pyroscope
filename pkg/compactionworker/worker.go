@@ -47,14 +47,15 @@ const (
 const metadataReadConcurrency = 8
 
 type Config struct {
-	JobConcurrency     int            `yaml:"job_capacity" category:"advanced"`
-	JobPollInterval    time.Duration  `yaml:"job_poll_interval" category:"advanced"`
-	SmallObjectSize    int            `yaml:"small_object_size_bytes" category:"advanced"`
-	TempDir            string         `yaml:"temp_dir" category:"advanced" doc:"default=/tmp"`
-	RequestTimeout     time.Duration  `yaml:"request_timeout" category:"advanced"`
-	CleanupMaxDuration time.Duration  `yaml:"cleanup_max_duration" category:"advanced"`
-	MetadataSource     string         `yaml:"metadata_source" category:"advanced"`
-	MetricsExporter    metrics.Config `yaml:"metrics_exporter" category:"advanced"`
+	JobConcurrency       int            `yaml:"job_capacity" category:"advanced"`
+	JobPollInterval      time.Duration  `yaml:"job_poll_interval" category:"advanced"`
+	SmallObjectSize      int            `yaml:"small_object_size_bytes" category:"advanced"`
+	TempDir              string         `yaml:"temp_dir" category:"advanced" doc:"default=/tmp"`
+	RequestTimeout       time.Duration  `yaml:"request_timeout" category:"advanced"`
+	CleanupMaxDuration   time.Duration  `yaml:"cleanup_max_duration" category:"advanced"`
+	MetadataSource       string         `yaml:"metadata_source" category:"advanced"`
+	MetadataFetchTimeout time.Duration  `yaml:"metadata_fetch_timeout" category:"advanced"`
+	MetricsExporter      metrics.Config `yaml:"metrics_exporter" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -66,6 +67,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
 	f.StringVar(&cfg.MetadataSource, prefix+"metadata-source", MetadataSourceMetastore, "Source of the compaction job source block metadata. Supported values: metastore, object-storage.")
+	f.DurationVar(&cfg.MetadataFetchTimeout, prefix+"metadata-fetch-timeout", 30*time.Second, "Timeout for reading the metadata of a single block from object storage. Only effective when metadata-source is object-storage. 0 disables the timeout.")
 	cfg.MetricsExporter.RegisterFlags(f)
 }
 
@@ -586,10 +588,17 @@ func (w *Worker) readBlockMetadataFromStorage(logger log.Logger, job *compaction
 	g.SetLimit(metadataReadConcurrency)
 	for i, b := range job.SourceBlocks {
 		g.Go(func() error {
-			ctx, cancel := context.WithTimeout(ctx, w.config.RequestTimeout)
-			defer cancel()
+			// Deliberately not RequestTimeout: that one is pinned small by the
+			// job lease renewal (it guards the metastore poll RPC), while a
+			// ranged read against object storage has much heavier tails.
+			readCtx := ctx
+			if w.config.MetadataFetchTimeout > 0 {
+				var cancel context.CancelFunc
+				readCtx, cancel = context.WithTimeout(ctx, w.config.MetadataFetchTimeout)
+				defer cancel()
+			}
 			path := block.BuildObjectPath(job.Tenant, job.Shard, job.CompactionLevel, b)
-			obj, err := block.NewObjectFromPath(ctx, w.storage, path)
+			obj, err := block.NewObjectFromPath(readCtx, w.storage, path)
 			switch {
 			case err == nil:
 				blocks[i] = obj.Metadata()

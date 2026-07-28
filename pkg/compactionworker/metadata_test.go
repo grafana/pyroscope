@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/mock"
@@ -145,6 +146,26 @@ func TestWorker_MetadataFromStorage_SegmentPath(t *testing.T) {
 	require.NoError(t, w.getBlockMetadata(log.NewNopLogger(), job))
 	require.Len(t, job.blocks, 1)
 	require.Equal(t, "", metadata.Tenant(job.blocks[0]))
+}
+
+func TestWorker_MetadataFromStorage_FetchTimeout(t *testing.T) {
+	bucket := mockobjstore.NewMockBucket(t)
+	bucket.EXPECT().Attributes(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, _ string) (thanosstore.ObjectAttributes, error) {
+			<-ctx.Done()
+			return thanosstore.ObjectAttributes{}, ctx.Err()
+		})
+	bucket.EXPECT().IsObjNotFoundErr(mock.Anything).Return(false)
+
+	w := newStorageMetadataWorker(t, bucket)
+	w.config.MetadataFetchTimeout = 20 * time.Millisecond
+	job := testCompactionJob("tenant-a", 1, 1, "01J000000000000000000000F0")
+
+	start := time.Now()
+	err := w.getBlockMetadata(log.NewNopLogger(), job)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	// The read must be bounded by MetadataFetchTimeout, not by the job context.
+	require.Less(t, time.Since(start), 5*time.Second)
 }
 
 func TestWorker_MetadataFromStorage_ReadError(t *testing.T) {

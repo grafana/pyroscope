@@ -1390,6 +1390,12 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # CLI flag: -compaction-worker.metadata-source
 [metadata_source: <string> | default = "metastore"]
 
+# (advanced) Timeout for reading the metadata of a single block from object
+# storage. Only effective when metadata-source is object-storage. 0 disables the
+# timeout.
+# CLI flag: -compaction-worker.metadata-fetch-timeout
+[metadata_fetch_timeout: <duration> | default = 30s]
+
 metrics_exporter:
   # (advanced) This parameter specifies whether the metrics exporter is enabled.
   # CLI flag: -compaction-worker.metrics-exporter.enabled
