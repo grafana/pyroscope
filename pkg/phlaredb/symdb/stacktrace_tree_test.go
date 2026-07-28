@@ -161,6 +161,17 @@ func Test_stacktrace_tree_insert_grows_edge_table(t *testing.T) {
 	}
 }
 
+func Test_edge_table_grow(t *testing.T) {
+	tree := newStacktraceTree(1)
+	assert.False(t, tree.edges.grow(tree.nodes))
+
+	id := tree.insert([]uint64{1})
+	assert.True(t, tree.edges.grow(tree.nodes))
+	assert.Equal(t, 4, len(tree.edges.slots))
+	child, _ := tree.edges.lookup(tree.nodes, 0, 1)
+	assert.Equal(t, id, child)
+}
+
 func Test_stacktrace_tree_pprof_locations(t *testing.T) {
 	p, err := pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(t, err)

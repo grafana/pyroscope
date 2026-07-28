@@ -53,8 +53,9 @@ func (t *stacktraceTree) insert(refs []uint64) uint32 {
 		location := int32(refs[j])
 		child, slot := t.edges.lookup(t.nodes, parent, location)
 		if child == 0 {
-			t.edges.grow(t.nodes)
-			child, slot = t.edges.lookup(t.nodes, parent, location)
+			if t.edges.grow(t.nodes) {
+				_, slot = t.edges.lookup(t.nodes, parent, location)
+			}
 			child = uint32(len(t.nodes))
 			t.nodes = append(t.nodes, node{p: parent, r: location})
 			t.edges.slots[slot] = child
@@ -83,9 +84,9 @@ func (t *edgeTable) lookup(nodes []node, parent, location int32) (uint32, int) {
 	}
 }
 
-func (t *edgeTable) grow(nodes []node) {
+func (t *edgeTable) grow(nodes []node) bool {
 	if (t.count+1)*4 <= uint32(len(t.slots))*3 {
-		return
+		return false
 	}
 	t.slots = make([]uint32, len(t.slots)*2)
 	for child := uint32(1); child < uint32(len(nodes)); child++ {
@@ -93,6 +94,7 @@ func (t *edgeTable) grow(nodes []node) {
 		_, slot := t.lookup(nodes, n.p, n.r)
 		t.slots[slot] = child
 	}
+	return true
 }
 
 func edgeTableCapacity(entries int) int {
@@ -212,10 +214,7 @@ func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
 	x.nodes[0].p = sentinel
 	for i := int32(1); i < l; i++ {
 		n := t.nodes[i]
-		x.nodes[i] = node{
-			p: n.p,
-			r: n.r,
-		}
+		x.nodes[i] = node(n)
 		x.edges.grow(x.nodes[:i])
 		_, slot := x.edges.lookup(x.nodes[:i], n.p, n.r)
 		x.edges.slots[slot] = uint32(i)
