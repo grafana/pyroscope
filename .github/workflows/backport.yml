@@ -1,44 +1,52 @@
 name: Backport PR Creator
+run-name: "Backport for ${{ github.event.pull_request.title }} (#${{ github.event.pull_request.number }})"
+
 on:
   pull_request:
     types:
       - closed
       - labeled
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   main:
     # We don't run the backporting for PRs from forks because those can't access "pyroscope-development-app" secrets in vault.
     # We don't use GitHub actions app (secrets.GITHUB_TOKEN) because PRs created by the bot don't trigger CI.
     # Also only run if the PR is merged, as an extra safe-guard.
-    if: ${{ ! github.event.pull_request.head.repo.fork && github.event.pull_request.merged == true }}
+    # On 'labeled' events, require that the label just added is itself a backport label, otherwise
+    # adding an unrelated label to an already-backported PR would re-trigger the job with the wrong label.
+    if: |
+      !github.event.pull_request.head.repo.fork &&
+      github.event.pull_request.merged == true &&
+      (
+        (github.event.action == 'labeled' && startsWith(github.event.label.name, 'backport ')) ||
+        (github.event.action == 'closed' && contains(join(github.event.pull_request.labels.*.name, ','), 'backport '))
+      )
 
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
-    permissions:
-      contents: "read"
-      id-token: "write"
-      pull-requests: "write"
     steps:
-      - name: Checkout Actions
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          repository: "grafana/grafana-github-actions"
-          persist-credentials: false
-          path: ./actions
-          ref: 066cbcd084b61558d99d13c76f835c49e31b4670
-
-      - name: Install Actions
-        run: npm install --production --prefix ./actions
-
       - id: get-github-app-token
         uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
         with:
           github_app: pyroscope-development-app
 
+      - name: Checkout Pyroscope
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 2
+          persist-credentials: false
+
       - name: Run backport
-        uses: ./actions/backport
+        uses: grafana/grafana-github-actions-go/backport@f49c00e5c4585f724717bdbb003c3560a3c1d849
         with:
           token: ${{ steps.get-github-app-token.outputs.token }}
-          labelsToAdd: backport
-          # The provided token needs read permissions for organization members if you want to remove the default reviewers.
-          removeDefaultReviewers: false
-          title: "[{{base}}] {{originalTitle}}"
+          # If triggered by being labelled, only backport that label.
+          # Otherwise, the action will backport all labels.
+          pr_label: ${{ github.event.action == 'labeled' && github.event.label.name || '' }}
+          pr_number: ${{ github.event.pull_request.number }}
+          repo_owner: ${{ github.repository_owner }}
+          repo_name: ${{ github.event.repository.name }}

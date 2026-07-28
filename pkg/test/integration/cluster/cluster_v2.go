@@ -12,6 +12,16 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 )
 
+// WithSymbolRefTreesEnabled turns on symbol-aware tree references
+// (symbolizer.symbol-ref-trees-enabled) on the query-frontend. Only takes
+// effect together with WithSymbolizer, which must configure a debuginfod
+// URL for the flag to have any effect. Symbolization is a v2-only feature.
+func WithSymbolRefTreesEnabled() ClusterOption {
+	return func(c *Cluster) {
+		c.symbolRefTreesEnabled = true
+	}
+}
+
 func WithV2() ClusterOption {
 	return func(c *Cluster) {
 		c.v2 = true
@@ -159,6 +169,9 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 			fmt.Sprintf("-symbolizer.debuginfod-url=%s", c.debuginfodURL),
 			"-symbolizer.enabled=true",
 		)
+		if c.symbolRefTreesEnabled {
+			comp.flags = append(comp.flags, "-symbolizer.symbol-ref-trees-enabled=true")
+		}
 	}
 
 	if comp.Target == "segment-writer" {

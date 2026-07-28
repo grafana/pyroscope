@@ -627,3 +627,68 @@ func Benchmark_Merge_self(b *testing.B) {
 		}
 	})
 }
+
+// nilPeriodTypeProfile builds a minimal profile with a nil PeriodType and a
+// single sample carrying the given value on a single-location stack. This
+// mirrors the common OTLP/eBPF shape where the source profile omits PeriodType.
+func nilPeriodTypeProfile(value int64) *profilev1.Profile {
+	return &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 2, Unit: 1}, // samples / count
+		},
+		PeriodType: nil,
+		Sample: []*profilev1.Sample{
+			{
+				LocationId: []uint64{1},
+				Value:      []int64{value},
+			},
+		},
+		Location: []*profilev1.Location{
+			{
+				Id:        1,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 1, Line: 1}},
+			},
+		},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, HasFunctions: true},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 3},
+		},
+		StringTable: []string{"", "count", "samples", "fn"},
+	}
+}
+
+func Test_Merge_NilPeriodType_Compatible(t *testing.T) {
+	var m ProfileMerge
+	require.NoError(t, m.Merge(nilPeriodTypeProfile(5), true))
+	require.NoError(t, m.Merge(nilPeriodTypeProfile(7), true))
+
+	out := m.Profile()
+	require.Nil(t, out.PeriodType, "nil PeriodType must be preserved")
+	require.Len(t, out.Sample, 1)
+	require.Equal(t, []int64{12}, out.Sample[0].Value, "values must be summed")
+}
+
+func Test_Merge_NilVsNonNilPeriodType_Incompatible(t *testing.T) {
+	var m ProfileMerge
+	require.NoError(t, m.Merge(nilPeriodTypeProfile(5), true))
+
+	withPeriod := nilPeriodTypeProfile(7)
+	withPeriod.PeriodType = &profilev1.ValueType{Type: 2, Unit: 1}
+
+	err := m.Merge(withPeriod, true)
+	require.Error(t, err, "present-vs-absent period type must stay incompatible")
+	require.Contains(t, err.Error(), "incompatible period types")
+}
+
+func Test_Merge_NilPeriodType_Single(t *testing.T) {
+	var m ProfileMerge
+	require.NoError(t, m.Merge(nilPeriodTypeProfile(3), true))
+
+	out := m.Profile()
+	require.Nil(t, out.PeriodType)
+	require.Len(t, out.Sample, 1)
+	require.Equal(t, []int64{3}, out.Sample[0].Value)
+}

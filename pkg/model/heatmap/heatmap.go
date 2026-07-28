@@ -42,7 +42,7 @@ func (h *Builder) newSeries(labels model.Labels) *heatmapSeries {
 	return s
 }
 
-func (h *Builder) Add(fp prommodel.Fingerprint, labels model.Labels, ts int64, profileID string, spanID uint64, value int64) {
+func (h *Builder) Add(fp prommodel.Fingerprint, labels model.Labels, ts int64, profileID string, spanID uint64, traceID model.TraceID, value int64) {
 	// TODO: Support annotations
 	if profileID == "" && spanID == 0 {
 		return
@@ -58,7 +58,7 @@ func (h *Builder) Add(fp prommodel.Fingerprint, labels model.Labels, ts int64, p
 	}
 
 	pointLabels := labels.WithoutLabels(h.by...)
-	series.pointsBuilder.add(fp, pointLabels, ts, profileID, spanID, value)
+	series.pointsBuilder.add(fp, pointLabels, ts, profileID, spanID, traceID, value)
 }
 
 func (h *Builder) Build(report *queryv1.HeatmapReport) *queryv1.HeatmapReport {
@@ -83,12 +83,15 @@ func (h *Builder) Build(report *queryv1.HeatmapReport) *queryv1.HeatmapReport {
 		points := make([]queryv1.HeatmapPoint, series.pointsBuilder.count())
 		r.Points = make([]*queryv1.HeatmapPoint, 0, series.pointsBuilder.count())
 		idx := 0
-		series.pointsBuilder.forEach(func(labels model.Labels, ts int64, profileID string, spanID uint64, value int64) {
+		series.pointsBuilder.forEach(func(labels model.Labels, ts int64, profileID string, spanID uint64, traceID model.TraceID, value int64) {
 			p := &points[idx]
 			p.AttributeRefs = at.Refs(labels, p.AttributeRefs)
 			p.Timestamp = ts
 			p.ProfileId = at.LookupOrAdd(attributetable.Key{Key: unique.Make(""), Value: unique.Make(profileID)})
 			p.SpanId = spanID
+			if traceID != (model.TraceID{}) {
+				p.TraceId = append(p.TraceId[:0], traceID[:]...)
+			}
 			p.Value = value
 
 			r.Points = append(r.Points, p)

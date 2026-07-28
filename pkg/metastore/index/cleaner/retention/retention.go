@@ -286,9 +286,9 @@ func (rp *TimeBasedRetentionPolicy) createTombstones(q *indexstore.PartitionQuer
 		if len(rp.tombstones) >= rp.maxTombstones {
 			return false
 		}
-		maxTime := time.Unix(0, shard.ShardIndex.MaxTime)
+		maxTime := time.UnixMilli(shard.ShardIndex.MaxTime)
 		if maxTime.Before(m.timestamp) {
-			// The shard does not contain data before the marker.
+			// The shard does not contain data after the marker.
 			name := shard.TombstoneName()
 			level.Debug(rp.logger).Log("msg", "creating tombstone", "name", name)
 			rp.tombstones = append(rp.tombstones, &metastorev1.Tombstones{

@@ -37,7 +37,7 @@ func init() {
 func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	otelSpan := trace.SpanFromContext(q.ctx)
 
-	var profileOpts []profileIteratorOption
+	profileOpts := []profileIteratorOption{withExcludeSampled()}
 	if len(query.Pprof.ProfileIdSelector) > 0 {
 		opt, err := withProfileIDSelector(query.Pprof.ProfileIdSelector...)
 		if err != nil {

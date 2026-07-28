@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,17 @@ overrides:
     symbolizer:
       enabled: true
     ingestion_rate_mb: 100
+`
+
+const symbolRefTreesOverrideConfig = `
+overrides:
+  symbol-ref-trees-disabled:
+    symbolizer:
+      symbol_ref_trees_enabled: false
+  symbol-ref-trees-enabled:
+    symbolizer:
+      symbol_ref_trees_enabled: true
+      resolve_timeout: 5s
 `
 
 func Test_SymbolizerEnabled(t *testing.T) {
@@ -55,4 +67,27 @@ func Test_SymbolizerMockOverrides(t *testing.T) {
 
 	assert.False(t, overrides.SymbolizerEnabled("default-tenant"))
 	assert.True(t, overrides.SymbolizerEnabled("enabled-tenant"))
+}
+
+func Test_SymbolRefTreesEnabled(t *testing.T) {
+	rc, err := LoadRuntimeConfig(bytes.NewReader([]byte(symbolRefTreesOverrideConfig)))
+	require.NoError(t, err)
+
+	var defaultCfg Limits
+	fs := flag.NewFlagSet("test", flag.PanicOnError)
+	defaultCfg.RegisterFlags(fs)
+	defaultCfg.Symbolizer.RegisterFlags(fs)
+
+	err = fs.Parse([]string{})
+	require.NoError(t, err)
+
+	o, err := NewOverrides(defaultCfg, &wrappedRuntimeConfig{rc})
+	require.NoError(t, err)
+
+	assert.False(t, o.SymbolRefTreesEnabled("empty-overrides"))
+	assert.False(t, o.SymbolRefTreesEnabled("symbol-ref-trees-disabled"))
+	assert.True(t, o.SymbolRefTreesEnabled("symbol-ref-trees-enabled"))
+
+	assert.Equal(t, 20*time.Second, o.SymbolizerResolveTimeout("empty-overrides"))
+	assert.Equal(t, 5*time.Second, o.SymbolizerResolveTimeout("symbol-ref-trees-enabled"))
 }

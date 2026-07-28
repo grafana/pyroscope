@@ -124,6 +124,7 @@ func (h *Handler) poll(
 			resp.Flamegraph = result.Response.Flamegraph
 			resp.Tree = result.Response.Tree
 			resp.Dot = result.Response.Dot
+			resp.Pprof = result.Response.Pprof
 		}
 	case StatusFailure:
 		resp.Async.Status = querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_FAILURE

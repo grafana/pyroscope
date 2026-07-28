@@ -21,6 +21,10 @@ type Cloneable interface {
 	Clone() flagext.Registerer
 }
 
+type SetFlagRecorder interface {
+	RecordSetFlag(name string)
+}
+
 var (
 	ErrNotPointer = errors.New("dst is not a pointer")
 )

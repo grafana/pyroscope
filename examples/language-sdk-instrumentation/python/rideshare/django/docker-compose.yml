@@ -5,33 +5,43 @@ services:
     image: grafana/pyroscope:latest
     ports:
     - 4040:4040
+  migrate:
+    build: ./app
+    command: python manage.py migrate --no-input
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
   us-east:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
       - ./.env.dev
     environment:
       - REGION=us-east
     depends_on:
-      - db
+      migrate:
+        condition: service_completed_successfully
   eu-north:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
       - ./.env.dev
     environment:
       - REGION=eu-north
     depends_on:
-      - db
+      migrate:
+        condition: service_completed_successfully
   ap-south:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
     - ./.env.dev
     environment:
       - REGION=ap-south
     depends_on:
-    - db
+      migrate:
+        condition: service_completed_successfully
   db:
     image: postgres:16-alpine
     ports:

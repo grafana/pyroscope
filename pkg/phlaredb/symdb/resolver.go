@@ -13,6 +13,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/util"
@@ -39,6 +40,7 @@ type Resolver struct {
 	maxNodes        int64
 	sts             *typesv1.StackTraceSelector
 	sanitizeOnMerge bool
+	symbolRefCap    int
 }
 
 type ResolverOption func(*Resolver)
@@ -72,6 +74,17 @@ func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOpt
 func WithResolverSanitizeOnMerge(sanitizeOnMerge bool) ResolverOption {
 	return func(r *Resolver) {
 		r.sanitizeOnMerge = sanitizeOnMerge
+	}
+}
+
+// WithResolverSymbolRefCap bounds the number of distinct unresolved
+// locations a single SymbolRefTree call interns into its table — counted by
+// the table itself, on its own (build ID, binary name, address) identity; a
+// location past the limit fails the call with
+// ErrTooManyUnresolvedLocations. Zero (the default) means unlimited.
+func WithResolverSymbolRefCap(n int) ResolverOption {
+	return func(r *Resolver) {
+		r.symbolRefCap = n
 	}
 }
 
@@ -296,6 +309,41 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 	})
 	tree.Total()
 	return tree, sym.ResultBuilder(), err
+}
+
+// SymbolRefTree resolves the tree for all selected stack traces using a
+// symbolref.Table for node names: resolved frames are interned as names,
+// frames symdb cannot resolve locally are interned as (build ID, address)
+// pairs for deferred resolution (see Symbols.SymbolRefTree for the exact
+// per-location rules). The table is shared across every partition, so refs
+// are already in one namespace and need no merge-time remap, unlike
+// LocationRefNameTree's SymbolMerger/FormatNodeNames step.
+//
+// The tree is always built without truncation, since a tree with unresolved
+// entries must not be truncated before those entries are resolved, so,
+// unlike Tree/LocationRefNameTree, there is no maxNodes parameter.
+//
+// The call fails with ErrTooManyUnresolvedLocations once the number of
+// distinct unresolved entries exceeds WithResolverSymbolRefCap; no partial
+// or mixed-representation result is ever returned.
+func (r *Resolver) SymbolRefTree() (tree *model.LocationRefNameTree, rb *symbolref.ResultBuilder, err error) {
+	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.SymbolRefTree")
+	defer span.Finish()
+	table := symbolref.NewTable()
+	var lock sync.Mutex
+	tree = new(model.LocationRefNameTree)
+	err = r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		resolved, err := symbols.SymbolRefTree(ctx, appender, SelectStackTraces(symbols, r.sts), table, r.symbolRefCap)
+		if err != nil {
+			return err
+		}
+		lock.Lock()
+		tree.Merge(resolved)
+		lock.Unlock()
+		return nil
+	})
+	tree.Total()
+	return tree, table.ResultBuilder(), err
 }
 
 func (r *Resolver) Tree() (*model.FunctionNameTree, error) {

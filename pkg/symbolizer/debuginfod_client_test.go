@@ -219,6 +219,55 @@ func TestDebuginfodClientSingleflight(t *testing.T) {
 	assert.Equal(t, 1, requestCount, "Expected only one HTTP request")
 }
 
+func TestDebuginfodClientCanceledCallerDoesNotWaitForFetch(t *testing.T) {
+	requestStarted := make(chan struct{})
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(requestStarted)
+		<-release
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("mock debug info"))
+	}))
+	defer server.Close()
+
+	metrics := newMetrics(prometheus.NewRegistry())
+	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, metrics, validation.MockDefaultOverrides())
+	require.NoError(t, err)
+
+	buildID := "cancel-wait-test-id"
+
+	// A waiter with a live context stays on the shared fetch until it finishes.
+	type fetchResult struct {
+		data []byte
+		err  error
+	}
+	waiterCh := make(chan fetchResult, 1)
+	go func() {
+		reader, err := client.FetchDebuginfo(tenant.InjectTenantID(context.Background(), "tenant"), buildID)
+		if err != nil {
+			waiterCh <- fetchResult{err: err}
+			return
+		}
+		defer reader.Close()
+		data, err := io.ReadAll(reader)
+		waiterCh <- fetchResult{data: data, err: err}
+	}()
+
+	<-requestStarted
+
+	// A canceled caller joining the same in-flight fetch returns its own
+	// context error immediately instead of blocking until the fetch finishes.
+	canceledCtx, cancel := context.WithCancel(tenant.InjectTenantID(context.Background(), "tenant"))
+	cancel()
+	_, err = client.FetchDebuginfo(canceledCtx, buildID)
+	require.ErrorIs(t, err, context.Canceled)
+
+	close(release)
+	res := <-waiterCh
+	require.NoError(t, res.err)
+	require.Equal(t, "mock debug info", string(res.data))
+}
+
 func TestSanitizeBuildID(t *testing.T) {
 	tests := []struct {
 		name        string

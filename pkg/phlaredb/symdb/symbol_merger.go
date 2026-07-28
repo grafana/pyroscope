@@ -12,6 +12,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/util/hashedslice"
 )
 
 var hashZero = xxhash.New().Sum64()
@@ -25,11 +26,11 @@ func (sm *SymbolMerger) hashMapping(h *xxhash.Digest, m *schemav1.InMemoryMappin
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
-	binary.LittleEndian.PutUint64(buf, sm.strings.hashes[m.Filename])
+	binary.LittleEndian.PutUint64(buf, sm.strings.Hashes[m.Filename])
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
-	binary.LittleEndian.PutUint64(buf, sm.strings.hashes[m.BuildId])
+	binary.LittleEndian.PutUint64(buf, sm.strings.Hashes[m.BuildId])
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
@@ -60,15 +61,15 @@ func (sm *SymbolMerger) hashMapping(h *xxhash.Digest, m *schemav1.InMemoryMappin
 }
 
 func (sm *SymbolMerger) hashFunction(h *xxhash.Digest, f *schemav1.InMemoryFunction, buf []byte) error {
-	binary.LittleEndian.PutUint64(buf, sm.strings.hashes[f.Name])
+	binary.LittleEndian.PutUint64(buf, sm.strings.Hashes[f.Name])
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
-	binary.LittleEndian.PutUint64(buf, sm.strings.hashes[f.SystemName])
+	binary.LittleEndian.PutUint64(buf, sm.strings.Hashes[f.SystemName])
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
-	binary.LittleEndian.PutUint64(buf, sm.strings.hashes[f.Filename])
+	binary.LittleEndian.PutUint64(buf, sm.strings.Hashes[f.Filename])
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func (sm *SymbolMerger) hashLocation(h *xxhash.Digest, loc *schemav1.InMemoryLoc
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
-	binary.LittleEndian.PutUint64(buf, sm.mappings.hashes[loc.MappingId])
+	binary.LittleEndian.PutUint64(buf, sm.mappings.Hashes[loc.MappingId])
 	if _, err := h.Write(buf); err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ func (sm *SymbolMerger) hashLocation(h *xxhash.Digest, loc *schemav1.InMemoryLoc
 
 	// Hash all lines
 	for _, line := range loc.Line {
-		binary.LittleEndian.PutUint64(buf, sm.functions.hashes[line.FunctionId])
+		binary.LittleEndian.PutUint64(buf, sm.functions.Hashes[line.FunctionId])
 		if _, err := h.Write(buf); err != nil {
 			return err
 		}
@@ -114,61 +115,19 @@ func (sm *SymbolMerger) hashLocation(h *xxhash.Digest, loc *schemav1.InMemoryLoc
 	return nil
 }
 
-func newHashedSlice[A any](equal equalityFn[A]) *hashedSlice[A] {
-	return &hashedSlice[A]{
-		m:     make(map[uint64]int),
-		equal: equal,
-	}
-}
-
-type equalityFn[A any] func(A, A) bool
-
-type hashedSlice[A any] struct {
-	m      map[uint64]int
-	sl     []A
-	hashes []uint64
-	equal  equalityFn[A]
-}
-
-func (h *hashedSlice[A]) len() int {
-	return len(h.sl)
-}
-
-func (h *hashedSlice[A]) grow(size int) {
-	h.sl = slices.Grow(h.sl, size)
-	h.hashes = slices.Grow(h.hashes, size)
-}
-
-func (h *hashedSlice[A]) add(hash uint64, v A) int32 {
-	for probeHash := hash; ; probeHash++ {
-		idx, found := h.m[probeHash]
-		if !found {
-			idx = len(h.sl)
-			h.m[probeHash] = idx
-			h.sl = append(h.sl, v)
-			h.hashes = append(h.hashes, hash) // store original hash, not probe offset
-			return int32(idx)
-		}
-		if h.equal(h.sl[idx], v) {
-			return int32(idx)
-		}
-		// hash collision: probe next slot
-	}
-}
-
 type SymbolMerger struct {
 	mu sync.Mutex
 
-	strings   *hashedSlice[string]
-	mappings  *hashedSlice[schemav1.InMemoryMapping]
-	functions *hashedSlice[schemav1.InMemoryFunction]
-	locations *hashedSlice[schemav1.InMemoryLocation]
+	strings   *hashedslice.Slice[string]
+	mappings  *hashedslice.Slice[schemav1.InMemoryMapping]
+	functions *hashedslice.Slice[schemav1.InMemoryFunction]
+	locations *hashedslice.Slice[schemav1.InMemoryLocation]
 }
 
 func NewSymbolMerger() *SymbolMerger {
 	m := &SymbolMerger{}
-	m.strings = newHashedSlice(func(a, b string) bool { return a == b })
-	m.mappings = newHashedSlice(func(a, b schemav1.InMemoryMapping) bool {
+	m.strings = hashedslice.New(func(a, b string) bool { return a == b })
+	m.mappings = hashedslice.New(func(a, b schemav1.InMemoryMapping) bool {
 		return a.MemoryStart == b.MemoryStart &&
 			a.MemoryLimit == b.MemoryLimit &&
 			a.FileOffset == b.FileOffset &&
@@ -179,13 +138,13 @@ func NewSymbolMerger() *SymbolMerger {
 			a.HasLineNumbers == b.HasLineNumbers &&
 			a.HasInlineFrames == b.HasInlineFrames
 	})
-	m.functions = newHashedSlice(func(a, b schemav1.InMemoryFunction) bool {
+	m.functions = hashedslice.New(func(a, b schemav1.InMemoryFunction) bool {
 		return a.Name == b.Name &&
 			a.SystemName == b.SystemName &&
 			a.Filename == b.Filename &&
 			a.StartLine == b.StartLine
 	})
-	m.locations = newHashedSlice(func(a, b schemav1.InMemoryLocation) bool {
+	m.locations = hashedslice.New(func(a, b schemav1.InMemoryLocation) bool {
 		if a.Address != b.Address ||
 			a.MappingId != b.MappingId ||
 			a.IsFolded != b.IsFolded ||
@@ -202,10 +161,10 @@ func NewSymbolMerger() *SymbolMerger {
 	})
 
 	// make sure the first string is the empty string
-	m.strings.add(hashZero, "")
-	m.mappings.add(hashZero, schemav1.InMemoryMapping{})
-	m.locations.add(hashZero, schemav1.InMemoryLocation{})
-	m.functions.add(hashZero, schemav1.InMemoryFunction{})
+	m.strings.Add(hashZero, "")
+	m.mappings.Add(hashZero, schemav1.InMemoryMapping{})
+	m.locations.Add(hashZero, schemav1.InMemoryLocation{})
+	m.functions.Add(hashZero, schemav1.InMemoryFunction{})
 
 	return m
 }
@@ -357,7 +316,7 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 
 	// add the strings to the merger
 	stringIDs := rm.stringIDs()
-	sm.strings.grow(len(stringIDs))
+	sm.strings.Grow(len(stringIDs))
 	h := xxhash.New()
 	for _, sID := range stringIDs {
 		s := symbols.Strings[sID]
@@ -366,13 +325,13 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 		if err != nil {
 			return nil, err
 		}
-		rm.strings[sID] = sm.strings.add(h.Sum64(), s)
+		rm.strings[sID] = sm.strings.Add(h.Sum64(), s)
 	}
 
 	// add the functions to the merger
 	var f schemav1.InMemoryFunction
 	functionIDs := rm.functionIDs()
-	sm.functions.grow(len(functionIDs))
+	sm.functions.Grow(len(functionIDs))
 	buf := make([]byte, 8)
 	for _, fID := range functionIDs {
 		if int(fID) >= len(symbols.Functions) {
@@ -389,13 +348,13 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 		if err := sm.hashFunction(h, &f, buf); err != nil {
 			return nil, err
 		}
-		rm.functions[fID] = sm.functions.add(h.Sum64(), f)
+		rm.functions[fID] = sm.functions.Add(h.Sum64(), f)
 	}
 
 	// add the mappings to the merger
 	var mp schemav1.InMemoryMapping
 	mappingIDs := rm.mappingIDs()
-	sm.mappings.grow(len(mappingIDs))
+	sm.mappings.Grow(len(mappingIDs))
 	for _, mID := range mappingIDs {
 		if int(mID) >= len(symbols.Mappings) {
 			// ID 0 is the "unset" sentinel — remap to 0 and skip when there are no mappings.
@@ -411,7 +370,7 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 		if err := sm.hashMapping(h, &mp, buf); err != nil {
 			return nil, err
 		}
-		rm.mappings[mID] = sm.mappings.add(h.Sum64(), mp)
+		rm.mappings[mID] = sm.mappings.Add(h.Sum64(), mp)
 	}
 
 	// add the locations to the merger
@@ -424,7 +383,7 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 		if err := sm.hashLocation(h, &loc, buf); err != nil {
 			return nil, err
 		}
-		locationRemap[lID] = sm.locations.add(h.Sum64(), loc)
+		locationRemap[lID] = sm.locations.Add(h.Sum64(), loc)
 	}
 
 	// Return a remap function
@@ -447,28 +406,28 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 
 	// add the strings to the merger
 	for idx, s := range ts.Strings {
-		sm.strings.grow(len(ts.Strings))
-		rm.strings[int32(idx)] = sm.strings.add(ts.StringHashes[idx], s)
+		sm.strings.Grow(len(ts.Strings))
+		rm.strings[int32(idx)] = sm.strings.Add(ts.StringHashes[idx], s)
 	}
 
 	// add the functions to the merger
 	{
 		var f schemav1.InMemoryFunction
-		sm.functions.grow(len(ts.Functions))
+		sm.functions.Grow(len(ts.Functions))
 		for idx, orig := range ts.Functions {
 			f.StartLine = uint32(orig.StartLine)
 			f.Name = uint32(orig.Name)
 			f.SystemName = uint32(orig.SystemName)
 			f.Filename = uint32(orig.Filename)
 			rm.updateFunction(&f)
-			rm.functions[int32(idx)] = sm.functions.add(ts.FunctionHashes[idx], f)
+			rm.functions[int32(idx)] = sm.functions.Add(ts.FunctionHashes[idx], f)
 		}
 	}
 
 	// add the mappings to the merger
 	{
 		var m schemav1.InMemoryMapping
-		sm.mappings.grow(len(ts.Mappings))
+		sm.mappings.Grow(len(ts.Mappings))
 		for idx, orig := range ts.Mappings {
 			m.MemoryStart = orig.MemoryStart
 			m.MemoryLimit = orig.MemoryLimit
@@ -480,13 +439,13 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 			m.HasLineNumbers = orig.HasLineNumbers
 			m.HasInlineFrames = orig.HasInlineFrames
 			rm.updateMapping(&m)
-			rm.mappings[int32(idx)] = sm.mappings.add(ts.MappingHashes[idx], m)
+			rm.mappings[int32(idx)] = sm.mappings.Add(ts.MappingHashes[idx], m)
 		}
 	}
 
 	// add the locations to the merger
 	var loc schemav1.InMemoryLocation
-	sm.locations.grow(len(ts.Locations))
+	sm.locations.Grow(len(ts.Locations))
 	locationRemap := make(map[int32]int32, len(ts.Locations))
 	for idx, orig := range ts.Locations {
 		loc.Address = orig.Address
@@ -500,7 +459,7 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 			}
 		}
 		rm.updateLocation(&loc)
-		locationRemap[int32(idx)] = sm.locations.add(ts.LocationHashes[idx], loc)
+		locationRemap[int32(idx)] = sm.locations.Add(ts.LocationHashes[idx], loc)
 	}
 
 	// Return a remap function
@@ -518,7 +477,7 @@ func (sm *SymbolMerger) ResultBuilder() *symbolResultBuilder {
 	return &symbolResultBuilder{
 		merger:          sm,
 		locationsLookup: map[int32]int32{0: 0},
-		locationsRef:    make([]int32, 1, sm.locations.len()),
+		locationsRef:    make([]int32, 1, sm.locations.Len()),
 	}
 }
 
@@ -558,7 +517,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		r = &queryv1.TreeSymbols{}
 	}
 
-	rm.resolveLocationIDs(m.locationsRef, m.merger.locations.sl, m.merger.mappings.sl, m.merger.functions.sl)
+	rm.resolveLocationIDs(m.locationsRef, m.merger.locations.Values, m.merger.mappings.Values, m.merger.functions.Values)
 
 	// add the strings to the result
 	{
@@ -566,8 +525,8 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		r.Strings = make([]string, len(stringIDs))
 		r.StringHashes = make([]uint64, len(stringIDs))
 		for idx, sID := range stringIDs {
-			r.Strings[idx] = m.merger.strings.sl[sID]
-			r.StringHashes[idx] = m.merger.strings.hashes[sID]
+			r.Strings[idx] = m.merger.strings.Values[sID]
+			r.StringHashes[idx] = m.merger.strings.Hashes[sID]
 			rm.strings[sID] = int32(idx)
 		}
 	}
@@ -579,7 +538,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		r.Functions = make([]*profilev1.Function, len(functionIDs))
 		r.FunctionHashes = make([]uint64, len(functionIDs))
 		for idx, fID := range functionIDs {
-			orig := m.merger.functions.sl[fID]
+			orig := m.merger.functions.Values[fID]
 			rm.updateFunction(&orig)
 			functions[idx].Id = uint64(idx)
 			functions[idx].Name = int64(orig.Name)
@@ -587,7 +546,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 			functions[idx].Filename = int64(orig.Filename)
 			functions[idx].StartLine = int64(orig.StartLine)
 			r.Functions[idx] = &functions[idx]
-			r.FunctionHashes[idx] = m.merger.functions.hashes[fID]
+			r.FunctionHashes[idx] = m.merger.functions.Hashes[fID]
 			rm.functions[fID] = int32(idx)
 		}
 	}
@@ -599,7 +558,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		r.Mappings = make([]*profilev1.Mapping, len(mappingIDs))
 		r.MappingHashes = make([]uint64, len(mappingIDs))
 		for idx, mID := range mappingIDs {
-			orig := m.merger.mappings.sl[mID]
+			orig := m.merger.mappings.Values[mID]
 			rm.updateMapping(&orig)
 			mappings[idx].Id = uint64(idx)
 			mappings[idx].MemoryStart = orig.MemoryStart
@@ -612,7 +571,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 			mappings[idx].HasLineNumbers = orig.HasLineNumbers
 			mappings[idx].HasInlineFrames = orig.HasInlineFrames
 			r.Mappings[idx] = &mappings[idx]
-			r.MappingHashes[idx] = m.merger.mappings.hashes[mID]
+			r.MappingHashes[idx] = m.merger.mappings.Hashes[mID]
 			rm.mappings[mID] = int32(idx)
 		}
 	}
@@ -623,7 +582,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		r.Locations = make([]*profilev1.Location, len(m.locationsRef))
 		r.LocationHashes = make([]uint64, len(m.locationsRef))
 		for idx, lID := range m.locationsRef {
-			orig := m.merger.locations.sl[lID]
+			orig := m.merger.locations.Values[lID]
 			rm.updateLocation(&orig)
 			locations[idx].Id = uint64(idx)
 			locations[idx].Address = orig.Address
@@ -637,7 +596,7 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 				}
 			}
 			r.Locations[idx] = &locations[idx]
-			r.LocationHashes[idx] = m.merger.locations.hashes[lID]
+			r.LocationHashes[idx] = m.merger.locations.Hashes[lID]
 		}
 	}
 

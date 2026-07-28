@@ -204,13 +204,13 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 }
 
 func querySpanProfile(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time) (*googlev1.Profile, error) {
-	req := &querierv1.SelectMergeSpanProfileRequest{
+	req := &querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: params.ProfileType,
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
 		LabelSelector: params.Query,
 		SpanSelector:  params.SpanSelector,
-		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
 	}
 
 	if params.MaxNodes > 0 {
@@ -218,32 +218,49 @@ func querySpanProfile(ctx context.Context, params *queryProfileParams, from time
 	}
 
 	qc := params.phlareClient.queryClient()
-	resp, err := qc.SelectMergeSpanProfile(ctx, connect.NewRequest(req))
+	resp, err := qc.SelectMergeStacktraces(ctx, connect.NewRequest(req))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query span profile: %w", err)
 	}
 
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Msg.Tree)
+	if resp.Msg.GetPprof().GetProfile() != nil {
+		return resp.Msg.Pprof.Profile, nil
+	}
+
+	legacyReq := &querierv1.SelectMergeSpanProfileRequest{
+		ProfileTypeID: req.ProfileTypeID,
+		LabelSelector: req.LabelSelector,
+		SpanSelector:  req.SpanSelector,
+		Start:         req.Start,
+		End:           req.End,
+		MaxNodes:      req.MaxNodes,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+	}
+	legacyResp, err := qc.SelectMergeSpanProfile(ctx, connect.NewRequest(legacyReq))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query span profile using legacy API: %w", err)
+	}
+	logDiagnostics(params.phlareClient, legacyResp.Header())
+	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](legacyResp.Msg.Tree)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tree: %w", err)
 	}
-
-	ty, err := model.ParseProfileTypeSelector(params.ProfileType)
+	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
 	if err != nil {
 		return nil, err
 	}
-
-	return pprof.FromTree(tree, ty, req.End*1e6), nil
+	return pprof.FromTree(tree, profileType, req.End*1e6), nil
 }
 
 func queryProfilePprof(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
-	req := &querierv1.SelectMergeProfileRequest{
+	req := &querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: params.ProfileType,
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
 		LabelSelector: params.Query,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
 	}
 
 	if params.MaxNodes > 0 {
@@ -267,14 +284,13 @@ func queryProfilePprof(ctx context.Context, params *queryProfileParams, from tim
 
 	qc := params.phlareClient.queryClient()
 
-	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
+	profile, headers, err := queryPprofWithFallback(ctx, qc, req)
 	if err != nil {
 		return nil, err
 	}
 
-	logDiagnostics(params.phlareClient, resp.Header())
-
-	return resp.Msg, err
+	logDiagnostics(params.phlareClient, headers)
+	return profile, nil
 }
 
 func queryProfileTree(ctx context.Context, params *queryProfileParams, from time.Time, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
@@ -326,16 +342,45 @@ func queryProfileTree(ctx context.Context, params *queryProfileParams, from time
 	return pprof.FromTree(tree, ty, req.End*1e6), nil
 }
 
-func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, force bool, req *querierv1.SelectMergeProfileRequest) error {
+func selectMergeProfile(ctx context.Context, client *phlareClient, outputFlag string, force bool, req *querierv1.SelectMergeStacktracesRequest) error {
+	req.Format = querierv1.ProfileFormat_PROFILE_FORMAT_PPROF
 	qc := client.queryClient()
-	resp, err := qc.SelectMergeProfile(ctx, connect.NewRequest(req))
+	profile, headers, err := queryPprofWithFallback(ctx, qc, req)
 	if err != nil {
 		return fmt.Errorf("failed to query: %w", err)
 	}
 
-	logDiagnostics(client, resp.Header())
+	logDiagnostics(client, headers)
+	return outputMergeProfile(ctx, outputFlag, force, profile)
+}
 
-	return outputMergeProfile(ctx, outputFlag, force, resp.Msg)
+func queryPprofWithFallback(
+	ctx context.Context,
+	client querierv1connect.QuerierServiceClient,
+	req *querierv1.SelectMergeStacktracesRequest,
+) (*googlev1.Profile, http.Header, error) {
+	resp, err := client.SelectMergeStacktraces(ctx, connect.NewRequest(req))
+	if err != nil {
+		return nil, nil, err
+	}
+	if resp.Msg.GetPprof().GetProfile() != nil {
+		return resp.Msg.Pprof.Profile, resp.Header(), nil
+	}
+
+	legacyResp, err := client.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		ProfileTypeID:      req.ProfileTypeID,
+		LabelSelector:      req.LabelSelector,
+		Start:              req.Start,
+		End:                req.End,
+		MaxNodes:           req.MaxNodes,
+		StackTraceSelector: req.StackTraceSelector,
+		ProfileIdSelector:  req.ProfileIdSelector,
+		TraceIdSelector:    req.TraceIdSelector,
+	}))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to query profile using legacy API: %w", err)
+	}
+	return legacyResp.Msg, legacyResp.Header(), nil
 }
 
 func logDiagnostics(client *phlareClient, headers http.Header) {
@@ -389,7 +434,7 @@ func queryGoPGO(ctx context.Context, params *queryGoPGOParams, outputFlag string
 		},
 	}
 
-	req := &querierv1.SelectMergeProfileRequest{
+	req := &querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID:      params.ProfileType,
 		Start:              from.UnixMilli(),
 		End:                to.UnixMilli(),

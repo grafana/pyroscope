@@ -406,33 +406,15 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", buildID)).Return(getLidiaData(), nil).Once()
 	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", buildID)).Return(getLidiaData(), nil).Once()
 
-	req := &request{
-		buildID:    buildID,
-		binaryName: "test-binary",
-		locations: []*location{
-			{
-				address: 0x1b743d6,
-			},
-		},
-	}
-
 	ctx := tenant.InjectTenantID(context.Background(), "tenant")
-	sym.symbolize(ctx, req)
-	require.NotEmpty(t, req.locations[0].lines)
+	frames, err := sym.Resolve(ctx, buildID, "test-binary", []uint64{0x1b743d6})
+	require.NoError(t, err)
+	require.NotEmpty(t, frames[0])
 
 	// Second request should also fetch from store
-	req2 := &request{
-		buildID:    buildID,
-		binaryName: "test-binary",
-		locations: []*location{
-			{
-				address: 0x1b743d6,
-			},
-		},
-	}
-
-	sym.symbolize(ctx, req2)
-	require.NotEmpty(t, req2.locations[0].lines)
+	frames2, err := sym.Resolve(ctx, buildID, "test-binary", []uint64{0x1b743d6})
+	require.NoError(t, err)
+	require.NotEmpty(t, frames2[0])
 }
 
 // TestSymbolizeWithObjectStore validates the symbolizer's behavior with the object store
@@ -462,9 +444,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			require.NoError(t, err)
 		}).Return(nil).Once()
 
-		req1 := createRequest(t, "build-id", 0x1500)
-		s.symbolize(ctx, req1)
-		require.NotEmpty(t, req1.locations[0].lines)
+		frames, err := s.Resolve(ctx, "build-id", "", []uint64{0x1500})
+		require.NoError(t, err)
+		require.NotEmpty(t, frames[0])
 		require.NotEmpty(t, capturedLidiaData)
 
 		mockClient.AssertExpectations(t)
@@ -480,9 +462,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
 		).Once()
 
-		req2 := createRequest(t, "build-id", 0x1500)
-		s.symbolize(ctx, req2)
-		require.NotEmpty(t, req2.locations[0].lines)
+		frames, err := s.Resolve(ctx, "build-id", "", []uint64{0x1500})
+		require.NoError(t, err)
+		require.NotEmpty(t, frames[0])
 
 		mockClient.AssertExpectations(t)
 		mockBucket.AssertExpectations(t)
@@ -495,9 +477,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
 		).Once()
 
-		req3 := createRequest(t, "build-id", 0x3c5a)
-		s.symbolize(ctx, req3)
-		require.NotEmpty(t, req3.locations[0].lines)
+		frames, err := s.Resolve(ctx, "build-id", "", []uint64{0x3c5a})
+		require.NoError(t, err)
+		require.NotEmpty(t, frames[0])
 
 		mockClient.AssertExpectations(t)
 		mockBucket.AssertExpectations(t)
@@ -520,9 +502,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			require.NoError(t, err)
 		}).Return(nil).Once()
 
-		req4 := createRequest(t, "different-build-id", 0x1500)
-		s.symbolize(ctx, req4)
-		require.NotEmpty(t, req4.locations[0].lines)
+		frames, err := s.Resolve(ctx, "different-build-id", "", []uint64{0x1500})
+		require.NoError(t, err)
+		require.NotEmpty(t, frames[0])
 		require.NotEmpty(t, capturedLidiaData2)
 
 		mockClient.AssertExpectations(t)
@@ -569,11 +551,11 @@ func TestSymbolizerMetrics(t *testing.T) {
 				).Once()
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) {
-				req1 := createRequest(t, "build-id", 0x1500)
-				s.symbolize(ctx, req1)
+				_, err := s.Resolve(ctx, "build-id", "", []uint64{0x1500})
+				require.NoError(t, err)
 
-				req2 := createRequest(t, "build-id", 0x1500)
-				s.symbolize(ctx, req2)
+				_, err = s.Resolve(ctx, "build-id", "", []uint64{0x1500})
+				require.NoError(t, err)
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds":   0,
@@ -589,8 +571,10 @@ func TestSymbolizerMetrics(t *testing.T) {
 					Return(nil, buildIDNotFoundError{buildID: "unknown-build-id"}).Once()
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) {
-				req := createRequest(t, "unknown-build-id", 0x1500)
-				s.symbolize(ctx, req)
+				frames, err := s.Resolve(ctx, "unknown-build-id", "some-binary", []uint64{0x1500})
+				require.NoError(t, err)
+				require.Len(t, frames, 1)
+				require.Nil(t, frames[0])
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds":   0,
@@ -609,8 +593,8 @@ func TestSymbolizerMetrics(t *testing.T) {
 				).Once()
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) {
-				req := createRequest(t, "invalid-elf", 0x1500)
-				s.symbolize(ctx, req)
+				_, err := s.Resolve(ctx, "invalid-elf", "", []uint64{0x1500})
+				require.NoError(t, err)
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds": 0,
@@ -705,18 +689,6 @@ func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
 	return io.ReadAll(gzipReader)
 }
 
-func createRequest(t *testing.T, buildID string, address uint64) *request {
-	t.Helper()
-	return &request{
-		buildID: buildID,
-		locations: []*location{
-			{
-				address: address,
-			},
-		},
-	}
-}
-
 func TestConfigValidate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -769,13 +741,8 @@ func TestUpdateAllSymbolsInProfile(t *testing.T) {
 		}
 
 		symbolizedLocs := []symbolizedLocation{{
-			loc: profile.Location[0],
-			symLoc: &location{
-				address: 0x1500,
-				lines: []lidia.SourceInfoFrame{{
-					LineNumber: 42, FunctionName: "testFunction", FilePath: "/path/to/test.go",
-				}},
-			},
+			loc:     profile.Location[0],
+			lines:   []lidia.SourceInfoFrame{{LineNumber: 42, FunctionName: "testFunction", FilePath: "/path/to/test.go"}},
 			mapping: profile.Mapping[0],
 		}}
 
@@ -807,17 +774,13 @@ func TestUpdateAllSymbolsInProfile(t *testing.T) {
 
 		symbolizedLocs := []symbolizedLocation{
 			{
-				loc: profile.Location[0],
-				symLoc: &location{address: 0x1500, lines: []lidia.SourceInfoFrame{{
-					LineNumber: 100, FunctionName: "testFunction", FilePath: "/path/to/test.go",
-				}}},
+				loc:     profile.Location[0],
+				lines:   []lidia.SourceInfoFrame{{LineNumber: 100, FunctionName: "testFunction", FilePath: "/path/to/test.go"}},
 				mapping: profile.Mapping[0],
 			},
 			{
-				loc: profile.Location[1],
-				symLoc: &location{address: 0x1600, lines: []lidia.SourceInfoFrame{{
-					LineNumber: 50, FunctionName: "testFunction", FilePath: "/path/to/test.go",
-				}}},
+				loc:     profile.Location[1],
+				lines:   []lidia.SourceInfoFrame{{LineNumber: 50, FunctionName: "testFunction", FilePath: "/path/to/test.go"}},
 				mapping: profile.Mapping[0],
 			},
 		}

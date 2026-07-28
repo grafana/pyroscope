@@ -465,7 +465,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 					Start:         tc.now.Add(-time.Hour).UnixMilli(),
 					End:           tc.now.Add(time.Hour).UnixMilli(),
 				}
-				resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req))
+				resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req)) //nolint:staticcheck // Legacy querier.v1 integration coverage.
 				require.NoError(t, err)
 
 				// no services, no samples profile
@@ -658,7 +658,7 @@ func (tc *testCtx) runFederatedQueryTest(ctx context.Context, t *testing.T) {
 		End:           tc.now.Add(time.Hour).UnixMilli(),
 	})
 	smpReq.Header().Set("X-Scope-OrgID", orgID)
-	resp, err := tc.querier.SelectMergeProfile(ctx, smpReq)
+	resp, err := tc.querier.SelectMergeProfile(ctx, smpReq) //nolint:staticcheck // Legacy querier.v1 integration coverage.
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg)
 	assert.NotEmpty(t, resp.Msg.Sample, "federated profile must contain samples")

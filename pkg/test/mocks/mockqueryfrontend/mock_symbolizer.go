@@ -6,6 +6,7 @@ import (
 	context "context"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	lidia "github.com/grafana/pyroscope/lidia"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -20,6 +21,112 @@ type MockSymbolizer_Expecter struct {
 
 func (_m *MockSymbolizer) EXPECT() *MockSymbolizer_Expecter {
 	return &MockSymbolizer_Expecter{mock: &_m.Mock}
+}
+
+// Resolve provides a mock function with given fields: ctx, buildID, binaryName, addrs
+func (_m *MockSymbolizer) Resolve(ctx context.Context, buildID string, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error) {
+	ret := _m.Called(ctx, buildID, binaryName, addrs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Resolve")
+	}
+
+	var r0 [][]lidia.SourceInfoFrame
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []uint64) ([][]lidia.SourceInfoFrame, error)); ok {
+		return rf(ctx, buildID, binaryName, addrs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, []uint64) [][]lidia.SourceInfoFrame); ok {
+		r0 = rf(ctx, buildID, binaryName, addrs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([][]lidia.SourceInfoFrame)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, []uint64) error); ok {
+		r1 = rf(ctx, buildID, binaryName, addrs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSymbolizer_Resolve_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Resolve'
+type MockSymbolizer_Resolve_Call struct {
+	*mock.Call
+}
+
+// Resolve is a helper method to define mock.On call
+//   - ctx context.Context
+//   - buildID string
+//   - binaryName string
+//   - addrs []uint64
+func (_e *MockSymbolizer_Expecter) Resolve(ctx interface{}, buildID interface{}, binaryName interface{}, addrs interface{}) *MockSymbolizer_Resolve_Call {
+	return &MockSymbolizer_Resolve_Call{Call: _e.mock.On("Resolve", ctx, buildID, binaryName, addrs)}
+}
+
+func (_c *MockSymbolizer_Resolve_Call) Run(run func(ctx context.Context, buildID string, binaryName string, addrs []uint64)) *MockSymbolizer_Resolve_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].([]uint64))
+	})
+	return _c
+}
+
+func (_c *MockSymbolizer_Resolve_Call) Return(_a0 [][]lidia.SourceInfoFrame, _a1 error) *MockSymbolizer_Resolve_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSymbolizer_Resolve_Call) RunAndReturn(run func(context.Context, string, string, []uint64) ([][]lidia.SourceInfoFrame, error)) *MockSymbolizer_Resolve_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResolveConcurrency provides a mock function with no fields
+func (_m *MockSymbolizer) ResolveConcurrency() int {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveConcurrency")
+	}
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func() int); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// MockSymbolizer_ResolveConcurrency_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveConcurrency'
+type MockSymbolizer_ResolveConcurrency_Call struct {
+	*mock.Call
+}
+
+// ResolveConcurrency is a helper method to define mock.On call
+func (_e *MockSymbolizer_Expecter) ResolveConcurrency() *MockSymbolizer_ResolveConcurrency_Call {
+	return &MockSymbolizer_ResolveConcurrency_Call{Call: _e.mock.On("ResolveConcurrency")}
+}
+
+func (_c *MockSymbolizer_ResolveConcurrency_Call) Run(run func()) *MockSymbolizer_ResolveConcurrency_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSymbolizer_ResolveConcurrency_Call) Return(_a0 int) *MockSymbolizer_ResolveConcurrency_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSymbolizer_ResolveConcurrency_Call) RunAndReturn(run func() int) *MockSymbolizer_ResolveConcurrency_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SymbolizePprof provides a mock function with given fields: ctx, profile

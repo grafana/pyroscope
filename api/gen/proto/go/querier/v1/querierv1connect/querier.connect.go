@@ -88,10 +88,16 @@ type QuerierServiceClient interface {
 	// format. It will combine samples from within the same callstack, with each
 	// element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
+	// Deprecated: Use SelectMergeStacktraces with span_selector instead.
+	// This RPC will remain supported in querier.v1 for backward compatibility;
+	// future breaking API changes may be introduced in querier.v2.
 	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
 	// format. It will combine samples from within the same callstack, with each
 	// element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
+	// Deprecated: Use SelectMergeStacktraces with PROFILE_FORMAT_PPROF instead.
+	// This RPC will remain supported in querier.v1 for backward compatibility;
+	// future breaking API changes may be introduced in querier.v2.
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It
 	// will contain all information stored (so including filenames and line
 	// number, if ingested).
@@ -286,10 +292,16 @@ type QuerierServiceHandler interface {
 	// format. It will combine samples from within the same callstack, with each
 	// element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
+	// Deprecated: Use SelectMergeStacktraces with span_selector instead.
+	// This RPC will remain supported in querier.v1 for backward compatibility;
+	// future breaking API changes may be introduced in querier.v2.
 	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
 	// format. It will combine samples from within the same callstack, with each
 	// element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
+	// Deprecated: Use SelectMergeStacktraces with PROFILE_FORMAT_PPROF instead.
+	// This RPC will remain supported in querier.v1 for backward compatibility;
+	// future breaking API changes may be introduced in querier.v2.
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It
 	// will contain all information stored (so including filenames and line
 	// number, if ingested).

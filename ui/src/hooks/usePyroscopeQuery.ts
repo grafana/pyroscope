@@ -30,7 +30,7 @@ export interface QueryResult {
   execute: (service: string, profileType: string, timeRange: string) => void;
 }
 
-function parseTimeRange(range: string): { start: number; end: number } {
+export function parseTimeRange(range: string): { start: number; end: number } {
   const now = Date.now();
   const m = range.match(/^now-(\d+)([mhd])$/);
   if (!m) return { start: now - 3_600_000, end: now };

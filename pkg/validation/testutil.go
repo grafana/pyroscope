@@ -35,16 +35,22 @@ type MockLimits struct {
 
 	MaxQueriersPerTenantValue int
 
-	SymbolizerEnabledValue bool
-	QueryTreeEnabledValue  bool
+	SymbolizerEnabledValue                bool
+	QueryTreeEnabledValue                 bool
+	SymbolRefTreesEnabledValue            bool
+	SymbolizerResolveTimeoutValue         time.Duration
+	SymbolizerMaxUnresolvedLocationsValue int
 
 	MaxAsyncQueryConcurrencyValue int
 
 	IngestionBodyLimitBytesValue int64
+
+	PushMaxConcurrencyValue int
 }
 
 func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.QuerySplitDurationValue }
 func (m MockLimits) MaxQueryParallelism(string) int                 { return m.MaxQueryParallelismValue }
+func (m MockLimits) PushMaxConcurrency(string) int                  { return m.PushMaxConcurrencyValue }
 func (m MockLimits) MaxQueryLength(tenantID string) time.Duration   { return m.MaxQueryLengthValue }
 func (m MockLimits) MaxQueryLookback(tenantID string) time.Duration { return m.MaxQueryLookbackValue }
 func (m MockLimits) QueryAnalysisEnabled(tenantID string) bool      { return m.QueryAnalysisEnabledValue }
@@ -105,6 +111,15 @@ func (m MockLimits) RejectNewerThan(userID string) time.Duration {
 func (m MockLimits) SymbolizerEnabled(s string) bool       { return m.SymbolizerEnabledValue }
 func (m MockLimits) QueryTreeEnabled(s string) bool        { return m.QueryTreeEnabledValue }
 func (m MockLimits) MaxAsyncQueryConcurrency(s string) int { return m.MaxAsyncQueryConcurrencyValue }
+
+func (m MockLimits) SymbolRefTreesEnabled(s string) bool { return m.SymbolRefTreesEnabledValue }
+func (m MockLimits) SymbolizerResolveTimeout(s string) time.Duration {
+	return m.SymbolizerResolveTimeoutValue
+}
+
+func (m MockLimits) SymbolizerMaxUnresolvedLocations(s string) int {
+	return m.SymbolizerMaxUnresolvedLocationsValue
+}
 
 func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
 	return m.IngestionBodyLimitBytesValue

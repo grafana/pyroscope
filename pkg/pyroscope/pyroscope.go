@@ -118,7 +118,8 @@ type Config struct {
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
 
-	DebugInfo debuginfo.Config `yaml:"-"`
+	DebugInfo debuginfo.Config    `yaml:"-"`
+	SetFlags  map[string]struct{} `yaml:"-"`
 
 	// Legacy v1
 	Querier        querier.Config      `yaml:"querier,omitempty"`
@@ -271,6 +272,61 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.StoreGateway.RegisterFlags(f, util.Logger)
 	c.Querier.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
+	markV1StorageOnlyFlagUsage(f)
+}
+
+const v1StorageOnlyFlagUsagePrefix = "[v1 storage only] "
+
+var v1StorageOnlyFlagPrefixes = []string{
+	"compactor.",
+	"ingester.",
+	"pyroscopedb.",
+}
+
+func markV1StorageOnlyFlagUsage(f *flag.FlagSet) {
+	f.VisitAll(func(flag *flag.Flag) {
+		for _, prefix := range v1StorageOnlyFlagPrefixes {
+			if strings.HasPrefix(flag.Name, prefix) {
+				if !strings.HasPrefix(flag.Usage, v1StorageOnlyFlagUsagePrefix) {
+					flag.Usage = v1StorageOnlyFlagUsagePrefix + flag.Usage
+				}
+				return
+			}
+		}
+	})
+}
+
+func (c *Config) RecordSetFlag(name string) {
+	if c.SetFlags == nil {
+		c.SetFlags = map[string]struct{}{}
+	}
+	c.SetFlags[name] = struct{}{}
+}
+
+func (c *Config) setV1StorageOnlyFlags() []string {
+	var flags []string
+	for flagName := range c.SetFlags {
+		for _, prefix := range v1StorageOnlyFlagPrefixes {
+			if strings.HasPrefix(flagName, prefix) {
+				flags = append(flags, flagName)
+				break
+			}
+		}
+	}
+	sort.Strings(flags)
+	return flags
+}
+
+func (c *Config) warnAboutV1StorageOnlyFlags(logger log.Logger) {
+	if c.ArchitectureStorage != V2 {
+		return
+	}
+	for _, flagName := range c.setV1StorageOnlyFlags() {
+		level.Warn(logger).Log(
+			"msg", "v1 storage only flag is set while using v2 storage architecture; flag has no effect",
+			"flag", flagName,
+		)
+	}
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -365,8 +421,10 @@ func (c *Config) Validate() error {
 		return err
 	}
 
-	if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
-		return err
+	if c.usesV1Storage() {
+		if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
+			return err
+		}
 	}
 
 	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
@@ -394,6 +452,10 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *Config) usesV1Storage() bool {
+	return c.ArchitectureStorage == V1 || c.ArchitectureStorage == V1V2Dual
 }
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
@@ -477,6 +539,7 @@ type Pyroscope struct {
 func New(cfg Config) (*Pyroscope, error) {
 	logger := initLogger(cfg.Server.LogFormat, cfg.Server.LogLevel)
 	cfg.Server.Log = logger
+	cfg.warnAboutV1StorageOnlyFlags(logger)
 	usagestats.Edition("oss")
 
 	phlare := &Pyroscope{

@@ -125,11 +125,12 @@ A request body with the following fields is required:
 |`left.end` | Milliseconds since epoch. | `1676289600000` |
 |`left.async.requestId` | If set, this is a polling request. |  |
 |`left.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
+|`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`left.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`left.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`left.spanSelector` | List of span IDs (16 hex characters, 64-bit) to filter samples by. | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
 |`left.stackTraceSelector.callSite[].name` |  |  |
 |`left.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`left.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
@@ -138,11 +139,12 @@ A request body with the following fields is required:
 |`right.end` | Milliseconds since epoch. | `1676289600000` |
 |`right.async.requestId` | If set, this is a polling request. |  |
 |`right.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
+|`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`right.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`right.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`right.spanSelector` | List of span IDs (16 hex characters, 64-bit) to filter samples by. | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
 |`right.stackTraceSelector.callSite[].name` |  |  |
 |`right.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`right.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
@@ -160,6 +162,10 @@ curl \
           "7c9e6679-7425-40de-944b-e07fc1f90ae7"
         ],
         "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+        "spanSelector": [
+          "9a517183f26a089d",
+          "5a4fe264a9c987fe"
+        ],
         "start": '$(expr $(date +%s) - 3600 )000',
         "traceIdSelector": [
           "7c9e66797425440de944be07fc1f90ae"
@@ -172,6 +178,10 @@ curl \
           "7c9e6679-7425-40de-944b-e07fc1f90ae7"
         ],
         "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+        "spanSelector": [
+          "9a517183f26a089d",
+          "5a4fe264a9c987fe"
+        ],
         "start": '$(expr $(date +%s) - 3600 )000',
         "traceIdSelector": [
           "7c9e66797425440de944be07fc1f90ae"
@@ -192,6 +202,10 @@ body = {
         "7c9e6679-7425-40de-944b-e07fc1f90ae7"
       ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "spanSelector": [
+        "9a517183f26a089d",
+        "5a4fe264a9c987fe"
+      ],
       "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000),
       "traceIdSelector": [
         "7c9e66797425440de944be07fc1f90ae"
@@ -204,6 +218,10 @@ body = {
         "7c9e6679-7425-40de-944b-e07fc1f90ae7"
       ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "spanSelector": [
+        "9a517183f26a089d",
+        "5a4fe264a9c987fe"
+      ],
       "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000),
       "traceIdSelector": [
         "7c9e66797425440de944be07fc1f90ae"
@@ -390,7 +408,10 @@ print(resp.content)
 {{< /code >}}
 #### `/querier.v1.QuerierService/SelectMergeProfile`
 
-SelectMergeProfile returns matching profiles aggregated in pprof format. It
+Deprecated: Use SelectMergeStacktraces with PROFILE_FORMAT_PPROF instead.
+ This RPC will remain supported in querier.v1 for backward compatibility;
+ future breaking API changes may be introduced in querier.v2.
+ SelectMergeProfile returns matching profiles aggregated in pprof format. It
  will contain all information stored (so including filenames and line
  number, if ingested).
 
@@ -452,7 +473,10 @@ print(resp.content)
 {{< /code >}}
 #### `/querier.v1.QuerierService/SelectMergeSpanProfile`
 
-SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+Deprecated: Use SelectMergeStacktraces with span_selector instead.
+ This RPC will remain supported in querier.v1 for backward compatibility;
+ future breaking API changes may be introduced in querier.v2.
+ SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
  format. It will combine samples from within the same callstack, with each
  element being grouped by its function name.
 
@@ -462,7 +486,7 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`start` | Milliseconds since epoch. | `1676282400000` |
 |`end` | Milliseconds since epoch. | `1676289600000` |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
@@ -519,11 +543,12 @@ A request body with the following fields is required:
 |`end` | Milliseconds since epoch. | `1676289600000` |
 |`async.requestId` | If set, this is a polling request. |  |
 |`async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
+|`spanSelector` | List of span IDs (16 hex characters, 64-bit) to filter samples by. | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
 |`stackTraceSelector.callSite[].name` |  |  |
 |`stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
@@ -540,6 +565,10 @@ curl \
         "7c9e6679-7425-40de-944b-e07fc1f90ae7"
       ],
       "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+      "spanSelector": [
+        "9a517183f26a089d",
+        "5a4fe264a9c987fe"
+      ],
       "start": '$(expr $(date +%s) - 3600 )000',
       "traceIdSelector": [
         "7c9e66797425440de944be07fc1f90ae"
@@ -558,6 +587,10 @@ body = {
       "7c9e6679-7425-40de-944b-e07fc1f90ae7"
     ],
     "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "spanSelector": [
+      "9a517183f26a089d",
+      "5a4fe264a9c987fe"
+    ],
     "start": int((datetime.datetime.now()- datetime.timedelta(hours = 1)).timestamp() * 1000),
     "traceIdSelector": [
       "7c9e66797425440de944be07fc1f90ae"

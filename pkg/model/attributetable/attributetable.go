@@ -133,16 +133,17 @@ func SpanIDToHex(spanID uint64) string {
 }
 
 // resolveExemplar is the shared implementation for converting to a public Exemplar.
-// ProfileId and SpanId must already be resolved to strings by the caller.
-func resolveExemplar(timestamp, value int64, profileID, spanID string, attributeRefs []int64, table *queryv1.AttributeTable) *typesv1.Exemplar {
+// ProfileId, SpanId, and TraceId must already be resolved to strings by the caller.
+func resolveExemplar(timestamp, value int64, profileID, spanID, traceID string, attributeRefs []int64, table *queryv1.AttributeTable) *typesv1.Exemplar {
 	labels := ResolveLabelPairs(attributeRefs, table)
-	if profileID == "" && spanID == "" && len(labels) == 0 {
+	if profileID == "" && spanID == "" && traceID == "" && len(labels) == 0 {
 		return nil
 	}
 	return &typesv1.Exemplar{
 		Timestamp: timestamp,
 		ProfileId: profileID,
 		SpanId:    spanID,
+		TraceId:   traceID,
 		Value:     value,
 		Labels:    labels,
 	}
@@ -155,7 +156,7 @@ func ResolveExemplars(exemplars []*queryv1.Exemplar, table *queryv1.AttributeTab
 	}
 	result := make([]*typesv1.Exemplar, 0, len(exemplars))
 	for _, ex := range exemplars {
-		if e := resolveExemplar(ex.Timestamp, ex.Value, ex.ProfileId, ex.SpanId, ex.AttributeRefs, table); e != nil {
+		if e := resolveExemplar(ex.Timestamp, ex.Value, ex.ProfileId, ex.SpanId, "", ex.AttributeRefs, table); e != nil {
 			result = append(result, e)
 		}
 	}
@@ -174,5 +175,13 @@ func ResolveHeatmapExemplar(point *queryv1.HeatmapPoint, table *queryv1.Attribut
 		profileID = table.Values[point.ProfileId]
 	}
 
-	return resolveExemplar(point.Timestamp, point.Value, profileID, SpanIDToHex(point.SpanId), point.AttributeRefs, table)
+	// TraceId is only populated when it round-trips through model.TraceID (16 bytes).
+	// Silently drop anything else (e.g. absent/empty) rather than emitting a
+	// malformed trace ID that wouldn't satisfy the documented 32-hex-char contract.
+	traceID := ""
+	if len(point.TraceId) == len(model.TraceID{}) {
+		traceID = hex.EncodeToString(point.TraceId)
+	}
+
+	return resolveExemplar(point.Timestamp, point.Value, profileID, SpanIDToHex(point.SpanId), traceID, point.AttributeRefs, table)
 }

@@ -511,7 +511,7 @@ func (b *RequestBuilder) SelectMergeProfile(metric string, query map[string]stri
 	}
 	selector.WriteString("}")
 	qc := b.QueryClient()
-	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{ //nolint:staticcheck // Legacy querier.v1 integration coverage.
 		ProfileTypeID: metric,
 		Start:         time.Unix(1, 0).UnixMilli(),
 		End:           time.Now().UnixMilli(),
