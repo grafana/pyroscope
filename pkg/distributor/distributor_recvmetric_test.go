@@ -131,6 +131,7 @@ func TestDistributorPushWithDifferentTenantStages(t *testing.T) {
 				reg,
 				log.NewLogfmtLogger(os.Stdout),
 				nil,
+				nil,
 			)
 			require.NoError(t, err)
 

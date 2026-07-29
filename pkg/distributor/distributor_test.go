@@ -30,6 +30,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,7 +83,7 @@ func newTestDistributor(t testing.TB, logger log.Logger, overrides *validation.O
 		{Addr: "foo"},
 	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, overrides, nil, logger, nil)
+	}}, overrides, nil, logger, nil, nil)
 	return d, ing, err
 }
 
@@ -154,7 +155,7 @@ func Test_Replication(t *testing.T) {
 		{Addr: "3"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(ctx, req)
@@ -176,7 +177,7 @@ func Test_Subservices(t *testing.T) {
 		{Addr: "foo"},
 	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -339,7 +340,7 @@ func Test_Limits(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 
@@ -431,7 +432,7 @@ func Test_Sessions_Limit(t *testing.T) {
 					l := validation.MockDefaultLimits()
 					l.MaxSessionsPerSeries = tc.maxSessions
 					tenantLimits["user-1"] = l
-				}), nil, log.NewLogfmtLogger(os.Stdout), nil)
+				}), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 			limit := d.limits.MaxSessionsPerSeries("user-1")
@@ -699,7 +700,7 @@ func Test_IngestLimits(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 			require.NoError(t, err)
 
 			err = d.PushBatch(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
@@ -1239,7 +1240,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 				return newFakeIngester(t, false), nil
-			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
 			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
@@ -1796,7 +1797,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 				return newFakeIngester(t, false), nil
-			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
@@ -1832,7 +1833,7 @@ func TestBadPushRequest(t *testing.T) {
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
@@ -1912,6 +1913,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 		overrides,
 		nil,
 		log.NewLogfmtLogger(os.Stdout),
+		nil,
 		nil,
 	)
 	require.NoError(t, err)
@@ -2025,7 +2027,7 @@ func TestPush_Aggregation(t *testing.T) {
 			}
 			tenantLimits["user-1"] = l
 		}),
-		nil, log.NewLogfmtLogger(os.Stdout), nil,
+		nil, log.NewLogfmtLogger(os.Stdout), nil, nil,
 	)
 	require.NoError(t, err)
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")
@@ -2113,6 +2115,7 @@ func TestPushBatch_SeriesHistogram(t *testing.T) {
 		overrides,
 		reg,
 		log.NewLogfmtLogger(os.Stdout),
+		nil,
 		nil,
 	)
 	require.NoError(t, err)
@@ -2351,7 +2354,7 @@ func TestPush_LabelRewrites(t *testing.T) {
 		{Addr: "mock"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")
@@ -2698,7 +2701,7 @@ func strippedTestProfile() *profilev1.Profile {
 
 func TestStripProfileToTotals(t *testing.T) {
 	p := stripTestProfile()
-	stripProfileToTotals(p)
+	stripProfileToTotals(p, nil)
 
 	want := strippedTestProfile()
 	require.Len(t, p.Sample, 1)
@@ -2717,7 +2720,7 @@ func TestStripProfileToTotals(t *testing.T) {
 func TestStripProfileToTotals_NoSamples(t *testing.T) {
 	p := stripTestProfile()
 	p.Sample = nil
-	stripProfileToTotals(p)
+	stripProfileToTotals(p, nil)
 	assert.Empty(t, p.Sample)
 	assert.Empty(t, p.Location)
 }
@@ -2728,7 +2731,7 @@ func TestStripProfileToTotals_AllSamplesInvalid(t *testing.T) {
 		{LocationId: []uint64{1}, Value: []int64{-1, 100}},
 		{LocationId: []uint64{1}, Value: []int64{7}},
 	}
-	stripProfileToTotals(p)
+	stripProfileToTotals(p, nil)
 	assert.Empty(t, p.Sample)
 	assert.Empty(t, p.Location)
 }
@@ -2757,7 +2760,7 @@ func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distribu
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 	return d, ing
 }
@@ -2853,7 +2856,7 @@ func TestStripProfileToTotals_SampleLabels(t *testing.T) {
 		{LocationId: []uint64{1}, Value: []int64{16, 160}, Label: []*profilev1.Label{{Key: 9, Num: 42}}},
 	}
 
-	stripProfileToTotals(p)
+	stripProfileToTotals(p, nil)
 
 	require.Len(t, p.Sample, 1)
 	assert.Equal(t, []int64{31, 310}, p.Sample[0].Value)
@@ -2863,4 +2866,216 @@ func TestStripProfileToTotals_SampleLabels(t *testing.T) {
 	assert.Empty(t, p.Function)
 	assert.Empty(t, p.Mapping)
 	assert.Equal(t, []string{"", "samples", "count", "cpu", "nanoseconds"}, p.StringTable)
+}
+
+// fakeRuler serves canned recording rules per tenant.
+type fakeRuler struct {
+	rules map[string][]*phlaremodel.RecordingRule
+}
+
+func (r fakeRuler) RecordingRules(tenant string) []*phlaremodel.RecordingRule {
+	return r.rules[tenant]
+}
+
+func TestStripProfileToTotals_CollapsesTargetedFunction(t *testing.T) {
+	p := stripTestProfile()
+
+	stripProfileToTotals(p, map[string]struct{}{"func-a": {}})
+
+	require.Len(t, p.Sample, 2)
+	// The trimmed func-a sample (kept samples come first) keeps a single real
+	// location resolving to func-a, carrying the summed value.
+	trimmedSample := p.Sample[0]
+	assert.Equal(t, []int64{10, 1000}, trimmedSample.Value)
+	require.Len(t, trimmedSample.LocationId, 1)
+	require.Len(t, p.Location, 1)
+	require.Len(t, p.Function, 1)
+	require.Len(t, p.Mapping, 1) // func-a's location keeps its real mapping
+	loc := p.Location[0]
+	assert.Equal(t, trimmedSample.LocationId[0], loc.Id)
+	require.Len(t, loc.Line, 1)
+	assert.Equal(t, p.Function[0].Id, loc.Line[0].FunctionId)
+	assert.Equal(t, "func-a", p.StringTable[p.Function[0].Name])
+	assert.Equal(t, "app.py", p.StringTable[p.Function[0].Filename])
+
+	// The grand total of the non-targeted samples comes last.
+	total := p.Sample[1]
+	assert.Equal(t, []int64{5, 500}, total.Value)
+	assert.Empty(t, total.LocationId)
+	assert.Empty(t, total.Label)
+}
+
+// recursionTestProfile builds the documented tree:
+//
+//	root
+//	|-> A (self 100)
+//	|   |-> B (self 100)
+//	|   |-> C (self 200)
+//	|   \-> A (self 600)   // recursive A
+//	\-> B (self 75)
+//	    \-> A (self 125)
+func recursionTestProfile() *profilev1.Profile {
+	// String table: root=3, A=4, B=5, C=6.
+	return &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", "root", "A", "B", "C"},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 3}, {Id: 2, Name: 4}, {Id: 3, Name: 5}, {Id: 4, Name: 6},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}, // root
+			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2}}}, // A
+			{Id: 3, Line: []*profilev1.Line{{FunctionId: 3}}}, // B
+			{Id: 4, Line: []*profilev1.Line{{FunctionId: 4}}}, // C
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{100}},    // root->A
+			{LocationId: []uint64{3, 2, 1}, Value: []int64{100}}, // root->A->B
+			{LocationId: []uint64{4, 2, 1}, Value: []int64{200}}, // root->A->C
+			{LocationId: []uint64{2, 2, 1}, Value: []int64{600}}, // root->A->A
+			{LocationId: []uint64{3, 1}, Value: []int64{75}},     // root->B
+			{LocationId: []uint64{2, 3, 1}, Value: []int64{125}}, // root->B->A
+		},
+	}
+}
+
+// stackFunctionTotal sums the value of every sample whose trimmed stack resolves
+// to fn, plus the value of the stackless total sample.
+func stackFunctionTotals(p *profilev1.Profile) (grand, total int64, byFunc map[string]int64) {
+	fnName := make(map[uint64]string, len(p.Function))
+	for _, fn := range p.Function {
+		fnName[fn.Id] = p.StringTable[fn.Name]
+	}
+	locFns := make(map[uint64][]string, len(p.Location))
+	for _, loc := range p.Location {
+		for _, line := range loc.Line {
+			locFns[loc.Id] = append(locFns[loc.Id], fnName[line.FunctionId])
+		}
+	}
+	byFunc = make(map[string]int64)
+	for _, s := range p.Sample {
+		grand += s.Value[0]
+		if len(s.LocationId) == 0 {
+			total += s.Value[0]
+			continue
+		}
+		names := make(map[string]struct{})
+		for _, locID := range s.LocationId {
+			for _, n := range locFns[locID] {
+				names[n] = struct{}{}
+			}
+		}
+		for n := range names {
+			byFunc[n] += s.Value[0]
+		}
+	}
+	return grand, total, byFunc
+}
+
+// Targeting A collapses to 1125 (every sample whose stack contains A, counted
+// once, so the recursive A does not inflate it) plus a 75 grand total.
+func TestStripProfileToTotals_CollapsesRecursion(t *testing.T) {
+	p := recursionTestProfile()
+	stripProfileToTotals(p, map[string]struct{}{"A": {}})
+
+	grand, total, byFunc := stackFunctionTotals(p)
+	assert.Equal(t, int64(1200), grand)
+	assert.Equal(t, int64(75), total)
+	assert.Equal(t, int64(1125), byFunc["A"])
+}
+
+// Targeting A and C keeps each function metric independently correct (A=1125,
+// C=200) while the profile's overall value stays 1200: the shared C-under-A
+// sample lands in one merged stack that feeds both, counted once.
+func TestStripProfileToTotals_OverlappingTargets(t *testing.T) {
+	p := recursionTestProfile()
+	stripProfileToTotals(p, map[string]struct{}{"A": {}, "C": {}})
+
+	grand, total, byFunc := stackFunctionTotals(p)
+	assert.Equal(t, int64(1200), grand)
+	assert.Equal(t, int64(75), total)
+	assert.Equal(t, int64(1125), byFunc["A"])
+	assert.Equal(t, int64(200), byFunc["C"])
+}
+
+func TestStripProfileToTotals_NoTargetMatch(t *testing.T) {
+	// A target that no stacktrace hits behaves exactly like a full strip.
+	withTargets := stripTestProfile()
+	stripProfileToTotals(withTargets, map[string]struct{}{"absent": {}})
+
+	fullStrip := stripTestProfile()
+	stripProfileToTotals(fullStrip, nil)
+
+	assert.Equal(t, fullStrip, withTargets)
+}
+
+func TestDistributor_targetedFunctions(t *testing.T) {
+	const cpuType = "cpu:cpu:nanoseconds:cpu:nanoseconds"
+	d := &Distributor{ruler: fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"user-1": {
+			{FunctionName: "foo", Matchers: []*labels.Matcher{
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameServiceName, "svc"),
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameProfileType, cpuType),
+			}},
+			{FunctionName: "baz", Matchers: []*labels.Matcher{
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameServiceName, "svc"),
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameProfileType, "memory:inuse_space:bytes:space:bytes"),
+			}},
+			{FunctionName: "bar", Matchers: []*labels.Matcher{
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameServiceName, "other"),
+			}},
+			{FunctionName: "", Matchers: []*labels.Matcher{
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameServiceName, "svc"),
+			}},
+		},
+	}}}
+	series := phlaremodel.Labels{
+		{Name: ProfileName, Value: "cpu"},
+		{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+	}
+	p := stripTestProfile()
+
+	assert.Equal(t, map[string]struct{}{"foo": {}}, d.targetedFunctions("user-1", series, p))
+	assert.Nil(t, d.targetedFunctions("user-2", series, p))
+	assert.Nil(t, (&Distributor{}).targetedFunctions("user-1", series, p))
+}
+
+func TestPushSeries_KeepStrippedProfiles_KeepsTargeted(t *testing.T) {
+	d, ing := newStripTestDistributor(t, true)
+	d.ruler = fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"user-1": {{
+			FunctionName: "func-a",
+			Matchers: []*labels.Matcher{
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameServiceName, "svc"),
+				labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameProfileType, "cpu:cpu:nanoseconds:cpu:nanoseconds"),
+			},
+		}},
+	}}
+
+	req := &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+		},
+		Profile: pprof2.RawFromProto(stripTestProfile()),
+	}
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	require.Len(t, ing.requests, 1)
+	require.NotEmpty(t, ing.requests[0].Series)
+	series := ing.requests[0].Series[0]
+	assert.Equal(t, "true", phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameSampled))
+
+	received, err := pprof2.RawFromBytes(series.Samples[0].RawProfile)
+	require.NoError(t, err)
+	// One grand-total sample plus the trimmed func-a sample (a single
+	// location resolving to one function).
+	require.Len(t, received.Sample, 2)
+	require.Len(t, received.Function, 1)
+	assert.Equal(t, "func-a", received.StringTable[received.Function[0].Name])
+	require.Len(t, received.Location, 1)
 }

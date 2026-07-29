@@ -32,6 +32,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/sync/errgroup"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -101,6 +102,7 @@ type Distributor struct {
 
 	cfg           Config
 	limits        Limits
+	ruler         Ruler
 	ingestersRing ring.ReadRing
 	pool          *ring_client.Pool
 
@@ -159,6 +161,12 @@ type Limits interface {
 	aggregator.Limits
 }
 
+// Ruler provides a tenant's recording rules, used to decide which stacktraces
+// of a sampled-out profile must be preserved during stripping.
+type Ruler interface {
+	RecordingRules(tenant string) []*phlaremodel.RecordingRule
+}
+
 func New(
 	config Config,
 	ingesterRing ring.ReadRing,
@@ -167,6 +175,7 @@ func New(
 	reg prometheus.Registerer,
 	logger log.Logger,
 	segmentWriter SegmentWriterClient,
+	ruler Ruler,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -185,6 +194,7 @@ func New(
 		ingestersRing:           ingesterRing,
 		pool:                    clientpool.NewIngesterPool(config.PoolConfig, ingesterRing, ingesterClientFactory, clients, logger, ingesterClientsOptions...),
 		segmentWriter:           segmentWriter,
+		ruler:                   ruler,
 		metrics:                 newMetrics(reg),
 		healthyInstancesCount:   atomic.NewUint32(0),
 		aggregator:              aggregator.NewMultiTenantAggregator[*pprof.ProfileMerge](limits, reg),
@@ -604,12 +614,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
 		}
-		finalLog.msg = "stripping profile stacktraces, keeping totals"
+		finalLog.msg = "stripping profile stacktraces, keeping totals and recording-rule targeted samples"
 
 		// Language detection reads the string table, which is about to be
 		// stripped; the result is cached in the request.
 		d.GetProfileLanguage(req)
-		stripProfileToTotals(req.Profile.Profile)
+
+		d.stripProfileToTotals(req)
 		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
 
 		// The stripped part of the profile is discarded, and from here on
@@ -953,15 +964,145 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
-// stripProfileToTotals reduces the profile to a single sample holding the
-// sum of all sample values: stacktraces, symbols, and sample labels are
-// dropped, only the series totals are kept.
-func stripProfileToTotals(p *profilev1.Profile) {
+type deferredRule struct {
+	deferredMatchers []*labels.Matcher
+	keepLabels       []string
+}
+
+func (d *Distributor) targetedFunctions(req *distributormodel.ProfileSeries) map[string][]deferredRule {
+	p := req.Profile.Profile
+	var seriesLabels phlaremodel.Labels = req.Labels
+	tenantID := req.TenantID
+	if d.ruler == nil {
+		return nil
+	}
+	profileTypes := profileTypeNames(p, seriesLabels.Get(ProfileName))
+	var targets map[string][]deferredRule
+	for _, rule := range d.ruler.RecordingRules(tenantID) {
+		if rule == nil || rule.FunctionName == "" {
+			continue
+		}
+		matched, deferredMatchers := recordingRuleMatchesSeries(rule, seriesLabels, profileTypes)
+		if !matched {
+			continue
+		}
+		keepLabels := make([]string, 0, len(deferredMatchers)+len(rule.GroupBy))
+		for _, m := range deferredMatchers {
+			keepLabels = append(keepLabels, m.Name)
+		}
+		keepLabels = append(keepLabels, rule.GroupBy...)
+		if targets == nil {
+			targets = make(map[string][]deferredRule)
+		}
+		targets[rule.FunctionName] = append(targets[rule.FunctionName], deferredRule{
+			deferredMatchers: deferredMatchers,
+			keepLabels:       keepLabels,
+		})
+	}
+	return targets
+}
+
+func recordingRuleMatchesSeries(rule *phlaremodel.RecordingRule, seriesLabels phlaremodel.Labels, profileTypes []string) (bool, []*labels.Matcher) {
+	var deferredMatchers []*labels.Matcher
+	for _, m := range rule.Matchers {
+		if m.Name == phlaremodel.LabelNameProfileType {
+			var matched bool
+			for _, pt := range profileTypes {
+				if m.Matches(pt) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				return false, nil
+			}
+			continue
+		}
+		if v, ok := seriesLabels.GetLabel(m.Name); ok {
+			if !m.Matches(v.Value) {
+				return false, nil
+			}
+			continue
+		}
+		deferredMatchers = append(deferredMatchers, m)
+	}
+	return true, deferredMatchers
+}
+
+func profileTypeNames(p *profilev1.Profile, metricName string) []string {
+	var periodType, periodUnit string
+	if p.PeriodType != nil {
+		periodType = p.StringTable[p.PeriodType.Type]
+		periodUnit = p.StringTable[p.PeriodType.Unit]
+	}
+	types := make([]string, 0, len(p.SampleType))
+	for _, st := range p.SampleType {
+		types = append(types, metricName+":"+p.StringTable[st.Type]+":"+p.StringTable[st.Unit]+":"+periodType+":"+periodUnit)
+	}
+	return types
+}
+
+func (d *Distributor) stripProfileToTotals(req *distributormodel.ProfileSeries) {
+	targetFuncs := d.targetedFunctions(req)
+	p := req.Profile.Profile
+	var locTargets map[uint64][]deferredRule
+	if len(targetFuncs) > 0 {
+		targetFn := make(map[uint64][]deferredRule, len(p.Function))
+		for _, fn := range p.Function {
+			if rules, ok := targetFuncs[p.StringTable[fn.Name]]; ok {
+				targetFn[fn.Id] = rules
+			}
+		}
+		if len(targetFn) > 0 {
+			locTargets = make(map[uint64][]deferredRule, len(p.Location))
+			for _, loc := range p.Location {
+				var rules []deferredRule
+				for _, line := range loc.Line {
+					rules = append(rules, targetFn[line.FunctionId]...)
+				}
+				if len(rules) > 0 {
+					locTargets[loc.Id] = rules
+				}
+			}
+		}
+	}
+
 	var total *profilev1.Sample
+	var keptSamples int
 	for _, s := range p.Sample {
-		// Samples that Normalize would drop (value length mismatch,
-		// negative values) must not contribute to the totals.
 		if len(s.Value) != len(p.SampleType) || hasNegativeValue(s) {
+			continue
+		}
+		var keptLocations int
+		var keepLabels map[string]struct{}
+		for _, l := range s.LocationId {
+			rules, ok := locTargets[l]
+			if !ok {
+				continue
+			}
+			var fulfilled bool
+			for _, rule := range rules {
+				if !sampleFulfillsMatchers(s, p.StringTable, rule.deferredMatchers) {
+					continue
+				}
+				fulfilled = true
+				for _, name := range rule.keepLabels {
+					if keepLabels == nil {
+						keepLabels = make(map[string]struct{})
+					}
+					keepLabels[name] = struct{}{}
+				}
+			}
+			if fulfilled {
+				s.LocationId[keptLocations] = l
+				keptLocations++
+			}
+		}
+		if keptLocations > 0 {
+			s.LocationId = s.LocationId[:keptLocations]
+			s.Label = retainLabels(s.Label, p.StringTable, keepLabels)
+			p.Sample[keptSamples] = s
+			keptSamples++
 			continue
 		}
 		if total == nil {
@@ -971,13 +1112,12 @@ func stripProfileToTotals(p *profilev1.Profile) {
 			total.Value[i] += v
 		}
 	}
-	p.Sample = nil
+	p.Sample = p.Sample[:keptSamples]
 	if total != nil {
-		p.Sample = []*profilev1.Sample{total}
+		p.Sample = append(p.Sample, total)
 	}
-	p.Location = nil
-	p.Function = nil
-	p.Mapping = nil
+
+	pruneUnreferencedSymbols(p)
 
 	oldStrings := p.StringTable
 	newStrings := []string{""}
@@ -1005,7 +1145,89 @@ func stripProfileToTotals(p *profilev1.Profile) {
 	for i, c := range p.Comment {
 		p.Comment[i] = intern(c)
 	}
+	for _, fn := range p.Function {
+		fn.Name = intern(fn.Name)
+		fn.SystemName = intern(fn.SystemName)
+		fn.Filename = intern(fn.Filename)
+	}
+	for _, m := range p.Mapping {
+		m.Filename = intern(m.Filename)
+		m.BuildId = intern(m.BuildId)
+	}
 	p.StringTable = newStrings
+}
+
+func sampleFulfillsMatchers(s *profilev1.Sample, stringTable []string, matchers []*labels.Matcher) bool {
+	for _, m := range matchers {
+		if !m.Matches(sampleLabelValue(s, stringTable, m.Name)) {
+			return false
+		}
+	}
+	return true
+}
+
+func sampleLabelValue(s *profilev1.Sample, stringTable []string, name string) string {
+	for _, l := range s.Label {
+		if l.Str > 0 && stringTable[l.Key] == name {
+			return stringTable[l.Str]
+		}
+	}
+	return ""
+}
+
+func retainLabels(sampleLabels []*profilev1.Label, stringTable []string, keep map[string]struct{}) []*profilev1.Label {
+	retained := sampleLabels[:0]
+	for _, l := range sampleLabels {
+		if _, ok := keep[stringTable[l.Key]]; ok {
+			retained = append(retained, l)
+		}
+	}
+	return retained
+}
+
+func pruneUnreferencedSymbols(p *profilev1.Profile) {
+	keepLoc := make(map[uint64]struct{})
+	for _, s := range p.Sample {
+		for _, locID := range s.LocationId {
+			keepLoc[locID] = struct{}{}
+		}
+	}
+	if len(keepLoc) == 0 {
+		p.Location = nil
+		p.Function = nil
+		p.Mapping = nil
+		return
+	}
+	keepFunc := make(map[uint64]struct{})
+	keepMapping := make(map[uint64]struct{})
+	locations := p.Location[:0]
+	for _, loc := range p.Location {
+		if _, ok := keepLoc[loc.Id]; !ok {
+			continue
+		}
+		locations = append(locations, loc)
+		if loc.MappingId != 0 {
+			keepMapping[loc.MappingId] = struct{}{}
+		}
+		for _, line := range loc.Line {
+			keepFunc[line.FunctionId] = struct{}{}
+		}
+	}
+	p.Location = locations
+	functions := p.Function[:0]
+	for _, fn := range p.Function {
+		if _, ok := keepFunc[fn.Id]; ok {
+			functions = append(functions, fn)
+		}
+	}
+	p.Function = functions
+	mappings := p.Mapping[:0]
+	for _, m := range p.Mapping {
+		if _, ok := keepMapping[m.Id]; ok {
+			mappings = append(mappings, m)
+		}
+	}
+	p.Mapping = mappings
 }
 
 func hasNegativeValue(s *profilev1.Sample) bool {

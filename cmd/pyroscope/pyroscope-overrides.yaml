@@ -1,0 +1,22 @@
+overrides:
+  "anonymous":
+    distributor_sampling:
+      usage_groups:
+        service/${labels.service_name}:
+          probability: 0.1
+    distributor_usage_groups:
+      service/${labels.service_name}: "{}"
+    # Recording rules drive the new targeted-keeping: a sampled-out profile
+    # keeps intact the stacktraces that hit `stacktrace_filter.function_name`;
+    # everything else collapses into a single label-less total.
+    # NOTE: set function_name to a function present in your profiled app.
+    # __profile_type__ is required for the rule to validate, but the distributor
+    # ignores it when deciding what to keep.
+    recording_rules:
+      - id: "keep-func"
+        metric_name: "profiles_recorded_cpu_keep_func"
+        matchers:
+          - '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}'
+        stacktrace_filter:
+          function_name:
+            function_name: "syscall.syscall"
