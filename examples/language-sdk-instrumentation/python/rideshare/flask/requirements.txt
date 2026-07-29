@@ -20,7 +20,7 @@ opentelemetry-util-http==0.63b1
 packaging==26.2
 protobuf==6.33.6
 pycparser==3.0
-pyroscope-io==1.0.11
+pyroscope-io==1.2.0
 pyroscope-otel==1.0.1
 typing_extensions==4.15.0
 Werkzeug==3.1.8

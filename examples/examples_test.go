@@ -432,9 +432,7 @@ func labelValue(labels []labelPair, name string) string {
 	return ""
 }
 
-// seriesData maps a service name to its ingested CPU/wall profile types. Those
-// are the types span profiles are attached to; other types (memory, lock, etc.)
-// are not useful for these checks and are dropped.
+// seriesData maps a service name to its ingested profile types.
 type seriesData map[string][]string
 
 func sortedKeys(d seriesData) []string {
@@ -456,10 +454,27 @@ func isCPUOrWallType(profileType string) bool {
 	return strings.HasPrefix(profileType, "process_cpu:") || strings.HasPrefix(profileType, "wall:")
 }
 
-// discoverSeries queries the Series API and returns the application services and
-// their ingested CPU/wall profile types. Self-profiling series and non-CPU/wall
-// types are excluded.
-func (e *env) discoverSeries(ctx context.Context, host string) (seriesData, error) {
+var pythonMemoryProfileTypes = []string{
+	"memory:alloc_objects:count:space:bytes",
+	"memory:alloc_space:bytes:space:bytes",
+	"memory:inuse_objects:count:space:bytes",
+	"memory:inuse_space:bytes:space:bytes",
+}
+
+func (e *env) requiresPythonMemoryProfiles() bool {
+	dir := e.repoDir()
+	return dir == filepath.Join("examples", "tracing", "python") ||
+		strings.HasPrefix(dir, filepath.Join("examples", "language-sdk-instrumentation", "python")+string(filepath.Separator))
+}
+
+func includeAllProfileTypes(string) bool {
+	return true
+}
+
+// discoverSeries queries the Series API and returns the application services
+// and profile types accepted by includeProfileType. Self-profiling series are
+// excluded.
+func (e *env) discoverSeries(ctx context.Context, host string, includeProfileType func(string) bool) (seriesData, error) {
 	start, end := nowWindowMillis()
 	var resp seriesResponse
 	err := e.pyroscopePost(ctx, host, "querier.v1.QuerierService/Series", map[string]any{
@@ -475,13 +490,13 @@ func (e *env) discoverSeries(ctx context.Context, host string) (seriesData, erro
 	for _, ls := range resp.LabelsSet {
 		svc := labelValue(ls.Labels, "service_name")
 		pt := labelValue(ls.Labels, "__profile_type__")
-		if svc == "" || svc == selfProfilingService || !isCPUOrWallType(pt) {
+		if svc == "" || svc == selfProfilingService || !includeProfileType(pt) {
 			continue
 		}
 		data[svc] = append(data[svc], pt)
 	}
 	if len(data) == 0 {
-		return nil, errors.New("no CPU or wall profile series ingested yet")
+		return nil, errors.New("no matching profile series ingested yet")
 	}
 	return data, nil
 }
@@ -811,6 +826,28 @@ func TestCompletedSuccessfullyServices(t *testing.T) {
 	require.Equal(t, map[string]struct{}{"migrate": {}}, completedSuccessfullyServices(services))
 }
 
+func TestRequiresPythonMemoryProfiles(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		dir  string
+		want bool
+	}{
+		{dir: "language-sdk-instrumentation/python/simple", want: true},
+		{dir: "language-sdk-instrumentation/python/rideshare/flask", want: true},
+		{dir: "tracing/python", want: true},
+		{dir: "language-sdk-instrumentation/golang-push/simple", want: false},
+		{dir: "tracing/golang-push", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dir, func(t *testing.T) {
+			e := &env{dir: tt.dir}
+			require.Equal(t, tt.want, e.requiresPythonMemoryProfiles())
+		})
+	}
+}
+
 // TestExamples brings each selected example up once and verifies it: profiles
 // are always checked (Series + SelectSeries); tracing examples additionally get
 // the trace-to-profile link checked (SelectMergeSpanProfile).
@@ -857,28 +894,73 @@ func TestExamples(t *testing.T) {
 func (e *env) checkProfilesQueryable(t *testing.T, ctx context.Context, host string) {
 	dir := e.repoDir()
 	var summary string
+	requireMemoryProfiles := e.requiresPythonMemoryProfiles()
+	requiredMemoryTypes := map[string]struct{}{}
+	if requireMemoryProfiles {
+		for _, profileType := range pythonMemoryProfileTypes {
+			requiredMemoryTypes[profileType] = struct{}{}
+		}
+	}
 	poll(t, ctx, profilesQueryTimeout, func(progress func(string, ...any)) error {
 		progress("[%s] querying Series for ingested profiles...", dir)
-		data, err := e.discoverSeries(ctx, host)
+		includeProfileType := isCPUOrWallType
+		if requireMemoryProfiles {
+			includeProfileType = includeAllProfileTypes
+		}
+		data, err := e.discoverSeries(ctx, host, includeProfileType)
 		if err != nil {
 			return err
 		}
 		progress("[%s] Series found %d service(s): %s; querying SelectSeries...", dir, len(data), strings.Join(sortedKeys(data), ", "))
+		var cpuOrWallSummary string
+		foundMemoryTypes := map[string]string{}
 		for svc, types := range data {
 			for _, pt := range types {
+				_, requiredMemoryType := requiredMemoryTypes[pt]
+				if !isCPUOrWallType(pt) && !requiredMemoryType {
+					continue
+				}
 				nSeries, nPoints, err := e.selectSeries(ctx, host, svc, pt)
 				if err != nil {
 					return err
 				}
 				if nPoints > 0 {
-					summary = fmt.Sprintf("service=%q profileType=%q -> %d series, %d points (%d service(s) ingesting)",
-						svc, pt, nSeries, nPoints, len(data))
-					return nil
+					detail := fmt.Sprintf("service=%q profileType=%q -> %d series, %d points",
+						svc, pt, nSeries, nPoints)
+					if isCPUOrWallType(pt) {
+						cpuOrWallSummary = detail
+						continue
+					}
+					foundMemoryTypes[pt] = detail
+					continue
 				}
 				progress("[%s] SelectSeries service=%q type=%q -> 0 points (waiting for data)", dir, svc, pt)
 			}
 		}
-		return fmt.Errorf("no data points for any of %d discovered series yet", len(data))
+
+		if cpuOrWallSummary == "" {
+			return errors.New("no CPU or wall profile data points yet")
+		}
+		if !requireMemoryProfiles {
+			summary = cpuOrWallSummary
+			return nil
+		}
+
+		var missing []string
+		found := []string{cpuOrWallSummary}
+		for _, profileType := range pythonMemoryProfileTypes {
+			detail, ok := foundMemoryTypes[profileType]
+			if !ok {
+				missing = append(missing, profileType)
+				continue
+			}
+			found = append(found, detail)
+		}
+		if len(missing) > 0 {
+			return fmt.Errorf("memory profile types have no data points yet: %s", strings.Join(missing, ", "))
+		}
+		summary = strings.Join(found, "; ")
+		return nil
 	})
 	t.Logf("[%s] PASS profiles queryable via Series+SelectSeries: %s", dir, summary)
 }
@@ -891,7 +973,7 @@ func (e *env) checkSpanProfilesQueryable(t *testing.T, ctx context.Context, pyro
 	var summary string
 	poll(t, ctx, tracesQueryTimeout, func(progress func(string, ...any)) error {
 		progress("[%s] querying Series for ingested profiles...", dir)
-		data, err := e.discoverSeries(ctx, pyroHost)
+		data, err := e.discoverSeries(ctx, pyroHost, isCPUOrWallType)
 		if err != nil {
 			return err
 		}
