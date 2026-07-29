@@ -22,7 +22,7 @@ for f in Type Unit; do
 done
 
 # Sample
-for f in LocationId Value; do
+for f in LocationId Value Label; do
   gomodifytags -file "${ROOT}/api/gen/proto/go/google/v1/profile.pb.go" -struct Sample -field "${f}" -add-tags parquet -template "${f}," -w -quiet -override
 done
 

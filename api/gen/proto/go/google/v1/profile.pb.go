@@ -309,7 +309,7 @@ type Sample struct {
 	Value []int64 `protobuf:"varint,2,rep,packed,name=value,proto3" json:"value,omitempty" parquet:"Value,"`
 	// label includes additional context for this sample. It can include
 	// things like a thread id, allocation size, etc
-	Label         []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty"`
+	Label         []*Label `protobuf:"bytes,3,rep,name=label,proto3" json:"label,omitempty" parquet:"Label,"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
