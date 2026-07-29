@@ -82,7 +82,7 @@ func newTestDistributor(t testing.TB, logger log.Logger, overrides *validation.O
 		{Addr: "foo"},
 	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, overrides, nil, logger, nil)
+	}}, overrides, nil, logger, nil, nil)
 	return d, ing, err
 }
 
@@ -154,7 +154,7 @@ func Test_Replication(t *testing.T) {
 		{Addr: "3"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(ctx, req)
@@ -176,7 +176,7 @@ func Test_Subservices(t *testing.T) {
 		{Addr: "foo"},
 	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -339,7 +339,7 @@ func Test_Limits(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 
@@ -431,7 +431,7 @@ func Test_Sessions_Limit(t *testing.T) {
 					l := validation.MockDefaultLimits()
 					l.MaxSessionsPerSeries = tc.maxSessions
 					tenantLimits["user-1"] = l
-				}), nil, log.NewLogfmtLogger(os.Stdout), nil)
+				}), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 			limit := d.limits.MaxSessionsPerSeries("user-1")
@@ -699,7 +699,7 @@ func Test_IngestLimits(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 			require.NoError(t, err)
 
 			err = d.PushBatch(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
@@ -1239,7 +1239,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 				return newFakeIngester(t, false), nil
-			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
 			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
@@ -1796,7 +1796,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 				return newFakeIngester(t, false), nil
-			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
@@ -1832,7 +1832,7 @@ func TestBadPushRequest(t *testing.T) {
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
@@ -1912,6 +1912,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 		overrides,
 		nil,
 		log.NewLogfmtLogger(os.Stdout),
+		nil,
 		nil,
 	)
 	require.NoError(t, err)
@@ -2025,7 +2026,7 @@ func TestPush_Aggregation(t *testing.T) {
 			}
 			tenantLimits["user-1"] = l
 		}),
-		nil, log.NewLogfmtLogger(os.Stdout), nil,
+		nil, log.NewLogfmtLogger(os.Stdout), nil, nil,
 	)
 	require.NoError(t, err)
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")
@@ -2113,6 +2114,7 @@ func TestPushBatch_SeriesHistogram(t *testing.T) {
 		overrides,
 		reg,
 		log.NewLogfmtLogger(os.Stdout),
+		nil,
 		nil,
 	)
 	require.NoError(t, err)
@@ -2351,7 +2353,7 @@ func TestPush_LabelRewrites(t *testing.T) {
 		{Addr: "mock"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")
@@ -2720,7 +2722,7 @@ func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distribu
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 	return d, ing
 }
