@@ -643,7 +643,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		API:                   {Server, AdminServer},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
-		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing},
+		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing, RecordingRulesClient},
 		PlacementAgent:        {Overrides, API, Storage},
 		PlacementManager:      {Overrides, API, Storage},
 		SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},

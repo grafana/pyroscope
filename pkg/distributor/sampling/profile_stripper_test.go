@@ -3,11 +3,21 @@ package sampling
 import (
 	"testing"
 
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
+
+type fakeRuler struct {
+	rules map[string][]*phlaremodel.RecordingRule
+}
+
+func (r fakeRuler) RecordingRules(tenant string) []*phlaremodel.RecordingRule {
+	return r.rules[tenant]
+}
 
 // stripTestProfile returns a deterministic profile without sample labels,
 // so it maps to a single series.
@@ -70,9 +80,9 @@ func strippedTestProfile() *profilev1.Profile {
 	}
 }
 
-func TestProfileStripper_StripToTotals(t *testing.T) {
+func TestProfileStripper_Strip(t *testing.T) {
 	p := stripTestProfile()
-	NewProfileStripper().StripToTotals(p)
+	NewProfileStripper(nil).Strip("", nil, p)
 
 	want := strippedTestProfile()
 	require.Len(t, p.Sample, 1)
@@ -88,26 +98,26 @@ func TestProfileStripper_StripToTotals(t *testing.T) {
 	assert.Equal(t, want.SizeVT(), p.SizeVT())
 }
 
-func TestProfileStripper_StripToTotals_NoSamples(t *testing.T) {
+func TestProfileStripper_Strip_NoSamples(t *testing.T) {
 	p := stripTestProfile()
 	p.Sample = nil
-	NewProfileStripper().StripToTotals(p)
+	NewProfileStripper(nil).Strip("", nil, p)
 	assert.Empty(t, p.Sample)
 	assert.Empty(t, p.Location)
 }
 
-func TestProfileStripper_StripToTotals_AllSamplesInvalid(t *testing.T) {
+func TestProfileStripper_Strip_AllSamplesInvalid(t *testing.T) {
 	p := stripTestProfile()
 	p.Sample = []*profilev1.Sample{
 		{LocationId: []uint64{1}, Value: []int64{-1, 100}},
 		{LocationId: []uint64{1}, Value: []int64{7}},
 	}
-	NewProfileStripper().StripToTotals(p)
+	NewProfileStripper(nil).Strip("", nil, p)
 	assert.Empty(t, p.Sample)
 	assert.Empty(t, p.Location)
 }
 
-func TestProfileStripper_StripToTotals_SampleLabels(t *testing.T) {
+func TestProfileStripper_Strip_SampleLabels(t *testing.T) {
 	p := stripTestProfile()
 	// Indices into the extended string table: span_id=9, abc=10, def=11.
 	p.StringTable = append(p.StringTable, "span_id", "abc", "def")
@@ -119,7 +129,7 @@ func TestProfileStripper_StripToTotals_SampleLabels(t *testing.T) {
 		{LocationId: []uint64{1}, Value: []int64{16, 160}, Label: []*profilev1.Label{{Key: 9, Num: 42}}},
 	}
 
-	NewProfileStripper().StripToTotals(p)
+	NewProfileStripper(nil).Strip("", nil, p)
 
 	require.Len(t, p.Sample, 1)
 	assert.Equal(t, []int64{31, 310}, p.Sample[0].Value)
@@ -129,4 +139,92 @@ func TestProfileStripper_StripToTotals_SampleLabels(t *testing.T) {
 	assert.Empty(t, p.Function)
 	assert.Empty(t, p.Mapping)
 	assert.Equal(t, []string{"", "samples", "count", "cpu", "nanoseconds"}, p.StringTable)
+}
+
+// A rule targeting func-a keeps the stacktraces that reach it (trimmed to the
+// func-a frame), folds the rest into the totals, and leaves only the referenced
+// symbols, re-interned.
+func TestProfileStripper_Strip_KeepsTargetedFunction(t *testing.T) {
+	p := stripTestProfile()
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {{FunctionName: "func-a"}},
+	}}
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	require.Len(t, p.Sample, 2)
+	// Kept targeted sample first, then the totals of the untargeted samples.
+	kept, total := p.Sample[0], p.Sample[1]
+	assert.Equal(t, []int64{10, 1000}, kept.Value)
+	assert.Equal(t, []uint64{1}, kept.LocationId)
+	assert.Empty(t, kept.Label)
+	assert.Equal(t, []int64{5, 500}, total.Value)
+	assert.Empty(t, total.LocationId)
+
+	require.Len(t, p.Location, 1)
+	require.Len(t, p.Function, 1)
+	require.Len(t, p.Mapping, 1)
+	assert.Equal(t, "func-a", p.StringTable[p.Function[0].Name])
+	assert.Equal(t, "app.py", p.StringTable[p.Function[0].Filename])
+	assert.Equal(t, []string{"", "samples", "count", "cpu", "nanoseconds", "func-a", "app.py"}, p.StringTable)
+}
+
+// Rules that don't target any function present in the profile leave the strip
+// identical to a plain strip-to-totals.
+func TestProfileStripper_Strip_RulesNoMatch(t *testing.T) {
+	p := stripTestProfile()
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {{FunctionName: "not-present"}},
+	}}
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	want := strippedTestProfile()
+	require.Len(t, p.Sample, 1)
+	assert.Equal(t, want.Sample[0].Value, p.Sample[0].Value)
+	assert.Empty(t, p.Location)
+	assert.Empty(t, p.Function)
+	assert.Empty(t, p.Mapping)
+	assert.Equal(t, want.StringTable, p.StringTable)
+}
+
+// A matcher on a label absent from the series labels is deferred to the sample
+// labels: only samples that satisfy it are kept, and only the labels the rule
+// references (matchers + group_by) are retained.
+func TestProfileStripper_Strip_DeferredSampleLabelMatcher(t *testing.T) {
+	// String table: func-a=3, region=4, eu=5, us=6, env=7, prod=8, extra=9, x=10.
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", "func-a", "region", "eu", "us", "env", "prod", "extra", "x"},
+		Function:    []*profilev1.Function{{Id: 1, Name: 3}},
+		Location:    []*profilev1.Location{{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{100}, Label: []*profilev1.Label{{Key: 4, Str: 5}, {Key: 7, Str: 8}, {Key: 9, Str: 10}}},
+			{LocationId: []uint64{1}, Value: []int64{50}, Label: []*profilev1.Label{{Key: 4, Str: 6}}},
+			{LocationId: []uint64{1}, Value: []int64{10}},
+		},
+	}
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {{
+			FunctionName: "func-a",
+			GroupBy:      []string{"env"},
+			Matchers:     []*labels.Matcher{labels.MustNewMatcher(labels.MatchEqual, "region", "eu")},
+		}},
+	}}
+
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	require.Len(t, p.Sample, 2)
+	kept, total := p.Sample[0], p.Sample[1]
+	// region=eu is kept; region=us and the label-less sample fold into the total.
+	assert.Equal(t, []int64{100}, kept.Value)
+	require.Len(t, kept.LocationId, 1)
+	// region (matcher) and env (group_by) retained, extra dropped, and their
+	// string indices still resolve after the table was compacted.
+	require.Len(t, kept.Label, 2)
+	labelValues := map[string]string{}
+	for _, l := range kept.Label {
+		labelValues[p.StringTable[l.Key]] = p.StringTable[l.Str]
+	}
+	assert.Equal(t, map[string]string{"region": "eu", "env": "prod"}, labelValues)
+	assert.Equal(t, []int64{60}, total.Value)
+	assert.Empty(t, total.LocationId)
 }

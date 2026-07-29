@@ -63,6 +63,7 @@ func newReadinessDistributor(
 		nil,
 		logger,
 		swClient,
+		nil,
 	)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, d))

@@ -168,6 +168,7 @@ func New(
 	reg prometheus.Registerer,
 	logger log.Logger,
 	segmentWriter SegmentWriterClient,
+	ruler sampling.Ruler,
 	ingesterClientsOptions ...connect.ClientOption,
 ) (*Distributor, error) {
 	ingesterClientsOptions = append(
@@ -196,7 +197,7 @@ func New(
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
 		profileScopeStats:       usagestats.NewMultiCounter("distributor_profiles_received_by_scope", "scope"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
-		stripper:                sampling.NewProfileStripper(),
+		stripper:                sampling.NewProfileStripper(ruler),
 	}
 
 	ingesterRoute := writepath.IngesterFunc(d.sendRequestsToIngester)
@@ -606,12 +607,12 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
 		}
-		finalLog.msg = "stripping profile stacktraces, keeping totals"
+		finalLog.msg = "stripping profile stacktraces, keeping totals and recording-rule targeted samples"
 
 		// Language detection reads the string table, which is about to be
 		// stripped; the result is cached in the request.
 		d.GetProfileLanguage(req)
-		d.stripper.StripToTotals(req.Profile.Profile)
+		d.stripper.Strip(tenantID, req.Labels, req.Profile.Profile)
 		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
 
 		// The stripped part of the profile is discarded, and from here on

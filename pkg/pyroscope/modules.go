@@ -43,6 +43,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
+	"github.com/grafana/pyroscope/v2/pkg/metrics"
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/operations"
@@ -329,7 +330,19 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	if f.segmentWriterClient != nil {
 		swClient = f.segmentWriterClient
 	}
-	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, swClient, f.auth)
+
+	var ruler metrics.Ruler
+	var err error
+	if f.recordingRulesClient != nil {
+		ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ruler = metrics.NewStaticRulerFromOverrides(f.Overrides)
+	}
+
+	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, swClient, ruler, f.auth)
 	if err != nil {
 		return nil, err
 	}
