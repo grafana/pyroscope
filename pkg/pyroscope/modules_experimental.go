@@ -108,8 +108,10 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 			log.With(f.logger, "component", "async-query-coordinator"),
 			f.asyncQueryStore,
 			f.Overrides,
+			querierHandler,
 			f.reg,
 		)
+		f.asyncQueryStore.SetDispatcher(coordinator)
 		querierHandler = asyncquery.NewHandler(querierHandler, coordinator)
 	}
 
@@ -169,8 +171,10 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 			log.With(f.logger, "component", "async-query-coordinator"),
 			f.asyncQueryStore,
 			f.Overrides,
+			querierHandler,
 			f.reg,
 		)
+		f.asyncQueryStore.SetDispatcher(coordinator)
 		querierHandler = asyncquery.NewHandler(querierHandler, coordinator)
 	}
 
@@ -208,6 +212,7 @@ func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
 	f.asyncQueryStore = asyncquery.NewStore(
 		log.With(f.logger, "component", "async-query-store"),
 		f.storageBucket,
+		f.reg,
 	)
 	return f.asyncQueryStore, nil
 }
