@@ -11,6 +11,8 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
+const regionLabel = "region"
+
 type fakeRuler struct {
 	rules map[string][]*phlaremodel.RecordingRule
 }
@@ -193,7 +195,7 @@ func TestProfileStripper_Strip_DeferredSampleLabelMatcher(t *testing.T) {
 	// String table: func-a=3, region=4, eu=5, us=6, env=7, prod=8, extra=9, x=10.
 	p := &profilev1.Profile{
 		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
-		StringTable: []string{"", "samples", "count", "func-a", "region", "eu", "us", "env", "prod", "extra", "x"},
+		StringTable: []string{"", "samples", "count", "func-a", regionLabel, "eu", "us", "env", "prod", "extra", "x"},
 		Function:    []*profilev1.Function{{Id: 1, Name: 3}},
 		Location:    []*profilev1.Location{{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
 		Sample: []*profilev1.Sample{
@@ -206,7 +208,7 @@ func TestProfileStripper_Strip_DeferredSampleLabelMatcher(t *testing.T) {
 		"tenant-a": {{
 			FunctionName: "func-a",
 			GroupBy:      []string{"env"},
-			Matchers:     []*labels.Matcher{labels.MustNewMatcher(labels.MatchEqual, "region", "eu")},
+			Matchers:     []*labels.Matcher{labels.MustNewMatcher(labels.MatchEqual, regionLabel, "eu")},
 		}},
 	}}
 
@@ -224,7 +226,165 @@ func TestProfileStripper_Strip_DeferredSampleLabelMatcher(t *testing.T) {
 	for _, l := range kept.Label {
 		labelValues[p.StringTable[l.Key]] = p.StringTable[l.Str]
 	}
-	assert.Equal(t, map[string]string{"region": "eu", "env": "prod"}, labelValues)
+	assert.Equal(t, map[string]string{regionLabel: "eu", "env": "prod"}, labelValues)
 	assert.Equal(t, []int64{60}, total.Value)
 	assert.Empty(t, total.LocationId)
+}
+
+// A non-function ("total") rule that groups by a sample label splits the totals
+// into one sample per distinct value of that label, each carrying it, so the
+// rule can still match and group after stripping.
+func TestProfileStripper_Strip_TotalsSplitByNonFunctionRuleLabel(t *testing.T) {
+	// String table: region=3, eu=4, us=5.
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", regionLabel, "eu", "us"},
+		Sample: []*profilev1.Sample{
+			{Value: []int64{10}, Label: []*profilev1.Label{{Key: 3, Str: 4}}},
+			{Value: []int64{20}, Label: []*profilev1.Label{{Key: 3, Str: 4}}},
+			{Value: []int64{5}, Label: []*profilev1.Label{{Key: 3, Str: 5}}},
+			{Value: []int64{3}},
+		},
+	}
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {{GroupBy: []string{regionLabel}}}, // no FunctionName -> total rule
+	}}
+
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	// One total per region value (eu=30, us=5) plus the region-less samples (3),
+	// and the region label still resolves through the compacted string table.
+	require.Len(t, p.Sample, 3)
+	byRegion := map[string]int64{}
+	for _, s := range p.Sample {
+		assert.Empty(t, s.LocationId)
+		region := ""
+		for _, l := range s.Label {
+			if p.StringTable[l.Key] == regionLabel {
+				region = p.StringTable[l.Str]
+			}
+		}
+		byRegion[region] = s.Value[0]
+	}
+	assert.Equal(t, map[string]int64{"eu": 30, "us": 5, "": 3}, byRegion)
+	assert.Empty(t, p.Location)
+}
+
+// A non-function rule with a sample-label matcher only affects the samples that
+// satisfy it: those keep the label (so the rule matches them downstream); the
+// rest fold together into a single label-less total, not split by the label.
+func TestProfileStripper_Strip_TotalsMatcherGatesLabelKeep(t *testing.T) {
+	// String table: region=3, eu=4, us=5.
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", regionLabel, "eu", "us"},
+		Sample: []*profilev1.Sample{
+			{Value: []int64{10}, Label: []*profilev1.Label{{Key: 3, Str: 4}}}, // region=eu
+			{Value: []int64{20}, Label: []*profilev1.Label{{Key: 3, Str: 4}}}, // region=eu
+			{Value: []int64{5}, Label: []*profilev1.Label{{Key: 3, Str: 5}}},  // region=us
+			{Value: []int64{3}}, // no region
+		},
+	}
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {{Matchers: []*labels.Matcher{labels.MustNewMatcher(labels.MatchEqual, regionLabel, "eu")}}},
+	}}
+
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	// region=eu samples keep region and merge (30); region=us and region-less
+	// samples don't match, so they fold together into a label-less total (8).
+	require.Len(t, p.Sample, 2)
+	byRegion := map[string]int64{}
+	for _, s := range p.Sample {
+		region := ""
+		for _, l := range s.Label {
+			if p.StringTable[l.Key] == regionLabel {
+				region = p.StringTable[l.Str]
+			}
+		}
+		byRegion[region] = s.Value[0]
+	}
+	assert.Equal(t, map[string]int64{"eu": 30, "": 8}, byRegion)
+}
+
+// A "!=" matcher also matches "", so a non-matching sample must keep its label
+// (its real value) rather than fold into the label-less total — otherwise the
+// dropped label would read as "" downstream and wrongly satisfy the matcher.
+func TestProfileStripper_Strip_TotalsNotEqualMatcherKeepsLabel(t *testing.T) {
+	// String table: region=3, eu=4, us=5.
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", regionLabel, "eu", "us"},
+		Sample: []*profilev1.Sample{
+			{Value: []int64{10}, Label: []*profilev1.Label{{Key: 3, Str: 4}}}, // region=eu (excluded by !=eu)
+			{Value: []int64{20}, Label: []*profilev1.Label{{Key: 3, Str: 5}}}, // region=us
+			{Value: []int64{5}}, // no region
+		},
+	}
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {{Matchers: []*labels.Matcher{labels.MustNewMatcher(labels.MatchNotEqual, regionLabel, "eu")}}},
+	}}
+
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	// region=eu stays in its own total (region=eu) so the observer's region!=eu
+	// excludes it; it must NOT fold into the label-less total with the 5.
+	require.Len(t, p.Sample, 3)
+	byRegion := map[string]int64{}
+	for _, s := range p.Sample {
+		region := ""
+		for _, l := range s.Label {
+			if p.StringTable[l.Key] == regionLabel {
+				region = p.StringTable[l.Str]
+			}
+		}
+		byRegion[region] = s.Value[0]
+	}
+	assert.Equal(t, map[string]int64{"eu": 10, "us": 20, "": 5}, byRegion)
+}
+
+// A sample kept for a function rule must also carry the labels of the total
+// rules it matches, so it still counts toward their per-series totals.
+func TestProfileStripper_Strip_KeptSampleCarriesTotalRuleLabels(t *testing.T) {
+	// String table: func-a=3, func-b=4, region=5, eu=6.
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", "func-a", "func-b", regionLabel, "eu"},
+		Function:    []*profilev1.Function{{Id: 1, Name: 3}, {Id: 2, Name: 4}},
+		Location: []*profilev1.Location{
+			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}, // func-a
+			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2}}}, // func-b
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{10}, Label: []*profilev1.Label{{Key: 5, Str: 6}}}, // func-a, region=eu
+			{LocationId: []uint64{2}, Value: []int64{5}, Label: []*profilev1.Label{{Key: 5, Str: 6}}},  // func-b, region=eu
+		},
+	}
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {
+			{FunctionName: "func-a"},         // function rule
+			{GroupBy: []string{regionLabel}}, // total rule
+		},
+	}}
+
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	require.Len(t, p.Sample, 2)
+	regionOf := func(s *profilev1.Sample) string {
+		for _, l := range s.Label {
+			if p.StringTable[l.Key] == regionLabel {
+				return p.StringTable[l.Str]
+			}
+		}
+		return ""
+	}
+	// Kept func-a sample keeps its stack AND region, so it joins the region total.
+	kept, total := p.Sample[0], p.Sample[1]
+	require.NotEmpty(t, kept.LocationId)
+	assert.Equal(t, []int64{10}, kept.Value)
+	assert.Equal(t, "eu", regionOf(kept))
+	// The func-b sample folds into the region=eu total.
+	assert.Empty(t, total.LocationId)
+	assert.Equal(t, []int64{5}, total.Value)
+	assert.Equal(t, "eu", regionOf(total))
 }

@@ -2777,6 +2777,73 @@ func TestPushSeries_KeepStrippedProfiles(t *testing.T) {
 	assert.Equal(t, keptSize, received.SizeVT())
 }
 
+type fakeRuler struct {
+	rules []*phlaremodel.RecordingRule
+}
+
+func (r fakeRuler) RecordingRules(string) []*phlaremodel.RecordingRule { return r.rules }
+
+// A total rule that groups by a sample label makes the stripped totals carry
+// that label, which the pprof split then promotes to series labels. This drives
+// a labeled totals sample through the full push -> split path: the label slices
+// must not alias source samples (which keep dropped labels past len()), or the
+// split panics indexing the rebuilt string table.
+func TestPushSeries_KeepStrippedProfiles_SampleSeries(t *testing.T) {
+	d, ing := newStripTestDistributor(t, true)
+	d.stripper = sampling.NewProfileStripper(fakeRuler{rules: []*phlaremodel.RecordingRule{
+		{GroupBy: []string{"user_id"}}, // total rule (no FunctionName)
+	}})
+
+	prof := stripTestProfile()
+	// user_id=9, u1=10, u2=11, bytes=12. bytes is unreferenced by the rule and
+	// gets dropped, leaving it past len() in the sample's label backing array.
+	prof.StringTable = append(prof.StringTable, "user_id", "u1", "u2", "bytes")
+	prof.Sample = []*profilev1.Sample{
+		{LocationId: []uint64{1}, Value: []int64{10, 1000}, Label: []*profilev1.Label{
+			{Key: 9, Str: 10},
+			{Key: 12, Num: 42},
+		}},
+		{LocationId: []uint64{2}, Value: []int64{5, 500}, Label: []*profilev1.Label{
+			{Key: 9, Str: 11},
+		}},
+	}
+
+	req := &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+		},
+		Profile: pprof2.RawFromProto(prof),
+	}
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	byUser := make(map[string]*pushv1.RawProfileSeries)
+	for _, r := range ing.requests {
+		for _, s := range r.Series {
+			byUser[phlaremodel.Labels(s.Labels).Get("user_id")] = s
+		}
+	}
+	require.Len(t, byUser, 2)
+
+	for user, want := range map[string][]int64{"u1": {10, 1000}, "u2": {5, 500}} {
+		series := byUser[user]
+		require.NotNil(t, series, "missing series for user_id=%s", user)
+		assert.Equal(t, "true", phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameSampled))
+
+		received, err := pprof2.RawFromBytes(series.Samples[0].RawProfile)
+		require.NoError(t, err)
+		require.Len(t, received.Sample, 1)
+		assert.Equal(t, want, received.Sample[0].Value)
+		assert.Empty(t, received.Sample[0].LocationId)
+		assert.Empty(t, received.Sample[0].Label)
+		assert.NotContains(t, received.StringTable, "bytes")
+	}
+}
+
 func TestPushSeries_DropSampledOutProfiles(t *testing.T) {
 	d, ing := newStripTestDistributor(t, false)
 
