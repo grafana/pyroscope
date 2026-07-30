@@ -89,6 +89,9 @@ func compactStringTable(p *profilev1.Profile) {
 // everything else.
 func stripSamples(p *profilev1.Profile, exc exceptions) {
 	var kept, folded []*profilev1.Sample
+	// Reused per sample to avoid allocating a keep-set for every sample.
+	totalKeep := make(map[string]struct{})
+	funcKeep := make(map[string]struct{})
 	for _, sample := range p.Sample {
 		// Samples that Normalize would drop (value length mismatch,
 		// negative values) must not contribute to the totals.
@@ -97,17 +100,11 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 		}
 		// Labels the sample must keep for the total rules. These apply whether
 		// the sample is kept (it still counts toward those totals) or folded.
-		var totalKeep map[string]struct{}
-		keepTotal := func(name string) {
-			if totalKeep == nil {
-				totalKeep = make(map[string]struct{})
-			}
-			totalKeep[name] = struct{}{}
-		}
+		clear(totalKeep)
 		for _, rule := range exc.totalRules {
 			if sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers) {
 				for _, name := range rule.keepLabels {
-					keepTotal(name)
+					totalKeep[name] = struct{}{}
 				}
 				continue
 			}
@@ -116,13 +113,13 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 			// wrongly match: keep those labels with their real value.
 			for _, m := range rule.deferredMatchers {
 				if m.Matches("") {
-					keepTotal(m.Name)
+					totalKeep[m.Name] = struct{}{}
 				}
 			}
 		}
 
+		clear(funcKeep)
 		var keptLocations int
-		var funcKeep map[string]struct{}
 		for _, l := range sample.LocationId {
 			rules, ok := exc.functionLocations[l]
 			if !ok {
@@ -135,9 +132,6 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 				}
 				fulfilled = true
 				for _, name := range rule.keepLabels {
-					if funcKeep == nil {
-						funcKeep = make(map[string]struct{})
-					}
 					funcKeep[name] = struct{}{}
 				}
 			}
