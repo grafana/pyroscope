@@ -220,7 +220,7 @@ func retainLabels(sampleLabels []*profilev1.Label, stringTable []string, keepSet
 			}
 		}
 	}
-	return retained
+	return retained[:len(retained):len(retained)]
 }
 
 func pruneUnreferencedSymbols(p *profilev1.Profile) {
