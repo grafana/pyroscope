@@ -504,3 +504,40 @@ func TestFetchDebuginfo_RetriesRefusedConnections(t *testing.T) {
 	assert.Equal(t, int32(3), transport.calls.Load(),
 		"refused connections must be retried up to the backoff budget")
 }
+
+func TestFetchDebuginfo_NotFoundCacheExpires(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL: server.URL,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 2 * time.Millisecond,
+			MaxRetries: 1,
+		},
+		NotFoundCacheMaxItems: 1000,
+		NotFoundCacheTTL:      20 * time.Millisecond,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.Error(t, err)
+	require.Equal(t, int32(1), calls.Load())
+
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.Error(t, err)
+	assert.Equal(t, int32(1), calls.Load(), "a 404 within the TTL must be served from the cache")
+
+	time.Sleep(100 * time.Millisecond)
+
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.Error(t, err)
+	assert.Equal(t, int32(2), calls.Load(), "an expired 404 entry must be fetched again")
+}

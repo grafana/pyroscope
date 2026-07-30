@@ -90,13 +90,9 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 		return nil, fmt.Errorf("failed to create not-found cache: %w", err)
 	}
 
+	cfg.HTTPClient = httpClient
 	client := &DebuginfodHTTPClient{
-		cfg: DebuginfodClientConfig{
-			BaseURL:       cfg.BaseURL,
-			UserAgent:     cfg.UserAgent,
-			HTTPClient:    httpClient,
-			BackoffConfig: cfg.BackoffConfig,
-		},
+		cfg:           cfg,
 		metrics:       metrics,
 		logger:        logger,
 		notFoundCache: cache,
