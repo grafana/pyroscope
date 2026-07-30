@@ -541,3 +541,45 @@ func TestFetchDebuginfo_NotFoundCacheExpires(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, int32(2), calls.Load(), "an expired 404 entry must be fetched again")
 }
+
+func TestFetchDebuginfo_CircuitBreakerFailsFast(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	serverURL := "http://" + l.Addr().String()
+	require.NoError(t, l.Close())
+
+	transport := &countingTransport{inner: http.DefaultTransport}
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:    serverURL,
+		HTTPClient: &http.Client{Transport: transport},
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 2 * time.Millisecond,
+			MaxRetries: 1,
+		},
+		NotFoundCacheMaxItems:   1000,
+		NotFoundCacheTTL:        time.Minute,
+		BreakerFailureThreshold: 2,
+		BreakerOpenDuration:     time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	// Two distinct build IDs fail at the network level and trip the breaker.
+	_, err = client.FetchDebuginfo(ctx, "buildid1")
+	require.Error(t, err)
+	_, err = client.FetchDebuginfo(ctx, "buildid2")
+	require.Error(t, err)
+	dialsAfterTrip := transport.calls.Load()
+	require.Greater(t, dialsAfterTrip, int32(0))
+
+	// The third build ID fails fast without touching the network.
+	_, err = client.FetchDebuginfo(ctx, "buildid3")
+	require.Error(t, err)
+	var unavailable upstreamUnavailableError
+	assert.ErrorAs(t, err, &unavailable)
+	assert.Equal(t, dialsAfterTrip, transport.calls.Load(),
+		"an open breaker must not dial the upstream")
+}

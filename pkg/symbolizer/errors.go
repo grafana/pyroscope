@@ -21,6 +21,14 @@ func (e buildIDNotFoundError) Error() string {
 	return fmt.Sprintf("build ID not found: %s", e.buildID)
 }
 
+type upstreamUnavailableError struct {
+	buildID string
+}
+
+func (e upstreamUnavailableError) Error() string {
+	return fmt.Sprintf("debuginfod upstream unavailable, not fetching build ID: %s", e.buildID)
+}
+
 type httpStatusError struct {
 	statusCode int
 	body       string

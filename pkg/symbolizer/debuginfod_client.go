@@ -13,8 +13,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/tenant"
+	"github.com/sony/gobreaker/v2"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/dgraph-io/ristretto/v2"
@@ -29,6 +31,12 @@ type DebuginfodClientConfig struct {
 
 	NotFoundCacheMaxItems int64
 	NotFoundCacheTTL      time.Duration
+
+	// BreakerFailureThreshold consecutive network-level failures open the
+	// circuit breaker for BreakerOpenDuration. A threshold <= 0 disables
+	// the breaker.
+	BreakerFailureThreshold int
+	BreakerOpenDuration     time.Duration
 }
 
 // DebuginfodHTTPClient implements the DebuginfodClient interface using HTTP.
@@ -42,6 +50,7 @@ type DebuginfodHTTPClient struct {
 	group singleflight.Group
 
 	notFoundCache *ristretto.Cache[string, bool]
+	breaker       *gobreaker.CircuitBreaker[[]byte]
 }
 
 // NewDebuginfodClient creates a new client for fetching debug information from a debuginfod server.
@@ -56,6 +65,9 @@ func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, li
 		},
 		NotFoundCacheMaxItems: 100000,
 		NotFoundCacheTTL:      7 * 24 * time.Hour,
+
+		BreakerFailureThreshold: 5,
+		BreakerOpenDuration:     time.Minute,
 	}, metrics, limits)
 }
 
@@ -97,6 +109,25 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 		logger:        logger,
 		notFoundCache: cache,
 		limits:        limits,
+		breaker: gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
+			Name:    "debuginfod",
+			Timeout: cfg.BreakerOpenDuration,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return cfg.BreakerFailureThreshold > 0 &&
+					counts.ConsecutiveFailures >= uint32(cfg.BreakerFailureThreshold)
+			},
+			// Any HTTP response, 404 included, proves the upstream reachable;
+			// only network-level failures count toward tripping.
+			IsSuccessful: func(err error) bool { return !isNetworkFailure(err) },
+			OnStateChange: func(_ string, _, to gobreaker.State) {
+				if to == gobreaker.StateOpen {
+					metrics.debuginfodBreakerTrips.Inc()
+					level.Warn(logger).Log("msg", "debuginfod circuit breaker opened",
+						"consecutive_failures", cfg.BreakerFailureThreshold,
+						"open_for", cfg.BreakerOpenDuration)
+				}
+			},
+		}),
 	}
 
 	return client, nil
@@ -135,7 +166,13 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	// plus bounded retries keep the detached fetch finite.
 	localCtx := context.WithoutCancel(ctx)
 	resCh := c.group.DoChan(sanitizedBuildID, func() (interface{}, error) {
-		return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
+		data, err := c.breaker.Execute(func() ([]byte, error) {
+			return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
+		})
+		if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
+			return nil, upstreamUnavailableError{buildID: sanitizedBuildID}
+		}
+		return data, err
 	})
 
 	// A done caller stops waiting; the fetch keeps running for the rest.
@@ -149,9 +186,12 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 
 	if err != nil {
 		var bnfErr buildIDNotFoundError
+		var unavailableErr upstreamUnavailableError
 		switch {
 		case errors.As(err, &bnfErr):
 			status = statusErrorNotFound
+		case errors.As(err, &unavailableErr):
+			status = statusErrorUnavailable
 		case errors.Is(err, context.Canceled):
 			status = statusErrorCanceled
 		case errors.Is(err, context.DeadlineExceeded):
@@ -275,6 +315,22 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 	}
 
 	return data, nil
+}
+
+// isNetworkFailure reports whether the upstream never produced an HTTP
+// response for err.
+func isNetworkFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	if _, ok := isHTTPStatusError(err); ok {
+		return false
+	}
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
 
 // categorizeHTTPStatusCode maps HTTP status codes to metric status strings.
