@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/tracing"
 	"github.com/sony/gobreaker/v2"
+	"golang.org/x/sync/semaphore"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/dgraph-io/ristretto/v2"
@@ -38,6 +39,11 @@ type DebuginfodClientConfig struct {
 	// the breaker.
 	BreakerFailureThreshold int
 	BreakerOpenDuration     time.Duration
+
+	// MaxConcurrentFetches bounds in-flight upstream fetches (the
+	// politeness budget toward the debuginfod server).
+	// <= 0 uses defaultMaxDebuginfodConcurrency.
+	MaxConcurrentFetches int
 }
 
 // DebuginfodHTTPClient implements the DebuginfodClient interface using HTTP.
@@ -52,11 +58,11 @@ type DebuginfodHTTPClient struct {
 
 	notFoundCache *ristretto.Cache[string, bool]
 	breaker       *gobreaker.CircuitBreaker[[]byte]
+	fetchSlots    *semaphore.Weighted
 }
 
-// NewDebuginfodClient creates a new client for fetching debug information from a debuginfod server.
-func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, limits Limits) (*DebuginfodHTTPClient, error) {
-	return NewDebuginfodClientWithConfig(logger, DebuginfodClientConfig{
+func defaultDebuginfodClientConfig(baseURL string) DebuginfodClientConfig {
+	return DebuginfodClientConfig{
 		BaseURL: baseURL,
 		//UserAgent:  "Pyroscope-Symbolizer/1.0",
 		BackoffConfig: backoff.Config{
@@ -69,7 +75,11 @@ func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, li
 
 		BreakerFailureThreshold: 5,
 		BreakerOpenDuration:     time.Minute,
-	}, metrics, limits)
+	}
+}
+
+func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, limits Limits) (*DebuginfodHTTPClient, error) {
+	return NewDebuginfodClientWithConfig(logger, defaultDebuginfodClientConfig(baseURL), metrics, limits)
 }
 
 // NewDebuginfodClientWithConfig creates a new client with the specified configuration.
@@ -104,12 +114,17 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 	}
 
 	cfg.HTTPClient = httpClient
+	maxFetches := cfg.MaxConcurrentFetches
+	if maxFetches <= 0 {
+		maxFetches = defaultMaxDebuginfodConcurrency
+	}
 	client := &DebuginfodHTTPClient{
 		cfg:           cfg,
 		metrics:       metrics,
 		logger:        logger,
 		notFoundCache: cache,
 		limits:        limits,
+		fetchSlots:    semaphore.NewWeighted(int64(maxFetches)),
 		breaker: gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
 			Name:    "debuginfod",
 			Timeout: cfg.BreakerOpenDuration,
@@ -177,6 +192,12 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	localCtx := context.WithoutCancel(ctx)
 	resCh := c.group.DoChan(sanitizedBuildID, func() (interface{}, error) {
 		data, err := c.breaker.Execute(func() ([]byte, error) {
+			// Slot holders are bounded by the HTTP client timeout and the retry
+			// budget, so acquiring on the uncancellable context stays finite.
+			if err := c.fetchSlots.Acquire(localCtx, 1); err != nil {
+				return nil, err
+			}
+			defer c.fetchSlots.Release(1)
 			return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
 		})
 		if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {

@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -582,4 +584,62 @@ func TestFetchDebuginfo_CircuitBreakerFailsFast(t *testing.T) {
 	assert.ErrorAs(t, err, &unavailable)
 	assert.Equal(t, dialsAfterTrip, transport.calls.Load(),
 		"an open breaker must not dial the upstream")
+}
+
+// highWaterTransport tracks the maximum number of concurrent in-flight
+// round trips.
+type highWaterTransport struct {
+	inner    http.RoundTripper
+	inflight atomic.Int32
+	max      atomic.Int32
+}
+
+func (h *highWaterTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	cur := h.inflight.Add(1)
+	defer h.inflight.Add(-1)
+	for {
+		observed := h.max.Load()
+		if cur <= observed || h.max.CompareAndSwap(observed, cur) {
+			break
+		}
+	}
+	return h.inner.RoundTrip(req)
+}
+
+func TestFetchDebuginfo_BoundsConcurrentUpstreamFetches(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("debug info"))
+	}))
+	defer server.Close()
+
+	transport := &highWaterTransport{inner: http.DefaultTransport}
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:               server.URL,
+		HTTPClient:            &http.Client{Transport: transport},
+		BackoffConfig:         backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 1},
+		NotFoundCacheMaxItems: 1000,
+		NotFoundCacheTTL:      time.Minute,
+		MaxConcurrentFetches:  2,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			buildID := "buildid" + strconv.Itoa(i)
+			r, err := client.FetchDebuginfo(ctx, buildID)
+			if err == nil {
+				_ = r.Close()
+			}
+		}()
+	}
+	wg.Wait()
+	assert.LessOrEqual(t, transport.max.Load(), int32(2),
+		"in-flight upstream fetches must stay within MaxConcurrentFetches")
 }

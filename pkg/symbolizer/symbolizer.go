@@ -148,7 +148,9 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket
 	}
 	m := newMetrics(reg)
 
-	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, m, limits)
+	clientCfg := defaultDebuginfodClientConfig(cfg.DebuginfodURL)
+	clientCfg.MaxConcurrentFetches = cfg.MaxDebuginfodConcurrency
+	client, err := NewDebuginfodClientWithConfig(logger, clientCfg, m, limits)
 	if err != nil {
 		return nil, err
 	}

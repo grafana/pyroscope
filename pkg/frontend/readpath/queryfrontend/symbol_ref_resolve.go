@@ -27,6 +27,12 @@ const (
 	// non-positive value, which would otherwise block errgroup.SetLimit
 	// forever.
 	minResolveConcurrency = 1
+	// resolvesPerFetchSlot is the number of binaries resolved concurrently
+	// per debuginfod fetch slot. A resolve is mostly cheap bucket lookups,
+	// and the client's own semaphore caps the expensive debuginfod
+	// downloads, so running several resolves per slot keeps bucket lookups
+	// from queuing behind the fetch cap.
+	resolvesPerFetchSlot = 4
 )
 
 // resolveSymbolRefs replaces a symbol-ref tree report's tree bytes with a
@@ -107,7 +113,7 @@ func (q *QueryFrontend) resolveBinaries(ctx context.Context, tenantIDs []string,
 	if timeout <= 0 {
 		timeout = defaultResolveTimeout
 	}
-	concurrency := q.symbolizer.ResolveConcurrency()
+	concurrency := q.symbolizer.ResolveConcurrency() * resolvesPerFetchSlot
 	if concurrency < 1 {
 		concurrency = minResolveConcurrency
 	}
