@@ -61,6 +61,7 @@ func (f *autoForget) iteration(ctx context.Context) error {
 				// the problem is more likely on our side (e.g. a network
 				// partition), so we must not judge the other members.
 				level.Warn(f.logger).Log("msg", "auto-forget sees its own instance as unhealthy, the network may be partitioned, skipping this round", "instance", id)
+				forgotten = forgotten[:0]
 				return nil, false, nil
 			}
 			forgotten = append(forgotten, id)

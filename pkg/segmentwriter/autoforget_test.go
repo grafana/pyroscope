@@ -1,6 +1,7 @@
 package segmentwriter
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -70,10 +71,12 @@ func TestAutoForget_skipsRoundWhenOwnHeartbeatIsStale(t *testing.T) {
 	setInstanceHeartbeat(t, kvStore, "self", time.Now().Add(-forgetPeriod-time.Minute))
 	setInstanceHeartbeat(t, kvStore, "stale", time.Now().Add(-forgetPeriod-time.Minute))
 
-	f := newAutoForget(kvStore, "self", forgetPeriod, time.Minute, log.NewNopLogger())
+	var logs bytes.Buffer
+	f := newAutoForget(kvStore, "self", forgetPeriod, time.Minute, log.NewLogfmtLogger(&logs))
 	require.NoError(t, f.iteration(context.Background()))
 
 	assert.ElementsMatch(t, []string{"self", "stale"}, ringInstanceIDs(t, kvStore))
+	assert.NotContains(t, logs.String(), "auto-forget removed instance")
 }
 
 func TestAutoForget_noRing(t *testing.T) {
