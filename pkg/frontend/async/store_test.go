@@ -88,6 +88,20 @@ func (b *gatedUploadBucket) Upload(ctx context.Context, name string, r io.Reader
 	return b.Bucket.Upload(ctx, name, r, opts...)
 }
 
+func TestJitteredInterval_WithinBoundsAndVaries(t *testing.T) {
+	const base = 30 * time.Second
+	lower, upper := 24*time.Second, 36*time.Second
+
+	seen := make(map[time.Duration]struct{})
+	for i := 0; i < 1000; i++ {
+		got := jitteredInterval(base)
+		require.GreaterOrEqual(t, got, lower)
+		require.Less(t, got, upper)
+		seen[got] = struct{}{}
+	}
+	require.Greater(t, len(seen), 1, "jitteredInterval should not always return the same value")
+}
+
 func TestMetadataUnmarshal_BackwardCompatible(t *testing.T) {
 	raw := []byte(`{
 		"request_id": "550e8400-e29b-41d4-a716-446655440000",

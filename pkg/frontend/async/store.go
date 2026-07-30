@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"os"
 	"strings"
 	"time"
@@ -450,14 +451,22 @@ func (s *Store) readRaw(ctx context.Context, path string) ([]byte, error) {
 func (s *Store) starting(context.Context) error { return nil }
 func (s *Store) stopping(error) error           { return nil }
 
+// jitteredInterval returns a duration uniformly distributed in
+// [0.8*d, 1.2*d), i.e. d plus or minus 20%.
+func jitteredInterval(d time.Duration) time.Duration {
+	return time.Duration((0.8 + 0.4*rand.Float64()) * float64(d))
+}
+
 func (s *Store) running(ctx context.Context) error {
 	cleanupTicker := time.NewTicker(cleanupInterval)
 	defer cleanupTicker.Stop()
-	adoptionTicker := time.NewTicker(s.scanInterval)
-	defer adoptionTicker.Stop()
+
+	// Randomizing the initial delay breaks the synchronized start across
+	// frontends; re-randomizing the period each tick keeps it broken.
+	adoptionTimer := time.NewTimer(rand.N(s.scanInterval))
+	defer adoptionTimer.Stop()
 
 	s.runCleanup(ctx)
-	s.runAdoption(ctx)
 
 	for {
 		select {
@@ -465,8 +474,9 @@ func (s *Store) running(ctx context.Context) error {
 			return nil
 		case <-cleanupTicker.C:
 			s.runCleanup(ctx)
-		case <-adoptionTicker.C:
+		case <-adoptionTimer.C:
 			s.runAdoption(ctx)
+			adoptionTimer.Reset(jitteredInterval(s.scanInterval))
 		}
 	}
 }
