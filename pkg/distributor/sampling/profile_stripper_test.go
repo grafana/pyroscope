@@ -570,6 +570,40 @@ func TestProfileStripper_Strip_KeptSampleCarriesTotalRuleLabels(t *testing.T) {
 	assert.Equal(t, "eu", regionOf(total))
 }
 
+// After stripping, no sample may keep live spare label capacity: retainLabels
+// filters in place, and if the dropped labels lingered past len() the pprof
+// split's restoreRemovedLabels (labels[len:cap]) would resurrect them with
+// their pre-compaction string indices and index the rebuilt table out of range.
+func TestProfileStripper_Strip_NoAliasedLabelCapacity(t *testing.T) {
+	// String table: func-a=3, func-b=4, env=5, prod=6, extra=7, x=8.
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", "func-a", "func-b", "env", "prod", "extra", "x"},
+		Function:    []*profilev1.Function{{Id: 1, Name: 3}, {Id: 2, Name: 4}},
+		Location: []*profilev1.Location{
+			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}, // func-a
+			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2}}}, // func-b
+		},
+		Sample: []*profilev1.Sample{
+			// func-a kept: keeps env (group_by), drops extra -> extra must not
+			// linger in the spare capacity.
+			{LocationId: []uint64{1}, Value: []int64{10}, Label: []*profilev1.Label{{Key: 5, Str: 6}, {Key: 7, Str: 8}}},
+			// func-b folds into the label-less total; its dropped label likewise.
+			{LocationId: []uint64{2}, Value: []int64{5}, Label: []*profilev1.Label{{Key: 7, Str: 8}}},
+		},
+	}
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {{FunctionName: "func-a", GroupBy: []string{"env"}}},
+	}}
+
+	NewProfileStripper(ruler).Strip("tenant-a", nil, p)
+
+	require.NotEmpty(t, p.Sample)
+	for i, s := range p.Sample {
+		assert.Equalf(t, len(s.Label), cap(s.Label), "sample %d retains aliased spare label capacity", i)
+	}
+}
+
 // Two rules target the same function; one has a "!=" matcher on a sample label.
 // A sample kept for the first rule must retain that label (its real value) so
 // the "!=" rule still excludes it downstream instead of matching a dropped "".
