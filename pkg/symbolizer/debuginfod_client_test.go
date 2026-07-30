@@ -4,13 +4,18 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -431,4 +436,71 @@ func TestDebuginfodClientNotFoundCache(t *testing.T) {
 	assert.Equal(t, "mock debug info", string(data))
 
 	assert.Equal(t, 2, requestCount)
+}
+
+func TestIsRetryableError_ConnectionFailures(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		retryable bool
+	}{
+		{"connection refused", &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}, true},
+		{"connection reset", &net.OpError{Op: "read", Err: os.NewSyscallError("read", syscall.ECONNRESET)}, true},
+		{"broken pipe", &net.OpError{Op: "write", Err: os.NewSyscallError("write", syscall.EPIPE)}, true},
+		{"eof", io.EOF, false},
+		{"unexpected eof", io.ErrUnexpectedEOF, false},
+		{"dns error", &net.DNSError{Err: "no such host", Name: "example.invalid"}, true},
+		{"deadline exceeded", context.DeadlineExceeded, false},
+		{"canceled", context.Canceled, false},
+		{"http not found", httpStatusError{statusCode: http.StatusNotFound}, false},
+		{"http rate limited", httpStatusError{statusCode: http.StatusTooManyRequests}, true},
+		{"http server error", httpStatusError{statusCode: http.StatusInternalServerError}, true},
+		{"invalid build id", invalidBuildIDError{buildID: "!"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.retryable, isRetryableError(tt.err))
+		})
+	}
+}
+
+// countingTransport counts round trips, including ones that fail to connect.
+type countingTransport struct {
+	inner http.RoundTripper
+	calls atomic.Int32
+}
+
+func (c *countingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.calls.Add(1)
+	return c.inner.RoundTrip(req)
+}
+
+func TestFetchDebuginfo_RetriesRefusedConnections(t *testing.T) {
+	// A closed listener's address yields a real ECONNREFUSED on every dial.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	serverURL := "http://" + l.Addr().String()
+	require.NoError(t, l.Close())
+
+	transport := &countingTransport{inner: http.DefaultTransport}
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:    serverURL,
+		HTTPClient: &http.Client{Transport: transport},
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 2 * time.Millisecond,
+			MaxRetries: 3,
+		},
+		NotFoundCacheMaxItems: 10,
+		NotFoundCacheTTL:      time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	_, err = client.FetchDebuginfo(ctx, "deadbeef")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "after 3 attempts")
+	assert.Equal(t, int32(3), transport.calls.Load(),
+		"refused connections must be retried up to the backoff budget")
 }

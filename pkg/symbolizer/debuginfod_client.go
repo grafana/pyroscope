@@ -248,7 +248,9 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 	}
 
 	var lastErr error
+	attempts := 0
 	for backOff.Ongoing() {
+		attempts++
 		data, err := attempt()
 		if err == nil {
 			return data, nil
@@ -273,7 +275,7 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 	}
 
 	if lastErr != nil {
-		return nil, fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", backOff.NumRetries(), lastErr)
+		return nil, fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", attempts, lastErr)
 	}
 
 	return data, nil
@@ -307,37 +309,18 @@ func isRetryableError(err error) bool {
 		return false
 	}
 
-	if isInvalidBuildIDError(err) {
-		return false
-	}
-
-	var bnfErr buildIDNotFoundError
-	if errors.As(err, &bnfErr) {
-		return false
-	}
-
 	if statusCode, ok := isHTTPStatusError(err); ok {
-		// Don't retry 4xx client errors except for 429 (too many requests)
-		if statusCode == http.StatusTooManyRequests {
-			return true
-		}
-		if statusCode >= 400 && statusCode < 500 {
-			return false
-		}
-		// Retry on 5xx server errors
-		return statusCode >= 500
+		// Other statuses are answers, not failures.
+		return statusCode == http.StatusTooManyRequests || statusCode >= 500
 	}
 
 	if os.IsTimeout(err) {
 		return true
 	}
 
+	// Anything the transport surfaces without an HTTP response.
 	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return netErr.Timeout()
-	}
-
-	return false
+	return errors.As(err, &netErr)
 }
 
 // sanitizeBuildID ensures that the buildID is a safe and valid string for use in file paths.
