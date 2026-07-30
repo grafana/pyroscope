@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/tenant"
+	"github.com/grafana/dskit/tracing"
 	"github.com/sony/gobreaker/v2"
 	"golang.org/x/sync/singleflight"
 
@@ -144,8 +145,17 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
 	status := statusSuccess
+	span, ctx := tracing.StartSpanFromContext(ctx, "debuginfod_fetch")
 	defer func() {
 		c.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
+		span.SetTag("build_id", buildID)
+		span.SetTag("outcome", status)
+		// A 404 and a breaker/negative-cache skip are expected outcomes,
+		// not span errors.
+		if status != statusSuccess && status != statusErrorNotFound && status != statusErrorUnavailable {
+			span.SetError()
+		}
+		span.Finish()
 	}()
 
 	sanitizedBuildID, err := sanitizeBuildID(buildID)

@@ -3,7 +3,6 @@ package symbolizer
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -26,7 +25,7 @@ func TestResolveSizeLimitExceeded(t *testing.T) {
 	})
 	s, mockClient, mockBucket := newSymbolizerTest(t, &symbolizerInputs{Limits: limits})
 
-	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant-limited", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant-limited", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
 
 	ctx := tenant.InjectTenantID(context.Background(), "tenant-limited")
@@ -52,7 +51,7 @@ func TestResolveContextCancellation(t *testing.T) {
 
 	t.Run("canceled mid-fetch", func(t *testing.T) {
 		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
-		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 
 		fetchStarted := make(chan struct{})
 		mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(
@@ -85,7 +84,7 @@ func TestResolveContextCancellation(t *testing.T) {
 
 	t.Run("canceled mid-fetch with successful fetch", func(t *testing.T) {
 		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
-		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 
 		// The deduplicated fetch is detached from caller cancellation, so it
 		// can complete successfully after the caller's context is done; the
@@ -122,7 +121,7 @@ func TestResolveContextCancellation(t *testing.T) {
 
 	t.Run("deadline exceeded mid-fetch", func(t *testing.T) {
 		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
-		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 
 		mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(
 			func(ctx context.Context, buildID string) (io.ReadCloser, error) {
@@ -143,7 +142,7 @@ func TestResolveContextCancellation(t *testing.T) {
 
 	t.Run("foreign context error degrades to fallback", func(t *testing.T) {
 		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
-		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 		// The deduplicated debuginfod fetch is shared with other callers and
 		// can surface another caller's cancellation; with this caller's
 		// context alive it must degrade to unresolved slots like any other
@@ -268,7 +267,7 @@ func TestSymbolizeMappingsConcurrentFanOut(t *testing.T) {
 			nextLocID++
 		}
 
-		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", buildID)).Return(nil, fmt.Errorf("not found")).Once()
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", buildID)).Return(nil, errBucketObjectNotFound).Once()
 		mockClient.On("FetchDebuginfo", mock.Anything, buildID).Return(blockUntilReleased).Once()
 		mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", buildID), mock.Anything).Return(nil).Once()
 	}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -25,6 +25,10 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
+// errBucketObjectNotFound stands in for the bucket's native missing-object
+// error; the mock bucket classifies every error as one.
+var errBucketObjectNotFound = errors.New("object does not exist")
+
 type symbolizerInputs struct {
 	Registry *prometheus.Registry
 	Limits   Limits
@@ -34,6 +38,7 @@ func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocks
 	t.Helper()
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 	lidiaBucket := mockobjstore.NewMockBucket(t)
+	lidiaBucket.On("IsObjNotFoundErr", mock.Anything).Return(true).Maybe()
 
 	if inp == nil {
 		inp = &symbolizerInputs{}
@@ -125,7 +130,7 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 				mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Return(nil).Once()
 
 			},
@@ -185,7 +190,7 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 				mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Return(nil).Once()
 
 			},
@@ -245,7 +250,7 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 				mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Return(nil).Once()
 
 			},
@@ -297,7 +302,7 @@ func TestSymbolizePprof(t *testing.T) {
 			},
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil).Once()
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 				mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Return(nil).Once()
 			},
 			validate: func(t *testing.T, p *googlev1.Profile) {
@@ -325,7 +330,7 @@ func TestSymbolizePprof(t *testing.T) {
 				StringTable: []string{"", "abcdef1234abcdef1234"},
 			},
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "abcdef1234abcdef1234")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "abcdef1234abcdef1234")).Return(nil, errBucketObjectNotFound).Once()
 				mockBucket.On("Get", mock.Anything, "debug-info/tenant/abcdef1234abcdef1234/exe").Return(openTestFile(t), nil).Once()
 				mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "abcdef1234abcdef1234"), mock.Anything).Return(nil).Once()
 			},
@@ -370,7 +375,7 @@ func TestSymbolizationKeepsSequentialFunctionIDs(t *testing.T) {
 		}},
 	}
 
-	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found"))
+	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound)
 	mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(openTestFile(t), nil)
 	mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Return(nil)
 
@@ -433,7 +438,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 	t.Run("store-miss", func(t *testing.T) {
 		s, mockClient, mockBucket := newSymbolizerTest(t, nil)
 
-		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 		mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
 		mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "build-id"), mock.Anything).Run(func(args mock.Arguments) {
 			reader := args.Get(2).(io.Reader)
@@ -491,7 +496,7 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 
 		var capturedLidiaData2 []byte
 
-		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "different-build-id")).Return(nil, fmt.Errorf("not found")).Once()
+		mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "different-build-id")).Return(nil, errBucketObjectNotFound).Once()
 		mockClient.On("FetchDebuginfo", mock.Anything, "different-build-id").Return(io.NopCloser(bytes.NewReader(elfData)), nil).Once()
 		mockBucket.On("Upload", mock.Anything, lidiaObjectPath("tenant", "different-build-id"), mock.Anything).Run(func(args mock.Arguments) {
 			reader := args.Get(2).(io.Reader)
@@ -539,7 +544,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 				mockBucket.On("IsObjNotFoundErr", mock.Anything).Return(true).Maybe()
 				mockBucket.On("Name").Return("test-bucket").Maybe()
 
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "build-id")).Return(nil, errBucketObjectNotFound).Once()
 
 				mockClient.On("FetchDebuginfo", mock.Anything, "build-id").Return(
 					io.NopCloser(bytes.NewReader(elfData)), nil,
@@ -566,7 +571,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 		{
 			name: "debuginfod error",
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "unknown-build-id")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "unknown-build-id")).Return(nil, errBucketObjectNotFound).Once()
 				mockClient.On("FetchDebuginfo", mock.Anything, "unknown-build-id").
 					Return(nil, buildIDNotFoundError{buildID: "unknown-build-id"}).Once()
 			},
@@ -587,7 +592,7 @@ func TestSymbolizerMetrics(t *testing.T) {
 			setupMock: func(mockClient *mocksymbolizer.MockDebuginfodClient, mockBucket *mockobjstore.MockBucket) {
 				invalidData := []byte("invalid elf data")
 
-				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "invalid-elf")).Return(nil, fmt.Errorf("not found")).Once()
+				mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", "invalid-elf")).Return(nil, errBucketObjectNotFound).Once()
 				mockClient.On("FetchDebuginfo", mock.Anything, "invalid-elf").Return(
 					io.NopCloser(bytes.NewReader(invalidData)), nil,
 				).Once()

@@ -472,6 +472,9 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, tenantID, buildID string) ([]byte, error) {
 	objstoreReader, err := s.bucket.Get(ctx, lidiaObjectPath(tenantID, buildID))
 	if err != nil {
+		if objstore.IsNotExist(s.bucket, err) {
+			return nil, errObjectNotFound
+		}
 		return nil, err
 	}
 	defer objstoreReader.Close()
@@ -535,7 +538,14 @@ func (s *Symbolizer) fetchFromUploadedDebugInfo(ctx context.Context, buildID str
 	if err != nil {
 		return nil, err
 	}
-	return s.bucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
+	r, err := s.bucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
+	if err != nil {
+		if objstore.IsNotExist(s.bucket, err) {
+			return nil, errObjectNotFound
+		}
+		return nil, err
+	}
+	return r, nil
 }
 
 func (s *Symbolizer) fetchFromDebuginfod(ctx context.Context, buildID string) (io.ReadCloser, error) {

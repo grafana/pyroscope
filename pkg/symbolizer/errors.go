@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+// errObjectNotFound marks a bucket cache probe that found no object — the
+// expected outcome for a build ID that was never fetched or uploaded.
+var errObjectNotFound = errors.New("object not found in bucket")
+
 type invalidBuildIDError struct {
 	buildID string
 }
