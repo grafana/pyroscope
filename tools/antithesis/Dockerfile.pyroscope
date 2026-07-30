@@ -1,0 +1,52 @@
+# The Antithesis-instrumented Pyroscope image. The build context is the
+# repository root (see the pyroscope-image Makefile target). The binary is
+# built inside the image so that a linux/amd64 cgo toolchain is always
+# available, regardless of the host platform.
+#
+# The runtime stage mirrors cmd/pyroscope/Dockerfile, except that it uses the
+# glibc distroless base instead of distroless/static: the instrumented binary
+# is dynamically linked because the Antithesis SDK loads the platform library
+# with dlopen at runtime. The instrumentation symbol table is packaged at
+# /symbols, where Antithesis picks it up from any pushed image.
+
+FROM golang:1.25-bookworm AS builder
+WORKDIR /src
+COPY . .
+# .git is excluded from the build context, so version metadata cannot be
+# derived here and comes in as build args instead (empty values are fine).
+# Make still evaluates the Makefile's git-derived assignments before
+# discarding them, so a few harmless "not a git repository" lines appear.
+ARG IMAGE_TAG=antithesis
+ARG GIT_REVISION=
+ARG GIT_BRANCH=
+RUN make build/antithesis IMAGE_TAG="$IMAGE_TAG" GIT_REVISION="$GIT_REVISION" GIT_BRANCH="$GIT_BRANCH" GIT_LAST_COMMIT_DATE=
+
+FROM gcr.io/distroless/base-debian12:debug@sha256:db9a19954a9f79ef814bb204aa7788cfcfd3e00a4bfd755ad93d2e88721125b6 AS debug
+
+SHELL [ "/busybox/sh", "-c" ]
+
+RUN addgroup -g 10001 -S pyroscope && \
+    adduser -u 10001 -S pyroscope -G pyroscope -h /data
+
+FROM gcr.io/distroless/base-debian12@sha256:62730825d3cf03571e0a1b8f014748de94d0404500f063593b614c23da38841d
+
+COPY --from=debug /etc/passwd /etc/passwd
+COPY --from=debug /etc/group /etc/group
+
+# Copy folder from debug container, this folder needs to have the correct UID
+# in order for the container to run as non-root.
+VOLUME /data
+COPY --chown=pyroscope:pyroscope --from=debug /data /data
+VOLUME /data-compactor
+COPY --chown=pyroscope:pyroscope --from=debug /data /data-compactor
+VOLUME /data-metastore
+COPY --chown=pyroscope:pyroscope --from=debug /data /data-metastore
+
+COPY cmd/pyroscope/pyroscope.yaml /etc/pyroscope/config.yaml
+COPY --from=builder /src/pyroscope /usr/bin/pyroscope
+COPY --from=builder /src/.tmp/antithesis/ /symbols/
+
+USER pyroscope
+EXPOSE 4040
+ENTRYPOINT [ "/usr/bin/pyroscope" ]
+CMD ["-config.file=/etc/pyroscope/config.yaml"]

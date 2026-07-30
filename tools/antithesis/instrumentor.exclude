@@ -1,0 +1,22 @@
+# Files excluded from Antithesis coverage instrumentation (they are still
+# compiled, just copied verbatim). The instrumentor's AST rewrite can displace
+# //go:embed directives into function bodies, breaking the build, so every
+# file containing one is listed here. Regenerate the list with:
+#
+#   git grep -l 'go:embed' -- '*.go' ':!*_test.go' ':!examples/'
+#
+# Paths are relative to the repository root. The instrumentor fails if an
+# entry does not exist, so remove entries when the files they name go away.
+api/openapiv2/openapiv2.go
+cmd/profilecli/bucket.go
+pkg/api/index.go
+pkg/api/memberlist_status.go
+pkg/compactor/compactor_http.go
+pkg/metastore/admin/pages.go
+pkg/operations/pages.go
+pkg/operations/v2/blocks/pages.go
+pkg/operations/v2/querydiagnostics/pages.go
+pkg/storegateway/gateway_blocks_http.go
+pkg/storegateway/gateway_ring_http.go
+pkg/storegateway/gateway_tenants_http.go
+ui/assets_embedded.go

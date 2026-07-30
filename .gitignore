@@ -35,6 +35,8 @@ pyroscope.sln
 /.docker-image-name-pyroscope
 
 /.tmp
+tools/antithesis/.env
+tools/antithesis/logs/
 tools/k6/.env
 .claude/worktrees/
 

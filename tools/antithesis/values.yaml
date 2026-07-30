@@ -1,0 +1,157 @@
+# Values applied on top of the chart defaults (operations/pyroscope/helm/pyroscope)
+# when rendering the manifests deployed in the Antithesis environment.
+# The image repository and tag are set at render time by the Makefile, as they
+# contain the Antithesis tenant registry and the build tag.
+
+# V2 microservices mode, matching how Pyroscope is deployed in production:
+# distributor, segment-writer, metastore (3-node raft), compaction-worker,
+# query-frontend, query-backend, plus the small auxiliary services.
+architecture:
+  microservices:
+    enabled: true
+
+# MinIO stands in for object storage; the Antithesis environment is air-gapped
+# with no cloud storage. Its bucket, credentials, and PVCs (local-path, the
+# only storage class Antithesis provides) come from the chart defaults.
+# Note the bundled chart (minio-4.1.0) has no readiness probe support; MinIO
+# availability is transitively enforced by its setup Jobs and the create-bucket
+# init containers below.
+minio:
+  enabled: true
+  resources:
+    limits:
+      # Keep MinIO from destabilizing the single node under fault injection.
+      memory: 1Gi
+  # Antithesis asks for resource requests on all containers; the chart's Job
+  # defaults set memory only.
+  makeBucketJob:
+    resources:
+      requests:
+        cpu: 10m
+  makeUserJob:
+    resources:
+      requests:
+        cpu: 10m
+
+# Alloy only scrapes profiles from other pods and requires cluster-scoped RBAC;
+# it is not needed to run Pyroscope itself.
+alloy:
+  enabled: false
+
+pyroscope:
+  # The chart's rbac-discovery.yaml template does not set metadata.namespace,
+  # which Antithesis requires on every resource; manifests/rbac.yaml carries a
+  # namespaced copy instead.
+  rbac:
+    create: false
+
+  extraArgs:
+    # The Antithesis environment is air-gapped; disable the anonymous usage
+    # reporter so Pyroscope does not attempt outbound connections.
+    usage-stats.enabled: "false"
+
+  # Component sizing mirrors ci/micro-services-values.yaml, which installs this
+  # same topology on a single-node kind cluster. The chart's production-scale
+  # defaults request ~13 CPUs / ~14 GiB; Antithesis runs everything on one node
+  # and requires total requests to stay under 1 CPU and 10 GiB.
+  components:
+    query-frontend:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+    query-backend:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+    distributor:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 50m
+      # Gate bucket-dependent components on the bucket existing so they do not
+      # crash-loop while MinIO and its bucket-creation Job start up. The
+      # distributor needs the gate most: it fails startup outright when the
+      # adaptive placement rules cannot be read from the bucket. Same init
+      # container as the CI values, but with a fully qualified image (nothing
+      # can be pulled from an implicit registry at runtime in Antithesis) and
+      # the MinIO service name spelled out (the release is not named after the
+      # namespace here, so the CI $(POD_NAMESPACE)-minio trick does not apply).
+      initContainers: &create-bucket
+        - name: create-bucket
+          image: docker.io/minio/mc:RELEASE.2025-04-08T15-39-49Z
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export MC_CONFIG_DIR="/tmp/mc"
+              mkdir -p "$MC_CONFIG_DIR"
+              until mc config host add myminio http://$MINIO_ENDPOINT:9000 grafana-pyroscope supersecret; do
+                echo "Waiting for Minio to be available..."
+                sleep 5
+              done
+              mc mb myminio/grafana-pyroscope-data --ignore-existing
+          env:
+            - name: MINIO_ENDPOINT
+              value: pyroscope-minio
+    segment-writer:
+      kind: StatefulSet
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+      # Same gate as the CI values file, kept for parity; the segment-writer
+      # itself only warns on a missing bucket at startup.
+      initContainers: *create-bucket
+    metastore:
+      kind: StatefulSet
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 64Mi
+          cpu: 10m
+    compaction-worker:
+      kind: StatefulSet
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 64Mi
+          cpu: 10m
+    # Not sized by the CI values (kind has more CPU to give); trimmed from the
+    # default 100m requests to keep total requests well under the 1 CPU cap.
+    tenant-settings:
+      resources:
+        requests:
+          cpu: 10m
+    ad-hoc-profiles:
+      resources:
+        requests:
+          cpu: 10m
+    admin:
+      resources:
+        requests:
+          cpu: 10m

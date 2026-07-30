@@ -1,0 +1,13 @@
+# Build-context exclusions for Dockerfile.pyroscope (BuildKit picks this file
+# up because it sits next to the Dockerfile). Keeps the repository-root
+# context lean and keeps credentials out of the image.
+.git
+.tmp
+.claude
+bryan
+pyroscope
+profilecli
+ui/node_modules
+ui/dist
+tools/antithesis/.env
+tools/antithesis/logs

@@ -86,6 +86,7 @@ require (
 )
 
 require (
+	github.com/antithesishq/antithesis-sdk-go v0.7.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.8 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/basgys/goxml2json v1.1.1-0.20231018121955-e66ee54ceaad // indirect
@@ -350,3 +351,5 @@ replace (
 	// + https://github.com/go-yaml/yaml/pull/876
 	gopkg.in/yaml.v3 => github.com/colega/go-yaml-yaml v0.0.0-20220720105220-255a8d16d094
 )
+
+tool github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor

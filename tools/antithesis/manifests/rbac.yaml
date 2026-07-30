@@ -1,0 +1,38 @@
+# Copy of the chart's templates/rbac-discovery.yaml (rendered with
+# pyroscope.rbac.create=false instead), with metadata.namespace set explicitly:
+# the chart template omits it, which is fine for helm install but not for
+# Antithesis, where manifests are applied by kapp and every resource must
+# carry its namespace. The chart's Helm labels are dropped, as these resources
+# are not Helm-managed; rules, names, and subject are otherwise identical.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pyroscope-discovery
+  namespace: default
+rules:
+- apiGroups:
+  - ""
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  - endpoints
+  - services
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pyroscope-discovery
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pyroscope-discovery
+subjects:
+- kind: ServiceAccount
+  name: pyroscope
+  namespace: default

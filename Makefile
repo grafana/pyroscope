@@ -122,6 +122,25 @@ build: frontend/build go/bin ## Do a production build (requiring the frontend bu
 build-dev: ## Do a dev build (without requiring the frontend)
 	$(MAKE) EMBEDASSETS="" go/bin
 
+# Antithesis-instrumented build, consumed by tools/antithesis/. The
+# instrumentor rewrites the sources into a scratch directory (it rejects
+# output paths inside the input tree, and copies the full working tree there,
+# so expect roughly the repository's size in $TMPDIR per run) and generates
+# the symbol table the Antithesis platform needs alongside; the binary is
+# then compiled from the rewritten copy. The Antithesis SDK requires cgo, and
+# the binary must stay dynamically linked so the SDK can dlopen the platform
+# library at runtime, hence no CGO_ENABLED=0 and no -static, unlike the
+# production build. Frontend assets are not embedded.
+.PHONY: build/antithesis
+build/antithesis: ## Build an Antithesis-instrumented pyroscope binary, with its symbol table in .tmp/antithesis/
+	rm -rf .tmp/antithesis && mkdir -p .tmp/antithesis
+	out=$$(mktemp -d) && trap 'rm -rf "$$out"' EXIT && \
+	$(GO) tool antithesis-go-instrumentor -skip_test_files=true -skip_protobuf_files=true \
+		-prefix pyroscope -exclude $(CURDIR)/tools/antithesis/instrumentor.exclude $(CURDIR) $$out && \
+	(cd $$out/customer && GOOS=$(GOOS) GOARCH=$(GOARCH) GOAMD64=v2 CGO_ENABLED=1 \
+		$(GO) build -tags netgo -ldflags "$(GO_LDFLAGS)" -o $(CURDIR)/pyroscope ./cmd/pyroscope) && \
+	cp $$out/symbols/*.sym.tsv .tmp/antithesis/
+
 .PHONY: frontend/build
 frontend/build:
 	docker build -f cmd/pyroscope/frontend.Dockerfile --output=ui/dist .
