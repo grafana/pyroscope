@@ -388,3 +388,38 @@ func TestProfileStripper_Strip_KeptSampleCarriesTotalRuleLabels(t *testing.T) {
 	assert.Equal(t, []int64{5}, total.Value)
 	assert.Equal(t, "eu", regionOf(total))
 }
+
+// Two rules target the same function; one has a "!=" matcher on a sample label.
+// A sample kept for the first rule must retain that label (its real value) so
+// the "!=" rule still excludes it downstream instead of matching a dropped "".
+func TestStripper_Strip_FunctionRuleNotEqualKeepsLabel(t *testing.T) {
+	// String table: func-a=3, region=4, us=5.
+	p := &profilev1.Profile{
+		SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+		StringTable: []string{"", "samples", "count", "func-a", regionLabel, "us"},
+		Function:    []*profilev1.Function{{Id: 1, Name: 3}},
+		Location:    []*profilev1.Location{{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{10}, Label: []*profilev1.Label{{Key: 4, Str: 5}}}, // region=us
+		},
+	}
+	ruler := fakeRuler{rules: map[string][]*phlaremodel.RecordingRule{
+		"tenant-a": {
+			{FunctionName: "func-a"}, // keeps the stacktrace
+			{FunctionName: "func-a", Matchers: []*labels.Matcher{labels.MustNewMatcher(labels.MatchNotEqual, regionLabel, "us")}},
+		},
+	}}
+
+	NewStripper(ruler).Strip("tenant-a", nil, p)
+
+	require.Len(t, p.Sample, 1)
+	kept := p.Sample[0]
+	require.NotEmpty(t, kept.LocationId)
+	region := ""
+	for _, l := range kept.Label {
+		if p.StringTable[l.Key] == regionLabel {
+			region = p.StringTable[l.Str]
+		}
+	}
+	assert.Equal(t, "us", region)
+}
