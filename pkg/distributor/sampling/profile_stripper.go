@@ -102,22 +102,13 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 		// the sample is kept (it still counts toward those totals) or folded.
 		clear(totalKeep)
 		for _, rule := range exc.totalRules {
-			if sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers) {
-				for _, name := range rule.keepLabels {
-					totalKeep[name] = struct{}{}
-				}
-				continue
-			}
-			// The sample doesn't match the rule. Dropping a label reads as "" at
-			// compaction, so a matcher that also matches "" (e.g. !=) would then
-			// wrongly match: keep those labels with their real value.
-			for _, m := range rule.deferredMatchers {
-				if m.Matches("") {
-					totalKeep[m.Name] = struct{}{}
-				}
-			}
+			keepRuleLabels(totalKeep, rule, sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers))
 		}
 
+		// Trim to the locations kept by function rules the sample matches. Every
+		// rule targeting a kept location re-matches this sample's series at
+		// compaction, so all of them contribute the labels they need — including
+		// the ones the sample does not match (via keepRuleLabels).
 		clear(funcKeep)
 		var keptLocations int
 		for _, l := range sample.LocationId {
@@ -127,12 +118,10 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 			}
 			var fulfilled bool
 			for _, rule := range rules {
-				if !sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers) {
-					continue
-				}
-				fulfilled = true
-				for _, name := range rule.keepLabels {
-					funcKeep[name] = struct{}{}
+				matched := sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers)
+				keepRuleLabels(funcKeep, rule, matched)
+				if matched {
+					fulfilled = true
 				}
 			}
 			if fulfilled {
@@ -181,6 +170,25 @@ func foldToTotals(folded []*profilev1.Sample, valueLen int) []*profilev1.Sample 
 		totals[i] = total
 	}
 	return totals
+}
+
+// keepRuleLabels records the labels a sample must retain for one rule. When the
+// sample matches the rule, those are the rule's matcher + group_by labels. When
+// it doesn't, only the matchers that also match "" are kept — otherwise dropping
+// their label (which reads as "" downstream) would flip them into a spurious
+// match. Shared by the function and total paths so they can't drift.
+func keepRuleLabels(dst map[string]struct{}, rule deferredRule, matched bool) {
+	if matched {
+		for _, name := range rule.keepLabels {
+			dst[name] = struct{}{}
+		}
+		return
+	}
+	for _, m := range rule.deferredMatchers {
+		if m.Matches("") {
+			dst[m.Name] = struct{}{}
+		}
+	}
 }
 
 func sampleFulfillsMatchers(s *profilev1.Sample, stringTable []string, matchers []*labels.Matcher) bool {
