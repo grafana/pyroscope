@@ -1,10 +1,13 @@
 package sampling
 
 import (
+	"sort"
+
 	"github.com/prometheus/prometheus/model/labels"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 // ProfileStripper reduces profiles that were sampled out but should be kept
@@ -23,9 +26,9 @@ func NewProfileStripper(ruler Ruler) *ProfileStripper {
 // exception: they are kept, trimmed to the frames of the targeted functions,
 // together with the labels those rules need to match and group.
 func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) {
-	exceptions := s.computeExceptions(tenantID, seriesLabels, p)
+	exc := s.computeExceptions(tenantID, seriesLabels, p)
 
-	stripSamples(p, exceptions)
+	stripSamples(p, exc)
 
 	pruneUnreferencedSymbols(p)
 
@@ -81,21 +84,47 @@ func compactStringTable(p *profilev1.Profile) {
 }
 
 // stripSamples reduces p.Sample to the samples that hit an exception location
-// (trimmed to those locations and to the labels the matching rules need) plus a
-// single sample holding the summed values of everything else.
-func stripSamples(p *profilev1.Profile, exceptions map[uint64][]deferredRule) {
-	var total *profilev1.Sample
-	var keptSamples int
+// (trimmed to those locations and to the labels the matching rules need) plus
+// one totals sample per distinct label set holding the summed values of
+// everything else.
+func stripSamples(p *profilev1.Profile, exc exceptions) {
+	var kept, folded []*profilev1.Sample
 	for _, sample := range p.Sample {
 		// Samples that Normalize would drop (value length mismatch,
 		// negative values) must not contribute to the totals.
 		if len(sample.Value) != len(p.SampleType) || hasNegativeValue(sample) {
 			continue
 		}
+		// Labels the sample must keep for the total rules. These apply whether
+		// the sample is kept (it still counts toward those totals) or folded.
+		var totalKeep map[string]struct{}
+		keepTotal := func(name string) {
+			if totalKeep == nil {
+				totalKeep = make(map[string]struct{})
+			}
+			totalKeep[name] = struct{}{}
+		}
+		for _, rule := range exc.totalRules {
+			if sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers) {
+				for _, name := range rule.keepLabels {
+					keepTotal(name)
+				}
+				continue
+			}
+			// The sample doesn't match the rule. Dropping a label reads as "" at
+			// compaction, so a matcher that also matches "" (e.g. !=) would then
+			// wrongly match: keep those labels with their real value.
+			for _, m := range rule.deferredMatchers {
+				if m.Matches("") {
+					keepTotal(m.Name)
+				}
+			}
+		}
+
 		var keptLocations int
-		var keepLabels map[string]struct{}
+		var funcKeep map[string]struct{}
 		for _, l := range sample.LocationId {
-			rules, ok := exceptions[l]
+			rules, ok := exc.functionLocations[l]
 			if !ok {
 				continue
 			}
@@ -106,10 +135,10 @@ func stripSamples(p *profilev1.Profile, exceptions map[uint64][]deferredRule) {
 				}
 				fulfilled = true
 				for _, name := range rule.keepLabels {
-					if keepLabels == nil {
-						keepLabels = make(map[string]struct{})
+					if funcKeep == nil {
+						funcKeep = make(map[string]struct{})
 					}
-					keepLabels[name] = struct{}{}
+					funcKeep[name] = struct{}{}
 				}
 			}
 			if fulfilled {
@@ -119,22 +148,45 @@ func stripSamples(p *profilev1.Profile, exceptions map[uint64][]deferredRule) {
 		}
 		if keptLocations > 0 {
 			sample.LocationId = sample.LocationId[:keptLocations]
-			sample.Label = retainLabels(sample.Label, p.StringTable, keepLabels)
-			p.Sample[keptSamples] = sample
-			keptSamples++
+			sample.Label = retainLabels(sample.Label, p.StringTable, funcKeep, totalKeep)
+			kept = append(kept, sample)
 			continue
 		}
-		if total == nil {
-			total = &profilev1.Sample{Value: make([]int64, len(p.SampleType))}
-		}
-		for i, v := range sample.Value {
-			total.Value[i] += v
-		}
+		// Folds into a total: drop the stacktrace, keep only the total labels.
+		sample.LocationId = nil
+		sample.Label = retainLabels(sample.Label, p.StringTable, totalKeep)
+		folded = append(folded, sample)
 	}
-	p.Sample = p.Sample[:keptSamples]
-	if total != nil {
-		p.Sample = append(p.Sample, total)
+	p.Sample = append(kept, foldToTotals(folded, len(p.SampleType))...)
+}
+
+// foldToTotals groups the label-reduced folded samples by their labels and sums
+// each group into a single totals sample. Group labels are copied into a fresh
+// slice: GroupSamplesByLabels aliases a source sample's label slice, whose
+// backing array can hold labels past len() that the pprof split later restores
+// and indexes against the rebuilt (smaller) string table.
+func foldToTotals(folded []*profilev1.Sample, valueLen int) []*profilev1.Sample {
+	if len(folded) == 0 {
+		return nil
 	}
+	for _, s := range folded {
+		sort.Sort(pprof.LabelsByKeyValue(s.Label))
+	}
+	sort.Sort(pprof.SamplesByLabels(folded))
+	groups := pprof.GroupSamplesByLabels(&profilev1.Profile{Sample: folded})
+	totals := make([]*profilev1.Sample, len(groups))
+	for i, g := range groups {
+		labels := make([]*profilev1.Label, len(g.Labels))
+		copy(labels, g.Labels)
+		total := &profilev1.Sample{Value: make([]int64, valueLen), Label: labels}
+		for _, s := range g.Samples {
+			for j, v := range s.Value {
+				total.Value[j] += v
+			}
+		}
+		totals[i] = total
+	}
+	return totals
 }
 
 func sampleFulfillsMatchers(s *profilev1.Sample, stringTable []string, matchers []*labels.Matcher) bool {
@@ -155,11 +207,15 @@ func sampleLabelValue(s *profilev1.Sample, stringTable []string, name string) st
 	return ""
 }
 
-func retainLabels(sampleLabels []*profilev1.Label, stringTable []string, keep map[string]struct{}) []*profilev1.Label {
+func retainLabels(sampleLabels []*profilev1.Label, stringTable []string, keepSets ...map[string]struct{}) []*profilev1.Label {
 	retained := sampleLabels[:0]
 	for _, l := range sampleLabels {
-		if _, ok := keep[stringTable[l.Key]]; ok {
-			retained = append(retained, l)
+		name := stringTable[l.Key]
+		for _, keep := range keepSets {
+			if _, ok := keep[name]; ok {
+				retained = append(retained, l)
+				break
+			}
 		}
 	}
 	return retained

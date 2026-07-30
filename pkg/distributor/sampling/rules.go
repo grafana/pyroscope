@@ -18,45 +18,27 @@ type deferredRule struct {
 	keepLabels       []string
 }
 
-// computeExceptions returns, per location id, the recording rules that exempt
-// that location from stripping (subject to their deferred matchers being
-// satisfied by the sample at strip time). A nil result means the whole profile
-// is stripped to totals.
-func (s *ProfileStripper) computeExceptions(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) map[uint64][]deferredRule {
-	targetFuncs := s.targetedFunctions(tenantID, seriesLabels, p)
-	if len(targetFuncs) == 0 {
-		return nil
-	}
-	rulesByFunctionID := make(map[uint64][]deferredRule, len(p.Function))
-	for _, fn := range p.Function {
-		if rules, ok := targetFuncs[p.StringTable[fn.Name]]; ok {
-			rulesByFunctionID[fn.Id] = rules
-		}
-	}
-	if len(rulesByFunctionID) == 0 {
-		return nil
-	}
-	exceptions := make(map[uint64][]deferredRule, len(p.Location))
-	for _, loc := range p.Location {
-		var rules []deferredRule
-		for _, line := range loc.Line {
-			rules = append(rules, rulesByFunctionID[line.FunctionId]...)
-		}
-		if len(rules) > 0 {
-			exceptions[loc.Id] = rules
-		}
-	}
-	return exceptions
+// exceptions captures what recording rules require to survive stripping. Each
+// rule contributes a deferredRule whose deferredMatchers must be satisfied by a
+// sample before its keepLabels apply:
+//   - functionLocations: per location id, the function-filter rules that keep a
+//     stacktrace reaching that location.
+//   - totalRules: the non-function ("total") rules; a sample they match keeps
+//     their labels so the totals can be split and matched/grouped downstream.
+type exceptions struct {
+	functionLocations map[uint64][]deferredRule
+	totalRules        []deferredRule
 }
 
-func (s *ProfileStripper) targetedFunctions(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) map[string][]deferredRule {
+func (s *ProfileStripper) computeExceptions(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) exceptions {
 	if s.ruler == nil {
-		return nil
+		return exceptions{}
 	}
 	profileTypes := profileTypeNames(p, seriesLabels.Get(phlaremodel.LabelNameProfileName))
-	var targets map[string][]deferredRule
+	rulesByFunctionName := map[string][]deferredRule{}
+	var totalRules []deferredRule
 	for _, rule := range s.ruler.RecordingRules(tenantID) {
-		if rule == nil || rule.FunctionName == "" {
+		if rule == nil {
 			continue
 		}
 		matched, deferredMatchers := recordingRuleMatchesSeries(rule, seriesLabels, profileTypes)
@@ -68,15 +50,40 @@ func (s *ProfileStripper) targetedFunctions(tenantID string, seriesLabels phlare
 			keepLabels = append(keepLabels, m.Name)
 		}
 		keepLabels = append(keepLabels, rule.GroupBy...)
-		if targets == nil {
-			targets = make(map[string][]deferredRule)
+		r := deferredRule{deferredMatchers: deferredMatchers, keepLabels: keepLabels}
+
+		if rule.FunctionName == "" {
+			// Non-function rule: samples that match it keep its labels.
+			totalRules = append(totalRules, r)
+			continue
 		}
-		targets[rule.FunctionName] = append(targets[rule.FunctionName], deferredRule{
-			deferredMatchers: deferredMatchers,
-			keepLabels:       keepLabels,
-		})
+		// Function rule: keep the stacktraces reaching FunctionName.
+		rulesByFunctionName[rule.FunctionName] = append(rulesByFunctionName[rule.FunctionName], r)
 	}
-	return targets
+
+	functionLocations := map[uint64][]deferredRule{}
+	if len(rulesByFunctionName) > 0 {
+		rulesByFunctionID := make(map[uint64][]deferredRule, len(p.Function))
+		for _, fn := range p.Function {
+			if rules, ok := rulesByFunctionName[p.StringTable[fn.Name]]; ok {
+				rulesByFunctionID[fn.Id] = rules
+			}
+		}
+		for _, loc := range p.Location {
+			var rules []deferredRule
+			for _, line := range loc.Line {
+				rules = append(rules, rulesByFunctionID[line.FunctionId]...)
+			}
+			if len(rules) > 0 {
+				functionLocations[loc.Id] = rules
+			}
+		}
+	}
+
+	return exceptions{
+		functionLocations: functionLocations,
+		totalRules:        totalRules,
+	}
 }
 
 func recordingRuleMatchesSeries(rule *phlaremodel.RecordingRule, seriesLabels phlaremodel.Labels, profileTypes []string) (bool, []*labels.Matcher) {
