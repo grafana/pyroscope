@@ -643,3 +643,22 @@ func TestFetchDebuginfo_BoundsConcurrentUpstreamFetches(t *testing.T) {
 	assert.LessOrEqual(t, transport.max.Load(), int32(2),
 		"in-flight upstream fetches must stay within MaxConcurrentFetches")
 }
+
+func TestFetchDebuginfo_SendsUserAgent(t *testing.T) {
+	var ua atomic.Value
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ua.Store(r.Header.Get("User-Agent"))
+		_, _ = w.Write([]byte("debug info"))
+	}))
+	defer server.Close()
+
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	r, err := client.FetchDebuginfo(ctx, "cafebabe")
+	require.NoError(t, err)
+	require.NoError(t, r.Close())
+	assert.Contains(t, ua.Load().(string), "pyroscope-symbolizer")
+}

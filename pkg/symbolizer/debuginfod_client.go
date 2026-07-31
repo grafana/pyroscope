@@ -22,6 +22,8 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/dgraph-io/ristretto/v2"
+
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 // DebuginfodClientConfig holds configuration for the debuginfod client.
@@ -62,9 +64,13 @@ type DebuginfodHTTPClient struct {
 }
 
 func defaultDebuginfodClientConfig(baseURL string) DebuginfodClientConfig {
+	userAgent := "pyroscope-symbolizer (github.com/grafana/pyroscope)"
+	if build.Version != "" {
+		userAgent = fmt.Sprintf("pyroscope-symbolizer/%s (github.com/grafana/pyroscope)", build.Version)
+	}
 	return DebuginfodClientConfig{
-		BaseURL: baseURL,
-		//UserAgent:  "Pyroscope-Symbolizer/1.0",
+		BaseURL:   baseURL,
+		UserAgent: userAgent,
 		BackoffConfig: backoff.Config{
 			MinBackoff: 1 * time.Second,
 			MaxBackoff: 10 * time.Second,
