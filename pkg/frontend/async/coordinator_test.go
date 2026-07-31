@@ -123,7 +123,6 @@ func TestCoordinatorSubmit_ConcurrencyLimitRejects(t *testing.T) {
 }
 
 func TestCoordinatorDispatch_ConcurrencyLimitSkipsExecution(t *testing.T) {
-	ctx := context.Background()
 	logger := log.NewNopLogger()
 	store := NewStore(logger, objstore.NewInMemBucket(), nil)
 
@@ -134,7 +133,7 @@ func TestCoordinatorDispatch_ConcurrencyLimitSkipsExecution(t *testing.T) {
 	require.NoError(t, coordinator.tryAcquire(tenantID))
 
 	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
-	coordinator.Dispatch(ctx, tenantID, "adopted-request-id", spec)
+	coordinator.Dispatch(tenantID, "adopted-request-id", spec)
 
 	require.Empty(t, fakeNext.callsSnapshot())
 }

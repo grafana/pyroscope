@@ -166,17 +166,6 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	wrappedHandler := spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger)
 
 	querierHandler := querierv1connect.QuerierServiceHandler(wrappedHandler)
-	if f.Cfg.Frontend.AsyncQueriesEnabled && f.asyncQueryStore != nil {
-		coordinator := asyncquery.NewCoordinator(
-			log.With(f.logger, "component", "async-query-coordinator"),
-			f.asyncQueryStore,
-			f.Overrides,
-			querierHandler,
-			f.reg,
-		)
-		f.asyncQueryStore.SetDispatcher(coordinator)
-		querierHandler = asyncquery.NewHandler(querierHandler, coordinator)
-	}
 
 	vcsService := vcs.New(
 		log.With(f.logger, "component", "vcs-service"),

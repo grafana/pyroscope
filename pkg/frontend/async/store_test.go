@@ -26,11 +26,11 @@ import (
 // query whose owner stopped renewing its lease some time ago.
 func backdateHeartbeat(t *testing.T, ctx context.Context, store *Store, tenantID, requestID string, when time.Time) {
 	t.Helper()
-	base := store.basePath(tenantID, requestID)
+	metaPath := store.buildPath(tenantID, requestID, metadataFilename)
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, base+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, metaPath, &meta))
 	meta.LastHeartbeat = when
-	require.NoError(t, store.saveJSON(ctx, base+"metadata.json", &meta))
+	require.NoError(t, store.saveJSON(ctx, metaPath, &meta))
 }
 
 type fakeDispatchCall struct {
@@ -49,7 +49,7 @@ type fakeDispatcher struct {
 	onDispatch func(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest)
 }
 
-func (f *fakeDispatcher) Dispatch(_ context.Context, tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
+func (f *fakeDispatcher) Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
 	f.mu.Lock()
 	f.calls = append(f.calls, fakeDispatchCall{tenantID: tenantID, requestID: requestID, spec: spec})
 	onDispatch := f.onDispatch
@@ -127,10 +127,9 @@ func TestStoreCreate_PersistsSpecBeforeMetadata(t *testing.T) {
 
 	require.NoError(t, store.create(ctx, tenantID, requestID, spec))
 
-	base := store.basePath(tenantID, requestID)
-	_, err := store.bucket.Attributes(ctx, base+"spec.pb")
+	_, err := store.bucket.Attributes(ctx, store.buildPath(tenantID, requestID, specFilename))
 	require.NoError(t, err)
-	_, err = store.bucket.Attributes(ctx, base+"metadata.json")
+	_, err = store.bucket.Attributes(ctx, store.buildPath(tenantID, requestID, metadataFilename))
 	require.NoError(t, err)
 
 	gotSpec, err := store.readSpec(ctx, tenantID, requestID)
@@ -138,7 +137,7 @@ func TestStoreCreate_PersistsSpecBeforeMetadata(t *testing.T) {
 	require.True(t, proto.Equal(spec, gotSpec))
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, base+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, StatusInProgress, meta.Status)
 	require.Equal(t, store.ownerID, meta.Owner)
 }
@@ -159,7 +158,7 @@ func TestStoreGet_StaleWithSpecStaysInProgress(t *testing.T) {
 	require.Empty(t, result.Metadata.ErrorMessage)
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, StatusInProgress, meta.Status)
 	require.Empty(t, meta.ErrorMessage)
 }
@@ -178,7 +177,7 @@ func TestStoreGet_StaleWithoutSpecPersistsFailure(t *testing.T) {
 		CreatedAt:     past,
 		LastHeartbeat: past,
 	}
-	require.NoError(t, store.saveJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", meta))
+	require.NoError(t, store.saveJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), meta))
 
 	result, err := store.get(ctx, tenantID, requestID)
 	require.NoError(t, err)
@@ -186,7 +185,7 @@ func TestStoreGet_StaleWithoutSpecPersistsFailure(t *testing.T) {
 	require.Equal(t, errOrphanedNoSpec.Error(), result.Metadata.ErrorMessage)
 
 	var got Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &got))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &got))
 	require.Equal(t, StatusFailure, got.Status)
 
 	// Idempotent: a second get() is a no-op, still StatusFailure, no error.
@@ -225,7 +224,7 @@ func TestStoreGet_TransientSpecCheckErrorLeavesQueryInProgress(t *testing.T) {
 
 	wrapped := &attributesErrBucket{
 		Bucket:   inner,
-		failName: seed.basePath(tenantID, requestID) + "spec.pb",
+		failName: seed.buildPath(tenantID, requestID, specFilename),
 		err:      errors.New("simulated transient storage error"),
 	}
 	store := NewStore(log.NewNopLogger(), wrapped, nil)
@@ -236,8 +235,111 @@ func TestStoreGet_TransientSpecCheckErrorLeavesQueryInProgress(t *testing.T) {
 	require.Empty(t, result.Metadata.ErrorMessage)
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, StatusInProgress, meta.Status)
+}
+
+// attributesErrAfterNBucket wraps a Bucket, letting the first n Attributes
+// calls for one specific object name succeed normally, then forcing every
+// call after that to return a fixed error. Used to simulate a transient
+// object-storage error that only surfaces on a later, otherwise-identical
+// check (e.g. adopt()'s pre-claim resultExists re-check).
+type attributesErrAfterNBucket struct {
+	objstore.Bucket
+	failName string
+	n        int
+	err      error
+	calls    int
+}
+
+func (b *attributesErrAfterNBucket) Attributes(ctx context.Context, name string) (objstore.ObjectAttributes, error) {
+	if name == b.failName {
+		b.calls++
+		if b.calls > b.n {
+			return objstore.ObjectAttributes{}, b.err
+		}
+	}
+	return b.Bucket.Attributes(ctx, name)
+}
+
+// TestStoreAdopt_TransientResultCheckErrorAtEntrySkipsCandidate proves that a
+// transient error from adopt()'s entry-point resultExists check causes the
+// candidate to be skipped entirely (no claim, no dispatch, no adoption
+// attempt recorded) rather than proceeding as if no result existed.
+func TestStoreAdopt_TransientResultCheckErrorAtEntrySkipsCandidate(t *testing.T) {
+	ctx := context.Background()
+	inner := objstore.NewInMemBucket()
+
+	const tenantID = "tenant-a"
+	requestID := uuid.New().String()
+	seed := NewStore(log.NewNopLogger(), inner, nil)
+	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
+	require.NoError(t, seed.create(ctx, tenantID, requestID, spec))
+	stale := time.Now().Add(-time.Hour).UTC()
+	backdateHeartbeat(t, ctx, seed, tenantID, requestID, stale)
+
+	wrapped := &attributesErrAfterNBucket{
+		Bucket:   inner,
+		failName: seed.buildPath(tenantID, requestID, resultFilename),
+		n:        0, // fail starting on the very first call.
+		err:      errors.New("simulated transient storage error"),
+	}
+	store := NewStore(log.NewNopLogger(), wrapped, nil)
+	dispatcher := &fakeDispatcher{}
+	store.SetDispatcher(dispatcher)
+
+	var meta Metadata
+	require.NoError(t, seed.readJSON(ctx, seed.buildPath(tenantID, requestID, metadataFilename), &meta))
+
+	store.adopt(ctx, meta)
+
+	require.Empty(t, dispatcher.calls)
+	require.Equal(t, float64(0), testutil.ToFloat64(store.adoptionAttempts.WithLabelValues(tenantID)))
+
+	var got Metadata
+	require.NoError(t, seed.readJSON(ctx, seed.buildPath(tenantID, requestID, metadataFilename), &got))
+	require.Equal(t, StatusInProgress, got.Status)
+	require.WithinDuration(t, stale, got.LastHeartbeat, time.Second)
+}
+
+// TestStoreAdopt_TransientResultCheckErrorAtPreClaimSkipsCandidate proves the
+// same skip-on-error behavior for adopt()'s pre-claim resultExists re-check:
+// a transient error there must abort the claim, not proceed with it.
+func TestStoreAdopt_TransientResultCheckErrorAtPreClaimSkipsCandidate(t *testing.T) {
+	ctx := context.Background()
+	inner := objstore.NewInMemBucket()
+
+	const tenantID = "tenant-a"
+	requestID := uuid.New().String()
+	seed := NewStore(log.NewNopLogger(), inner, nil)
+	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
+	require.NoError(t, seed.create(ctx, tenantID, requestID, spec))
+	stale := time.Now().Add(-time.Hour).UTC()
+	backdateHeartbeat(t, ctx, seed, tenantID, requestID, stale)
+
+	wrapped := &attributesErrAfterNBucket{
+		Bucket:   inner,
+		failName: seed.buildPath(tenantID, requestID, resultFilename),
+		n:        1, // entry check (call 1) succeeds; pre-claim check (call 2) fails.
+		err:      errors.New("simulated transient storage error"),
+	}
+	store := NewStore(log.NewNopLogger(), wrapped, nil)
+	dispatcher := &fakeDispatcher{}
+	store.SetDispatcher(dispatcher)
+
+	var meta Metadata
+	require.NoError(t, seed.readJSON(ctx, seed.buildPath(tenantID, requestID, metadataFilename), &meta))
+
+	store.adopt(ctx, meta)
+
+	require.Empty(t, dispatcher.calls)
+	require.Equal(t, float64(1), testutil.ToFloat64(store.adoptionAttempts.WithLabelValues(tenantID)))
+	require.Equal(t, float64(0), testutil.ToFloat64(store.adoptionSuccesses.WithLabelValues(tenantID)))
+
+	var got Metadata
+	require.NoError(t, seed.readJSON(ctx, seed.buildPath(tenantID, requestID, metadataFilename), &got))
+	require.Equal(t, StatusInProgress, got.Status)
+	require.WithinDuration(t, stale, got.LastHeartbeat, time.Second)
 }
 
 func TestStoreAdopt_StaleWithSpecClaimsAndDispatches(t *testing.T) {
@@ -260,7 +362,7 @@ func TestStoreAdopt_StaleWithSpecClaimsAndDispatches(t *testing.T) {
 	require.True(t, proto.Equal(spec, dispatcher.calls[0].spec))
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, StatusInProgress, meta.Status)
 	require.Equal(t, store.ownerID, meta.Owner)
 	require.WithinDuration(t, time.Now(), meta.LastHeartbeat, 5*time.Second)
@@ -285,14 +387,14 @@ func TestStoreAdopt_StaleWithoutSpecMarksFailureNoDispatch(t *testing.T) {
 		CreatedAt:     past,
 		LastHeartbeat: past,
 	}
-	require.NoError(t, store.saveJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", meta))
+	require.NoError(t, store.saveJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), meta))
 
 	store.runAdoption(ctx)
 
 	require.Empty(t, dispatcher.calls)
 
 	var got Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &got))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &got))
 	require.Equal(t, StatusFailure, got.Status)
 	require.Equal(t, errOrphanedNoSpec.Error(), got.ErrorMessage)
 
@@ -308,10 +410,9 @@ func TestStoreAdopt_CorruptSpecMarksUnadoptable(t *testing.T) {
 
 	const tenantID = "tenant-a"
 	requestID := uuid.New().String()
-	base := store.basePath(tenantID, requestID)
 	// An incomplete varint: guaranteed to fail proto.Unmarshal regardless of
 	// message schema, simulating a torn/truncated spec.pb.
-	require.NoError(t, store.bucket.Upload(ctx, base+"spec.pb", bytes.NewReader([]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF})))
+	require.NoError(t, store.bucket.Upload(ctx, store.buildPath(tenantID, requestID, specFilename), bytes.NewReader([]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF})))
 
 	past := time.Now().Add(-time.Hour).UTC()
 	meta := &Metadata{
@@ -321,14 +422,14 @@ func TestStoreAdopt_CorruptSpecMarksUnadoptable(t *testing.T) {
 		CreatedAt:     past,
 		LastHeartbeat: past,
 	}
-	require.NoError(t, store.saveJSON(ctx, base+"metadata.json", meta))
+	require.NoError(t, store.saveJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), meta))
 
 	store.runAdoption(ctx)
 
 	require.Empty(t, dispatcher.calls)
 
 	var got Metadata
-	require.NoError(t, store.readJSON(ctx, base+"metadata.json", &got))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &got))
 	require.Equal(t, StatusFailure, got.Status)
 	require.Equal(t, errOrphanedNoSpec.Error(), got.ErrorMessage)
 
@@ -351,7 +452,7 @@ func TestStoreAdopt_NilDispatcherIsNoop(t *testing.T) {
 	require.NotPanics(t, func() { store.runAdoption(ctx) })
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, StatusInProgress, meta.Status)
 	require.Equal(t, store.ownerID, meta.Owner)
 	require.WithinDuration(t, stale, meta.LastHeartbeat, time.Second)
@@ -376,7 +477,7 @@ func TestStoreAdopt_ClaimSucceedsEvenIfDispatcherDeclines(t *testing.T) {
 	store.runAdoption(ctx)
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, store.ownerID, meta.Owner)
 	require.WithinDuration(t, time.Now(), meta.LastHeartbeat, 5*time.Second)
 	require.Equal(t, float64(1), testutil.ToFloat64(store.adoptionSuccesses.WithLabelValues(tenantID)))
@@ -453,7 +554,7 @@ func TestStoreComplete_SuccessOverwritesPriorFailure(t *testing.T) {
 	require.NoError(t, store.complete(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesResponse{Tree: []byte("late-success")}))
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, StatusSuccess, meta.Status)
 	require.Empty(t, meta.ErrorMessage)
 }
@@ -499,18 +600,18 @@ func TestStoreHeartbeat_CanRevertSoftFailureToInProgress(t *testing.T) {
 	requestID := uuid.New().String()
 	require.NoError(t, store.create(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesRequest{}))
 
-	base := store.basePath(tenantID, requestID)
+	metaPath := store.buildPath(tenantID, requestID, metadataFilename)
 	var staleRead Metadata
-	require.NoError(t, store.readJSON(ctx, base+"metadata.json", &staleRead))
+	require.NoError(t, store.readJSON(ctx, metaPath, &staleRead))
 
 	require.NoError(t, store.fail(ctx, tenantID, requestID, errors.New("straggler failure")))
 
 	staleRead.LastHeartbeat = time.Now().UTC()
 	staleRead.Owner = store.ownerID
-	require.NoError(t, store.saveJSON(ctx, base+"metadata.json", &staleRead))
+	require.NoError(t, store.saveJSON(ctx, metaPath, &staleRead))
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, base+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, metaPath, &meta))
 	require.Equal(t, StatusInProgress, meta.Status)
 }
 
@@ -528,7 +629,7 @@ func TestStoreCompleteFail_SuccessAlwaysWinsOverFailure(t *testing.T) {
 		require.NoError(t, store.fail(ctx, tenantID, requestID, errors.New("late straggler failure")))
 
 		var meta Metadata
-		require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+		require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 		require.Equal(t, StatusSuccess, meta.Status)
 		require.Empty(t, meta.ErrorMessage)
 
@@ -552,7 +653,7 @@ func TestStoreCompleteFail_SuccessAlwaysWinsOverFailure(t *testing.T) {
 		// execution produced the correct answer, so it must be reported --
 		// regardless of what any differently-outcome'd execution wrote first.
 		var meta Metadata
-		require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+		require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 		require.Equal(t, StatusSuccess, meta.Status)
 		require.Empty(t, meta.ErrorMessage)
 
@@ -578,7 +679,7 @@ func TestStoreHeartbeat_DoesNotResurrectTerminalRecord(t *testing.T) {
 	require.NoError(t, store.heartbeat(ctx, tenantID, requestID))
 
 	var meta Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &meta))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
 	require.Equal(t, StatusSuccess, meta.Status)
 
 	result, err := store.get(ctx, tenantID, requestID)
@@ -599,7 +700,7 @@ func TestStoreGet_AnchorSurvivesHeartbeatGatedRevert(t *testing.T) {
 	seed := NewStore(log.NewNopLogger(), inner, nil)
 	require.NoError(t, seed.create(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesRequest{}))
 
-	target := seed.basePath(tenantID, requestID) + "metadata.json"
+	target := seed.buildPath(tenantID, requestID, metadataFilename)
 	gated := newGatedUploadBucket(inner, target)
 	heartbeatStore := NewStore(log.NewNopLogger(), gated, nil)
 
@@ -621,7 +722,7 @@ func TestStoreGet_AnchorSurvivesHeartbeatGatedRevert(t *testing.T) {
 	// Informational only: proves the interleaving actually landed -- the raw
 	// record was reverted by the stale heartbeat write.
 	var raw Metadata
-	require.NoError(t, seed.readJSON(ctx, seed.basePath(tenantID, requestID)+"metadata.json", &raw))
+	require.NoError(t, seed.readJSON(ctx, seed.buildPath(tenantID, requestID, metadataFilename), &raw))
 	require.Equal(t, StatusInProgress, raw.Status)
 
 	result, err := seed.get(ctx, tenantID, requestID)
@@ -647,9 +748,9 @@ func TestStoreAdopt_ClaimGatedByConcurrentCompletion(t *testing.T) {
 	backdateHeartbeat(t, ctx, seed, tenantID, requestID, time.Now().Add(-time.Hour).UTC())
 
 	var snapshot Metadata
-	require.NoError(t, seed.readJSON(ctx, seed.basePath(tenantID, requestID)+"metadata.json", &snapshot))
+	require.NoError(t, seed.readJSON(ctx, seed.buildPath(tenantID, requestID, metadataFilename), &snapshot))
 
-	target := seed.basePath(tenantID, requestID) + "metadata.json"
+	target := seed.buildPath(tenantID, requestID, metadataFilename)
 	gated := newGatedUploadBucket(inner, target)
 	adoptStore := NewStore(log.NewNopLogger(), gated, nil)
 	adoptStore.SetDispatcher(&fakeDispatcher{})
@@ -691,7 +792,7 @@ func TestStoreAdopt_ReReadAbortsOnConcurrentCompletion(t *testing.T) {
 	// true owner completing the query while adopt()'s readSpec round trip is
 	// "in flight" -- i.e. after the scan's read but before the claim write.
 	var stale Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &stale))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &stale))
 	require.NoError(t, store.complete(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesResponse{Tree: []byte("already-done")}))
 
 	store.adopt(ctx, stale)
@@ -699,7 +800,7 @@ func TestStoreAdopt_ReReadAbortsOnConcurrentCompletion(t *testing.T) {
 	require.Empty(t, dispatcher.calls)
 
 	var final Metadata
-	require.NoError(t, store.readJSON(ctx, store.basePath(tenantID, requestID)+"metadata.json", &final))
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &final))
 	require.Equal(t, StatusSuccess, final.Status)
 
 	// result.pb already exists by the time adopt() runs, so its entry-point

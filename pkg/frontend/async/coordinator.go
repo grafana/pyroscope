@@ -108,10 +108,8 @@ func (c *Coordinator) Submit(ctx context.Context, tenantID string, req *querierv
 // whose record and spec are already persisted. A declined dispatch (tenant
 // at its concurrency limit) never rolls back the store's claim on the
 // record; it is simply retried by a later adoption scan once the lease
-// expires again. The context is intentionally unused: like Submit, a
-// dispatched query always runs detached from its caller so it survives
-// independently of whatever triggered it.
-func (c *Coordinator) Dispatch(_ context.Context, tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
+// expires again.
+func (c *Coordinator) Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
 	if err := c.tryAcquire(tenantID); err != nil {
 		level.Warn(c.logger).Log("msg", "skipping async query adoption: concurrency limit reached", "tenant", tenantID, "request_id", requestID, "err", err)
 		return
