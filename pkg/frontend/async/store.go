@@ -139,10 +139,16 @@ func NewStore(logger log.Logger, bucket objstore.Bucket, reg prometheus.Register
 
 // SetDispatcher wires the adoption scan to a Dispatcher. Must be called before
 // the Store's Service is started: s.dispatcher is a plain field, never
-// synchronized against running()'s reads of it, so calling this after the
-// Service has started is a genuine data race, not merely a logic error. nil is
-// safe (adoption is then a no-op), e.g. when Store runs standalone or in tests.
-func (s *Store) SetDispatcher(d Dispatcher) { s.dispatcher = d }
+// synchronized against running()'s reads of it. A late call is a programming
+// error, so it panics rather than risk an unsynchronized write racing the
+// running service. nil is safe (adoption is then a no-op), e.g. when Store
+// runs standalone or in tests.
+func (s *Store) SetDispatcher(d Dispatcher) {
+	if state := s.State(); state != services.New {
+		panic(fmt.Sprintf("SetDispatcher must be called before the store service starts; service state is %s", state))
+	}
+	s.dispatcher = d
+}
 
 func (s *Store) buildPath(tenantID, requestID, filename string) string {
 	return path.Join(storagePrefix, tenantID, requestID, filename)

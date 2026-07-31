@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
@@ -341,6 +342,25 @@ func TestStoreAdopt_TransientResultCheckErrorAtPreClaimSkipsCandidate(t *testing
 	require.NoError(t, seed.readJSON(ctx, seed.buildPath(tenantID, requestID, metadataFilename), &got))
 	require.Equal(t, StatusInProgress, got.Status)
 	require.WithinDuration(t, stale, got.LastHeartbeat, time.Second)
+}
+
+func TestSetDispatcher(t *testing.T) {
+	t.Run("succeeds before the service starts", func(t *testing.T) {
+		store := NewStore(log.NewNopLogger(), objstore.NewInMemBucket(), nil)
+		dispatcher := &fakeDispatcher{}
+
+		require.NotPanics(t, func() { store.SetDispatcher(dispatcher) })
+		require.Same(t, Dispatcher(dispatcher), store.dispatcher)
+	})
+
+	t.Run("panics once the service has started", func(t *testing.T) {
+		ctx := context.Background()
+		store := NewStore(log.NewNopLogger(), objstore.NewInMemBucket(), nil)
+		require.NoError(t, services.StartAndAwaitRunning(ctx, store))
+		defer func() { require.NoError(t, services.StopAndAwaitTerminated(ctx, store)) }()
+
+		require.Panics(t, func() { store.SetDispatcher(&fakeDispatcher{}) })
+	})
 }
 
 func TestStoreAdopt_StaleWithSpecClaimsAndDispatches(t *testing.T) {
