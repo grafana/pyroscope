@@ -34,6 +34,7 @@ const (
 	defaultHeartbeatInterval    = 15 * time.Second
 	defaultLeaseTimeout         = 45 * time.Second
 	defaultAdoptionScanInterval = 30 * time.Second
+	defaultMaxAdoptions         = 3
 	cleanupInterval             = 5 * time.Minute
 )
 
@@ -46,6 +47,11 @@ var (
 	// by both get() and the adoption scan: a stale in-progress record whose
 	// spec is gone can never be resumed.
 	errOrphanedNoSpec = errors.New("query orphaned: owner heartbeat expired and no request spec is available for adoption")
+
+	// errTooManyAdoptions indicates a query has already been adopted
+	// defaultMaxAdoptions times; adoption is refused and the query is marked
+	// failed instead of being claimed again.
+	errTooManyAdoptions = errors.New("query exceeded the maximum number of adoption attempts")
 )
 
 // Status represents the lifecycle state of an async query.
@@ -70,6 +76,7 @@ type Metadata struct {
 	LastHeartbeat time.Time `json:"last_heartbeat,omitempty"`
 	ErrorMessage  string    `json:"error_message,omitempty"`
 	Owner         string    `json:"owner,omitempty"`
+	AdoptionCount int       `json:"adoption_count,omitempty"`
 }
 
 // Result bundles a query's Metadata with its decoded Response. Response is only
@@ -281,6 +288,11 @@ func (s *Store) fail(ctx context.Context, tenantID, requestID string, queryErr e
 func (s *Store) markUnadoptable(ctx context.Context, tenantID, requestID string) error {
 	level.Warn(s.logger).Log("msg", "async query is unrecoverable, marking failed", "tenant", tenantID, "request_id", requestID)
 	return s.fail(ctx, tenantID, requestID, errOrphanedNoSpec)
+}
+
+func (s *Store) markTooManyAdoptions(ctx context.Context, tenantID, requestID string, count int) error {
+	level.Warn(s.logger).Log("msg", "async query exceeded max adoption attempts, marking failed", "tenant", tenantID, "request_id", requestID, "count", count)
+	return s.fail(ctx, tenantID, requestID, errTooManyAdoptions)
 }
 
 // buildSuccessResult fetches and unmarshals result.pb, returning a Result
@@ -506,12 +518,10 @@ func (s *Store) runCleanup(ctx context.Context) {
 // further work.
 //
 // A query that repeatedly kills its owner (e.g. one that OOMs the frontend)
-// is re-adopted at most once per leaseTimeout+scanInterval, and cleanup()
-// bounds the loop: spec.pb is written once and never rewritten, so it ages
-// out after the TTL even while metadata.json stays fresh, at which point the
-// next scan finds no spec and persists a terminal failure. Worst case is
-// roughly ttl/(leaseTimeout+scanInterval) re-executions, each still subject
-// to the tenant's concurrency limit.
+// is capped at defaultMaxAdoptions re-executions via Metadata.AdoptionCount;
+// once exhausted it's marked failed outright. The TTL remains the backstop
+// for records that never get adopted at all, e.g. because no dispatcher is
+// configured.
 func (s *Store) runAdoption(ctx context.Context) {
 	err := s.bucket.Iter(ctx, storagePrefix, func(name string) error {
 		if path.Base(name) != metadataFilename {
@@ -581,6 +591,12 @@ func (s *Store) adopt(ctx context.Context, meta Metadata) {
 	if !s.leaseExpired(&fresh) {
 		return
 	}
+	if fresh.AdoptionCount >= defaultMaxAdoptions {
+		if err := s.markTooManyAdoptions(ctx, meta.TenantID, meta.RequestID, fresh.AdoptionCount); err != nil {
+			level.Warn(s.logger).Log("msg", "failed to persist too-many-adoptions failure", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
+		}
+		return
+	}
 	if exists, err := s.resultExists(ctx, meta.TenantID, meta.RequestID); err != nil {
 		// Same reasoning as the entry check above: inconclusive means skip,
 		// not proceed, and wait for the next scan tick.
@@ -595,6 +611,7 @@ func (s *Store) adopt(ctx context.Context, meta Metadata) {
 	leaseAge := time.Since(fresh.LastHeartbeat)
 	fresh.Owner = s.ownerID
 	fresh.LastHeartbeat = time.Now().UTC()
+	fresh.AdoptionCount++
 	if err := s.saveJSON(ctx, metaPath, &fresh); err != nil {
 		level.Warn(s.logger).Log("msg", "failed to claim orphaned query", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
 		return

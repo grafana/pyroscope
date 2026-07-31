@@ -115,6 +115,7 @@ func TestMetadataUnmarshal_BackwardCompatible(t *testing.T) {
 	require.NoError(t, json.Unmarshal(raw, &meta))
 	require.Equal(t, StatusInProgress, meta.Status)
 	require.Equal(t, "", meta.Owner)
+	require.Equal(t, 0, meta.AdoptionCount)
 }
 
 func TestStoreCreate_PersistsSpecBeforeMetadata(t *testing.T) {
@@ -518,6 +519,80 @@ func TestStoreAdopt_MultiTenantScanIsIsolated(t *testing.T) {
 	require.Equal(t, float64(1), testutil.ToFloat64(store.adoptionAttempts.WithLabelValues(tenantB)))
 	require.Equal(t, float64(1), testutil.ToFloat64(store.adoptionSuccesses.WithLabelValues(tenantA)))
 	require.Equal(t, float64(1), testutil.ToFloat64(store.adoptionSuccesses.WithLabelValues(tenantB)))
+}
+
+// TestStoreAdopt_AdoptionCountIncrementsAcrossClaims proves AdoptionCount
+// rides the same metadata write as each successful claim, rather than being
+// tracked separately.
+func TestStoreAdopt_AdoptionCountIncrementsAcrossClaims(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(log.NewNopLogger(), objstore.NewInMemBucket(), nil)
+	dispatcher := &fakeDispatcher{}
+	store.SetDispatcher(dispatcher)
+
+	const tenantID = "tenant-a"
+	requestID := uuid.New().String()
+	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
+	require.NoError(t, store.create(ctx, tenantID, requestID, spec))
+
+	backdateHeartbeat(t, ctx, store, tenantID, requestID, time.Now().Add(-time.Hour).UTC())
+	store.runAdoption(ctx)
+
+	var meta Metadata
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
+	require.Equal(t, 1, meta.AdoptionCount)
+
+	// The fakeDispatcher never renews the lease, so the record is stale again
+	// and eligible for a second adoption.
+	backdateHeartbeat(t, ctx, store, tenantID, requestID, time.Now().Add(-time.Hour).UTC())
+	store.runAdoption(ctx)
+
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
+	require.Equal(t, 2, meta.AdoptionCount)
+	require.Equal(t, StatusInProgress, meta.Status)
+	require.Len(t, dispatcher.calls, 2)
+}
+
+// TestStoreAdopt_ExceedsMaxAdoptionsMarksFailureNoDispatch proves that once
+// AdoptionCount reaches defaultMaxAdoptions, a further stale lease is refused
+// adoption and the query is persisted as a terminal failure instead of being
+// claimed and dispatched again.
+func TestStoreAdopt_ExceedsMaxAdoptionsMarksFailureNoDispatch(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(log.NewNopLogger(), objstore.NewInMemBucket(), nil)
+	dispatcher := &fakeDispatcher{}
+	store.SetDispatcher(dispatcher)
+
+	const tenantID = "tenant-a"
+	requestID := uuid.New().String()
+	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
+	require.NoError(t, store.create(ctx, tenantID, requestID, spec))
+
+	for i := 0; i < defaultMaxAdoptions; i++ {
+		backdateHeartbeat(t, ctx, store, tenantID, requestID, time.Now().Add(-time.Hour).UTC())
+		store.runAdoption(ctx)
+	}
+	require.Len(t, dispatcher.calls, defaultMaxAdoptions)
+
+	var meta Metadata
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
+	require.Equal(t, defaultMaxAdoptions, meta.AdoptionCount)
+	require.Equal(t, StatusInProgress, meta.Status)
+
+	// One more stale lease pushes AdoptionCount to the cap: no further claim
+	// or dispatch, a terminal failure is persisted instead.
+	backdateHeartbeat(t, ctx, store, tenantID, requestID, time.Now().Add(-time.Hour).UTC())
+	store.runAdoption(ctx)
+
+	require.Len(t, dispatcher.calls, defaultMaxAdoptions, "no additional dispatch once the cap is hit")
+
+	var final Metadata
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &final))
+	require.Equal(t, StatusFailure, final.Status)
+	require.Equal(t, errTooManyAdoptions.Error(), final.ErrorMessage)
+
+	require.Equal(t, float64(defaultMaxAdoptions+1), testutil.ToFloat64(store.adoptionAttempts.WithLabelValues(tenantID)))
+	require.Equal(t, float64(defaultMaxAdoptions), testutil.ToFloat64(store.adoptionSuccesses.WithLabelValues(tenantID)))
 }
 
 // TestStoreGet_AnchorReportsSuccessDespiteLaterFailureWrite is the headline,
