@@ -332,14 +332,16 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 	}
 
 	var ruler metrics.Ruler
-	var err error
-	if f.recordingRulesClient != nil {
-		ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
-		if err != nil {
-			return nil, err
+	if f.Cfg.RecordingRules.Enabled {
+		if f.recordingRulesClient != nil {
+			r, err := metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
+			if err != nil {
+				return nil, err
+			}
+			ruler = r
+		} else {
+			ruler = metrics.NewStaticRulerFromOverrides(f.Overrides)
 		}
-	} else {
-		ruler = metrics.NewStaticRulerFromOverrides(f.Overrides)
 	}
 
 	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, swClient, ruler, f.auth)

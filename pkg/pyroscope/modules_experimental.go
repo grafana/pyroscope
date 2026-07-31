@@ -277,7 +277,11 @@ func (f *Pyroscope) initCompactionWorker() (svc services.Service, err error) {
 
 	var ruler metrics.Ruler
 	var exporter metrics.Exporter
-	if f.Cfg.CompactionWorker.MetricsExporter.Enabled {
+	if f.Cfg.RecordingRules.Enabled {
+		// remote-write-address is mandatory when the exporter runs.
+		if err = f.Cfg.CompactionWorker.MetricsExporter.Validate(); err != nil {
+			return nil, err
+		}
 		if f.recordingRulesClient != nil {
 			ruler, err = metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
 			if err != nil {
@@ -411,14 +415,10 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 }
 
 func (f *Pyroscope) initRecordingRulesClient() (services.Service, error) {
-	if err := f.Cfg.CompactionWorker.MetricsExporter.Validate(); err != nil {
-		return nil, err
-	}
-	if !f.Cfg.CompactionWorker.MetricsExporter.Enabled ||
-		f.Cfg.CompactionWorker.MetricsExporter.RulesSource.ClientAddress == "" {
+	if !f.Cfg.RecordingRules.Enabled || f.Cfg.RecordingRules.ClientAddress == "" {
 		return nil, nil
 	}
-	c, err := recordingrulesclient.NewClient(f.Cfg.CompactionWorker.MetricsExporter.RulesSource.ClientAddress, f.logger, f.auth)
+	c, err := recordingrulesclient.NewClient(f.Cfg.RecordingRules.ClientAddress, f.logger, f.auth)
 	if err != nil {
 		return nil, err
 	}
