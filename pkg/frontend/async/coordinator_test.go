@@ -138,6 +138,23 @@ func TestCoordinatorDispatch_ConcurrencyLimitSkipsExecution(t *testing.T) {
 	require.Empty(t, fakeNext.callsSnapshot())
 }
 
+// TestCoordinatorCanDispatch_ReflectsInFlightWithoutMutating proves
+// CanDispatch is a pure peek: it tracks capacity as tryAcquire consumes it,
+// but never itself changes inFlight or the gauge.
+func TestCoordinatorCanDispatch_ReflectsInFlightWithoutMutating(t *testing.T) {
+	logger := log.NewNopLogger()
+	store := NewStore(logger, objstore.NewInMemBucket(), nil)
+	fakeNext := &fakeQuerierHandler{resp: &querierv1.SelectMergeStacktracesResponse{}}
+	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, nil)
+
+	const tenantID = "tenant-a"
+	require.True(t, coordinator.CanDispatch(tenantID))
+	require.True(t, coordinator.CanDispatch(tenantID), "a peek must not itself consume capacity")
+
+	require.NoError(t, coordinator.tryAcquire(tenantID))
+	require.False(t, coordinator.CanDispatch(tenantID))
+}
+
 func TestCoordinatorSubmit_TenantIsolation(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()

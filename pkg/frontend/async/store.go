@@ -89,6 +89,10 @@ type Result struct {
 // Dispatcher re-runs a query that Store has adopted after its owner's lease
 // expired. Implemented by Coordinator; wired into Store via SetDispatcher.
 type Dispatcher interface {
+	// CanDispatch is a read-only capacity peek, not a reservation: it makes
+	// no guarantee that a following Dispatch call will actually run the
+	// query (Dispatch has its own gate and may still decline).
+	CanDispatch(tenantID string) bool
 	Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest)
 }
 
@@ -513,21 +517,9 @@ func (s *Store) runCleanup(ctx context.Context) {
 	}
 }
 
-// runAdoption lists every object under storagePrefix but filters to just
-// metadata.json. The number of listed objects is bounded by cleanup()'s TTL.
-//
-// No cap on adoptions per tick: actual query re-execution is already
-// bounded per tenant by Coordinator.Dispatch's own tryAcquire. This does
-// not protect against the aggregate burst of re-executions summed across
-// many tenants at once, e.g. right after one replica dies while holding
-// queries for many tenants. A claim whose dispatch is declined does no
-// further work.
-//
-// A query that repeatedly kills its owner (e.g. one that OOMs the frontend)
-// is capped at defaultMaxAdoptions re-executions via Metadata.AdoptionCount;
-// once exhausted it's marked failed outright. The TTL remains the backstop
-// for records that never get adopted at all, e.g. because no dispatcher is
-// configured.
+// runAdoption re-dispatches in-progress records whose lease has expired.
+// Re-execution is bounded per tenant by the concurrency limit and per
+// record by defaultMaxAdoptions, but not across tenants in aggregate.
 func (s *Store) runAdoption(ctx context.Context) {
 	err := s.bucket.Iter(ctx, storagePrefix, func(name string) error {
 		if path.Base(name) != metadataFilename {
@@ -576,6 +568,16 @@ func (s *Store) adopt(ctx context.Context, meta Metadata) {
 	s.adoptionAttempts.WithLabelValues(meta.TenantID).Inc()
 	if s.dispatcher == nil {
 		level.Warn(s.logger).Log("msg", "found adoptable async query but no dispatcher is configured", "tenant", meta.TenantID, "request_id", meta.RequestID)
+		return
+	}
+
+	// Best-effort peek; Dispatch's gate is authoritative. The peek and the
+	// dispatch are not atomic: during the reads and the claim write below, a
+	// concurrent Submit can take the tenant's last slot, so Dispatch may
+	// still decline after the claim has reset the lease and spent one unit
+	// of the adoption budget. That wastes at most one claim per race; the
+	// peek prevents the systematic version on a saturated frontend.
+	if !s.dispatcher.CanDispatch(meta.TenantID) {
 		return
 	}
 

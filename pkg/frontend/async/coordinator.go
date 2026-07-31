@@ -104,6 +104,15 @@ func (c *Coordinator) Submit(ctx context.Context, tenantID string, req *querierv
 	return requestID, nil
 }
 
+// CanDispatch implements Store's Dispatcher interface: a read-only peek at
+// whether tenantID currently has spare capacity.
+func (c *Coordinator) CanDispatch(tenantID string) bool {
+	maxConcurrent := c.limits.MaxAsyncQueryConcurrency(tenantID)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return maxConcurrent > 0 && c.inFlight[tenantID] < maxConcurrent
+}
+
 // Dispatch implements Store's Dispatcher interface: it (re-)runs a query
 // whose record and spec are already persisted. A declined dispatch (tenant
 // at its concurrency limit) never rolls back the store's claim on the

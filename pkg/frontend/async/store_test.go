@@ -40,14 +40,26 @@ type fakeDispatchCall struct {
 	spec      *querierv1.SelectMergeStacktracesRequest
 }
 
-// fakeDispatcher is a test double for Dispatcher. It always records the call;
+// fakeDispatcher is a test double for Dispatcher. CanDispatch defaults to
+// true (spare capacity) unless canDispatch is explicitly set to false,
+// simulating a saturated tenant. Dispatch always records the call;
 // onDispatch, if set, runs synchronously afterward. Leaving onDispatch nil
-// simulates a dispatcher that declines to do anything, e.g. Coordinator's
-// concurrency limit rejecting the adopted query.
+// simulates a dispatcher whose execution declines to do anything further
+// once dispatched (distinct from CanDispatch returning false, which never
+// reaches Dispatch at all).
 type fakeDispatcher struct {
-	mu         sync.Mutex
-	calls      []fakeDispatchCall
-	onDispatch func(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest)
+	mu               sync.Mutex
+	calls            []fakeDispatchCall
+	canDispatchCalls int
+	atCapacity       bool // when true, CanDispatch reports no spare capacity; default (false) has capacity.
+	onDispatch       func(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest)
+}
+
+func (f *fakeDispatcher) CanDispatch(tenantID string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.canDispatchCalls++
+	return !f.atCapacity
 }
 
 func (f *fakeDispatcher) Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
@@ -483,25 +495,40 @@ func TestStoreAdopt_NilDispatcherIsNoop(t *testing.T) {
 	require.Equal(t, float64(1), testutil.ToFloat64(store.adoptionAttempts.WithLabelValues(tenantID)))
 }
 
-func TestStoreAdopt_ClaimSucceedsEvenIfDispatcherDeclines(t *testing.T) {
+// TestStoreAdopt_AtCapacityLeavesRecordUntouched proves the fix for the
+// claim-before-capacity-check bug: when CanDispatch reports no spare
+// capacity (e.g. the tenant is at its concurrency limit), adopt() must not
+// touch the record at all -- no Owner/LastHeartbeat change, no AdoptionCount
+// spend, and no claim success recorded -- so the lease stays expired and any
+// frontend with spare capacity can adopt it on the very next scan instead of
+// waiting out a full lease period for nothing.
+func TestStoreAdopt_AtCapacityLeavesRecordUntouched(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(log.NewNopLogger(), objstore.NewInMemBucket(), nil)
-	dispatcher := &fakeDispatcher{} // no onDispatch hook: declines to run anything further.
+	dispatcher := &fakeDispatcher{atCapacity: true}
 	store.SetDispatcher(dispatcher)
 
 	const tenantID = "tenant-a"
 	requestID := uuid.New().String()
 	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
 	require.NoError(t, store.create(ctx, tenantID, requestID, spec))
-	backdateHeartbeat(t, ctx, store, tenantID, requestID, time.Now().Add(-time.Hour).UTC())
+	var before Metadata
+	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &before))
+	stale := time.Now().Add(-time.Hour).UTC()
+	backdateHeartbeat(t, ctx, store, tenantID, requestID, stale)
 
 	store.runAdoption(ctx)
 
+	require.Empty(t, dispatcher.calls)
+	require.Greater(t, dispatcher.canDispatchCalls, 0, "CanDispatch must still be consulted")
+
 	var meta Metadata
 	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))
-	require.Equal(t, store.ownerID, meta.Owner)
-	require.WithinDuration(t, time.Now(), meta.LastHeartbeat, 5*time.Second)
-	require.Equal(t, float64(1), testutil.ToFloat64(store.adoptionSuccesses.WithLabelValues(tenantID)))
+	require.Equal(t, before.Owner, meta.Owner)
+	require.WithinDuration(t, stale, meta.LastHeartbeat, time.Second)
+	require.Equal(t, 0, meta.AdoptionCount)
+	require.Equal(t, StatusInProgress, meta.Status)
+	require.Equal(t, float64(0), testutil.ToFloat64(store.adoptionSuccesses.WithLabelValues(tenantID)))
 }
 
 func TestStoreAdopt_MultiTenantScanIsIsolated(t *testing.T) {
