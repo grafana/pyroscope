@@ -8,6 +8,7 @@
 # Paths are relative to the repository root. The instrumentor fails if an
 # entry does not exist, so remove entries when the files they name go away.
 api/openapiv2/openapiv2.go
+cmd/antithesis/smoke_profile.go
 cmd/profilecli/bucket.go
 pkg/api/index.go
 pkg/api/memberlist_status.go
