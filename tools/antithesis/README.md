@@ -67,11 +67,8 @@ build is affected. Notes:
 - `instrumentor.exclude` — files the Go instrumentor must not instrument
   (`//go:embed` users); compiled verbatim instead.
 - `Makefile` — build and push targets, described below.
-- `scripts/` — REST API clients ([reference](https://antithesis.com/docs/reference/rest_api/))
-  to launch a test run (`launch.sh`), check run status (`status.sh`), and
-  download run logs (`logs.sh`), plus a launch variant going through the
-  [test webhook](https://antithesis.com/docs/reference/webhook/test_webhook/)
-  (`webhook.sh`).
+- `scripts/webhook.sh` — the supported launcher for the Antithesis
+  [test webhook](https://antithesis.com/docs/reference/webhook/test_webhook/).
 
 ## Test template
 
@@ -97,65 +94,116 @@ The Deployment runs the same binary as `antithesis idle`, keeping the container
 alive for Test Composer. Its readiness probe uses `antithesis ready`, a
 side-effect-free command; readiness of the complete manifest set gates testing.
 
-## Usage
+## Getting started: build and trigger a run
 
-Prerequisites: an Antithesis tenant with its registry key file and REST API
-key (provided by Antithesis), plus Docker and Go (the Pyroscope binary is
-built inside Docker; Go fetches helm for rendering the manifests).
+The supported launch path is `scripts/webhook.sh`. It uses the Antithesis test
+webhook with the username and password supplied by Antithesis.
+
+Prerequisites:
+
+- An Antithesis tenant, registry key file, webhook username, and webhook
+  password.
+- Docker with Buildx enabled. Docker Desktop and OrbStack both provide it.
+- Go, `make`, `curl`, and `jq`. Go installs the pinned Helm binary used to
+  render the config manifests; the application binaries are built in Docker.
+
+### 1. Pin the tenant and image tag
+
+Start from a clean, committed working tree when possible, then choose the tag
+once and reuse it for building, pushing, and launching:
 
 ```bash
 cd tools/antithesis
 
-# One-time: authenticate docker against the Antithesis registry.
-make docker-login ANTITHESIS_KEY_FILE=/path/to/<tenant>.key.json
+export ANTITHESIS_TENANT=grafana
+export IMAGE_TAG="$(../../tools/image-tag)"
 
-# Build the Pyroscope, test-client, and config images. Every image is
-# linux/amd64 even when this command runs on an ARM workstation.
-make images ANTITHESIS_TENANT=<tenant>
-
-# Push all three images. This first refuses any local image that is not
-# linux/amd64.
-make push ANTITHESIS_TENANT=<tenant>
-
-# One-time: store the API key (and any other environment variables for the
-# scripts) in a .env file, which is gitignored. Variables set in the
-# environment take precedence over the file.
-echo 'ANTITHESIS_API_KEY=<api key>' > .env
-
-# Launch a test run (see --help for all options, --dry-run to inspect the
-# request without launching).
-./scripts/launch.sh --duration 15 --recipients 'you@example.com'
-
-# Same, but through the test webhook, authenticating with the tenant's
-# webhook username/password (ANTITHESIS_USER, ANTITHESIS_PASSWORD) instead
-# of the API key.
-./scripts/webhook.sh --duration 15 --recipients 'you@example.com'
-
-# Check on a run (or list recent runs by omitting the run id).
-./scripts/status.sh <run_id>
-
-# Download a run's logs: its failure moment's logs by default, a specific
-# moment with --input-hash/--vtime, or the build logs with --build.
-./scripts/logs.sh <run_id>
+echo "$IMAGE_TAG"
 ```
 
-The scripts talk to the REST API on `ANTITHESIS_HOST` (default
-`grafanalabs.antithesis.com` — the API and web UI subdomain, independent of
-the registry tenant name). The launch parameters include the config image,
-the image list (the Pyroscope and test-client images built here plus the public
-images referenced by the rendered manifests), and a creator name derived from
-`git config user.email`.
+If you intentionally build uncommitted changes, set an explicitly unique tag
+instead of reusing a tag that may already exist in the registry. The config
+manifest contains this tag, so changing it partway through the workflow will
+produce a mismatched deployment.
 
-Results appear at `https://grafanalabs.antithesis.com/runs`, and a report is
-emailed to the `--recipients` (optional) when the run completes. Runs can
-also be launched from `https://grafanalabs.antithesis.com/test-launchers`
-(`basic_k8s_test`).
+### 2. Authenticate with the container registry
 
-Make targets and scripts accept `IMAGE_TAG`, defaulting to the
-`tools/image-tag` output (e.g. `main-fa92a887b`). Build, push, and launch
-must use the same value, and the default changes with new commits or staged
-changes, so pin it once for the whole sequence:
-`export IMAGE_TAG=$(../../tools/image-tag)`.
+```bash
+make docker-login ANTITHESIS_KEY_FILE=/secure/path/to/<tenant>.key.json
+```
+
+### 3. Build and verify the images
+
+```bash
+make images
+make verify-images
+```
+
+This builds the instrumented Pyroscope image, the test-client image, and the
+config image. Every build is forced to `linux/amd64`, including on ARM hosts.
+The Pyroscope build therefore runs under emulation on Apple Silicon and may
+take considerably longer than a native build.
+
+`make images` verifies each image after loading it, and `make verify-images`
+should print `linux/amd64` for all three images. Do not continue if any image
+reports another platform.
+
+### 4. Push the images
+
+```bash
+make push
+```
+
+The push target checks all three local image platforms again and refuses to
+upload anything if any image is not `linux/amd64`.
+
+### 5. Configure webhook credentials
+
+Create `tools/antithesis/.env` with an editor. The file is gitignored; avoid
+putting credentials directly in a shell command that will be saved in history.
+
+```dotenv
+ANTITHESIS_USER=<webhook username>
+ANTITHESIS_PASSWORD=<webhook password>
+ANTITHESIS_HOST=grafanalabs.antithesis.com
+```
+
+Variables already exported in the shell, including `ANTITHESIS_TENANT` and
+`IMAGE_TAG`, take precedence over `.env`.
+
+### 6. Inspect the webhook request
+
+Use a dry run before launching:
+
+```bash
+./scripts/webhook.sh \
+  --dry-run \
+  --tag "$IMAGE_TAG" \
+  --tenant "$ANTITHESIS_TENANT" \
+  --duration 15 \
+  --description "Pyroscope smoke $IMAGE_TAG" \
+  --recipients "you@example.com"
+```
+
+Verify that the payload uses the same tag for `pyroscope`,
+`pyroscope-test-client`, and `pyroscope-config`.
+
+### 7. Trigger the test run
+
+Run the same command without `--dry-run`:
+
+```bash
+./scripts/webhook.sh \
+  --tag "$IMAGE_TAG" \
+  --tenant "$ANTITHESIS_TENANT" \
+  --duration 15 \
+  --description "Pyroscope smoke $IMAGE_TAG" \
+  --recipients "you@example.com"
+```
+
+The webhook response includes the run ID. Follow the run at
+`https://grafanalabs.antithesis.com/runs`; Antithesis also emails the report to
+the optional `--recipients` address when the run completes.
 
 ## Environment constraints
 
