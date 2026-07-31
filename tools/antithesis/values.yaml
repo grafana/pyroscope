@@ -3,6 +3,71 @@
 # The image repository and tag are set at render time by the Makefile, as they
 # contain the Antithesis tenant registry and the build tag.
 
+# The Makefile supplies this fully-qualified image reference at render time.
+# Keeping the client as a dedicated Deployment lets Test Composer discover and
+# execute its commands without adding test files to every Pyroscope component.
+antithesis:
+  testClientImage: ""
+
+extraObjects:
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: pyroscope-test-client
+      namespace: default
+      labels:
+        app.kubernetes.io/name: pyroscope-test-client
+        app.kubernetes.io/part-of: pyroscope
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: pyroscope-test-client
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: pyroscope-test-client
+            app.kubernetes.io/part-of: pyroscope
+        spec:
+          automountServiceAccountToken: false
+          terminationGracePeriodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: test-client
+              image: '{{ required "antithesis.testClientImage must be set" .Values.antithesis.testClientImage }}'
+              imagePullPolicy: IfNotPresent
+              args:
+                - idle
+              env:
+                - name: PYROSCOPE_WRITE_URL
+                  value: http://pyroscope-distributor:4040
+                - name: PYROSCOPE_READ_URL
+                  value: http://pyroscope-query-frontend:4040
+              readinessProbe:
+                exec:
+                  command:
+                    - /usr/local/bin/antithesis
+                    - ready
+                initialDelaySeconds: 1
+                periodSeconds: 5
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+
 # V2 microservices mode, matching how Pyroscope is deployed in production:
 # distributor, segment-writer, metastore (3-node raft), compaction-worker,
 # query-frontend, query-backend, plus the small auxiliary services.

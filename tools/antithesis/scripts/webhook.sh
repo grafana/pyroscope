@@ -78,12 +78,15 @@ CREATOR="$(git config user.email 2>/dev/null | cut -d@ -f1 || true)"
 REGISTRY="us-central1-docker.pkg.dev/molten-verve-216720/$TENANT-repository"
 
 # All images pulled into the (air-gapped) test environment ahead of the run:
-# the Pyroscope image built from the working tree, plus the public images
-# referenced by the rendered manifests. Passing the Pyroscope image explicitly
-# lets the tag override whatever was baked into the committed manifests.
+# the Pyroscope and test-client images built from the working tree, plus the
+# public images referenced by the rendered manifests. Passing our images
+# explicitly lets the tag override whatever was baked into the committed
+# manifests.
 IMAGES="$({
 	echo "$REGISTRY/pyroscope:$TAG"
-	sed -n 's/^ *image: *"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$DIR"/manifests/*.yaml |
+	echo "$REGISTRY/pyroscope-test-client:$TAG"
+	sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$DIR"/manifests/*.yaml |
+		tr -d "'\"" |
 		grep -v "^$REGISTRY/" | sort -u
 } | paste -sd';' -)"
 

@@ -1,0 +1,25 @@
+# The dedicated Test Composer client. Both the build command and this
+# Dockerfile require linux/amd64 so an ARM workstation cannot accidentally
+# produce an image that Antithesis cannot run.
+
+FROM golang:1.25-bookworm AS builder
+
+ARG TARGETPLATFORM
+RUN test "$TARGETPLATFORM" = "linux/amd64"
+
+WORKDIR /src
+COPY . .
+
+RUN mkdir -p /rootfs/usr/local/bin /rootfs/opt/antithesis/test/v1/core && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOAMD64=v2 \
+      go build -trimpath -ldflags="-s -w" -o /rootfs/usr/local/bin/antithesis ./cmd/antithesis && \
+    ln -s /usr/local/bin/antithesis /rootfs/opt/antithesis/test/v1/core/first_seed && \
+    ln -s /usr/local/bin/antithesis /rootfs/opt/antithesis/test/v1/core/singleton_driver_smoke
+
+FROM gcr.io/distroless/static@sha256:87bce11be0af225e4ca761c40babb06d6d559f5767fbf7dc3c47f0f1a466b92c
+
+COPY --from=builder /rootfs/ /
+
+USER 65532:65532
+ENTRYPOINT [ "/usr/local/bin/antithesis" ]
+CMD [ "idle" ]

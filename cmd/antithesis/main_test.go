@@ -18,8 +18,10 @@ func TestCommandName(t *testing.T) {
 	}{
 		{name: "container default", args: []string{"antithesis"}, want: "idle"},
 		{name: "container idle argument", args: []string{"antithesis", "idle"}, want: "idle"},
+		{name: "readiness probe", args: []string{"antithesis", "ready"}, want: "ready"},
 		{name: "container command argument", args: []string{"antithesis", "first_seed"}, want: "first_seed"},
 		{name: "composer symlink", args: []string{"/opt/antithesis/test/v1/core/first_seed"}, want: "first_seed"},
+		{name: "singleton smoke symlink", args: []string{"/opt/antithesis/test/v1/core/singleton_driver_smoke"}, want: "singleton_driver_smoke"},
 		{name: "unknown composer symlink", args: []string{"/opt/antithesis/test/v1/core/first_unknown"}, wantErr: true},
 		{name: "unknown argument", args: []string{"antithesis", "unknown"}, wantErr: true},
 		{name: "missing argv zero", wantErr: true},

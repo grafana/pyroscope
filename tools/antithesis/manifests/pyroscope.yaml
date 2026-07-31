@@ -1265,7 +1265,7 @@ spec:
         - name: "ad-hoc-profiles"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ad-hoc-profiles"
@@ -1376,7 +1376,7 @@ spec:
         - name: "admin"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=admin"
@@ -1508,7 +1508,7 @@ spec:
         - name: "distributor"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
@@ -1619,7 +1619,7 @@ spec:
         - name: "query-backend"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-backend"
@@ -1730,7 +1730,7 @@ spec:
         - name: "query-frontend"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
@@ -1841,7 +1841,7 @@ spec:
         - name: "tenant-settings"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=tenant-settings"
@@ -1903,6 +1903,65 @@ spec:
             name: pyroscope-overrides-config
         - name: data
           emptyDir: {}
+---
+# Source: pyroscope/templates/extra-manifests.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: pyroscope-test-client
+    app.kubernetes.io/part-of: pyroscope
+  name: pyroscope-test-client
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope-test-client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pyroscope-test-client
+        app.kubernetes.io/part-of: pyroscope
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - idle
+        env:
+        - name: PYROSCOPE_WRITE_URL
+          value: http://pyroscope-distributor:4040
+        - name: PYROSCOPE_READ_URL
+          value: http://pyroscope-query-frontend:4040
+        image: 'us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope-test-client:huhta-antithesis-b171ad0bf'
+        imagePullPolicy: IfNotPresent
+        name: test-client
+        readinessProbe:
+          exec:
+            command:
+            - /usr/local/bin/antithesis
+            - ready
+          initialDelaySeconds: 1
+          periodSeconds: 5
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+      securityContext:
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 5
 ---
 # Source: pyroscope/charts/minio/templates/statefulset.yaml
 apiVersion: apps/v1
@@ -2049,7 +2108,7 @@ spec:
         - name: "compaction-worker"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=compaction-worker"
@@ -2163,7 +2222,7 @@ spec:
         - name: "metastore"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=metastore"
@@ -2314,7 +2373,7 @@ spec:
         - name: "segment-writer"
           securityContext:
             {}
-          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-fa92a887b"
+          image: "us-central1-docker.pkg.dev/molten-verve-216720/grafana-repository/pyroscope:huhta-antithesis-b171ad0bf"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=segment-writer"

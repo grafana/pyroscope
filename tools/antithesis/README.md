@@ -8,9 +8,12 @@ small auxiliary services, with MinIO standing in for object storage. Manifests
 are rendered from the production Helm chart at
 `operations/pyroscope/helm/pyroscope`.
 
-There is intentionally no test workload and no SDK assertions yet: Antithesis
-starts fault injection once the deployment reports ready (the chart's
-`/ready` readiness probe), and its built-in properties (crashes, hangs) apply.
+A dedicated test-client Deployment supplies the `core`
+[test template](https://antithesis.com/docs/test_templates/first_test/). It
+seeds an embedded pprof for two tenants before faults begin, then runs a
+singleton push/query smoke check under faults. Kubernetes readiness and the
+successful `kapp deploy` provide the setup-complete signal; the client does not
+emit an earlier SDK signal.
 
 The Pyroscope binary is built with Antithesis
 [coverage instrumentation](https://antithesis.com/docs/reference/sdk/go/instrumentor/):
@@ -57,6 +60,10 @@ build is affected. Notes:
   context; `Dockerfile.pyroscope.dockerignore` trims it), and the runtime
   stage mirrors `cmd/pyroscope/Dockerfile` on the glibc distroless base, with
   the symbol table at `/symbols`.
+- `Dockerfile.test-client` — the dedicated, long-running Test Composer client.
+  It compiles `cmd/antithesis`, installs executable command symlinks beneath
+  `/opt/antithesis/test/v1/core/`, and independently rejects any build target
+  other than `linux/amd64`.
 - `instrumentor.exclude` — files the Go instrumentor must not instrument
   (`//go:embed` users); compiled verbatim instead.
 - `Makefile` — build and push targets, described below.
@@ -65,6 +72,30 @@ build is affected. Notes:
   download run logs (`logs.sh`), plus a launch variant going through the
   [test webhook](https://antithesis.com/docs/reference/webhook/test_webhook/)
   (`webhook.sh`).
+
+## Test template
+
+The client image exposes only commands that currently work:
+
+```text
+/opt/antithesis/test/v1/core/
+├── first_seed
+└── singleton_driver_smoke
+```
+
+Both are symlinks to `/usr/local/bin/antithesis`; the invoked filename selects
+the command. `first_seed` pushes the embedded smoke profile for `tenant-a` and
+`tenant-b` and waits for both profiles to be queryable before fault injection.
+`singleton_driver_smoke` repeats that push/query operation once while faults
+are active. A non-`first` command is required for a valid template by the
+[Test Composer command rules](https://antithesis.com/docs/test_templates/test_composer_reference/).
+Placeholder commands in `cmd/antithesis` are deliberately not installed in the
+test directory until they are implemented, because every discovered command is
+eligible for scheduling.
+
+The Deployment runs the same binary as `antithesis idle`, keeping the container
+alive for Test Composer. Its readiness probe uses `antithesis ready`, a
+side-effect-free command; readiness of the complete manifest set gates testing.
 
 ## Usage
 
@@ -78,11 +109,12 @@ cd tools/antithesis
 # One-time: authenticate docker against the Antithesis registry.
 make docker-login ANTITHESIS_KEY_FILE=/path/to/<tenant>.key.json
 
-# Build the Pyroscope image from the working tree (linux/amd64) and the
-# config image containing the rendered manifests.
+# Build the Pyroscope, test-client, and config images. Every image is
+# linux/amd64 even when this command runs on an ARM workstation.
 make images ANTITHESIS_TENANT=<tenant>
 
-# Push both images to the Antithesis registry.
+# Push all three images. This first refuses any local image that is not
+# linux/amd64.
 make push ANTITHESIS_TENANT=<tenant>
 
 # One-time: store the API key (and any other environment variables for the
@@ -110,8 +142,8 @@ echo 'ANTITHESIS_API_KEY=<api key>' > .env
 The scripts talk to the REST API on `ANTITHESIS_HOST` (default
 `grafanalabs.antithesis.com` — the API and web UI subdomain, independent of
 the registry tenant name). The launch parameters include the config image,
-the image list (the Pyroscope image built here plus the public images
-referenced by the rendered manifests), and a creator name derived from
+the image list (the Pyroscope and test-client images built here plus the public
+images referenced by the rendered manifests), and a creator name derived from
 `git config user.email`.
 
 Results appear at `https://grafanalabs.antithesis.com/runs`, and a report is
@@ -137,16 +169,20 @@ worth keeping in mind when changing the setup:
   tenant registry. The `antithesis.images` launch parameter supplies additional
   images or overrides manifest image versions. Never use `latest` tags or
   `imagePullPolicy: Always` — nothing can be pulled at runtime.
-- The environment is `linux/amd64`, and all images — including the config
-  image — must be built for that platform. Both Makefile image targets force
-  it. A host-platform config image (e.g. built on Apple Silicon) does not fail
-  the run up front: the environment still boots, but the image has no
+- The environment is `linux/amd64`, and all images — including the test client
+  and config image — must be built for that platform. The platform variable is
+  non-overridable, every build uses `docker buildx --platform linux/amd64`, the
+  test-client Dockerfile checks `TARGETPLATFORM`, and `make push` inspects all
+  three loaded images before uploading anything. A host-platform config image
+  (e.g. built on Apple Silicon) does not fail the run up front: the environment
+  still boots, but the image has no
   `linux/amd64` variant, its contents never reach `/opt/config`, and setup
   fails with `kapp: Error: stat /opt/config/manifests: no such file or
   directory`.
 - Total CPU requests must stay under 1 core and memory requests under 10 GiB.
   The chart's production-scale defaults request ~13 CPUs, so `values.yaml`
-  carries per-component sizing (currently totalling ~630m CPU / ~1.8 GiB).
+  carries per-component sizing (currently totalling ~640m CPU / ~1.9 GiB,
+  including the test client).
 - Pyroscope component data lives in `emptyDir` volumes (chart default,
   `persistence.enabled=false`); with 3 replicas of each stateful component,
   quorum survives single-pod faults. MinIO uses two 5 Gi PVCs on the default
@@ -160,8 +196,8 @@ worth keeping in mind when changing the setup:
 
 ## Next steps
 
-Once this baseline runs, the natural extensions are a
-[test composer](https://antithesis.com/docs/product/test_templates/) workload
-image that pushes and queries profiles, and
+The next extension is to implement and expose the finer-grained
+`parallel_driver_*`, `anytime_*`, and `eventually_*` commands already sketched
+in `cmd/antithesis`, then add
 [SDK assertions](https://antithesis.com/docs/using_antithesis/sdk/) for
 Pyroscope invariants.

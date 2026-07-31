@@ -1,0 +1,13 @@
+# Build-context exclusions for Dockerfile.test-client. The Go build still uses
+# repository packages, so keep source code and trim generated/local artifacts.
+.git
+.tmp
+.claude
+bryan
+pyroscope
+profile.pprof
+profilecli
+ui/node_modules
+ui/dist
+tools/antithesis/.env
+tools/antithesis/logs

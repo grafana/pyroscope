@@ -34,7 +34,11 @@ func run(ctx context.Context, args []string) error {
 	switch command {
 	case "idle":
 		return Idle(ctx)
+	case "ready":
+		return nil
 	case "first_seed":
+		return FirstSeed(ctx)
+	case "singleton_driver_smoke":
 		return FirstSeed(ctx)
 	case "parallel_driver_roundtrip":
 		return fmt.Errorf("command %q is not implemented", command)
@@ -78,7 +82,9 @@ func commandName(args []string) (string, error) {
 func isCommand(command string) bool {
 	switch command {
 	case "idle",
+		"ready",
 		"first_seed",
+		"singleton_driver_smoke",
 		"parallel_driver_roundtrip",
 		"parallel_driver_metadata",
 		"anytime_tenant_isolation",
