@@ -118,14 +118,33 @@ func TestSetAdminRouter_NilSafe(t *testing.T) {
 }
 
 func TestRegisterNoUI(t *testing.T) {
-	a, mainMux, _ := newTestAPIWithMode(t, AdminServerDisabled)
-	a.RegisterNoUI()
+	for _, tt := range []struct {
+		name            string
+		mode            AdminServerMode
+		wantAdminStatus int
+	}{
+		{name: "disabled", mode: AdminServerDisabled, wantAdminStatus: http.StatusNotFound},
+		{name: "additional", mode: AdminServerAdditional, wantAdminStatus: http.StatusFound},
+		{name: "exclusive", mode: AdminServerExclusive, wantAdminStatus: http.StatusFound},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			a, mainMux, adminRouter := newTestAPIWithMode(t, tt.mode)
+			a.RegisterNoUI()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	mainMux.ServeHTTP(rec, req)
+			mainReq := httptest.NewRequest(http.MethodGet, "/", nil)
+			mainRec := httptest.NewRecorder()
+			mainMux.ServeHTTP(mainRec, mainReq)
+			assert.Equal(t, http.StatusNotFound, mainRec.Code)
+			assert.Contains(t, mainRec.Body.String(), "query-frontend")
+			assert.Contains(t, mainRec.Body.String(), "/admin")
 
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-	assert.Contains(t, rec.Body.String(), "query-frontend")
-	assert.Contains(t, rec.Body.String(), "/admin")
+			adminReq := httptest.NewRequest(http.MethodGet, "/", nil)
+			adminRec := httptest.NewRecorder()
+			adminRouter.ServeHTTP(adminRec, adminReq)
+			assert.Equal(t, tt.wantAdminStatus, adminRec.Code)
+			if tt.wantAdminStatus == http.StatusFound {
+				assert.Equal(t, "/admin", adminRec.Header().Get("Location"))
+			}
+		})
+	}
 }

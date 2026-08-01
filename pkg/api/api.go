@@ -216,13 +216,24 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 }
 
 func (a *API) RegisterNoUI() {
-	a.RegisterRoute("/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	noUIHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(
 			w,
 			"The user interface is not available on this component. Connect to the query-frontend component to run queries. Administrative endpoints are available at /admin.",
 			http.StatusNotFound,
 		)
-	}), a.registerOptionsPublicAccess()...)
+	})
+	a.RegisterRoute("/", noUIHandler, a.registerOptionsPublicAccess()...)
+
+	if a.adminRouter != nil && a.adminMode != AdminServerDisabled {
+		registerRoute(
+			a.logger,
+			a.adminRouter,
+			"/",
+			http.RedirectHandler("/admin", http.StatusFound),
+			a.registerOptionsPublicAccess()...,
+		)
+	}
 }
 
 func (a *API) RegisterCatchAll() error {
