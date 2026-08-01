@@ -215,8 +215,14 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	return nil
 }
 
-func (a *API) RegisterRedirectToAdmin() {
-	a.registerAdminRoute("/", http.RedirectHandler("/admin", http.StatusFound), a.registerOptionsPublicAccess()...)
+func (a *API) RegisterNoUI() {
+	a.RegisterRoute("/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(
+			w,
+			"The user interface is not available on this component. Connect to the query-frontend component to run queries. Administrative endpoints are available at /admin.",
+			http.StatusNotFound,
+		)
+	}), a.registerOptionsPublicAccess()...)
 }
 
 func (a *API) RegisterCatchAll() error {

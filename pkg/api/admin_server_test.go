@@ -116,3 +116,16 @@ func TestSetAdminRouter_NilSafe(t *testing.T) {
 	})
 	assert.Equal(t, http.StatusTeapot, probe(t, mainMux, "/nil-safe-route"))
 }
+
+func TestRegisterNoUI(t *testing.T) {
+	a, mainMux, _ := newTestAPIWithMode(t, AdminServerDisabled)
+	a.RegisterNoUI()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	mainMux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "query-frontend")
+	assert.Contains(t, rec.Body.String(), "/admin")
+}
