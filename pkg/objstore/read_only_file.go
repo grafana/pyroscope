@@ -97,6 +97,11 @@ func (f *ReadOnlyFile) IsObjNotFoundErr(err error) bool { return os.IsNotExist(e
 
 func (f *ReadOnlyFile) IsAccessDeniedErr(err error) bool { return os.IsPermission(err) }
 
+// IsConditionNotMetErr returns true if error means that an ObjectUploadOption
+// condition was not met. ReadOnlyFile is read-only and never uploads, so it
+// never returns such an error.
+func (f *ReadOnlyFile) IsConditionNotMetErr(err error) bool { return false }
+
 func (f *ReadOnlyFile) Attributes(_ context.Context, name string) (attrs objstore.ObjectAttributes, err error) {
 	if name != f.name {
 		return attrs, os.ErrNotExist

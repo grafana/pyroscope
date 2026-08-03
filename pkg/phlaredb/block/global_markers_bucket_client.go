@@ -151,6 +151,16 @@ func (b *globalMarkersBucket) Attributes(ctx context.Context, name string) (than
 	return b.parent.Attributes(ctx, name)
 }
 
+// IsConditionNotMetErr implements objstore.Bucket.
+func (b *globalMarkersBucket) IsConditionNotMetErr(err error) bool {
+	return b.parent.IsConditionNotMetErr(err)
+}
+
+// SupportedObjectUploadOptions implements objstore.Bucket.
+func (b *globalMarkersBucket) SupportedObjectUploadOptions() []thanosobjstore.ObjectUploadOptionType {
+	return b.parent.SupportedObjectUploadOptions()
+}
+
 // Attributes implements objstore.ReaderAt.
 func (b *globalMarkersBucket) ReaderAt(ctx context.Context, filename string) (objstore.ReaderAtCloser, error) {
 	return b.parent.ReaderAt(ctx, filename)

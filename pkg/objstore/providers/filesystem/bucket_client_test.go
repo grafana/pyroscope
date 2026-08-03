@@ -3,11 +3,40 @@ package filesystem
 import (
 	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 )
+
+func TestUpload_SupportsConditionalWrites(t *testing.T) {
+	bkt, err := NewBucket(t.TempDir())
+	require.NoError(t, err)
+	defer bkt.Close()
+
+	require.Contains(t, bkt.SupportedObjectUploadOptions(), objstore.IfMatch)
+
+	ctx := context.Background()
+	require.NoError(t, bkt.Upload(ctx, "obj", bytes.NewBufferString("v1")))
+
+	attrs, err := bkt.Attributes(ctx, "obj")
+	require.NoError(t, err)
+	require.NotEmpty(t, attrs.Version.Value)
+
+	require.NoError(t, bkt.Upload(ctx, "obj", bytes.NewBufferString("v2"), objstore.WithIfMatch(attrs.Version)))
+
+	// attrs.Version is now stale: the upload above changed it.
+	err = bkt.Upload(ctx, "obj", bytes.NewBufferString("v3"), objstore.WithIfMatch(attrs.Version))
+	require.True(t, bkt.IsConditionNotMetErr(err))
+
+	r, err := bkt.Get(ctx, "obj")
+	require.NoError(t, err)
+	defer r.Close()
+	data, err := io.ReadAll(r)
+	require.NoError(t, err)
+	require.Equal(t, "v2", string(data))
+}
 
 type testIterCase struct {
 	prefix   string

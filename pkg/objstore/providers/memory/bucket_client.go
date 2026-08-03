@@ -231,6 +231,20 @@ func (b *InMemBucket) IsAccessDeniedErr(err error) bool {
 	return false
 }
 
+// IsConditionNotMetErr returns true if error means that an ObjectUploadOption
+// condition was not met. This naive in-memory bucket does not support
+// conditional uploads, so it never returns such an error.
+func (b *InMemBucket) IsConditionNotMetErr(err error) bool {
+	return false
+}
+
+// SupportedObjectUploadOptions returns the list of ObjectUploadOptions
+// supported by this bucket. This naive in-memory bucket ignores upload
+// options entirely, so it reports none as supported.
+func (b *InMemBucket) SupportedObjectUploadOptions() []objstore.ObjectUploadOptionType {
+	return nil
+}
+
 func (b *InMemBucket) Close() error { return nil }
 
 // Name returns the bucket name.

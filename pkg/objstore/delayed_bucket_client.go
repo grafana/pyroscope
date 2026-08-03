@@ -103,6 +103,14 @@ func (m *DelayedBucketClient) Attributes(ctx context.Context, name string) (objs
 	return m.wrapped.Attributes(ctx, name)
 }
 
+func (m *DelayedBucketClient) IsConditionNotMetErr(err error) bool {
+	return m.wrapped.IsConditionNotMetErr(err)
+}
+
+func (m *DelayedBucketClient) SupportedObjectUploadOptions() []objstore.ObjectUploadOptionType {
+	return m.wrapped.SupportedObjectUploadOptions()
+}
+
 func (m *DelayedBucketClient) Close() error {
 	return m.wrapped.Close()
 }

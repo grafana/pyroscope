@@ -146,6 +146,16 @@ func (b *SSEBucketClient) Attributes(ctx context.Context, name string) (objstore
 	return b.bucket.Attributes(ctx, name)
 }
 
+// IsConditionNotMetErr implements objstore.Bucket.
+func (b *SSEBucketClient) IsConditionNotMetErr(err error) bool {
+	return b.bucket.IsConditionNotMetErr(err)
+}
+
+// SupportedObjectUploadOptions implements objstore.Bucket.
+func (b *SSEBucketClient) SupportedObjectUploadOptions() []objstore.ObjectUploadOptionType {
+	return b.bucket.SupportedObjectUploadOptions()
+}
+
 // ReaderWithExpectedErrs implements objstore.Bucket.
 func (b *SSEBucketClient) ReaderWithExpectedErrs(fn IsOpFailureExpectedFunc) BucketReader {
 	return b.WithExpectedErrs(fn)
