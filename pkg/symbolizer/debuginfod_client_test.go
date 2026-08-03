@@ -586,6 +586,36 @@ func TestFetchDebuginfo_CircuitBreakerFailsFast(t *testing.T) {
 		"an open breaker must not dial the upstream")
 }
 
+func TestFetchDebuginfo_NotFoundDoesNotTripBreaker(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:                 server.URL,
+		NotFoundCacheMaxItems:   1000,
+		NotFoundCacheTTL:        time.Minute,
+		BreakerFailureThreshold: 2,
+		BreakerOpenDuration:     time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	// Distinct build IDs, well past the threshold: a 404 is an answer, not
+	// an upstream failure, so the breaker must stay closed.
+	for i := range 5 {
+		_, err = client.FetchDebuginfo(ctx, "buildid"+strconv.Itoa(i))
+		var notFound buildIDNotFoundError
+		require.ErrorAs(t, err, &notFound)
+	}
+	assert.Equal(t, int32(5), calls.Load(), "every 404 must reach the upstream")
+}
+
 // highWaterTransport tracks the maximum number of concurrent in-flight
 // round trips.
 type highWaterTransport struct {

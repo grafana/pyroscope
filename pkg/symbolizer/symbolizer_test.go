@@ -65,6 +65,26 @@ func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocks
 	return s, mockClient, lidiaBucket
 }
 
+// A bucket failure that is not a missing object must not fall through to a
+// debuginfod fetch: the mock client has no expectations, so any fetch fails
+// the test.
+func TestResolveBucketErrorSkipsDebuginfod(t *testing.T) {
+	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+	bucket := mockobjstore.NewMockBucket(t)
+	bucket.On("Get", mock.Anything, mock.Anything).Return(nil, errors.New("bucket unavailable")).Once()
+	bucket.On("IsObjNotFoundErr", mock.Anything).Return(false)
+
+	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
+	require.NoError(t, err)
+	s.client = mockClient
+
+	ctx := tenant.InjectTenantID(context.Background(), "tenant")
+	frames, err := s.Resolve(ctx, "buildid", "binary", []uint64{0x1500})
+	require.NoError(t, err)
+	require.Len(t, frames, 1)
+	require.Nil(t, frames[0])
+}
+
 // TestSymbolizePprof tests symbolization using testdata/symbols.debug which contains:
 //
 // 0x1500 -> (contains both functions)

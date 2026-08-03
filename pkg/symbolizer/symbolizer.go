@@ -453,6 +453,10 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
 		return lidiaBytes, nil
 	}
+	if !errors.Is(err, errObjectNotFound) {
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "error").Inc()
+		return nil, err
+	}
 	s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "miss").Inc()
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
@@ -525,8 +529,12 @@ func (s *Symbolizer) fetchLidiaFromDebuginfod(ctx context.Context, buildID strin
 }
 
 func (s *Symbolizer) fetch(ctx context.Context, buildID string) (io.ReadCloser, error) {
-	if r, err := s.fetchFromUploadedDebugInfo(ctx, buildID); err == nil {
+	r, err := s.fetchFromUploadedDebugInfo(ctx, buildID)
+	if err == nil {
 		return r, nil
+	}
+	if !errors.Is(err, errObjectNotFound) {
+		return nil, err
 	}
 	return s.fetchFromDebuginfod(ctx, buildID)
 }
@@ -538,7 +546,9 @@ func (s *Symbolizer) fetchFromUploadedDebugInfo(ctx context.Context, buildID str
 	}
 	validatedBuildID, err := debuginfo.ValidateGnuBuildID(buildID)
 	if err != nil {
-		return nil, err
+		// The upload store is keyed by GNU build IDs; any other ID cannot
+		// be in it.
+		return nil, errObjectNotFound
 	}
 	r, err := s.bucket.Get(ctx, debuginfo.ObjectPath(tenantID, validatedBuildID))
 	if err != nil {

@@ -166,10 +166,13 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
 	status := statusSuccess
+	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	span, ctx := tracing.StartSpanFromContext(ctx, "debuginfod_fetch")
 	defer func() {
 		c.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
-		span.SetTag("build_id", buildID)
+		// The raw ID is unvalidated profile input; tag only the sanitized
+		// form (empty when invalid).
+		span.SetTag("build_id", sanitizedBuildID)
 		span.SetTag("outcome", status)
 		// A 404 and a breaker/negative-cache skip are expected outcomes,
 		// not span errors.
@@ -179,7 +182,6 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 		span.Finish()
 	}()
 
-	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
 		status = statusErrorInvalidID
 		return nil, err
