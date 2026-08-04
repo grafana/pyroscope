@@ -40,25 +40,25 @@ type fakeDispatchCall struct {
 	spec      *querierv1.SelectMergeStacktracesRequest
 }
 
-// fakeDispatcher is a test double for Dispatcher. CanDispatch defaults to
-// true (spare capacity) unless canDispatch is explicitly set to false,
+// fakeDispatcher is a test double for Dispatcher. HasCapacity defaults to
+// true (spare capacity) unless hasCapacity is explicitly set to false,
 // simulating a saturated tenant. Dispatch always records the call;
 // onDispatch, if set, runs synchronously afterward. Leaving onDispatch nil
 // simulates a dispatcher whose execution declines to do anything further
-// once dispatched (distinct from CanDispatch returning false, which never
+// once dispatched (distinct from HasCapacity returning false, which never
 // reaches Dispatch at all).
 type fakeDispatcher struct {
 	mu               sync.Mutex
 	calls            []fakeDispatchCall
-	canDispatchCalls int
-	atCapacity       bool // when true, CanDispatch reports no spare capacity; default (false) has capacity.
+	hasCapacityCalls int
+	atCapacity       bool // when true, HasCapacity reports no spare capacity; default (false) has capacity.
 	onDispatch       func(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest)
 }
 
-func (f *fakeDispatcher) CanDispatch(tenantID string) bool {
+func (f *fakeDispatcher) HasCapacity(tenantID string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.canDispatchCalls++
+	f.hasCapacityCalls++
 	return !f.atCapacity
 }
 
@@ -496,7 +496,7 @@ func TestStoreAdopt_NilDispatcherIsNoop(t *testing.T) {
 }
 
 // TestStoreAdopt_AtCapacityLeavesRecordUntouched proves the fix for the
-// claim-before-capacity-check bug: when CanDispatch reports no spare
+// claim-before-capacity-check bug: when HasCapacity reports no spare
 // capacity (e.g. the tenant is at its concurrency limit), adopt() must not
 // touch the record at all -- no Owner/LastHeartbeat change, no AdoptionCount
 // spend, and no claim success recorded -- so the lease stays expired and any
@@ -520,7 +520,7 @@ func TestStoreAdopt_AtCapacityLeavesRecordUntouched(t *testing.T) {
 	store.runAdoption(ctx)
 
 	require.Empty(t, dispatcher.calls)
-	require.Greater(t, dispatcher.canDispatchCalls, 0, "CanDispatch must still be consulted")
+	require.Greater(t, dispatcher.hasCapacityCalls, 0, "HasCapacity must still be consulted")
 
 	var meta Metadata
 	require.NoError(t, store.readJSON(ctx, store.buildPath(tenantID, requestID, metadataFilename), &meta))

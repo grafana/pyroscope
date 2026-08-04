@@ -89,10 +89,10 @@ type Result struct {
 // Dispatcher re-runs a query that Store has adopted after its owner's lease
 // expired. Implemented by Coordinator; wired into Store via SetDispatcher.
 type Dispatcher interface {
-	// CanDispatch is a read-only capacity peek, not a reservation: it makes
+	// HasCapacity is a read-only capacity peek, not a reservation: it makes
 	// no guarantee that a following Dispatch call will actually run the
 	// query (Dispatch has its own gate and may still decline).
-	CanDispatch(tenantID string) bool
+	HasCapacity(tenantID string) bool
 	Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest)
 }
 
@@ -577,7 +577,7 @@ func (s *Store) adopt(ctx context.Context, meta Metadata) {
 	// still decline after the claim has reset the lease and spent one unit
 	// of the adoption budget. That wastes at most one claim per race; the
 	// peek prevents the systematic version on a saturated frontend.
-	if !s.dispatcher.CanDispatch(meta.TenantID) {
+	if !s.dispatcher.HasCapacity(meta.TenantID) {
 		return
 	}
 

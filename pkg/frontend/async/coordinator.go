@@ -104,9 +104,9 @@ func (c *Coordinator) Submit(ctx context.Context, tenantID string, req *querierv
 	return requestID, nil
 }
 
-// CanDispatch implements Store's Dispatcher interface: a read-only peek at
+// HasCapacity implements Store's Dispatcher interface: a read-only peek at
 // whether tenantID currently has spare capacity.
-func (c *Coordinator) CanDispatch(tenantID string) bool {
+func (c *Coordinator) HasCapacity(tenantID string) bool {
 	maxConcurrent := c.limits.MaxAsyncQueryConcurrency(tenantID)
 	c.mu.Lock()
 	defer c.mu.Unlock()
