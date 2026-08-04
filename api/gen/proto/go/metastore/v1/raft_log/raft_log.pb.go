@@ -160,14 +160,9 @@ func (*AddBlockMetadataResponse) Descriptor() ([]byte, []int) {
 // GetCompactionPlanUpdateRequest requests CompactionPlanUpdate.
 // The resulting plan should be proposed to the raft members.
 // This is a read-only operation: it MUST NOT alter the state.
-//
-// The message must remain wire-compatible with
-// metastore.v1.PollCompactionJobsRequest: raft log entries written by older
-// versions may contain the raw worker request. Field 3 is worker_id there.
 type GetCompactionPlanUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// CompactionJobStatusUpdate is a change
-	// requested by the compaction worker.
+	// CompactionJobStatusUpdate is a change requested by the compaction worker.
 	StatusUpdates []*CompactionJobStatusUpdate `protobuf:"bytes,1,rep,name=status_updates,json=statusUpdates,proto3" json:"status_updates,omitempty"`
 	AssignJobsMax uint32                       `protobuf:"varint,2,opt,name=assign_jobs_max,json=assignJobsMax,proto3" json:"assign_jobs_max,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -218,8 +213,6 @@ func (x *GetCompactionPlanUpdateRequest) GetAssignJobsMax() uint32 {
 	return 0
 }
 
-// The message must remain wire-compatible with
-// metastore.v1.CompactionJobStatusUpdate; field 4 is compacted_blocks there.
 type CompactionJobStatusUpdate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
