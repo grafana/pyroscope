@@ -297,18 +297,36 @@ func formatLease(job *metastorev1.CompactionJobDetails, now time.Time) string {
 	return "expired " + formatDuration(-d) + " ago"
 }
 
+// formatDuration renders the duration with a second resolution, using at
+// most two adjacent units: e.g., "<1s", "4s", "1m12s", "2h3m", "290d2h".
 func formatDuration(d time.Duration) string {
-	if d < 0 {
-		d = 0
+	if d < time.Second {
+		return "<1s"
 	}
+	d = d.Round(time.Second)
 	switch {
 	case d >= 24*time.Hour:
-		return fmt.Sprintf("%.1fd", d.Hours()/24)
+		days := d / (24 * time.Hour)
+		hours := (d % (24 * time.Hour)) / time.Hour
+		if hours == 0 {
+			return fmt.Sprintf("%dd", days)
+		}
+		return fmt.Sprintf("%dd%dh", days, hours)
 	case d >= time.Hour:
-		return fmt.Sprintf("%dh%dm", int(d.Hours()), int(d.Minutes())%60)
+		hours := d / time.Hour
+		minutes := (d % time.Hour) / time.Minute
+		if minutes == 0 {
+			return fmt.Sprintf("%dh", hours)
+		}
+		return fmt.Sprintf("%dh%dm", hours, minutes)
 	case d >= time.Minute:
-		return fmt.Sprintf("%dm%ds", int(d.Minutes()), int(d.Seconds())%60)
+		minutes := d / time.Minute
+		seconds := (d % time.Minute) / time.Second
+		if seconds == 0 {
+			return fmt.Sprintf("%dm", minutes)
+		}
+		return fmt.Sprintf("%dm%ds", minutes, seconds)
 	default:
-		return d.Round(time.Millisecond).String()
+		return fmt.Sprintf("%ds", d/time.Second)
 	}
 }
