@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand/v2"
+	"math/rand"
 	"os"
 	"path"
 	"strings"
@@ -39,19 +39,19 @@ const (
 )
 
 var (
-	// errSpecCorrupt indicates spec.pb exists but its contents don't decode.
-	// Unlike a transient read error, retrying can never fix this.
+	// errSpecCorrupt marks a spec that exists but does not decode: unlike a
+	// transient read error, retrying can never fix it.
 	errSpecCorrupt = errors.New("spec is present but could not be decoded")
 
-	// errOrphanedNoSpec is the single, shared definition of "unrecoverable" used
-	// by both get() and the adoption scan: a stale in-progress record whose
-	// spec is gone can never be resumed.
+	// errOrphanedNoSpec: a stale in-progress record whose spec is gone can
+	// never be resumed.
 	errOrphanedNoSpec = errors.New("query orphaned: owner heartbeat expired and no request spec is available for adoption")
 
-	// errTooManyAdoptions indicates a query has already been adopted
-	// defaultMaxAdoptions times; adoption is refused and the query is marked
-	// failed instead of being claimed again.
 	errTooManyAdoptions = errors.New("query exceeded the maximum number of adoption attempts")
+
+	// errLostOwnership: another execution has claimed the record; the caller
+	// must stop writing and cancel its work.
+	errLostOwnership = errors.New("async query ownership has moved to another owner")
 )
 
 // Status represents the lifecycle state of an async query.
@@ -66,6 +66,11 @@ const (
 	StatusFailure Status = "failure"
 )
 
+// terminal reports whether s is final.
+func (s Status) terminal() bool {
+	return s != StatusInProgress
+}
+
 // Metadata describes the state of a single async query. It is persisted as
 // metadata.json alongside the query's result in object storage.
 type Metadata struct {
@@ -75,8 +80,10 @@ type Metadata struct {
 	CreatedAt     time.Time `json:"created_at"`
 	LastHeartbeat time.Time `json:"last_heartbeat,omitempty"`
 	ErrorMessage  string    `json:"error_message,omitempty"`
-	Owner         string    `json:"owner,omitempty"`
-	AdoptionCount int       `json:"adoption_count,omitempty"`
+	// Owner is a per-execution token (see newOwnerToken), kept for logs only;
+	// fencing relies on the object version alone.
+	Owner         string `json:"owner,omitempty"`
+	AdoptionCount int    `json:"adoption_count,omitempty"`
 }
 
 // Result bundles a query's Metadata with its decoded Response. Response is only
@@ -89,11 +96,12 @@ type Result struct {
 // Dispatcher re-runs a query that Store has adopted after its owner's lease
 // expired. Implemented by Coordinator; wired into Store via SetDispatcher.
 type Dispatcher interface {
-	// HasCapacity is a read-only capacity peek, not a reservation: it makes
-	// no guarantee that a following Dispatch call will actually run the
-	// query (Dispatch has its own gate and may still decline).
+	// HasCapacity is a read-only peek, not a reservation: Dispatch has its
+	// own gate and may still decline.
 	HasCapacity(tenantID string) bool
-	Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest)
+	// Dispatch runs spec under lease, so the execution's own writes are
+	// fenced by the version the adoption claim produced.
+	Dispatch(tenantID, requestID string, lease leaseHandle, spec *querierv1.SelectMergeStacktracesRequest)
 }
 
 // Store persists async query state and results in object storage. It also runs
@@ -110,24 +118,28 @@ type Store struct {
 	ownerID           string
 	dispatcher        Dispatcher
 
+	conditionalWritesSupported bool
+
 	adoptionAttempts  *prometheus.CounterVec
 	adoptionSuccesses *prometheus.CounterVec
 }
 
-// NewStore returns a Store backed by the given bucket. The returned Store is a
-// dskit service that, once started, periodically deletes entries older than the
-// configured TTL and scans for adoptable queries; callers are responsible for
-// starting and stopping it via its embedded Service.
+// NewStore returns a Store backed by bucket. Metadata writes are fenced with
+// If-Match conditions on the object version; call DisableConditionalWrites
+// when the backend does not enforce them. The returned Store is a dskit
+// service that periodically deletes expired entries and adopts orphaned
+// queries.
 func NewStore(logger log.Logger, bucket objstore.Bucket, reg prometheus.Registerer) *Store {
 	hostname, _ := os.Hostname()
 	s := &Store{
-		logger:            logger,
-		bucket:            bucket,
-		ttl:               defaultTTL,
-		heartbeatInterval: defaultHeartbeatInterval,
-		leaseTimeout:      defaultLeaseTimeout,
-		scanInterval:      defaultAdoptionScanInterval,
-		ownerID:           hostname,
+		logger:                     logger,
+		bucket:                     wrapExpectedErrs(bucket),
+		ttl:                        defaultTTL,
+		heartbeatInterval:          defaultHeartbeatInterval,
+		leaseTimeout:               defaultLeaseTimeout,
+		scanInterval:               defaultAdoptionScanInterval,
+		ownerID:                    hostname,
+		conditionalWritesSupported: true,
 		adoptionAttempts: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_async_queries_adoption_attempts_total",
 			Help: "Total number of attempts to adopt an async query whose owner appears to have died.",
@@ -141,12 +153,9 @@ func NewStore(logger log.Logger, bucket objstore.Bucket, reg prometheus.Register
 	return s
 }
 
-// SetDispatcher wires the adoption scan to a Dispatcher. Must be called before
-// the Store's Service is started: s.dispatcher is a plain field, never
-// synchronized against running()'s reads of it. A late call is a programming
-// error, so it panics rather than risk an unsynchronized write racing the
-// running service. nil is safe (adoption is then a no-op), e.g. when Store
-// runs standalone or in tests.
+// SetDispatcher must be called before the service starts: dispatcher is read
+// by running() without synchronization, so a late call panics. nil disables
+// adoption.
 func (s *Store) SetDispatcher(d Dispatcher) {
 	if state := s.State(); state != services.New {
 		panic(fmt.Sprintf("SetDispatcher must be called before the store service starts; service state is %s", state))
@@ -154,21 +163,38 @@ func (s *Store) SetDispatcher(d Dispatcher) {
 	s.dispatcher = d
 }
 
+// DisableConditionalWrites puts the Store in degraded mode: metadata writes
+// are unconditional and the adoption scan is disabled, since an unfenced
+// claim would overwrite a live owner's lease. Must be called before the
+// service starts.
+func (s *Store) DisableConditionalWrites() {
+	if state := s.State(); state != services.New {
+		panic(fmt.Sprintf("DisableConditionalWrites must be called before the store service starts; service state is %s", state))
+	}
+	s.conditionalWritesSupported = false
+}
+
 func (s *Store) buildPath(tenantID, requestID, filename string) string {
 	return path.Join(storagePrefix, tenantID, requestID, filename)
 }
 
-func (s *Store) create(ctx context.Context, tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) error {
+// newOwnerToken mints a per-execution identity: a bare hostname would read
+// back unchanged when a store adopts its own record.
+func (s *Store) newOwnerToken() string {
+	return s.ownerID + "/" + uuid.New().String()[:8]
+}
+
+// create persists spec and an initial in-progress Metadata, returning a
+// leaseHandle for the caller to dispatch the execution under.
+func (s *Store) create(ctx context.Context, tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) (leaseHandle, error) {
 	data, err := proto.Marshal(spec)
 	if err != nil {
-		return fmt.Errorf("failed to marshal spec: %w", err)
+		return leaseHandle{}, fmt.Errorf("failed to marshal spec: %w", err)
 	}
-	// spec.pb must land before metadata.json: metadata.json existing is what a
-	// poller/scanner treats as "this record is real", so writing spec first means
-	// a crash between the two uploads can never leave a spec-less in_progress
-	// record that this code path created.
+	// spec.pb lands first: metadata.json is what makes the record visible, so
+	// a crash between the two uploads cannot leave a spec-less record.
 	if err := s.bucket.Upload(ctx, s.buildPath(tenantID, requestID, specFilename), bytes.NewReader(data)); err != nil {
-		return fmt.Errorf("failed to upload spec: %w", err)
+		return leaseHandle{}, fmt.Errorf("failed to upload spec: %w", err)
 	}
 
 	now := time.Now().UTC()
@@ -178,9 +204,19 @@ func (s *Store) create(ctx context.Context, tenantID, requestID string, spec *qu
 		Status:        StatusInProgress,
 		CreatedAt:     now,
 		LastHeartbeat: now,
-		Owner:         s.ownerID,
+		Owner:         s.newOwnerToken(),
 	}
-	return s.saveJSON(ctx, s.buildPath(tenantID, requestID, metadataFilename), meta)
+	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
+	if err := s.saveJSON(ctx, metaPath, meta); err != nil {
+		return leaseHandle{}, err
+	}
+	version, err := s.currentVersionOrNil(ctx, metaPath)
+	if err != nil {
+		// The write landed but its version is unconfirmed: don't seed an
+		// unfenced lease. The record ages into the normal adoption path.
+		return leaseHandle{}, fmt.Errorf("failed to read metadata version after create: %w", err)
+	}
+	return leaseHandle{meta: *meta, version: version}, nil
 }
 
 func (s *Store) readSpec(ctx context.Context, tenantID, requestID string) (*querierv1.SelectMergeStacktracesRequest, error) {
@@ -195,10 +231,8 @@ func (s *Store) readSpec(ctx context.Context, tenantID, requestID string) (*quer
 	return &spec, nil
 }
 
-// objectExists reports whether the object at path is confirmed present. Any
-// error other than IsObjNotFoundErr is inconclusive (e.g. a transient
-// object-storage error) and must not be treated as either presence or
-// absence.
+// objectExists reports confirmed presence; any error other than not-found is
+// inconclusive and must not be read as either answer.
 func (s *Store) objectExists(ctx context.Context, path string) (bool, error) {
 	_, err := s.bucket.Attributes(ctx, path)
 	if err == nil {
@@ -219,28 +253,42 @@ func (s *Store) specAbsent(ctx context.Context, tenantID, requestID string) (boo
 	return !exists, nil
 }
 
-// resultExists reports whether result.pb has been written. Only successful
-// executions write result.pb, so its existence proves success even when
-// metadata.json disagrees. Racing duplicate executions may replace it with
-// another valid result: existence, not content, is the invariant.
-func (s *Store) resultExists(ctx context.Context, tenantID, requestID string) (bool, error) {
-	return s.objectExists(ctx, s.buildPath(tenantID, requestID, resultFilename))
-}
-
-func (s *Store) heartbeat(ctx context.Context, tenantID, requestID string) error {
+// heartbeat renews the lease with a blind write against the cached version:
+// any competing write bumps the version, so the condition alone detects lost
+// ownership.
+func (s *Store) heartbeat(ctx context.Context, tenantID, requestID string, lease *leaseHandle) error {
+	meta := lease.meta
+	meta.LastHeartbeat = time.Now().UTC()
 	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
-	var meta Metadata
-	if err := s.readJSON(ctx, metaPath, &meta); err != nil {
-		return err
-	}
-	if meta.Status != StatusInProgress {
-		// Already terminal: a lingering heartbeat from a still-alive duplicate
-		// execution (post-adoption) must not resurrect a completed/failed record.
+
+	if err := s.saveJSONConditional(ctx, metaPath, &meta, lease.version); err != nil {
+		if s.bucket.IsConditionNotMetErr(err) {
+			// Either a real claim landed, or this owner's own earlier write
+			// did and its ack was lost -- the bucket can't tell them apart.
+			// Both are safe to treat as deposed: at worst a still-good
+			// execution self-orphans and the record ages into the normal
+			// adoption path, like a crashed owner.
+			return errLostOwnership
+		}
+		level.Warn(s.logger).Log("msg", "failed to write heartbeat; next tick retries with the same cached version", "tenant", tenantID, "request_id", requestID, "err", err)
 		return nil
 	}
-	meta.LastHeartbeat = time.Now().UTC()
-	meta.Owner = s.ownerID
-	return s.saveJSON(ctx, metaPath, &meta)
+
+	lease.meta = meta
+	if !s.conditionalWritesSupported {
+		return nil // no version to refresh in degrade mode
+	}
+	attrs, err := s.bucket.Attributes(ctx, metaPath)
+	if err != nil {
+		// The write landed; only the refresh failed. Keep the stale version
+		// rather than nil: the next write self-orphans (bounded and
+		// self-healing), while an unconditional fallback could stomp a new
+		// owner's claim.
+		level.Warn(s.logger).Log("msg", "failed to refresh lease version after heartbeat; a future tick may self-orphan", "tenant", tenantID, "request_id", requestID, "err", err)
+		return nil
+	}
+	lease.version = attrs.Version
+	return nil
 }
 
 // leaseExpired reports whether meta describes an in-progress query whose
@@ -249,7 +297,10 @@ func (s *Store) leaseExpired(meta *Metadata) bool {
 	return meta.Status == StatusInProgress && !meta.LastHeartbeat.IsZero() && time.Since(meta.LastHeartbeat) > s.leaseTimeout
 }
 
-func (s *Store) complete(ctx context.Context, tenantID, requestID string, resp *querierv1.SelectMergeStacktracesResponse) error {
+// complete uploads the result, then makes one best-effort fenced attempt to
+// mark the record Success: a lost mark is covered by get()'s anchor check
+// and by adoption's healing pass.
+func (s *Store) complete(ctx context.Context, tenantID, requestID string, lease *leaseHandle, resp *querierv1.SelectMergeStacktracesResponse) error {
 	data, err := proto.Marshal(resp)
 	if err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
@@ -258,57 +309,108 @@ func (s *Store) complete(ctx context.Context, tenantID, requestID string, resp *
 		return fmt.Errorf("failed to upload result: %w", err)
 	}
 
-	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
-	var meta Metadata
-	if err := s.readJSON(ctx, metaPath, &meta); err != nil {
-		return fmt.Errorf("failed to read metadata: %w", err)
-	}
-	if meta.Status == StatusSuccess {
-		// Already recorded success (this execution's own write racing itself,
-		// or a duplicate's); nothing left to do.
-		return nil
-	}
-	// A real success always wins, including over a prior Failure: result.pb
-	// was just durably written above, so at least one execution produced the
-	// correct answer and it must be reported regardless of what any other,
-	// differently-outcome'd execution wrote.
+	meta := lease.meta
 	meta.Status = StatusSuccess
 	meta.ErrorMessage = ""
 	meta.LastHeartbeat = time.Now().UTC()
-	meta.Owner = s.ownerID
-	return s.saveJSON(ctx, metaPath, &meta)
+	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
+	if err := s.saveJSONConditional(ctx, metaPath, &meta, lease.version); err != nil {
+		// result.pb is durable and served via the anchor even if this mark
+		// never lands. Losing to a new owner is routine contention, so Debug.
+		msg := "failed to record successful result in metadata; result is durable and served via the anchor"
+		if s.bucket.IsConditionNotMetErr(err) {
+			level.Debug(s.logger).Log("msg", msg, "tenant", tenantID, "request_id", requestID, "err", err)
+		} else {
+			level.Warn(s.logger).Log("msg", msg, "tenant", tenantID, "request_id", requestID, "err", err)
+		}
+	}
+	return nil
 }
 
-func (s *Store) fail(ctx context.Context, tenantID, requestID string, queryErr error) error {
-	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
-	var meta Metadata
-	if err := s.readJSON(ctx, metaPath, &meta); err != nil {
-		return fmt.Errorf("failed to read metadata: %w", err)
-	}
-	if meta.Status != StatusInProgress {
-		return nil
-	}
+// fail makes one fenced attempt: a version conflict means ownership moved
+// and the new owner produces the outcome, so a stale failure is dropped.
+func (s *Store) fail(ctx context.Context, tenantID, requestID string, lease *leaseHandle, queryErr error) error {
+	meta := lease.meta
 	meta.Status = StatusFailure
 	meta.ErrorMessage = queryErr.Error()
 	meta.LastHeartbeat = time.Now().UTC()
-	meta.Owner = s.ownerID
-	return s.saveJSON(ctx, metaPath, &meta)
+	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
+	err := s.saveJSONConditional(ctx, metaPath, &meta, lease.version)
+	if err != nil && s.bucket.IsConditionNotMetErr(err) {
+		return nil
+	}
+	return err
 }
 
+// markUnadoptable fails a record whose spec is confirmed gone. Not
+// owner-gated: without a spec nobody, old owner or new, can produce an
+// outcome.
 func (s *Store) markUnadoptable(ctx context.Context, tenantID, requestID string) error {
 	level.Warn(s.logger).Log("msg", "async query is unrecoverable, marking failed", "tenant", tenantID, "request_id", requestID)
-	return s.fail(ctx, tenantID, requestID, errOrphanedNoSpec)
+	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
+	err := s.updateMetadata(ctx, metaPath, func(meta *Metadata) (bool, error) {
+		if meta.Status.terminal() {
+			return false, nil
+		}
+		if !s.leaseExpired(meta) {
+			// The owner heartbeated since the caller's staleness judgment.
+			return false, nil
+		}
+		meta.Status = StatusFailure
+		meta.ErrorMessage = errOrphanedNoSpec.Error()
+		meta.LastHeartbeat = time.Now().UTC()
+		return true, nil
+	})
+	if err != nil && s.bucket.IsConditionNotMetErr(err) {
+		return nil
+	}
+	return err
 }
 
+// markTooManyAdoptions fails a record already adopted defaultMaxAdoptions
+// times. Not owner-gated: the refusing scanner is never the current owner.
 func (s *Store) markTooManyAdoptions(ctx context.Context, tenantID, requestID string, count int) error {
 	level.Warn(s.logger).Log("msg", "async query exceeded max adoption attempts, marking failed", "tenant", tenantID, "request_id", requestID, "count", count)
-	return s.fail(ctx, tenantID, requestID, errTooManyAdoptions)
+	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
+	err := s.updateMetadata(ctx, metaPath, func(meta *Metadata) (bool, error) {
+		if meta.Status.terminal() {
+			return false, nil
+		}
+		if !s.leaseExpired(meta) {
+			// The owner heartbeated since the caller's staleness judgment.
+			return false, nil
+		}
+		meta.Status = StatusFailure
+		meta.ErrorMessage = errTooManyAdoptions.Error()
+		meta.LastHeartbeat = time.Now().UTC()
+		return true, nil
+	})
+	if err != nil && s.bucket.IsConditionNotMetErr(err) {
+		return nil
+	}
+	return err
 }
 
-// buildSuccessResult fetches and unmarshals result.pb, returning a Result
-// with Status forced to Success. Callers only reach this once they've
-// already established (via meta.Status or result.pb's own existence) that
-// the query succeeded.
+// healToSuccess repairs a record whose result.pb is durable but whose
+// metadata never received the Success mark, instead of re-dispatching it.
+func (s *Store) healToSuccess(ctx context.Context, tenantID, requestID string) error {
+	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
+	err := s.updateMetadata(ctx, metaPath, func(meta *Metadata) (bool, error) {
+		if meta.Status.terminal() {
+			return false, nil
+		}
+		meta.Status = StatusSuccess
+		meta.ErrorMessage = ""
+		meta.LastHeartbeat = time.Now().UTC()
+		return true, nil
+	})
+	if err != nil && s.bucket.IsConditionNotMetErr(err) {
+		return nil
+	}
+	return err
+}
+
+// buildSuccessResult fetches result.pb and pairs it with meta.
 func (s *Store) buildSuccessResult(ctx context.Context, tenantID, requestID string, meta Metadata) (*Result, error) {
 	data, err := s.readRaw(ctx, s.buildPath(tenantID, requestID, resultFilename))
 	if err != nil {
@@ -318,25 +420,7 @@ func (s *Store) buildSuccessResult(ctx context.Context, tenantID, requestID stri
 	if err := proto.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal result: %w", err)
 	}
-	meta.Status = StatusSuccess
 	return &Result{Metadata: meta, Response: &resp}, nil
-}
-
-// healToSuccess best-effort corrects metadata.json's Status once result.pb's
-// existence has already proven a real success occurred. No guard is needed:
-// this write always converges to the one fixed value the anchor already
-// proved correct, unlike every other write in this file, so it's safe to
-// issue redundantly and to ignore on failure.
-// The caller's snapshot may overwrite a concurrent writer's Owner or
-// LastHeartbeat, but both are advisory once a record is terminal: heartbeats
-// no-op on terminal records, adoption stops at the anchor, and cleanup keys
-// on object timestamps, so neither field drives any further decision.
-func (s *Store) healToSuccess(ctx context.Context, tenantID, requestID string, meta Metadata) {
-	meta.Status = StatusSuccess
-	meta.ErrorMessage = ""
-	if err := s.saveJSON(ctx, s.buildPath(tenantID, requestID, metadataFilename), &meta); err != nil {
-		level.Warn(s.logger).Log("msg", "failed to heal metadata to success", "tenant", tenantID, "request_id", requestID, "err", err)
-	}
 }
 
 func (s *Store) get(ctx context.Context, tenantID, requestID string) (*Result, error) {
@@ -359,47 +443,44 @@ func (s *Store) get(ctx context.Context, tenantID, requestID string) (*Result, e
 		return nil, nil
 	}
 
-	// Object storage has no compare-and-swap, so a stale writer can always
-	// overwrite metadata.json and make its Status lie. result.pb is different:
-	// it is written exactly once, by a successful execution, and never
-	// modified, so once it exists nothing can un-write it. Check for it first
-	// so a poll reports success whenever a result genuinely exists, no matter
-	// what the metadata says.
-	if meta.Status != StatusSuccess {
-		exists, err := s.resultExists(ctx, tenantID, requestID)
-		if err != nil {
-			level.Warn(s.logger).Log("msg", "failed to check result existence; falling back to persisted status", "tenant", tenantID, "request_id", requestID, "err", err)
-		} else if exists {
-			result, err := s.buildSuccessResult(ctx, tenantID, requestID, meta)
-			if err != nil {
-				return nil, err
-			}
-			s.healToSuccess(ctx, tenantID, requestID, meta)
-			return result, nil
-		}
+	if meta.Status == StatusSuccess {
+		return s.buildSuccessResult(ctx, tenantID, requestID, meta)
+	}
+
+	// Unlike adopt()'s equivalent check, a transient error here is
+	// non-blocking: a wrong answer on the poll path is corrected by the next
+	// poll, where adopt()'s could re-dispatch a completed query.
+	exists, err := s.objectExists(ctx, s.buildPath(tenantID, requestID, resultFilename))
+	if err != nil {
+		level.Warn(s.logger).Log("msg", "failed to check result existence; reporting persisted status", "tenant", tenantID, "request_id", requestID, "err", err)
+	} else if exists {
+		// A durable result proves success no matter what metadata says --
+		// including a stale Failure. Report it without writing back; wrong
+		// metadata heals via the scanner or ages out via TTL.
+		meta.Status = StatusSuccess
+		return s.buildSuccessResult(ctx, tenantID, requestID, meta)
 	}
 
 	if s.leaseExpired(&meta) {
 		absent, err := s.specAbsent(ctx, tenantID, requestID)
 		if err != nil {
-			// Inconclusive (e.g. a transient object-storage error): leave the
-			// record in progress rather than risk permanently failing a
-			// live, adoptable query. A later poll or the adoption scan will
-			// re-evaluate it.
+			// Inconclusive: leave the record in progress rather than risk
+			// permanently failing a live, adoptable query.
 			level.Warn(s.logger).Log("msg", "failed to check spec existence; leaving query in progress", "tenant", tenantID, "request_id", requestID, "err", err)
 		} else if absent {
 			if err := s.markUnadoptable(ctx, tenantID, requestID); err != nil {
 				level.Warn(s.logger).Log("msg", "failed to persist orphaned query state", "tenant", tenantID, "request_id", requestID, "err", err)
-			} else {
+			} else if err := s.readJSON(ctx, metaPath, &meta); err != nil {
+				// The mark landed even though this re-read failed; report the
+				// state just written, not the stale snapshot.
+				level.Warn(s.logger).Log("msg", "failed to re-read metadata after marking unadoptable", "tenant", tenantID, "request_id", requestID, "err", err)
 				meta.Status = StatusFailure
 				meta.ErrorMessage = errOrphanedNoSpec.Error()
 			}
 		}
-		// A stale lease with the spec still present means the owner died but
-		// the query is recoverable, so in-progress is the truthful answer.
-		// The poll path deliberately never adopts because many clients can
-		// poll concurrently. Instead, the periodic adoption scan will claim
-		// and re-run it.
+		// Stale lease, spec present: recoverable, so in-progress is truthful.
+		// The adoption scan re-runs it; polls never adopt, since many clients
+		// can poll at once.
 	}
 
 	if meta.Status == StatusSuccess {
@@ -476,22 +557,23 @@ func (s *Store) readRaw(ctx context.Context, path string) ([]byte, error) {
 func (s *Store) starting(context.Context) error { return nil }
 func (s *Store) stopping(error) error           { return nil }
 
-// jitteredInterval returns a duration uniformly distributed in
-// [0.8*d, 1.2*d), i.e. d plus or minus 20%.
-func jitteredInterval(d time.Duration) time.Duration {
-	return time.Duration((0.8 + 0.4*rand.Float64()) * float64(d))
-}
-
 func (s *Store) running(ctx context.Context) error {
 	cleanupTicker := time.NewTicker(cleanupInterval)
 	defer cleanupTicker.Stop()
 
-	// Randomizing the initial delay breaks the synchronized start across
-	// frontends; re-randomizing the period each tick keeps it broken.
-	adoptionTimer := time.NewTimer(rand.N(s.scanInterval))
-	defer adoptionTimer.Stop()
-
 	s.runCleanup(ctx)
+
+	// Stagger the first scan so a fleet redeployed together doesn't scan in
+	// lockstep.
+	select {
+	case <-time.After(time.Duration(rand.Int63n(int64(s.scanInterval)))):
+	case <-ctx.Done():
+		return nil
+	}
+
+	adoptionTicker := time.NewTicker(s.scanInterval)
+	defer adoptionTicker.Stop()
+	s.runAdoption(ctx)
 
 	for {
 		select {
@@ -499,9 +581,8 @@ func (s *Store) running(ctx context.Context) error {
 			return nil
 		case <-cleanupTicker.C:
 			s.runCleanup(ctx)
-		case <-adoptionTimer.C:
+		case <-adoptionTicker.C:
 			s.runAdoption(ctx)
-			adoptionTimer.Reset(jitteredInterval(s.scanInterval))
 		}
 	}
 }
@@ -518,9 +599,13 @@ func (s *Store) runCleanup(ctx context.Context) {
 }
 
 // runAdoption re-dispatches in-progress records whose lease has expired.
-// Re-execution is bounded per tenant by the concurrency limit and per
-// record by defaultMaxAdoptions, but not across tenants in aggregate.
+// Claims are CAS writes, so at most one racing claimer per record ever
+// dispatches.
 func (s *Store) runAdoption(ctx context.Context) {
+	if !s.conditionalWritesSupported {
+		// An unfenced claim would overwrite a live owner's lease.
+		return
+	}
 	err := s.bucket.Iter(ctx, storagePrefix, func(name string) error {
 		if path.Base(name) != metadataFilename {
 			return nil
@@ -533,7 +618,7 @@ func (s *Store) runAdoption(ctx context.Context) {
 		if !s.leaseExpired(&meta) {
 			return nil
 		}
-		s.adopt(ctx, meta)
+		s.adopt(ctx, meta.TenantID, meta.RequestID)
 		return nil
 	}, objstore.WithRecursiveIter())
 	if err != nil {
@@ -541,90 +626,92 @@ func (s *Store) runAdoption(ctx context.Context) {
 	}
 }
 
-func (s *Store) adopt(ctx context.Context, meta Metadata) {
-	if exists, err := s.resultExists(ctx, meta.TenantID, meta.RequestID); err != nil {
-		// Inconclusive: skip this candidate rather than risk a duplicate
-		// execution racing a result we can't yet see. The next scan tick
-		// will re-evaluate it.
-		level.Warn(s.logger).Log("msg", "failed to check result existence before adoption; skipping adoption this scan", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
-		return
-	} else if exists {
-		s.healToSuccess(ctx, meta.TenantID, meta.RequestID, meta)
+func (s *Store) adopt(ctx context.Context, tenantID, requestID string) {
+	if s.dispatcher == nil {
+		level.Warn(s.logger).Log("msg", "found adoptable async query but no dispatcher is configured", "tenant", tenantID, "request_id", requestID)
 		return
 	}
 
-	spec, err := s.readSpec(ctx, meta.TenantID, meta.RequestID)
+	// Best-effort peek, not atomic with the claim: a racing Submit can still
+	// waste one claim. It only prevents the systematic case -- a saturated
+	// frontend draining the adoption budget without executing.
+	if !s.dispatcher.HasCapacity(tenantID) {
+		return
+	}
+
+	metaPath := s.buildPath(tenantID, requestID, metadataFilename)
+
+	var meta Metadata
+	version, err := s.readMetadataVersioned(ctx, metaPath, &meta)
+	if err != nil {
+		level.Warn(s.logger).Log("msg", "failed to read metadata during adoption", "tenant", tenantID, "request_id", requestID, "err", err)
+		return
+	}
+	if !s.leaseExpired(&meta) {
+		return
+	}
+
+	// The owner may have died between uploading result.pb and marking
+	// Success: heal instead of re-dispatching.
+	resultExists, err := s.objectExists(ctx, s.buildPath(tenantID, requestID, resultFilename))
+	if err != nil {
+		level.Warn(s.logger).Log("msg", "failed to check result existence during adoption; skipping adoption this scan", "tenant", tenantID, "request_id", requestID, "err", err)
+		return
+	}
+	if resultExists {
+		if err := s.healToSuccess(ctx, tenantID, requestID); err != nil {
+			level.Warn(s.logger).Log("msg", "failed to heal orphaned success result", "tenant", tenantID, "request_id", requestID, "err", err)
+		}
+		return
+	}
+
+	spec, err := s.readSpec(ctx, tenantID, requestID)
 	if err != nil {
 		if s.bucket.IsObjNotFoundErr(err) || errors.Is(err, errSpecCorrupt) {
-			if err2 := s.markUnadoptable(ctx, meta.TenantID, meta.RequestID); err2 != nil {
-				level.Warn(s.logger).Log("msg", "failed to mark unadoptable query as failed", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err2)
+			if err2 := s.markUnadoptable(ctx, tenantID, requestID); err2 != nil {
+				level.Warn(s.logger).Log("msg", "failed to mark unadoptable query as failed", "tenant", tenantID, "request_id", requestID, "err", err2)
 			}
 			return
 		}
-		level.Warn(s.logger).Log("msg", "failed to read spec during adoption", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
+		level.Warn(s.logger).Log("msg", "failed to read spec during adoption", "tenant", tenantID, "request_id", requestID, "err", err)
 		return
 	}
 
-	s.adoptionAttempts.WithLabelValues(meta.TenantID).Inc()
-	if s.dispatcher == nil {
-		level.Warn(s.logger).Log("msg", "found adoptable async query but no dispatcher is configured", "tenant", meta.TenantID, "request_id", meta.RequestID)
-		return
-	}
+	s.adoptionAttempts.WithLabelValues(tenantID).Inc()
 
-	// Best-effort peek; Dispatch's gate is authoritative. The peek and the
-	// dispatch are not atomic: during the reads and the claim write below, a
-	// concurrent Submit can take the tenant's last slot, so Dispatch may
-	// still decline after the claim has reset the lease and spent one unit
-	// of the adoption budget. That wastes at most one claim per race; the
-	// peek prevents the systematic version on a saturated frontend.
-	if !s.dispatcher.HasCapacity(meta.TenantID) {
-		return
-	}
-
-	// meta is a snapshot from the scan; readSpec above was a real round trip
-	// during which the true owner could have completed, failed, or already
-	// been re-claimed. Re-read immediately before the claim write so that
-	// window can't revert a now-terminal (or now-fresh) record.
-	//
-	// Two scanners can still both pass this check and both claim; the
-	// consequence is bounded to one duplicate execution, and the result stays
-	// correct because complete()'s terminal guard and the result.pb anchor
-	// make the first success stick.
-	metaPath := s.buildPath(meta.TenantID, meta.RequestID, metadataFilename)
-	var fresh Metadata
-	if err := s.readJSON(ctx, metaPath, &fresh); err != nil {
-		level.Warn(s.logger).Log("msg", "failed to re-read metadata before claim", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
-		return
-	}
-	if !s.leaseExpired(&fresh) {
-		return
-	}
-	if fresh.AdoptionCount >= defaultMaxAdoptions {
-		if err := s.markTooManyAdoptions(ctx, meta.TenantID, meta.RequestID, fresh.AdoptionCount); err != nil {
-			level.Warn(s.logger).Log("msg", "failed to persist too-many-adoptions failure", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
+	// Counted before the cap check: a refused adoption is still an attempt.
+	if meta.AdoptionCount >= defaultMaxAdoptions {
+		if err := s.markTooManyAdoptions(ctx, tenantID, requestID, meta.AdoptionCount); err != nil {
+			level.Warn(s.logger).Log("msg", "failed to persist too-many-adoptions failure", "tenant", tenantID, "request_id", requestID, "err", err)
 		}
 		return
 	}
-	if exists, err := s.resultExists(ctx, meta.TenantID, meta.RequestID); err != nil {
-		// Same reasoning as the entry check above: inconclusive means skip,
-		// not proceed, and wait for the next scan tick.
-		level.Warn(s.logger).Log("msg", "failed to check result existence before claim; skipping adoption this scan", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
-		return
-	} else if exists {
-		s.healToSuccess(ctx, meta.TenantID, meta.RequestID, fresh)
-		return
-	}
 
-	previousOwner := fresh.Owner
-	leaseAge := time.Since(fresh.LastHeartbeat)
-	fresh.Owner = s.ownerID
-	fresh.LastHeartbeat = time.Now().UTC()
-	fresh.AdoptionCount++
-	if err := s.saveJSON(ctx, metaPath, &fresh); err != nil {
-		level.Warn(s.logger).Log("msg", "failed to claim orphaned query", "tenant", meta.TenantID, "request_id", meta.RequestID, "err", err)
+	token := s.newOwnerToken()
+	previousOwner := meta.Owner
+	leaseAge := time.Since(meta.LastHeartbeat)
+	meta.Owner = token
+	meta.LastHeartbeat = time.Now().UTC()
+	meta.AdoptionCount++
+
+	if err := s.saveJSONConditional(ctx, metaPath, &meta, version); err != nil {
+		if s.bucket.IsConditionNotMetErr(err) {
+			level.Debug(s.logger).Log("msg", "adoption claim lost race to another owner", "tenant", tenantID, "request_id", requestID)
+			return
+		}
+		level.Warn(s.logger).Log("msg", "failed to claim orphaned query", "tenant", tenantID, "request_id", requestID, "err", err)
 		return
 	}
-	s.adoptionSuccesses.WithLabelValues(meta.TenantID).Inc()
-	level.Info(s.logger).Log("msg", "adopted orphaned async query", "tenant", meta.TenantID, "request_id", meta.RequestID, "previous_owner", previousOwner, "lease_age", leaseAge)
-	s.dispatcher.Dispatch(meta.TenantID, meta.RequestID, spec)
+	s.adoptionSuccesses.WithLabelValues(tenantID).Inc()
+	level.Info(s.logger).Log("msg", "adopted orphaned async query", "tenant", tenantID, "request_id", requestID, "previous_owner", previousOwner, "lease_age", leaseAge)
+
+	claimedVersion, err := s.currentVersionOrNil(ctx, metaPath)
+	if err != nil {
+		// The claim landed but its version is unconfirmed: don't dispatch an
+		// unfenced lease. The claim stands and ages back into the adoption
+		// path, as if Dispatch had declined.
+		level.Warn(s.logger).Log("msg", "failed to read claimed metadata version; not dispatching this scan", "tenant", tenantID, "request_id", requestID, "err", err)
+		return
+	}
+	s.dispatcher.Dispatch(tenantID, requestID, leaseHandle{meta: meta, version: claimedVersion}, spec)
 }
