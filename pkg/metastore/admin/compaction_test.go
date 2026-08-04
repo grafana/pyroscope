@@ -218,12 +218,20 @@ func TestCompactionHandler_truncation(t *testing.T) {
 }
 
 func TestFormatDuration(t *testing.T) {
-	assert.Equal(t, "500ms", formatDuration(500*time.Millisecond))
+	assert.Equal(t, "<1s", formatDuration(500*time.Millisecond))
+	assert.Equal(t, "<1s", formatDuration(-time.Second))
+	assert.Equal(t, "4s", formatDuration(4031*time.Millisecond))
+	assert.Equal(t, "6s", formatDuration(5981*time.Millisecond))
 	assert.Equal(t, "42s", formatDuration(42*time.Second))
+	// Rounds up across the unit boundary.
+	assert.Equal(t, "1m", formatDuration(59700*time.Millisecond))
+	assert.Equal(t, "1m", formatDuration(time.Minute))
 	assert.Equal(t, "1m30s", formatDuration(90*time.Second))
+	assert.Equal(t, "2h", formatDuration(2*time.Hour))
 	assert.Equal(t, "2h3m", formatDuration(2*time.Hour+3*time.Minute))
-	assert.Equal(t, "1.5d", formatDuration(36*time.Hour))
-	assert.Equal(t, "0s", formatDuration(-time.Second))
+	assert.Equal(t, "1d12h", formatDuration(36*time.Hour))
+	assert.Equal(t, "290d", formatDuration(290*24*time.Hour))
+	assert.Equal(t, "290d2h", formatDuration(290*24*time.Hour+150*time.Minute))
 }
 
 func TestFormatLease(t *testing.T) {
