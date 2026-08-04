@@ -105,18 +105,23 @@ func (s *Symbolizer) resolveWithTable(table *lidia.Table, addrs []uint64) [][]li
 }
 
 type Config struct {
-	DebuginfodURL            string `yaml:"debuginfod_url" category:"advanced"`
-	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
+	DebuginfodURL            string        `yaml:"debuginfod_url" category:"advanced"`
+	MaxDebuginfodConcurrency int           `yaml:"max_debuginfod_concurrency" category:"advanced"`
+	ResolveTimeout           time.Duration `yaml:"resolve_timeout" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum number of concurrent symbolization requests to debuginfod server.")
+	f.DurationVar(&cfg.ResolveTimeout, "symbolizer.resolve-timeout", defaultResolveTimeout, "Maximum time the query frontend waits to resolve a single binary's unresolved addresses for a symbol-ref tree query, before falling back to binary!0xaddr frames for that binary.")
 }
 
 func (cfg *Config) Validate() error {
 	if cfg.MaxDebuginfodConcurrency < 1 {
 		return fmt.Errorf("invalid max-debuginfod-concurrency value, must be positive")
+	}
+	if cfg.ResolveTimeout <= 0 {
+		return fmt.Errorf("invalid resolve-timeout value, must be positive")
 	}
 	return nil
 }
@@ -205,7 +210,10 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 
 // defaultMaxDebuginfodConcurrency is used whenever Config.MaxDebuginfodConcurrency
 // is not positive, so every concurrency-bounded caller normalizes the same way.
-const defaultMaxDebuginfodConcurrency = 10
+const (
+	defaultMaxDebuginfodConcurrency = 10
+	defaultResolveTimeout           = 20 * time.Second
+)
 
 // ResolveConcurrency returns the maximum number of concurrent Resolve calls
 // (or debuginfod fetches) this symbolizer allows, normalizing a non-positive
@@ -215,6 +223,15 @@ func (s *Symbolizer) ResolveConcurrency() int {
 		return defaultMaxDebuginfodConcurrency
 	}
 	return s.cfg.MaxDebuginfodConcurrency
+}
+
+// ResolveTimeout bounds resolving a single binary's unresolved addresses,
+// normalizing a non-positive configured value to defaultResolveTimeout.
+func (s *Symbolizer) ResolveTimeout() time.Duration {
+	if s.cfg.ResolveTimeout <= 0 {
+		return defaultResolveTimeout
+	}
+	return s.cfg.ResolveTimeout
 }
 
 // symbolizeMappingsConcurrently symbolizes multiple mappings concurrently with a concurrency limit.

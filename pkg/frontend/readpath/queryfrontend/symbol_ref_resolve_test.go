@@ -211,9 +211,9 @@ func TestSelectMergeStacktracesTree_SymbolRefResolution(t *testing.T) {
 	mockLimits.On("SymbolizerEnabled", "tenant1").Return(true)
 	mockLimits.On("SymbolRefTreesEnabled", "tenant1").Return(true)
 	mockLimits.On("SymbolizerMaxUnresolvedLocations", "tenant1").Return(1_000_000)
-	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Second)
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(4)
+	mockSymbolizer.On("ResolveTimeout").Return(time.Second)
 	mockSymbolizer.On("Resolve", mock.Anything, "build-a", "libfoo.so", []uint64{0x100, 0x200}).
 		Return([][]lidia.SourceInfoFrame{
 			{{FunctionName: "resolved_a"}}, // 0x100 hits
@@ -293,7 +293,7 @@ func TestResolveSymbolRefs_NoSymbolRefTable(t *testing.T) {
 		Tree:       &queryv1.TreeReport{Tree: []byte("plain-tree-bytes")},
 	}
 
-	err := qf.resolveSymbolRefs(context.Background(), []string{"tenant1"}, report, 0)
+	err := qf.resolveSymbolRefs(context.Background(), report, 0)
 	require.NoError(t, err)
 	require.Equal(t, []byte("plain-tree-bytes"), report.Tree.Tree)
 	require.Nil(t, report.Tree.SymbolRefs)
@@ -313,7 +313,7 @@ func TestResolveSymbolRefs_NoUnresolvedEntries(t *testing.T) {
 		},
 	}
 
-	err := qf.resolveSymbolRefs(context.Background(), []string{"tenant1"}, report, 0)
+	err := qf.resolveSymbolRefs(context.Background(), report, 0)
 	require.NoError(t, err)
 	require.Equal(t, []byte("ref-space-tree-bytes"), report.Tree.Tree)
 	require.NotNil(t, report.Tree.SymbolRefs)
@@ -325,10 +325,9 @@ func TestResolveSymbolRefs_NoUnresolvedEntries(t *testing.T) {
 func TestResolveBinaries_PerBinaryTimeoutFallsBack(t *testing.T) {
 	treeBytes, pb := buildSymbolRefFixture(t)
 
-	mockLimits := mockfrontend.NewMockLimits(t)
-	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Millisecond)
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(4)
+	mockSymbolizer.On("ResolveTimeout").Return(time.Millisecond)
 	mockSymbolizer.On("Resolve", mock.Anything, "build-a", "libfoo.so", []uint64{0x100, 0x200}).
 		Return(func(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error) {
 			<-ctx.Done()
@@ -337,13 +336,13 @@ func TestResolveBinaries_PerBinaryTimeoutFallsBack(t *testing.T) {
 	mockSymbolizer.On("Resolve", mock.Anything, "build-b", "libbar.so", []uint64{0x300}).
 		Return([][]lidia.SourceInfoFrame{{{FunctionName: "resolved_b"}}}, nil).Once()
 
-	qf := &QueryFrontend{limits: mockLimits, symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
+	qf := &QueryFrontend{symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
 	report := &queryv1.Report{
 		ReportType: queryv1.ReportType_REPORT_TREE,
 		Tree:       &queryv1.TreeReport{Tree: treeBytes, SymbolRefs: pb},
 	}
 
-	err := qf.resolveSymbolRefs(context.Background(), []string{"tenant1"}, report, 0)
+	err := qf.resolveSymbolRefs(context.Background(), report, 0)
 	require.NoError(t, err)
 
 	names := flameNames(t, report.Tree.Tree)
@@ -361,12 +360,11 @@ func TestResolveBinaries_PerBinaryTimeoutFallsBack(t *testing.T) {
 func TestResolveBinaries_ParentContextCanceledFailsRequest(t *testing.T) {
 	treeBytes, pb := buildSymbolRefFixture(t)
 
-	mockLimits := mockfrontend.NewMockLimits(t)
-	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Minute)
 	fetchStarted := make(chan struct{})
 	var once sync.Once
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(4)
+	mockSymbolizer.On("ResolveTimeout").Return(time.Minute)
 	mockSymbolizer.On("Resolve", mock.Anything, "build-a", "libfoo.so", []uint64{0x100, 0x200}).
 		Return(func(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error) {
 			once.Do(func() { close(fetchStarted) })
@@ -380,7 +378,7 @@ func TestResolveBinaries_ParentContextCanceledFailsRequest(t *testing.T) {
 			return nil, ctx.Err()
 		}).Maybe()
 
-	qf := &QueryFrontend{limits: mockLimits, symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
+	qf := &QueryFrontend{symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
 	report := &queryv1.Report{
 		ReportType: queryv1.ReportType_REPORT_TREE,
 		Tree:       &queryv1.TreeReport{Tree: treeBytes, SymbolRefs: pb},
@@ -389,7 +387,7 @@ func TestResolveBinaries_ParentContextCanceledFailsRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- qf.resolveSymbolRefs(ctx, []string{"tenant1"}, report, 0)
+		errCh <- qf.resolveSymbolRefs(ctx, report, 0)
 	}()
 
 	<-fetchStarted
@@ -401,29 +399,27 @@ func TestResolveBinaries_ParentContextCanceledFailsRequest(t *testing.T) {
 }
 
 // TestResolveBinaries_ZeroResolveTimeoutFallsBackToSafeDefault verifies that
-// an all-tenants-zero resolve-timeout limit falls back to a safe positive
-// default rather than reproducing the "0 means unlimited/disabled"
+// a Symbolizer reporting a non-positive resolve timeout falls back to a safe
+// positive default rather than reproducing the "0 means unlimited/disabled"
 // convention used elsewhere: it must not hand Resolve an already-expired
 // context.
 func TestResolveBinaries_ZeroResolveTimeoutFallsBackToSafeDefault(t *testing.T) {
-	mockLimits := mockfrontend.NewMockLimits(t)
-	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Duration(0))
-
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(4)
+	mockSymbolizer.On("ResolveTimeout").Return(time.Duration(0))
 	mockSymbolizer.On("Resolve", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(func(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error) {
-			require.NoError(t, ctx.Err(), "SymbolizerResolveTimeout=0 must not produce an already-expired context")
+			require.NoError(t, ctx.Err(), "ResolveTimeout()=0 must not produce an already-expired context")
 			return [][]lidia.SourceInfoFrame{{{FunctionName: "resolved"}}}, nil
 		}).Times(2)
 
-	qf := &QueryFrontend{limits: mockLimits, symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
+	qf := &QueryFrontend{symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
 	binaries := []symbolref.UnresolvedBinary{
 		{BuildID: "build-a", BinaryName: "liba.so", Addresses: []uint64{0x1}},
 		{BuildID: "build-b", BinaryName: "libb.so", Addresses: []uint64{0x2}},
 	}
 
-	_, err := qf.resolveBinaries(context.Background(), []string{"tenant1"}, binaries)
+	_, err := qf.resolveBinaries(context.Background(), binaries)
 	require.NoError(t, err)
 }
 
@@ -433,14 +429,13 @@ func TestResolveBinaries_ZeroResolveTimeoutFallsBackToSafeDefault(t *testing.T) 
 // prevent in production) falls back to a safe floor instead of blocking
 // errgroup.SetLimit forever.
 func TestResolveBinaries_NonPositiveResolveConcurrencyFallsBackToSafeFloor(t *testing.T) {
-	mockLimits := mockfrontend.NewMockLimits(t)
-	mockLimits.On("SymbolizerResolveTimeout", "tenant1").Return(time.Second)
 	mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
 	mockSymbolizer.On("ResolveConcurrency").Return(0)
+	mockSymbolizer.On("ResolveTimeout").Return(time.Second)
 	mockSymbolizer.On("Resolve", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return([][]lidia.SourceInfoFrame{{{FunctionName: "resolved"}}}, nil).Times(2)
 
-	qf := &QueryFrontend{limits: mockLimits, symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
+	qf := &QueryFrontend{symbolizer: mockSymbolizer, metrics: newQueryFrontendMetrics(nil)}
 	binaries := []symbolref.UnresolvedBinary{
 		{BuildID: "build-a", BinaryName: "liba.so", Addresses: []uint64{0x1}},
 		{BuildID: "build-b", BinaryName: "libb.so", Addresses: []uint64{0x2}},
@@ -448,7 +443,7 @@ func TestResolveBinaries_NonPositiveResolveConcurrencyFallsBackToSafeFloor(t *te
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := qf.resolveBinaries(context.Background(), []string{"tenant1"}, binaries)
+		_, err := qf.resolveBinaries(context.Background(), binaries)
 		done <- err
 	}()
 

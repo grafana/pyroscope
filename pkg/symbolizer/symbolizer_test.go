@@ -54,7 +54,7 @@ func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocks
 
 	s, err := New(
 		log.NewNopLogger(),
-		Config{MaxDebuginfodConcurrency: 1},
+		Config{MaxDebuginfodConcurrency: 1, ResolveTimeout: defaultResolveTimeout},
 		inp.Registry,
 		lidiaBucket,
 		inp.Limits,
@@ -74,7 +74,7 @@ func TestResolveBucketErrorSkipsDebuginfod(t *testing.T) {
 	bucket.On("Get", mock.Anything, mock.Anything).Return(nil, errors.New("bucket unavailable")).Once()
 	bucket.On("IsObjNotFoundErr", mock.Anything).Return(false)
 
-	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
+	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1, ResolveTimeout: defaultResolveTimeout}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
 	require.NoError(t, err)
 	s.client = mockClient
 
@@ -721,8 +721,8 @@ func TestConfigValidate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "valid config with positive concurrency",
-			setup:   func(cfg *Config) { cfg.MaxDebuginfodConcurrency = 10 },
+			name:    "valid config",
+			setup:   func(cfg *Config) {},
 			wantErr: false,
 		},
 		{
@@ -735,11 +735,16 @@ func TestConfigValidate(t *testing.T) {
 			setup:   func(cfg *Config) { cfg.MaxDebuginfodConcurrency = -1 },
 			wantErr: true,
 		},
+		{
+			name:    "invalid config with zero resolve timeout",
+			setup:   func(cfg *Config) { cfg.ResolveTimeout = 0 },
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := Config{}
+			cfg := Config{MaxDebuginfodConcurrency: 10, ResolveTimeout: defaultResolveTimeout}
 			tt.setup(&cfg)
 			err := cfg.Validate()
 			if tt.wantErr {
