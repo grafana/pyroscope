@@ -7,12 +7,20 @@ import "metastore/v1/types.proto";
 service CompactionService {
   // Used to both retrieve jobs and update the jobs status at the same time.
   rpc PollCompactionJobs(PollCompactionJobsRequest) returns (PollCompactionJobsResponse) {}
+  // Returns a snapshot of the compaction state: the scheduler job queue and
+  // the planner block queues. The method serves operational purposes and is
+  // not part of the compaction protocol.
+  rpc GetCompactionState(GetCompactionStateRequest) returns (GetCompactionStateResponse) {}
 }
 
 message PollCompactionJobsRequest {
   repeated CompactionJobStatusUpdate status_updates = 1;
   // How many new jobs a worker can be assigned to.
   uint32 job_capacity = 2;
+  // Identity of the worker, e.g., the host name. Optional: only used for
+  // operational visibility (see GetCompactionState); ownership is governed
+  // by fencing tokens.
+  string worker_id = 3;
 }
 
 message PollCompactionJobsResponse {
@@ -75,4 +83,63 @@ enum CompactionJobStatus {
   COMPACTION_STATUS_UNSPECIFIED = 0;
   COMPACTION_STATUS_IN_PROGRESS = 1;
   COMPACTION_STATUS_SUCCESS = 2;
+}
+
+message GetCompactionStateRequest {}
+
+message GetCompactionStateResponse {
+  // Jobs in the scheduler queue.
+  repeated CompactionJobDetails compaction_jobs = 1;
+  // Planner queues of blocks awaiting compaction.
+  repeated CompactionQueueDetails compaction_queues = 2;
+  // Scheduler configuration needed to interpret the job state.
+  // Job lease duration in nanoseconds.
+  int64 job_lease_duration = 3;
+  // Number of failures after which a job is excluded from assignment.
+  uint64 job_max_failures = 4;
+  // Scheduler queue size limit; failed jobs are evicted when it is exceeded.
+  uint64 max_job_queue_size = 5;
+}
+
+// CompactionJobDetails describes a compaction job in the scheduler queue.
+// The message combines the replicated job state with assignment details
+// observed by the node that served the request (normally, the raft leader).
+message CompactionJobDetails {
+  string name = 1;
+  string tenant = 2;
+  uint32 shard = 3;
+  uint32 compaction_level = 4;
+  CompactionJobStatus status = 5;
+  // Fencing token of the current assignment:
+  // the raft log index at assignment time.
+  uint64 token = 6;
+  // Unix nanoseconds; refers to the raft leader clock.
+  int64 lease_expires_at = 7;
+  // Unix nanoseconds, when the job was created.
+  int64 added_at = 8;
+  // Number of times the job was reassigned due to an expired lease.
+  uint32 failures = 9;
+  // Number of source blocks to compact.
+  uint32 source_blocks = 10;
+  // Identity of the worker the job is assigned to, as observed by the
+  // current raft leader. Empty if not known: e.g., if the job was assigned
+  // by a former leader, or the worker did not report its identity.
+  string worker_id = 11;
+  // Unix nanoseconds, when the current assignment was observed. Zero if unknown.
+  int64 assigned_at = 12;
+  // Unix nanoseconds, when the last status update was observed. Zero if unknown.
+  int64 updated_at = 13;
+}
+
+// CompactionQueueDetails describes a planner queue of blocks
+// awaiting compaction, identified by tenant, shard, and level.
+message CompactionQueueDetails {
+  string tenant = 1;
+  uint32 shard = 2;
+  uint32 compaction_level = 3;
+  // Number of blocks in the queue.
+  uint64 blocks = 4;
+  // Unix nanoseconds of the oldest and the newest block queue entries.
+  int64 oldest_block_at = 5;
+  int64 newest_block_at = 6;
 }

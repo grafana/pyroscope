@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"errors"
 	"flag"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction/scheduler/store"
+	kvstore "github.com/grafana/pyroscope/v2/pkg/metastore/store"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -142,6 +144,44 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPla
 	}
 
 	return nil
+}
+
+// Config returns the scheduler configuration.
+func (sc *Scheduler) Config() Config { return sc.config }
+
+// JobInfo describes a compaction job in the schedule. Only a summary of
+// the job plan is included: the full plan (the source block and tombstone
+// lists) is deliberately not retained.
+type JobInfo struct {
+	State        *raft_log.CompactionJobState
+	Tenant       string
+	Shard        uint32
+	SourceBlocks uint32
+}
+
+// ListJobs returns the state and the plan summary of every job in the
+// schedule. The jobs are read from the storage snapshot of the given
+// transaction; the in-memory queue is not accessed.
+func (sc *Scheduler) ListJobs(tx *bbolt.Tx) ([]JobInfo, error) {
+	entries := sc.store.ListEntries(tx)
+	defer func() {
+		_ = entries.Close()
+	}()
+	var jobs []JobInfo
+	for entries.Next() {
+		state := entries.At()
+		job := JobInfo{State: state}
+		switch plan, err := sc.store.GetJobPlan(tx, state.Name); {
+		case err == nil:
+			job.Tenant = plan.Tenant
+			job.Shard = plan.Shard
+			job.SourceBlocks = uint32(len(plan.SourceBlocks))
+		case !errors.Is(err, kvstore.ErrNotFound):
+			return nil, err
+		}
+		jobs = append(jobs, job)
+	}
+	return jobs, entries.Err()
 }
 
 func (sc *Scheduler) Init(tx *bbolt.Tx) error {

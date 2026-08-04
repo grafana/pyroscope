@@ -95,6 +95,7 @@ type Worker struct {
 	queue    chan *compactionJob
 	threads  int
 	capacity atomic.Int32
+	workerID string
 
 	deleterPool *deleterPool
 
@@ -148,6 +149,11 @@ func New(
 		metrics:   newMetrics(reg),
 		ruler:     ruler,
 		exporter:  exporter,
+	}
+	// The worker identity is reported to the scheduler for operational
+	// visibility; it does not affect job ownership handling.
+	if w.workerID, _ = os.Hostname(); w.workerID == "" {
+		level.Warn(logger).Log("msg", "failed to resolve the host name; the worker identity is not reported")
 	}
 	w.threads = config.JobConcurrency
 	if w.threads < 1 {
@@ -253,6 +259,7 @@ func (w *Worker) poll() {
 	resp, err := w.client.PollCompactionJobs(ctx, &metastorev1.PollCompactionJobsRequest{
 		StatusUpdates: updates,
 		JobCapacity:   capacity,
+		WorkerId:      w.workerID,
 	})
 	if err != nil {
 		level.Error(w.logger).Log("msg", "failed to poll compaction jobs", "err", err)
