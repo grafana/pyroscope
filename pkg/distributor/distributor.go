@@ -328,18 +328,25 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	}
 
 	// Check instance-level inflight bytes limit before processing.
+	// Uses a CAS loop to avoid the race between check and add under
+	// concurrent Push calls.
 	if d.cfg.MaxInflightBytes > 0 {
 		reqSize := int64(grpcReq.Msg.SizeVT())
-		if d.inflightBytes.Load()+reqSize > d.cfg.MaxInflightBytes {
-			validation.DiscardedProfiles.WithLabelValues(string(validation.InflightBytesLimit), tenantID).Add(1)
-			validation.DiscardedBytes.WithLabelValues(string(validation.InflightBytesLimit), tenantID).Add(float64(reqSize))
-			return nil, connect.NewError(connect.CodeResourceExhausted,
-				fmt.Errorf("distributor inflight bytes limit (%s) exceeded while adding %s",
-					humanize.IBytes(uint64(d.cfg.MaxInflightBytes)),
-					humanize.IBytes(uint64(reqSize))))
+		for {
+			current := d.inflightBytes.Load()
+			if current+reqSize > d.cfg.MaxInflightBytes {
+				validation.DiscardedProfiles.WithLabelValues(string(validation.InflightBytesLimit), tenantID).Add(1)
+				validation.DiscardedBytes.WithLabelValues(string(validation.InflightBytesLimit), tenantID).Add(float64(reqSize))
+				return nil, connect.NewError(connect.CodeResourceExhausted,
+					fmt.Errorf("distributor inflight bytes limit (%s) exceeded while adding %s",
+						humanize.IBytes(uint64(d.cfg.MaxInflightBytes)),
+						humanize.IBytes(uint64(reqSize))))
+			}
+			if d.inflightBytes.CAS(current, current+reqSize) {
+				break
+			}
 		}
-		d.inflightBytes.Add(reqSize)
-		defer d.inflightBytes.Sub(reqSize)
+		defer d.inflightBytes.Sub(int64(grpcReq.Msg.SizeVT()))
 	}
 
 	defer func() {
