@@ -30,12 +30,6 @@ const (
 	// non-positive value, which would otherwise block errgroup.SetLimit
 	// forever.
 	minResolveConcurrency = 1
-	// resolvesPerFetchSlot is the number of binaries resolved concurrently
-	// per debuginfod fetch slot. A resolve is mostly cheap bucket lookups,
-	// and the client's own semaphore caps the expensive debuginfod
-	// downloads, so running several resolves per slot keeps bucket lookups
-	// from queuing behind the fetch cap.
-	resolvesPerFetchSlot = 4
 )
 
 // resolveSymbolRefs replaces a symbol-ref tree report's tree bytes with a
@@ -100,8 +94,8 @@ type binaryResolution struct {
 }
 
 // resolveBinaries resolves every UnresolvedBinary concurrently, bounded by
-// resolvesPerFetchSlot times the symbolizer's fetch concurrency, and
-// timeboxed per binary by the symbolizer's global resolve timeout.
+// the symbolizer's fetch concurrency, and timeboxed
+// per binary by the symbolizer's global resolve timeout.
 //
 // Resolve errors only when its context is done. A binary whose own timebox
 // expires while ctx (the request context) is still live is recorded as a
@@ -115,7 +109,7 @@ func (q *QueryFrontend) resolveBinaries(ctx context.Context, binaries []symbolre
 	if timeout <= 0 {
 		timeout = minResolveTimeout
 	}
-	concurrency := q.symbolizer.ResolveConcurrency() * resolvesPerFetchSlot
+	concurrency := q.symbolizer.ResolveConcurrency()
 	if concurrency < 1 {
 		concurrency = minResolveConcurrency
 	}

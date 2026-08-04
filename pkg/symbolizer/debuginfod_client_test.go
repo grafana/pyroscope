@@ -616,6 +616,64 @@ func TestFetchDebuginfo_NotFoundDoesNotTripBreaker(t *testing.T) {
 	assert.Equal(t, int32(5), calls.Load(), "every 404 must reach the upstream")
 }
 
+// gatedTransport fails every dial with a refused connection; dials for the
+// "held" build ID block until the gate closes.
+type gatedTransport struct {
+	gate  chan struct{}
+	dials atomic.Int32
+}
+
+func (g *gatedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	g.dials.Add(1)
+	if strings.Contains(req.URL.Path, "held") {
+		<-g.gate
+	}
+	return nil, &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}
+}
+
+func TestFetchDebuginfo_QueuedFetchesFailFastAfterBreakerOpens(t *testing.T) {
+	transport := &gatedTransport{gate: make(chan struct{})}
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:                 "http://127.0.0.1:1",
+		HTTPClient:              &http.Client{Transport: transport},
+		BackoffConfig:           backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 1},
+		NotFoundCacheMaxItems:   1000,
+		NotFoundCacheTTL:        time.Minute,
+		MaxConcurrentFetches:    1,
+		BreakerFailureThreshold: 1,
+		BreakerOpenDuration:     time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), validation.MockDefaultOverrides())
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	heldErr := make(chan error, 1)
+	go func() {
+		_, err := client.FetchDebuginfo(ctx, "held")
+		heldErr <- err
+	}()
+	require.Eventually(t, func() bool { return transport.dials.Load() == 1 },
+		time.Second, time.Millisecond, "the held fetch must occupy the only slot")
+
+	queuedErr := make(chan error, 1)
+	go func() {
+		_, err := client.FetchDebuginfo(ctx, "queued")
+		queuedErr <- err
+	}()
+	// Give the queued fetch time to block on the fetch slot.
+	time.Sleep(100 * time.Millisecond)
+
+	// Failing the held fetch trips the breaker (threshold 1) while the
+	// queued fetch is still waiting for the slot.
+	close(transport.gate)
+	require.Error(t, <-heldErr)
+
+	var unavailable upstreamUnavailableError
+	require.ErrorAs(t, <-queuedErr, &unavailable)
+	assert.Equal(t, int32(1), transport.dials.Load(),
+		"a fetch that queued before the breaker opened must not dial after it opens")
+}
+
 // highWaterTransport tracks the maximum number of concurrent in-flight
 // round trips.
 type highWaterTransport struct {

@@ -199,13 +199,17 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	// plus bounded retries keep the detached fetch finite.
 	localCtx := context.WithoutCancel(ctx)
 	resCh := c.group.DoChan(sanitizedBuildID, func() (interface{}, error) {
+		// The slot wait stays outside the breaker so that a fetch that queued
+		// while the breaker was closed fails fast once it opens rather
+		// than dial a dead upstream, and so that queue time does not count toward
+		// the breaker's stats. Slot holders are bounded by the HTTP client
+		// timeout and the retry budget, so acquiring on the uncancellable
+		// context stays finite.
+		if err := c.fetchSlots.Acquire(localCtx, 1); err != nil {
+			return nil, err
+		}
+		defer c.fetchSlots.Release(1)
 		data, err := c.breaker.Execute(func() ([]byte, error) {
-			// Slot holders are bounded by the HTTP client timeout and the retry
-			// budget, so acquiring on the uncancellable context stays finite.
-			if err := c.fetchSlots.Acquire(localCtx, 1); err != nil {
-				return nil, err
-			}
-			defer c.fetchSlots.Release(1)
 			return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
 		})
 		if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
