@@ -68,7 +68,7 @@ func (r *deletionTestRaft) Propose(ctx context.Context, _ fsm.RaftLogEntryType, 
 }
 
 func TestDeleteDatasets_Validation(t *testing.T) {
-	svc := NewCompactionService(log.NewNopLogger(), nil, nil, nil)
+	svc := NewCompactionService(log.NewNopLogger(), nil, nil, nil, nil, nil)
 	for _, req := range []*metastorev1.DeleteDatasetsRequest{
 		nil,
 		{},
@@ -96,7 +96,7 @@ func TestDeleteDatasets(t *testing.T) {
 	sc := scheduler.NewScheduler(scheduler.Config{LeaseDuration: time.Minute, MaxFailures: 3}, scheduler.NewStore(), nil)
 	h := NewCompactionCommandHandler(logger, idx, c, c, sc, ts)
 	r := &deletionTestRaft{db: db, handler: h}
-	svc := NewCompactionService(logger, r, deletionTestState{db: db}, h)
+	svc := NewCompactionService(logger, r, deletionTestState{db: db}, h, nil, nil)
 	// Metadata is milliseconds, while API requests and reports are nanoseconds.
 	makeBlock := func(level uint32, owner int32, services ...int32) *metastorev1.BlockMeta {
 		b := &metastorev1.BlockMeta{Id: ulid.Make().String(), Tenant: owner, Shard: 1, CompactionLevel: level, MinTime: 1000, MaxTime: 9000, StringTable: []string{"", "tenant-a", "tenant-b", "svc-a", "svc-b", "keep", "svc-ab"}}
@@ -307,7 +307,7 @@ func TestDeleteDatasets_CompactsToNextLevel(t *testing.T) {
 	sc := scheduler.NewScheduler(scheduler.Config{LeaseDuration: time.Minute, MaxFailures: 3}, scheduler.NewStore(), nil)
 	h := NewCompactionCommandHandler(logger, idx, c, c, sc, ts)
 	r := &deletionTestRaft{db: db, handler: h}
-	svc := NewCompactionService(logger, r, deletionTestState{db: db}, h)
+	svc := NewCompactionService(logger, r, deletionTestState{db: db}, h, nil, nil)
 
 	makeL1Block := func(services ...int32) *metastorev1.BlockMeta {
 		b := &metastorev1.BlockMeta{
@@ -479,7 +479,7 @@ func TestDeleteDatasets_DryRunConcurrentTombstones(t *testing.T) {
 	c := compactor.NewCompactor(compactor.DefaultConfig(), compactor.NewStore(), ts, nil)
 	sc := scheduler.NewScheduler(scheduler.Config{LeaseDuration: time.Minute, MaxFailures: 3}, scheduler.NewStore(), nil)
 	h := NewCompactionCommandHandler(logger, idx, c, c, sc, ts)
-	svc := NewCompactionService(logger, &deletionTestRaft{db: db, handler: h}, deletionTestState{db: db}, h)
+	svc := NewCompactionService(logger, &deletionTestRaft{db: db, handler: h}, deletionTestState{db: db}, h, nil, nil)
 
 	b := &metastorev1.BlockMeta{
 		Id:              ulid.Make().String(),
@@ -561,7 +561,7 @@ func TestCompactionService_ReadErrorHandling(t *testing.T) {
 		return sc.Init(tx)
 	}))
 
-	unavailableSvc := NewCompactionService(logger, nil, deletionTestState{err: errors.New("read index failed")}, nil)
+	unavailableSvc := NewCompactionService(logger, nil, deletionTestState{err: errors.New("read index failed")}, nil, nil, nil)
 	_, err = unavailableSvc.ListCompactionJobs(ctx, &metastorev1.ListCompactionJobsRequest{})
 	require.Equal(t, codes.Unavailable, status.Code(err))
 
@@ -576,7 +576,7 @@ func TestCompactionService_ReadErrorHandling(t *testing.T) {
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
 		return scheduler.NewStore().StoreJobState(tx, &raft_log.CompactionJobState{Name: "orphan-job"})
 	}))
-	svc := NewCompactionService(logger, nil, deletionTestState{db: db}, nil)
+	svc := NewCompactionService(logger, nil, deletionTestState{db: db}, nil, nil, nil)
 	listResp, err := svc.ListCompactionJobs(ctx, &metastorev1.ListCompactionJobsRequest{})
 	require.Error(t, err)
 	require.Nil(t, listResp)
@@ -596,7 +596,7 @@ func TestDeleteDatasets_FinalRetryRemainsBusy(t *testing.T) {
 			sc := scheduler.NewScheduler(scheduler.Config{LeaseDuration: time.Minute, MaxFailures: 1, MaxQueueSize: 1}, scheduler.NewStore(), nil)
 			h := NewCompactionCommandHandler(logger, idx, c, c, sc, ts)
 			r := &deletionTestRaft{db: db, handler: h}
-			svc := NewCompactionService(logger, r, deletionTestState{db: db}, h)
+			svc := NewCompactionService(logger, r, deletionTestState{db: db}, h, nil, nil)
 
 			b := &metastorev1.BlockMeta{
 				Id:              ulid.Make().String(),
@@ -708,7 +708,7 @@ func TestDeleteDatasets_PartialSchedulingUpTo90PercentQueue(t *testing.T) {
 	sc := scheduler.NewScheduler(scheduler.Config{LeaseDuration: time.Minute, MaxFailures: 3, MaxQueueSize: 10}, scheduler.NewStore(), nil)
 	h := NewCompactionCommandHandler(logger, idx, c, c, sc, ts)
 	r := &deletionTestRaft{db: db, handler: h}
-	svc := NewCompactionService(logger, r, deletionTestState{db: db}, h)
+	svc := NewCompactionService(logger, r, deletionTestState{db: db}, h, nil, nil)
 
 	var blocks []*metastorev1.BlockMeta
 	for range 12 {

@@ -241,7 +241,11 @@ type PollCompactionJobsRequest struct {
 	state         protoimpl.MessageState       `protogen:"open.v1"`
 	StatusUpdates []*CompactionJobStatusUpdate `protobuf:"bytes,1,rep,name=status_updates,json=statusUpdates,proto3" json:"status_updates,omitempty"`
 	// How many new jobs a worker can be assigned to.
-	JobCapacity   uint32 `protobuf:"varint,2,opt,name=job_capacity,json=jobCapacity,proto3" json:"job_capacity,omitempty"`
+	JobCapacity uint32 `protobuf:"varint,2,opt,name=job_capacity,json=jobCapacity,proto3" json:"job_capacity,omitempty"`
+	// Identity of the worker, e.g., the host name. Optional: only used for
+	// operational visibility (see GetCompactionState); ownership is governed
+	// by fencing tokens.
+	WorkerId      string `protobuf:"bytes,3,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -288,6 +292,13 @@ func (x *PollCompactionJobsRequest) GetJobCapacity() uint32 {
 		return x.JobCapacity
 	}
 	return 0
+}
+
+func (x *PollCompactionJobsRequest) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
 }
 
 type PollCompactionJobsResponse struct {
@@ -1226,6 +1237,366 @@ func (x *DeleteDatasetsResponse) GetScheduledJobNames() []string {
 	return nil
 }
 
+type GetCompactionStateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCompactionStateRequest) Reset() {
+	*x = GetCompactionStateRequest{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCompactionStateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCompactionStateRequest) ProtoMessage() {}
+
+func (x *GetCompactionStateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCompactionStateRequest.ProtoReflect.Descriptor instead.
+func (*GetCompactionStateRequest) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{16}
+}
+
+type GetCompactionStateResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Jobs in the scheduler queue.
+	CompactionJobs []*CompactionJobDetails `protobuf:"bytes,1,rep,name=compaction_jobs,json=compactionJobs,proto3" json:"compaction_jobs,omitempty"`
+	// Planner queues of blocks awaiting compaction.
+	CompactionQueues []*CompactionQueueDetails `protobuf:"bytes,2,rep,name=compaction_queues,json=compactionQueues,proto3" json:"compaction_queues,omitempty"`
+	// Scheduler configuration needed to interpret the job state.
+	// Job lease duration in nanoseconds.
+	JobLeaseDuration int64 `protobuf:"varint,3,opt,name=job_lease_duration,json=jobLeaseDuration,proto3" json:"job_lease_duration,omitempty"`
+	// Number of failures after which a job is excluded from assignment.
+	JobMaxFailures uint64 `protobuf:"varint,4,opt,name=job_max_failures,json=jobMaxFailures,proto3" json:"job_max_failures,omitempty"`
+	// Scheduler queue size limit; failed jobs are evicted when it is exceeded.
+	MaxJobQueueSize uint64 `protobuf:"varint,5,opt,name=max_job_queue_size,json=maxJobQueueSize,proto3" json:"max_job_queue_size,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GetCompactionStateResponse) Reset() {
+	*x = GetCompactionStateResponse{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCompactionStateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCompactionStateResponse) ProtoMessage() {}
+
+func (x *GetCompactionStateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCompactionStateResponse.ProtoReflect.Descriptor instead.
+func (*GetCompactionStateResponse) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetCompactionStateResponse) GetCompactionJobs() []*CompactionJobDetails {
+	if x != nil {
+		return x.CompactionJobs
+	}
+	return nil
+}
+
+func (x *GetCompactionStateResponse) GetCompactionQueues() []*CompactionQueueDetails {
+	if x != nil {
+		return x.CompactionQueues
+	}
+	return nil
+}
+
+func (x *GetCompactionStateResponse) GetJobLeaseDuration() int64 {
+	if x != nil {
+		return x.JobLeaseDuration
+	}
+	return 0
+}
+
+func (x *GetCompactionStateResponse) GetJobMaxFailures() uint64 {
+	if x != nil {
+		return x.JobMaxFailures
+	}
+	return 0
+}
+
+func (x *GetCompactionStateResponse) GetMaxJobQueueSize() uint64 {
+	if x != nil {
+		return x.MaxJobQueueSize
+	}
+	return 0
+}
+
+// CompactionJobDetails describes a compaction job in the scheduler queue.
+// The message combines the replicated job state with assignment details
+// observed by the node that served the request (normally, the raft leader).
+type CompactionJobDetails struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Tenant          string                 `protobuf:"bytes,2,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Shard           uint32                 `protobuf:"varint,3,opt,name=shard,proto3" json:"shard,omitempty"`
+	CompactionLevel uint32                 `protobuf:"varint,4,opt,name=compaction_level,json=compactionLevel,proto3" json:"compaction_level,omitempty"`
+	Status          CompactionJobStatus    `protobuf:"varint,5,opt,name=status,proto3,enum=metastore.v1.CompactionJobStatus" json:"status,omitempty"`
+	// Fencing token of the current assignment:
+	// the raft log index at assignment time.
+	Token uint64 `protobuf:"varint,6,opt,name=token,proto3" json:"token,omitempty"`
+	// Unix nanoseconds; refers to the raft leader clock.
+	LeaseExpiresAt int64 `protobuf:"varint,7,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
+	// Unix nanoseconds, when the job was created.
+	AddedAt int64 `protobuf:"varint,8,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	// Number of times the job was reassigned due to an expired lease.
+	Failures uint32 `protobuf:"varint,9,opt,name=failures,proto3" json:"failures,omitempty"`
+	// Number of source blocks to compact.
+	SourceBlocks uint32 `protobuf:"varint,10,opt,name=source_blocks,json=sourceBlocks,proto3" json:"source_blocks,omitempty"`
+	// Identity of the worker the job is assigned to, as observed by the
+	// current raft leader. Empty if not known: e.g., if the job was assigned
+	// by a former leader, or the worker did not report its identity.
+	WorkerId string `protobuf:"bytes,11,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	// Unix nanoseconds, when the current assignment was observed. Zero if unknown.
+	AssignedAt int64 `protobuf:"varint,12,opt,name=assigned_at,json=assignedAt,proto3" json:"assigned_at,omitempty"`
+	// Unix nanoseconds, when the last status update was observed. Zero if unknown.
+	UpdatedAt     int64 `protobuf:"varint,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompactionJobDetails) Reset() {
+	*x = CompactionJobDetails{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompactionJobDetails) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompactionJobDetails) ProtoMessage() {}
+
+func (x *CompactionJobDetails) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompactionJobDetails.ProtoReflect.Descriptor instead.
+func (*CompactionJobDetails) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CompactionJobDetails) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CompactionJobDetails) GetTenant() string {
+	if x != nil {
+		return x.Tenant
+	}
+	return ""
+}
+
+func (x *CompactionJobDetails) GetShard() uint32 {
+	if x != nil {
+		return x.Shard
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetCompactionLevel() uint32 {
+	if x != nil {
+		return x.CompactionLevel
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetStatus() CompactionJobStatus {
+	if x != nil {
+		return x.Status
+	}
+	return CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED
+}
+
+func (x *CompactionJobDetails) GetToken() uint64 {
+	if x != nil {
+		return x.Token
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetLeaseExpiresAt() int64 {
+	if x != nil {
+		return x.LeaseExpiresAt
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetAddedAt() int64 {
+	if x != nil {
+		return x.AddedAt
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetFailures() uint32 {
+	if x != nil {
+		return x.Failures
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetSourceBlocks() uint32 {
+	if x != nil {
+		return x.SourceBlocks
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *CompactionJobDetails) GetAssignedAt() int64 {
+	if x != nil {
+		return x.AssignedAt
+	}
+	return 0
+}
+
+func (x *CompactionJobDetails) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
+// CompactionQueueDetails describes a planner queue of blocks
+// awaiting compaction, identified by tenant, shard, and level.
+type CompactionQueueDetails struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Tenant          string                 `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Shard           uint32                 `protobuf:"varint,2,opt,name=shard,proto3" json:"shard,omitempty"`
+	CompactionLevel uint32                 `protobuf:"varint,3,opt,name=compaction_level,json=compactionLevel,proto3" json:"compaction_level,omitempty"`
+	// Number of blocks in the queue.
+	Blocks uint64 `protobuf:"varint,4,opt,name=blocks,proto3" json:"blocks,omitempty"`
+	// Unix nanoseconds of the oldest and the newest block queue entries.
+	OldestBlockAt int64 `protobuf:"varint,5,opt,name=oldest_block_at,json=oldestBlockAt,proto3" json:"oldest_block_at,omitempty"`
+	NewestBlockAt int64 `protobuf:"varint,6,opt,name=newest_block_at,json=newestBlockAt,proto3" json:"newest_block_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompactionQueueDetails) Reset() {
+	*x = CompactionQueueDetails{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompactionQueueDetails) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompactionQueueDetails) ProtoMessage() {}
+
+func (x *CompactionQueueDetails) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompactionQueueDetails.ProtoReflect.Descriptor instead.
+func (*CompactionQueueDetails) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *CompactionQueueDetails) GetTenant() string {
+	if x != nil {
+		return x.Tenant
+	}
+	return ""
+}
+
+func (x *CompactionQueueDetails) GetShard() uint32 {
+	if x != nil {
+		return x.Shard
+	}
+	return 0
+}
+
+func (x *CompactionQueueDetails) GetCompactionLevel() uint32 {
+	if x != nil {
+		return x.CompactionLevel
+	}
+	return 0
+}
+
+func (x *CompactionQueueDetails) GetBlocks() uint64 {
+	if x != nil {
+		return x.Blocks
+	}
+	return 0
+}
+
+func (x *CompactionQueueDetails) GetOldestBlockAt() int64 {
+	if x != nil {
+		return x.OldestBlockAt
+	}
+	return 0
+}
+
+func (x *CompactionQueueDetails) GetNewestBlockAt() int64 {
+	if x != nil {
+		return x.NewestBlockAt
+	}
+	return 0
+}
+
 var File_metastore_v1_compactor_proto protoreflect.FileDescriptor
 
 const file_metastore_v1_compactor_proto_rawDesc = "" +
@@ -1240,10 +1611,11 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\x06status\x18\x02 \x01(\x0e2!.metastore.v1.CompactionJobStatusR\x06status\x12\x19\n" +
 	"\badded_at\x18\x03 \x01(\x03R\aaddedAt\x12(\n" +
 	"\x10lease_expires_at\x18\x04 \x01(\x03R\x0eleaseExpiresAt\x12\x1a\n" +
-	"\bfailures\x18\x05 \x01(\rR\bfailures\"\x8e\x01\n" +
+	"\bfailures\x18\x05 \x01(\rR\bfailures\"\xab\x01\n" +
 	"\x19PollCompactionJobsRequest\x12N\n" +
 	"\x0estatus_updates\x18\x01 \x03(\v2'.metastore.v1.CompactionJobStatusUpdateR\rstatusUpdates\x12!\n" +
-	"\fjob_capacity\x18\x02 \x01(\rR\vjobCapacity\"\xab\x01\n" +
+	"\fjob_capacity\x18\x02 \x01(\rR\vjobCapacity\x12\x1b\n" +
+	"\tworker_id\x18\x03 \x01(\tR\bworkerId\"\xab\x01\n" +
 	"\x1aPollCompactionJobsResponse\x12D\n" +
 	"\x0fcompaction_jobs\x18\x01 \x03(\v2\x1b.metastore.v1.CompactionJobR\x0ecompactionJobs\x12G\n" +
 	"\vassignments\x18\x02 \x03(\v2%.metastore.v1.CompactionJobAssignmentR\vassignments\"\x9c\x02\n" +
@@ -1321,15 +1693,47 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\x1aeffective_matched_max_time\x18\b \x01(\x03R\x17effectiveMatchedMaxTime\x12:\n" +
 	"\x06blocks\x18\t \x03(\v2\".metastore.v1.BlockDeletionSummaryR\x06blocks\x12.\n" +
 	"\x13scheduled_job_names\x18\n" +
-	" \x03(\tR\x11scheduledJobNames*z\n" +
+	" \x03(\tR\x11scheduledJobNames\"\x1b\n" +
+	"\x19GetCompactionStateRequest\"\xc1\x02\n" +
+	"\x1aGetCompactionStateResponse\x12K\n" +
+	"\x0fcompaction_jobs\x18\x01 \x03(\v2\".metastore.v1.CompactionJobDetailsR\x0ecompactionJobs\x12Q\n" +
+	"\x11compaction_queues\x18\x02 \x03(\v2$.metastore.v1.CompactionQueueDetailsR\x10compactionQueues\x12,\n" +
+	"\x12job_lease_duration\x18\x03 \x01(\x03R\x10jobLeaseDuration\x12(\n" +
+	"\x10job_max_failures\x18\x04 \x01(\x04R\x0ejobMaxFailures\x12+\n" +
+	"\x12max_job_queue_size\x18\x05 \x01(\x04R\x0fmaxJobQueueSize\"\xb7\x03\n" +
+	"\x14CompactionJobDetails\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06tenant\x18\x02 \x01(\tR\x06tenant\x12\x14\n" +
+	"\x05shard\x18\x03 \x01(\rR\x05shard\x12)\n" +
+	"\x10compaction_level\x18\x04 \x01(\rR\x0fcompactionLevel\x129\n" +
+	"\x06status\x18\x05 \x01(\x0e2!.metastore.v1.CompactionJobStatusR\x06status\x12\x14\n" +
+	"\x05token\x18\x06 \x01(\x04R\x05token\x12(\n" +
+	"\x10lease_expires_at\x18\a \x01(\x03R\x0eleaseExpiresAt\x12\x19\n" +
+	"\badded_at\x18\b \x01(\x03R\aaddedAt\x12\x1a\n" +
+	"\bfailures\x18\t \x01(\rR\bfailures\x12#\n" +
+	"\rsource_blocks\x18\n" +
+	" \x01(\rR\fsourceBlocks\x12\x1b\n" +
+	"\tworker_id\x18\v \x01(\tR\bworkerId\x12\x1f\n" +
+	"\vassigned_at\x18\f \x01(\x03R\n" +
+	"assignedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\r \x01(\x03R\tupdatedAt\"\xd9\x01\n" +
+	"\x16CompactionQueueDetails\x12\x16\n" +
+	"\x06tenant\x18\x01 \x01(\tR\x06tenant\x12\x14\n" +
+	"\x05shard\x18\x02 \x01(\rR\x05shard\x12)\n" +
+	"\x10compaction_level\x18\x03 \x01(\rR\x0fcompactionLevel\x12\x16\n" +
+	"\x06blocks\x18\x04 \x01(\x04R\x06blocks\x12&\n" +
+	"\x0foldest_block_at\x18\x05 \x01(\x03R\roldestBlockAt\x12&\n" +
+	"\x0fnewest_block_at\x18\x06 \x01(\x03R\rnewestBlockAt*z\n" +
 	"\x13CompactionJobStatus\x12!\n" +
 	"\x1dCOMPACTION_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dCOMPACTION_STATUS_IN_PROGRESS\x10\x01\x12\x1d\n" +
-	"\x19COMPACTION_STATUS_SUCCESS\x10\x022\xc8\x02\n" +
+	"\x19COMPACTION_STATUS_SUCCESS\x10\x022\xb3\x03\n" +
 	"\x11CompactionService\x12i\n" +
 	"\x12ListCompactionJobs\x12'.metastore.v1.ListCompactionJobsRequest\x1a(.metastore.v1.ListCompactionJobsResponse\"\x00\x12]\n" +
 	"\x0eDeleteDatasets\x12#.metastore.v1.DeleteDatasetsRequest\x1a$.metastore.v1.DeleteDatasetsResponse\"\x00\x12i\n" +
-	"\x12PollCompactionJobs\x12'.metastore.v1.PollCompactionJobsRequest\x1a(.metastore.v1.PollCompactionJobsResponse\"\x00B\xbb\x01\n" +
+	"\x12PollCompactionJobs\x12'.metastore.v1.PollCompactionJobsRequest\x1a(.metastore.v1.PollCompactionJobsResponse\"\x00\x12i\n" +
+	"\x12GetCompactionState\x12'.metastore.v1.GetCompactionStateRequest\x1a(.metastore.v1.GetCompactionStateResponse\"\x00B\xbb\x01\n" +
 	"\x10com.metastore.v1B\x0eCompactorProtoP\x01ZFgithub.com/grafana/pyroscope/api/gen/proto/go/metastore/v1;metastorev1\xa2\x02\x03MXX\xaa\x02\fMetastore.V1\xca\x02\fMetastore\\V1\xe2\x02\x18Metastore\\V1\\GPBMetadata\xea\x02\rMetastore::V1b\x06proto3"
 
 var (
@@ -1345,7 +1749,7 @@ func file_metastore_v1_compactor_proto_rawDescGZIP() []byte {
 }
 
 var file_metastore_v1_compactor_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_metastore_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_metastore_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_metastore_v1_compactor_proto_goTypes = []any{
 	(CompactionJobStatus)(0),           // 0: metastore.v1.CompactionJobStatus
 	(*ListCompactionJobsRequest)(nil),  // 1: metastore.v1.ListCompactionJobsRequest
@@ -1364,8 +1768,12 @@ var file_metastore_v1_compactor_proto_goTypes = []any{
 	(*DeleteDatasetsRequest)(nil),      // 14: metastore.v1.DeleteDatasetsRequest
 	(*BlockDeletionSummary)(nil),       // 15: metastore.v1.BlockDeletionSummary
 	(*DeleteDatasetsResponse)(nil),     // 16: metastore.v1.DeleteDatasetsResponse
-	(*BlockList)(nil),                  // 17: metastore.v1.BlockList
-	(*BlockMeta)(nil),                  // 18: metastore.v1.BlockMeta
+	(*GetCompactionStateRequest)(nil),  // 17: metastore.v1.GetCompactionStateRequest
+	(*GetCompactionStateResponse)(nil), // 18: metastore.v1.GetCompactionStateResponse
+	(*CompactionJobDetails)(nil),       // 19: metastore.v1.CompactionJobDetails
+	(*CompactionQueueDetails)(nil),     // 20: metastore.v1.CompactionQueueDetails
+	(*BlockList)(nil),                  // 21: metastore.v1.BlockList
+	(*BlockMeta)(nil),                  // 22: metastore.v1.BlockMeta
 }
 var file_metastore_v1_compactor_proto_depIdxs = []int32{
 	3,  // 0: metastore.v1.ListCompactionJobsResponse.jobs:type_name -> metastore.v1.CompactionJobInfo
@@ -1380,21 +1788,26 @@ var file_metastore_v1_compactor_proto_depIdxs = []int32{
 	9,  // 9: metastore.v1.Tombstones.shard:type_name -> metastore.v1.ShardTombstone
 	0,  // 10: metastore.v1.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
 	12, // 11: metastore.v1.CompactionJobStatusUpdate.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
-	17, // 12: metastore.v1.CompactedBlocks.source_blocks:type_name -> metastore.v1.BlockList
-	18, // 13: metastore.v1.CompactedBlocks.new_blocks:type_name -> metastore.v1.BlockMeta
+	21, // 12: metastore.v1.CompactedBlocks.source_blocks:type_name -> metastore.v1.BlockList
+	22, // 13: metastore.v1.CompactedBlocks.new_blocks:type_name -> metastore.v1.BlockMeta
 	13, // 14: metastore.v1.DeleteDatasetsRequest.filter:type_name -> metastore.v1.DeleteFilter
 	15, // 15: metastore.v1.DeleteDatasetsResponse.blocks:type_name -> metastore.v1.BlockDeletionSummary
-	1,  // 16: metastore.v1.CompactionService.ListCompactionJobs:input_type -> metastore.v1.ListCompactionJobsRequest
-	14, // 17: metastore.v1.CompactionService.DeleteDatasets:input_type -> metastore.v1.DeleteDatasetsRequest
-	4,  // 18: metastore.v1.CompactionService.PollCompactionJobs:input_type -> metastore.v1.PollCompactionJobsRequest
-	2,  // 19: metastore.v1.CompactionService.ListCompactionJobs:output_type -> metastore.v1.ListCompactionJobsResponse
-	16, // 20: metastore.v1.CompactionService.DeleteDatasets:output_type -> metastore.v1.DeleteDatasetsResponse
-	5,  // 21: metastore.v1.CompactionService.PollCompactionJobs:output_type -> metastore.v1.PollCompactionJobsResponse
-	19, // [19:22] is the sub-list for method output_type
-	16, // [16:19] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	19, // 16: metastore.v1.GetCompactionStateResponse.compaction_jobs:type_name -> metastore.v1.CompactionJobDetails
+	20, // 17: metastore.v1.GetCompactionStateResponse.compaction_queues:type_name -> metastore.v1.CompactionQueueDetails
+	0,  // 18: metastore.v1.CompactionJobDetails.status:type_name -> metastore.v1.CompactionJobStatus
+	1,  // 19: metastore.v1.CompactionService.ListCompactionJobs:input_type -> metastore.v1.ListCompactionJobsRequest
+	14, // 20: metastore.v1.CompactionService.DeleteDatasets:input_type -> metastore.v1.DeleteDatasetsRequest
+	4,  // 21: metastore.v1.CompactionService.PollCompactionJobs:input_type -> metastore.v1.PollCompactionJobsRequest
+	17, // 22: metastore.v1.CompactionService.GetCompactionState:input_type -> metastore.v1.GetCompactionStateRequest
+	2,  // 23: metastore.v1.CompactionService.ListCompactionJobs:output_type -> metastore.v1.ListCompactionJobsResponse
+	16, // 24: metastore.v1.CompactionService.DeleteDatasets:output_type -> metastore.v1.DeleteDatasetsResponse
+	5,  // 25: metastore.v1.CompactionService.PollCompactionJobs:output_type -> metastore.v1.PollCompactionJobsResponse
+	18, // 26: metastore.v1.CompactionService.GetCompactionState:output_type -> metastore.v1.GetCompactionStateResponse
+	23, // [23:27] is the sub-list for method output_type
+	19, // [19:23] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_metastore_v1_compactor_proto_init() }
@@ -1409,7 +1822,7 @@ func file_metastore_v1_compactor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_metastore_v1_compactor_proto_rawDesc), len(file_metastore_v1_compactor_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
