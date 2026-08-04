@@ -64,6 +64,8 @@ const (
 
 	BodySizeLimit Reason = "body_size_limit_exceeded"
 
+	InflightBytesLimit Reason = "inflight_bytes_limit_exceeded"
+
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
 
