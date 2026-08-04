@@ -204,8 +204,8 @@ func (svc *CompactionService) PollCompactionJobs(
 		return nil, status.Error(codes.FailedPrecondition, "failed to update compaction plan")
 	}
 
-	// As of now, accepted plan always matches the proposed one,
-	// so our prepared worker response is still valid.
+	// As of now, accepted plan always matches the proposed one, so our prepared
+	// worker response is still valid.
 	svc.updateOwners(workerID(ctx, req), accepted)
 
 	span.SetTag("assigned_jobs", len(workerResp.GetCompactionJobs()))
@@ -213,8 +213,8 @@ func (svc *CompactionService) PollCompactionJobs(
 	return workerResp, nil
 }
 
-// workerID identifies the worker on a best-effort basis: the identity
-// reported by the worker itself, or the peer address as a fallback.
+// workerID identifies the worker on a best-effort basis: the identity reported
+// by the worker itself, or the peer address as a fallback.
 func workerID(ctx context.Context, req *metastorev1.PollCompactionJobsRequest) string {
 	if req.WorkerId != "" {
 		return req.WorkerId
