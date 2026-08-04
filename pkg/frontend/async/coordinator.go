@@ -2,6 +2,7 @@ package async
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -23,10 +24,7 @@ type Limits interface {
 	MaxAsyncQueryConcurrency(tenantID string) int
 }
 
-// queryResult is the result of a query execution sent over a channel.
-// On success, Response carries the raw SelectMergeStacktracesResponse
-// from the wrapped handler (its Async field is unset); the
-// coordinator/store own request_id and status.
+// queryResult is a query execution's outcome, sent over resultCh.
 type queryResult struct {
 	Response *querierv1.SelectMergeStacktracesResponse
 	Err      error
@@ -82,9 +80,8 @@ func (c *Coordinator) tryAcquire(tenantID string) error {
 	return nil
 }
 
-// Submit reserves the tenant's concurrency slot, strips the Async marker
-// from req, persists the resulting spec as a new in-progress query, and
-// dispatches it in the background. Returns the assigned request ID.
+// Submit persists req as a new in-progress query and dispatches it in the
+// background, returning the assigned request ID.
 func (c *Coordinator) Submit(ctx context.Context, tenantID string, req *querierv1.SelectMergeStacktracesRequest) (string, error) {
 	if err := c.tryAcquire(tenantID); err != nil {
 		return "", err
@@ -94,18 +91,18 @@ func (c *Coordinator) Submit(ctx context.Context, tenantID string, req *querierv
 	spec := proto.Clone(req).(*querierv1.SelectMergeStacktracesRequest)
 	spec.Async = nil
 
-	if err := c.store.create(ctx, tenantID, requestID, spec); err != nil {
+	lease, err := c.store.create(ctx, tenantID, requestID, spec)
+	if err != nil {
 		c.decrement(tenantID)
 		return "", fmt.Errorf("failed to create async query: %w", err)
 	}
 
-	c.dispatch(tenantID, requestID, spec)
+	c.dispatch(tenantID, requestID, lease, spec)
 	level.Info(c.logger).Log("msg", "async query submitted", "tenant", tenantID, "request_id", requestID)
 	return requestID, nil
 }
 
-// HasCapacity implements Store's Dispatcher interface: a read-only peek at
-// whether tenantID currently has spare capacity.
+// HasCapacity implements Dispatcher: a read-only peek at spare capacity.
 func (c *Coordinator) HasCapacity(tenantID string) bool {
 	maxConcurrent := c.limits.MaxAsyncQueryConcurrency(tenantID)
 	c.mu.Lock()
@@ -113,25 +110,22 @@ func (c *Coordinator) HasCapacity(tenantID string) bool {
 	return maxConcurrent > 0 && c.inFlight[tenantID] < maxConcurrent
 }
 
-// Dispatch implements Store's Dispatcher interface: it (re-)runs a query
-// whose record and spec are already persisted. A declined dispatch (tenant
-// at its concurrency limit) never rolls back the store's claim on the
-// record; it is simply retried by a later adoption scan once the lease
-// expires again.
-func (c *Coordinator) Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
+// Dispatch implements Dispatcher, re-running an adopted query under lease. A
+// declined dispatch never rolls back the claim; a later scan retries once
+// the lease expires again.
+func (c *Coordinator) Dispatch(tenantID, requestID string, lease leaseHandle, spec *querierv1.SelectMergeStacktracesRequest) {
 	if err := c.tryAcquire(tenantID); err != nil {
 		level.Warn(c.logger).Log("msg", "skipping async query adoption: concurrency limit reached", "tenant", tenantID, "request_id", requestID, "err", err)
 		return
 	}
-	c.dispatch(tenantID, requestID, spec)
+	c.dispatch(tenantID, requestID, lease, spec)
 }
 
-// dispatch runs spec against next on a background context, detached from the
-// caller's context, so the query survives client disconnects and outlives
-// the scan tick that triggered an adoption. Submit and Dispatch both share
-// this path once their concurrency slot is reserved.
-func (c *Coordinator) dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
-	queryCtx := tenant.InjectTenantID(context.Background(), tenantID)
+// dispatch runs spec on a background context so the query survives client
+// disconnects; cancel lets awaitResult stop a query it no longer owns
+// instead of pinning the concurrency slot forever.
+func (c *Coordinator) dispatch(tenantID, requestID string, lease leaseHandle, spec *querierv1.SelectMergeStacktracesRequest) {
+	queryCtx, cancel := context.WithCancel(tenant.InjectTenantID(context.Background(), tenantID))
 	resultCh := make(chan queryResult, 1)
 
 	// query goroutine: runs the spec end-to-end.
@@ -145,39 +139,56 @@ func (c *Coordinator) dispatch(tenantID, requestID string, spec *querierv1.Selec
 	}()
 
 	// supervisor goroutine: renews the lease and records the outcome.
-	go c.awaitResult(tenantID, requestID, resultCh)
+	go c.awaitResult(tenantID, requestID, lease, cancel, resultCh)
 }
 
-func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan queryResult) {
+func (c *Coordinator) awaitResult(tenantID, requestID string, lease leaseHandle, cancel context.CancelFunc, resultCh <-chan queryResult) {
 	defer c.decrement(tenantID)
+	defer cancel()
 
 	ctx := tenant.InjectTenantID(context.Background(), tenantID)
 
 	ticker := time.NewTicker(c.store.heartbeatInterval)
 	defer ticker.Stop()
+	tickerC := ticker.C
 
 	for {
 		select {
 		case res := <-resultCh:
-			if res.Err != nil {
-				level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", res.Err)
-				if storeErr := c.store.fail(ctx, tenantID, requestID, res.Err); storeErr != nil {
-					level.Error(c.logger).Log("msg", "failed to store async query failure", "tenant", tenantID, "request_id", requestID, "err", storeErr)
+			c.report(ctx, tenantID, requestID, &lease, res)
+			return
+		case <-tickerC:
+			if err := c.store.heartbeat(ctx, tenantID, requestID, &lease); errors.Is(err, errLostOwnership) {
+				// Cancel the query this store no longer owns and wait for
+				// its one buffered outcome. A success is a real result and
+				// must be reported regardless of why ownership looks lost
+				// (see heartbeat's ambiguous-ack comment); a failure is
+				// dropped, since the new owner produces the record's outcome
+				// and a fenced failure mark would lose anyway.
+				cancel()
+				if res := <-resultCh; res.Err == nil {
+					c.report(ctx, tenantID, requestID, &lease, res)
 				}
 				return
 			}
-			if err := c.store.complete(ctx, tenantID, requestID, res.Response); err != nil {
-				level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
-			} else {
-				level.Info(c.logger).Log("msg", "async query completed", "tenant", tenantID, "request_id", requestID)
-			}
-			return
-		case <-ticker.C:
-			if err := c.store.heartbeat(ctx, tenantID, requestID); err != nil {
-				level.Warn(c.logger).Log("msg", "failed to update heartbeat", "tenant", tenantID, "request_id", requestID, "err", err)
-			}
 		}
 	}
+}
+
+// report persists a finished query's outcome.
+func (c *Coordinator) report(ctx context.Context, tenantID, requestID string, lease *leaseHandle, res queryResult) {
+	if res.Err != nil {
+		level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", res.Err)
+		if storeErr := c.store.fail(ctx, tenantID, requestID, lease, res.Err); storeErr != nil {
+			level.Error(c.logger).Log("msg", "failed to store async query failure", "tenant", tenantID, "request_id", requestID, "err", storeErr)
+		}
+		return
+	}
+	if err := c.store.complete(ctx, tenantID, requestID, lease, res.Response); err != nil {
+		level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
+		return
+	}
+	level.Info(c.logger).Log("msg", "async query completed", "tenant", tenantID, "request_id", requestID)
 }
 
 func (c *Coordinator) decrement(tenantID string) {

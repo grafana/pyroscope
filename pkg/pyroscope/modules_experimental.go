@@ -2,6 +2,7 @@ package pyroscope
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -191,6 +192,17 @@ func (f *Pyroscope) getFrontendAddress() (addr string, err error) {
 	return netutil.GetFirstAddressOf(f.Cfg.Frontend.InfNames, f.logger, f.Cfg.Frontend.EnableIPv6)
 }
 
+// classifyProbeErr reports whether err is a definitive verdict that the
+// backend does not enforce conditional writes, rather than a transient
+// failure.
+func classifyProbeErr(err error) bool {
+	return errors.Is(err, asyncquery.ErrConditionsNotEnforced) || errors.Is(err, asyncquery.ErrConditionsAlwaysRejected)
+}
+
+// initAsyncQueryStore builds the async query Store. A definitive probe
+// verdict that the backend does not enforce conditional writes degrades the
+// store instead of failing startup; any other probe failure still fails
+// startup, since the bucket is a hard dependency regardless.
 func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
 	if !f.Cfg.Frontend.AsyncQueriesEnabled {
 		return nil, nil
@@ -198,6 +210,23 @@ func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
 	if f.storageBucket == nil {
 		return nil, nil
 	}
+
+	probeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := asyncquery.ProbeConditionalWrites(probeCtx, f.storageBucket); err != nil {
+		if !classifyProbeErr(err) {
+			return nil, fmt.Errorf("async queries require object storage with conditional-write support: %w", err)
+		}
+		level.Warn(f.logger).Log("msg", "object storage does not enforce conditional writes; async query adoption is disabled and metadata writes are unconditional", "err", err)
+		f.asyncQueryStore = asyncquery.NewStore(
+			log.With(f.logger, "component", "async-query-store"),
+			f.storageBucket,
+			f.reg,
+		)
+		f.asyncQueryStore.DisableConditionalWrites()
+		return f.asyncQueryStore, nil
+	}
+
 	f.asyncQueryStore = asyncquery.NewStore(
 		log.With(f.logger, "component", "async-query-store"),
 		f.storageBucket,

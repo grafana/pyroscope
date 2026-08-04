@@ -21,9 +21,10 @@ func TestHandlerPollCopiesPprofResponse(t *testing.T) {
 		tenantID  = "tenant-a"
 		requestID = "550e8400-e29b-41d4-a716-446655440000"
 	)
-	require.NoError(t, store.create(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesRequest{}))
+	lease, err := store.create(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesRequest{})
+	require.NoError(t, err)
 	want := &profilev1.Profile{Sample: []*profilev1.Sample{{Value: []int64{1}}}}
-	require.NoError(t, store.complete(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesResponse{
+	require.NoError(t, store.complete(ctx, tenantID, requestID, &lease, &querierv1.SelectMergeStacktracesResponse{
 		Pprof: &querierv1.PprofProfile{Profile: want},
 	}))
 
@@ -43,10 +44,11 @@ func TestHandlerPollTenantIsolation(t *testing.T) {
 		tenantB   = "tenant-b"
 		requestID = "550e8400-e29b-41d4-a716-446655440001"
 	)
-	require.NoError(t, store.create(ctx, tenantA, requestID, &querierv1.SelectMergeStacktracesRequest{}))
+	_, err := store.create(ctx, tenantA, requestID, &querierv1.SelectMergeStacktracesRequest{})
+	require.NoError(t, err)
 
 	handler := &Handler{coordinator: &Coordinator{store: store}}
-	_, err := handler.poll(ctx, tenantB, requestID)
+	_, err = handler.poll(ctx, tenantB, requestID)
 
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
