@@ -137,7 +137,7 @@ func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx) ([]QueueStats,
 	}()
 	var n int
 	for entries.Next() {
-		if n++; n&0xfff == 0 {
+		if n++; n%4096 == 0 {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
