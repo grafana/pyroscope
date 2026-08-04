@@ -152,6 +152,12 @@ func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCom
 	})
 }
 
+func (c *Client) GetCompactionState(ctx context.Context, in *metastorev1.GetCompactionStateRequest, opts ...grpc.CallOption) (*metastorev1.GetCompactionStateResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetCompactionStateResponse, error) {
+		return instance.GetCompactionState(ctx, in, opts...)
+	})
+}
+
 func (c *Client) GetTenants(ctx context.Context, in *metastorev1.GetTenantsRequest, opts ...grpc.CallOption) (*metastorev1.GetTenantsResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetTenantsResponse, error) {
 		return instance.GetTenants(ctx, in, opts...)
