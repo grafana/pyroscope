@@ -65,14 +65,16 @@ func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocks
 	return s, mockClient, lidiaBucket
 }
 
-// A bucket failure that is not a missing object must not fall through to a
-// debuginfod fetch: the mock client has no expectations, so any fetch fails
-// the test.
-func TestResolveBucketErrorSkipsDebuginfod(t *testing.T) {
+// A bucket failure that is not a missing object still falls through to
+// debuginfod: the cache probe is best-effort, and only the cache metric
+// distinguishes it from a miss.
+func TestResolveBucketErrorFallsThroughToDebuginfod(t *testing.T) {
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	bucket.On("Get", mock.Anything, mock.Anything).Return(nil, errors.New("bucket unavailable")).Once()
 	bucket.On("IsObjNotFoundErr", mock.Anything).Return(false)
+	mockClient.On("FetchDebuginfo", mock.Anything, "buildid").
+		Return(nil, buildIDNotFoundError{buildID: "buildid"}).Once()
 
 	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1, ResolveTimeout: defaultResolveTimeout}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
 	require.NoError(t, err)
@@ -83,6 +85,8 @@ func TestResolveBucketErrorSkipsDebuginfod(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, frames, 1)
 	require.Nil(t, frames[0])
+	require.Equal(t, float64(1),
+		testutil.ToFloat64(s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "error")))
 }
 
 // TestSymbolizePprof tests symbolization using testdata/symbols.debug which contains:
