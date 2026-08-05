@@ -252,32 +252,19 @@ describe('applySuggestion', () => {
 
 describe('label name translation', () => {
   it('maps display names to their internal form', () => {
-    assert.equal(toInternalLabel('profile_type'), '__profile_type__');
     assert.equal(toInternalLabel('service_name'), 'service_name');
   });
 
   it('maps internal names to their display form', () => {
-    assert.equal(toDisplayLabel('__profile_type__'), 'profile_type');
     assert.equal(toDisplayLabel('service_name'), 'service_name');
   });
 
   it('detects internal __xxx__ labels', () => {
     assert.equal(isInternalLabel('__delta__'), true);
     assert.equal(isInternalLabel('__session_id__'), true);
-    assert.equal(isInternalLabel('__profile_type__'), true);
     assert.equal(isInternalLabel('service_name'), false);
-    assert.equal(isInternalLabel('profile_type'), false);
     assert.equal(isInternalLabel('__partial'), false);
     assert.equal(isInternalLabel('partial__'), false);
-  });
-
-  it('serializes profile_type matchers using the internal label name', () => {
-    const q = '{profile_type="cpu", service_name="ap"}';
-    const cursor = q.indexOf('"ap"') + 2;
-    const ctx = getCursorContext(q, cursor);
-    assert.equal(ctx.kind, 'value');
-    if (ctx.kind !== 'value') return;
-    assert.deepEqual(ctx.otherMatchers, ['{__profile_type__="cpu"}']);
   });
 });
 
@@ -295,14 +282,6 @@ describe('parseQuery / buildQuery', () => {
     assert.equal(parseQuery('{foo="bar"}'), null);
   });
 
-  it('parses queries without profile_type', () => {
-    const parsed = parseQuery('{service_name="api", environment="staging"}');
-    assert.deepEqual(parsed, {
-      service: 'api',
-      labelSelector: '{service_name="api", environment="staging"}',
-    });
-  });
-
   it('tolerates extra whitespace around operators', () => {
     const parsed = parseQuery('{service_name = "api"}');
     assert.deepEqual(parsed, {
@@ -311,9 +290,8 @@ describe('parseQuery / buildQuery', () => {
     });
   });
 
-  it('preserves arbitrary label matchers while stripping profile_type if present', () => {
-    const q =
-      '{service_name="example-service", profile_type="process_cpu:cpu:nanoseconds:cpu:nanoseconds", environment="staging"}';
+  it('preserves arbitrary label matchers', () => {
+    const q = '{service_name="example-service", environment="staging"}';
     const parsed = parseQuery(q);
     assert.deepEqual(parsed, {
       service: 'example-service',
