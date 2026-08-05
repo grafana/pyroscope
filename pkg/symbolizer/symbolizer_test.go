@@ -89,6 +89,27 @@ func TestResolveBucketErrorFallsThroughToDebuginfod(t *testing.T) {
 		testutil.ToFloat64(s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "error")))
 }
 
+// A probe that fails because the caller's context died is not a bucket
+// failure: no error metric, no debuginfod fetch.
+func TestResolveCanceledProbeDoesNotFallThrough(t *testing.T) {
+	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
+	bucket := mockobjstore.NewMockBucket(t)
+	ctx, cancel := context.WithCancel(tenant.InjectTenantID(context.Background(), "tenant"))
+	bucket.On("Get", mock.Anything, mock.Anything).
+		Run(func(mock.Arguments) { cancel() }).
+		Return(nil, context.Canceled).Once()
+	bucket.On("IsObjNotFoundErr", mock.Anything).Return(false).Maybe()
+
+	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1, ResolveTimeout: defaultResolveTimeout}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
+	require.NoError(t, err)
+	s.client = mockClient
+
+	_, err = s.Resolve(ctx, "buildid", "binary", []uint64{0x1500})
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, float64(0),
+		testutil.ToFloat64(s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "error")))
+}
+
 // TestSymbolizePprof tests symbolization using testdata/symbols.debug which contains:
 //
 // 0x1500 -> (contains both functions)

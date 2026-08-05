@@ -187,6 +187,16 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 		return nil, err
 	}
 
+	// A dead caller must not start (or join) a detached fetch
+	if err := ctx.Err(); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			status = statusErrorTimeout
+		} else {
+			status = statusErrorCanceled
+		}
+		return nil, err
+	}
+
 	if found, _ := c.notFoundCache.Get(sanitizedBuildID); found {
 		status = statusErrorNotFound
 		c.metrics.cacheOperations.WithLabelValues("not_found", "get", statusSuccess).Inc()

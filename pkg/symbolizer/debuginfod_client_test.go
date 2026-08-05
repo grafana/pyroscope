@@ -19,6 +19,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -614,6 +615,28 @@ func TestFetchDebuginfo_NotFoundDoesNotTripBreaker(t *testing.T) {
 		require.ErrorAs(t, err, &notFound)
 	}
 	assert.Equal(t, int32(5), calls.Load(), "every 404 must reach the upstream")
+}
+
+func TestFetchDebuginfo_DeadContextDoesNotStartFetch(t *testing.T) {
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:               "http://127.0.0.1:1",
+		NotFoundCacheMaxItems: 1000,
+		NotFoundCacheTTL:      time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), validation.MockDefaultOverrides())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(tenant.InjectTenantID(context.Background(), "test-tenant"))
+	cancel()
+
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.ErrorIs(t, err, context.Canceled)
+
+	// The guard must return before the not-found cache probe, which is
+	// incremented synchronously ahead of the singleflight fetch: a zero
+	// miss count proves no detached fetch was started.
+	assert.Equal(t, float64(0),
+		testutil.ToFloat64(client.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss")),
+		"a dead caller must not reach the cache probe or start a detached fetch")
 }
 
 // gatedTransport fails every dial with a refused connection; dials for the

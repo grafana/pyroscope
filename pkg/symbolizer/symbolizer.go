@@ -470,6 +470,10 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
 		return lidiaBytes, nil
 	}
+	if ctx.Err() != nil {
+		// The caller is gone, not the bucket.
+		return nil, err
+	}
 	if errors.Is(err, errObjectNotFound) {
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "miss").Inc()
 	} else {
