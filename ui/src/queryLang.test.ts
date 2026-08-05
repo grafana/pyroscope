@@ -291,6 +291,7 @@ describe('parseQuery / buildQuery', () => {
     assert.deepEqual(parsed, {
       service: 'my-service',
       profileType: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
+      labelSelector: '{service_name="my-service"}',
     });
   });
 
@@ -300,6 +301,32 @@ describe('parseQuery / buildQuery', () => {
 
   it('tolerates extra whitespace around the operator', () => {
     const parsed = parseQuery('{service_name = "api", profile_type = "cpu"}');
-    assert.deepEqual(parsed, { service: 'api', profileType: 'cpu' });
+    assert.deepEqual(parsed, {
+      service: 'api',
+      profileType: 'cpu',
+      labelSelector: '{service_name="api"}',
+    });
+  });
+
+  it('preserves arbitrary label matchers while stripping profile_type', () => {
+    const q =
+      '{service_name="example-service", profile_type="process_cpu:cpu:nanoseconds:cpu:nanoseconds", environment="staging"}';
+    const parsed = parseQuery(q);
+    assert.deepEqual(parsed, {
+      service: 'example-service',
+      profileType: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
+      labelSelector: '{service_name="example-service", environment="staging"}',
+    });
+  });
+
+  it('handles regex operators and multiple matchers in labelSelector', () => {
+    const q =
+      '{service_name="api", profile_type="cpu", region=~"us-.*", env!="prod"}';
+    const parsed = parseQuery(q);
+    assert.deepEqual(parsed, {
+      service: 'api',
+      profileType: 'cpu',
+      labelSelector: '{service_name="api", region=~"us-.*", env!="prod"}',
+    });
   });
 });

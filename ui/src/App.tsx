@@ -45,6 +45,10 @@ export default function App() {
     | undefined
   >(undefined);
   const [queryUserInput, setQueryUserInput] = useState<string | null>(null);
+  const [activeLabelSelector, setActiveLabelSelector] = useState<
+    string | undefined
+  >(undefined);
+
   const queryInput =
     queryUserInput ??
     (service || profileType ? buildQuery(service, profileType) : '');
@@ -52,6 +56,7 @@ export default function App() {
   const query = usePyroscopeQuery({
     service,
     profileType,
+    labelSelector: activeLabelSelector,
     timeRange,
     absoluteRange,
     tenantID: tenant.tenantID,
@@ -74,11 +79,15 @@ export default function App() {
     setService(s);
     setProfileType(pt);
     setQueryUserInput(null);
+    setActiveLabelSelector(undefined);
   };
 
   const queryDirty =
     !!service && queryInput !== buildQuery(service, profileType);
-  const handleReset = () => setQueryUserInput(null);
+  const handleReset = () => {
+    setQueryUserInput(null);
+    setActiveLabelSelector(undefined);
+  };
 
   const timeWindow = absoluteRange ?? parseTimeRange(timeRange);
 
@@ -124,7 +133,15 @@ export default function App() {
         onRun={(q) => {
           const parsed = parseQuery(q);
           if (parsed) {
-            query.execute(parsed.service, parsed.profileType, timeRange);
+            setService(parsed.service);
+            setProfileType(parsed.profileType);
+            setActiveLabelSelector(parsed.labelSelector);
+            query.execute(
+              parsed.service,
+              parsed.profileType,
+              timeRange,
+              parsed.labelSelector,
+            );
           }
         }}
         start={timeWindow.start}

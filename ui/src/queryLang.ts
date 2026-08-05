@@ -301,9 +301,29 @@ export function buildQuery(service: string, profileType: string): string {
 
 export function parseQuery(
   q: string,
-): { service: string; profileType: string } | null {
-  const service = q.match(/service_name\s*=\s*"([^"]+)"/)?.[1];
-  const profileType = q.match(/profile_type\s*=\s*"([^"]+)"/)?.[1];
+): { service: string; profileType: string; labelSelector: string } | null {
+  const { matchers, braceOpen } = tokenize(q);
+  if (braceOpen === -1) return null;
+
+  let service = '';
+  let profileType = '';
+  const selectorMatchers: string[] = [];
+
+  for (const m of matchers) {
+    if (!m.complete) continue;
+    const internalName = toInternalLabel(m.name);
+    if (internalName === 'service_name' && m.op === '=') {
+      service = m.value;
+    }
+    if (internalName === '__profile_type__' && m.op === '=') {
+      profileType = m.value;
+      continue;
+    }
+    selectorMatchers.push(`${internalName}${m.op}"${m.value}"`);
+  }
+
   if (!service || !profileType) return null;
-  return { service, profileType };
+
+  const labelSelector = `{${selectorMatchers.join(', ')}}`;
+  return { service, profileType, labelSelector };
 }
