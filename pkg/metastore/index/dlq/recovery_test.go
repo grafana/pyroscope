@@ -83,6 +83,10 @@ func TestNotRaftLeader(t *testing.T) {
 			Id:    test.ULID("2024-09-23T01:00:00Z"),
 			Shard: 2,
 		},
+		{
+			Id:    test.ULID("2024-09-23T02:00:00Z"),
+			Shard: 2,
+		},
 	}
 
 	srv := mockdlq.NewMockMetastore(t)
@@ -102,10 +106,38 @@ func TestNotRaftLeader(t *testing.T) {
 	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket, prometheus.NewRegistry())
 	r.recoverTick(context.Background())
 
-	assert.Equal(t, 1, len(bucket.Objects()))
+	assert.Equal(t, 2, len(bucket.Objects()))
 
-	assert.Equal(t, 1.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("metastore_error")))
+	assert.Equal(t, 1.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("leadership_change")))
+	assert.Equal(t, 0.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("metastore_error")))
 	assert.Equal(t, 0.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("success")))
+}
+
+func TestRecoverTick_StopsOnMetastoreContextError(t *testing.T) {
+	for _, err := range []error{context.Canceled, context.DeadlineExceeded} {
+		t.Run(err.Error(), func(t *testing.T) {
+			metas := []*metastorev1.BlockMeta{
+				{Id: test.ULID("2024-09-23T01:00:00Z"), Shard: 1},
+				{Id: test.ULID("2024-09-23T02:00:00Z"), Shard: 2},
+			}
+
+			srv := mockdlq.NewMockMetastore(t)
+			srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
+				Once().
+				Return(nil, err)
+
+			bucket := memory.NewInMemBucket()
+			for _, meta := range metas {
+				addMeta(bucket, meta)
+			}
+
+			r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket, prometheus.NewRegistry())
+			r.recoverTick(context.Background())
+
+			assert.Len(t, bucket.Objects(), 2)
+			assert.Equal(t, 1.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("canceled")))
+		})
+	}
 }
 
 func TestStartStop(t *testing.T) {
@@ -177,6 +209,30 @@ func addMeta(bucket *memory.InMemBucket, meta *metastorev1.BlockMeta) {
 // on the first read (via the getRange prefetch) rather than an empty reader.
 type s3LikeBucket struct {
 	*memory.InMemBucket
+}
+
+type truncatedReadBucket struct {
+	*memory.InMemBucket
+	path string
+}
+
+func (b *truncatedReadBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
+	if name == b.path {
+		return io.NopCloser(&unexpectedEOFReader{Reader: bytes.NewReader([]byte("partial metadata"))}), nil
+	}
+	return b.InMemBucket.Get(ctx, name)
+}
+
+type unexpectedEOFReader struct {
+	*bytes.Reader
+}
+
+func (r *unexpectedEOFReader) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
+	if errors.Is(err, io.EOF) {
+		return n, io.ErrUnexpectedEOF
+	}
+	return n, err
 }
 
 func (b *s3LikeBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
@@ -263,6 +319,56 @@ func TestRecoverTick_EmptyMetaDeletedAndContinues(t *testing.T) {
 	_, ok := bucket.Objects()[emptyPath]
 	assert.False(t, ok, "empty meta.pb should be deleted")
 	assert.Equal(t, 0, len(bucket.Objects()))
+}
+
+func TestRecoverTick_EmptyReaderMetaDeletedAndContinues(t *testing.T) {
+	empty := &metastorev1.BlockMeta{Id: test.ULID("2024-09-23T01:00:00Z"), Shard: 1}
+	valid := &metastorev1.BlockMeta{Id: test.ULID("2024-09-23T02:00:00Z"), Shard: 2}
+	emptyPath := block.MetadataDLQObjectPath(empty)
+
+	srv := mockdlq.NewMockMetastore(t)
+	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
+		Once().
+		Return(&metastorev1.AddBlockResponse{}, nil)
+
+	bucket := memory.NewInMemBucket()
+	bucket.Set(emptyPath, nil)
+	validData, _ := valid.MarshalVT()
+	bucket.Set(block.MetadataDLQObjectPath(valid), validData)
+
+	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket, prometheus.NewRegistry())
+	r.recoverTick(context.Background())
+
+	_, deleted := bucket.Objects()[emptyPath]
+	assert.False(t, deleted, "empty metadata should be deleted")
+	assert.Equal(t, 1.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("empty")))
+}
+
+func TestRecoverTick_UnexpectedEOFRetainedAndContinues(t *testing.T) {
+	truncated := &metastorev1.BlockMeta{Id: test.ULID("2024-09-23T01:00:00Z"), Shard: 1}
+	valid := &metastorev1.BlockMeta{Id: test.ULID("2024-09-23T02:00:00Z"), Shard: 2}
+	truncatedPath := block.MetadataDLQObjectPath(truncated)
+
+	srv := mockdlq.NewMockMetastore(t)
+	srv.On("AddRecoveredBlock", mock.Anything, mock.Anything).
+		Once().
+		Return(&metastorev1.AddBlockResponse{}, nil)
+
+	bucket := &truncatedReadBucket{
+		InMemBucket: memory.NewInMemBucket(),
+		path:        truncatedPath,
+	}
+	bucket.Set(truncatedPath, []byte("partial metadata"))
+	validData, _ := valid.MarshalVT()
+	bucket.Set(block.MetadataDLQObjectPath(valid), validData)
+
+	r := NewRecovery(test.NewTestingLogger(t), Config{}, srv, bucket, prometheus.NewRegistry())
+	r.recoverTick(context.Background())
+
+	_, kept := bucket.Objects()[truncatedPath]
+	assert.True(t, kept, "truncated metadata should be retained for retry")
+	assert.Equal(t, 1.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("read_error")))
+	assert.Equal(t, 0.0, testutil.ToFloat64(r.metrics.recoveryAttempts.WithLabelValues("empty")))
 }
 
 // TestRecoverTick_TransientErrorRetainsAndContinues verifies that a transient

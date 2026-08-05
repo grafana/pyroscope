@@ -139,7 +139,7 @@ func (r *Recovery) recover(ctx context.Context, path string) error {
 	b, err := r.readObject(ctx, path)
 	switch {
 	case err == nil:
-	case errors.Is(err, context.Canceled):
+	case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
 		r.metrics.recoveryAttempts.WithLabelValues("canceled").Inc()
 		return err
 	case r.bucket.IsObjNotFoundErr(err):
@@ -149,7 +149,7 @@ func (r *Recovery) recover(ctx context.Context, path string) error {
 		r.metrics.recoveryAttempts.WithLabelValues("not_found").Inc()
 		level.Warn(r.logger).Log("msg", "block metadata not found; skipping", "path", path)
 		return nil
-	case errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF):
+	case errors.Is(err, io.EOF):
 		// A zero-byte meta.pb object: object stores (e.g. S3) surface an empty
 		// object as EOF on the first read. It can never unmarshal into a valid
 		// block, so retrying forever only spams logs. Delete it and continue.
@@ -210,6 +210,9 @@ func (r *Recovery) recover(ctx context.Context, path string) error {
 			level.Warn(r.logger).Log("msg", "failed to delete rejected block metadata", "err", delErr, "path", path)
 		}
 		return nil
+	case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
+		r.metrics.recoveryAttempts.WithLabelValues("canceled").Inc()
+		return err
 	case raftnode.IsRaftLeadershipError(err):
 		r.metrics.recoveryAttempts.WithLabelValues("leadership_change").Inc()
 		level.Warn(r.logger).Log("msg", "leadership change; recovery interrupted", "err", err, "path", path)
