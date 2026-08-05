@@ -132,16 +132,17 @@ export default function App() {
         onQueryChange={setQueryUserInput}
         onRun={(q) => {
           const parsed = parseQuery(q);
-          if (parsed) {
+          if (!parsed) return;
+          if (
+            parsed.service === service &&
+            parsed.profileType === profileType &&
+            parsed.labelSelector === activeLabelSelector
+          ) {
+            query.run();
+          } else {
             setService(parsed.service);
             setProfileType(parsed.profileType);
             setActiveLabelSelector(parsed.labelSelector);
-            query.execute(
-              parsed.service,
-              parsed.profileType,
-              timeRange,
-              parsed.labelSelector,
-            );
           }
         }}
         start={timeWindow.start}
