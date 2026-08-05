@@ -83,6 +83,12 @@ type Config struct {
 	PushTimeout time.Duration
 	PoolConfig  clientpool.PoolConfig `yaml:"pool_config,omitempty"`
 
+	// MaxInflightBytes is the max total size in bytes of inflight push requests
+	// handled by this distributor instance. This limit is per-distributor, not
+	// per-tenant. When the limit is reached, new push requests are rejected with
+	// a resource-exhausted error. 0 means unlimited.
+	MaxInflightBytes int64 `yaml:"max_inflight_bytes" category:"advanced"`
+
 	// Distributors ring
 	DistributorRing util.CommonRingConfig `yaml:"ring"`
 }
@@ -91,6 +97,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
+	fs.Int64Var(&cfg.MaxInflightBytes, "distributor.max-inflight-bytes", 0, "Max total size in bytes of inflight push requests that this distributor can handle. This limit is per-distributor, not per-tenant. Additional requests will be rejected with resource-exhausted. 0 = unlimited.")
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 
@@ -114,6 +121,7 @@ type Distributor struct {
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
+	inflightBytes          atomic.Int64
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -317,6 +325,28 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	// Check instance-level inflight bytes limit before processing.
+	// Uses a CAS loop to avoid the race between check and add under
+	// concurrent Push calls.
+	if d.cfg.MaxInflightBytes > 0 {
+		reqSize := int64(grpcReq.Msg.SizeVT())
+		for {
+			current := d.inflightBytes.Load()
+			if current+reqSize > d.cfg.MaxInflightBytes {
+				validation.DiscardedProfiles.WithLabelValues(string(validation.InflightBytesLimit), tenantID).Add(1)
+				validation.DiscardedBytes.WithLabelValues(string(validation.InflightBytesLimit), tenantID).Add(float64(reqSize))
+				return nil, connect.NewError(connect.CodeResourceExhausted,
+					fmt.Errorf("distributor inflight bytes limit (%s) exceeded while adding %s",
+						humanize.IBytes(uint64(d.cfg.MaxInflightBytes)),
+						humanize.IBytes(uint64(reqSize))))
+			}
+			if d.inflightBytes.CAS(current, current+reqSize) {
+				break
+			}
+		}
+		defer d.inflightBytes.Sub(int64(grpcReq.Msg.SizeVT()))
 	}
 
 	defer func() {
