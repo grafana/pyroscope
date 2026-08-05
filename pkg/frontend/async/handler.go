@@ -6,11 +6,9 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"google.golang.org/protobuf/proto"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	pyrotenant "github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
 // Handler decorates a QuerierServiceHandler with async query support for
@@ -67,30 +65,10 @@ func (h *Handler) submit(
 	tenantID string,
 	req *querierv1.SelectMergeStacktracesRequest,
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	queryCtx := pyrotenant.InjectTenantID(context.Background(), tenantID)
-	resultCh := make(chan QueryResult, 1)
-
-	// Strip the Async marker before dispatching so the wrapped handler
-	// treats this as an ordinary sync request.
-	inner := proto.Clone(req).(*querierv1.SelectMergeStacktracesRequest)
-	inner.Async = nil
-
-	// Reserve the concurrency slot before dispatching so a rejected
-	// submit never starts background work.
-	requestID, err := h.coordinator.Register(ctx, tenantID, resultCh)
+	requestID, err := h.coordinator.Submit(ctx, tenantID, req)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeResourceExhausted, err)
 	}
-
-	go func() {
-		resp, err := h.QuerierServiceHandler.SelectMergeStacktraces(queryCtx, connect.NewRequest(inner))
-		if err != nil {
-			resultCh <- QueryResult{Err: err}
-			return
-		}
-		resultCh <- QueryResult{Response: resp.Msg}
-	}()
-
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
 		Async: &querierv1.AsyncQueryResponse{
 			RequestId: requestID,

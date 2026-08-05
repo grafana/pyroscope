@@ -6,13 +6,16 @@ import (
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"google.golang.org/protobuf/proto"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
@@ -20,11 +23,11 @@ type Limits interface {
 	MaxAsyncQueryConcurrency(tenantID string) int
 }
 
-// QueryResult is the result of a query execution sent over a channel.
+// queryResult is the result of a query execution sent over a channel.
 // On success, Response carries the raw SelectMergeStacktracesResponse
 // from the wrapped handler (its Async field is unset); the
 // coordinator/store own request_id and status.
-type QueryResult struct {
+type queryResult struct {
 	Response *querierv1.SelectMergeStacktracesResponse
 	Err      error
 }
@@ -33,6 +36,7 @@ type Coordinator struct {
 	logger log.Logger
 	store  *Store
 	limits Limits
+	next   querierv1connect.QuerierServiceHandler
 
 	mu       sync.Mutex
 	inFlight map[string]int // tenantID -> count
@@ -41,11 +45,12 @@ type Coordinator struct {
 	asyncQueriesMax     *prometheus.GaugeVec
 }
 
-func NewCoordinator(logger log.Logger, store *Store, limits Limits, reg prometheus.Registerer) *Coordinator {
+func NewCoordinator(logger log.Logger, store *Store, limits Limits, next querierv1connect.QuerierServiceHandler, reg prometheus.Registerer) *Coordinator {
 	return &Coordinator{
 		logger:   logger,
 		store:    store,
 		limits:   limits,
+		next:     next,
 		inFlight: make(map[string]int),
 		asyncQueriesCurrent: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 			Name: "pyroscope_async_queries_in_progress",
@@ -77,30 +82,73 @@ func (c *Coordinator) tryAcquire(tenantID string) error {
 	return nil
 }
 
-// Register reserves the per-tenant concurrency slot, persists the
-// in-progress metadata, and starts watching resultCh. The caller is
-// responsible for dispatching the query and sending its outcome on
-// resultCh; the coordinator owns reads from the channel, store writes,
-// and the heartbeat loop. Returns the assigned request ID, or an error
-// if the slot could not be acquired.
-func (c *Coordinator) Register(ctx context.Context, tenantID string, resultCh <-chan QueryResult) (string, error) {
+// Submit reserves the tenant's concurrency slot, strips the Async marker
+// from req, persists the resulting spec as a new in-progress query, and
+// dispatches it in the background. Returns the assigned request ID.
+func (c *Coordinator) Submit(ctx context.Context, tenantID string, req *querierv1.SelectMergeStacktracesRequest) (string, error) {
 	if err := c.tryAcquire(tenantID); err != nil {
 		return "", err
 	}
 
 	requestID := uuid.New().String()
+	spec := proto.Clone(req).(*querierv1.SelectMergeStacktracesRequest)
+	spec.Async = nil
 
-	if err := c.store.create(ctx, tenantID, requestID); err != nil {
+	if err := c.store.create(ctx, tenantID, requestID, spec); err != nil {
 		c.decrement(tenantID)
 		return "", fmt.Errorf("failed to create async query: %w", err)
 	}
 
-	go c.awaitResult(tenantID, requestID, resultCh)
-
+	c.dispatch(tenantID, requestID, spec)
+	level.Info(c.logger).Log("msg", "async query submitted", "tenant", tenantID, "request_id", requestID)
 	return requestID, nil
 }
 
-func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan QueryResult) {
+// HasCapacity implements Store's Dispatcher interface: a read-only peek at
+// whether tenantID currently has spare capacity.
+func (c *Coordinator) HasCapacity(tenantID string) bool {
+	maxConcurrent := c.limits.MaxAsyncQueryConcurrency(tenantID)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return maxConcurrent > 0 && c.inFlight[tenantID] < maxConcurrent
+}
+
+// Dispatch implements Store's Dispatcher interface: it (re-)runs a query
+// whose record and spec are already persisted. A declined dispatch (tenant
+// at its concurrency limit) never rolls back the store's claim on the
+// record; it is simply retried by a later adoption scan once the lease
+// expires again.
+func (c *Coordinator) Dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
+	if err := c.tryAcquire(tenantID); err != nil {
+		level.Warn(c.logger).Log("msg", "skipping async query adoption: concurrency limit reached", "tenant", tenantID, "request_id", requestID, "err", err)
+		return
+	}
+	c.dispatch(tenantID, requestID, spec)
+}
+
+// dispatch runs spec against next on a background context, detached from the
+// caller's context, so the query survives client disconnects and outlives
+// the scan tick that triggered an adoption. Submit and Dispatch both share
+// this path once their concurrency slot is reserved.
+func (c *Coordinator) dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
+	queryCtx := tenant.InjectTenantID(context.Background(), tenantID)
+	resultCh := make(chan queryResult, 1)
+
+	// query goroutine: runs the spec end-to-end.
+	go func() {
+		resp, err := c.next.SelectMergeStacktraces(queryCtx, connect.NewRequest(spec))
+		if err != nil {
+			resultCh <- queryResult{Err: err}
+			return
+		}
+		resultCh <- queryResult{Response: resp.Msg}
+	}()
+
+	// supervisor goroutine: renews the lease and records the outcome.
+	go c.awaitResult(tenantID, requestID, resultCh)
+}
+
+func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan queryResult) {
 	defer c.decrement(tenantID)
 
 	ctx := tenant.InjectTenantID(context.Background(), tenantID)
@@ -120,6 +168,8 @@ func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan Qu
 			}
 			if err := c.store.complete(ctx, tenantID, requestID, res.Response); err != nil {
 				level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
+			} else {
+				level.Info(c.logger).Log("msg", "async query completed", "tenant", tenantID, "request_id", requestID)
 			}
 			return
 		case <-ticker.C:
