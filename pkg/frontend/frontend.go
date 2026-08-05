@@ -122,7 +122,6 @@ type Limits interface {
 	QuerySanitizeOnMerge(string) bool
 	QueryTreeEnabled(string) bool
 	SymbolRefTreesEnabled(string) bool
-	SymbolizerResolveTimeout(string) time.Duration
 	SymbolizerMaxUnresolvedLocations(string) int
 	validation.FlameGraphLimits
 }

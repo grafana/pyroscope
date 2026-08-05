@@ -45,6 +45,9 @@ type Symbolizer interface {
 	// ResolveConcurrency is the maximum number of concurrent Resolve calls
 	// the symbolizer allows.
 	ResolveConcurrency() int
+	// ResolveTimeout bounds resolving a single binary's unresolved
+	// addresses.
+	ResolveTimeout() time.Duration
 }
 
 // DiagnosticsStore provides the ability to store query diagnostics.

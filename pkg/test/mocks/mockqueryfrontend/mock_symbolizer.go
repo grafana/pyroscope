@@ -5,6 +5,8 @@ package mockqueryfrontend
 import (
 	context "context"
 
+	time "time"
+
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	lidia "github.com/grafana/pyroscope/lidia"
 	mock "github.com/stretchr/testify/mock"
@@ -125,6 +127,51 @@ func (_c *MockSymbolizer_ResolveConcurrency_Call) Return(_a0 int) *MockSymbolize
 }
 
 func (_c *MockSymbolizer_ResolveConcurrency_Call) RunAndReturn(run func() int) *MockSymbolizer_ResolveConcurrency_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResolveTimeout provides a mock function with no fields
+func (_m *MockSymbolizer) ResolveTimeout() time.Duration {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveTimeout")
+	}
+
+	var r0 time.Duration
+	if rf, ok := ret.Get(0).(func() time.Duration); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(time.Duration)
+	}
+
+	return r0
+}
+
+// MockSymbolizer_ResolveTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveTimeout'
+type MockSymbolizer_ResolveTimeout_Call struct {
+	*mock.Call
+}
+
+// ResolveTimeout is a helper method to define mock.On call
+func (_e *MockSymbolizer_Expecter) ResolveTimeout() *MockSymbolizer_ResolveTimeout_Call {
+	return &MockSymbolizer_ResolveTimeout_Call{Call: _e.mock.On("ResolveTimeout")}
+}
+
+func (_c *MockSymbolizer_ResolveTimeout_Call) Run(run func()) *MockSymbolizer_ResolveTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSymbolizer_ResolveTimeout_Call) Return(_a0 time.Duration) *MockSymbolizer_ResolveTimeout_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSymbolizer_ResolveTimeout_Call) RunAndReturn(run func() time.Duration) *MockSymbolizer_ResolveTimeout_Call {
 	_c.Call.Return(run)
 	return _c
 }
