@@ -295,18 +295,17 @@ export function applySuggestion(
   return { next, cursor };
 }
 
-export function buildQuery(service: string, profileType: string): string {
-  return `{service_name="${service}", profile_type="${profileType}"}`;
+export function buildQuery(service: string): string {
+  return `{service_name="${service}"}`;
 }
 
 export function parseQuery(
   q: string,
-): { service: string; profileType: string; labelSelector: string } | null {
+): { service: string; labelSelector: string } | null {
   const { matchers, braceOpen } = tokenize(q);
   if (braceOpen === -1) return null;
 
   let service = '';
-  let profileType = '';
   const selectorMatchers: string[] = [];
 
   for (const m of matchers) {
@@ -315,15 +314,15 @@ export function parseQuery(
     if (internalName === 'service_name' && m.op === '=') {
       service = m.value;
     }
-    if (internalName === '__profile_type__' && m.op === '=') {
-      profileType = m.value;
+    if (internalName === '__profile_type__') {
       continue;
     }
     selectorMatchers.push(`${internalName}${m.op}"${m.value}"`);
   }
 
-  if (!service || !profileType) return null;
+  if (!service) return null;
 
   const labelSelector = `{${selectorMatchers.join(', ')}}`;
-  return { service, profileType, labelSelector };
+  return { service, labelSelector };
 }
+

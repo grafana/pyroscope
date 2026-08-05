@@ -50,8 +50,7 @@ export default function App() {
   >(undefined);
 
   const queryInput =
-    queryUserInput ??
-    (service || profileType ? buildQuery(service, profileType) : '');
+    queryUserInput ?? (service ? buildQuery(service) : '');
 
   const query = usePyroscopeQuery({
     service,
@@ -82,8 +81,7 @@ export default function App() {
     setActiveLabelSelector(undefined);
   };
 
-  const queryDirty =
-    !!service && queryInput !== buildQuery(service, profileType);
+  const queryDirty = !!service && queryInput !== buildQuery(service);
   const handleReset = () => {
     setQueryUserInput(null);
     setActiveLabelSelector(undefined);
@@ -135,13 +133,11 @@ export default function App() {
           if (!parsed) return;
           if (
             parsed.service === service &&
-            parsed.profileType === profileType &&
             parsed.labelSelector === activeLabelSelector
           ) {
             query.run();
           } else {
             setService(parsed.service);
-            setProfileType(parsed.profileType);
             setActiveLabelSelector(parsed.labelSelector);
           }
         }}

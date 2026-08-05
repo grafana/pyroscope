@@ -283,49 +283,49 @@ describe('label name translation', () => {
 
 describe('parseQuery / buildQuery', () => {
   it('round-trips a built query', () => {
-    const q = buildQuery(
-      'my-service',
-      'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
-    );
+    const q = buildQuery('my-service');
     const parsed = parseQuery(q);
     assert.deepEqual(parsed, {
       service: 'my-service',
-      profileType: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
       labelSelector: '{service_name="my-service"}',
     });
   });
 
-  it('returns null when required labels are absent', () => {
+  it('returns null when service_name is absent', () => {
     assert.equal(parseQuery('{foo="bar"}'), null);
   });
 
-  it('tolerates extra whitespace around the operator', () => {
-    const parsed = parseQuery('{service_name = "api", profile_type = "cpu"}');
+  it('parses queries without profile_type', () => {
+    const parsed = parseQuery('{service_name="api", environment="staging"}');
     assert.deepEqual(parsed, {
       service: 'api',
-      profileType: 'cpu',
+      labelSelector: '{service_name="api", environment="staging"}',
+    });
+  });
+
+  it('tolerates extra whitespace around operators', () => {
+    const parsed = parseQuery('{service_name = "api"}');
+    assert.deepEqual(parsed, {
+      service: 'api',
       labelSelector: '{service_name="api"}',
     });
   });
 
-  it('preserves arbitrary label matchers while stripping profile_type', () => {
+  it('preserves arbitrary label matchers while stripping profile_type if present', () => {
     const q =
       '{service_name="example-service", profile_type="process_cpu:cpu:nanoseconds:cpu:nanoseconds", environment="staging"}';
     const parsed = parseQuery(q);
     assert.deepEqual(parsed, {
       service: 'example-service',
-      profileType: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
       labelSelector: '{service_name="example-service", environment="staging"}',
     });
   });
 
   it('handles regex operators and multiple matchers in labelSelector', () => {
-    const q =
-      '{service_name="api", profile_type="cpu", region=~"us-.*", env!="prod"}';
+    const q = '{service_name="api", region=~"us-.*", env!="prod"}';
     const parsed = parseQuery(q);
     assert.deepEqual(parsed, {
       service: 'api',
-      profileType: 'cpu',
       labelSelector: '{service_name="api", region=~"us-.*", env!="prod"}',
     });
   });
