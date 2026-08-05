@@ -114,7 +114,7 @@ type Distributor struct {
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
-	stripper               *sampling.Stripper
+	stripper               *sampling.ProfileStripper
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -196,7 +196,7 @@ func New(
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
 		profileScopeStats:       usagestats.NewMultiCounter("distributor_profiles_received_by_scope", "scope"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
-		stripper:                sampling.NewStripper(),
+		stripper:                sampling.NewProfileStripper(),
 	}
 
 	ingesterRoute := writepath.IngesterFunc(d.sendRequestsToIngester)

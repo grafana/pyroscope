@@ -4,18 +4,18 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
-// Stripper reduces profiles that were sampled out but should be kept
+// ProfileStripper reduces profiles that were sampled out but should be kept
 // in a minimal form.
-type Stripper struct{}
+type ProfileStripper struct{}
 
-func NewStripper() *Stripper {
-	return &Stripper{}
+func NewProfileStripper() *ProfileStripper {
+	return &ProfileStripper{}
 }
 
 // StripToTotals reduces the profile to a single sample holding the
 // sum of all sample values: stacktraces, symbols, and sample labels are
 // dropped, only the series totals are kept.
-func (*Stripper) StripToTotals(p *profilev1.Profile) {
+func (*ProfileStripper) StripToTotals(p *profilev1.Profile) {
 	var total *profilev1.Sample
 	for _, s := range p.Sample {
 		// Samples that Normalize would drop (value length mismatch,

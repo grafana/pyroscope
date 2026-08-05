@@ -70,9 +70,9 @@ func strippedTestProfile() *profilev1.Profile {
 	}
 }
 
-func TestStripper_StripToTotals(t *testing.T) {
+func TestProfileStripper_StripToTotals(t *testing.T) {
 	p := stripTestProfile()
-	NewStripper().StripToTotals(p)
+	NewProfileStripper().StripToTotals(p)
 
 	want := strippedTestProfile()
 	require.Len(t, p.Sample, 1)
@@ -88,26 +88,26 @@ func TestStripper_StripToTotals(t *testing.T) {
 	assert.Equal(t, want.SizeVT(), p.SizeVT())
 }
 
-func TestStripper_StripToTotals_NoSamples(t *testing.T) {
+func TestProfileStripper_StripToTotals_NoSamples(t *testing.T) {
 	p := stripTestProfile()
 	p.Sample = nil
-	NewStripper().StripToTotals(p)
+	NewProfileStripper().StripToTotals(p)
 	assert.Empty(t, p.Sample)
 	assert.Empty(t, p.Location)
 }
 
-func TestStripper_StripToTotals_AllSamplesInvalid(t *testing.T) {
+func TestProfileStripper_StripToTotals_AllSamplesInvalid(t *testing.T) {
 	p := stripTestProfile()
 	p.Sample = []*profilev1.Sample{
 		{LocationId: []uint64{1}, Value: []int64{-1, 100}},
 		{LocationId: []uint64{1}, Value: []int64{7}},
 	}
-	NewStripper().StripToTotals(p)
+	NewProfileStripper().StripToTotals(p)
 	assert.Empty(t, p.Sample)
 	assert.Empty(t, p.Location)
 }
 
-func TestStripper_StripToTotals_SampleLabels(t *testing.T) {
+func TestProfileStripper_StripToTotals_SampleLabels(t *testing.T) {
 	p := stripTestProfile()
 	// Indices into the extended string table: span_id=9, abc=10, def=11.
 	p.StringTable = append(p.StringTable, "span_id", "abc", "def")
@@ -119,7 +119,7 @@ func TestStripper_StripToTotals_SampleLabels(t *testing.T) {
 		{LocationId: []uint64{1}, Value: []int64{16, 160}, Label: []*profilev1.Label{{Key: 9, Num: 42}}},
 	}
 
-	NewStripper().StripToTotals(p)
+	NewProfileStripper().StripToTotals(p)
 
 	require.Len(t, p.Sample, 1)
 	assert.Equal(t, []int64{31, 310}, p.Sample[0].Value)
