@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	thanosobjstore "github.com/thanos-io/objstore"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	objstore_testutil "github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
@@ -114,6 +115,22 @@ func TestUploadToGlobalMarkerPath(t *testing.T) {
 			verifyPathExists(t, bkt, tc.globalMarker, true)
 		})
 	}
+}
+
+func TestGlobalMarkersBucket_UploadRejectsOptionsForDualWrittenMarkerPath(t *testing.T) {
+	blockID := ulid.MustNew(1, nil)
+	blockMarker := path.Join(blockID.String(), DeletionMarkFilename)
+
+	bkt, _ := objstore_testutil.NewFilesystemBucket(t, context.Background(), t.TempDir())
+	bkt = BucketWithGlobalMarkers(bkt)
+
+	// A dual-written marker path can't honor an upload option: a single
+	// version can never match both the block-local and global copies.
+	err := bkt.Upload(context.Background(), blockMarker, strings.NewReader("mark file"), thanosobjstore.WithIfNotExists())
+	require.Error(t, err)
+
+	// A non-marker path is unaffected and passes options straight through.
+	require.NoError(t, bkt.Upload(context.Background(), "not-a-marker", strings.NewReader("data"), thanosobjstore.WithIfNotExists()))
 }
 
 func TestGlobalMarkersBucket_ExistShouldReportTrueOnlyIfBothExist(t *testing.T) {
