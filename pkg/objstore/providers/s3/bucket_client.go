@@ -6,8 +6,11 @@
 package s3
 
 import (
+	"errors"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/minio/minio-go/v7"
 	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/s3"
@@ -22,7 +25,35 @@ func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucke
 
 	warnForDeprecatedConfigFields(cfg, logger)
 
-	return s3.NewBucketWithConfig(logger, s3Cfg, name, nil)
+	bkt, err := s3.NewBucketWithConfig(logger, s3Cfg, name, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &bucket{Bucket: bkt}, nil
+}
+
+// bucket wraps thanos-io/objstore's S3 provider to additionally recognize
+// AWS S3's 409 ConditionalRequestConflict as a condition-not-met error. The
+// vendored provider's IsConditionNotMetErr only matches 412
+// PreconditionFailed, but AWS returns 409 ConditionalRequestConflict
+// specifically for two conditional PUTs racing each other. Both cases should
+// be considered a conflict for CAS semantics.
+type bucket struct {
+	*s3.Bucket
+}
+
+func (b *bucket) IsConditionNotMetErr(err error) bool {
+	if b.Bucket.IsConditionNotMetErr(err) {
+		return true
+	}
+	return isConditionalRequestConflict(err)
+}
+
+func isConditionalRequestConflict(err error) bool {
+	// errors.As walks the whole chain: the provider wraps upload errors with
+	// pkg/errors.Wrap, which adds two layers above the minio error.
+	var resp minio.ErrorResponse
+	return errors.As(err, &resp) && resp.Code == "ConditionalRequestConflict"
 }
 
 // NewBucketReaderClient creates a new S3 bucket client
