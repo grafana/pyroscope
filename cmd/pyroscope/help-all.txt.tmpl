@@ -42,7 +42,7 @@ Usage of ./pyroscope:
   -architecture.storage value
     	Storage architecture layer. Use 'v1' to use legacy ingester-based storage, 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to query old data. (default "v1-v2-dual")
   -async-ingest
-    	If true, the write path will not wait for the segment-writer to finish processing the request. Writes to ingester always synchronous.
+    	If true, the write path does not wait for the segment-writer to durably store and index the profile before responding. This reduces ingestion latency and allows a larger -segment-writer.segment-duration, but removes the read-after-write consistency and synchronous durability guarantee. Writes to the ingester are always synchronous.
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
   -blocks-storage.bucket-store.ignore-blocks-within duration

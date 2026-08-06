@@ -86,3 +86,25 @@ The segment-writer flush behavior can be configured to balance between:
 - **Latency**: How quickly data becomes queryable
 - **Cost**: Number of write operations to object storage
 - **Memory usage**: Amount of data held in memory before flush
+
+### Reduce object storage costs
+
+Because each flush results in write operations to object storage (and each subsequent query results in read operations), the flush frequency and the number of objects produced per flush directly affect your object storage bill. Use the following levers to reduce `PUT` and `GET` costs:
+
+- **Increase the segment duration**: `-segment-writer.segment-duration` (default `500ms`) controls how long profiles accumulate in memory before a segment is flushed. Increasing it produces fewer, larger segments and therefore fewer write operations.
+
+  {{< admonition type="warning" >}}
+  With the default synchronous ingestion, the segment duration must stay within the ingestion client's request timeout. Clients block until the segment is flushed, so a segment duration close to or exceeding the client timeout causes rejected profiles with errors such as `context deadline exceeded` and `context canceled`, and `422` responses on `/ingest`. Raise the segment duration gradually and keep it comfortably below the client timeout.
+  {{< /admonition >}}
+
+- **Reduce shards per segment-writer**: `-segment-writer.num-tokens` (default `4`) controls how many shards each segment-writer owns. Each shard produces its own object per flush, so lowering this value (down to `1`) reduces the number of objects written per flush cycle, and consequently the number of read operations at query time.
+
+- **Account for replicas**: The number of segment-writer replicas scales the volume of requests to object storage roughly linearly. More replicas means more objects and more requests.
+
+[Compaction-workers](../compaction-worker/) further reduce costs over time by merging small segments into larger blocks, which lowers the object count and read amplification during queries.
+
+### Trade consistency for headroom
+
+By default, ingestion is synchronous: clients wait until profiles are durably stored and indexed, which provides read-after-write consistency but bounds how large `-segment-writer.segment-duration` can be.
+
+If read-after-write consistency and synchronous durability confirmation are not required, set `-async-ingest=true`. The write path then responds without waiting for the segment-writer to flush and index the profile, which allows a larger segment duration (and therefore lower object storage costs) without triggering client timeouts. The trade-off is that a successful ingestion response no longer guarantees the profile is durable and immediately queryable.
