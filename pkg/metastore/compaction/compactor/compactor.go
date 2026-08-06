@@ -1,6 +1,10 @@
 package compactor
 
 import (
+	"cmp"
+	"context"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -104,6 +108,74 @@ func (c *Compactor) UpdatePlan(tx *bbolt.Tx, plan *raft_log.CompactionPlanUpdate
 	}
 
 	return nil
+}
+
+// QueueStats describes a queue of blocks awaiting compaction,
+// identified by the tenant, shard, and compaction level.
+type QueueStats struct {
+	Tenant string
+	Shard  uint32
+	Level  uint32
+	Blocks uint64
+	// Unix nanoseconds of the oldest and the newest queue entries.
+	OldestAppendedAt int64
+	NewestAppendedAt int64
+}
+
+// ListQueues aggregates the queued block entries into per-queue statistics.
+// The entries are read from the storage snapshot of the given transaction;
+// the in-memory queue is not accessed.
+//
+// The number of entries is not limited and can be very large if compaction
+// does not keep up with the block influx, therefore the scan is bounded by
+// the context.
+func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx) ([]QueueStats, error) {
+	queues := make(map[compactionKey]*QueueStats)
+	entries := c.store.ListEntries(tx)
+	defer func() {
+		_ = entries.Close()
+	}()
+	var n int
+	for entries.Next() {
+		if n++; n%4096 == 0 {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+		}
+		e := entries.At()
+		k := compactionKey{tenant: e.Tenant, shard: e.Shard, level: e.Level}
+		q, ok := queues[k]
+		if !ok {
+			q = &QueueStats{
+				Tenant:           e.Tenant,
+				Shard:            e.Shard,
+				Level:            e.Level,
+				OldestAppendedAt: e.AppendedAt,
+				NewestAppendedAt: e.AppendedAt,
+			}
+			queues[k] = q
+		}
+		q.Blocks++
+		q.OldestAppendedAt = min(q.OldestAppendedAt, e.AppendedAt)
+		q.NewestAppendedAt = max(q.NewestAppendedAt, e.AppendedAt)
+	}
+	if err := entries.Err(); err != nil {
+		return nil, err
+	}
+	s := make([]QueueStats, 0, len(queues))
+	for _, q := range queues {
+		s = append(s, *q)
+	}
+	slices.SortFunc(s, func(a, b QueueStats) int {
+		if l := cmp.Compare(a.Level, b.Level); l != 0 {
+			return l
+		}
+		if t := strings.Compare(a.Tenant, b.Tenant); t != 0 {
+			return t
+		}
+		return cmp.Compare(a.Shard, b.Shard)
+	})
+	return s, nil
 }
 
 func (c *Compactor) Init(tx *bbolt.Tx) error {

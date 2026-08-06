@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Metastore Admin - Compaction</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.3.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.3.3.bundle.min.js"></script>
+
+    <style>
+        .card-detail-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+        .card-detail-label {
+            flex: 0 0 20%;
+            font-weight: bold;
+            text-align: right;
+            padding-right: 1rem;
+        }
+        .card-detail-value {
+            flex: 0 0 80%;
+        }
+        @media (max-width: 768px) {
+            .card-detail-row {
+                flex-direction: column;
+            }
+            .card-detail-label {
+                text-align: left;
+                padding-right: 0;
+                margin-bottom: 0.25rem;
+            }
+        }
+        .card {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <div class="container mt-5">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h1>Metastore: Grafana Pyroscope</h1>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+
+        <div class="row my-3">
+            <h2>Compaction</h2>
+            <p class="text-body-secondary">
+                Blocks flushed by the segment writers are queued for compaction per tenant, shard, and
+                compaction level. Compaction jobs are created from these queues on demand, as compaction
+                workers report spare capacity, and are assigned to workers, prioritizing lower levels.
+                Job ownership is granted for a limited time (a lease) and is protected with fencing tokens.
+            </p>
+            <details class="text-body-secondary mb-3">
+                <summary>How to read this page</summary>
+                <ul class="mt-2">
+                    <li>
+                        <strong>Unassigned</strong> jobs wait in the scheduler queue for a worker.
+                        <strong>In progress</strong> jobs are owned by a worker that renews its lease with
+                        every status update (typically every few seconds).
+                    </li>
+                    <li>
+                        If a lease expires (<strong>lease expired</strong>), the worker is assumed to have
+                        abandoned the job: the job is reassigned to the next worker that asks for one, and
+                        its reassignment (failure) counter is incremented. Workers do not report failures
+                        explicitly &mdash; an expired lease is the only failure signal.
+                    </li>
+                    <li>
+                        Jobs reassigned more than the failure threshold are <strong>failed</strong>: they are
+                        excluded from assignment and evicted from the schedule only when the queue exceeds
+                        its size limit.
+                    </li>
+                    <li>
+                        Worker attribution is observed by the raft leader when it assigns jobs and processes
+                        status updates; it is not replicated. After a leader change, the worker of a job is
+                        unknown until the worker renews the lease. Timestamps derived from lease deadlines
+                        refer to the leader clock.
+                    </li>
+                    <li>
+                        The planner queues at the bottom list blocks that await compaction and have not been
+                        turned into jobs yet.
+                    </li>
+                </ul>
+            </details>
+        </div>
+
+        <div class="row gy-4">
+            <h2>Scheduler</h2>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Jobs:</div>
+                            <div class="card-detail-value">{{ .TotalJobs }} (queue size limit {{ .MaxQueueSize }})</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Status:</div>
+                            <div class="card-detail-value">
+                                <span class="badge text-bg-secondary">unassigned</span> {{ .Unassigned }}
+                                <span class="badge text-bg-success ms-2">in progress</span> {{ .InProgress }}
+                                <span class="badge text-bg-warning ms-2">lease expired</span> {{ .LeaseExpired }}
+                                <span class="badge text-bg-danger ms-2">failed</span> {{ .Failed }}
+                            </div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Job lease duration:</div>
+                            <div class="card-detail-value">{{ .LeaseDuration }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Job failure threshold:</div>
+                            <div class="card-detail-value">{{ .MaxFailures }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Blocks awaiting compaction:</div>
+                            <div class="card-detail-value">{{ .QueuedBlocks }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Jobs by Level
+                <span
+                        class="text-info ms-2"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Jobs of lower compaction levels are prioritized: no job is assigned at a level until all eligible jobs of lower levels are assigned.">
+                    <i class="bi bi-info-circle"></i>
+                </span>
+            </h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Level</th>
+                        <th>Jobs</th>
+                        <th>Unassigned</th>
+                        <th>In Progress</th>
+                        <th>Lease Expired</th>
+                        <th>Failed</th>
+                        <th>Oldest Job</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Levels }}
+                        <tr>
+                            <td class="align-middle">{{ .Level }}</td>
+                            <td class="align-middle">{{ .Total }}</td>
+                            <td class="align-middle">{{ .Unassigned }}</td>
+                            <td class="align-middle">{{ .InProgress }}</td>
+                            <td class="align-middle">{{ .LeaseExpired }}</td>
+                            <td class="align-middle">{{ .Failed }}</td>
+                            <td class="align-middle">{{ .OldestJobAge }}</td>
+                        </tr>
+                    {{ else }}
+                        <tr>
+                            <td colspan="7" class="text-body-secondary">The schedule is empty: no compaction jobs.</td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Workers
+                <span
+                        class="text-info ms-2"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Workers that own compaction jobs, as observed by the raft leader. After a leader change, a worker appears here again once it renews a job lease.">
+                    <i class="bi bi-info-circle"></i>
+                </span>
+            </h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Worker</th>
+                        <th>Jobs</th>
+                        <th>Expired Leases</th>
+                        <th>Failed Jobs</th>
+                        <th>Last Update</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Workers }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ .Worker }}</td>
+                            <td class="align-middle">{{ .Jobs }}</td>
+                            <td class="align-middle">{{ .LeaseExpired }}</td>
+                            <td class="align-middle">{{ .Failed }}</td>
+                            <td class="align-middle">{{ .LastUpdate }}</td>
+                        </tr>
+                    {{ else }}
+                        <tr>
+                            <td colspan="5" class="text-body-secondary">No job assignments have been observed.</td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Jobs
+                <span
+                        class="text-info ms-2"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Jobs are listed in the scheduling order within each level. Reassignments counts expired leases: the job is excluded from assignment when it reaches the failure threshold. The token is the fencing token of the current assignment (the raft log index at assignment time).">
+                    <i class="bi bi-info-circle"></i>
+                </span>
+            </h2>
+            {{ if .TruncatedJobs }}
+                <div class="col-12">
+                    <div class="alert alert-warning" role="alert">
+                        Showing the first {{ len .Jobs }} jobs in the scheduling order; {{ .TruncatedJobs }} more
+                        jobs are not displayed. The summary sections above cover the entire schedule.
+                    </div>
+                </div>
+            {{ end }}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Tenant</th>
+                        <th>Shard</th>
+                        <th>Level</th>
+                        <th>Status</th>
+                        <th>Worker</th>
+                        <th>Reassignments</th>
+                        <th>Blocks</th>
+                        <th>Age</th>
+                        <th>Assigned</th>
+                        <th>Lease</th>
+                        <th>Token</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Jobs }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ .Name }}</td>
+                            <td class="align-middle font-monospace small">{{ .Tenant }}</td>
+                            <td class="align-middle">{{ .Shard }}</td>
+                            <td class="align-middle">{{ .Level }}</td>
+                            <td class="align-middle"><span class="badge text-bg-{{ .StatusBadge }}">{{ .Status }}</span></td>
+                            <td class="align-middle font-monospace small">{{ .Worker }}</td>
+                            <td class="align-middle">{{ .Reassignments }}</td>
+                            <td class="align-middle">{{ .SourceBlocks }}</td>
+                            <td class="align-middle">{{ .Age }}</td>
+                            <td class="align-middle">{{ .Assigned }}</td>
+                            <td class="align-middle">{{ .Lease }}</td>
+                            <td class="align-middle font-monospace small">{{ .Token }}</td>
+                        </tr>
+                    {{ else }}
+                        <tr>
+                            <td colspan="12" class="text-body-secondary">The schedule is empty: no compaction jobs.</td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Planner Queues
+                <span
+                        class="text-info ms-2"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Blocks awaiting compaction, queued per tenant, shard, and level. New jobs are created from these queues on demand, when workers report spare capacity.">
+                    <i class="bi bi-info-circle"></i>
+                </span>
+            </h2>
+            {{ if .TruncatedQueues }}
+                <div class="col-12">
+                    <div class="alert alert-warning" role="alert">
+                        Showing the first {{ len .Queues }} queues ordered by level, tenant, and shard;
+                        {{ .TruncatedQueues }} more queues are not displayed. The blocks awaiting compaction
+                        counter above covers all queues.
+                    </div>
+                </div>
+            {{ end }}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Shard</th>
+                        <th>Level</th>
+                        <th>Blocks</th>
+                        <th>Oldest Block</th>
+                        <th>Newest Block</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Queues }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ .Tenant }}</td>
+                            <td class="align-middle">{{ .Shard }}</td>
+                            <td class="align-middle">{{ .Level }}</td>
+                            <td class="align-middle">{{ .Blocks }}</td>
+                            <td class="align-middle">{{ .OldestBlock }}</td>
+                            <td class="align-middle">{{ .NewestBlock }}</td>
+                        </tr>
+                    {{ else }}
+                        <tr>
+                            <td colspan="6" class="text-body-secondary">No blocks are awaiting compaction.</td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+<script type="text/javascript">
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+</script>
+</body>
+</html>
