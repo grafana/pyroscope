@@ -39,6 +39,13 @@ func (b *globalMarkersBucket) Upload(ctx context.Context, name string, r io.Read
 		return b.parent.Upload(ctx, name, r, opts...)
 	}
 
+	// Reject all upload options for markers.
+	// This protects against using conditional options like WithIfNotExists
+	// which don't semantically work with dual-writes to two different objects
+	if err := thanosobjstore.ValidateUploadOptions(nil, opts...); err != nil {
+		return err
+	}
+
 	// Read the marker.
 	body, err := io.ReadAll(r)
 	if err != nil {
@@ -149,6 +156,16 @@ func (b *globalMarkersBucket) IsAccessDeniedErr(err error) bool {
 // Attributes implements objstore.Bucket.
 func (b *globalMarkersBucket) Attributes(ctx context.Context, name string) (thanosobjstore.ObjectAttributes, error) {
 	return b.parent.Attributes(ctx, name)
+}
+
+// IsConditionNotMetErr implements objstore.Bucket.
+func (b *globalMarkersBucket) IsConditionNotMetErr(err error) bool {
+	return b.parent.IsConditionNotMetErr(err)
+}
+
+// SupportedObjectUploadOptions implements objstore.Bucket.
+func (b *globalMarkersBucket) SupportedObjectUploadOptions() []thanosobjstore.ObjectUploadOptionType {
+	return b.parent.SupportedObjectUploadOptions()
 }
 
 // Attributes implements objstore.ReaderAt.
