@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/prometheus/model/labels"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -35,12 +36,18 @@ var profileTypeLabels5 = []string{
 	phlaremodel.LabelNameServiceName,
 }
 
-func (q *QueryFrontend) isProfileTypeQuery(labels, matchers []string) bool {
+// isProfileTypeQuery reports whether the request can be served from block
+// metadata instead of scanning the TSDB index of every block in the range.
+//
+// Matchers must already be parsed: an unfiltered query reaches us either as an
+// empty list or as a single empty selector ("{}") depending on the client, and
+// both are semantically unconstrained.
+func (q *QueryFrontend) isProfileTypeQuery(names []string, matchers []*labels.Matcher) bool {
 	if len(matchers) > 0 {
 		return false
 	}
 	var s []string
-	switch len(labels) {
+	switch len(names) {
 	case 2:
 		s = profileTypeLabels2
 	case 5:
@@ -48,8 +55,8 @@ func (q *QueryFrontend) isProfileTypeQuery(labels, matchers []string) bool {
 	default:
 		return false
 	}
-	sort.Strings(labels)
-	return slices.Compare(s, labels) == 0
+	sort.Strings(names)
+	return slices.Compare(s, names) == 0
 }
 
 func (q *QueryFrontend) queryProfileTypeMetadataLabels(
