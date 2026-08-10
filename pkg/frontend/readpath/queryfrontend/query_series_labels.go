@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
@@ -72,15 +73,17 @@ func (q *QueryFrontend) Series(
 		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 	}
 
-	if q.isProfileTypeQuery(c.Msg.LabelNames, c.Msg.Matchers) {
+	matchers, err := parseMatchers(c.Msg.Matchers)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("parsing label selector: %w", err))
+	}
+
+	if q.isProfileTypeQuery(c.Msg.LabelNames, matchers) {
 		level.Debug(q.logger).Log("msg", "listing profile types from metadata as series labels")
 		return q.queryProfileTypeMetadataLabels(ctx, tenantIDs, c.Msg.Start, c.Msg.End, c.Msg.LabelNames)
 	}
 
-	labelSelector, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
+	labelSelector := matchersToLabelSelector(matchers)
 
 	labelNames, err := q.filterLabelNames(ctx, c, c.Msg.LabelNames, c.Msg.Matchers)
 	if err != nil {
