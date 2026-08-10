@@ -963,7 +963,11 @@ func initLogger(logFormat string, logLevel dslog.Level) *logger {
 	// Must put the level filter last for efficiency.
 	l = level.NewFilter(l, logLevel.Option)
 
-	return &logger{w: w, Logger: l}
+	lgr := &logger{w: w, Logger: l}
+	// Wire the process logger into the util package so call sites using
+	// util.Logger (instead of a passed-in logger) are not silently no-op.
+	util.Logger = lgr
+	return lgr
 }
 
 type logger struct {
