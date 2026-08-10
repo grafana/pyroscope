@@ -174,7 +174,7 @@ func New(
 
 	// Services should be registered after FSM and Raft have been initialized.
 	// Services provide an interface to interact with the metastore components.
-	m.compactionService = NewCompactionService(m.logger, m.raft)
+	m.compactionService = NewCompactionService(m.logger, m.raft, m.leaderRead, m.scheduler, m.compactor)
 	m.indexService = NewIndexService(m.logger, m.raft, m.leaderRead, m.index, m.placement)
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
 	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)

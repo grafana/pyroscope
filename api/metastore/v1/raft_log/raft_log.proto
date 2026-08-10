@@ -23,16 +23,23 @@ message AddBlockMetadataResponse {}
 // The resulting plan should be proposed to the raft members.
 // This is a read-only operation: it MUST NOT alter the state.
 message GetCompactionPlanUpdateRequest {
-  // CompactionJobStatusUpdate is a change
-  // requested by the compaction worker.
+  // CompactionJobStatusUpdate is a change requested by the compaction worker.
   repeated CompactionJobStatusUpdate status_updates = 1;
   uint32 assign_jobs_max = 2;
+  // Reserved field represents `worker_id`. The message must remain
+  // wire-compatible with metastore.v1.PollCompactionJobsRequest: raft log
+  // entries written by older versions may contain the raw worker request.
+  reserved 3;
 }
 
 message CompactionJobStatusUpdate {
   string name = 1;
   uint64 token = 2;
   metastore.v1.CompactionJobStatus status = 3;
+  // Reserved field represents `compacted_blocks`. The message must remain
+  // wire-compatible with metastore.v1.CompactionJobStatusUpdate: raft log
+  // entries written by older versions may contain the raw worker request.
+  reserved 4;
 }
 
 // GetCompactionPlanUpdateResponse includes the planned change.

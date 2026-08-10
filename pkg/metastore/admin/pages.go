@@ -14,6 +14,9 @@ var nodesPageHtml string
 //go:embed metastore.client.gohtml
 var clientTestPageHtml string
 
+//go:embed metastore.compaction.gohtml
+var compactionPageHtml string
+
 type metastoreNode struct {
 	// from Discovery
 	DiscoveryServerId string
@@ -58,6 +61,7 @@ type clientTestPageContent struct {
 type templates struct {
 	nodesTemplate      *template.Template
 	clientTestTemplate *template.Template
+	compactionTemplate *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -67,9 +71,12 @@ func initTemplates() *templates {
 	template.Must(nodesTemplate.Parse(nodesPageHtml))
 	clientTestTemplate := template.New("clientTest")
 	template.Must(clientTestTemplate.Parse(clientTestPageHtml))
+	compactionTemplate := template.New("compaction")
+	template.Must(compactionTemplate.Parse(compactionPageHtml))
 	t := &templates{
 		nodesTemplate:      nodesTemplate,
 		clientTestTemplate: clientTestTemplate,
+		compactionTemplate: compactionTemplate,
 	}
 	return t
 }
