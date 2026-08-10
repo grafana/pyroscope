@@ -2,7 +2,6 @@ package queryfrontend
 
 import (
 	"context"
-	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
@@ -75,7 +74,7 @@ func (q *QueryFrontend) Series(
 
 	matchers, err := parseMatchers(c.Msg.Matchers)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("parsing label selector: %w", err))
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	if q.isProfileTypeQuery(c.Msg.LabelNames, matchers) {
