@@ -73,10 +73,12 @@ func main() {
 		if !l.enabled {
 			continue
 		}
+		before := changedFiles()
 		err := runUpdate(l.update)
 		if err != nil {
 			log.Printf("updating %s failed: %v", l.name, err)
 			failed = append(failed, l.name)
+			revertNewlyChanged(before)
 		}
 		results = append(results, updateResult{name: l.name, err: err})
 	}
@@ -555,23 +557,60 @@ func names(results []updateResult) []string {
 	return out
 }
 
+// changedFiles lists the tracked files currently differing from HEAD. Untracked
+// files are ignored: the updaters only rewrite files that already exist.
+func changedFiles() []string {
+	out, err := exec.Command("git", "diff", "--name-only").Output()
+	if err != nil {
+		log.Printf("collecting changed files: %v", err)
+		return nil
+	}
+	var files []string
+	for f := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		if f != "" {
+			files = append(files, f)
+		}
+	}
+	return files
+}
+
+// revertNewlyChanged restores the files a failed updater had already rewritten
+// before it gave up, so that a half-applied update (a Gemfile bumped past its
+// lockfile, say) never reaches the PR. Files that were already dirty belong to
+// an earlier updater that succeeded, so they are left alone.
+func revertNewlyChanged(before []string) {
+	was := make(map[string]bool, len(before))
+	for _, f := range before {
+		was[f] = true
+	}
+
+	var partial []string
+	for _, f := range changedFiles() {
+		if !was[f] {
+			partial = append(partial, f)
+		}
+	}
+	if len(partial) == 0 {
+		return
+	}
+	slices.Sort(partial)
+
+	args := append([]string{"checkout", "--"}, partial...)
+	if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+		log.Printf("reverting partial changes: %v: %s", err, out)
+		return
+	}
+	log.Printf("reverted partial changes: %s", strings.Join(partial, ", "))
+}
+
 // changedExamples maps the working tree diff onto the examples it touched,
 // collapsing each changed file to the example directory that owns it. Anything
 // outside an example (docs, the root go.mod) is returned separately. Best
 // effort: the report is still worth writing without it.
 func changedExamples() (examples, other []string) {
-	out, err := exec.Command("git", "diff", "--name-only").Output()
-	if err != nil {
-		log.Printf("collecting changed files: %v", err)
-		return nil, nil
-	}
-
 	seenExample := map[string]bool{}
 	seenOther := map[string]bool{}
-	for f := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
-		if f == "" {
-			continue
-		}
+	for _, f := range changedFiles() {
 		if dir := owningExample(f); dir != "" {
 			if !seenExample[dir] {
 				seenExample[dir] = true

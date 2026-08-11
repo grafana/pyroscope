@@ -34,3 +34,8 @@ RUN /bin/bash -l -c "rvm install ruby-${RUBY_VERSION} && rvm --default use ruby-
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
 ENV PATH=$PATH:/root/.cargo/bin
+
+# The repo is bind-mounted at /pyroscope (see Makefile.examples) and owned by
+# the runner user, while this image runs as root, so git refuses to operate on
+# it until the path is trusted.
+RUN git config --global --add safe.directory /pyroscope
