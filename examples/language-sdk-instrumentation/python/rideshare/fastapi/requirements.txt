@@ -13,7 +13,7 @@ pydantic_core==2.46.4
 pyroscope-io==1.2.0
 python-dotenv==1.2.2
 PyYAML==6.0.3
-starlette==1.2.1
+starlette==1.6.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.48.0
