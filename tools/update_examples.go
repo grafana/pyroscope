@@ -171,8 +171,6 @@ func updateTempo() {
 	reDockerTempo := regexp.MustCompile(`grafana/tempo:\d+\.\d+\.\d+`)
 	replDockerTempo := fmt.Sprintf("grafana/tempo:%s", last.version())
 	for _, f := range []string{
-		// The examples are checked against this template by
-		// `make examples/check-templates`, so it has to move with them.
 		"examples/_templates/tempo/docker-compose.yml",
 		"examples/tracing/dotnet/docker-compose.yml",
 		"examples/tracing/golang-push/docker-compose.yml",
@@ -501,8 +499,6 @@ type updateResult struct {
 	err  error
 }
 
-// writeReport renders the run outcome as the body of the PR the cron opens, so
-// that a partially successful sweep says which ecosystems it skipped and why.
 func writeReport(path string, results []updateResult) {
 	var b strings.Builder
 	b.WriteString("`make tools/update_examples`\n")
@@ -560,8 +556,6 @@ func names(results []updateResult) []string {
 	return out
 }
 
-// changedFiles lists the tracked files currently differing from HEAD. Untracked
-// files are ignored: the updaters only rewrite files that already exist.
 func changedFiles() []string {
 	out, err := exec.Command("git", "diff", "--name-only").Output()
 	if err != nil {
@@ -577,10 +571,6 @@ func changedFiles() []string {
 	return files
 }
 
-// revertNewlyChanged restores the files a failed updater had already rewritten
-// before it gave up, so that a half-applied update (a Gemfile bumped past its
-// lockfile, say) never reaches the PR. Files that were already dirty belong to
-// an earlier updater that succeeded, so they are left alone.
 func revertNewlyChanged(before []string) {
 	was := make(map[string]bool, len(before))
 	for _, f := range before {
@@ -606,10 +596,6 @@ func revertNewlyChanged(before []string) {
 	log.Printf("reverted partial changes: %s", strings.Join(partial, ", "))
 }
 
-// changedExamples maps the working tree diff onto the examples it touched,
-// collapsing each changed file to the example directory that owns it. Anything
-// outside an example (docs, the root go.mod) is returned separately. Best
-// effort: the report is still worth writing without it.
 func changedExamples() (examples, other []string) {
 	seenExample := map[string]bool{}
 	seenOther := map[string]bool{}
@@ -631,8 +617,6 @@ func changedExamples() (examples, other []string) {
 	return examples, other
 }
 
-// owningExample walks up from a changed file to the nearest directory holding a
-// compose file, which is what the example test harness treats as one example.
 func owningExample(file string) string {
 	dir := filepath.Dir(file)
 	for dir != "." && dir != string(filepath.Separator) && strings.HasPrefix(dir, "examples") {
