@@ -203,7 +203,7 @@ GEM
     psych (5.3.1)
       date
       stringio
-    puma (6.6.1)
+    puma (7.2.1)
       nio4r (~> 2.0)
     pyroscope (1.0.1-aarch64-linux)
       ffi
@@ -305,7 +305,7 @@ DEPENDENCIES
   opentelemetry-exporter-jaeger (~> 0.22.0)
   opentelemetry-instrumentation-rails
   opentelemetry-sdk (~> 1.2.0)
-  puma (~> 6.0)
+  puma (~> 7.2)
   pyroscope (= 1.0.1)
   pyroscope-otel (~> 0.2.0)
   rails (~> 7.2.3, >= 7.2.3.1)

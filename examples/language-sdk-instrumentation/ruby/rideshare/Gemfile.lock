@@ -39,7 +39,7 @@ GEM
     logger (1.7.0)
     mustermann (3.0.4)
       ruby2_keywords (~> 0.0.1)
-    nio4r (2.7.4)
+    nio4r (2.7.5)
     opentelemetry-api (1.5.0)
     opentelemetry-common (0.21.0)
       opentelemetry-api (~> 1.0)
@@ -59,7 +59,7 @@ GEM
       opentelemetry-semantic_conventions
     opentelemetry-semantic_conventions (1.10.1)
       opentelemetry-api (~> 1.0)
-    puma (6.6.0)
+    puma (7.2.1)
       nio4r (~> 2.0)
     pyroscope (1.0.1)
       ffi
@@ -119,7 +119,7 @@ PLATFORMS
 DEPENDENCIES
   opentelemetry-exporter-otlp
   opentelemetry-sdk
-  puma (~> 6.6)
+  puma (~> 7.2)
   pyroscope (= 1.0.1)
   pyroscope-otel
   rackup (~> 2.2)
