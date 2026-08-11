@@ -171,6 +171,9 @@ func updateTempo() {
 	reDockerTempo := regexp.MustCompile(`grafana/tempo:\d+\.\d+\.\d+`)
 	replDockerTempo := fmt.Sprintf("grafana/tempo:%s", last.version())
 	for _, f := range []string{
+		// The examples are checked against this template by
+		// `make examples/check-templates`, so it has to move with them.
+		"examples/_templates/tempo/docker-compose.yml",
 		"examples/tracing/dotnet/docker-compose.yml",
 		"examples/tracing/golang-push/docker-compose.yml",
 		"examples/tracing/java/docker-compose.yml",
