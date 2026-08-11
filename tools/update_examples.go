@@ -26,6 +26,7 @@ var dotnet = flag.Bool("dotnet", false, "")
 var node = flag.Bool("node", false, "")
 var rust = flag.Bool("rust", false, "")
 var tempo = flag.Bool("tempo", false, "")
+var report = flag.String("report", ".tmp/update_examples_report.md", "path to write the run report to, used as the PR body")
 
 // this program requires ruby, bundle, yarn, go to be installed
 func main() {
@@ -43,34 +44,47 @@ func main() {
 		*tempo = true
 	}
 
-	if *golang {
-		updateGolang()
-		updateGodeltaprof()
-		updateJfrParser()
-		s.sh("make go/mod")
+	languages := []struct {
+		name    string
+		enabled bool
+		update  func()
+	}{
+		{"go", *golang, func() {
+			updateGolang()
+			updateGodeltaprof()
+			updateJfrParser()
+			s.sh("make go/mod")
+		}},
+		{"java", *java, func() {
+			updateJava()
+			updateOtelProfilingJava()
+		}},
+		{"ruby", *ruby, updateRuby},
+		{"python", *python, updatePython},
+		{"dotnet", *dotnet, updateDotnet},
+		{"node", *node, updateNodeJS},
+		{"rust", *rust, updateRust},
+		{"tempo", *tempo, updateTempo},
 	}
 
-	if *java {
-		updateJava()
-		updateOtelProfilingJava()
+	var results []updateResult
+	var failed []string
+	for _, l := range languages {
+		if !l.enabled {
+			continue
+		}
+		err := runUpdate(l.update)
+		if err != nil {
+			log.Printf("updating %s failed: %v", l.name, err)
+			failed = append(failed, l.name)
+		}
+		results = append(results, updateResult{name: l.name, err: err})
 	}
-	if *ruby {
-		updateRuby()
-	}
-	if *python {
-		updatePython()
-	}
-	if *dotnet {
-		updateDotnet()
-	}
-	if *node {
-		updateNodeJS()
-	}
-	if *rust {
-		updateRust()
-	}
-	if *tempo {
-		updateTempo()
+
+	writeReport(*report, results)
+
+	if len(failed) > 0 {
+		log.Fatalf("failed to update: %s", strings.Join(failed, ", "))
 	}
 }
 
@@ -162,7 +176,6 @@ func updateTempo() {
 		"examples/tracing/python/docker-compose.yaml",
 		"examples/tracing/ruby/docker-compose.yml",
 		"examples/tracing/tempo/docker-compose.yml",
-		"tools/tracing/docker-compose.yml",
 	} {
 		replaceInplace(reDockerTempo, f, replDockerTempo)
 	}
@@ -430,7 +443,7 @@ func getTags(repo string) []Tag {
 		resp, err := http.DefaultClient.Do(req)
 		requireNoError(err, "do request")
 		if resp.StatusCode != 200 {
-			log.Fatalf("status code %d", resp.StatusCode)
+			panic(fmt.Errorf("GET %s: status code %d", url, resp.StatusCode))
 		}
 		defer resp.Body.Close()
 		err = json.NewDecoder(resp.Body).Decode(&pageTags)
@@ -478,8 +491,138 @@ func (s *sh) cmd(cmdArgs ...string) (string, string) {
 	return stdout.String(), stderr.String()
 }
 
+type updateResult struct {
+	name string
+	err  error
+}
+
+// writeReport renders the run outcome as the body of the PR the cron opens, so
+// that a partially successful sweep says which ecosystems it skipped and why.
+func writeReport(path string, results []updateResult) {
+	var b strings.Builder
+	b.WriteString("`make tools/update_examples`\n")
+
+	var updated, failed []updateResult
+	for _, r := range results {
+		if r.err == nil {
+			updated = append(updated, r)
+		} else {
+			failed = append(failed, r)
+		}
+	}
+
+	examples, other := changedExamples()
+	if len(examples) > 0 {
+		b.WriteString("\n### Examples updated\n\n")
+		for _, e := range examples {
+			fmt.Fprintf(&b, "- %s\n", e)
+		}
+	}
+	if len(other) > 0 {
+		b.WriteString("\n### Other files updated\n\n")
+		for _, f := range other {
+			fmt.Fprintf(&b, "- %s\n", f)
+		}
+	}
+	if len(examples) == 0 && len(other) == 0 {
+		b.WriteString("\nNo files changed.\n")
+	}
+
+	if len(failed) > 0 {
+		b.WriteString("\n### Updaters that failed\n\n")
+		for _, r := range failed {
+			fmt.Fprintf(&b, "- **%s**: `%v`\n", r.name, r.err)
+		}
+	}
+	if len(updated) > 0 {
+		fmt.Fprintf(&b, "\nUpdaters that ran clean: %s.\n", strings.Join(names(updated), ", "))
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		log.Printf("creating report dir: %v", err)
+		return
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		log.Printf("writing report: %v", err)
+	}
+}
+
+func names(results []updateResult) []string {
+	out := make([]string, 0, len(results))
+	for _, r := range results {
+		out = append(out, r.name)
+	}
+	return out
+}
+
+// changedExamples maps the working tree diff onto the examples it touched,
+// collapsing each changed file to the example directory that owns it. Anything
+// outside an example (docs, the root go.mod) is returned separately. Best
+// effort: the report is still worth writing without it.
+func changedExamples() (examples, other []string) {
+	out, err := exec.Command("git", "diff", "--name-only").Output()
+	if err != nil {
+		log.Printf("collecting changed files: %v", err)
+		return nil, nil
+	}
+
+	seenExample := map[string]bool{}
+	seenOther := map[string]bool{}
+	for f := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		if f == "" {
+			continue
+		}
+		if dir := owningExample(f); dir != "" {
+			if !seenExample[dir] {
+				seenExample[dir] = true
+				examples = append(examples, dir)
+			}
+			continue
+		}
+		if !seenOther[f] {
+			seenOther[f] = true
+			other = append(other, f)
+		}
+	}
+	slices.Sort(examples)
+	slices.Sort(other)
+	return examples, other
+}
+
+// owningExample walks up from a changed file to the nearest directory holding a
+// compose file, which is what the example test harness treats as one example.
+func owningExample(file string) string {
+	dir := filepath.Dir(file)
+	for dir != "." && dir != string(filepath.Separator) && strings.HasPrefix(dir, "examples") {
+		for _, name := range []string{"docker-compose.yml", "docker-compose.yaml"} {
+			if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+				return dir
+			}
+		}
+		dir = filepath.Dir(dir)
+	}
+	return ""
+}
+
+// runUpdate isolates one language's updates so that a failure in one ecosystem
+// does not skip the ones queued behind it. The updaters signal failure by
+// panicking via requireNoError.
+func runUpdate(update func()) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(error); ok {
+				err = e
+				return
+			}
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	update()
+	return nil
+}
+
 func requireNoError(err error, msg string) {
 	if err != nil {
-		log.Fatalf("msg %s err %v", msg, err)
+		panic(fmt.Errorf("%s: %w", msg, err))
 	}
 }
