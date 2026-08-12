@@ -540,11 +540,10 @@ func writeReport(path string, results []updateResult) {
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		log.Printf("creating report dir: %v", err)
-		return
+		log.Fatalf("creating report dir: %v", err)
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
-		log.Printf("writing report: %v", err)
+		log.Fatalf("writing report: %v", err)
 	}
 }
 
@@ -559,8 +558,7 @@ func names(results []updateResult) []string {
 func changedFiles() []string {
 	out, err := exec.Command("git", "diff", "--name-only").Output()
 	if err != nil {
-		log.Printf("collecting changed files: %v", err)
-		return nil
+		log.Fatalf("collecting changed files: %v", err)
 	}
 	var files []string
 	for f := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
@@ -590,8 +588,7 @@ func revertNewlyChanged(before []string) {
 
 	args := append([]string{"checkout", "--"}, partial...)
 	if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
-		log.Printf("reverting partial changes: %v: %s", err, out)
-		return
+		log.Fatalf("reverting partial changes: %v: %s", err, out)
 	}
 	log.Printf("reverted partial changes: %s", strings.Join(partial, ", "))
 }
