@@ -68,6 +68,11 @@ jobs:
           commit_message: ${{ env.TITLE }}
           repo: ${{ github.repository }}
           branch: ${{ env.BRANCH }}
+          # Everything the updater writes, and nothing else: the action commits
+          # untracked files too, so an unrelated stray file would ride along.
+          file_pattern: >-
+            examples docs/sources/configure-client go.mod go.sum
+            api/go.mod api/go.sum lidia/go.mod lidia/go.sum
         env:
           GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
 
