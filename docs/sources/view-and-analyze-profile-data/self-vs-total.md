@@ -17,8 +17,6 @@ keywords:
 
 Profiling in Pyroscope provides many different ways of analyzing your profiling data. One of the key pieces of this analysis are the metrics 'self' and 'total', whose understanding is key for accurate interpretation of profiling data in both CPU and memory contexts. These metrics can be seen both within the table and the flame graph view of the UI.
 
-![Self vs total annotated](https://grafana.com/media/docs/pyroscope/self_vs_total_annotated.png)
-
 ## Self
 
 'Self' refers to the resource usage (CPU time, memory allocation, etc.) directly attributed to a specific function or a code segment, excluding the resources used by its sub-functions or calls
