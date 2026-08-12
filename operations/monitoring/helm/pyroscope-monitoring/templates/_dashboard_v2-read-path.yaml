@@ -30,39 +30,39 @@ annotations:
         uid: ${loki_datasource}
       enable: false
       expr: >-
-        {namespace="$namespace",container="eventrouter"} != "Preemption is not
+        {namespace="$namespace",job="loki.source.kubernetes_events"} != "Preemption is not
         helpful" != "Failed deploy model" | logfmt | type="Warning"
       hide: false
       iconColor: orange
       instant: false
       name: K8s Warnings
-      tagKeys: type,object_kind,object_name
-      textFormat: '{{"{{message}}"}}'
+      tagKeys: type,kind,name
+      textFormat: '{{"{{msg}}"}}'
       titleFormat: ''
     - datasource:
         type: loki
         uid: ${loki_datasource}
       enable: true
       expr: >-
-        {namespace="$namespace",container="eventrouter"} | logfmt |
+        {namespace="$namespace",job="loki.source.kubernetes_events"} | logfmt |
         type!="Normal" | type!="Warning"
       hide: false
       iconColor: red
       instant: false
       name: K8s Errors
-      tagKeys: type,object_kind,object_name
-      textFormat: '{{"{{message}}"}}'
+      tagKeys: type,kind,name
+      textFormat: '{{"{{msg}}"}}'
     - datasource:
         type: loki
         uid: ${loki_datasource}
       enable: false
-      expr: '{namespace="$namespace",container="eventrouter"} | logfmt'
+      expr: '{namespace="$namespace",job="loki.source.kubernetes_events"} | logfmt'
       hide: false
       iconColor: blue
       instant: false
       name: K8s All events
-      tagKeys: type,object_kind,object_name
-      textFormat: '{{"{{message}}"}}'
+      tagKeys: type,kind,name
+      textFormat: '{{"{{msg}}"}}'
 editable: true
 fiscalYearStartMonth: 0
 graphTooltip: 1
