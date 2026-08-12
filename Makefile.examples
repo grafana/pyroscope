@@ -1,7 +1,5 @@
-GITHUB_REPOSITORY ?= grafana/pyroscope
-
-# Written by tools/update_examples.go, used as the body of the PR it opens.
-# Lives under .tmp so that `git add .` in tools/update_examples_pr skips it.
+# Written by tools/update_examples.go and used as the PR body by the cron.
+# Lives under .tmp so that it is not picked up as part of the update itself.
 UPDATE_EXAMPLES_REPORT ?= .tmp/update_examples_report.md
 
 # Sync all example files from templates.
@@ -18,17 +16,6 @@ examples/check-templates:
 tools/update_examples:
 	docker buildx build --platform linux/amd64 -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
 	docker run --rm  --platform=linux/amd64 -e GITHUB_TOKEN=$(GITHUB_TOKEN) -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go -report $(UPDATE_EXAMPLES_REPORT)"
-
-.PHONY: tools/update_examples_pr
-tools/update_examples_pr:
-	git config --local user.name 'Pyroscope Bot'
-	git config --local user.email 'dmitry+bot@pyroscope.io'
-	git checkout -b gh_bot_examples_update
-	git add .
-	git commit -m "chore(examples): update examples"
-	git push -f https://x-access-token:$(GITHUB_TOKEN)@github.com/$(GITHUB_REPOSITORY).git gh_bot_examples_update 2> /dev/null
-	gh pr create --head gh_bot_examples_update --title "chore(examples): update examples" --body-file $(UPDATE_EXAMPLES_REPORT) --repo $(GITHUB_REPOSITORY) || \
-	   gh pr edit gh_bot_examples_update --title "chore(examples): update examples" --body-file $(UPDATE_EXAMPLES_REPORT) --repo $(GITHUB_REPOSITORY)
 
 
 # Deliberately not IMAGE_PREFIX/IMAGE_PLATFORM, whose global defaults point at a
