@@ -555,18 +555,32 @@ func names(results []updateResult) []string {
 	return out
 }
 
-func changedFiles() []string {
-	out, err := exec.Command("git", "diff", "--name-only").Output()
+func gitLines(args ...string) []string {
+	out, err := exec.Command("git", args...).Output()
 	if err != nil {
-		log.Fatalf("collecting changed files: %v", err)
+		log.Fatalf("git %s: %v", strings.Join(args, " "), err)
 	}
-	var files []string
-	for f := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
-		if f != "" {
-			files = append(files, f)
+	var lines []string
+	for l := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		if l != "" {
+			lines = append(lines, l)
 		}
 	}
-	return files
+	return lines
+}
+
+func modifiedFiles() []string {
+	return gitLines("diff", "--name-only")
+}
+
+func untrackedFiles() []string {
+	return gitLines("ls-files", "--others", "--exclude-standard")
+}
+
+// Untracked files count as changed because the commit the cron creates picks
+// them up as well.
+func changedFiles() []string {
+	return append(modifiedFiles(), untrackedFiles()...)
 }
 
 func revertNewlyChanged(before []string) {
@@ -575,22 +589,35 @@ func revertNewlyChanged(before []string) {
 		was[f] = true
 	}
 
-	var partial []string
-	for _, f := range changedFiles() {
+	var restore, remove []string
+	for _, f := range modifiedFiles() {
 		if !was[f] {
-			partial = append(partial, f)
+			restore = append(restore, f)
 		}
 	}
-	if len(partial) == 0 {
+	for _, f := range untrackedFiles() {
+		if !was[f] {
+			remove = append(remove, f)
+		}
+	}
+	if len(restore) == 0 && len(remove) == 0 {
 		return
 	}
-	slices.Sort(partial)
+	slices.Sort(restore)
+	slices.Sort(remove)
 
-	args := append([]string{"checkout", "--"}, partial...)
-	if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
-		log.Fatalf("reverting partial changes: %v: %s", err, out)
+	if len(restore) > 0 {
+		args := append([]string{"checkout", "--"}, restore...)
+		if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			log.Fatalf("reverting partial changes: %v: %s", err, out)
+		}
 	}
-	log.Printf("reverted partial changes: %s", strings.Join(partial, ", "))
+	for _, f := range remove {
+		if err := os.Remove(f); err != nil {
+			log.Fatalf("removing partial change %s: %v", f, err)
+		}
+	}
+	log.Printf("reverted partial changes: %s", strings.Join(append(restore, remove...), ", "))
 }
 
 func changedExamples() (examples, other []string) {
