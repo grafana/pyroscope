@@ -22,12 +22,17 @@ jobs:
         with:
           github_app: pyroscope-development-app
 
+      # A failing ecosystem must not hold back the rest of the sweep: still open
+      # the PR for whatever did update, with the report saying what failed, and
+      # only then fail the job so the breakage stays visible.
       - run: |
-          make tools/update_examples
+          rc=0
+          make tools/update_examples || rc=$?
           if ! git diff --exit-code;
           then
             make tools/update_examples_pr
           fi
+          exit $rc
         env:
           GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}

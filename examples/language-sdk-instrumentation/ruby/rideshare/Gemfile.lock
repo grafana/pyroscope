@@ -5,27 +5,14 @@ GEM
     bigdecimal (3.1.8)
     daemons (1.4.1)
     eventmachine (1.2.7)
-    ffi (1.17.4)
     ffi (1.17.4-aarch64-linux-gnu)
-    ffi (1.17.4-aarch64-linux-musl)
-    ffi (1.17.4-arm-linux-gnu)
-    ffi (1.17.4-arm-linux-musl)
     ffi (1.17.4-arm64-darwin)
-    ffi (1.17.4-x86-linux-gnu)
-    ffi (1.17.4-x86-linux-musl)
     ffi (1.17.4-x86_64-darwin)
     ffi (1.17.4-x86_64-linux-gnu)
-    ffi (1.17.4-x86_64-linux-musl)
-    google-protobuf (4.29.1)
-      bigdecimal
-      rake (>= 13)
     google-protobuf (4.29.1-aarch64-linux)
       bigdecimal
       rake (>= 13)
     google-protobuf (4.29.1-arm64-darwin)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.29.1-x86-linux)
       bigdecimal
       rake (>= 13)
     google-protobuf (4.29.1-x86_64-darwin)
@@ -61,8 +48,6 @@ GEM
       opentelemetry-api (~> 1.0)
     puma (7.2.1)
       nio4r (~> 2.0)
-    pyroscope (1.0.1)
-      ffi
     pyroscope (1.0.1-aarch64-linux)
       ffi
     pyroscope (1.0.1-arm64-darwin)
@@ -102,19 +87,9 @@ GEM
 
 PLATFORMS
   aarch64-linux
-  aarch64-linux-gnu
-  aarch64-linux-musl
-  arm-linux-gnu
-  arm-linux-musl
   arm64-darwin
-  ruby
-  x86-linux
-  x86-linux-gnu
-  x86-linux-musl
   x86_64-darwin
   x86_64-linux
-  x86_64-linux-gnu
-  x86_64-linux-musl
 
 DEPENDENCIES
   opentelemetry-exporter-otlp
