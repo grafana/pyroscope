@@ -30,7 +30,7 @@ annotations:
         uid: ${loki_datasource}
       enable: false
       expr: >-
-        {namespace="$namespace",job="loki.source.kubernetes_events"} != "Preemption is not
+        {cluster="$cluster", {{ .Values.dashboards.eventsSelector }}, namespace="$namespace"} != "Preemption is not
         helpful" != "Failed deploy model" | logfmt | type="Warning"
       hide: false
       iconColor: orange
@@ -44,7 +44,7 @@ annotations:
         uid: ${loki_datasource}
       enable: true
       expr: >-
-        {namespace="$namespace",job="loki.source.kubernetes_events"} | logfmt |
+        {cluster="$cluster", {{ .Values.dashboards.eventsSelector }}, namespace="$namespace"} | logfmt |
         type!="Normal" | type!="Warning"
       hide: false
       iconColor: red
@@ -56,7 +56,7 @@ annotations:
         type: loki
         uid: ${loki_datasource}
       enable: false
-      expr: '{namespace="$namespace",job="loki.source.kubernetes_events"} | logfmt'
+      expr: '{cluster="$cluster", {{ .Values.dashboards.eventsSelector }}, namespace="$namespace"} | logfmt'
       hide: false
       iconColor: blue
       instant: false
