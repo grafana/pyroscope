@@ -129,9 +129,6 @@ dashboards:
   cloudBackendGatewaySelector: container=~"cortex-gw(-internal)?"
 
   kubeStateMetricsSelector: job=~"(.*/)?kube-state-metrics"
-  # Kubernetes events stream selector. Matches both Alloy's
-  # loki.source.kubernetes_events default job_name and the job label the
-  # k8s-monitoring chart sets for cluster events.
   eventsSelector: job=~"loki\.source\.kubernetes_events|integrations/kubernetes/eventhandler"
   cadvisorSelector: job=~"(.*/)?cadvisor"
 
