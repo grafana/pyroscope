@@ -228,7 +228,7 @@ func (q *QueryFrontend) doQuery(
 	endTime := time.UnixMilli(req.EndTime)
 	queryWindow := endTime.Sub(startTime).Round(time.Second)
 	traceID, _ := tracing.ExtractTraceID(ctx)
-	logArgs := []interface{}{
+	logArgs := []any{
 		"msg", "query weight",
 		"trace_id", traceID,
 		"tenant", strings.Join(tenants, ","),
@@ -256,7 +256,7 @@ func (q *QueryFrontend) doQuery(
 	})
 	xrandMutex.Unlock()
 	// TODO(kolesnikovae): Should be dynamic.
-	p := queryplan.Build(blocks, 4, 20)
+	p := queryplan.BuildBalanced(blocks, 4, 20)
 
 	backend := q.querybackend
 	if backendC != nil {
