@@ -32,7 +32,7 @@ require (
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/dskit v0.0.0-20260616135346-e96eda8260cd
 	github.com/grafana/pyroscope-go v1.2.8
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.11
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
 	github.com/grafana/pyroscope/api v1.5.0
 	github.com/grafana/pyroscope/lidia v0.0.2
