@@ -62,6 +62,8 @@ func Build(
 	}
 }
 
+// BuildBalanced builds a balanced query tree where each node of the tree has a
+// similar number of blocks it needs to process compared to its siblings.
 func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int) *queryv1.QueryPlan {
 	if len(blocks) == 0 || maxReads < 1 || maxMerges < 2 {
 		return new(queryv1.QueryPlan)
@@ -92,7 +94,7 @@ func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int)
 		mergeNodes := allocateContiguous[queryv1.QueryNode](mergeNodeCount)
 		mergeWeights := make([]int, mergeNodeCount)
 
-		// workloadGroupSizes calculates how many children each merge node should
+		// distributeChildNodes calculates how many children each merge node should
 		// have at this level.
 		groupSizes := distributeChildNodes(weights, mergeNodeCount, maxMerges)
 		start := 0
@@ -116,6 +118,19 @@ func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int)
 	}
 }
 
+// distributeChildNodes will take a collection of child nodes and evenly
+// distribute them across mergeNodeCount merge nodes, ensuring that each merge
+// node does not exceed maxMergeNodeSize children.
+//
+// The i-th element of childNodeBlocks is the number of blocks the i-th child
+// node contains (whether it is a merge node itself or a leaf node). The child
+// nodes are distributed such that each merge node has a similar number of
+// blocks and not necessarily a similar number of child nodes. A merge node
+// could have fewer child nodes than its peers, but it will always have a
+// similar number of blocks.
+//
+// It returns a slice of child node counts. The i-th element indicates how many
+// child nodes the i-th merge node should have.
 func distributeChildNodes(childNodeBlocks []int, mergeNodeCount int, maxMergeNodeSize int) []int {
 	// This slice contains the number of child nodes each merge node should be
 	// allocated.
@@ -181,6 +196,20 @@ func distributeChildNodes(childNodeBlocks []int, mergeNodeCount int, maxMergeNod
 	return mergeNodeChildren
 }
 
+// balancedGroupSize will take a totalSize and distribute it evenly across
+// groupCount groups. If there is a remainder R, that remainder is then spread
+// evenly across the first R groups.
+//
+// For example, given these parameters:
+//
+//	totalSize  = 5
+//	groupCount = 3
+//
+// We would get the following (for various values of groupIdx):
+//
+//	Group 0: 2
+//	Group 1: 2
+//	Group 2: 1
 func balancedGroupSize(totalSize int, groupCount int, groupIdx int) int {
 	size := totalSize / groupCount
 	if groupIdx < totalSize%groupCount {
