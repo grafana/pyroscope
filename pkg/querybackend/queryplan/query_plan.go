@@ -94,8 +94,7 @@ func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int)
 		mergeNodes := allocateContiguous[queryv1.QueryNode](mergeNodeCount)
 		mergeWeights := make([]int, mergeNodeCount)
 
-		// distributeChildNodes calculates how many children each merge node should
-		// have at this level.
+		// Calculate how many children each merge node should have at this level.
 		groupSizes := distributeChildNodes(weights, mergeNodeCount, maxMerges)
 		start := 0
 		for idx, size := range groupSizes {
