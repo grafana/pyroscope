@@ -30,39 +30,39 @@ annotations:
         uid: ${loki_datasource}
       enable: false
       expr: >-
-        {namespace="$namespace",container="eventrouter"} != "Preemption is not
+        {cluster="$cluster", {{ .Values.dashboards.eventsSelector }}, namespace="$namespace"} != "Preemption is not
         helpful" != "Failed deploy model" | logfmt | type="Warning"
       hide: false
       iconColor: orange
       instant: false
       name: K8s Warnings
-      tagKeys: type,object_kind,object_name
-      textFormat: '{{"{{message}}"}}'
+      tagKeys: type,kind,name
+      textFormat: '{{"{{msg}}"}}'
       titleFormat: ''
     - datasource:
         type: loki
         uid: ${loki_datasource}
       enable: true
       expr: >-
-        {namespace="$namespace",container="eventrouter"} | logfmt |
+        {cluster="$cluster", {{ .Values.dashboards.eventsSelector }}, namespace="$namespace"} | logfmt |
         type!="Normal" | type!="Warning"
       hide: false
       iconColor: red
       instant: false
       name: K8s Errors
-      tagKeys: type,object_kind,object_name
-      textFormat: '{{"{{message}}"}}'
+      tagKeys: type,kind,name
+      textFormat: '{{"{{msg}}"}}'
     - datasource:
         type: loki
         uid: ${loki_datasource}
       enable: false
-      expr: '{namespace="$namespace",container="eventrouter"} | logfmt'
+      expr: '{cluster="$cluster", {{ .Values.dashboards.eventsSelector }}, namespace="$namespace"} | logfmt'
       hide: false
       iconColor: blue
       instant: false
       name: K8s All Events
-      tagKeys: type,object_kind,object_name
-      textFormat: '{{"{{message}}"}}'
+      tagKeys: type,kind,name
+      textFormat: '{{"{{msg}}"}}'
 editable: true
 fiscalYearStartMonth: 0
 graphTooltip: 1
