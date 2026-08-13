@@ -199,6 +199,8 @@ Usage of ./pyroscope:
     	Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.
   -query-frontend.max-async-query-concurrency int
     	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
+  -query-frontend.query-planner-strategy string
+    	Sets the query planner strategy, options: classic, balanced (default "classic")
   -query-scheduler.max-outstanding-requests-per-tenant int
     	Maximum number of outstanding requests per tenant per query-scheduler. In-flight requests above this limit will fail with HTTP response status code 429. (default 100)
   -query-scheduler.ring.consul.hostname string

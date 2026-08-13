@@ -86,7 +86,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.BoolVar(&cfg.EnableIPv6, "query-frontend.instance-enable-ipv6", false, "Enable using a IPv6 instance address. (default false)")
 	f.IntVar(&cfg.Port, "query-frontend.instance-port", 0, "Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).")
 	f.BoolVar(&cfg.AsyncQueriesEnabled, "query-frontend.async-queries-enabled", false, "Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)")
-	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced (default classic)")
+	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
 }
 
