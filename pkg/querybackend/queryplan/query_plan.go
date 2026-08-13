@@ -161,7 +161,7 @@ func distributeChildNodes(childNodeBlocks []int, mergeNodeCount int, maxMergeNod
 		bestDistance := float64(0)
 
 		// We have to allocate at least the minimum number of child nodes to this
-		// merge node, so we do that now. we then calcualte how far away we are from
+		// merge node, so we do that now. we then calculate how far away we are from
 		// the ideal allocation.
 		for _, b := range childNodeBlocks[currentChildNodeIdx : currentChildNodeIdx+minChildNodeCount] {
 			bestBlockCount += b
