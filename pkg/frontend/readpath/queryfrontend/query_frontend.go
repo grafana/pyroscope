@@ -66,6 +66,7 @@ type QueryFrontend struct {
 	symbolizer          Symbolizer
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
+	queryPlanType       string
 
 	metrics *queryFrontendMetrics
 }
@@ -132,6 +133,7 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 func NewQueryFrontend(
 	logger log.Logger,
 	limits frontend.Limits,
+	cfg frontend.Config,
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
@@ -148,6 +150,7 @@ func NewQueryFrontend(
 		symbolizer:          sym,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
+		queryPlanType:       cfg.QueryPlannerStrategy,
 		metrics:             newQueryFrontendMetrics(reg),
 	}
 	return qf
@@ -255,8 +258,14 @@ func (q *QueryFrontend) doQuery(
 		blocks[i], blocks[j] = blocks[j], blocks[i]
 	})
 	xrandMutex.Unlock()
-	// TODO(kolesnikovae): Should be dynamic.
-	p := queryplan.BuildBalanced(blocks, 4, 20)
+
+	var p *queryv1.QueryPlan
+	switch q.queryPlanType {
+	case "balanced":
+		p = queryplan.BuildBalanced(blocks, 4, 20)
+	default: // Always fallback to the classic planner
+		p = queryplan.Build(blocks, 4, 20)
+	}
 
 	backend := q.querybackend
 	if backendC != nil {
