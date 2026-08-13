@@ -16,6 +16,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/lidia"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -177,7 +178,7 @@ func TestSelectMergeStacktracesTree_SymbolRefFlagOn(t *testing.T) {
 		}},
 	}, nil).Once()
 
-	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, mockMetadataClient, nil, mockQueryBackend, mockSymbolizer, nil, nil)
+	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, frontend.Config{}, mockMetadataClient, nil, mockQueryBackend, mockSymbolizer, nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), "tenant1")
 	start, end := smpValidTimeRange()
@@ -235,7 +236,7 @@ func TestSelectMergeStacktracesTree_SymbolRefResolution(t *testing.T) {
 		Blocks: []*metastorev1.BlockMeta{{Id: "block_id"}},
 	}, nil).Once()
 
-	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, mockMetadataClient, nil, mockQueryBackend, mockSymbolizer, nil, nil)
+	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, frontend.Config{}, mockMetadataClient, nil, mockQueryBackend, mockSymbolizer, nil, nil)
 
 	before := testutil.ToFloat64(qf.metrics.symbolRefLocationsTotal.WithLabelValues(symbolRefLocationResolved))
 
@@ -269,7 +270,7 @@ func TestSelectMergeStacktracesTree_SymbolRefResolution(t *testing.T) {
 // path (see TestRebuildInlineChainExpansionOrder for the Rebuild-side
 // contract).
 func TestBuildLookup_ReversesLidiaFrameOrder(t *testing.T) {
-	qf := NewQueryFrontend(log.NewNopLogger(), nil, nil, nil, nil, nil, nil, nil)
+	qf := NewQueryFrontend(log.NewNopLogger(), nil, frontend.Config{}, nil, nil, nil, nil, nil, nil)
 	lookup := qf.buildLookup([]binaryResolution{{
 		binary: symbolref.UnresolvedBinary{BuildID: "build-a", BinaryName: "libfoo.so", Addresses: []uint64{0x100}},
 		frames: [][]lidia.SourceInfoFrame{{
