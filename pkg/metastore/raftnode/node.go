@@ -73,6 +73,23 @@ const (
 	defaultTransportConnPoolSize = 10
 	defaultTransportTimeout      = 10 * time.Second
 	defaultLogStoreTimeout       = 10 * time.Second
+
+	// Anything below raft's minInFlightForPipelining (2) makes
+	// AppendEntriesPipeline return ErrPipelineReplicationNotSupported, which
+	// replicate() handles by staying in synchronous RPC mode.
+	//
+	// Pipelining is unusable on raft v1.7.3: it sizes both netPipeline
+	// channels at MaxRPCsInFlight-2, so the default of 2 leaves them
+	// unbuffered, and a follower that fails a single AppendEntries can
+	// deadlock replication to itself permanently. See
+	// TestMetastoreRaftPipelineDeadlock for the full interlock. Raising this
+	// instead of lowering it would only widen the window, since both channels
+	// stay bounded. Revert once the upstream bug is fixed.
+	//
+	// The cost is small: replication still ships up to MaxAppendEntries
+	// entries per round trip, and a single entry commits in one round trip
+	// either way.
+	raftMaxRPCsInFlight = 1
 )
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
@@ -160,11 +177,12 @@ func NewNode(
 	if err != nil {
 		return nil, err
 	}
-	n.transport, err = raft.NewTCPTransport(
-		config.BindAddress, addr,
-		int(config.TransportConnPoolSize),
-		config.TransportTimeout,
-		os.Stderr)
+	n.transport, err = raft.NewTCPTransportWithConfig(config.BindAddress, addr,
+		&raft.NetworkTransportConfig{
+			MaxPool:         int(config.TransportConnPoolSize),
+			Timeout:         config.TransportTimeout,
+			MaxRPCsInFlight: raftMaxRPCsInFlight,
+		})
 	if err != nil {
 		return nil, err
 	}
