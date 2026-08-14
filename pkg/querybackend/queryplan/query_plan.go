@@ -1,8 +1,6 @@
 package queryplan
 
 import (
-	"math"
-
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
@@ -69,152 +67,158 @@ func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int)
 		return new(queryv1.QueryPlan)
 	}
 
-	readNodeCount := int(math.Ceil(float64(len(blocks)) / float64(maxReads)))
-	nodes := allocateContiguous[queryv1.QueryNode](readNodeCount)
-	weights := make([]int, readNodeCount)
+	leafNodeCount := (len(blocks) + maxReads - 1) / maxReads
+	nodes := allocateContiguous[queryv1.QueryNode](leafNodeCount)
 
-	// Build the read nodes, balancing blocks across all read nodes. We also
-	// record the number of blocks in each read node to be used later when
-	// assigning read nodes to merge nodes.
-	for start, idx := 0, 0; idx < readNodeCount; idx++ {
-		size := balancedGroupSize(len(blocks), readNodeCount, idx)
-		end := start + size
-
+	// Uniformly assign blocks to leaf nodes.
+	var start int
+	for idx := range leafNodeCount {
+		end := (idx + 1) * len(blocks) / leafNodeCount
 		nodes[idx].Type = queryv1.QueryNode_READ
 		nodes[idx].Blocks = blocks[start:end:end]
-		weights[idx] = size
 		start = end
 	}
 
-	// Build the merge nodes. We assign merge children to merge nodes based on the
-	// number of blocks being merged at each level. We want each merge node to
-	// merge approximately the same number of blocks as its siblings.
-	for len(nodes) > 1 {
-		mergeNodeCount := int(math.Ceil(float64(len(nodes)) / float64(maxMerges)))
-		mergeNodes := allocateContiguous[queryv1.QueryNode](mergeNodeCount)
-		mergeWeights := make([]int, mergeNodeCount)
-
-		// Calculate how many children each merge node should have at this level.
-		groupSizes := distributeChildNodes(weights, mergeNodeCount, maxMerges)
-		start := 0
-		for idx, size := range groupSizes {
-			end := start + size
-			mergeNodes[idx].Type = queryv1.QueryNode_MERGE
-			mergeNodes[idx].Children = nodes[start:end:end]
-
-			for _, weight := range weights[start:end] {
-				mergeWeights[idx] += weight
-			}
-			start = end
-		}
-
-		nodes = mergeNodes
-		weights = mergeWeights
-	}
-
+	// Recursively build a balanced tree of merge nodes.
+	root := buildMergeTree(nodes, maxMerges)
 	return &queryv1.QueryPlan{
-		Root: nodes[0],
+		Root: root,
 	}
 }
 
-// distributeChildNodes will take a collection of child nodes and evenly
-// distribute them across mergeNodeCount merge nodes, ensuring that each merge
-// node does not exceed maxMergeNodeSize children.
+// buildMergeTree will recursively create a query tree of merge nodes with at
+// most maxMerges number of children. At each level, the tree will maintain a
+// similar number of blocks assigned to each merge node compared to its
+// siblings.
 //
-// The i-th element of childNodeBlocks is the number of blocks the i-th child
-// node contains (whether it is a merge node itself or a leaf node). The child
-// nodes are distributed such that each merge node has a similar number of
-// blocks and not necessarily a similar number of child nodes. A merge node
-// could have fewer child nodes than its peers, but it will always have a
-// similar number of blocks.
+// The algorithm is straightforward, but it has nuances. Since len(nodes) > 1,
+// we know we need to create a merge node and place nodes underneath it.
 //
-// It returns a slice of child node counts. The i-th element indicates how many
-// child nodes the i-th merge node should have.
-func distributeChildNodes(childNodeBlocks []int, mergeNodeCount int, maxMergeNodeSize int) []int {
-	// This slice contains the number of child nodes each merge node should be
-	// allocated.
-	mergeNodeChildren := make([]int, mergeNodeCount)
-
-	remainingTotalBlockCount := 0
-	for _, count := range childNodeBlocks {
-		remainingTotalBlockCount += count
+// When creating a merge node we want to partition the nodes evenly into groups
+// such that we have no more than maxMerges groups (since a given merge node
+// cannot exceed maxMerges children). Once we select a number of groups, we use
+// balanceGroupItems to evenly (as evenly as possible) spread the nodes across
+// all the groups.
+//
+// It's important to note that we want to select a groupSize which is a power of
+// maxMerges. This ensures that each subtree has the same depth as its siblings.
+//
+// As an example, consider the following input:
+//
+//	maxMerges = 3
+//	nodes     = [ n0 n1 n2 n3 n4 n5 n6 n7 n8 n9 ]
+//
+// We want to partition nodes such that each group has an even number of
+// nodes itself. Naively we could compute:
+//
+//	groupSize = ceil(len(nodes) / maxMerges)
+//
+// However, this would result in an imbalanced tree:
+//
+//	[                   M0                  ]
+//	[ n0 n1 n2 n3 ] [ n4 n5 n6 ] [ n7 n8 n9 ]
+//
+// From here, the first partition was given 4 nodes, which exceeds maxMerges,
+// so it needs to be broken down further. The other two partitions have 3 nodes,
+// so they do not need to be branched further. After splitting the first
+// partition, the tree becomes imbalanced.
+//
+//	[                     M0                    ]
+//	[        M1       ] [ n4 n5 n6 ] [ n7 n8 n9 ]
+//	[ n0 n1 ] [ n2 n3 ]
+//
+// Instead, we select the largest power of maxMerges K that's less than
+// len(nodes). In this case:
+//
+//	K = maxMerges^N
+//	  for max(N) and maxMerges^N < len(nodes)
+//	if N = 2, then 3^2 < 10 so K = 9
+//
+// If we allow K to represent the largest size of a partition, we can calculate
+// how many partitions we need:
+//
+//	# of partitions = ceil(len(nodes) / K)
+//	                = ceil(10 / 5)
+//	                = 2
+//
+// Now we can balance the nodes across 2 partitions:
+//
+//	[                 M0                ]
+//	[ n0 n1 n2 n3 n4 ] [ n5 n6 n7 n8 n9 ]
+//
+// Both partitions exceed maxMerges, so we repeat the algorithm:
+//
+//	[                     M0                    ]
+//	[         M1         ] [         M2         ]
+//	[ n0 n1 n2 ] [ n3 n4 ] [ n5 n6 n7 ] [ n8 n9 ]
+//
+// At this point, each subtree does the same amount of work as its siblings.
+//
+// As a theoretical note, this algorithm may produce an imbalanced depth tree
+// if the len(nodes) is not a pwer of maxMerges and maxMerges = 2. This case is
+// unlikely in production--as maxMerges = 20 is common--but also irrelevant to
+// performance overall since such a low maxMerges value would produce other
+// inefficiencies.
+func buildMergeTree(nodes []*queryv1.QueryNode, maxMerges int) *queryv1.QueryNode {
+	if len(nodes) == 1 {
+		// The base case, this is a leaf node.
+		return nodes[0]
 	}
 
-	currentChildNodeIdx := 0
-	for mergeNodeIdx := range mergeNodeCount {
-		// Calculate the remaining merge nodes and child nodes we have left to
-		// allocate.
-		remainingMergeNodes := mergeNodeCount - mergeNodeIdx
-		remainingChildNodes := len(childNodeBlocks) - currentChildNodeIdx
-
-		// Calculate the minimum and maximum child nodes this merge node can have.
-		minChildNodeCount := max(1, remainingChildNodes-(remainingMergeNodes-1)*maxMergeNodeSize)
-		maxChildNodeCount := min(maxMergeNodeSize, remainingChildNodes-(remainingMergeNodes-1))
-
-		// Calculate the ideal number of blocks we could give to this merge node
-		// (and all subsequent merge nodes) to evenly distribute blocks amongst
-		// them. This number likely will not be a whole number.
-		targetBlockCount := float64(remainingTotalBlockCount) / float64(remainingMergeNodes)
-
-		bestChildNodeCount := minChildNodeCount
-		bestBlockCount := 0
-		bestDistance := float64(0)
-
-		// We have to allocate at least the minimum number of child nodes to this
-		// merge node, so we do that now. we then calculate how far away we are from
-		// the ideal allocation.
-		for _, b := range childNodeBlocks[currentChildNodeIdx : currentChildNodeIdx+minChildNodeCount] {
-			bestBlockCount += b
-		}
-		bestDistance = math.Abs(float64(bestBlockCount) - targetBlockCount)
-
-		// Now we expand the number of child nodes we give to this merge node to see
-		// if we can get closer to the ideal block count.
-		candidateBlockCount := bestBlockCount
-		for nodeCount := minChildNodeCount + 1; nodeCount <= maxChildNodeCount; nodeCount++ {
-			candidateBlockCount += childNodeBlocks[currentChildNodeIdx+nodeCount-1]
-			distance := math.Abs(float64(candidateBlockCount) - targetBlockCount)
-			if distance < bestDistance {
-				bestChildNodeCount = nodeCount
-				bestBlockCount = candidateBlockCount
-				bestDistance = distance
-			}
-
-			if float64(candidateBlockCount) >= targetBlockCount {
-				// We are past the ideal block count, adding more child nodes won't get
-				// us closer to the ideal distance.
-				break
-			}
-		}
-
-		mergeNodeChildren[mergeNodeIdx] = bestChildNodeCount
-		currentChildNodeIdx += bestChildNodeCount
-		remainingTotalBlockCount -= bestBlockCount
+	// We have len(nodes) number of nodes. We need to partition them into groups
+	// such that we have no more than maxMerges number of groups. Importantly, we
+	// want a group size such that we don't place all the nodes into a single
+	// group.
+	groupSize := 1
+	for groupSize*maxMerges < len(nodes) {
+		groupSize *= maxMerges
 	}
 
-	return mergeNodeChildren
+	// Given groupSize as the maximum number of nodes that can be assigned to
+	// each subtree, we calculate
+	//
+	//	ceil(len(nodes) / groupSize)
+	//
+	// to determine how many children this node will have.
+	childCount := (len(nodes) + groupSize - 1) / groupSize
+
+	parent := &queryv1.QueryNode{
+		Type:     queryv1.QueryNode_MERGE,
+		Children: make([]*queryv1.QueryNode, childCount),
+	}
+
+	// Evenly distribute all the nodes to each child of this merge node.
+	var start int
+	for idx := range childCount {
+		end := start + balanceGroupItems(len(nodes), childCount, idx)
+		parent.Children[idx] = buildMergeTree(nodes[start:end], maxMerges)
+		start = end
+	}
+
+	return parent
 }
 
-// balancedGroupSize will take a totalSize and distribute it evenly across
-// groupCount groups. If there is a remainder R, that remainder is then spread
-// evenly across the first R groups.
+// balanceGroupItems will take numItems and distribute them evenly across
+// numGroups groups. If there is a remainder R, that remainder is then spread
+// evenly across the first R groups. It returns the number of items groupIdx
+// should have for all groups to remain balanced.
 //
 // For example, given these parameters:
 //
-//	totalSize  = 5
-//	groupCount = 3
+//	numItems  = 5
+//	numGroups = 3
 //
 // We would get the following (for various values of groupIdx):
 //
 //	Group 0: 2
 //	Group 1: 2
 //	Group 2: 1
-func balancedGroupSize(totalSize int, groupCount int, groupIdx int) int {
-	size := totalSize / groupCount
-	if groupIdx < totalSize%groupCount {
-		size++
+func balanceGroupItems(numItems int, numGroups int, groupIdx int) int {
+	groupSize := numItems / numGroups
+	if groupIdx < numItems%numGroups {
+		groupSize++
 	}
-	return size
+	return groupSize
 }
 
 // allocateContiguous returns a []*T of length size where every element points

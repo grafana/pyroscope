@@ -109,6 +109,42 @@ func goldenFile(t *testing.T) string {
 	return filepath.Join("testdata", parts[len(parts)-1]+".txt")
 }
 
+// Test_balanceGroupItems verifies that items are spread evenly across groups,
+// with any remainder distributed one-per-group starting from group 0.
+func Test_balanceGroupItems(t *testing.T) {
+	tests := []struct {
+		name      string
+		numItems  int
+		numGroups int
+		want      []int // want[i] is the expected size of group i
+	}{
+		{name: "zero_items", numItems: 0, numGroups: 3, want: []int{0, 0, 0}},
+		{name: "single_group", numItems: 5, numGroups: 1, want: []int{5}},
+		{name: "even_split", numItems: 6, numGroups: 3, want: []int{2, 2, 2}},
+		{name: "remainder_spread", numItems: 5, numGroups: 3, want: []int{2, 2, 1}},
+		{name: "remainder_almost_full", numItems: 8, numGroups: 3, want: []int{3, 3, 2}},
+		{name: "one_item_per_group", numItems: 3, numGroups: 3, want: []int{1, 1, 1}},
+		{name: "more_groups_than_items", numItems: 2, numGroups: 5, want: []int{1, 1, 0, 0, 0}},
+		{name: "no_items", numItems: 0, numGroups: 1, want: []int{0}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Len(t, tt.want, tt.numGroups, "test case is malformed: want must have numGroups elements")
+
+			got := make([]int, tt.numGroups)
+			sum := 0
+			for idx := range tt.numGroups {
+				got[idx] = balanceGroupItems(tt.numItems, tt.numGroups, idx)
+				sum += got[idx]
+			}
+
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.numItems, sum, "group sizes must sum back to numItems")
+		})
+	}
+}
+
 // writePlan writes an indented textual representation of the plan rooted at
 // n to w. A nil root produces no output. The test fails on malformed nodes.
 func writePlan(t *testing.T, w io.Writer, pad string, n *queryv1.QueryNode) {
