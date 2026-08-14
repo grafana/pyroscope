@@ -14,7 +14,7 @@ MERGE {children: 3, blocks: 0}
 			id:"6"
 		READ {children: 0, blocks: 1}
 			id:"7"
-	MERGE {children: 6, blocks: 0}
+	MERGE {children: 7, blocks: 0}
 		READ {children: 0, blocks: 1}
 			id:"8"
 		READ {children: 0, blocks: 1}
@@ -27,9 +27,9 @@ MERGE {children: 3, blocks: 0}
 			id:"12"
 		READ {children: 0, blocks: 1}
 			id:"13"
-	MERGE {children: 7, blocks: 0}
 		READ {children: 0, blocks: 1}
 			id:"14"
+	MERGE {children: 6, blocks: 0}
 		READ {children: 0, blocks: 1}
 			id:"15"
 		READ {children: 0, blocks: 1}
