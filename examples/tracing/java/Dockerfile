@@ -42,7 +42,7 @@ COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/buil
 WORKDIR /opt/app
 
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.15.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
-ADD https://github.com/grafana/otel-profiling-java/releases/download/v2.1.1/pyroscope-otel-javaagent-extension.jar pyroscope-otel-javaagent-extension.jar
+ADD https://github.com/grafana/otel-profiling-java/releases/download/v2.1.2/pyroscope-otel-javaagent-extension.jar pyroscope-otel-javaagent-extension.jar
 
 EXPOSE 5000
 
