@@ -2451,6 +2451,12 @@ The `symbolizer` block configures the symbolizer (V2).
 # server.
 # CLI flag: -symbolizer.max-debuginfod-concurrency
 [max_debuginfod_concurrency: <int> | default = 10]
+
+# (advanced) Maximum time the query frontend waits to resolve a single binary's
+# unresolved addresses for a symbol-ref tree query, before falling back to
+# binary!0xaddr frames for that binary.
+# CLI flag: -symbolizer.resolve-timeout
+[resolve_timeout: <duration> | default = 20s]
 ```
 
 ### overrides_exporter

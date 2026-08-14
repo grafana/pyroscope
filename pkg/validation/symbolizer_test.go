@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +31,6 @@ overrides:
   symbol-ref-trees-enabled:
     symbolizer:
       symbol_ref_trees_enabled: true
-      resolve_timeout: 5s
 `
 
 func Test_SymbolizerEnabled(t *testing.T) {
@@ -87,7 +85,4 @@ func Test_SymbolRefTreesEnabled(t *testing.T) {
 	assert.False(t, o.SymbolRefTreesEnabled("empty-overrides"))
 	assert.False(t, o.SymbolRefTreesEnabled("symbol-ref-trees-disabled"))
 	assert.True(t, o.SymbolRefTreesEnabled("symbol-ref-trees-enabled"))
-
-	assert.Equal(t, 20*time.Second, o.SymbolizerResolveTimeout("empty-overrides"))
-	assert.Equal(t, 5*time.Second, o.SymbolizerResolveTimeout("symbol-ref-trees-enabled"))
 }

@@ -71,7 +71,7 @@ EXPOSE 5000
 
 ## Add required libraries
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.17.0/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
-ADD https://github.com/grafana/otel-profiling-java/releases/download/v2.0.5/pyroscope-otel-javaagent-extension.jar pyroscope-otel-javaagent-extension.jar
+ADD https://github.com/grafana/otel-profiling-java/releases/download/v2.1.2/pyroscope-otel-javaagent-extension.jar pyroscope-otel-javaagent-extension.jar
 
 ENV PYROSCOPE_APPLICATION_NAME=my-app
 ENV PYROSCOPE_FORMAT=jfr
