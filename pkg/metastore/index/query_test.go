@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"crypto/rand"
+	"github.com/go-kit/log"
 	"runtime"
 	"sync"
 	"testing"
@@ -18,7 +19,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/test"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func TestIndex_Query(t *testing.T) {
@@ -297,7 +297,7 @@ func TestIndex_Query(t *testing.T) {
 		})
 	}
 
-	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	require.NoError(t, idx.Init(tx))
@@ -314,7 +314,7 @@ func TestIndex_Query(t *testing.T) {
 	})
 
 	t.Run("Restored", func(t *testing.T) {
-		idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		idx = NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 		tx, err = db.Begin(false)
 		defer func() {
 			require.NoError(t, tx.Rollback())
@@ -327,7 +327,7 @@ func TestIndex_Query(t *testing.T) {
 
 func TestIndex_QueryMetadata_StaleReadCacheReloadsShard(t *testing.T) {
 	db := test.BoltDB(t)
-	idxWriter := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	idxWriter := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	require.NoError(t, db.Update(idxWriter.Init))
 
 	const tenant = "tenant-a"
@@ -375,7 +375,7 @@ func TestIndex_QueryMetadata_StaleReadCacheReloadsShard(t *testing.T) {
 		return idxWriter.InsertBlock(tx, newer.CloneVT())
 	}))
 
-	idxReader := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	idxReader := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	_, err = idxReader.GetBlocks(staleTx, &metastorev1.BlockList{
 		Tenant: tenant,
 		Shard:  shard,
@@ -456,7 +456,7 @@ func (s *queryTestSuite) setup(t *testing.T) {
 	s.blocks.Store(&metastorev1.BlockList{})
 
 	s.db = test.BoltDB(t)
-	s.idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	s.idx = NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	// Enforce aggressive cache evictions:
 	s.idx.config.partitionDuration = time.Minute * 30
 	s.idx.config.ShardCacheSize = 3

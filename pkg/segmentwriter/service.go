@@ -91,7 +91,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 		prefix + ".store":                              fieldcategory.Advanced,
 		prefix + ".tokens-file-path":                   fieldcategory.Advanced,
 	})
-	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, log.NewNopLogger())
 	f.IntVar(&cfg.AutoForgetUnhealthyPeriods, prefix+".auto-forget-unhealthy-periods", 0, "Number of consecutive heartbeat-timeout periods after which a ring member whose heartbeat has gone stale is automatically removed (forgotten) from the ring. This cleans up entries of instances that have left the ring without unregistering, e.g. after a scale-down. 0 disables auto-forget.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
