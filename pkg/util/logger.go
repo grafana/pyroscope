@@ -13,10 +13,6 @@ import (
 	"github.com/grafana/dskit/tracing"
 )
 
-// Logger is a global logger. It defaults to a no-op logger and is set to the
-// process logger during startup in initLogger so runtime code can log reliably.
-var Logger = log.NewNopLogger()
-
 // LoggerWithUserID returns a Logger that has information about the current user in
 // its details.
 func LoggerWithUserID(tenantID string, l log.Logger) log.Logger {

@@ -17,7 +17,6 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/sharding"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
@@ -43,14 +42,14 @@ func cleanupStreams[Result any](result ResponseFromReplica[Result]) {
 		CloseRequest() error
 	}); ok {
 		if err := stream.CloseRequest(); err != nil {
-			level.Warn(util.Logger).Log("msg", "failed to close request", "err", err)
+			level.Warn(log.NewNopLogger()).Log("msg", "failed to close request", "err", err)
 		}
 	}
 	if stream, ok := any(result.response).(interface {
 		CloseResponse() error
 	}); ok {
 		if err := stream.CloseResponse(); err != nil {
-			level.Warn(util.Logger).Log("msg", "failed to close response", "err", err)
+			level.Warn(log.NewNopLogger()).Log("msg", "failed to close response", "err", err)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package validation
 import (
 	"bytes"
 	"flag"
+	"github.com/go-kit/log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ overrides:
 `
 
 func Test_SymbolizerEnabled(t *testing.T) {
-	rc, err := LoadRuntimeConfig(bytes.NewReader([]byte(symbolizerOverrideConfig)))
+	rc, err := LoadRuntimeConfig(bytes.NewReader([]byte(symbolizerOverrideConfig)), log.NewNopLogger())
 	require.NoError(t, err)
 
 	var defaultCfg Limits

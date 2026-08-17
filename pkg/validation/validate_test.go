@@ -627,7 +627,7 @@ func Test_ValidateRangeRequest(t *testing.T) {
 			actual, err := ValidateRangeRequest(MockLimits{
 				MaxQueryLengthValue:   48 * time.Hour,
 				MaxQueryLookbackValue: 72 * time.Hour,
-			}, []string{"foo"}, tt.in, now)
+			}, []string{"foo"}, tt.in, now, log.NewNopLogger())
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expected, actual)
 		})

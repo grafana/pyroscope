@@ -34,7 +34,7 @@ func (q *QueryFrontend) ProfileTypes(
 		req.Msg.End = int64(interval.End)
 	}
 
-	empty, err := validation.SanitizeTimeRange(q.limits, tenants, &req.Msg.Start, &req.Msg.End)
+	empty, err := validation.SanitizeTimeRange(q.limits, tenants, &req.Msg.Start, &req.Msg.End, q.logger)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

@@ -269,7 +269,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.TenantSettings.RegisterFlags(f)
 
 	// Legacy flags
-	c.StoreGateway.RegisterFlags(f, util.Logger)
+	c.StoreGateway.RegisterFlags(f, log.NewNopLogger())
 	c.Querier.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	markV1StorageOnlyFlagUsage(f)
@@ -397,7 +397,7 @@ func (c *Config) Validate() error {
 		return err
 	}
 
-	if err := c.Worker.Validate(util.Logger); err != nil {
+	if err := c.Worker.Validate(log.NewNopLogger()); err != nil {
 		return err
 	}
 
@@ -431,7 +431,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
+	if err := c.Storage.Bucket.Validate(log.NewNopLogger()); err != nil {
 		return err
 	}
 
@@ -963,11 +963,7 @@ func initLogger(logFormat string, logLevel dslog.Level) *logger {
 	// Must put the level filter last for efficiency.
 	l = level.NewFilter(l, logLevel.Option)
 
-	lgr := &logger{w: w, Logger: l}
-	// Wire the process logger into the util package so call sites using
-	// util.Logger (instead of a passed-in logger) are not silently no-op.
-	util.Logger = lgr
-	return lgr
+	return &logger{w: w, Logger: l}
 }
 
 type logger struct {
