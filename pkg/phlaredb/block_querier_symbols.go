@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
@@ -19,7 +20,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // TODO(kolesnikovae) Decouple from phlaredb and refactor to symdb/compat.
@@ -272,7 +272,7 @@ const inMemoryReaderRowsBufSize = 1 << 10
 
 func (r *inMemoryparquetReader[M, P]) readRG(dst []M, rg parquet.RowGroup) (err error) {
 	rr := parquet.NewRowGroupReader(rg)
-	defer runutil.CloseWithLogOnErr(util.Logger, rr, "closing parquet row group reader")
+	defer runutil.CloseWithLogOnErr(log.NewNopLogger(), rr, "closing parquet row group reader")
 	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
 	for i := 0; i < len(dst); {
 		n, err := rr.ReadRows(buf)

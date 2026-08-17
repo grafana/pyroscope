@@ -46,7 +46,7 @@ func (q *QueryFrontend) selectMergeStacktracesPprof(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &req.Start, &req.End)
+	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &req.Start, &req.End, q.logger)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

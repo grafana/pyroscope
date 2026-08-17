@@ -2,6 +2,7 @@ package validation
 
 import (
 	"bytes"
+	"github.com/go-kit/log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,7 @@ overrides:
 `
 
 func Test_RecordingRules(t *testing.T) {
-	rc, err := LoadRuntimeConfig(bytes.NewReader([]byte(recordingRulesOverrideConfig)))
+	rc, err := LoadRuntimeConfig(bytes.NewReader([]byte(recordingRulesOverrideConfig)), log.NewNopLogger())
 	require.NoError(t, err)
 
 	o, err := newOverrides(rc)
@@ -57,7 +58,7 @@ overrides:
   wrong_name:
     recording_rules:
     - metric_name: ""
-  `)))
+  `)), log.NewNopLogger())
 	require.ErrorContains(t, err, "invalid metric name: ")
 
 	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
@@ -65,7 +66,7 @@ overrides:
   wrong_name:
     recording_rules:
     - metric_name: "metric_name_without_preffix"
-  `)))
+  `)), log.NewNopLogger())
 	require.ErrorContains(t, err, "metric name must start with profiles_recorded_")
 
 	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
@@ -74,7 +75,7 @@ overrides:
     recording_rules:
     - metric_name: 'profiles_recorded_any_name'
       matchers: ['{foo="bar}']
-  `)))
+  `)), log.NewNopLogger())
 	require.ErrorContains(t, err, "failed to parse matchers")
 
 	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
@@ -83,6 +84,6 @@ overrides:
     recording_rules:
     - metric_name: 'profiles_recorded_any_name'
       matchers: ['{foo="bar"}']
-  `)))
+  `)), log.NewNopLogger())
 	require.ErrorContains(t, err, "no __profile_type__ matcher present")
 }

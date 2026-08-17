@@ -31,7 +31,6 @@ import (
 	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -43,7 +42,7 @@ type Config struct {
 
 // RegisterFlags registers the flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	cfg.LifecyclerConfig.RegisterFlags(f, util.Logger)
+	cfg.LifecyclerConfig.RegisterFlags(f, log.NewNopLogger())
 }
 
 func (cfg *Config) Validate() error {
