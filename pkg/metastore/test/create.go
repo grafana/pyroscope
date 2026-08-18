@@ -17,7 +17,6 @@ import (
 	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/metastore"
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
@@ -27,6 +26,8 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockdiscovery"
 	"github.com/grafana/pyroscope/v2/pkg/util/health"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
 func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore.Bucket) MetastoreSet {
@@ -38,8 +39,6 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	bootstrapPeers := make([]string, n)
 	raftPorts := freeLocalPorts(t, n)
 	for i := 0; i < n; i++ {
-		// gRPC runs over in-memory listeners keyed by this string, so it is
-		// only a label and never bound.
 		grpcAddresses[i] = fmt.Sprintf("localhost:%d", 10500+i)
 		raftAddresses[i] = fmt.Sprintf("localhost:%d", raftPorts[i])
 		raftIds[i] = fmt.Sprintf("node-%d", i)

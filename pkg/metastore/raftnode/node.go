@@ -189,9 +189,6 @@ func NewNode(
 	return &n, nil
 }
 
-// newTransport creates the raft TCP transport. A nil Logger makes raft build
-// the same "raft-net" hclog on stderr that the plain NewTCPTransport
-// constructor would.
 func newTransport(config Config, advertise net.Addr) (*raft.NetworkTransport, error) {
 	return raft.NewTCPTransportWithConfig(config.BindAddress, advertise,
 		&raft.NetworkTransportConfig{

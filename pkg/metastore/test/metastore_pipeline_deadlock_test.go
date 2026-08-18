@@ -18,10 +18,11 @@ import (
 	"github.com/oklog/ulid/v2"
 	"github.com/stretchr/testify/require"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/metastore"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
 // TestRaftPipelineDeadlock covers the workaround pinned by
