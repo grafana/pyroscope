@@ -80,6 +80,9 @@ func Compact(ctx context.Context, src []BlockReader, dst string, logger log.Logg
 func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 	[]block.Meta, error,
 ) {
+	if opts.Logger == nil {
+		return nil, errors.New("logger is required")
+	}
 	if len(opts.Src) <= 1 && opts.SplitCount == 1 {
 		return nil, errors.New("not enough blocks to compact")
 	}
