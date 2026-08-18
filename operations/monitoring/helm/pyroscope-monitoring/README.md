@@ -39,6 +39,7 @@ The committed JSON files under `operations/monitoring/dashboards/` (native) and 
 | dashboards.cloudBackendGateway | bool | `false` |  |
 | dashboards.cloudBackendGatewaySelector | string | `"container=~\"cortex-gw(-internal)?\""` |  |
 | dashboards.cluster | string | `"pyroscope-dev"` |  |
+| dashboards.eventsSelector | string | `"job=~\"loki\\.source\\.kubernetes_events|integrations/kubernetes/eventhandler\""` |  |
 | dashboards.ingestNamespaceSelector | string | `"namespace=~\"$namespace\""` |  |
 | dashboards.ingestSelector | string | `"container=~\"pyroscope|distributor|query-frontend\""` |  |
 | dashboards.kubeStateMetricsSelector | string | `"job=~\"(.*/)?kube-state-metrics\""` |  |

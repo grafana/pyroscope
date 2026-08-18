@@ -129,6 +129,7 @@ dashboards:
   cloudBackendGatewaySelector: container=~"cortex-gw(-internal)?"
 
   kubeStateMetricsSelector: job=~"(.*/)?kube-state-metrics"
+  eventsSelector: job=~"loki\.source\.kubernetes_events|integrations/kubernetes/eventhandler"
   cadvisorSelector: job=~"(.*/)?cadvisor"
 
   # Default namespace
