@@ -15,7 +15,7 @@ keywords:
 
 # Understand 'self' vs. 'total' metrics in profiling with Pyroscope
 
-Profiling in Pyroscope provides many different ways of analyzing your profiling data. One of the key pieces of this analysis are the metrics 'self' and 'total', whose understanding is key for accurate interpretation of profiling data in both CPU and memory contexts. These metrics can be seen both within the table and the flame graph view of the UI. 
+Profiling in Pyroscope provides many different ways of analyzing your profiling data. One of the key pieces of this analysis are the metrics 'self' and 'total', whose understanding is key for accurate interpretation of profiling data in both CPU and memory contexts. These metrics can be seen both within the table and the flame graph view of the UI.
 
 ![Self vs total annotated](https://grafana.com/media/docs/pyroscope/self_vs_total_annotated.png)
 ## Self
