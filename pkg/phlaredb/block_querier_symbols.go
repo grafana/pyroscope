@@ -7,7 +7,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
@@ -20,6 +19,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 )
 
 // TODO(kolesnikovae) Decouple from phlaredb and refactor to symdb/compat.
@@ -259,7 +259,7 @@ func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phl
 		rows := rg.NumRows()
 		dst := r.cache[offset : offset+rows]
 		offset += rows
-		if err := r.readRG(dst, rg); err != nil {
+		if err := r.readRG(ctx, dst, rg); err != nil {
 			return fmt.Errorf("reading row group from parquet file '%s': %w", file.Path(), err)
 		}
 	}
@@ -270,9 +270,9 @@ func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phl
 // defaultRowBufferSize = 42
 const inMemoryReaderRowsBufSize = 1 << 10
 
-func (r *inMemoryparquetReader[M, P]) readRG(dst []M, rg parquet.RowGroup) (err error) {
+func (r *inMemoryparquetReader[M, P]) readRG(ctx context.Context, dst []M, rg parquet.RowGroup) (err error) {
 	rr := parquet.NewRowGroupReader(rg)
-	defer runutil.CloseWithLogOnErr(log.NewNopLogger(), rr, "closing parquet row group reader")
+	defer runutil.CloseWithLogOnErr(phlarecontext.Logger(ctx), rr, "closing parquet row group reader")
 	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
 	for i := 0; i < len(dst); {
 		n, err := rr.ReadRows(buf)
