@@ -37,26 +37,29 @@ type Closer interface {
 type ClientFactory[T any] func(addr string) (T, error)
 
 // cleanupResult, will make sure if the result was streamed, that we close the request and response
-func cleanupStreams[Result any](result ResponseFromReplica[Result]) {
+func cleanupStreams[Result any](logger log.Logger, result ResponseFromReplica[Result]) {
+	if logger == nil {
+		logger = log.NewNopLogger()
+	}
 	if stream, ok := any(result.response).(interface {
 		CloseRequest() error
 	}); ok {
 		if err := stream.CloseRequest(); err != nil {
-			level.Warn(log.NewNopLogger()).Log("msg", "failed to close request", "err", err)
+			level.Warn(logger).Log("msg", "failed to close request", "err", err)
 		}
 	}
 	if stream, ok := any(result.response).(interface {
 		CloseResponse() error
 	}); ok {
 		if err := stream.CloseResponse(); err != nil {
-			level.Warn(log.NewNopLogger()).Log("msg", "failed to close response", "err", err)
+			level.Warn(logger).Log("msg", "failed to close response", "err", err)
 		}
 	}
 }
 
 // forGivenReplicationSet runs f, in parallel, for given replica set.
 // Under the hood it returns only enough responses to satisfy the quorum.
-func forGivenReplicationSet[Result any, Querier any](ctx context.Context, clientFactory func(string) (Querier, error), replicationSet ring.ReplicationSet, f QueryReplicaFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
+func forGivenReplicationSet[Result any, Querier any](ctx context.Context, logger log.Logger, clientFactory func(string) (Querier, error), replicationSet ring.ReplicationSet, f QueryReplicaFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
 	results, err := ring.DoUntilQuorumWithoutSuccessfulContextCancellation(
 		ctx,
 		replicationSet,
@@ -77,7 +80,9 @@ func forGivenReplicationSet[Result any, Querier any](ctx context.Context, client
 
 			return ResponseFromReplica[Result]{ingester.Addr, resp}, nil
 		},
-		cleanupStreams[Result],
+		func(result ResponseFromReplica[Result]) {
+			cleanupStreams(logger, result)
+		},
 	)
 	if err != nil {
 		return nil, err
