@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -16,22 +18,43 @@ import (
 // the raft leader. Without this, a blocked StoreLogs call freezes the
 // leader's main goroutine while heartbeats continue on separate goroutines,
 // preventing followers from ever triggering an election.
+//
+// Returning an error leaves a subtle problem behind, which exitOnTimeout
+// exists to sidestep: the write is abandoned, not cancelled. The goroutine
+// performing it keeps running and may still land its entries, so raft's
+// belief that the append failed stops matching what is on disk. Raft's retry
+// for the same index then hits raft-wal's monotonicity check and the follower
+// livelocks. With exitOnTimeout the node terminates instead, and raft-wal
+// truncates any partially written tail when the segment is reopened, so the
+// node restarts with a valid prefix and raft rebuilds its view from disk.
 type timeoutLogStore struct {
 	store        raft.LogStore
 	timeout      time.Duration
 	writeLatency prometheus.Histogram
 	timeouts     prometheus.Counter
+	logger       log.Logger
+
+	// exitOnTimeout terminates the process rather than returning an error.
+	exitOnTimeout bool
+	// exit is os.Exit outside of tests.
+	exit func(int)
 }
 
-func newTimeoutLogStore(store raft.LogStore, timeout time.Duration, writeLatency prometheus.Histogram, timeouts prometheus.Counter) raft.LogStore {
-	if timeout <= 0 {
+func newTimeoutLogStore(store raft.LogStore, cfg Config, m *metrics, logger log.Logger, exit func(int)) raft.LogStore {
+	if cfg.LogStoreTimeout <= 0 {
 		return store
 	}
+	if logger == nil {
+		logger = log.NewNopLogger()
+	}
 	return &timeoutLogStore{
-		store:        store,
-		timeout:      timeout,
-		writeLatency: writeLatency,
-		timeouts:     timeouts,
+		store:         store,
+		timeout:       cfg.LogStoreTimeout,
+		writeLatency:  m.logStoreWrite,
+		timeouts:      m.logStoreTimeout,
+		logger:        logger,
+		exitOnTimeout: cfg.ExitOnLogStoreTimeout,
+		exit:          exit,
 	}
 }
 
@@ -89,6 +112,14 @@ func (s *timeoutLogStore) withTimeout(fn func() error) error {
 		}
 		s.writeLatency.Observe(time.Since(start).Seconds())
 		s.timeouts.Inc()
+		if s.exitOnTimeout {
+			level.Error(s.logger).Log(
+				"msg", "log store write timed out, exiting: the write cannot be cancelled, "+
+					"so raft's view of the log may no longer match what is on disk",
+				"timeout", s.timeout,
+			)
+			s.exit(1)
+		}
 		return fmt.Errorf("log store write timed out after %s", s.timeout)
 	}
 }
