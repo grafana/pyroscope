@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -37,7 +36,8 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	raftAddresses := make([]string, n)
 	raftIds := make([]string, n)
 	bootstrapPeers := make([]string, n)
-	raftPorts := freeLocalPorts(t, n)
+	raftPorts, err := test.GetFreePorts(n)
+	require.NoError(t, err)
 	for i := 0; i < n; i++ {
 		grpcAddresses[i] = fmt.Sprintf("localhost:%d", 10500+i)
 		raftAddresses[i] = fmt.Sprintf("localhost:%d", raftPorts[i])
@@ -76,7 +76,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	listeners, dialOpt := test.CreateInMemoryListeners(grpcAddresses)
 	d := MockStaticDiscovery(t, servers)
 	client := metastoreclient.New(l, cfg.GRPCClientConfig, d, dialOpt)
-	err := client.Service().StartAsync(context.Background())
+	err = client.Service().StartAsync(context.Background())
 	require.NoError(t, err)
 
 	res := MetastoreSet{
@@ -142,33 +142,6 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	res.Client = client
 
 	return res
-}
-
-// freeLocalPorts picks n ports that are free right now. Raft needs real TCP
-// listeners and every peer address has to be known before any node starts, so
-// they cannot simply be bound as :0. Fixed ports are not an option either:
-// this helper is used from more than one package, and go test runs packages
-// in parallel, so they would intermittently collide with "address already in
-// use".
-func freeLocalPorts(t *testing.T, n int) []int {
-	t.Helper()
-	ports := make([]int, n)
-	listeners := make([]*net.TCPListener, n)
-	for i := range ports {
-		addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-		require.NoError(t, err)
-		l, err := net.ListenTCP("tcp", addr)
-		require.NoError(t, err)
-		listeners[i] = l
-		ports[i] = l.Addr().(*net.TCPAddr).Port
-	}
-	// Every listener stays open until all ports have been picked, so the OS
-	// cannot hand out the same one twice; they are only released once the
-	// full set is known.
-	for _, l := range listeners {
-		require.NoError(t, l.Close())
-	}
-	return ports
 }
 
 func MockStaticDiscovery(t *testing.T, servers []discovery.Server) *mockdiscovery.MockDiscovery {
