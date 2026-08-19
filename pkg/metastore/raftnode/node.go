@@ -119,7 +119,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.Uint64Var(&cfg.TransportConnPoolSize, prefix+"transport-conn-pool-size", defaultTransportConnPoolSize, "")
 	f.DurationVar(&cfg.TransportTimeout, prefix+"transport-timeout", defaultTransportTimeout, "")
 	f.DurationVar(&cfg.LogStoreTimeout, prefix+"log-store-timeout", defaultLogStoreTimeout, "")
-	f.BoolVar(&cfg.ExitOnLogStoreTimeout, prefix+"exit-on-log-store-timeout", false, "Terminate the process when a raft log store write exceeds log-store-timeout, instead of returning an error to raft. A timed-out write cannot be cancelled and may still land, leaving the raft view of the log inconsistent with what is on disk; restarting rebuilds that view from disk. Costs a process restart per timeout.")
+	f.BoolVar(&cfg.ExitOnLogStoreTimeout, prefix+"exit-on-log-store-timeout", false, "Terminate the process when a raft log store write exceeds log-store-timeout.")
 }
 
 func (cfg *Config) Validate() error {

@@ -18,15 +18,6 @@ import (
 // the raft leader. Without this, a blocked StoreLogs call freezes the
 // leader's main goroutine while heartbeats continue on separate goroutines,
 // preventing followers from ever triggering an election.
-//
-// Returning an error leaves a subtle problem behind, which exitOnTimeout
-// exists to sidestep: the write is abandoned, not cancelled. The goroutine
-// performing it keeps running and may still land its entries, so raft's
-// belief that the append failed stops matching what is on disk. Raft's retry
-// for the same index then hits raft-wal's monotonicity check and the follower
-// livelocks. With exitOnTimeout the node terminates instead, and raft-wal
-// truncates any partially written tail when the segment is reopened, so the
-// node restarts with a valid prefix and raft rebuilds its view from disk.
 type timeoutLogStore struct {
 	store        raft.LogStore
 	timeout      time.Duration
@@ -35,6 +26,13 @@ type timeoutLogStore struct {
 	logger       log.Logger
 
 	// exitOnTimeout terminates the process rather than returning an error.
+	// Returning an error means the write is abandoned, not cancelled. The goroutine
+	// performing it keeps running and may still land its entries, so raft's
+	// belief that the append failed stops matching what is on disk.
+	//
+	// With exitOnTimeout the node terminates instead, and raft-wal
+	// truncates any partially written tail when the segment is reopened, so the
+	// node restarts with a valid prefix and raft rebuilds its view from disk.
 	exitOnTimeout bool
 	// exit is os.Exit outside of tests.
 	exit func(int)
