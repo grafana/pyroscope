@@ -130,8 +130,13 @@ func TestRaftPipelineDeadlock(t *testing.T) {
 
 	for round := 1; round <= rounds; round++ {
 		faults[followerIdx].fail()
+		committedAtFault := commitIndex(t, ms, leaderIdx)
 		time.Sleep(failFor)
+		committedAtRecovery := commitIndex(t, ms, leaderIdx)
 		faults[followerIdx].clear()
+
+		require.Greater(t, committedAtRecovery, committedAtFault,
+			"round %d: the leader committed nothing while the follower's log store was failing", round)
 
 		// The follower's log store is healthy again and writes keep flowing,
 		// so a follower that is merely behind catches up in well under a
@@ -182,6 +187,11 @@ func logLag(t *testing.T, ms MetastoreSet, leaderIdx, followerIdx int, what stri
 	t.Logf("%s: leader commit=%d, follower applied=%d, lag=%d entries",
 		what, leader.GetCommitIndex(), follower.GetAppliedIndex(),
 		leader.GetCommitIndex()-follower.GetAppliedIndex())
+}
+
+func commitIndex(t *testing.T, ms MetastoreSet, idx int) uint64 {
+	t.Helper()
+	return pipelineNodeInfo(t, ms, idx).GetCommitIndex()
 }
 
 func pipelineNodeInfo(t *testing.T, ms MetastoreSet, idx int) *raftnodepb.NodeInfo {
