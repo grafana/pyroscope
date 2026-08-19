@@ -1,4 +1,4 @@
-package integration
+package test
 
 import "net"
 
