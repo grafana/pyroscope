@@ -74,17 +74,18 @@ const (
 	defaultTransportTimeout      = 10 * time.Second
 	defaultLogStoreTimeout       = 10 * time.Second
 
+	// Workaround for upstream issue https://github.com/hashicorp/raft/issues/612.
 	// Anything below raft's minInFlightForPipelining (2) makes
 	// AppendEntriesPipeline return ErrPipelineReplicationNotSupported, which
 	// replicate() handles by staying in synchronous RPC mode.
 	//
-	// Pipelining is unusable on raft v1.7.3: it sizes both netPipeline
+	// Pipelining is unstable on raft v1.7.3: it sizes both netPipeline
 	// channels at MaxRPCsInFlight-2, so the default of 2 leaves them
 	// unbuffered, and a follower that fails a single AppendEntries can
-	// deadlock replication to itself permanently. See
-	// TestRaftPipelineDeadlock for the full interlock. Raising this instead
-	// of lowering it would only widen the window, since both channels stay
-	// bounded. Revert once the upstream bug is fixed.
+	// deadlock replication to itself permanently. TestRaftPipelineDeadlock reproduces the issue.
+	//
+	// Raising the value instead of lowering it would only widen the window, since both channels stay
+	// bounded.
 	//
 	// The cost is small: replication still ships up to MaxAppendEntries
 	// entries per round trip, and a single entry commits in one round trip
