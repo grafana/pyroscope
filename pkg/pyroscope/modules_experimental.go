@@ -112,7 +112,11 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 			f.reg,
 		)
 		f.asyncQueryStore.SetDispatcher(coordinator)
-		querierHandler = asyncquery.NewHandler(querierHandler, coordinator)
+		querierHandler = asyncquery.NewHandler(
+			log.With(f.logger, "component", "async-query-handler"),
+			querierHandler,
+			coordinator,
+		)
 	}
 
 	vcsService := vcs.New(
