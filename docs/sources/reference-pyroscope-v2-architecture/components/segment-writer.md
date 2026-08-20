@@ -91,7 +91,7 @@ The segment-writer flush behavior can be configured to balance between:
 
 Because each flush results in write operations to object storage (and each subsequent query results in read operations), the flush frequency and the number of objects produced per flush directly affect your object storage bill. Use the following levers to reduce `PUT` and `GET` costs:
 
-- **Increase the segment duration**: `-segment-writer.segment-duration` (default `500ms`) controls how long profiles accumulate in memory before a segment is flushed. Increasing it produces fewer, larger segments and therefore fewer write operations.
+- **Increase the segment duration**: `-segment-writer.segment-duration` (default `500ms`) controls how long profiles accumulate in memory before a segment is flushed. Increasing it produces fewer, larger segments and therefore fewer write operations, but increases memory usage and, with synchronous ingestion, latency.
 
   {{< admonition type="warning" >}}
   With the default synchronous ingestion, the segment duration must stay within the ingestion client's request timeout. Clients block until the segment is flushed, so a segment duration close to or exceeding the client timeout causes rejected profiles with errors such as `context deadline exceeded` and `context canceled`, and `422` responses on `/ingest`. Raise the segment duration gradually and keep it comfortably below the client timeout.
