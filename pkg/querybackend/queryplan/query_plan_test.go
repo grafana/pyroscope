@@ -23,11 +23,10 @@ var update = flag.Bool("update", false, "rewrite golden files in testdata/ from 
 // Test_Build verifies the shape of query plans produced by Build and
 // BuildBalanced against golden files in testdata/, running both builders over
 // the same input table so the two algorithms are easy to compare. Each
-// subtest's golden file is named after the subtest: Build's golden file is
-// named after the case (e.g. Test_Build/single_block reads
-// testdata/single_block.txt), and BuildBalanced's is named after the case
-// with a "balanced_" prefix (e.g. Test_Build/balanced_single_block reads
-// testdata/balanced_single_block.txt).
+// subtest's golden file is named after the subtest, which prefixes the case
+// name with the builder: Test_Build/build_single_block reads
+// testdata/build_single_block.txt, and Test_Build/balanced_single_block reads
+// testdata/balanced_single_block.txt.
 //
 // To regenerate all golden files:
 //
@@ -101,8 +100,8 @@ func makeBlocks(n int) []*metastorev1.BlockMeta {
 }
 
 // goldenFile returns the testdata path for the current (sub)test. The file
-// name is the last segment of t.Name(). For `Test_Build/single_block` it
-// returns `testdata/single_block.txt`.
+// name is the last segment of t.Name(). For `Test_Build/build_single_block`
+// it returns `testdata/build_single_block.txt`.
 func goldenFile(t *testing.T) string {
 	t.Helper()
 	parts := strings.Split(t.Name(), "/")

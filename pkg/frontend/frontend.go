@@ -59,7 +59,10 @@ type Config struct {
 	//
 	// Optionally this can be "balanced" which uses the balanced query planner
 	// algorithm.
-	QueryPlannerStrategy string `yaml:"query_planner_strategy" doc:"hidden"`
+	//
+	// TODO(bryanhuhta): Once "balanced" has been validated in production, make
+	// it the only strategy and remove both the classic planner and this option.
+	QueryPlannerStrategy string `yaml:"query_planner_strategy" category:"advanced" doc:"hidden"`
 
 	// Used to find local IP address, that is sent to scheduler and querier-worker.
 	InfNames   []string `yaml:"instance_interface_names" category:"advanced" doc:"default=[<private network interfaces>]"`

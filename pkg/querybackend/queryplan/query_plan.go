@@ -155,7 +155,7 @@ func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int)
 // At this point, each subtree does the same amount of work as its siblings.
 //
 // As a theoretical note, this algorithm may produce an imbalanced depth tree
-// if the len(nodes) is not a pwer of maxMerges and maxMerges = 2. This case is
+// if the len(nodes) is not a power of maxMerges and maxMerges = 2. This case is
 // unlikely in production--as maxMerges = 20 is common--but also irrelevant to
 // performance overall since such a low maxMerges value would produce other
 // inefficiencies.
