@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/common/model"
 	"google.golang.org/protobuf/proto"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -99,8 +100,18 @@ func (c *Coordinator) Submit(ctx context.Context, tenantID string, req *querierv
 		return "", fmt.Errorf("failed to create async query: %w", err)
 	}
 
+	// Logged before dispatch so a request's lines always start with its
+	// submission: a fast query can otherwise record its completion first.
+	level.Info(c.logger).Log("msg", "async query submitted",
+		"tenant", tenantID,
+		"request_id", requestID,
+		"profile_type", spec.GetProfileTypeID(),
+		"label_selector", spec.GetLabelSelector(),
+		"start", model.Time(spec.GetStart()).Time().String(),
+		"end", model.Time(spec.GetEnd()).Time().String(),
+		"query_window", model.Time(spec.GetEnd()).Sub(model.Time(spec.GetStart())).String(),
+	)
 	c.dispatch(tenantID, requestID, spec)
-	level.Info(c.logger).Log("msg", "async query submitted", "tenant", tenantID, "request_id", requestID)
 	return requestID, nil
 }
 
@@ -133,6 +144,7 @@ func (c *Coordinator) Dispatch(tenantID, requestID string, spec *querierv1.Selec
 func (c *Coordinator) dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
 	queryCtx := tenant.InjectTenantID(context.Background(), tenantID)
 	resultCh := make(chan queryResult, 1)
+	started := time.Now()
 
 	// query goroutine: runs the spec end-to-end.
 	go func() {
@@ -145,10 +157,14 @@ func (c *Coordinator) dispatch(tenantID, requestID string, spec *querierv1.Selec
 	}()
 
 	// supervisor goroutine: renews the lease and records the outcome.
-	go c.awaitResult(tenantID, requestID, resultCh)
+	go c.awaitResult(tenantID, requestID, resultCh, started)
 }
 
-func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan queryResult) {
+// awaitResult records the outcome of one execution attempt. started marks the
+// beginning of that attempt, not of the request: an adopted query is dispatched
+// afresh, so its duration excludes the dead owner's time. The client-observed
+// latency is the poll path's age field.
+func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan queryResult, started time.Time) {
 	defer c.decrement(tenantID)
 
 	ctx := tenant.InjectTenantID(context.Background(), tenantID)
@@ -159,17 +175,18 @@ func (c *Coordinator) awaitResult(tenantID, requestID string, resultCh <-chan qu
 	for {
 		select {
 		case res := <-resultCh:
+			duration := time.Since(started).Round(time.Millisecond)
 			if res.Err != nil {
-				level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "err", res.Err)
+				level.Error(c.logger).Log("msg", "async query failed", "tenant", tenantID, "request_id", requestID, "duration", duration, "err", res.Err)
 				if storeErr := c.store.fail(ctx, tenantID, requestID, res.Err); storeErr != nil {
 					level.Error(c.logger).Log("msg", "failed to store async query failure", "tenant", tenantID, "request_id", requestID, "err", storeErr)
 				}
 				return
 			}
 			if err := c.store.complete(ctx, tenantID, requestID, res.Response); err != nil {
-				level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "err", err)
+				level.Error(c.logger).Log("msg", "failed to store async query result", "tenant", tenantID, "request_id", requestID, "duration", duration, "err", err)
 			} else {
-				level.Info(c.logger).Log("msg", "async query completed", "tenant", tenantID, "request_id", requestID)
+				level.Info(c.logger).Log("msg", "async query completed", "tenant", tenantID, "request_id", requestID, "duration", duration)
 			}
 			return
 		case <-ticker.C:
