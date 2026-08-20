@@ -3397,6 +3397,10 @@ distributor_usage_groups:
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
 
+# Retention period for the data. 0 means data never deleted.
+# CLI flag: -retention-period
+[retention_period: <duration> | default = 31d]
+
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]
