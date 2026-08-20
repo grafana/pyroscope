@@ -101,5 +101,5 @@ func (o *Config) RegisterFlags(f *flag.FlagSet) {
 		"Specifies the fraction [0:1] that should be send to segment-writer in combined mode. 0 means no traffics is sent to segment-writer. 1 means 100% of requests are sent to segment-writer.")
 	f.DurationVar(&o.SegmentWriterTimeout, "write-path.segment-writer-timeout", 5*time.Second, "Timeout for segment writer requests.")
 	f.Var(&o.Compression, "write-path.compression", "Compression algorithm to use for segment writer requests; "+validCompressionOptionsString+".")
-	f.BoolVar(&o.AsyncIngest, "async-ingest", false, "If true, the write path does not wait for the segment-writer to durably store and index the profile before responding. This reduces ingestion latency and allows a larger -segment-writer.segment-duration, but removes the read-after-write consistency and synchronous durability guarantee. Writes to the ingester are always synchronous.")
+	f.BoolVar(&o.AsyncIngest, "async-ingest", false, "If true, the write path doesn't wait for the segment-writer to durably store and index the profile before responding. This reduces ingestion latency and allows a larger -segment-writer.segment-duration, but removes the read-after-write consistency and synchronous durability guarantee. Writes to the ingester are always synchronous.")
 }
