@@ -62,8 +62,12 @@ func Build(
 
 // BuildBalanced builds a balanced query tree where each node of the tree has a
 // similar number of blocks it needs to process compared to its siblings.
+//
+// maxMerges must be at least 3. Binary merge trees cannot be balanced for an
+// odd number of nodes: the leftover node becomes the only child of a merge
+// node, which does no useful merging.
 func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int) *queryv1.QueryPlan {
-	if len(blocks) == 0 || maxReads < 1 || maxMerges < 2 {
+	if len(blocks) == 0 || maxReads < 1 || maxMerges < 3 {
 		return new(queryv1.QueryPlan)
 	}
 
@@ -153,12 +157,6 @@ func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int)
 //	[ n0 n1 n2 ] [ n3 n4 ] [ n5 n6 n7 ] [ n8 n9 ]
 //
 // At this point, each subtree does the same amount of work as its siblings.
-//
-// As a theoretical note, this algorithm may produce an imbalanced depth tree
-// if the len(nodes) is not a power of maxMerges and maxMerges = 2. This case is
-// unlikely in production--as maxMerges = 20 is common--but also irrelevant to
-// performance overall since such a low maxMerges value would produce other
-// inefficiencies.
 func buildMergeTree(nodes []*queryv1.QueryNode, maxMerges int) *queryv1.QueryNode {
 	if len(nodes) == 1 {
 		// The base case, this is a leaf node.

@@ -45,6 +45,7 @@ func Test_Build(t *testing.T) {
 		{name: "empty", blocks: 0, maxReads: 2, maxMerges: 3},
 		{name: "invalid_max_reads", blocks: 10, maxReads: 0, maxMerges: 3},
 		{name: "invalid_max_merges", blocks: 10, maxReads: 2, maxMerges: 1},
+		{name: "binary_max_merges", blocks: 10, maxReads: 2, maxMerges: 2},
 		{name: "single_block", blocks: 1, maxReads: 2, maxMerges: 3},
 		{name: "exact_one_leaf", blocks: 2, maxReads: 2, maxMerges: 3},
 		{name: "two_leaves", blocks: 3, maxReads: 2, maxMerges: 3},
