@@ -90,73 +90,31 @@ func BuildBalanced(blocks []*metastorev1.BlockMeta, maxReads int, maxMerges int)
 	}
 }
 
-// buildMergeTree will recursively create a query tree of merge nodes with at
-// most maxMerges number of children. At each level, the tree will maintain a
-// similar number of blocks assigned to each merge node compared to its
-// siblings.
+// buildMergeTree recursively builds a tree of merge nodes with at most
+// maxMerges children each, keeping the number of blocks under every merge node
+// close to that of its siblings.
 //
-// The algorithm is straightforward, but it has nuances. Since len(nodes) > 1,
-// we know we need to create a merge node and place nodes underneath it.
-//
-// When creating a merge node we want to partition the nodes evenly into groups
-// such that we have no more than maxMerges groups (since a given merge node
-// cannot exceed maxMerges children). Once we select a number of groups, we use
-// balanceGroupItems to evenly (as evenly as possible) spread the nodes across
-// all the groups.
-//
-// It's important to note that we want to select a groupSize which is a power of
-// maxMerges. This ensures that each subtree has the same depth as its siblings.
-//
-// As an example, consider the following input:
-//
-//	maxMerges = 3
-//	nodes     = [ n0 n1 n2 n3 n4 n5 n6 n7 n8 n9 ]
-//
-// We want to partition nodes such that each group has an even number of
-// nodes itself. Naively we could compute:
-//
-//	groupSize = ceil(len(nodes) / maxMerges)
-//
-// However, this would result in an imbalanced tree:
-//
-//	[                   M0                  ]
-//	[ n0 n1 n2 n3 ] [ n4 n5 n6 ] [ n7 n8 n9 ]
-//
-// From here, the first partition was given 4 nodes, which exceeds maxMerges,
-// so it needs to be broken down further. The other two partitions have 3 nodes,
-// so they do not need to be branched further. After splitting the first
-// partition, the tree becomes imbalanced.
+// The subtlety is in choosing how many children a merge node gets. Filling each
+// child to capacity -- groupSize = ceil(len(nodes) / maxMerges) -- leaves
+// subtrees at different depths. With maxMerges = 3 and ten nodes it yields
+// groups of 4, 3 and 3, and the group of 4 has to split again, pushing its
+// nodes a level deeper than the rest:
 //
 //	[                     M0                    ]
 //	[        M1       ] [ n4 n5 n6 ] [ n7 n8 n9 ]
 //	[ n0 n1 ] [ n2 n3 ]
 //
-// Instead, we select the largest power of maxMerges K that's less than
-// len(nodes). In this case:
-//
-//	K = maxMerges^N
-//	  for max(N) and maxMerges^N < len(nodes)
-//	if N = 2, then 3^2 < 10 so K = 9
-//
-// If we allow K to represent the largest size of a partition, we can calculate
-// how many partitions we need:
-//
-//	# of partitions = ceil(len(nodes) / K)
-//	                = ceil(10 / 5)
-//	                = 2
-//
-// Now we can balance the nodes across 2 partitions:
-//
-//	[                 M0                ]
-//	[ n0 n1 n2 n3 n4 ] [ n5 n6 n7 n8 n9 ]
-//
-// Both partitions exceed maxMerges, so we repeat the algorithm:
+// Instead we take groupSize to be the largest power of maxMerges smaller than
+// len(nodes) -- 9 for the example above -- and derive the child count from it:
+// ceil(10 / 9) = 2. balanceGroupItems spreads the nodes evenly across those
+// children, and the recursion repeats on each group:
 //
 //	[                     M0                    ]
 //	[         M1         ] [         M2         ]
 //	[ n0 n1 n2 ] [ n3 n4 ] [ n5 n6 n7 ] [ n8 n9 ]
 //
-// At this point, each subtree does the same amount of work as its siblings.
+// Every subtree now sits at the same depth and does the same amount of work as
+// its siblings.
 func buildMergeTree(nodes []*queryv1.QueryNode, maxMerges int) *queryv1.QueryNode {
 	if len(nodes) == 1 {
 		// The base case, this is a leaf node.
