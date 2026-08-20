@@ -131,7 +131,7 @@ func (h *Handler) poll(
 	case StatusInProgress:
 		level.Debug(logger).Log("msg", "async query polled, still in progress")
 	case StatusFailure:
-		level.Info(logger).Log("msg", "async query result returned to client", "err", result.Metadata.ErrorMessage)
+		level.Error(logger).Log("msg", "async query result returned to client", "err", result.Metadata.ErrorMessage)
 	default:
 		level.Info(logger).Log("msg", "async query result returned to client")
 	}
