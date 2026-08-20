@@ -97,8 +97,8 @@ func newCRC32() hash.Hash32 {
 }
 
 type symbolCacheEntry struct {
-	index          uint32
 	lastValue      string
+	index          uint32
 	lastValueIndex uint32
 }
 
