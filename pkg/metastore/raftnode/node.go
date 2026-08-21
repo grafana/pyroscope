@@ -56,6 +56,7 @@ type Config struct {
 	TransportConnPoolSize uint64        `yaml:"transport_conn_pool_size" category:"advanced" doc:"hidden"`
 	TransportTimeout      time.Duration `yaml:"transport_timeout" category:"advanced" doc:"hidden"`
 	LogStoreTimeout       time.Duration `yaml:"log_store_timeout" category:"advanced" doc:"hidden"`
+	ExitOnLogStoreTimeout bool          `yaml:"exit_on_log_store_timeout" category:"advanced" doc:"hidden"`
 
 	// If set, wraps the log store after construction. Used only for testing.
 	LogStoreMiddleware func(raft.LogStore) raft.LogStore `yaml:"-"`
@@ -118,6 +119,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.Uint64Var(&cfg.TransportConnPoolSize, prefix+"transport-conn-pool-size", defaultTransportConnPoolSize, "")
 	f.DurationVar(&cfg.TransportTimeout, prefix+"transport-timeout", defaultTransportTimeout, "")
 	f.DurationVar(&cfg.LogStoreTimeout, prefix+"log-store-timeout", defaultLogStoreTimeout, "")
+	f.BoolVar(&cfg.ExitOnLogStoreTimeout, prefix+"exit-on-log-store-timeout", false, "Terminate the process when a raft log store write exceeds log-store-timeout.")
 }
 
 func (cfg *Config) Validate() error {
@@ -266,7 +268,7 @@ func (n *Node) openStore() (err error) {
 		n.logStore = n.config.LogStoreMiddleware(n.logStore)
 	}
 
-	n.logStore = newTimeoutLogStore(n.logStore, n.config.LogStoreTimeout, n.metrics.logStoreWrite, n.metrics.logStoreTimeout)
+	n.logStore = newTimeoutLogStore(n.logStore, n.config, n.metrics, n.logger, os.Exit)
 	n.stableStore = n.wal
 	n.snapshotStore = n.snapshots
 	return nil

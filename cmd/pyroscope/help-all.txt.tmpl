@@ -617,6 +617,8 @@ Usage of ./pyroscope:
     	
   -metastore.raft.dir string
     	Directory to store WAL and raft state. It must be a persistent directory, not a tmpfs or similar. (default "./data/v2/metastore/raft")
+  -metastore.raft.exit-on-log-store-timeout
+    	Terminate the process when a raft log store write exceeds log-store-timeout.
   -metastore.raft.log-index-check-interval duration
     	 (default 14ms)
   -metastore.raft.log-store-timeout duration
