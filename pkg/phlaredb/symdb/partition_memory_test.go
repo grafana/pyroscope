@@ -45,6 +45,14 @@ func Test_Stacktrace_append_existing(t *testing.T) {
 	assert.Equal(t, []uint32{5, 6}, sids)
 }
 
+func Test_Stacktraces_size(t *testing.T) {
+	p := newStacktraces()
+	p.tree.nodes = make([]node, 1, 5)
+	p.tree.edges.slots = make([]uint32, 8)
+
+	assert.Equal(t, uint64(72), p.size())
+}
+
 func Test_Stacktraces_memory_resolve_pprof(t *testing.T) {
 	p, err := pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(t, err)
