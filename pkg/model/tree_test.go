@@ -2,11 +2,13 @@ package model
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"unique"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -588,4 +590,255 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 		}
 		assert.Equal(t, 2, foundAddresses)
 	})
+}
+
+func Test_InsertStack_SortedOrderAndMerge(t *testing.T) {
+	t1 := new(FunctionNameTree)
+	t1.InsertStack(1, "root", "c", "leaf1")
+	t1.InsertStack(1, "root", "a", "leaf2")
+	t1.InsertStack(1, "root", "b", "leaf3")
+
+	// Children of root should be sorted ("a", "b", "c")
+	require.Len(t, t1.root, 1)
+	children := t1.root[0].children
+	require.Len(t, children, 3)
+	assert.Equal(t, FunctionName("a"), children[0].name)
+	assert.Equal(t, FunctionName("b"), children[1].name)
+	assert.Equal(t, FunctionName("c"), children[2].name)
+
+	// Merge with t2
+	t2 := new(FunctionNameTree)
+	t2.InsertStack(2, "root", "b", "leaf3")
+	t2.InsertStack(2, "root", "d", "leaf4")
+
+	t1.Merge(t2)
+
+	require.Len(t, t1.root, 1)
+	childrenMerged := t1.root[0].children
+	require.Len(t, childrenMerged, 4)
+	assert.Equal(t, FunctionName("a"), childrenMerged[0].name)
+	assert.Equal(t, FunctionName("b"), childrenMerged[1].name)
+	assert.Equal(t, FunctionName("c"), childrenMerged[2].name)
+	assert.Equal(t, FunctionName("d"), childrenMerged[3].name)
+	assert.Equal(t, int64(3), childrenMerged[1].total) // b merged
+}
+
+func Test_InsertStackHandles_LocationRefTree(t *testing.T) {
+	t1 := new(LocationRefNameTree)
+	h1 := unique.Make("100")
+	h2 := unique.Make("200")
+
+	// Should not panic on LocationRefNameTree
+	require.NotPanics(t, func() {
+		t1.InsertStackHandles(5, h1, h2)
+	})
+	assert.Equal(t, int64(5), t1.Total())
+}
+
+func Test_InsertStackHandles_SmallFanoutDuplicatePrevention(t *testing.T) {
+	t1 := new(FunctionNameTree)
+	// Insert via InsertStack (handle is zero/unset)
+	t1.InsertStack(10, "root", "childA")
+
+	// Insert via InsertStackHandles (small fanout < 8)
+	hRoot := unique.Make("root")
+	hChildA := unique.Make("childA")
+	t1.InsertStackHandles(5, hRoot, hChildA)
+
+	require.Len(t, t1.root, 1)
+	assert.Equal(t, int64(15), t1.root[0].total)
+	assert.Equal(t, hRoot, t1.root[0].handle)
+
+	// Ensure no duplicate sibling under root
+	require.Len(t, t1.root[0].children, 1, "should not create duplicate child node in small fanout")
+	childA := t1.root[0].children[0]
+	assert.Equal(t, FunctionName("childA"), childA.name)
+	assert.Equal(t, int64(15), childA.total)
+	assert.Equal(t, hChildA, childA.handle)
+
+	// Subsequent InsertStackHandles should hit by handle
+	hChildB := unique.Make("childB")
+	t1.InsertStackHandles(3, hRoot, hChildA, hChildB)
+	assert.Equal(t, int64(18), t1.root[0].total)
+	assert.Equal(t, int64(18), childA.total)
+}
+
+func Test_InsertStackHandles_LargeFanoutHandleAssignment(t *testing.T) {
+	t1 := new(FunctionNameTree)
+
+	// Insert 8 children via InsertStack (large fanout >= 8)
+	hNames := make([]string, 10)
+	handles := make([]unique.Handle[string], 10)
+	for i := range 10 {
+		hNames[i] = fmt.Sprintf("child_%02d", i)
+		handles[i] = unique.Make(hNames[i])
+		t1.InsertStack(10, "root", FunctionName(hNames[i]))
+	}
+
+	hRoot := unique.Make("root")
+
+	// Verify large fanout has 10 children with zero handles
+	var zeroHandle unique.Handle[string]
+	require.Len(t, t1.root, 1)
+	require.Len(t, t1.root[0].children, 10)
+	for _, c := range t1.root[0].children {
+		assert.Equal(t, zeroHandle, c.handle)
+	}
+
+	// Insert via InsertStackHandles into large fanout
+	t1.InsertStackHandles(5, hRoot, handles[3])
+
+	// The node for child_03 should now have handle assigned
+	child3 := t1.root[0].children[3]
+	assert.Equal(t, FunctionName("child_03"), child3.name)
+	assert.Equal(t, int64(15), child3.total)
+	assert.Equal(t, handles[3], child3.handle)
+}
+
+func Test_InsertStackHandles_MergeHandlePropagation(t *testing.T) {
+	// t1 created via InsertStack (no handles)
+	t1 := new(FunctionNameTree)
+	t1.InsertStack(10, "root", "childA")
+
+	// t2 created via InsertStackHandles (has handles)
+	t2 := new(FunctionNameTree)
+	hRoot := unique.Make("root")
+	hChildA := unique.Make("childA")
+	t2.InsertStackHandles(5, hRoot, hChildA)
+
+	// Merge t2 into t1
+	t1.Merge(t2)
+
+	require.Len(t, t1.root, 1)
+	assert.Equal(t, int64(15), t1.root[0].total)
+	require.Len(t, t1.root[0].children, 1)
+	assert.Equal(t, int64(15), t1.root[0].children[0].total)
+	assert.Equal(t, hChildA, t1.root[0].children[0].handle, "handle should be propagated from src to dst on merge")
+
+	// Further InsertStackHandles on merged t1 should hit handle
+	t1.InsertStackHandles(2, hRoot, hChildA)
+	assert.Equal(t, int64(17), t1.root[0].total)
+	assert.Len(t, t1.root[0].children, 1)
+}
+
+func Test_InsertStackHandles_FixHandlePropagation(t *testing.T) {
+	t1 := new(FunctionNameTree)
+	hRoot := unique.Make("root")
+	hChildA := unique.Make("childA")
+
+	// FormatNodeNames / Fix test
+	t1.InsertStack(10, "root", "childA_old")
+	t1.InsertStackHandles(5, hRoot, hChildA)
+
+	// Rename childA_old to childA and trigger Fix()
+	t1.FormatNodeNames(func(n FunctionName) FunctionName {
+		if n == "childA_old" {
+			return "childA"
+		}
+		return n
+	})
+
+	require.Len(t, t1.root, 1)
+	require.Len(t, t1.root[0].children, 1)
+	assert.Equal(t, int64(15), t1.root[0].children[0].total)
+	assert.Equal(t, hChildA, t1.root[0].children[0].handle, "Fix should consolidate handles when merging nodes")
+}
+
+func Test_FormatNodeNames_ClearsStaleHandle(t *testing.T) {
+	t1 := new(FunctionNameTree)
+	hRoot := unique.Make("root")
+	hChildA := unique.Make("childA")
+	hChildB := unique.Make("childB")
+
+	// Insert stack with handles
+	t1.InsertStackHandles(10, hRoot, hChildA)
+
+	// Verify childA has handle hChildA
+	require.Len(t, t1.root, 1)
+	require.Len(t, t1.root[0].children, 1)
+	assert.Equal(t, hChildA, t1.root[0].children[0].handle)
+
+	// FormatNodeNames renames childA -> childB
+	t1.FormatNodeNames(func(n FunctionName) FunctionName {
+		if n == "childA" {
+			return "childB"
+		}
+		return n
+	})
+
+	// The node's handle must no longer be hChildA!
+	childNode := t1.root[0].children[0]
+	assert.Equal(t, FunctionName("childB"), childNode.name)
+	var zeroHandle unique.Handle[string]
+	assert.Equal(t, zeroHandle, childNode.handle, "stale handle for old name childA should be cleared after rename")
+
+	// Now insert childA with hChildA via InsertStackHandles
+	t1.InsertStackHandles(5, hRoot, hChildA)
+
+	// It should NOT match childB! It should create a new node for childA
+	require.Len(t, t1.root[0].children, 2)
+	assert.Equal(t, FunctionName("childA"), t1.root[0].children[0].name)
+	assert.Equal(t, FunctionName("childB"), t1.root[0].children[1].name)
+	assert.Equal(t, int64(5), t1.root[0].children[0].total)
+	assert.Equal(t, int64(10), t1.root[0].children[1].total)
+
+	// Now insert childB with hChildB via InsertStackHandles
+	t1.InsertStackHandles(3, hRoot, hChildB)
+
+	// It SHOULD match childB and assign hChildB
+	assert.Equal(t, int64(13), t1.root[0].children[1].total)
+	assert.Equal(t, hChildB, t1.root[0].children[1].handle)
+}
+
+func Test_InsertStackHandles_InvalidLocationRefHandle(t *testing.T) {
+	t1 := new(LocationRefNameTree)
+	hInvalid1 := unique.Make("invalid_a")
+	hInvalid2 := unique.Make("invalid_b")
+	hValid := unique.Make("123")
+
+	// Insert invalid handles
+	t1.InsertStackHandles(10, hInvalid1, hInvalid2)
+
+	// Tree root should be empty (invalid handles skipped, not collapsed to node 0)
+	assert.Len(t, t1.root, 0)
+	assert.Equal(t, int64(0), t1.Total())
+
+	// Insert valid handle
+	t1.InsertStackHandles(5, hValid)
+	require.Len(t, t1.root, 1)
+	assert.Equal(t, LocationRefName(123), t1.root[0].name)
+	assert.Equal(t, int64(5), t1.Total())
+}
+
+func Test_InsertStackHandles_MixedValidInvalidHandles(t *testing.T) {
+	t1 := new(LocationRefNameTree)
+	hValid1 := unique.Make("100")
+	hInvalid := unique.Make("invalid_frame")
+	hValid2 := unique.Make("200")
+
+	// Mixed stack: valid, invalid, valid
+	t1.InsertStackHandles(10, hValid1, hInvalid, hValid2)
+
+	// Tree should remain empty: early rejection prevents path splicing (attaching 200 to 100)
+	assert.Len(t, t1.root, 0)
+	assert.Equal(t, int64(0), t1.Total())
+}
+
+type customStringName string
+type customIntName int
+
+func Test_StringToNodeName_CustomNodeNameTypes(t *testing.T) {
+	// customStringName (~string)
+	cs, err := stringToNodeName[customStringName]("hello")
+	require.NoError(t, err)
+	assert.Equal(t, customStringName("hello"), cs)
+
+	// customIntName (~int)
+	ci, err := stringToNodeName[customIntName]("456")
+	require.NoError(t, err)
+	assert.Equal(t, customIntName(456), ci)
+
+	// customIntName invalid number
+	_, err = stringToNodeName[customIntName]("invalid")
+	require.Error(t, err)
 }
