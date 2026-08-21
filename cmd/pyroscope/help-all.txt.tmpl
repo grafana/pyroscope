@@ -935,6 +935,8 @@ Usage of ./pyroscope:
     	Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).
   -query-frontend.max-async-query-concurrency int
     	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
+  -query-frontend.query-planner-strategy string
+    	Sets the query planner strategy, options: classic, balanced (default "classic")
   -query-frontend.scheduler-worker-concurrency int
     	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
   -query-scheduler.grpc-client-config.backoff-max-period duration
