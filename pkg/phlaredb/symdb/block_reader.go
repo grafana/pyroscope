@@ -38,6 +38,12 @@ type Reader struct {
 	parquetFiles *parquetFiles
 
 	prefetchSize uint64
+
+	// symbolCache, when non-nil, caches decoded symbol tables across queries,
+	// keyed by (block ULID, partition ID). It is owned by the store-gateway
+	// process and shared across all blocks. When nil, the reader decodes symbol
+	// tables per query as before (zero-overhead disabled path).
+	symbolCache *SymbolCache
 }
 
 type Option func(*Reader)
@@ -45,6 +51,16 @@ type Option func(*Reader)
 func WithPrefetchSize(size uint64) Option {
 	return func(r *Reader) {
 		r.prefetchSize = size
+	}
+}
+
+// WithSymbolCache attaches a process-level decoded-symbol cache. When set,
+// partition.fetch serves decoded symbol tables from the cache on hit and
+// populates it on miss, avoiding re-decoding on every query. Passing a nil
+// cache is equivalent to not setting the option.
+func WithSymbolCache(c *SymbolCache) Option {
+	return func(r *Reader) {
+		r.symbolCache = c
 	}
 }
 
@@ -115,12 +131,15 @@ func (r *Reader) prefetchIndex(ctx context.Context, size uint64) (n uint64, err 
 	return 0, nil
 }
 
-func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader, error) {
+func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta, options ...Option) (*Reader, error) {
 	r := &Reader{
 		bucket: b,
 		meta:   m,
 		files:  make(map[string]block.File),
 		file:   block.File{RelPath: DefaultFileName},
+	}
+	for _, opt := range options {
+		opt(r)
 	}
 	for _, f := range r.meta.Files {
 		r.files[filepath.Base(f.RelPath)] = f
@@ -173,7 +192,7 @@ func (r *Reader) buildPartitions() (err error) {
 }
 
 func (r *Reader) partitionReader(h *PartitionHeader) (*partition, error) {
-	p := &partition{reader: r}
+	p := &partition{reader: r, id: h.Partition}
 	switch r.index.Header.Version {
 	case FormatV1:
 		p.initEmptyTables(h)
@@ -282,6 +301,12 @@ func (r *Reader) Close() error {
 	if r == nil {
 		return nil
 	}
+	// Drop this block's decoded symbols from the shared cache. Entries still
+	// borrowed by an in-flight query survive via the borrower's reference; only
+	// the map entry and its byte budget are reclaimed here.
+	if r.symbolCache != nil && r.meta != nil {
+		r.symbolCache.PurgeBlock(r.meta.ULID)
+	}
 	if r.parquetFiles != nil {
 		return r.parquetFiles.Close()
 	}
@@ -311,12 +336,21 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 
 type partition struct {
 	reader *Reader
+	id     uint64 // partition ID, used as the symbol-cache key component
 
 	stacktraces []*stacktraceBlock
 	locations   table[schemav1.InMemoryLocation]
 	mappings    table[schemav1.InMemoryMapping]
 	functions   table[schemav1.InMemoryFunction]
 	strings     table[string]
+
+	// Symbol-cache borrow state (only used when reader.symbolCache != nil).
+	// symRef is a load-once barrier for the cached symbols, mirroring the
+	// per-table refctr: the first concurrent fetcher loads (cache hit or
+	// decode), subsequent concurrent fetchers share the result; the last
+	// Release unpins. cached is the borrowed entry while symRef count > 0.
+	symRef refctr.Counter
+	cached *cachedSymbols
 }
 
 type table[T any] interface {
@@ -325,18 +359,104 @@ type table[T any] interface {
 }
 
 func (p *partition) fetch(ctx context.Context) (err error) {
-	return p.tx().fetch(ctx)
+	// Fast path: no cache. Fetch stacktraces and symbol tables in a single
+	// transaction, exactly as before — no extra allocations or branches.
+	if p.reader.symbolCache == nil {
+		return p.tx().fetch(ctx)
+	}
+	// Cache path: stacktraces use the per-chunk refctr transaction; symbols are
+	// served from (or populated into) the shared cache.
+	stx := p.stacktraceTx()
+	if err = stx.fetch(ctx); err != nil {
+		return err
+	}
+	// Stacktraces and cached symbols are separate transactions; roll back the
+	// (already committed) stacktraces if the symbol fetch below fails, so the two
+	// commit atomically. Each transaction self-rolls-back its own partial failure
+	// (see fetchTx.fetch), so this only covers the cross-transaction case.
+	defer func() {
+		if err != nil {
+			stx.release()
+		}
+	}()
+	err = p.fetchSymbolsCached(ctx)
+	return err
+}
+
+// fetchSymbolsCached serves the four symbol tables from the shared cache,
+// decoding on miss. symRef serializes concurrent fetchers of this partition.
+func (p *partition) fetchSymbolsCached(ctx context.Context) error {
+	return p.symRef.Inc(func() error {
+		key := SymbolCacheKey{Block: p.reader.meta.ULID, Partition: p.id}
+		if cs := p.reader.symbolCache.get(key); cs != nil {
+			p.cached = cs
+			return nil
+		}
+		// Miss: decode via the existing table machinery (parquetTable or
+		// rawTable, depending on the symdb-internal format), then snapshot the
+		// decoded slice headers into a cache entry. release() only nils the
+		// table's slice header (see rawTable.release / parquetTable.release),
+		// so the backing arrays stay alive, now owned by cs — copy-free.
+		stx := p.symbolTablesTx()
+		if err := stx.fetch(ctx); err != nil {
+			return err
+		}
+		cs := newCachedSymbols(
+			p.locations.slice(), p.mappings.slice(),
+			p.functions.slice(), p.strings.slice(),
+		)
+		p.reader.symbolCache.add(key, cs)
+		p.cached = cs
+		stx.release()
+		return nil
+	})
 }
 
 func (p *partition) Release() {
-	p.tx().release()
+	// Fast path mirrors fetch: a single transaction release when no cache.
+	if p.reader.symbolCache == nil {
+		p.tx().release()
+		return
+	}
+	p.stacktraceTx().release()
+	// The cache owns the decoded symbols independently (via the LRU); here we
+	// only drop this partition's borrow handle once the last concurrent reader
+	// of this fetch generation releases.
+	p.symRef.Dec(func() {
+		p.cached = nil
+	})
 }
 
+// tx builds a single transaction covering stacktraces and, for format > V1, the
+// symbol tables. Used on the non-cache path so a fetch/release allocates just
+// one fetchTx, exactly as before the cache was introduced.
 func (p *partition) tx() *fetchTx {
 	tx := make(fetchTx, 0, len(p.stacktraces)+4)
 	for _, c := range p.stacktraces {
 		tx.append(c)
 	}
+	if p.reader.index.Header.Version > FormatV1 {
+		tx.append(p.locations)
+		tx.append(p.mappings)
+		tx.append(p.functions)
+		tx.append(p.strings)
+	}
+	return &tx
+}
+
+// stacktraceTx builds a fetch transaction for the partition's stacktrace chunks.
+func (p *partition) stacktraceTx() *fetchTx {
+	tx := make(fetchTx, 0, len(p.stacktraces))
+	for _, c := range p.stacktraces {
+		tx.append(c)
+	}
+	return &tx
+}
+
+// symbolTablesTx builds a fetch transaction for the four symbol tables
+// (locations, mappings, functions, strings). Empty for FormatV1.
+func (p *partition) symbolTablesTx() *fetchTx {
+	tx := make(fetchTx, 0, 4)
 	if p.reader.index.Header.Version > FormatV1 {
 		tx.append(p.locations)
 		tx.append(p.mappings)
@@ -419,6 +539,15 @@ func (p *partition) initTables(h *PartitionHeader) (err error) {
 }
 
 func (p *partition) Symbols() *Symbols {
+	if p.cached != nil {
+		return &Symbols{
+			Stacktraces: p,
+			Locations:   p.cached.locations,
+			Mappings:    p.cached.mappings,
+			Functions:   p.cached.functions,
+			Strings:     p.cached.strings,
+		}
+	}
 	return &Symbols{
 		Stacktraces: p,
 		Locations:   p.locations.slice(),
@@ -435,6 +564,13 @@ func (p *partition) WriteStats(s *PartitionStats) {
 		nodes += c.header.StacktraceNodes
 	}
 	s.MaxStacktraceID = int(nodes)
+	if p.cached != nil {
+		s.LocationsTotal = len(p.cached.locations)
+		s.MappingsTotal = len(p.cached.mappings)
+		s.FunctionsTotal = len(p.cached.functions)
+		s.StringsTotal = len(p.cached.strings)
+		return
+	}
 	s.LocationsTotal = len(p.locations.slice())
 	s.MappingsTotal = len(p.mappings.slice())
 	s.FunctionsTotal = len(p.functions.slice())
