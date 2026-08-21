@@ -725,6 +725,8 @@ Usage of ./pyroscope:
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -overrides-exporter.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -overrides-exporter.ring.unregister-on-shutdown
+    	Unregister from the ring upon clean shutdown. Disabling it keeps the instance in the ring in LEAVING state until it is auto-forgotten, which minimises leader changes when the instance is expected to rejoin with the same ID shortly. (default true)
   -overrides-exporter.ring.wait-stability-max-duration duration
     	Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway. (default 5m0s)
   -overrides-exporter.ring.wait-stability-min-duration duration
@@ -1077,6 +1079,8 @@ Usage of ./pyroscope:
     	HTTP client timeout when fetching runtime config from URLs. (default 30s)
   -runtime-config.reload-period duration
     	How often to check runtime config files. (default 10s)
+  -segment-writer.auto-forget-unhealthy-periods int
+    	Number of consecutive heartbeat-timeout periods after which a ring member whose heartbeat has gone stale is automatically removed (forgotten) from the ring. This cleans up entries of instances that have left the ring without unregistering, e.g. after a scale-down. 0 disables auto-forget.
   -segment-writer.availability-zone string
     	The availability zone where this instance is running.
   -segment-writer.bucket-health-check-enabled
