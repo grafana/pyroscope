@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("org.springframework.boot") version "3.3.6"
+    id("org.springframework.boot") version "3.3.13"
     id("io.spring.dependency-management") version "1.1.6"
 }
 
@@ -11,7 +11,8 @@ repositories {
     mavenCentral()
 }
 
-ext["tomcat.version"] = "10.1.35"
+ext["tomcat.version"] = "10.1.55"
+ext["jackson-bom.version"] = "2.21.4"
 
 dependencies {
     implementation("io.pyroscope:agent:2.9.1")
