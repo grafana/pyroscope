@@ -61,7 +61,7 @@ type CompactWithSplittingOpts struct {
 	Logger             log.Logger
 }
 
-func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
+func Compact(ctx context.Context, src []BlockReader, dst string, logger log.Logger) (meta block.Meta, err error) {
 	metas, err := CompactWithSplitting(ctx, CompactWithSplittingOpts{
 		Src:                src,
 		Dst:                dst,
@@ -69,7 +69,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 		StageSize:          0,
 		SplitBy:            SplitByFingerprint,
 		DownsamplerEnabled: true,
-		Logger:             util.Logger,
+		Logger:             logger,
 	})
 	if err != nil {
 		return block.Meta{}, err
@@ -80,6 +80,9 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 	[]block.Meta, error,
 ) {
+	if opts.Logger == nil {
+		return nil, errors.New("logger is required")
+	}
 	if len(opts.Src) <= 1 && opts.SplitCount == 1 {
 		return nil, errors.New("not enough blocks to compact")
 	}
@@ -100,7 +103,7 @@ func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 	}
 
 	symbolsCompactor := newSymbolsCompactor(opts.Dst, symdb.FormatV2)
-	defer runutil.CloseWithLogOnErr(util.Logger, symbolsCompactor, "close symbols compactor")
+	defer runutil.CloseWithLogOnErr(opts.Logger, symbolsCompactor, "close symbols compactor")
 
 	outMeta := compactMetas(srcMetas...)
 	for _, stage := range splitStages(len(writers), int(opts.StageSize)) {
@@ -120,7 +123,7 @@ func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 		var metas []block.Meta
 		sp, ctx := tracing.StartSpanFromContext(ctx, "compact.Stage")
 		sp.SetTag("stage", stage)
-		if metas, err = compact(ctx, writers, opts.Src, opts.SplitBy, opts.SplitCount); err != nil {
+		if metas, err = compact(ctx, writers, opts.Src, opts.SplitBy, opts.SplitCount, opts.Logger); err != nil {
 			sp.LogError(err)
 			sp.SetError()
 			sp.Finish()
@@ -167,12 +170,12 @@ func createBlockWriter(opts blockWriterOpts) (*blockWriter, error) {
 	return newBlockWriter(opts)
 }
 
-func compact(ctx context.Context, writers []*blockWriter, readers []BlockReader, splitBy SplitByFunc, splitCount uint64) ([]block.Meta, error) {
+func compact(ctx context.Context, writers []*blockWriter, readers []BlockReader, splitBy SplitByFunc, splitCount uint64, logger log.Logger) ([]block.Meta, error) {
 	rowsIt, err := newMergeRowProfileIterator(readers)
 	if err != nil {
 		return nil, err
 	}
-	defer runutil.CloseWithLogOnErr(util.Logger, rowsIt, "close rows iterator")
+	defer runutil.CloseWithLogOnErr(logger, rowsIt, "close rows iterator")
 	// iterate and splits the rows into series.
 	for rowsIt.Next() {
 		r := rowsIt.At()
@@ -234,6 +237,7 @@ type blockWriter struct {
 	path            string
 	meta            *block.Meta
 	totalProfiles   uint64
+	logger          log.Logger
 }
 
 type SymbolsRewriter interface {
@@ -278,6 +282,7 @@ func newBlockWriter(opts blockWriterOpts) (*blockWriter, error) {
 		indexRewriter:   newIndexRewriter(blockPath),
 		symbolsRewriter: opts.rewriterFn(blockPath),
 		profilesWriter:  profileWriter,
+		logger:          opts.logger,
 		downsampler:     downsampler,
 		path:            blockPath,
 		meta:            &opts.meta,
@@ -332,7 +337,7 @@ func (bw *blockWriter) Close(ctx context.Context) error {
 	bw.meta.Stats.NumSeries = bw.indexRewriter.NumSeries()
 	bw.meta.Stats.NumSamples = numSamples
 	bw.meta.Compaction.Deletable = bw.totalProfiles == 0
-	if _, err := bw.meta.WriteToFile(util.Logger, bw.path); err != nil {
+	if _, err := bw.meta.WriteToFile(bw.logger, bw.path); err != nil {
 		return err
 	}
 	return nil

@@ -56,7 +56,7 @@ func TestCompact(t *testing.T) {
 		}
 	})
 	dst := t.TempDir()
-	compacted, err := Compact(ctx, []BlockReader{b, b, b, b}, dst)
+	compacted, err := Compact(ctx, []BlockReader{b, b, b, b}, dst, log.NewNopLogger())
 	require.NoError(t, err)
 	require.Equal(t, uint64(3), compacted.Stats.NumProfiles)
 	require.Equal(t, uint64(3), compacted.Stats.NumSamples)
@@ -129,7 +129,7 @@ func TestCompactWithDownsampling(t *testing.T) {
 	})
 	dst := t.TempDir()
 	b.meta.Compaction.Level = 2
-	compacted, err := Compact(ctx, []BlockReader{b, b, b, b}, dst)
+	compacted, err := Compact(ctx, []BlockReader{b, b, b, b}, dst, log.NewNopLogger())
 	require.NoError(t, err)
 	require.Equal(t, uint64(3), compacted.Stats.NumProfiles)
 	require.Equal(t, uint64(3), compacted.Stats.NumSamples)

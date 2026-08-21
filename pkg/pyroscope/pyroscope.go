@@ -269,7 +269,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.TenantSettings.RegisterFlags(f)
 
 	// Legacy flags
-	c.StoreGateway.RegisterFlags(f, util.Logger)
+	c.StoreGateway.RegisterFlags(f, log.NewNopLogger())
 	c.Querier.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	markV1StorageOnlyFlagUsage(f)
@@ -397,7 +397,7 @@ func (c *Config) Validate() error {
 		return err
 	}
 
-	if err := c.Worker.Validate(util.Logger); err != nil {
+	if err := c.Worker.Validate(log.NewNopLogger()); err != nil {
 		return err
 	}
 
@@ -431,7 +431,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
+	if err := c.Storage.Bucket.Validate(log.NewNopLogger()); err != nil {
 		return err
 	}
 
