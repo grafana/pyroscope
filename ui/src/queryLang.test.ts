@@ -252,54 +252,59 @@ describe('applySuggestion', () => {
 
 describe('label name translation', () => {
   it('maps display names to their internal form', () => {
-    assert.equal(toInternalLabel('profile_type'), '__profile_type__');
     assert.equal(toInternalLabel('service_name'), 'service_name');
   });
 
   it('maps internal names to their display form', () => {
-    assert.equal(toDisplayLabel('__profile_type__'), 'profile_type');
     assert.equal(toDisplayLabel('service_name'), 'service_name');
   });
 
   it('detects internal __xxx__ labels', () => {
     assert.equal(isInternalLabel('__delta__'), true);
     assert.equal(isInternalLabel('__session_id__'), true);
-    assert.equal(isInternalLabel('__profile_type__'), true);
     assert.equal(isInternalLabel('service_name'), false);
-    assert.equal(isInternalLabel('profile_type'), false);
     assert.equal(isInternalLabel('__partial'), false);
     assert.equal(isInternalLabel('partial__'), false);
-  });
-
-  it('serializes profile_type matchers using the internal label name', () => {
-    const q = '{profile_type="cpu", service_name="ap"}';
-    const cursor = q.indexOf('"ap"') + 2;
-    const ctx = getCursorContext(q, cursor);
-    assert.equal(ctx.kind, 'value');
-    if (ctx.kind !== 'value') return;
-    assert.deepEqual(ctx.otherMatchers, ['{__profile_type__="cpu"}']);
   });
 });
 
 describe('parseQuery / buildQuery', () => {
   it('round-trips a built query', () => {
-    const q = buildQuery(
-      'my-service',
-      'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
-    );
+    const q = buildQuery('my-service');
     const parsed = parseQuery(q);
     assert.deepEqual(parsed, {
       service: 'my-service',
-      profileType: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
+      labelSelector: '{service_name="my-service"}',
     });
   });
 
-  it('returns null when required labels are absent', () => {
+  it('returns null when service_name is absent', () => {
     assert.equal(parseQuery('{foo="bar"}'), null);
   });
 
-  it('tolerates extra whitespace around the operator', () => {
-    const parsed = parseQuery('{service_name = "api", profile_type = "cpu"}');
-    assert.deepEqual(parsed, { service: 'api', profileType: 'cpu' });
+  it('tolerates extra whitespace around operators', () => {
+    const parsed = parseQuery('{service_name = "api"}');
+    assert.deepEqual(parsed, {
+      service: 'api',
+      labelSelector: '{service_name="api"}',
+    });
+  });
+
+  it('preserves arbitrary label matchers', () => {
+    const q = '{service_name="example-service", environment="staging"}';
+    const parsed = parseQuery(q);
+    assert.deepEqual(parsed, {
+      service: 'example-service',
+      labelSelector: '{service_name="example-service", environment="staging"}',
+    });
+  });
+
+  it('handles regex operators and multiple matchers in labelSelector', () => {
+    const q = '{service_name="api", region=~"us-.*", env!="prod"}';
+    const parsed = parseQuery(q);
+    assert.deepEqual(parsed, {
+      service: 'api',
+      labelSelector: '{service_name="api", region=~"us-.*", env!="prod"}',
+    });
   });
 });
