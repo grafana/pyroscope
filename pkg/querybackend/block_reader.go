@@ -59,7 +59,8 @@ type BlockReader struct {
 	metrics  *metrics
 	hostname string
 
-	Overrides Overrides
+	Overrides   Overrides
+	resultCache *resultCache
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -120,6 +121,8 @@ func (b *BlockReader) Invoke(
 
 	var blocksCount, datasetsCount int64
 	for _, md := range req.QueryPlan.Root.Blocks {
+		// Execution may resolve datasets from an index. Keep the plan immutable.
+		md := md.CloneVT()
 		md.Datasets, err = filterNotOwnedDatasets(md, tenantMap)
 		if err != nil {
 			b.metrics.datasetTenantIsolationFailure.Inc()
@@ -132,7 +135,7 @@ func (b *BlockReader) Invoke(
 		blocksCount++
 		datasetsCount += int64(len(md.Datasets))
 		obj := block.NewObject(countingStorage, md)
-		g.Go(util.RecoverPanic((&blockContext{
+		bc := &blockContext{
 			ctx:             ctx,
 			log:             b.log,
 			req:             r,
@@ -142,7 +145,10 @@ func (b *BlockReader) Invoke(
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,
 			includeStripped: includeStripped,
-		}).execute))
+		}
+		g.Go(util.RecoverPanic(func() error {
+			return b.executeBlock(ctx, req, bc, agg)
+		}))
 	}
 
 	if err = g.Wait(); err != nil {
@@ -201,6 +207,32 @@ func (b *BlockReader) Invoke(
 	}
 
 	return resp, nil
+}
+
+// Each block has a private aggregator: a canceled speculative execution must
+// never contribute reports alongside the winning cache entry.
+func (b *BlockReader) executeBlock(ctx context.Context, req *queryv1.InvokeRequest, bc *blockContext, agg *reportAggregator) error {
+	if !b.resultCache.blockCacheEligible(req, bc.obj.Metadata()) {
+		return bc.execute()
+	}
+	resp, err := b.resultCache.executeBlock(ctx, req, bc.obj.Metadata(), func(ctx context.Context) (*queryv1.InvokeResponse, error) {
+		local := *bc
+		local.ctx = ctx
+		local.agg = newAggregator(req)
+		local.incomplete = new(atomic.Bool)
+		if err := local.execute(); err != nil {
+			return nil, err
+		}
+		resp := local.agg.response()
+		if local.incomplete.Load() {
+			return resp, errResultCacheIncomplete
+		}
+		return resp, nil
+	})
+	if err != nil {
+		return err
+	}
+	return agg.aggregateResponse(resp)
 }
 
 type request struct {
