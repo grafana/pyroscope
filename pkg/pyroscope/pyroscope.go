@@ -104,6 +104,7 @@ type Config struct {
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
 	Storage       StorageConfig       `yaml:"storage"`
+	ResultCache   ResultCacheConfig   `yaml:"result_cache"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
 
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
@@ -138,6 +139,17 @@ func newDefaultConfig() *Config {
 
 type StorageConfig struct {
 	Bucket objstoreclient.Config `yaml:",inline"`
+}
+
+type ResultCacheConfig struct {
+	Bucket objstoreclient.Config `yaml:",inline"`
+}
+
+func (c *ResultCacheConfig) RegisterFlags(f *flag.FlagSet) {
+	c.Bucket.RegisterFlagsWithPrefix("result-cache.", f)
+	// Unlike primary storage, result-cache storage is opt-in and must not
+	// silently use the local filesystem when no dedicated bucket is configured.
+	c.Bucket.Backend = objstoreclient.None
 }
 
 func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
@@ -336,6 +348,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	// Register to throwaway flags first. Default values are remembered during registration and cannot be changed,
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
 	c.Storage.RegisterFlags(throwaway)
+	c.ResultCache.RegisterFlags(throwaway)
 	c.Server.RegisterFlags(throwaway)
 	c.Distributor.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Frontend.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
@@ -433,6 +446,11 @@ func (c *Config) Validate() error {
 
 	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
 		return err
+	}
+	if c.ResultCache.Bucket.Backend != objstoreclient.None {
+		if err := c.ResultCache.Bucket.Validate(util.Logger); err != nil {
+			return err
+		}
 	}
 
 	if err := c.TenantSettings.Validate(); err != nil {

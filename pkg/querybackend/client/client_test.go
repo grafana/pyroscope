@@ -104,7 +104,7 @@ func Test_Concurrency(t *testing.T) {
 		b, err := querybackend.New(querybackend.Config{
 			Address:          backendAddress,
 			GRPCClientConfig: grpcClientCfg,
-		}, test.NewTestingLogger(t), nil, cl, QueryHandler{})
+		}, test.NewTestingLogger(t), nil, cl, QueryHandler{}, nil, nil)
 		require.NoError(t, err)
 
 		grpcOptions := []grpc.ServerOption{
