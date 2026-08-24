@@ -113,6 +113,16 @@ message InvokeResponse {
   Diagnostics diagnostics = 2;
 }
 
+message ResultCacheKey {
+  QueryRequest query = 1;
+  repeated string block_ids = 2;
+}
+
+message ResultCacheEntry {
+  ResultCacheKey key = 1;
+  repeated Report reports = 2;
+}
+
 // Diagnostic messages, events, statistics, analytics, etc.
 message Diagnostics {
   QueryPlan query_plan = 1;

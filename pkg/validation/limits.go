@@ -119,6 +119,10 @@ type Limits struct {
 	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
 	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
 
+	// Per-tenant query result caching and invalidation generation.
+	ResultCacheEnabled    bool `yaml:"result_cache_enabled" json:"result_cache_enabled" category:"experimental"`
+	ResultCacheGeneration uint `yaml:"result_cache_generation" json:"result_cache_generation" category:"experimental"`
+
 	// Write path overrides used in distributor.
 	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
 
@@ -159,6 +163,8 @@ func (e LimitError) Error() string {
 
 // RegisterFlags adds the flags required to config this to the given FlagSet
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
+	f.BoolVar(&l.ResultCacheEnabled, "query-backend.result-cache.enabled", false, "Enable query result caching. This sets the default for tenant overrides.")
+	f.UintVar(&l.ResultCacheGeneration, "query-backend.result-cache.generation", 1, "Result-cache invalidation generation. This sets the default for tenant overrides.")
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
 	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 256, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
@@ -570,6 +576,14 @@ func (o *Overrides) RejectNewerThan(tenantID string) time.Duration {
 // RejectOlderThan will ensure that profiles that are older than the return value are rejected.
 func (o *Overrides) RejectOlderThan(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).RejectOlderThan)
+}
+
+func (o *Overrides) ResultCacheEnabled(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ResultCacheEnabled
+}
+
+func (o *Overrides) ResultCacheGeneration(tenantID string) uint {
+	return o.getOverridesForTenant(tenantID).ResultCacheGeneration
 }
 
 // QueryAnalysisEnabled can be used to disable the query analysis endpoint in the query frontend.
