@@ -142,7 +142,7 @@ func (q *QueryBackend) invokeUncached(
 	req *queryv1.InvokeRequest,
 ) (*queryv1.InvokeResponse, error) {
 	if req.GetQueryPlan().GetRoot() == nil {
-		if len(req.Query) == 1 && req.Query[0].QueryType == queryv1.QueryType_QUERY_LABEL_NAMES && req.Query[0].LabelNames != nil {
+		if _, ok := resultCacheQueryType(req.Query); ok {
 			return &queryv1.InvokeResponse{
 				Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{Stats: &queryv1.ExecutionStats{}}},
 			}, nil

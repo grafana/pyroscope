@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/prometheus/client_golang/prometheus"
+	promtest "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	thanobjstore "github.com/thanos-io/objstore"
 	"google.golang.org/protobuf/proto"
@@ -64,6 +66,19 @@ func TestResultCacheKeyIgnoresTime(t *testing.T) {
 	require.Contains(t, key, "result-cache/tenant-a/0001-2026-08-21-")
 	require.NotEqual(t, key, otherDayKey)
 	require.Equal(t, key[len(key)-64:], otherDayKey[len(otherDayKey)-64:])
+
+	labelValues := query.CloneVT()
+	labelValues.Query[0] = &queryv1.Query{
+		QueryType:   queryv1.QueryType_QUERY_LABEL_VALUES,
+		LabelValues: &queryv1.LabelValuesQuery{LabelName: "service_name"},
+	}
+	labelValuesKey, err := resultCacheKey("tenant-a", 1, labelValues)
+	require.NoError(t, err)
+	labelValues.Query[0].LabelValues.LabelName = "cluster"
+	otherLabelValuesKey, err := resultCacheKey("tenant-a", 1, labelValues)
+	require.NoError(t, err)
+	require.NotEqual(t, key, labelValuesKey)
+	require.NotEqual(t, labelValuesKey, otherLabelValuesKey)
 }
 
 func TestCanonicalResultCacheSelector(t *testing.T) {
@@ -89,7 +104,7 @@ func TestReadResultCache(t *testing.T) {
 	require.NoError(t, bucket.Upload(context.Background(), "entry", bytes.NewReader(data)))
 
 	aggregator := newAggregator(request)
-	hit, err := q.readResultCache(context.Background(), "entry", expected, aggregator)
+	hit, err := q.readResultCache(context.Background(), resultCacheLabelNames, "entry", expected, aggregator)
 	require.NoError(t, err)
 	require.True(t, hit)
 	require.Equal(t, []string{"cluster", "service_name"}, aggregator.response().Reports[0].LabelNames.LabelNames)
@@ -98,7 +113,7 @@ func TestReadResultCache(t *testing.T) {
 	data, err = proto.Marshal(entry)
 	require.NoError(t, err)
 	require.NoError(t, bucket.Upload(context.Background(), "collision", bytes.NewReader(data)))
-	hit, err = q.readResultCache(context.Background(), "collision", expected, newAggregator(request))
+	hit, err = q.readResultCache(context.Background(), resultCacheLabelNames, "collision", expected, newAggregator(request))
 	require.Error(t, err)
 	require.False(t, hit)
 }
@@ -135,6 +150,48 @@ func TestCoordinateResultCacheHitDoesNotExecutePlan(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"cluster"}, resp.Reports[0].LabelNames.LabelNames)
 	require.Zero(t, resp.Diagnostics.ExecutionNode.Stats.BytesFetched)
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelNames, "hit")))
+}
+
+func TestCoordinateResultCacheLabelValuesHitDoesNotExecutePlan(t *testing.T) {
+	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
+	q := &QueryBackend{
+		resultCacheBucket:    bucket,
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7, window: time.Hour},
+		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
+		now:                  func() time.Time { return time.Date(2026, 8, 23, 3, 0, 0, 0, time.UTC) },
+	}
+	start := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC).UnixMilli()
+	end := time.Date(2026, 8, 20, 23, 59, 59, 999000000, time.UTC).UnixMilli()
+	req := &queryv1.InvokeRequest{
+		Tenant:        []string{"tenant-a"},
+		StartTime:     start,
+		EndTime:       end,
+		LabelSelector: "{}",
+		Query: []*queryv1.Query{{
+			QueryType:   queryv1.QueryType_QUERY_LABEL_VALUES,
+			LabelValues: &queryv1.LabelValuesQuery{LabelName: "service_name"},
+		}},
+	}
+	query, err := cacheQuery(req, start, end)
+	require.NoError(t, err)
+	key, err := resultCacheKey("tenant-a", 7, query)
+	require.NoError(t, err)
+	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Query: query, Reports: []*queryv1.Report{{
+		ReportType: queryv1.ReportType_REPORT_LABEL_VALUES,
+		LabelValues: &queryv1.LabelValuesReport{
+			Query:       &queryv1.LabelValuesQuery{LabelName: "service_name"},
+			LabelValues: []string{"api", "worker"},
+		},
+	}}})
+	require.NoError(t, err)
+	require.NoError(t, bucket.Upload(context.Background(), key, bytes.NewReader(data)))
+
+	resp, err := q.Invoke(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, []string{"api", "worker"}, resp.Reports[0].LabelValues.LabelValues)
+	require.Zero(t, resp.Diagnostics.ExecutionNode.Stats.BytesFetched)
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelValues, "hit")))
 }
 
 func TestResultCacheEligibility(t *testing.T) {
@@ -147,11 +204,49 @@ func TestResultCacheEligibility(t *testing.T) {
 		Query:  []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}},
 	}
 	require.True(t, q.resultCacheEligible(req))
+	req.Query[0] = &queryv1.Query{QueryType: queryv1.QueryType_QUERY_LABEL_VALUES, LabelValues: &queryv1.LabelValuesQuery{LabelName: "service_name"}}
+	require.True(t, q.resultCacheEligible(req))
+	req.Query[0].LabelValues = nil
+	require.False(t, q.resultCacheEligible(req))
+	req.Query[0] = &queryv1.Query{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}
 	req.Options = &queryv1.InvokeOptions{CollectDiagnostics: true}
 	require.False(t, q.resultCacheEligible(req))
 	req.Options = nil
 	req.Tenant = append(req.Tenant, "tenant-b")
 	require.False(t, q.resultCacheEligible(req))
+}
+
+func TestInvokeUncachedEmptyPlanMetadataQuery(t *testing.T) {
+	q := &QueryBackend{}
+	for _, tc := range []struct {
+		name    string
+		query   *queryv1.Query
+		wantErr bool
+	}{
+		{
+			name:  "label names",
+			query: &queryv1.Query{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}},
+		},
+		{
+			name:  "label values",
+			query: &queryv1.Query{QueryType: queryv1.QueryType_QUERY_LABEL_VALUES, LabelValues: &queryv1.LabelValuesQuery{LabelName: "service_name"}},
+		},
+		{
+			name:    "time series",
+			query:   &queryv1.Query{QueryType: queryv1.QueryType_QUERY_TIME_SERIES, TimeSeries: &queryv1.TimeSeriesQuery{}},
+			wantErr: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := q.invokeUncached(context.Background(), &queryv1.InvokeRequest{Query: []*queryv1.Query{tc.query}})
+			if !tc.wantErr {
+				require.NoError(t, err)
+				require.Empty(t, resp.Reports)
+				return
+			}
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+	}
 }
 
 func TestFilterResultCacheBlocks(t *testing.T) {
