@@ -24,6 +24,7 @@ import (
 const (
 	resultCacheLabelNames   = "label_names"
 	resultCacheLabelValues  = "label_values"
+	resultCacheSeriesLabels = "series_labels"
 	resultCacheWorkers      = 2
 	resultCacheQueueSize    = 128
 	resultCacheWriteTimeout = 30 * time.Second
@@ -103,9 +104,29 @@ func cacheQuery(req *queryv1.InvokeRequest, start, end int64) (*queryv1.QueryReq
 	if err != nil {
 		return nil, err
 	}
+	queries := cloneQueries(req.Query)
+	normalizeResultCacheQueries(queries)
 	return &queryv1.QueryRequest{
-		StartTime: start, EndTime: end, LabelSelector: selector, Query: req.Query,
+		StartTime: start, EndTime: end, LabelSelector: selector, Query: queries,
 	}, nil
+}
+
+func cloneQueries(queries []*queryv1.Query) []*queryv1.Query {
+	clones := make([]*queryv1.Query, len(queries))
+	for i, query := range queries {
+		if query != nil {
+			clones[i] = query.CloneVT()
+		}
+	}
+	return clones
+}
+
+func normalizeResultCacheQueries(queries []*queryv1.Query) {
+	for _, query := range queries {
+		if query != nil && query.SeriesLabels != nil {
+			sort.Strings(query.SeriesLabels.LabelNames)
+		}
+	}
 }
 
 func canonicalResultCacheSelector(selector string) (string, error) {
@@ -150,6 +171,8 @@ func resultCacheQueryType(queries []*queryv1.Query) (string, bool) {
 		return resultCacheLabelNames, query.LabelNames != nil
 	case queryv1.QueryType_QUERY_LABEL_VALUES:
 		return resultCacheLabelValues, query.LabelValues != nil
+	case queryv1.QueryType_QUERY_SERIES_LABELS:
+		return resultCacheSeriesLabels, query.SeriesLabels != nil
 	default:
 		return "", false
 	}
@@ -182,6 +205,7 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 		fragmentReq := req.CloneVT()
 		fragmentReq.StartTime = fragment.start
 		fragmentReq.EndTime = fragment.end
+		normalizeResultCacheQueries(fragmentReq.Query)
 		fragmentReq.QueryPlan = queryplan.Build(q.filterBlocks(req.QueryPlan.GetRoot(), fragment.start, fragment.end), 4, 20)
 		fragmentReq.Options = fragmentReq.GetOptions().CloneVT()
 		if fragmentReq.Options == nil {

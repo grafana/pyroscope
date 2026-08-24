@@ -15,6 +15,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlareobjstore "github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
@@ -79,6 +80,25 @@ func TestResultCacheKeyIgnoresTime(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, key, labelValuesKey)
 	require.NotEqual(t, labelValuesKey, otherLabelValuesKey)
+
+	seriesLabels := &queryv1.InvokeRequest{
+		LabelSelector: `{service_name="api"}`,
+		Query: []*queryv1.Query{{
+			QueryType:    queryv1.QueryType_QUERY_SERIES_LABELS,
+			SeriesLabels: &queryv1.SeriesLabelsQuery{LabelNames: []string{"service_name", "cluster"}},
+		}},
+	}
+	seriesLabelsQuery, err := cacheQuery(seriesLabels, query.StartTime, query.EndTime)
+	require.NoError(t, err)
+	require.Equal(t, []string{"cluster", "service_name"}, seriesLabelsQuery.Query[0].SeriesLabels.LabelNames)
+	seriesLabels.Query[0].SeriesLabels.LabelNames = []string{"cluster", "service_name"}
+	otherSeriesLabelsQuery, err := cacheQuery(seriesLabels, query.StartTime, query.EndTime)
+	require.NoError(t, err)
+	seriesLabelsKey, err := resultCacheKey("tenant-a", 1, seriesLabelsQuery)
+	require.NoError(t, err)
+	otherSeriesLabelsKey, err := resultCacheKey("tenant-a", 1, otherSeriesLabelsQuery)
+	require.NoError(t, err)
+	require.Equal(t, seriesLabelsKey, otherSeriesLabelsKey)
 }
 
 func TestCanonicalResultCacheSelector(t *testing.T) {
@@ -194,6 +214,50 @@ func TestCoordinateResultCacheLabelValuesHitDoesNotExecutePlan(t *testing.T) {
 	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelValues, "hit")))
 }
 
+func TestCoordinateResultCacheSeriesLabelsHitDoesNotExecutePlan(t *testing.T) {
+	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
+	q := &QueryBackend{
+		resultCacheBucket:    bucket,
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7, window: time.Hour},
+		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
+		now:                  func() time.Time { return time.Date(2026, 8, 23, 3, 0, 0, 0, time.UTC) },
+	}
+	start := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC).UnixMilli()
+	end := time.Date(2026, 8, 20, 23, 59, 59, 999000000, time.UTC).UnixMilli()
+	req := &queryv1.InvokeRequest{
+		Tenant:        []string{"tenant-a"},
+		StartTime:     start,
+		EndTime:       end,
+		LabelSelector: "{}",
+		Query: []*queryv1.Query{{
+			QueryType:    queryv1.QueryType_QUERY_SERIES_LABELS,
+			SeriesLabels: &queryv1.SeriesLabelsQuery{LabelNames: []string{"service_name", "cluster"}},
+		}},
+	}
+	query, err := cacheQuery(req, start, end)
+	require.NoError(t, err)
+	key, err := resultCacheKey("tenant-a", 7, query)
+	require.NoError(t, err)
+	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Query: query, Reports: []*queryv1.Report{{
+		ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
+		SeriesLabels: &queryv1.SeriesLabelsReport{
+			Query: query.Query[0].SeriesLabels,
+			SeriesLabels: []*typesv1.Labels{{Labels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "prod"},
+				{Name: "service_name", Value: "api"},
+			}}},
+		},
+	}}})
+	require.NoError(t, err)
+	require.NoError(t, bucket.Upload(context.Background(), key, bytes.NewReader(data)))
+
+	resp, err := q.Invoke(context.Background(), req)
+	require.NoError(t, err)
+	require.Len(t, resp.Reports[0].SeriesLabels.SeriesLabels, 1)
+	require.Zero(t, resp.Diagnostics.ExecutionNode.Stats.BytesFetched)
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheSeriesLabels, "hit")))
+}
+
 func TestResultCacheEligibility(t *testing.T) {
 	q := &QueryBackend{
 		resultCacheBucket:    phlareobjstore.NewBucket(thanobjstore.NewInMemBucket()),
@@ -207,6 +271,10 @@ func TestResultCacheEligibility(t *testing.T) {
 	req.Query[0] = &queryv1.Query{QueryType: queryv1.QueryType_QUERY_LABEL_VALUES, LabelValues: &queryv1.LabelValuesQuery{LabelName: "service_name"}}
 	require.True(t, q.resultCacheEligible(req))
 	req.Query[0].LabelValues = nil
+	require.False(t, q.resultCacheEligible(req))
+	req.Query[0] = &queryv1.Query{QueryType: queryv1.QueryType_QUERY_SERIES_LABELS, SeriesLabels: &queryv1.SeriesLabelsQuery{}}
+	require.True(t, q.resultCacheEligible(req))
+	req.Query[0].SeriesLabels = nil
 	require.False(t, q.resultCacheEligible(req))
 	req.Query[0] = &queryv1.Query{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}
 	req.Options = &queryv1.InvokeOptions{CollectDiagnostics: true}
