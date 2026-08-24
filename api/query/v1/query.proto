@@ -43,6 +43,8 @@ message InvokeOptions {
   // be listed in the request explicitly.
   bool sanitize_on_merge = 1;
   bool collect_diagnostics = 2;
+  // Prevent child query-backends from attempting result-cache coordination.
+  bool bypass_result_cache = 3;
 }
 
 message InvokeRequest {
@@ -109,6 +111,11 @@ enum QueryType {
 message InvokeResponse {
   repeated Report reports = 1;
   Diagnostics diagnostics = 2;
+}
+
+message ResultCacheEntry {
+  QueryRequest query = 1;
+  repeated Report reports = 2;
 }
 
 // Diagnostic messages, events, statistics, analytics, etc.
