@@ -27,7 +27,7 @@ func TestHandlerPollCopiesPprofResponse(t *testing.T) {
 		Pprof: &querierv1.PprofProfile{Profile: want},
 	}))
 
-	handler := &Handler{coordinator: &Coordinator{store: store}}
+	handler := &Handler{logger: log.NewNopLogger(), coordinator: &Coordinator{store: store}}
 	resp, err := handler.poll(ctx, tenantID, requestID)
 
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestHandlerPollTenantIsolation(t *testing.T) {
 	)
 	require.NoError(t, store.create(ctx, tenantA, requestID, &querierv1.SelectMergeStacktracesRequest{}))
 
-	handler := &Handler{coordinator: &Coordinator{store: store}}
+	handler := &Handler{logger: log.NewNopLogger(), coordinator: &Coordinator{store: store}}
 	_, err := handler.poll(ctx, tenantB, requestID)
 
 	require.Error(t, err)
