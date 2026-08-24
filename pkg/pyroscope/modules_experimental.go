@@ -87,6 +87,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
+		f.Cfg.Frontend,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
@@ -149,6 +150,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
+		f.Cfg.Frontend,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
