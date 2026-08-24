@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	resultCacheQueryType    = "label_names"
+	resultCacheLabelNames   = "label_names"
+	resultCacheLabelValues  = "label_values"
 	resultCacheWorkers      = 2
 	resultCacheQueueSize    = 128
 	resultCacheWriteTimeout = 30 * time.Second
@@ -55,9 +56,10 @@ func newResultCacheMetrics(reg prometheus.Registerer) *resultCacheMetrics {
 }
 
 type resultCacheWriteJob struct {
-	key     string
-	query   *queryv1.QueryRequest
-	reports []*queryv1.Report
+	queryType string
+	key       string
+	query     *queryv1.QueryRequest
+	reports   []*queryv1.Report
 }
 
 type resultCacheFragment struct {
@@ -139,10 +141,27 @@ func resultCacheKey(tenant string, generation uint32, query *queryv1.QueryReques
 	return fmt.Sprintf("result-cache/%s/%04d-%s-%s", tenant, generation, date, hex.EncodeToString(digest[:])), nil
 }
 
+func resultCacheQueryType(queries []*queryv1.Query) (string, bool) {
+	if len(queries) != 1 || queries[0] == nil {
+		return "", false
+	}
+	switch query := queries[0]; query.QueryType {
+	case queryv1.QueryType_QUERY_LABEL_NAMES:
+		return resultCacheLabelNames, query.LabelNames != nil
+	case queryv1.QueryType_QUERY_LABEL_VALUES:
+		return resultCacheLabelValues, query.LabelValues != nil
+	default:
+		return "", false
+	}
+}
+
 func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "QueryBackend.ResultCache")
 	defer span.Finish()
-	span.SetTag("query_type", resultCacheQueryType)
+	queryType, validQuery := resultCacheQueryType(req.Query)
+	if validQuery {
+		span.SetTag("query_type", queryType)
+	}
 	if !q.resultCacheEligible(req) {
 		span.SetTag("outcome", "bypass")
 		return q.executeWithResultCacheBypassed(ctx, req)
@@ -181,7 +200,7 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 			var err error
 			key, err = resultCacheKey(tenant, generation, query)
 			if err == nil {
-				hit, err = q.readResultCache(ctx, key, query, aggregator)
+				hit, err = q.readResultCache(ctx, queryType, key, query, aggregator)
 			}
 			if err == nil && hit {
 				continue
@@ -206,7 +225,7 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 			return nil, err
 		}
 		if cacheable && writeAllowed && ctx.Err() == nil {
-			q.enqueueResultCacheWrite(resultCacheWriteJob{key: key, query: query.CloneVT(), reports: cloneReports(resp.Reports)})
+			q.enqueueResultCacheWrite(resultCacheWriteJob{queryType: queryType, key: key, query: query.CloneVT(), reports: cloneReports(resp.Reports)})
 		}
 	}
 
@@ -226,47 +245,48 @@ func (q *QueryBackend) executeWithResultCacheBypassed(ctx context.Context, req *
 }
 
 func (q *QueryBackend) resultCacheEligible(req *queryv1.InvokeRequest) bool {
+	_, validQuery := resultCacheQueryType(req.Query)
 	return q.resultCacheBucket != nil && q.resultCacheOverrides != nil && len(req.Tenant) == 1 &&
-		len(req.Query) == 1 && req.Query[0].QueryType == queryv1.QueryType_QUERY_LABEL_NAMES && req.Query[0].LabelNames != nil &&
+		validQuery &&
 		!req.GetOptions().GetCollectDiagnostics() && q.resultCacheOverrides.ResultCacheEnabled(req.Tenant[0]) &&
 		q.resultCacheOverrides.RejectOlderThan(req.Tenant[0]) > 0
 }
 
 // readResultCache returns a cache hit. Its error is non-nil only when a read's
 // object state is unknown; corrupt entries are safe to replace after execution.
-func (q *QueryBackend) readResultCache(ctx context.Context, key string, expected *queryv1.QueryRequest, aggregator *reportAggregator) (bool, error) {
+func (q *QueryBackend) readResultCache(ctx context.Context, queryType, key string, expected *queryv1.QueryRequest, aggregator *reportAggregator) (bool, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "QueryBackend.ResultCacheLookup")
 	defer span.Finish()
-	span.SetTag("query_type", resultCacheQueryType)
+	span.SetTag("query_type", queryType)
 	span.SetTag("utc_day", time.UnixMilli(expected.StartTime).UTC().Format("2006-01-02"))
 
 	r, err := q.resultCacheBucket.Get(ctx, key)
 	if err != nil {
 		if q.resultCacheBucket.IsObjNotFoundErr(err) {
 			span.SetTag("outcome", "miss")
-			q.resultCacheMetrics.lookups.WithLabelValues(resultCacheQueryType, "miss").Inc()
+			q.resultCacheMetrics.lookups.WithLabelValues(queryType, "miss").Inc()
 			return false, nil
 		}
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(resultCacheQueryType, "error").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "error").Inc()
 		return false, err
 	}
 	defer r.Close()
 	b, err := io.ReadAll(r)
 	if err != nil {
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(resultCacheQueryType, "error").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "error").Inc()
 		return false, err
 	}
 	entry := new(queryv1.ResultCacheEntry)
 	if err := proto.Unmarshal(b, entry); err != nil {
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(resultCacheQueryType, "error").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "error").Inc()
 		return false, nil
 	}
 	if !proto.Equal(entry.Query, expected) {
 		span.SetTag("outcome", "collision")
-		q.resultCacheMetrics.lookups.WithLabelValues(resultCacheQueryType, "collision").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "collision").Inc()
 		return false, fmt.Errorf("result cache collision")
 	}
 	if err := aggregator.aggregateResponse(&queryv1.InvokeResponse{Reports: entry.Reports}, nil); err != nil {
@@ -274,7 +294,7 @@ func (q *QueryBackend) readResultCache(ctx context.Context, key string, expected
 		return false, err
 	}
 	span.SetTag("outcome", "hit")
-	q.resultCacheMetrics.lookups.WithLabelValues(resultCacheQueryType, "hit").Inc()
+	q.resultCacheMetrics.lookups.WithLabelValues(queryType, "hit").Inc()
 	return true, nil
 }
 
@@ -324,7 +344,7 @@ func (q *QueryBackend) enqueueResultCacheWrite(job resultCacheWriteJob) {
 	select {
 	case q.resultCacheWrites <- job:
 	default:
-		q.resultCacheMetrics.writes.WithLabelValues(resultCacheQueryType, "dropped").Inc()
+		q.resultCacheMetrics.writes.WithLabelValues(job.queryType, "dropped").Inc()
 	}
 }
 
@@ -336,7 +356,7 @@ func (q *QueryBackend) runResultCacheWriter(ctx context.Context) {
 			return
 		case job := <-q.resultCacheWrites:
 			span, writeCtx := tracing.StartSpanFromContext(ctx, "QueryBackend.ResultCacheWrite")
-			span.SetTag("query_type", resultCacheQueryType)
+			span.SetTag("query_type", job.queryType)
 			span.SetTag("utc_day", time.UnixMilli(job.query.StartTime).UTC().Format("2006-01-02"))
 			entry := &queryv1.ResultCacheEntry{Query: job.query, Reports: job.reports}
 			data, err := proto.Marshal(entry)
@@ -347,10 +367,10 @@ func (q *QueryBackend) runResultCacheWriter(ctx context.Context) {
 			}
 			if err != nil {
 				span.SetTag("outcome", "error")
-				q.resultCacheMetrics.writes.WithLabelValues(resultCacheQueryType, "error").Inc()
+				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, "error").Inc()
 			} else {
 				span.SetTag("outcome", "success")
-				q.resultCacheMetrics.writes.WithLabelValues(resultCacheQueryType, "success").Inc()
+				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, "success").Inc()
 			}
 			span.Finish()
 		}
