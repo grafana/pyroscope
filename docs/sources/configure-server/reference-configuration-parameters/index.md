@@ -3524,6 +3524,11 @@ distributor_usage_groups:
 # CLI flag: -result-cache.fragment-durations
 [result_cache_fragment_durations: <list of ints> | default = 24h,2h,15m]
 
+# Bypass result caching for metadata queries with a service_name matcher below
+# this query duration. 0 disables this bypass.
+# CLI flag: -result-cache.metadata-service-name-min-query-duration
+[result_cache_metadata_service_name_min_query_duration: <duration> | default = 1w]
+
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]

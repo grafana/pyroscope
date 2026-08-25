@@ -21,9 +21,10 @@ import (
 )
 
 type resultCacheOverrides struct {
-	enabled    bool
-	generation uint32
-	durations  []time.Duration
+	enabled                             bool
+	generation                          uint32
+	durations                           []time.Duration
+	metadataServiceNameMinQueryDuration time.Duration
 }
 
 func (o resultCacheOverrides) ResultCacheEnabled(string) bool      { return o.enabled }
@@ -33,6 +34,9 @@ func (o resultCacheOverrides) ResultCacheFragmentDurations(string) []time.Durati
 		return []time.Duration{24 * time.Hour, 2 * time.Hour, 15 * time.Minute}
 	}
 	return o.durations
+}
+func (o resultCacheOverrides) ResultCacheMetadataServiceNameMinQueryDuration(string) time.Duration {
+	return o.metadataServiceNameMinQueryDuration
 }
 
 type queryHandlerFunc func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
@@ -486,7 +490,7 @@ func TestCoordinateResultCacheLimitsConcurrentColdFragments(t *testing.T) {
 func TestResultCacheEligibility(t *testing.T) {
 	q := &QueryBackend{
 		resultCacheBucket:    phlareobjstore.NewBucket(thanobjstore.NewInMemBucket()),
-		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1},
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1, metadataServiceNameMinQueryDuration: 7 * 24 * time.Hour},
 	}
 	req := &queryv1.InvokeRequest{
 		Tenant: []string{"tenant-a"},
@@ -502,6 +506,19 @@ func TestResultCacheEligibility(t *testing.T) {
 	req.Query[0].SeriesLabels = nil
 	require.False(t, q.resultCacheEligible(req))
 	req.Query[0] = &queryv1.Query{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}
+	req.LabelSelector = `{service_name="api"}`
+	req.StartTime = 0
+	req.EndTime = (7 * 24 * time.Hour).Milliseconds() - 1
+	require.False(t, q.resultCacheEligible(req))
+	req.EndTime++
+	require.True(t, q.resultCacheEligible(req))
+	q.resultCacheOverrides = resultCacheOverrides{enabled: true, generation: 1}
+	req.EndTime = 0
+	require.True(t, q.resultCacheEligible(req))
+	q.resultCacheOverrides = resultCacheOverrides{enabled: true, generation: 1, metadataServiceNameMinQueryDuration: 7 * 24 * time.Hour}
+	req.LabelSelector = `{job="api"}`
+	req.EndTime = 0
+	require.True(t, q.resultCacheEligible(req))
 	req.Options = &queryv1.InvokeOptions{CollectDiagnostics: true}
 	require.False(t, q.resultCacheEligible(req))
 	req.Options = nil

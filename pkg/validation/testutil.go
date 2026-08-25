@@ -24,11 +24,12 @@ type MockLimits struct {
 	DistributorAggregationWindowValue time.Duration
 	DistributorAggregationPeriodValue time.Duration
 
-	RejectOlderThanValue              time.Duration
-	RejectNewerThanValue              time.Duration
-	ResultCacheEnabledValue           bool
-	ResultCacheGenerationValue        uint32
-	ResultCacheFragmentDurationsValue []time.Duration
+	RejectOlderThanValue                                time.Duration
+	RejectNewerThanValue                                time.Duration
+	ResultCacheEnabledValue                             bool
+	ResultCacheGenerationValue                          uint32
+	ResultCacheFragmentDurationsValue                   []time.Duration
+	ResultCacheMetadataServiceNameMinQueryDurationValue time.Duration
 
 	MaxProfileSizeBytesValue              int
 	MaxProfileStacktraceSamplesValue      int
@@ -114,6 +115,9 @@ func (m MockLimits) ResultCacheEnabled(string) bool      { return m.ResultCacheE
 func (m MockLimits) ResultCacheGeneration(string) uint32 { return m.ResultCacheGenerationValue }
 func (m MockLimits) ResultCacheFragmentDurations(string) []time.Duration {
 	return m.ResultCacheFragmentDurationsValue
+}
+func (m MockLimits) ResultCacheMetadataServiceNameMinQueryDuration(string) time.Duration {
+	return m.ResultCacheMetadataServiceNameMinQueryDurationValue
 }
 
 func (m MockLimits) SymbolizerEnabled(s string) bool       { return m.SymbolizerEnabledValue }

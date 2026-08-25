@@ -492,6 +492,10 @@ limits:
   # smallest duration is also the minimum cache age.
   # result_cache_fragment_durations: 24h,2h,15m
 
+  # Bypass result caching for metadata queries with a service_name matcher below
+  # this query duration. 0 disables this bypass.
+  # result_cache_metadata_service_name_min_query_duration: 1w
+
   # Maximum number of recording rules a tenant can create. 0 to disable.
   # max_recording_rules: 25
 
