@@ -171,13 +171,13 @@ Block IDs identify immutable block contents and execution-relevant metadata.
 Cache objects use this key layout:
 
 ```text
-result-cache/$tenant-id/$fragment-duration/%04d-$cache-hash
+results-cache/$fragment-duration/$tenant-id/%04d-$cache-hash
 ```
 
 For example:
 
 ```text
-result-cache/tenant-a/24h/0001-d5f3...c02a
+results-cache/24h/tenant-a/0001-d5f3...c02a
 ```
 
 `$cache-hash` is the full lowercase, 64-character SHA-256 digest of a

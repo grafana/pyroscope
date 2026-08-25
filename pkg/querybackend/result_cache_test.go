@@ -80,7 +80,7 @@ func TestResultCacheKeyIncludesTimeAndBlocks(t *testing.T) {
 	key, err := resultCacheKey("tenant-a", 1, 24*time.Hour, identity)
 	require.NoError(t, err)
 	require.Equal(t, []string{"block-a", "block-b"}, identity.BlockIds)
-	require.Contains(t, key, "result-cache/tenant-a/24h/0001-")
+	require.Contains(t, key, "results-cache/24h/tenant-a/0001-")
 
 	otherBlocksKey, err := resultCacheKey("tenant-a", 1, 24*time.Hour, resultCacheIdentity(query, []*metastorev1.BlockMeta{{Id: "block-a"}, {Id: "block-c"}}))
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestResultCacheKeyIncludesTimeAndBlocks(t *testing.T) {
 
 	otherDurationKey, err := resultCacheKey("tenant-a", 1, 2*time.Hour, identity)
 	require.NoError(t, err)
-	require.Contains(t, otherDurationKey, "result-cache/tenant-a/2h/0001-")
+	require.Contains(t, otherDurationKey, "results-cache/2h/tenant-a/0001-")
 	require.NotEqual(t, key, otherDurationKey)
 
 	otherDay := query.CloneVT()

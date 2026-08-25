@@ -193,7 +193,7 @@ func resultCacheKey(tenant string, generation uint32, duration time.Duration, id
 		return "", fmt.Errorf("marshal result cache identity: %w", err)
 	}
 	digest := sha256.Sum256(b)
-	return fmt.Sprintf("result-cache/%s/%s/%04d-%s", tenant, resultCacheDurationName(duration), generation, hex.EncodeToString(digest[:])), nil
+	return fmt.Sprintf("results-cache/%s/%s/%04d-%s", resultCacheDurationName(duration), tenant, generation, hex.EncodeToString(digest[:])), nil
 }
 
 func resultCacheQueryType(queries []*queryv1.Query) (string, bool) {
