@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,9 +34,9 @@ const (
 )
 
 type ResultCacheOverrides interface {
-	RejectOlderThan(tenantID string) time.Duration
 	ResultCacheEnabled(tenantID string) bool
 	ResultCacheGeneration(tenantID string) uint32
+	ResultCacheFragmentDurations(tenantID string) []time.Duration
 }
 
 type resultCacheMetrics struct {
@@ -47,10 +48,10 @@ func newResultCacheMetrics(reg prometheus.Registerer) *resultCacheMetrics {
 	m := &resultCacheMetrics{
 		lookups: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "pyroscope", Subsystem: "query_backend", Name: "result_cache_lookups_total",
-		}, []string{"query_type", "outcome"}),
+		}, []string{"query_type", "fragment_duration", "outcome"}),
 		writes: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "pyroscope", Subsystem: "query_backend", Name: "result_cache_writes_total",
-		}, []string{"query_type", "outcome"}),
+		}, []string{"query_type", "fragment_duration", "outcome"}),
 	}
 	if reg != nil {
 		reg.MustRegister(m.lookups, m.writes)
@@ -60,31 +61,49 @@ func newResultCacheMetrics(reg prometheus.Registerer) *resultCacheMetrics {
 
 type resultCacheWriteJob struct {
 	queryType string
+	duration  string
 	key       string
-	query     *queryv1.QueryRequest
+	identity  *queryv1.ResultCacheKey
 	reports   []*queryv1.Report
 }
 
 type resultCacheFragment struct {
-	start int64
-	end   int64
-	full  bool
+	start    int64
+	end      int64
+	duration time.Duration
 }
 
-func splitResultCacheFragments(start, end int64) []resultCacheFragment {
+func splitResultCacheFragments(start, end int64, durations []time.Duration) []resultCacheFragment {
 	if start > end {
 		return nil
 	}
+	durations = append([]time.Duration(nil), durations...)
+	sort.Slice(durations, func(i, j int) bool { return durations[i] > durations[j] })
 	fragments := make([]resultCacheFragment, 0, 1)
-	for current := start; current <= end; {
-		dayStart := time.UnixMilli(current).UTC().Truncate(24 * time.Hour)
-		dayEnd := dayStart.Add(24*time.Hour).UnixMilli() - 1
-		fragmentEnd := min(end, dayEnd)
-		fragments = append(fragments, resultCacheFragment{
-			start: current,
-			end:   fragmentEnd,
-			full:  current == dayStart.UnixMilli() && fragmentEnd == dayEnd,
-		})
+	endExclusive := end + 1
+	for current := start; current < endExclusive; {
+		var selected time.Duration
+		for _, duration := range durations {
+			milliseconds := duration.Milliseconds()
+			if current%milliseconds == 0 && current+milliseconds <= endExclusive {
+				selected = duration
+				break
+			}
+		}
+
+		fragmentEnd := end
+		if selected > 0 {
+			fragmentEnd = current + selected.Milliseconds() - 1
+		} else if len(durations) > 0 {
+			smallest := durations[len(durations)-1].Milliseconds()
+			remainder := current % smallest
+			if remainder < 0 {
+				remainder += smallest
+			}
+			nextBoundary := current + smallest - remainder
+			fragmentEnd = min(end, nextBoundary-1)
+		}
+		fragments = append(fragments, resultCacheFragment{start: current, end: fragmentEnd, duration: selected})
 		if fragmentEnd == end {
 			break
 		}
@@ -93,12 +112,29 @@ func splitResultCacheFragments(start, end int64) []resultCacheFragment {
 	return fragments
 }
 
-func stableResultCacheDay(end int64, now time.Time, window time.Duration) bool {
-	if window <= 0 {
-		return false
+func resultCacheDurationName(duration time.Duration) string {
+	if duration <= 0 {
+		return ""
 	}
-	followingMidnight := time.UnixMilli(end).UTC().Truncate(24 * time.Hour).Add(24 * time.Hour)
-	return !now.Before(followingMidnight.Add(2 * window))
+	if duration%time.Hour == 0 {
+		return strconv.FormatInt(int64(duration/time.Hour), 10) + "h"
+	}
+	if duration%time.Minute == 0 {
+		return strconv.FormatInt(int64(duration/time.Minute), 10) + "m"
+	}
+	if duration%time.Second == 0 {
+		return strconv.FormatInt(int64(duration/time.Second), 10) + "s"
+	}
+	return duration.String()
+}
+
+func resultCacheIdentity(query *queryv1.QueryRequest, blocks []*metastorev1.BlockMeta) *queryv1.ResultCacheKey {
+	blockIDs := make([]string, len(blocks))
+	for i, block := range blocks {
+		blockIDs[i] = block.Id
+	}
+	sort.Strings(blockIDs)
+	return &queryv1.ResultCacheKey{Query: query, BlockIds: blockIDs}
 }
 
 func cacheQuery(req *queryv1.InvokeRequest, start, end int64) (*queryv1.QueryRequest, error) {
@@ -151,17 +187,13 @@ func canonicalResultCacheSelector(selector string) (string, error) {
 	return canonical.String(), nil
 }
 
-func resultCacheKey(tenant string, generation uint32, query *queryv1.QueryRequest) (string, error) {
-	hashQuery := query.CloneVT()
-	hashQuery.StartTime = 0
-	hashQuery.EndTime = 0
-	b, err := proto.MarshalOptions{Deterministic: true}.Marshal(hashQuery)
+func resultCacheKey(tenant string, generation uint32, duration time.Duration, identity *queryv1.ResultCacheKey) (string, error) {
+	b, err := proto.MarshalOptions{Deterministic: true}.Marshal(identity)
 	if err != nil {
-		return "", fmt.Errorf("marshal cache key query: %w", err)
+		return "", fmt.Errorf("marshal result cache identity: %w", err)
 	}
 	digest := sha256.Sum256(b)
-	date := time.UnixMilli(query.StartTime).UTC().Format("2006-01-02")
-	return fmt.Sprintf("result-cache/%s/%04d-%s-%s", tenant, generation, date, hex.EncodeToString(digest[:])), nil
+	return fmt.Sprintf("result-cache/%s/%s/%04d-%s", tenant, resultCacheDurationName(duration), generation, hex.EncodeToString(digest[:])), nil
 }
 
 func resultCacheQueryType(queries []*queryv1.Query) (string, bool) {
@@ -195,12 +227,13 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 
 	tenant := req.Tenant[0]
 	generation := q.resultCacheOverrides.ResultCacheGeneration(tenant)
+	durations := q.resultCacheOverrides.ResultCacheFragmentDurations(tenant)
 	selector, err := canonicalResultCacheSelector(req.LabelSelector)
 	if err != nil {
 		return q.executeWithResultCacheBypassed(ctx, req)
 	}
 	aggregator := newAggregator(req)
-	fragments := splitResultCacheFragments(req.StartTime, req.EndTime)
+	fragments := splitResultCacheFragments(req.StartTime, req.EndTime, durations)
 	span.SetTag("fragments", len(fragments))
 	fragmentResponses := make([]*queryv1.InvokeResponse, len(fragments))
 	g, ctx := errgroup.WithContext(ctx)
@@ -213,26 +246,29 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 			fragmentReq.StartTime = fragment.start
 			fragmentReq.EndTime = fragment.end
 			normalizeResultCacheQueries(fragmentReq.Query)
-			fragmentReq.QueryPlan = queryplan.Build(q.filterBlocks(req.QueryPlan.GetRoot(), fragment.start, fragment.end), 4, 20)
+			blocks := q.filterBlocks(req.QueryPlan.GetRoot(), fragment.start, fragment.end)
+			fragmentReq.QueryPlan = queryplan.Build(blocks, 4, 20)
 			fragmentReq.Options = fragmentReq.GetOptions().CloneVT()
 			if fragmentReq.Options == nil {
 				fragmentReq.Options = &queryv1.InvokeOptions{}
 			}
 			fragmentReq.Options.BypassResultCache = true
 
-			cacheable := fragment.full && stableResultCacheDay(fragment.end, q.now(), q.resultCacheOverrides.RejectOlderThan(tenant))
+			cacheable := fragment.duration > 0 && fragment.end <= q.now().Add(-durations[len(durations)-1]).UnixMilli()
 			query := &queryv1.QueryRequest{
 				StartTime: fragment.start, EndTime: fragment.end, LabelSelector: selector, Query: fragmentReq.Query,
 			}
+			identity := resultCacheIdentity(query, blocks)
+			durationName := resultCacheDurationName(fragment.duration)
 			key := ""
 			writeAllowed := false
 			if cacheable {
 				fragmentAggregator := newAggregator(fragmentReq)
 				var hit bool
 				var err error
-				key, err = resultCacheKey(tenant, generation, query)
+				key, err = resultCacheKey(tenant, generation, fragment.duration, identity)
 				if err == nil {
-					hit, err = q.readResultCache(ctx, queryType, key, query, fragmentAggregator)
+					hit, err = q.readResultCache(ctx, queryType, durationName, key, identity, fragmentAggregator)
 				}
 				if err == nil && hit {
 					fragmentResponses[idx] = fragmentAggregator.response()
@@ -254,7 +290,7 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 				return err
 			}
 			if cacheable && writeAllowed && ctx.Err() == nil {
-				q.enqueueResultCacheWrite(resultCacheWriteJob{queryType: queryType, key: key, query: query.CloneVT(), reports: cloneReports(resp.Reports)})
+				q.enqueueResultCacheWrite(resultCacheWriteJob{queryType: queryType, duration: durationName, key: key, identity: identity.CloneVT(), reports: cloneReports(resp.Reports)})
 			}
 			fragmentResponses[idx] = resp
 			return nil
@@ -292,44 +328,45 @@ func (q *QueryBackend) resultCacheEligible(req *queryv1.InvokeRequest) bool {
 	return q.resultCacheBucket != nil && q.resultCacheOverrides != nil && len(req.Tenant) == 1 &&
 		validQuery &&
 		!req.GetOptions().GetCollectDiagnostics() && q.resultCacheOverrides.ResultCacheEnabled(req.Tenant[0]) &&
-		q.resultCacheOverrides.RejectOlderThan(req.Tenant[0]) > 0
+		len(q.resultCacheOverrides.ResultCacheFragmentDurations(req.Tenant[0])) > 0
 }
 
 // readResultCache returns a cache hit. Its error is non-nil only when a read's
 // object state is unknown; corrupt entries are safe to replace after execution.
-func (q *QueryBackend) readResultCache(ctx context.Context, queryType, key string, expected *queryv1.QueryRequest, aggregator *reportAggregator) (bool, error) {
+func (q *QueryBackend) readResultCache(ctx context.Context, queryType, duration, key string, expected *queryv1.ResultCacheKey, aggregator *reportAggregator) (bool, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "QueryBackend.ResultCacheLookup")
 	defer span.Finish()
 	span.SetTag("query_type", queryType)
-	span.SetTag("utc_day", time.UnixMilli(expected.StartTime).UTC().Format("2006-01-02"))
+	span.SetTag("fragment_duration", duration)
+	span.SetTag("fragment_start", time.UnixMilli(expected.GetQuery().GetStartTime()).UTC().Format(time.RFC3339))
 
 	r, err := q.resultCacheBucket.Get(ctx, key)
 	if err != nil {
 		if q.resultCacheBucket.IsObjNotFoundErr(err) {
 			span.SetTag("outcome", "miss")
-			q.resultCacheMetrics.lookups.WithLabelValues(queryType, "miss").Inc()
+			q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "miss").Inc()
 			return false, nil
 		}
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "error").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "error").Inc()
 		return false, err
 	}
 	defer r.Close()
 	b, err := io.ReadAll(r)
 	if err != nil {
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "error").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "error").Inc()
 		return false, err
 	}
 	entry := new(queryv1.ResultCacheEntry)
 	if err := proto.Unmarshal(b, entry); err != nil {
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "error").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "error").Inc()
 		return false, nil
 	}
-	if !proto.Equal(entry.Query, expected) {
+	if !proto.Equal(entry.Key, expected) {
 		span.SetTag("outcome", "collision")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, "collision").Inc()
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "collision").Inc()
 		return false, fmt.Errorf("result cache collision")
 	}
 	if err := aggregator.aggregateResponse(&queryv1.InvokeResponse{Reports: entry.Reports}, nil); err != nil {
@@ -337,7 +374,7 @@ func (q *QueryBackend) readResultCache(ctx context.Context, queryType, key strin
 		return false, err
 	}
 	span.SetTag("outcome", "hit")
-	q.resultCacheMetrics.lookups.WithLabelValues(queryType, "hit").Inc()
+	q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "hit").Inc()
 	return true, nil
 }
 
@@ -380,6 +417,7 @@ func (q *QueryBackend) filterBlocks(root *queryv1.QueryNode, start, end int64) [
 	for _, block := range blocks {
 		result = append(result, block)
 	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Id < result[j].Id })
 	return result
 }
 
@@ -387,7 +425,7 @@ func (q *QueryBackend) enqueueResultCacheWrite(job resultCacheWriteJob) {
 	select {
 	case q.resultCacheWrites <- job:
 	default:
-		q.resultCacheMetrics.writes.WithLabelValues(job.queryType, "dropped").Inc()
+		q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, "dropped").Inc()
 	}
 }
 
@@ -400,8 +438,9 @@ func (q *QueryBackend) runResultCacheWriter(ctx context.Context) {
 		case job := <-q.resultCacheWrites:
 			span, writeCtx := tracing.StartSpanFromContext(ctx, "QueryBackend.ResultCacheWrite")
 			span.SetTag("query_type", job.queryType)
-			span.SetTag("utc_day", time.UnixMilli(job.query.StartTime).UTC().Format("2006-01-02"))
-			entry := &queryv1.ResultCacheEntry{Query: job.query, Reports: job.reports}
+			span.SetTag("fragment_duration", job.duration)
+			span.SetTag("fragment_start", time.UnixMilli(job.identity.GetQuery().GetStartTime()).UTC().Format(time.RFC3339))
+			entry := &queryv1.ResultCacheEntry{Key: job.identity, Reports: job.reports}
 			data, err := proto.Marshal(entry)
 			if err == nil {
 				writeCtx, cancel := context.WithTimeout(writeCtx, resultCacheWriteTimeout)
@@ -410,10 +449,10 @@ func (q *QueryBackend) runResultCacheWriter(ctx context.Context) {
 			}
 			if err != nil {
 				span.SetTag("outcome", "error")
-				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, "error").Inc()
+				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, "error").Inc()
 			} else {
 				span.SetTag("outcome", "success")
-				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, "success").Inc()
+				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, "success").Inc()
 			}
 			span.Finish()
 		}

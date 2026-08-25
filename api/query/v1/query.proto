@@ -113,8 +113,13 @@ message InvokeResponse {
   Diagnostics diagnostics = 2;
 }
 
-message ResultCacheEntry {
+message ResultCacheKey {
   QueryRequest query = 1;
+  repeated string block_ids = 2;
+}
+
+message ResultCacheEntry {
+  ResultCacheKey key = 1;
   repeated Report reports = 2;
 }
 

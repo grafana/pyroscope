@@ -23,12 +23,17 @@ import (
 type resultCacheOverrides struct {
 	enabled    bool
 	generation uint32
-	window     time.Duration
+	durations  []time.Duration
 }
 
-func (o resultCacheOverrides) ResultCacheEnabled(string) bool       { return o.enabled }
-func (o resultCacheOverrides) ResultCacheGeneration(string) uint32  { return o.generation }
-func (o resultCacheOverrides) RejectOlderThan(string) time.Duration { return o.window }
+func (o resultCacheOverrides) ResultCacheEnabled(string) bool      { return o.enabled }
+func (o resultCacheOverrides) ResultCacheGeneration(string) uint32 { return o.generation }
+func (o resultCacheOverrides) ResultCacheFragmentDurations(string) []time.Duration {
+	if o.durations == nil {
+		return []time.Duration{24 * time.Hour, 2 * time.Hour, 15 * time.Minute}
+	}
+	return o.durations
+}
 
 type queryHandlerFunc func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
 
@@ -37,53 +42,74 @@ func (f queryHandlerFunc) Invoke(ctx context.Context, req *queryv1.InvokeRequest
 }
 
 func TestSplitResultCacheFragments(t *testing.T) {
-	start := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC).UnixMilli()
-	end := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC).UnixMilli()
+	start := time.Date(2026, 8, 20, 1, 45, 0, 0, time.UTC)
+	end := time.Date(2026, 8, 20, 4, 14, 59, 999000000, time.UTC)
 
-	fragments := splitResultCacheFragments(start, end)
+	fragments := splitResultCacheFragments(start.UnixMilli(), end.UnixMilli(), []time.Duration{2 * time.Hour, 15 * time.Minute})
 	require.Len(t, fragments, 3)
-	require.False(t, fragments[0].full)
-	require.True(t, fragments[1].full)
-	require.False(t, fragments[2].full)
-	require.Equal(t, time.Date(2026, 8, 20, 23, 59, 59, 999000000, time.UTC).UnixMilli(), fragments[0].end)
-	require.Equal(t, time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC).UnixMilli(), fragments[1].start)
-	require.Equal(t, time.Date(2026, 8, 21, 23, 59, 59, 999000000, time.UTC).UnixMilli(), fragments[1].end)
+	require.Equal(t, 15*time.Minute, fragments[0].duration)
+	require.Equal(t, 2*time.Hour, fragments[1].duration)
+	require.Equal(t, 15*time.Minute, fragments[2].duration)
+	require.Equal(t, start.UnixMilli(), fragments[0].start)
+	require.Equal(t, time.Date(2026, 8, 20, 2, 0, 0, 0, time.UTC).UnixMilli(), fragments[1].start)
+	require.Equal(t, end.UnixMilli(), fragments[2].end)
+
+	unaligned := splitResultCacheFragments(start.Add(2*time.Minute).UnixMilli(), end.Add(-2*time.Minute).UnixMilli(), []time.Duration{2 * time.Hour, 15 * time.Minute})
+	require.Len(t, unaligned, 3)
+	require.Zero(t, unaligned[0].duration)
+	require.Equal(t, 2*time.Hour, unaligned[1].duration)
+	require.Zero(t, unaligned[2].duration)
+
+	beforeEpoch := splitResultCacheFragments(-time.Millisecond.Milliseconds(), (15*time.Minute - time.Millisecond).Milliseconds(), []time.Duration{15 * time.Minute})
+	require.Len(t, beforeEpoch, 2)
+	require.Equal(t, int64(-1), beforeEpoch[0].start)
+	require.Equal(t, int64(-1), beforeEpoch[0].end)
+	require.Zero(t, beforeEpoch[0].duration)
+	require.Equal(t, int64(0), beforeEpoch[1].start)
+	require.Equal(t, 15*time.Minute, beforeEpoch[1].duration)
 }
 
-func TestStableResultCacheDay(t *testing.T) {
-	end := time.Date(2026, 8, 20, 23, 59, 59, 999000000, time.UTC).UnixMilli()
-	boundary := time.Date(2026, 8, 21, 2, 0, 0, 0, time.UTC)
-	require.False(t, stableResultCacheDay(end, boundary.Add(-time.Nanosecond), time.Hour))
-	require.True(t, stableResultCacheDay(end, boundary, time.Hour))
-	require.False(t, stableResultCacheDay(end, boundary, 0))
-}
-
-func TestResultCacheKeyIgnoresTime(t *testing.T) {
+func TestResultCacheKeyIncludesTimeAndBlocks(t *testing.T) {
 	query := &queryv1.QueryRequest{
 		StartTime:     time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC).UnixMilli(),
 		EndTime:       time.Date(2026, 8, 21, 23, 59, 59, 999000000, time.UTC).UnixMilli(),
 		LabelSelector: `{service_name="api"}`,
 		Query:         []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}},
 	}
-	key, err := resultCacheKey("tenant-a", 1, query)
+	identity := resultCacheIdentity(query, []*metastorev1.BlockMeta{{Id: "block-b"}, {Id: "block-a"}})
+	key, err := resultCacheKey("tenant-a", 1, 24*time.Hour, identity)
 	require.NoError(t, err)
+	require.Equal(t, []string{"block-a", "block-b"}, identity.BlockIds)
+	require.Contains(t, key, "result-cache/tenant-a/24h/0001-")
+
+	otherBlocksKey, err := resultCacheKey("tenant-a", 1, 24*time.Hour, resultCacheIdentity(query, []*metastorev1.BlockMeta{{Id: "block-a"}, {Id: "block-c"}}))
+	require.NoError(t, err)
+	require.NotEqual(t, key, otherBlocksKey)
+
+	otherDurationKey, err := resultCacheKey("tenant-a", 1, 2*time.Hour, identity)
+	require.NoError(t, err)
+	require.Contains(t, otherDurationKey, "result-cache/tenant-a/2h/0001-")
+	require.NotEqual(t, key, otherDurationKey)
+
+	otherDay := query.CloneVT()
+	otherDay.StartTime += 24 * 60 * 60 * 1000
+	otherDay.EndTime += 24 * 60 * 60 * 1000
+	otherDayKey, err := resultCacheKey("tenant-a", 1, 24*time.Hour, resultCacheIdentity(otherDay, []*metastorev1.BlockMeta{{Id: "block-b"}, {Id: "block-a"}}))
+	require.NoError(t, err)
+	require.NotEqual(t, key, otherDayKey)
+
 	query.StartTime += 24 * 60 * 60 * 1000
 	query.EndTime += 24 * 60 * 60 * 1000
-	otherDayKey, err := resultCacheKey("tenant-a", 1, query)
-	require.NoError(t, err)
-	require.Contains(t, key, "result-cache/tenant-a/0001-2026-08-21-")
-	require.NotEqual(t, key, otherDayKey)
-	require.Equal(t, key[len(key)-64:], otherDayKey[len(otherDayKey)-64:])
 
 	labelValues := query.CloneVT()
 	labelValues.Query[0] = &queryv1.Query{
 		QueryType:   queryv1.QueryType_QUERY_LABEL_VALUES,
 		LabelValues: &queryv1.LabelValuesQuery{LabelName: "service_name"},
 	}
-	labelValuesKey, err := resultCacheKey("tenant-a", 1, labelValues)
+	labelValuesKey, err := resultCacheKey("tenant-a", 1, 24*time.Hour, resultCacheIdentity(labelValues, nil))
 	require.NoError(t, err)
 	labelValues.Query[0].LabelValues.LabelName = "cluster"
-	otherLabelValuesKey, err := resultCacheKey("tenant-a", 1, labelValues)
+	otherLabelValuesKey, err := resultCacheKey("tenant-a", 1, 24*time.Hour, resultCacheIdentity(labelValues, nil))
 	require.NoError(t, err)
 	require.NotEqual(t, key, labelValuesKey)
 	require.NotEqual(t, labelValuesKey, otherLabelValuesKey)
@@ -101,9 +127,9 @@ func TestResultCacheKeyIgnoresTime(t *testing.T) {
 	seriesLabels.Query[0].SeriesLabels.LabelNames = []string{"cluster", "service_name"}
 	otherSeriesLabelsQuery, err := cacheQuery(seriesLabels, query.StartTime, query.EndTime)
 	require.NoError(t, err)
-	seriesLabelsKey, err := resultCacheKey("tenant-a", 1, seriesLabelsQuery)
+	seriesLabelsKey, err := resultCacheKey("tenant-a", 1, 24*time.Hour, resultCacheIdentity(seriesLabelsQuery, nil))
 	require.NoError(t, err)
-	otherSeriesLabelsKey, err := resultCacheKey("tenant-a", 1, otherSeriesLabelsQuery)
+	otherSeriesLabelsKey, err := resultCacheKey("tenant-a", 1, 24*time.Hour, resultCacheIdentity(otherSeriesLabelsQuery, nil))
 	require.NoError(t, err)
 	require.Equal(t, seriesLabelsKey, otherSeriesLabelsKey)
 }
@@ -121,8 +147,8 @@ func TestReadResultCache(t *testing.T) {
 	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
 	q := &QueryBackend{resultCacheBucket: bucket, resultCacheMetrics: newResultCacheMetrics(prometheus.NewRegistry())}
 	request := &queryv1.InvokeRequest{Query: []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}}}
-	expected := &queryv1.QueryRequest{StartTime: 1, EndTime: 2, Query: request.Query}
-	entry := &queryv1.ResultCacheEntry{Query: expected.CloneVT(), Reports: []*queryv1.Report{{
+	expected := &queryv1.ResultCacheKey{Query: &queryv1.QueryRequest{StartTime: 1, EndTime: 2, Query: request.Query}, BlockIds: []string{"block-a"}}
+	entry := &queryv1.ResultCacheEntry{Key: expected.CloneVT(), Reports: []*queryv1.Report{{
 		ReportType: queryv1.ReportType_REPORT_LABEL_NAMES,
 		LabelNames: &queryv1.LabelNamesReport{Query: &queryv1.LabelNamesQuery{}, LabelNames: []string{"cluster", "service_name"}},
 	}}}
@@ -131,16 +157,16 @@ func TestReadResultCache(t *testing.T) {
 	require.NoError(t, bucket.Upload(context.Background(), "entry", bytes.NewReader(data)))
 
 	aggregator := newAggregator(request)
-	hit, err := q.readResultCache(context.Background(), resultCacheLabelNames, "entry", expected, aggregator)
+	hit, err := q.readResultCache(context.Background(), resultCacheLabelNames, "24h", "entry", expected, aggregator)
 	require.NoError(t, err)
 	require.True(t, hit)
 	require.Equal(t, []string{"cluster", "service_name"}, aggregator.response().Reports[0].LabelNames.LabelNames)
 
-	entry.Query.EndTime = 3
+	entry.Key.BlockIds[0] = "block-b"
 	data, err = proto.Marshal(entry)
 	require.NoError(t, err)
 	require.NoError(t, bucket.Upload(context.Background(), "collision", bytes.NewReader(data)))
-	hit, err = q.readResultCache(context.Background(), resultCacheLabelNames, "collision", expected, newAggregator(request))
+	hit, err = q.readResultCache(context.Background(), resultCacheLabelNames, "24h", "collision", expected, newAggregator(request))
 	require.Error(t, err)
 	require.False(t, hit)
 }
@@ -149,7 +175,7 @@ func TestCoordinateResultCacheHitDoesNotExecutePlan(t *testing.T) {
 	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
 	q := &QueryBackend{
 		resultCacheBucket:    bucket,
-		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7, window: time.Hour},
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7},
 		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
 		now:                  func() time.Time { return time.Date(2026, 8, 23, 3, 0, 0, 0, time.UTC) },
 	}
@@ -164,9 +190,10 @@ func TestCoordinateResultCacheHitDoesNotExecutePlan(t *testing.T) {
 	}
 	query, err := cacheQuery(req, start, end)
 	require.NoError(t, err)
-	key, err := resultCacheKey("tenant-a", 7, query)
+	identity := resultCacheIdentity(query, nil)
+	key, err := resultCacheKey("tenant-a", 7, 24*time.Hour, identity)
 	require.NoError(t, err)
-	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Query: query, Reports: []*queryv1.Report{{
+	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Key: identity, Reports: []*queryv1.Report{{
 		ReportType: queryv1.ReportType_REPORT_LABEL_NAMES,
 		LabelNames: &queryv1.LabelNamesReport{Query: &queryv1.LabelNamesQuery{}, LabelNames: []string{"cluster"}},
 	}}})
@@ -177,14 +204,14 @@ func TestCoordinateResultCacheHitDoesNotExecutePlan(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"cluster"}, resp.Reports[0].LabelNames.LabelNames)
 	require.Zero(t, resp.Diagnostics.ExecutionNode.Stats.BytesFetched)
-	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelNames, "hit")))
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelNames, "24h", "hit")))
 }
 
 func TestCoordinateResultCacheLabelValuesHitDoesNotExecutePlan(t *testing.T) {
 	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
 	q := &QueryBackend{
 		resultCacheBucket:    bucket,
-		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7, window: time.Hour},
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7},
 		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
 		now:                  func() time.Time { return time.Date(2026, 8, 23, 3, 0, 0, 0, time.UTC) },
 	}
@@ -202,9 +229,10 @@ func TestCoordinateResultCacheLabelValuesHitDoesNotExecutePlan(t *testing.T) {
 	}
 	query, err := cacheQuery(req, start, end)
 	require.NoError(t, err)
-	key, err := resultCacheKey("tenant-a", 7, query)
+	identity := resultCacheIdentity(query, nil)
+	key, err := resultCacheKey("tenant-a", 7, 24*time.Hour, identity)
 	require.NoError(t, err)
-	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Query: query, Reports: []*queryv1.Report{{
+	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Key: identity, Reports: []*queryv1.Report{{
 		ReportType: queryv1.ReportType_REPORT_LABEL_VALUES,
 		LabelValues: &queryv1.LabelValuesReport{
 			Query:       &queryv1.LabelValuesQuery{LabelName: "service_name"},
@@ -218,14 +246,14 @@ func TestCoordinateResultCacheLabelValuesHitDoesNotExecutePlan(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"api", "worker"}, resp.Reports[0].LabelValues.LabelValues)
 	require.Zero(t, resp.Diagnostics.ExecutionNode.Stats.BytesFetched)
-	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelValues, "hit")))
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelValues, "24h", "hit")))
 }
 
 func TestCoordinateResultCacheSeriesLabelsHitDoesNotExecutePlan(t *testing.T) {
 	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
 	q := &QueryBackend{
 		resultCacheBucket:    bucket,
-		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7, window: time.Hour},
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 7},
 		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
 		now:                  func() time.Time { return time.Date(2026, 8, 23, 3, 0, 0, 0, time.UTC) },
 	}
@@ -243,9 +271,10 @@ func TestCoordinateResultCacheSeriesLabelsHitDoesNotExecutePlan(t *testing.T) {
 	}
 	query, err := cacheQuery(req, start, end)
 	require.NoError(t, err)
-	key, err := resultCacheKey("tenant-a", 7, query)
+	identity := resultCacheIdentity(query, nil)
+	key, err := resultCacheKey("tenant-a", 7, 24*time.Hour, identity)
 	require.NoError(t, err)
-	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Query: query, Reports: []*queryv1.Report{{
+	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Key: identity, Reports: []*queryv1.Report{{
 		ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
 		SeriesLabels: &queryv1.SeriesLabelsReport{
 			Query: query.Query[0].SeriesLabels,
@@ -262,7 +291,107 @@ func TestCoordinateResultCacheSeriesLabelsHitDoesNotExecutePlan(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Reports[0].SeriesLabels.SeriesLabels, 1)
 	require.Zero(t, resp.Diagnostics.ExecutionNode.Stats.BytesFetched)
-	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheSeriesLabels, "hit")))
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheSeriesLabels, "24h", "hit")))
+}
+
+func TestCoordinateResultCacheDoesNotCacheSmallestRecentFragment(t *testing.T) {
+	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
+	start := time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC)
+	end := start.Add(30*time.Minute - time.Millisecond)
+	blockReader := queryHandlerFunc(func(_ context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+		return &queryv1.InvokeResponse{
+			Reports: []*queryv1.Report{{
+				ReportType: queryv1.ReportType_REPORT_LABEL_NAMES,
+				LabelNames: &queryv1.LabelNamesReport{Query: req.Query[0].LabelNames.CloneVT(), LabelNames: []string{"service_name"}},
+			}},
+			Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{Stats: &queryv1.ExecutionStats{}}},
+		}, nil
+	})
+	q := &QueryBackend{
+		blockReader:          blockReader,
+		resultCacheBucket:    bucket,
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1, durations: []time.Duration{15 * time.Minute}},
+		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
+		now:                  func() time.Time { return end.Add(time.Millisecond) },
+	}
+	req := &queryv1.InvokeRequest{
+		Tenant:        []string{"tenant-a"},
+		StartTime:     start.UnixMilli(),
+		EndTime:       end.UnixMilli(),
+		LabelSelector: "{}",
+		Query:         []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}},
+		QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Blocks: []*metastorev1.BlockMeta{{
+			Id: "block", MinTime: start.UnixMilli(), MaxTime: end.UnixMilli(),
+			Datasets: []*metastorev1.Dataset{{MinTime: start.UnixMilli(), MaxTime: end.UnixMilli()}},
+		}}}},
+	}
+
+	resp, err := q.Invoke(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, []string{"service_name"}, resp.Reports[0].LabelNames.LabelNames)
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelNames, "15m", "miss")))
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.writes.WithLabelValues(resultCacheLabelNames, "15m", "dropped")))
+}
+
+func TestCoordinateResultCacheBlockSetInvalidatesEntry(t *testing.T) {
+	bucket := phlareobjstore.NewBucket(thanobjstore.NewInMemBucket())
+	start := time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC)
+	end := start.Add(15*time.Minute - time.Millisecond)
+	block := func(id string) *metastorev1.BlockMeta {
+		return &metastorev1.BlockMeta{
+			Id: id, MinTime: start.UnixMilli(), MaxTime: end.UnixMilli(),
+			Datasets: []*metastorev1.Dataset{{MinTime: start.UnixMilli(), MaxTime: end.UnixMilli()}},
+		}
+	}
+	query := &queryv1.QueryRequest{
+		StartTime: start.UnixMilli(), EndTime: end.UnixMilli(), LabelSelector: "{}",
+		Query: []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}},
+	}
+	identity := resultCacheIdentity(query, []*metastorev1.BlockMeta{block("block-a")})
+	key, err := resultCacheKey("tenant-a", 1, 15*time.Minute, identity)
+	require.NoError(t, err)
+	data, err := proto.Marshal(&queryv1.ResultCacheEntry{Key: identity, Reports: []*queryv1.Report{{
+		ReportType: queryv1.ReportType_REPORT_LABEL_NAMES,
+		LabelNames: &queryv1.LabelNamesReport{Query: &queryv1.LabelNamesQuery{}, LabelNames: []string{"cached"}},
+	}}})
+	require.NoError(t, err)
+	require.NoError(t, bucket.Upload(context.Background(), key, bytes.NewReader(data)))
+
+	calls := 0
+	q := &QueryBackend{
+		blockReader: queryHandlerFunc(func(_ context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+			calls++
+			return &queryv1.InvokeResponse{
+				Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_LABEL_NAMES,
+					LabelNames: &queryv1.LabelNamesReport{Query: req.Query[0].LabelNames.CloneVT(), LabelNames: []string{"fresh"}},
+				}},
+				Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{Stats: &queryv1.ExecutionStats{}}},
+			}, nil
+		}),
+		resultCacheBucket:    bucket,
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1, durations: []time.Duration{15 * time.Minute}},
+		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
+		now:                  func() time.Time { return end.Add(30 * time.Minute) },
+	}
+	req := &queryv1.InvokeRequest{
+		Tenant: []string{"tenant-a"}, StartTime: start.UnixMilli(), EndTime: end.UnixMilli(), LabelSelector: "{}",
+		Query:     query.Query,
+		QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Blocks: []*metastorev1.BlockMeta{block("block-a")}}},
+	}
+
+	resp, err := q.Invoke(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, []string{"cached"}, resp.Reports[0].LabelNames.LabelNames)
+	require.Zero(t, calls)
+
+	req.QueryPlan.Root.Blocks = append(req.QueryPlan.Root.Blocks, block("block-b"))
+	resp, err = q.Invoke(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, []string{"fresh"}, resp.Reports[0].LabelNames.LabelNames)
+	require.Equal(t, 1, calls)
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelNames, "15m", "hit")))
+	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheLabelNames, "15m", "miss")))
 }
 
 func TestCoordinateResultCacheLimitsConcurrentColdFragments(t *testing.T) {
@@ -309,7 +438,7 @@ func TestCoordinateResultCacheLimitsConcurrentColdFragments(t *testing.T) {
 	q := &QueryBackend{
 		blockReader:          blockReader,
 		resultCacheBucket:    phlareobjstore.NewBucket(thanobjstore.NewInMemBucket()),
-		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1, window: time.Hour},
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1, durations: []time.Duration{24 * time.Hour}},
 		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
 		now:                  func() time.Time { return end.Add(48 * time.Hour) },
 	}
@@ -357,7 +486,7 @@ func TestCoordinateResultCacheLimitsConcurrentColdFragments(t *testing.T) {
 func TestResultCacheEligibility(t *testing.T) {
 	q := &QueryBackend{
 		resultCacheBucket:    phlareobjstore.NewBucket(thanobjstore.NewInMemBucket()),
-		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1, window: time.Hour},
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1},
 	}
 	req := &queryv1.InvokeRequest{
 		Tenant: []string{"tenant-a"},
