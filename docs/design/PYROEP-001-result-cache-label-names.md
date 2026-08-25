@@ -93,6 +93,7 @@ overrides:
     result_cache_enabled: true
     result_cache_generation: 1
     result_cache_fragment_durations: [24h, 2h, 15m]
+    result_cache_metadata_service_name_min_query_duration: 7d
 ```
 
 Defaults:
@@ -101,6 +102,7 @@ Defaults:
 result_cache_enabled: false
 result_cache_generation: 1
 result_cache_fragment_durations: [24h, 2h, 15m]
+result_cache_metadata_service_name_min_query_duration: 7d
 ```
 
 Expose these through:

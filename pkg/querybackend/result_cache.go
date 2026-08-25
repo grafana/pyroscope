@@ -37,6 +37,7 @@ type ResultCacheOverrides interface {
 	ResultCacheEnabled(tenantID string) bool
 	ResultCacheGeneration(tenantID string) uint32
 	ResultCacheFragmentDurations(tenantID string) []time.Duration
+	ResultCacheMetadataServiceNameMinQueryDuration(tenantID string) time.Duration
 }
 
 type resultCacheMetrics struct {
@@ -328,7 +329,24 @@ func (q *QueryBackend) resultCacheEligible(req *queryv1.InvokeRequest) bool {
 	return q.resultCacheBucket != nil && q.resultCacheOverrides != nil && len(req.Tenant) == 1 &&
 		validQuery &&
 		!req.GetOptions().GetCollectDiagnostics() && q.resultCacheOverrides.ResultCacheEnabled(req.Tenant[0]) &&
-		len(q.resultCacheOverrides.ResultCacheFragmentDurations(req.Tenant[0])) > 0
+		len(q.resultCacheOverrides.ResultCacheFragmentDurations(req.Tenant[0])) > 0 &&
+		!resultCacheMetadataServiceNameShortRange(req, q.resultCacheOverrides.ResultCacheMetadataServiceNameMinQueryDuration(req.Tenant[0]))
+}
+
+func resultCacheMetadataServiceNameShortRange(req *queryv1.InvokeRequest, minQueryDuration time.Duration) bool {
+	if minQueryDuration <= 0 || req.EndTime-req.StartTime >= minQueryDuration.Milliseconds() {
+		return false
+	}
+	matchers, err := phlaremodel.ParseMetricSelector(req.LabelSelector)
+	if err != nil {
+		return false
+	}
+	for _, matcher := range matchers {
+		if matcher.Name == "service_name" {
+			return true
+		}
+	}
+	return false
 }
 
 // readResultCache returns a cache hit. Its error is non-nil only when a read's

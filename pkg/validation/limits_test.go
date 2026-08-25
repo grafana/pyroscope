@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/json"
+	"flag"
 	"reflect"
 	"testing"
 	"time"
@@ -76,6 +77,15 @@ func TestResultCacheFragmentDurations(t *testing.T) {
 		require.NoError(t, yaml.Unmarshal([]byte(input), &limits))
 		require.Equal(t, DurationList{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
 	}
+}
+
+func TestResultCacheMetadataServiceNameMinQueryDuration(t *testing.T) {
+	limits := Limits{}
+	limits.RegisterFlags(flag.NewFlagSet("test", flag.ContinueOnError))
+	require.Equal(t, model.Duration(7*24*time.Hour), limits.ResultCacheMetadataServiceNameMinQueryDuration)
+
+	limits.ResultCacheMetadataServiceNameMinQueryDuration = model.Duration(-time.Hour)
+	require.ErrorContains(t, limits.Validate(), "must not be negative")
 }
 
 func TestLimitsYamlMatchJson(t *testing.T) {
