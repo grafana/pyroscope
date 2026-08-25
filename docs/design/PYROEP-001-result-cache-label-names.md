@@ -171,8 +171,8 @@ Dataset filtering is required because `LabelNames` does not independently
 timestamp-filter series within a selected dataset.
 
 Fragments with no matching blocks return empty reports and may be cached when
-otherwise eligible. Fragment execution uses bounded concurrency to avoid
-unbounded fan-out for long permitted query ranges.
+otherwise eligible. Cache lookups and fragment execution use a fixed maximum
+concurrency of 64 to avoid unbounded fan-out for long permitted query ranges.
 
 ## Cache key and format
 
