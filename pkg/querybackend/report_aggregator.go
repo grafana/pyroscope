@@ -94,12 +94,9 @@ func newAggregator(request *queryv1.InvokeRequest) *reportAggregator {
 	}
 }
 
-func (ra *reportAggregator) aggregateResponse(resp *queryv1.InvokeResponse, err error) error {
-	if err != nil {
-		return err
-	}
+func (ra *reportAggregator) aggregateResponse(resp *queryv1.InvokeResponse) error {
 	for _, r := range resp.Reports {
-		if err = ra.aggregateReport(r); err != nil {
+		if err := ra.aggregateReport(r); err != nil {
 			return err
 		}
 	}

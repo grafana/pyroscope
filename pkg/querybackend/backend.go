@@ -237,7 +237,7 @@ func (q *QueryBackend) merge(
 				childExecNodes[idx] = resp.Diagnostics.ExecutionNode
 				mu.Unlock()
 			}
-			return m.aggregateResponse(resp, nil)
+			return m.aggregateResponse(resp)
 		}))
 	}
 	if err := g.Wait(); err != nil {

@@ -303,7 +303,7 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 	var bytesFetched uint64
 	for _, resp := range fragmentResponses {
 		bytesFetched += resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
-		if err := aggregator.aggregateResponse(resp, nil); err != nil {
+		if err := aggregator.aggregateResponse(resp); err != nil {
 			return nil, err
 		}
 	}
@@ -369,7 +369,7 @@ func (q *QueryBackend) readResultCache(ctx context.Context, queryType, duration,
 		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "collision").Inc()
 		return false, fmt.Errorf("result cache collision")
 	}
-	if err := aggregator.aggregateResponse(&queryv1.InvokeResponse{Reports: entry.Reports}, nil); err != nil {
+	if err := aggregator.aggregateResponse(&queryv1.InvokeResponse{Reports: entry.Reports}); err != nil {
 		span.SetTag("outcome", "error")
 		return false, err
 	}
