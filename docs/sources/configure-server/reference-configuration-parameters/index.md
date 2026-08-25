@@ -3519,6 +3519,11 @@ distributor_usage_groups:
 # CLI flag: -result-cache.generation
 [result_cache_generation: <int> | default = 1]
 
+# Comma-separated list of aligned result-cache fragment durations. The smallest
+# duration is also the minimum cache age.
+# CLI flag: -result-cache.fragment-durations
+[result_cache_fragment_durations: <list of ints> | default = 24h,2h,15m]
+
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]

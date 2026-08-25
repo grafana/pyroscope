@@ -231,12 +231,34 @@ func (m *InvokeResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *ResultCacheKey) CloneVT() *ResultCacheKey {
+	if m == nil {
+		return (*ResultCacheKey)(nil)
+	}
+	r := new(ResultCacheKey)
+	r.Query = m.Query.CloneVT()
+	if rhs := m.BlockIds; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.BlockIds = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ResultCacheKey) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *ResultCacheEntry) CloneVT() *ResultCacheEntry {
 	if m == nil {
 		return (*ResultCacheEntry)(nil)
 	}
 	r := new(ResultCacheEntry)
-	r.Query = m.Query.CloneVT()
+	r.Key = m.Key.CloneVT()
 	if rhs := m.Reports; rhs != nil {
 		tmpContainer := make([]*Report, len(rhs))
 		for k, v := range rhs {
@@ -1354,13 +1376,41 @@ func (this *InvokeResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *ResultCacheEntry) EqualVT(that *ResultCacheEntry) bool {
+func (this *ResultCacheKey) EqualVT(that *ResultCacheKey) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
 		return false
 	}
 	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
+	if len(this.BlockIds) != len(that.BlockIds) {
+		return false
+	}
+	for i, vx := range this.BlockIds {
+		vy := that.BlockIds[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ResultCacheKey) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ResultCacheKey)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ResultCacheEntry) EqualVT(that *ResultCacheEntry) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Key.EqualVT(that.Key) {
 		return false
 	}
 	if len(this.Reports) != len(that.Reports) {
@@ -3256,6 +3306,58 @@ func (m *InvokeResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *ResultCacheKey) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ResultCacheKey) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ResultCacheKey) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.BlockIds) > 0 {
+		for iNdEx := len(m.BlockIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BlockIds[iNdEx])
+			copy(dAtA[i:], m.BlockIds[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.BlockIds[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *ResultCacheEntry) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -3298,8 +3400,8 @@ func (m *ResultCacheEntry) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			dAtA[i] = 0x12
 		}
 	}
-	if m.Query != nil {
-		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+	if m.Key != nil {
+		size, err := m.Key.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
 			return 0, err
 		}
@@ -5538,7 +5640,7 @@ func (m *InvokeResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *ResultCacheEntry) SizeVT() (n int) {
+func (m *ResultCacheKey) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5546,6 +5648,26 @@ func (m *ResultCacheEntry) SizeVT() (n int) {
 	_ = l
 	if m.Query != nil {
 		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.BlockIds) > 0 {
+		for _, s := range m.BlockIds {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ResultCacheEntry) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Key != nil {
+		l = m.Key.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	if len(m.Reports) > 0 {
@@ -7688,7 +7810,7 @@ func (m *InvokeResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ResultCacheEntry) UnmarshalVT(dAtA []byte) error {
+func (m *ResultCacheKey) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7711,10 +7833,10 @@ func (m *ResultCacheEntry) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ResultCacheEntry: wiretype end group for non-group")
+			return fmt.Errorf("proto: ResultCacheKey: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ResultCacheEntry: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ResultCacheKey: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -7750,6 +7872,125 @@ func (m *ResultCacheEntry) UnmarshalVT(dAtA []byte) error {
 				m.Query = &QueryRequest{}
 			}
 			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockIds", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockIds = append(m.BlockIds, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ResultCacheEntry) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ResultCacheEntry: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ResultCacheEntry: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Key == nil {
+				m.Key = &ResultCacheKey{}
+			}
+			if err := m.Key.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

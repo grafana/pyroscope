@@ -249,6 +249,8 @@ Usage of ./pyroscope:
     	Enable query result caching. This sets the default for tenant overrides.
   -result-cache.filesystem.dir string
     	Local filesystem storage directory. (default "./data/v2/shared")
+  -result-cache.fragment-durations value
+    	Comma-separated list of aligned result-cache fragment durations. The smallest duration is also the minimum cache age. (default 24h,2h,15m)
   -result-cache.gcs.bucket-name string
     	GCS bucket name
   -result-cache.gcs.service-account string

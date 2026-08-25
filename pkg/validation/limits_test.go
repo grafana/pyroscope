@@ -34,6 +34,50 @@ func TestLimitsTagsYamlMatchJson(t *testing.T) {
 	assert.Empty(t, mismatch, "expected no mismatched JSON and YAML tags")
 }
 
+func TestResultCacheFragmentDurations(t *testing.T) {
+	tests := []struct {
+		name    string
+		values  DurationList
+		wantErr string
+	}{
+		{name: "valid", values: DurationList{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}},
+		{name: "valid unordered", values: DurationList{model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour)}},
+		{name: "empty", wantErr: "must not be empty"},
+		{name: "duplicate", values: DurationList{model.Duration(time.Hour), model.Duration(time.Hour)}, wantErr: "duplicated"},
+		{name: "not divisible", values: DurationList{model.Duration(45 * time.Minute), model.Duration(30 * time.Minute)}, wantErr: "evenly divisible"},
+		{name: "sub-millisecond", values: DurationList{model.Duration(time.Microsecond)}, wantErr: "whole number of milliseconds"},
+		{name: "below minimum", values: DurationList{model.Duration(5 * time.Minute)}, wantErr: "must be at least"},
+		{name: "long duration", values: DurationList{model.Duration(7 * 24 * time.Hour), model.Duration(24 * time.Hour), model.Duration(15 * time.Minute)}},
+		{name: "not 15 minute multiple", values: DurationList{model.Duration(20 * time.Minute)}, wantErr: "must be a multiple"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateResultCacheFragmentDurations(test.values)
+			if test.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, test.wantErr)
+		})
+	}
+
+	overrides, err := NewOverrides(Limits{ResultCacheFragmentDurations: DurationList{
+		model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour),
+	}}, nil)
+	require.NoError(t, err)
+	require.Equal(t, []time.Duration{24 * time.Hour, 2 * time.Hour, 15 * time.Minute}, overrides.ResultCacheFragmentDurations("tenant-a"))
+
+	for _, input := range []string{
+		"result_cache_fragment_durations: [24h, 2h, 15m]",
+		"result_cache_fragment_durations: 24h,2h,15m",
+	} {
+		var limits Limits
+		require.NoError(t, yaml.Unmarshal([]byte(input), &limits))
+		require.Equal(t, DurationList{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
+	}
+}
+
 func TestLimitsYamlMatchJson(t *testing.T) {
 	inputYAML := `
 ingestion_rate_strategy: "some-strategy"

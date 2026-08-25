@@ -1,30 +1,29 @@
-# PYROEP-001: LabelNames result cache
+# PYROEP-001: Metadata result cache
 
 Status: Draft
 
 ## Summary
 
-Add a full-result cache for V2 `LabelNames` queries. The first query-backend
-receiving a request coordinates caching: it partitions the request into UTC
-days, reads stable daily results from a dedicated object-storage bucket,
-executes cache misses through the existing query-backend DAG, merges reports,
-and asynchronously schedules cache writes.
+Add a full-result cache for V2 `LabelNames`, `LabelValues`, and `Series` queries.
+The first query-backend receiving a request coordinates caching: it partitions
+the request into aligned, per-tenant duration tiers, reads matching results from
+a dedicated object-storage bucket, executes cache misses through the existing
+query-backend DAG, merges reports, and asynchronously schedules cache writes.
 
 The query frontend continues to validate the request, query the metastore, and
 build the full-range plan. It does not read or write cache entries, merge
 cached reports, or publish cache metrics.
 
-Caching is opt-in per tenant. A completed day is cacheable only after twice the
-tenant's ingestion window has elapsed. The initial implementation supports
-`LabelNames`; its components are deliberately query-type-neutral so they can
-later support `Series` and `LabelValues` without redesigning cache
-coordination, storage, tenant controls, or observability.
+Caching is opt-in per tenant. Cache identities include the exact fragment query
+and sorted block IDs, so late ingestion, compaction, and retention naturally
+select different entries. The smallest configured fragment duration is also
+the minimum cache age.
 
 ## Motivation
 
-`LabelNames` queries repeatedly scan TSDB sections from object storage even
-when querying historical data that can no longer change. Caching complete,
-stable daily results reduces object-storage reads and query-backend work.
+Metadata queries repeatedly scan TSDB sections from object storage. Caching
+results for an exact query and block set reduces object-storage reads and
+query-backend work while allowing recent data to participate safely.
 
 The cache must preserve current query semantics, fail open when cache storage
 is unavailable, and keep its storage and lifecycle independent from profile
@@ -32,21 +31,19 @@ blocks.
 
 ## Goals
 
-- Cache complete `LabelNames` reports for full UTC days.
+- Cache complete metadata-query reports for aligned duration tiers.
 - Coordinate cache lookup, execution, merging, and writes in the first
   query-backend.
 - Store cache entries in a dedicated object-storage bucket.
 - Enable caching per tenant and invalidate entries through tenant generations.
-- Cache only days that are stable with respect to late ingestion.
+- Invalidate entries naturally when the fragment's block set changes.
 - Keep cache writes outside the query result delivery path.
 - Provide global, low-cardinality cache metrics.
-- Provide an extensible design for future `Series` and `LabelValues` result
-  caches.
+- Keep the most recent smallest-duration window uncached.
 
 ## Non-goals
 
-- Caching `Series` or `LabelValues` in the initial implementation.
-- Caching partial UTC days, federated requests, or diagnostic requests.
+- Caching federated requests or diagnostic requests.
 - Distributed locking or cache-stampede prevention.
 - Application-managed expiration or immediate deletion of old generations.
 - Returning diagnostics from cached execution.
@@ -64,8 +61,8 @@ The first query-backend receiving an `InvokeRequest` becomes the cache
 coordinator:
 
 1. Determine whether the request is eligible for result caching.
-2. Split the request into UTC-day fragments.
-3. Look up eligible complete-day fragments in the result-cache bucket.
+2. Split the request into aligned tiered fragments.
+3. Look up eligible fragments in the result-cache bucket.
 4. Create fragment-specific plans for misses and uncached fragments.
 5. Execute those fragments through the normal query-backend DAG.
 6. Merge cached and executed reports.
@@ -95,6 +92,7 @@ overrides:
   tenant-a:
     result_cache_enabled: true
     result_cache_generation: 1
+    result_cache_fragment_durations: [24h, 2h, 15m]
 ```
 
 Defaults:
@@ -102,6 +100,7 @@ Defaults:
 ```yaml
 result_cache_enabled: false
 result_cache_generation: 1
+result_cache_fragment_durations: [24h, 2h, 15m]
 ```
 
 Expose these through:
@@ -109,11 +108,14 @@ Expose these through:
 ```go
 ResultCacheEnabled(tenantID string) bool
 ResultCacheGeneration(tenantID string) uint32
+ResultCacheFragmentDurations(tenantID string) []time.Duration
 ```
 
 The enable flag controls participation. Generation is only an invalidation
-namespace and must not double as an enable switch. The overrides are generic,
-but only `LabelNames` uses them initially.
+namespace and must not double as an enable switch. Fragment durations are
+positive, unique, evenly divisible tiers. Durations must be multiples of 15
+minutes, and at most eight tiers may be configured per tenant. The minimum
+duration and tier-count limit bound request fan-out.
 
 ## Dedicated cache bucket
 
@@ -131,30 +133,18 @@ executes normally if the bucket is unconfigured or unavailable.
 The backend requires only read and create-or-replace permissions. Lifecycle
 management owns deletion.
 
-## UTC-day partitioning and stability
+## Tiered partitioning and recent data
 
-Split the sanitized time range at UTC midnight, with inclusive millisecond
-boundaries. A complete day is:
+Split the sanitized time range into epoch-aligned, inclusive-millisecond
+fragments. At each boundary, choose the largest configured duration that fits,
+then fall back through smaller durations. With the default tiers, this produces
+`24h`, `2h`, and `15m` fragments. Unaligned edge remainders execute normally
+and are not cached.
 
-```text
-start_time = YYYY-MM-DDT00:00:00.000Z
-end_time   = YYYY-MM-DDT23:59:59.999Z
-```
-
-Partial first and last days execute normally and are never cached.
-
-For a tenant with ingestion window `RejectOlderThan`, a complete day becomes
-eligible when:
-
-```text
-now >= following UTC midnight + 2 * RejectOlderThan(tenantID)
-```
-
-If `RejectOlderThan` is zero, late ingestion is unbounded and the cache is
-bypassed. Both lookup and write use this same eligibility rule.
-
-For example, with a one-hour ingestion window, the day ending on
-`2026-08-20T23:59:59.999Z` becomes cacheable at `2026-08-21T02:00:00Z`.
+The smallest configured duration is also the minimum cache age. With the
+default `15m` tier, fragments ending within the latest 15 minutes execute
+normally without a cache lookup or write. This replaces the ingestion-window
+stability delay.
 
 ## Fragment plans
 
@@ -165,7 +155,8 @@ coordinator creates fragment plans without another metastore request:
 2. Clone blocks overlapping the fragment.
 3. Remove datasets that do not overlap the fragment.
 4. Remove blocks with no remaining datasets.
-5. Build the fragment plan using `queryplan.Build`.
+5. Sort blocks by ID.
+6. Build the fragment plan using `queryplan.Build`.
 
 Dataset filtering is required because `LabelNames` does not independently
 timestamp-filter series within a selected dataset.
@@ -173,38 +164,42 @@ timestamp-filter series within a selected dataset.
 Fragments with no matching blocks return empty reports and may be cached when
 otherwise eligible. Cache lookups and fragment execution use a fixed maximum
 concurrency of 64 to avoid unbounded fan-out for long permitted query ranges.
+Block IDs identify immutable block contents and execution-relevant metadata.
 
 ## Cache key and format
 
 Cache objects use this key layout:
 
 ```text
-result-cache/$tenant-id/%04d-YYYY-MM-DD-$cache-hash
+result-cache/$tenant-id/$fragment-duration/%04d-$cache-hash
 ```
 
 For example:
 
 ```text
-result-cache/tenant-a/0001-2026-08-21-d5f3...c02a
+result-cache/tenant-a/24h/0001-d5f3...c02a
 ```
 
 `$cache-hash` is the full lowercase, 64-character SHA-256 digest of a
-deterministic protobuf serialization of the `QueryRequest` with `start_time`
-and `end_time` set to zero. It includes the selector, query type, and all
-query-type-specific parameters. Tenant, generation, and UTC day are excluded
-because they already occur in the key path or filename.
+deterministic protobuf serialization of `ResultCacheKey`. It includes the exact
+fragment boundaries, selector, query parameters, and sorted block IDs. Tenant,
+generation, and fragment duration are excluded because they occur in the path.
 
 Add this protobuf message to `api/query/v1/query.proto`:
 
 ```protobuf
-message ResultCacheEntry {
+message ResultCacheKey {
   QueryRequest query = 1;
+  repeated string block_ids = 2;
+}
+
+message ResultCacheEntry {
+  ResultCacheKey key = 1;
   repeated Report reports = 2;
 }
 ```
 
-The stored `QueryRequest` uses the actual complete-day start and end times,
-rather than zero. Reports are stored before public client-capability filtering;
+Reports are stored before public client-capability filtering;
 the query frontend continues to apply UTF-8 label-name filtering after the
 merged result is returned.
 
@@ -212,15 +207,15 @@ Empty report lists are valid cache entries.
 
 ## Lookup, validation, and collisions
 
-An entry is served only when it unmarshals successfully and its stored request
-exactly matches the expected complete-day request, including day boundaries.
+An entry is served only when it unmarshals successfully and its stored cache
+identity exactly matches the expected query and sorted block list.
 
 - Object-not-found is a normal cache miss.
 - A read failure is an `error` outcome. Execute normally and do not enqueue a
   write because the current object state is unknown.
 - A corrupt protobuf is an `error` outcome. Execute normally; a successful
   result may replace the corrupt object.
-- A decoded entry whose request does not match is a `collision` outcome.
+- A decoded entry whose identity does not match is a `collision` outcome.
   Execute normally and do not overwrite that key, preventing collision
   ping-pong.
 
@@ -233,8 +228,8 @@ Cache persistence must not delay or alter query result delivery. After a
 successful eligible cache miss, the coordinator non-blockingly enqueues an
 immutable write job and returns the query result independently.
 
-A job contains the object key, complete daily request, reports, query type,
-and whether replacing a corrupt entry is allowed. A query-backend-owned worker
+A job contains the object key, cache identity, fragment duration, reports, and
+query type. A query-backend-owned worker
 pool then:
 
 1. Builds and marshals `ResultCacheEntry`.
@@ -274,8 +269,8 @@ key format intentionally has a single tenant path component.
 ## Failure handling
 
 The cache is fail-open. The backend executes normally for disabled tenants,
-unsupported query shapes, federated requests, diagnostic requests, unbounded
-ingestion windows, partial or recent days, cache misses, and cache failures.
+unsupported query shapes, federated requests, diagnostic requests, unaligned
+or recent fragments, cache misses, and cache failures.
 
 Only errors from normal query execution are returned to callers. Cache lookup,
 queueing, marshaling, and upload errors cannot fail a query.
@@ -287,6 +282,7 @@ Emit global, low-cardinality query-backend counters:
 ```text
 pyroscope_query_backend_result_cache_lookups_total{
   query_type="label_names",
+  fragment_duration="24h",
   outcome="hit|miss|error|collision"
 }
 ```
@@ -294,13 +290,15 @@ pyroscope_query_backend_result_cache_lookups_total{
 ```text
 pyroscope_query_backend_result_cache_writes_total{
   query_type="label_names",
+  fragment_duration="24h",
   outcome="success|error|dropped"
 }
 ```
 
-Metrics count eligible complete-day fragments. Bypassed fragments do not count
-as misses. Do not add tenant IDs, cache keys, dates, generations, or selectors
-as labels.
+Metrics count eligible aligned fragments. Bypassed fragments do not count as
+misses. Fragment duration values are canonicalized from the validated tier
+list. Do not add tenant IDs, cache keys, dates, generations, or selectors as
+labels.
 
 Logs may include the operation, query type, UTC date, generation, and error
 classification. They must not include selectors, report contents, or sensitive
@@ -331,18 +329,18 @@ expire through the bucket lifecycle policy.
 
 Unit tests must cover:
 
-- UTC splitting and inclusive millisecond boundaries.
-- Partial-day detection and stability boundaries.
-- Zero ingestion-window, diagnostic, and federated bypasses.
-- Tenant enablement and generation selection.
+- Tiered splitting, alignment, and inclusive millisecond boundaries.
+- Unaligned edge and minimum-cache-age handling.
+- Diagnostic and federated bypasses.
+- Tenant enablement, generation, and duration-tier selection.
 - Plan flattening and block/dataset overlap filtering.
 - Exact key formatting, generation padding, and deterministic hashing.
-- Hash independence from time fields and sensitivity to all other parameters.
-- Protobuf round trips with real daily boundaries.
+- Hash sensitivity to exact time fields, duration, and block-set changes.
+- Protobuf round trips with real fragment boundaries and sorted block IDs.
 - Hits, misses, corrupt entries, read errors, and collisions.
 - Empty result caching and cached/executed report merging.
 - Non-blocking queueing, dropped writes, worker upload failures, and
   best-effort shutdown draining.
-- Metric outcomes and the absence of tenant labels.
+- Metric outcomes, fragment-duration labels, and the absence of tenant labels.
 
 Integration tests must verify that hits avoid downstream block reads and return

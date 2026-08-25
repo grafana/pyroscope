@@ -488,6 +488,10 @@ limits:
   # overrides.
   # result_cache_generation: 1
 
+  # Comma-separated list of aligned result-cache fragment durations. The
+  # smallest duration is also the minimum cache age.
+  # result_cache_fragment_durations: 24h,2h,15m
+
   # Maximum number of recording rules a tenant can create. 0 to disable.
   # max_recording_rules: 25
 
