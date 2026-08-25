@@ -1113,8 +1113,8 @@ Usage of ./pyroscope:
     	Enable query result caching. This sets the default for tenant overrides.
   -result-cache.filesystem.dir string
     	Local filesystem storage directory. (default "./data/v2/shared")
-  -result-cache.fragment-durations value
-    	Comma-separated list of aligned result-cache fragment durations. The smallest duration is also the minimum cache age. (default 24h,2h,15m)
+  -result-cache.fragment-durations comma-separated-list-of-durations
+    	Comma-separated list of aligned result-cache fragment durations. The smallest duration is also the minimum cache age. (default 1d,2h,15m)
   -result-cache.gcs.bucket-name string
     	GCS bucket name
   -result-cache.gcs.expect-continue-timeout duration
@@ -1137,6 +1137,8 @@ Usage of ./pyroscope:
     	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
   -result-cache.generation uint
     	Result-cache invalidation generation. This sets the default for tenant overrides. (default 1)
+  -result-cache.metadata-service-name-min-query-duration duration
+    	Bypass result caching for metadata queries with a service_name matcher below this query duration. 0 disables this bypass. (default 1w)
   -result-cache.prefix string
     	Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet characters, hyphens, underscores, dots and forward slashes.
   -result-cache.s3.access-key-id string

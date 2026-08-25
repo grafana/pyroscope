@@ -3522,7 +3522,7 @@ distributor_usage_groups:
 # Comma-separated list of aligned result-cache fragment durations. The smallest
 # duration is also the minimum cache age.
 # CLI flag: -result-cache.fragment-durations
-[result_cache_fragment_durations: <list of ints> | default = 24h,2h,15m]
+[result_cache_fragment_durations: <list of durations> | default = 1d,2h,15m]
 
 # Bypass result caching for metadata queries with a service_name matcher below
 # this query duration. 0 disables this bypass.
