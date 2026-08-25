@@ -3,6 +3,7 @@ package querybackend
 import (
 	"bytes"
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,6 +29,12 @@ type resultCacheOverrides struct {
 func (o resultCacheOverrides) ResultCacheEnabled(string) bool       { return o.enabled }
 func (o resultCacheOverrides) ResultCacheGeneration(string) uint32  { return o.generation }
 func (o resultCacheOverrides) RejectOlderThan(string) time.Duration { return o.window }
+
+type queryHandlerFunc func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
+
+func (f queryHandlerFunc) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+	return f(ctx, req)
+}
 
 func TestSplitResultCacheFragments(t *testing.T) {
 	start := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC).UnixMilli()
@@ -256,6 +263,95 @@ func TestCoordinateResultCacheSeriesLabelsHitDoesNotExecutePlan(t *testing.T) {
 	require.Len(t, resp.Reports[0].SeriesLabels.SeriesLabels, 1)
 	require.Zero(t, resp.Diagnostics.ExecutionNode.Stats.BytesFetched)
 	require.Equal(t, float64(1), promtest.ToFloat64(q.resultCacheMetrics.lookups.WithLabelValues(resultCacheSeriesLabels, "hit")))
+}
+
+func TestCoordinateResultCacheLimitsConcurrentColdFragments(t *testing.T) {
+	const fragments = resultCacheFragmentConcurrency + 1
+
+	started := make(chan struct{}, fragments)
+	release := make(chan struct{})
+	var mu sync.Mutex
+	inFlight := 0
+	maxInFlight := 0
+	calls := 0
+
+	blockReader := queryHandlerFunc(func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+		mu.Lock()
+		inFlight++
+		calls++
+		maxInFlight = max(maxInFlight, inFlight)
+		mu.Unlock()
+		started <- struct{}{}
+
+		select {
+		case <-release:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+
+		mu.Lock()
+		inFlight--
+		mu.Unlock()
+		return &queryv1.InvokeResponse{
+			Reports: []*queryv1.Report{{
+				ReportType: queryv1.ReportType_REPORT_LABEL_NAMES,
+				LabelNames: &queryv1.LabelNamesReport{
+					Query:      req.Query[0].LabelNames.CloneVT(),
+					LabelNames: []string{"service_name"},
+				},
+			}},
+			Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{Stats: &queryv1.ExecutionStats{}}},
+		}, nil
+	})
+
+	start := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	end := start.AddDate(0, 0, fragments).Add(-time.Millisecond)
+	q := &QueryBackend{
+		blockReader:          blockReader,
+		resultCacheBucket:    phlareobjstore.NewBucket(thanobjstore.NewInMemBucket()),
+		resultCacheOverrides: resultCacheOverrides{enabled: true, generation: 1, window: time.Hour},
+		resultCacheMetrics:   newResultCacheMetrics(prometheus.NewRegistry()),
+		now:                  func() time.Time { return end.Add(48 * time.Hour) },
+	}
+	req := &queryv1.InvokeRequest{
+		Tenant:        []string{"tenant-a"},
+		StartTime:     start.UnixMilli(),
+		EndTime:       end.UnixMilli(),
+		LabelSelector: "{}",
+		Query:         []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}},
+		QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Blocks: []*metastorev1.BlockMeta{{
+			Id: "block", MinTime: start.UnixMilli(), MaxTime: end.UnixMilli(),
+			Datasets: []*metastorev1.Dataset{{MinTime: start.UnixMilli(), MaxTime: end.UnixMilli()}},
+		}}}},
+	}
+
+	result := make(chan error, 1)
+	go func() {
+		_, err := q.Invoke(context.Background(), req)
+		result <- err
+	}()
+
+	for range resultCacheFragmentConcurrency {
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for concurrent fragment execution")
+		}
+	}
+	mu.Lock()
+	require.Equal(t, resultCacheFragmentConcurrency, maxInFlight)
+	mu.Unlock()
+	select {
+	case <-started:
+		t.Fatal("fragment execution exceeded the concurrency limit")
+	default:
+	}
+
+	close(release)
+	require.NoError(t, <-result)
+	mu.Lock()
+	require.Equal(t, fragments, calls)
+	mu.Unlock()
 }
 
 func TestResultCacheEligibility(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/dskit/tracing"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -22,12 +23,13 @@ import (
 )
 
 const (
-	resultCacheLabelNames   = "label_names"
-	resultCacheLabelValues  = "label_values"
-	resultCacheSeriesLabels = "series_labels"
-	resultCacheWorkers      = 2
-	resultCacheQueueSize    = 128
-	resultCacheWriteTimeout = 30 * time.Second
+	resultCacheLabelNames          = "label_names"
+	resultCacheLabelValues         = "label_values"
+	resultCacheSeriesLabels        = "series_labels"
+	resultCacheWorkers             = 2
+	resultCacheQueueSize           = 128
+	resultCacheWriteTimeout        = 30 * time.Second
+	resultCacheFragmentConcurrency = 64
 )
 
 type ResultCacheOverrides interface {
@@ -198,58 +200,75 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 		return q.executeWithResultCacheBypassed(ctx, req)
 	}
 	aggregator := newAggregator(req)
-	var bytesFetched uint64
 	fragments := splitResultCacheFragments(req.StartTime, req.EndTime)
 	span.SetTag("fragments", len(fragments))
-	for _, fragment := range fragments {
-		fragmentReq := req.CloneVT()
-		fragmentReq.StartTime = fragment.start
-		fragmentReq.EndTime = fragment.end
-		normalizeResultCacheQueries(fragmentReq.Query)
-		fragmentReq.QueryPlan = queryplan.Build(q.filterBlocks(req.QueryPlan.GetRoot(), fragment.start, fragment.end), 4, 20)
-		fragmentReq.Options = fragmentReq.GetOptions().CloneVT()
-		if fragmentReq.Options == nil {
-			fragmentReq.Options = &queryv1.InvokeOptions{}
-		}
-		fragmentReq.Options.BypassResultCache = true
+	fragmentResponses := make([]*queryv1.InvokeResponse, len(fragments))
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(resultCacheFragmentConcurrency)
+	for i, fragment := range fragments {
+		idx := i
+		fragment := fragment
+		g.Go(func() error {
+			fragmentReq := req.CloneVT()
+			fragmentReq.StartTime = fragment.start
+			fragmentReq.EndTime = fragment.end
+			normalizeResultCacheQueries(fragmentReq.Query)
+			fragmentReq.QueryPlan = queryplan.Build(q.filterBlocks(req.QueryPlan.GetRoot(), fragment.start, fragment.end), 4, 20)
+			fragmentReq.Options = fragmentReq.GetOptions().CloneVT()
+			if fragmentReq.Options == nil {
+				fragmentReq.Options = &queryv1.InvokeOptions{}
+			}
+			fragmentReq.Options.BypassResultCache = true
 
-		cacheable := fragment.full && stableResultCacheDay(fragment.end, q.now(), q.resultCacheOverrides.RejectOlderThan(tenant))
-		query := &queryv1.QueryRequest{
-			StartTime: fragment.start, EndTime: fragment.end, LabelSelector: selector, Query: fragmentReq.Query,
-		}
-		key := ""
-		writeAllowed := false
-		if cacheable {
-			var hit bool
+			cacheable := fragment.full && stableResultCacheDay(fragment.end, q.now(), q.resultCacheOverrides.RejectOlderThan(tenant))
+			query := &queryv1.QueryRequest{
+				StartTime: fragment.start, EndTime: fragment.end, LabelSelector: selector, Query: fragmentReq.Query,
+			}
+			key := ""
+			writeAllowed := false
+			if cacheable {
+				fragmentAggregator := newAggregator(fragmentReq)
+				var hit bool
+				var err error
+				key, err = resultCacheKey(tenant, generation, query)
+				if err == nil {
+					hit, err = q.readResultCache(ctx, queryType, key, query, fragmentAggregator)
+				}
+				if err == nil && hit {
+					fragmentResponses[idx] = fragmentAggregator.response()
+					return nil
+				}
+				if err == nil {
+					writeAllowed = true
+				}
+			}
+
+			var resp *queryv1.InvokeResponse
 			var err error
-			key, err = resultCacheKey(tenant, generation, query)
-			if err == nil {
-				hit, err = q.readResultCache(ctx, queryType, key, query, aggregator)
+			if fragmentReq.QueryPlan.GetRoot() == nil {
+				resp = &queryv1.InvokeResponse{}
+			} else {
+				resp, err = q.invokeUncached(ctx, fragmentReq)
 			}
-			if err == nil && hit {
-				continue
+			if err != nil {
+				return err
 			}
-			if err == nil {
-				writeAllowed = true
+			if cacheable && writeAllowed && ctx.Err() == nil {
+				q.enqueueResultCacheWrite(resultCacheWriteJob{queryType: queryType, key: key, query: query.CloneVT(), reports: cloneReports(resp.Reports)})
 			}
-		}
+			fragmentResponses[idx] = resp
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
 
-		var resp *queryv1.InvokeResponse
-		var err error
-		if fragmentReq.QueryPlan.GetRoot() == nil {
-			resp = &queryv1.InvokeResponse{}
-		} else {
-			resp, err = q.invokeUncached(ctx, fragmentReq)
-		}
-		if err != nil {
-			return nil, err
-		}
+	var bytesFetched uint64
+	for _, resp := range fragmentResponses {
 		bytesFetched += resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
 		if err := aggregator.aggregateResponse(resp, nil); err != nil {
 			return nil, err
-		}
-		if cacheable && writeAllowed && ctx.Err() == nil {
-			q.enqueueResultCacheWrite(resultCacheWriteJob{queryType: queryType, key: key, query: query.CloneVT(), reports: cloneReports(resp.Reports)})
 		}
 	}
 
