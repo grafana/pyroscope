@@ -38,18 +38,18 @@ func TestLimitsTagsYamlMatchJson(t *testing.T) {
 func TestResultCacheFragmentDurations(t *testing.T) {
 	tests := []struct {
 		name    string
-		values  DurationList
+		values  []model.Duration
 		wantErr string
 	}{
-		{name: "valid", values: DurationList{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}},
-		{name: "valid unordered", values: DurationList{model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour)}},
+		{name: "valid", values: []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}},
+		{name: "valid unordered", values: []model.Duration{model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour)}},
 		{name: "empty", wantErr: "must not be empty"},
-		{name: "duplicate", values: DurationList{model.Duration(time.Hour), model.Duration(time.Hour)}, wantErr: "duplicated"},
-		{name: "not divisible", values: DurationList{model.Duration(45 * time.Minute), model.Duration(30 * time.Minute)}, wantErr: "evenly divisible"},
-		{name: "sub-millisecond", values: DurationList{model.Duration(time.Microsecond)}, wantErr: "whole number of milliseconds"},
-		{name: "below minimum", values: DurationList{model.Duration(5 * time.Minute)}, wantErr: "must be at least"},
-		{name: "long duration", values: DurationList{model.Duration(7 * 24 * time.Hour), model.Duration(24 * time.Hour), model.Duration(15 * time.Minute)}},
-		{name: "not 15 minute multiple", values: DurationList{model.Duration(20 * time.Minute)}, wantErr: "must be a multiple"},
+		{name: "duplicate", values: []model.Duration{model.Duration(time.Hour), model.Duration(time.Hour)}, wantErr: "duplicated"},
+		{name: "not divisible", values: []model.Duration{model.Duration(45 * time.Minute), model.Duration(30 * time.Minute)}, wantErr: "evenly divisible"},
+		{name: "sub-millisecond", values: []model.Duration{model.Duration(time.Microsecond)}, wantErr: "whole number of milliseconds"},
+		{name: "below minimum", values: []model.Duration{model.Duration(5 * time.Minute)}, wantErr: "must be at least"},
+		{name: "long duration", values: []model.Duration{model.Duration(7 * 24 * time.Hour), model.Duration(24 * time.Hour), model.Duration(15 * time.Minute)}},
+		{name: "not 15 minute multiple", values: []model.Duration{model.Duration(20 * time.Minute)}, wantErr: "must be a multiple"},
 	}
 
 	for _, test := range tests {
@@ -63,20 +63,22 @@ func TestResultCacheFragmentDurations(t *testing.T) {
 		})
 	}
 
-	overrides, err := NewOverrides(Limits{ResultCacheFragmentDurations: DurationList{
+	overrides, err := NewOverrides(Limits{ResultCacheFragmentDurations: []model.Duration{
 		model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour),
 	}}, nil)
 	require.NoError(t, err)
 	require.Equal(t, []time.Duration{24 * time.Hour, 2 * time.Hour, 15 * time.Minute}, overrides.ResultCacheFragmentDurations("tenant-a"))
 
-	for _, input := range []string{
-		"result_cache_fragment_durations: [24h, 2h, 15m]",
-		"result_cache_fragment_durations: 24h,2h,15m",
-	} {
-		var limits Limits
-		require.NoError(t, yaml.Unmarshal([]byte(input), &limits))
-		require.Equal(t, DurationList{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
-	}
+	var limits Limits
+	require.NoError(t, yaml.Unmarshal([]byte("result_cache_fragment_durations: [1d, 2h, 15m]"), &limits))
+	require.Equal(t, []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
+	require.Error(t, yaml.Unmarshal([]byte("result_cache_fragment_durations: 1d,2h,15m"), &limits))
+
+	flags := flag.NewFlagSet("test", flag.ContinueOnError)
+	limits.RegisterFlags(flags)
+	require.Equal(t, "1d,2h,15m", flags.Lookup("result-cache.fragment-durations").DefValue)
+	require.NoError(t, flags.Parse([]string{"-result-cache.fragment-durations=1d,2h,15m"}))
+	require.Equal(t, []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
 }
 
 func TestResultCacheMetadataServiceNameMinQueryDuration(t *testing.T) {

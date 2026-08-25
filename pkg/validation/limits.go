@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"iter"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -33,51 +32,30 @@ const (
 	MinCompactorPartialBlockDeletionDelay = 4 * time.Hour
 )
 
-type DurationList []model.Duration
+// durationListFlag adapts []model.Duration for the comma-separated CLI flag.
+// The Limits field itself remains a plain slice so YAML and JSON use model.Duration.
+type durationListFlag []model.Duration
 
-// String returns a canonical comma-separated representation for flags and docs.
-// Whole hours and minutes omit time.Duration's trailing zero components.
-func (d *DurationList) String() string {
+func (d *durationListFlag) String() string {
 	values := make([]string, len(*d))
 	for i, value := range *d {
-		duration := time.Duration(value)
-		switch {
-		case duration%time.Hour == 0:
-			values[i] = strconv.FormatInt(int64(duration/time.Hour), 10) + "h"
-		case duration%time.Minute == 0:
-			values[i] = strconv.FormatInt(int64(duration/time.Minute), 10) + "m"
-		default:
-			values[i] = duration.String()
-		}
+		values[i] = value.String()
 	}
 	return strings.Join(values, ",")
 }
 
-func (d *DurationList) Set(value string) error {
+func (d *durationListFlag) Set(value string) error {
 	values := strings.Split(value, ",")
-	result := make(DurationList, 0, len(values))
+	result := make([]model.Duration, 0, len(values))
 	for _, value := range values {
-		parsed, err := time.ParseDuration(strings.TrimSpace(value))
+		parsed, err := model.ParseDuration(strings.TrimSpace(value))
 		if err != nil {
 			return err
 		}
-		result = append(result, model.Duration(parsed))
+		result = append(result, parsed)
 	}
-	*d = result
+	*d = durationListFlag(result)
 	return nil
-}
-
-func (d *DurationList) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var values []model.Duration
-	if err := unmarshal(&values); err == nil {
-		*d = values
-		return nil
-	}
-	var value string
-	if err := unmarshal(&value); err != nil {
-		return err
-	}
-	return d.Set(value)
 }
 
 // Limits describe all the limits for tenants; can be used to describe global default
@@ -168,12 +146,12 @@ type Limits struct {
 	S3SSEKMSEncryptionContext string `yaml:"s3_sse_kms_encryption_context" json:"s3_sse_kms_encryption_context" doc:"nocli|description=S3 server-side encryption KMS encryption context. If unset and the key ID override is set, the encryption context will not be provided to S3. Ignored if the SSE type override is not set."`
 
 	// Ensure profiles are dated within the IngestionWindow of the distributor.
-	RejectOlderThan                                model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
-	RejectNewerThan                                model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
-	ResultCacheEnabled                             bool           `yaml:"result_cache_enabled" json:"result_cache_enabled"`
-	ResultCacheGeneration                          uint           `yaml:"result_cache_generation" json:"result_cache_generation"`
-	ResultCacheFragmentDurations                   DurationList   `yaml:"result_cache_fragment_durations" json:"result_cache_fragment_durations"`
-	ResultCacheMetadataServiceNameMinQueryDuration model.Duration `yaml:"result_cache_metadata_service_name_min_query_duration" json:"result_cache_metadata_service_name_min_query_duration"`
+	RejectOlderThan                                model.Duration   `yaml:"reject_older_than" json:"reject_older_than"`
+	RejectNewerThan                                model.Duration   `yaml:"reject_newer_than" json:"reject_newer_than"`
+	ResultCacheEnabled                             bool             `yaml:"result_cache_enabled" json:"result_cache_enabled"`
+	ResultCacheGeneration                          uint             `yaml:"result_cache_generation" json:"result_cache_generation"`
+	ResultCacheFragmentDurations                   []model.Duration `yaml:"result_cache_fragment_durations" json:"result_cache_fragment_durations"`
+	ResultCacheMetadataServiceNameMinQueryDuration model.Duration   `yaml:"result_cache_metadata_service_name_min_query_duration" json:"result_cache_metadata_service_name_min_query_duration"`
 
 	// Write path overrides used in distributor.
 	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
@@ -211,8 +189,8 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&l.ResultCacheEnabled, "result-cache.enabled", false, "Enable query result caching. This sets the default for tenant overrides.")
 	f.UintVar(&l.ResultCacheGeneration, "result-cache.generation", 1, "Result-cache invalidation generation. This sets the default for tenant overrides.")
-	l.ResultCacheFragmentDurations = DurationList{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}
-	f.Var(&l.ResultCacheFragmentDurations, "result-cache.fragment-durations", "Comma-separated list of aligned result-cache fragment durations. The smallest duration is also the minimum cache age.")
+	l.ResultCacheFragmentDurations = []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}
+	f.Var((*durationListFlag)(&l.ResultCacheFragmentDurations), "result-cache.fragment-durations", "Comma-separated list of aligned result-cache fragment durations. The smallest duration is also the minimum cache age.")
 	l.ResultCacheMetadataServiceNameMinQueryDuration = model.Duration(7 * 24 * time.Hour)
 	f.Var(&l.ResultCacheMetadataServiceNameMinQueryDuration, "result-cache.metadata-service-name-min-query-duration", "Bypass result caching for metadata queries with a service_name matcher below this query duration. 0 disables this bypass.")
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
@@ -339,7 +317,7 @@ func (l *Limits) Validate() error {
 	return nil
 }
 
-func validateResultCacheFragmentDurations(values DurationList) error {
+func validateResultCacheFragmentDurations(values []model.Duration) error {
 	if len(values) == 0 {
 		return fmt.Errorf("result cache fragment durations must not be empty")
 	}
