@@ -34,7 +34,7 @@ require (
 	github.com/grafana/pyroscope-go v1.2.8
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
-	github.com/grafana/pyroscope/api v1.5.0
+	github.com/grafana/pyroscope/api v1.6.0
 	github.com/grafana/pyroscope/lidia v0.0.2
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
