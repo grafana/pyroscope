@@ -113,6 +113,32 @@ print(resp.content)
 
 ### Querying profiling data
 
+#### UTF-8 label names
+
+To return UTF-8 label names from the `LabelNames` and `Series` APIs, include the following `Accept` header in the request:
+
+```http
+Accept: */*; allow-utf8-labelnames=true
+```
+
+Pyroscope requires an explicit opt-in to preserve compatibility for existing API consumers that expect legacy label-name syntax. Without this client capability, Pyroscope filters label names that do not conform to the legacy label-name format from API responses.
+
+When querying a UTF-8 label name outside the legacy format, quote the name inside the selector (this is following the [Prometheus UTF-8 querying guide](https://prometheus.io/docs/guides/utf8/#querying)). For example:
+
+
+```promql
+{"service.name"="checkout"}
+{"世界"="value"}
+```
+
+In a JSON request body, escape the selector's quotes:
+
+```json
+{
+  "labelSelector": "{\"service.name\"=\"checkout\"}"
+}
+```
+
 #### `/querier.v1.QuerierService/Diff`
 
 Diff returns a diff of two profiles
