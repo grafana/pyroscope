@@ -385,6 +385,120 @@ This command is useful when you want to inspect merged profile data directly, sa
      ...
      ```
 
+### Find and inspect exemplars
+
+An exemplar is a pointer from an aggregated view back to a single profile or trace span that contributed to it.
+Use `profilecli query exemplars` to list the exemplars in a time range, then pass an ID from the results to `profilecli query profile` to inspect that profile or span on its own.
+This helps when an aggregated profile shows that something is slow but not which request was slow.
+
+{{< admonition type="note" >}}
+Exemplars are only supported with the v2 storage layer, and so are the `--profile-id` and `--trace-id` flags.
+On a deployment that still runs v1 storage as well, the query time range must fall within the period covered by v2 storage, otherwise the query fails.
+`query exemplars span` additionally requires span-aware SDK instrumentation.
+Refer to [Link tracing and profiling with Span Profiles](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/).
+{{< /admonition >}}
+
+#### List exemplars
+
+The `profilecli query exemplars profile` command lists individual profiles, each identified by a profile ID, which is a UUID assigned when the profile is ingested.
+The `profilecli query exemplars span` command lists trace spans, each identified by a span ID of 16 hexadecimal characters.
+Both commands rank the results by value, so the most expensive profiles or spans appear first.
+
+1. Specify optional flags.
+
+   - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
+   - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
+   - You can specify the profile type via the `--profile-type` flag. The default is `process_cpu:cpu:nanoseconds:cpu:nanoseconds`.
+   - You can set the approximate number of exemplars using the `--top-n` flag. The default is `100`. The command divides the time range into this many buckets and returns at most one exemplar per bucket, so a low `--top-n` over a wide range can return far fewer exemplars than you asked for. If the results look sparse, raise `--top-n` or narrow the time range.
+   - You can set how many label columns the table shows using the `--max-label-columns` flag. The default is `3`, and `0` hides labels. The command shows the labels that vary the most between exemplars.
+   - You can control the output format using `--output=table` (default) or `--output=json`. The JSON format emits an envelope containing `from`, `to`, `profile_type`, and an `exemplars` array, which is useful for scripting.
+
+1. Construct and execute the command.
+
+   - Here's a basic command template:
+     ```bash
+     export PROFILECLI_URL=<pyroscope_server_url>
+     export PROFILECLI_USERNAME=<username>
+     export PROFILECLI_PASSWORD=<password>
+
+     profilecli query exemplars profile --query='{<label_name>="<label_value>"}'
+     ```
+
+   - Example command for profile exemplars:
+     ```bash
+     profilecli query exemplars profile \
+         --query='{service_name="my_application_name"}' \
+         --from="now-5m" --to="now" \
+         --top-n=5
+     ```
+
+   - Example table output (default):
+     ```
+     +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
+     |              Profile ID              |         Timestamp         | Value (nanoseconds) |   hostname   | pyroscope_spy |  region  |
+     +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
+     | f6591ef9-8f5a-46c3-a6f7-fb28929dd111 | 2026-08-26T18:00:05+02:00 |              29.35s | 55a7b15f975a | gospy         | eu-north |
+     | f41c6f0e-06dc-44ff-975b-1698933b3ab0 | 2026-08-26T17:56:36+02:00 |              26.27s | 55a7b15f975a | gospy         | eu-north |
+     | f17d25d3-429e-4f17-b2d8-5c0f597b37e2 | 2026-08-26T18:00:35+02:00 |              23.44s | 55a7b15f975a | gospy         | eu-north |
+     +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
+     ```
+
+     The `Value` column header names the unit of the profile type you queried, and values are formatted for that unit, so a `nanoseconds` profile type renders durations such as `29.35s` and a `bytes` profile type renders sizes such as `29 MB`. The label columns are chosen automatically. A `Span ID` column appears only when the listed profiles carry span IDs.
+
+   - Example command for span exemplars:
+     ```bash
+     profilecli query exemplars span \
+         --query='{service_name="my_application_name"}' \
+         --from="now-5m" --to="now" \
+         --top-n=5
+     ```
+
+   - Example table output (default):
+     ```
+     +----------------------------------+------------------+---------------------------+---------------------+----------+
+     |             Trace ID             |     Span ID      |         Timestamp         | Value (nanoseconds) |  region  |
+     +----------------------------------+------------------+---------------------------+---------------------+----------+
+     | 4bf92f3577b34da6a3ce929d0e0e4736 | 90cf4e12878d89ac | 2026-08-26T17:58:05+02:00 |              19.18s | eu-north |
+     | 4bf92f3577b34da6a3ce929d0e0e4736 | 5985c8cff1cea41a | 2026-08-26T17:58:35+02:00 |              19.09s | eu-north |
+     | 8a3d1f60b27c94e5f0a1b2c3d4e5f607 | 6433a011496b3aae | 2026-08-26T18:00:35+02:00 |              18.91s | eu-north |
+     +----------------------------------+------------------+---------------------------+---------------------+----------+
+     ```
+
+     Span output identifies spans rather than profiles, so it has no `Profile ID` column. The `Trace ID` column appears only when the listed spans carry trace IDs, and several spans of the same request share one trace ID. Profile exemplars never report trace IDs.
+
+#### Drill down into a single exemplar
+
+Pass an ID from the previous step to `profilecli query profile`, using the flag that matches the kind of ID you have.
+All three flags are repeatable, so you can inspect several profiles, spans, or traces merged together.
+
+| Flag | Accepts | What you get back | Where to get the ID |
+| --- | --- | --- | --- |
+| `--profile-id` | A profile ID (UUID) | The whole profile | `profilecli query exemplars profile` |
+| `--span-selector` | A span ID (16 hexadecimal characters) | Only the samples tagged with that span | `profilecli query exemplars span` |
+| `--trace-id` | A trace ID (32 hexadecimal characters) | The samples of every span in that trace | `profilecli query exemplars span`, or a trace you opened in your tracing backend |
+
+These flags select data in different ways, so you can only use one of them per query.
+Trace IDs are only available when the ingested samples carry a `trace_id` label. The OpenTelemetry profiles endpoint writes that label automatically from the span link, and recent `otel-profiling-*` integrations send it. Older integrations record a span ID alone, in which case `--trace-id` returns an empty profile.
+
+- Example command:
+  ```bash
+  profilecli query profile \
+      --query='{service_name="my_application_name"}' \
+      --from="now-5m" --to="now" \
+      --span-selector=90cf4e12878d89ac \
+      --output=pprof=./slow-span.pprof
+  ```
+
+`profilecli` rejects the following combinations:
+
+- `--profile-id` with `--span-selector` or `--trace-id`
+- `--span-selector` with `--trace-id`, `--stacktrace-selector`, or `--async`
+
+{{< admonition type="caution" >}}
+A query returns an empty profile rather than an error when nothing matches the ID you supplied, for example when a `--span-selector` query runs against blocks that were written without per-sample span IDs.
+If a query returns nothing, confirm that the ID came from an exemplar query over the same time range, and that the profiles were ingested with span-aware instrumentation.
+{{< /admonition >}}
+
 ### Export a profile for Go PGO
 
 You can use the `profilecli query go-pgo` command to retrieve an aggregated profile from a Pyroscope server for use with Go PGO.
