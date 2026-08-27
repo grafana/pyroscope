@@ -22,9 +22,9 @@ Pyroscope recognizes two labels for this:
 Integrations may attach the span name as well, as an ordinary label.
 
 Because the labels are attached per sample, a single profile contains samples belonging to many different spans.
-Querying by span ID returns the samples of that span rather than a whole profile, which is what makes it possible to profile one request.
+Querying by span ID returns the samples of that span rather than a whole profile. This makes it possible to profile one request.
 
-By default, the integrations label only the local root span, meaning the first span created inside the process.
+By default, the integrations label only the local root span, the first span created inside the process.
 Samples collected while its child spans run are included in the root span's profile.
 The Go and Java integrations can be configured to label every span instead.
 
