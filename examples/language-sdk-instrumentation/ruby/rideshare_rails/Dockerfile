@@ -1,15 +1,5 @@
 FROM ruby:3.3.9-slim
 
-# Install runtime and build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libsqlite3-0 \
-    libyaml-0-2 \
-    build-essential \
-    libsqlite3-dev \
-    libyaml-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
@@ -21,8 +11,25 @@ ENV SECRET_KEY_BASE=demo-secret-key-base-not-for-production
 COPY Gemfile /usr/src/app/
 COPY Gemfile.lock /usr/src/app/
 
-RUN bundle config --global frozen 1
-RUN bundle install --without development test
+# Build deps are installed, used and purged in one layer so the compiler and
+# linux-libc-dev never reach the runtime image.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libsqlite3-0 \
+        libyaml-0-2 \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        libsqlite3-dev \
+        libyaml-dev \
+        pkg-config \
+    && bundle config --global frozen 1 \
+    && bundle install --without development test \
+    && apt-get purge -y --auto-remove \
+        build-essential \
+        libsqlite3-dev \
+        libyaml-dev \
+        pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY app /usr/src/app/app
 COPY bin /usr/src/app/bin
