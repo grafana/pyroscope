@@ -1333,6 +1333,7 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 	}
 	for _, ss := range visitor.series {
 		ss.Annotations = s.Annotations
+		ss.ID = s.ID
 		ss.Language = s.Language
 		result = append(result, ss)
 	}

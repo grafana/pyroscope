@@ -46,6 +46,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/pprof"
 	pproftesthelper "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -176,6 +177,12 @@ func TestPush_DeterministicProfileIDs(t *testing.T) {
 	require.NoError(t, err)
 
 	profile := collectTestProfileBytes(t)
+	parsed, err := pprof2.RawFromBytes(profile)
+	require.NoError(t, err)
+	labels := []*typesv1.LabelPair{
+		{Name: "__name__", Value: "cpu"},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service"},
+	}
 	ctx := trace.ContextWithSpanContext(
 		tenant.InjectTenantID(context.Background(), "tenant"),
 		trace.NewSpanContext(trace.SpanContextConfig{
@@ -184,10 +191,7 @@ func TestPush_DeterministicProfileIDs(t *testing.T) {
 		}),
 	)
 	_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
-		Labels: []*typesv1.LabelPair{
-			{Name: "__name__", Value: "cpu"},
-			{Name: phlaremodel.LabelNameServiceName, Value: "service"},
-		},
+		Labels:  labels,
 		Samples: []*pushv1.RawSample{{RawProfile: profile}, {RawProfile: profile}},
 	}}}))
 	require.NoError(t, err)
@@ -200,7 +204,10 @@ func TestPush_DeterministicProfileIDs(t *testing.T) {
 			}
 		}
 	}
-	require.Len(t, ids, 2)
+	require.Equal(t, map[string]struct{}{
+		profileid.GenerateFromTrace("tenant", "00000000000000000000000000000001", labels, parsed.Profile.TimeNanos, 0).String(): {},
+		profileid.GenerateFromTrace("tenant", "00000000000000000000000000000001", labels, parsed.Profile.TimeNanos, 1).String(): {},
+	}, ids)
 }
 
 func Test_Subservices(t *testing.T) {
