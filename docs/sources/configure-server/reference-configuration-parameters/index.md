@@ -1219,6 +1219,7 @@ lifecycler:
 
 # (advanced) Enables bucket health check on startup. This both validates
 # credentials and warms up the connection to reduce latency for the first write.
+# If the check fails, the segment writer fails to start.
 # CLI flag: -segment-writer.bucket-health-check-enabled
 [bucket_health_check_enabled: <boolean> | default = true]
 

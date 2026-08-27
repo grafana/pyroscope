@@ -41,6 +41,11 @@ const (
 	defaultHedgedRequestBurst   = 10 // allow bursts of 10 hedged requests
 )
 
+// errStopIteration aborts the bucket health check iteration: we only care that
+// the bucket is reachable, not about its contents. It is matched with errors.Is
+// so that the check keeps working if a bucket implementation wraps it.
+var errStopIteration = errors.New("stop iteration")
+
 type Config struct {
 	GRPCClientConfig         grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
 	LifecyclerConfig         ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
@@ -95,7 +100,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
 	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", 2*time.Second, "Timeout for metadata update requests.")
-	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write.")
+	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write. If the check fails, the segment writer fails to start.")
 	f.DurationVar(&cfg.BucketHealthCheckTimeout, prefix+".bucket-health-check-timeout", 10*time.Second, "Timeout for bucket health check operations.")
 }
 
@@ -176,6 +181,17 @@ func New(
 // performBucketHealthCheck performs a lightweight bucket operation to warm up the connection
 // and detect any object storage issues early. This serves the dual purpose of validating
 // bucket accessibility and reducing latency for the first actual write operation.
+//
+// A failure is fatal: the segment writer cannot serve writes without the bucket, as Push
+// blocks until the segment has been uploaded, and a definitive upload error surfaces as
+// codes.Unknown, which the client does not treat as retryable - so writes routed to a
+// write-broken instance are lost rather than failed over. Returning an error here prevents
+// the instance from starting, instead of letting it report itself ready and silently drop
+// a share of the cell's writes.
+//
+// This completes the plan agreed when the check was introduced in #4453, where warning and
+// continuing was explicitly a staging step until the behaviour had been verified against a
+// live cell.
 func (i *SegmentWriterService) performBucketHealthCheck(ctx context.Context) error {
 	if !i.config.BucketHealthCheckEnabled {
 		return nil
@@ -187,27 +203,35 @@ func (i *SegmentWriterService) performBucketHealthCheck(ctx context.Context) err
 	defer cancel()
 
 	err := i.storageBucket.Iter(healthCheckCtx, "", func(string) error {
-		// We only care about connectivity, not the actual contents
-		// Return an error to stop iteration after first item (if any)
-		return errors.New("stop iteration")
+		// We only care about connectivity, not the actual contents,
+		// so stop the iteration as soon as the bucket yields anything.
+		return errStopIteration
 	})
 
-	// Ignore the "stop iteration" error we intentionally return
-	// and any "object not found" type errors as they indicate the bucket is accessible
-	if err == nil || i.storageBucket.IsObjNotFoundErr(err) || err.Error() == "stop iteration" {
+	// A healthy bucket produces exactly two outcomes: nil when it is empty and the callback
+	// never fires, or the sentinel when it does. Nothing else means the bucket answered - in
+	// particular an "object not found" is not a success here. A list never names a key, so no
+	// healthy bucket can report one; what it can report is a missing *bucket*, and at least
+	// one backend (Tencent COS) classifies any 404 as a not-found, so accepting that class
+	// would let a writer configured with a nonexistent bucket join the ring.
+	if err == nil || errors.Is(err, errStopIteration) {
 		level.Debug(i.logger).Log("msg", "bucket health check succeeded")
 		return nil
 	}
 
-	level.Warn(i.logger).Log("msg", "bucket health check failed", "err", err)
-	return nil // Don't fail startup, just warn
+	level.Error(i.logger).Log("msg", "bucket health check failed", "err", err)
+	return fmt.Errorf("bucket health check failed: %w", err)
 }
 
 func (i *SegmentWriterService) starting(ctx context.Context) error {
 	// Perform bucket health check before ring registration to warm up the connection
-	// and avoid slow first requests affecting p99 latency
-	// On error, will emit a warning but continue startup
-	_ = i.performBucketHealthCheck(ctx)
+	// and avoid slow first requests affecting p99 latency.
+	// On error, the instance fails to start and never registers in the ring, so no
+	// distributor routes writes to it, and the process exits rather than reporting
+	// itself healthy in a state it cannot serve from.
+	if err := i.performBucketHealthCheck(ctx); err != nil {
+		return err
+	}
 
 	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
 		return err
