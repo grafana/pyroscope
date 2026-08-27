@@ -3742,3 +3742,4 @@ The `analytics` block configures usage statistics collection. For more details a
 # CLI flag: -usage-stats.enabled
 [reporting_enabled: <boolean> | default = true]
 ```
+

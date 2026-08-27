@@ -32,6 +32,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/strprofile"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test"
@@ -940,6 +941,42 @@ func TestExport_DeterministicProfileIDs(t *testing.T) {
 	require.Len(t, (*profiles)[0].Series, 2)
 	assert.NotEmpty(t, (*profiles)[0].Series[0].ID)
 	assert.NotEqual(t, (*profiles)[0].Series[0].ID, (*profiles)[0].Series[1].ID)
+}
+
+func TestExport_DeterministicProfileIDWithMissingTimestamp(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+	limits := defaultLimits()
+	limits.ProfileIDDeterministicValue = true
+	h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), limits)
+
+	req := createValidOTLPRequest()
+	req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0].TimeUnixNano = 0
+	ctx := trace.ContextWithSpanContext(
+		user.InjectOrgID(context.Background(), tenant.DefaultTenantID),
+		trace.NewSpanContext(trace.SpanContextConfig{
+			TraceID: trace.TraceID{15: 1},
+			SpanID:  trace.SpanID{7: 1},
+		}),
+	)
+
+	_, err := h.Export(ctx, req)
+	require.NoError(t, err)
+	_, err = h.Export(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, *profiles, 2)
+
+	first := (*profiles)[0].Series[0]
+	second := (*profiles)[1].Series[0]
+	expectedID := profileid.GenerateFromTrace(
+		tenant.DefaultTenantID,
+		"00000000000000000000000000000001",
+		first.Labels,
+		0,
+		0,
+	).String()
+	assert.NotZero(t, first.Profile.TimeNanos)
+	assert.Equal(t, expectedID, first.ID)
+	assert.Equal(t, expectedID, second.ID)
 }
 
 type otlpbuilder struct {
