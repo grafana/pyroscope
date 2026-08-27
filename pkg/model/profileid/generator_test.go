@@ -118,10 +118,3 @@ func TestGenerateFromRequest_DifferentContent(t *testing.T) {
 	id2 := GenerateFromRequest("tenant", labels, []byte("profile-2"), 1000, "")
 	require.NotEqual(t, id1, id2, "Different content should produce different IDs")
 }
-
-func TestGenerateRandom(t *testing.T) {
-	// Should produce different IDs
-	id1 := GenerateRandom()
-	id2 := GenerateRandom()
-	require.NotEqual(t, id1, id2, "Random IDs should be different")
-}

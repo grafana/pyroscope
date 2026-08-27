@@ -67,11 +67,6 @@ func GenerateFromRequest(
 	return id
 }
 
-// GenerateRandom creates a random UUID v4
-func GenerateRandom() uuid.UUID {
-	return uuid.New()
-}
-
 // sortLabels returns a sorted copy of labels for consistent hashing
 func sortLabels(labels []*typesv1.LabelPair) []*typesv1.LabelPair {
 	sorted := make([]*typesv1.LabelPair, len(labels))
