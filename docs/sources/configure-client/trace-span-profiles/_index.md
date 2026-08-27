@@ -10,6 +10,12 @@ weight: 400
 Span Profiles link tracing and profiling data, so that you can look at the profile of a single request or trace span instead of an aggregate of everything a service did.
 This makes it possible to move from a high-level trace view to the code that made one particular span slow.
 
+Key benefits and features:
+
+- Deep analysis: Understand the specifics of code execution within particular time frames, offering granular insights into application performance
+- Seamless integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
+- Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
+
 ## How span profiles work
 
 A span profile is not a separate kind of profile.
@@ -31,21 +37,15 @@ The Go and Java integrations can be configured to label every span instead.
 Spans that can have a profile are marked with the `pyroscope.profile.id` span attribute, whose value is the span ID despite the name.
 Grafana uses that attribute to offer a link from a span to its profile.
 
-Key benefits and features:
-
-- Deep analysis: Understand the specifics of code execution within particular time frames, offering granular insights into application performance
-- Seamless integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
-- Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
-
 ## What to expect
 
 - The `pyroscope.profile.id` attribute marks spans that *can* have a profile. It does not guarantee that any samples were collected for that span.
-- A span shorter than the profiler's sample interval may produce no samples at all. The CPU profiler collects stack traces 100 times per second by default, so spans shorter than roughly 10ms often have nothing to show.
 - The profile types available for span profiles depend on the language and the profiler it uses. Refer to the page for your language.
 - If your instrumentation records span names, avoid dynamic names that embed per-request identifiers such as URLs or SQL queries, because those can significantly degrade performance.
 
 {{< admonition type="note">}}
-Span profiling is only effective on spans longer than 20ms to ensure statistical accuracy.
+Profilers take samples periodically, so a short span can produce no samples at all, and a span with only a handful of samples doesn't show a realistic picture of where its time went.
+How short is too short depends on the profiler's sampling rate, which differs between languages and is often configurable.
 {{< /admonition >}}
 
 ## Get started
