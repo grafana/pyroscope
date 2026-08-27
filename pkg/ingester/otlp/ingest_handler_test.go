@@ -32,7 +32,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
-	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	"github.com/grafana/pyroscope/v2/pkg/og/convert/pprof/strprofile"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test"
@@ -967,16 +966,9 @@ func TestExport_DeterministicProfileIDWithMissingTimestamp(t *testing.T) {
 
 	first := (*profiles)[0].Series[0]
 	second := (*profiles)[1].Series[0]
-	expectedID := profileid.GenerateFromTrace(
-		tenant.DefaultTenantID,
-		"00000000000000000000000000000001",
-		first.Labels,
-		0,
-		0,
-	).String()
 	assert.NotZero(t, first.Profile.TimeNanos)
-	assert.Equal(t, expectedID, first.ID)
-	assert.Equal(t, expectedID, second.ID)
+	assert.Equal(t, "90af8573-feff-54b1-a286-6286dc5a3063", first.ID)
+	assert.Equal(t, first.ID, second.ID)
 }
 
 type otlpbuilder struct {
