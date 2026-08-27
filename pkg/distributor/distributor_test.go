@@ -33,6 +33,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -165,6 +166,41 @@ func Test_Replication(t *testing.T) {
 	resp, err = d.Push(ctx, req)
 	require.Error(t, err)
 	require.Nil(t, resp)
+}
+
+func TestPush_DeterministicProfileIDs(t *testing.T) {
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.ProfileIDDeterministic = true
+	})
+	d, ing, err := newTestDistributor(t, log.NewNopLogger(), overrides)
+	require.NoError(t, err)
+
+	profile := collectTestProfileBytes(t)
+	ctx := trace.ContextWithSpanContext(
+		tenant.InjectTenantID(context.Background(), "tenant"),
+		trace.NewSpanContext(trace.SpanContextConfig{
+			TraceID: trace.TraceID{15: 1},
+			SpanID:  trace.SpanID{7: 1},
+		}),
+	)
+	_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "service"},
+		},
+		Samples: []*pushv1.RawSample{{RawProfile: profile}, {RawProfile: profile}},
+	}}}))
+	require.NoError(t, err)
+
+	ids := make(map[string]struct{})
+	for _, request := range ing.requests {
+		for _, series := range request.Series {
+			for _, sample := range series.Samples {
+				ids[sample.ID] = struct{}{}
+			}
+		}
+	}
+	require.Len(t, ids, 2)
 }
 
 func Test_Subservices(t *testing.T) {

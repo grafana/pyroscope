@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -269,6 +270,9 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 	req := &distributormodel.PushRequest{
 		RawProfileType: distributormodel.RawProfileTypeOTEL,
 	}
+	traceID, hasTraceID := tracing.ExtractTraceID(ctx)
+	deriveProfileID := h.limits.ProfileIDDeterministic(tenantID) && hasTraceID
+	var seriesPosition uint64
 
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
@@ -284,7 +288,14 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
-				for samplesServiceName, pprofProfile := range pprofProfiles {
+				serviceNames := make([]string, 0, len(pprofProfiles))
+				for serviceName := range pprofProfiles {
+					serviceNames = append(serviceNames, serviceName)
+				}
+				sort.Strings(serviceNames)
+
+				for _, samplesServiceName := range serviceNames {
+					pprofProfile := pprofProfiles[samplesServiceName]
 					labels := getDefaultLabels()
 					labels = append(labels, pprofProfile.name)
 					processedKeys := map[string]bool{model.LabelNameProfileName: true}
@@ -303,8 +314,17 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Labels:     labels,
 						RawProfile: nil,
 						Profile:    pprof.RawFromProto(pprofProfile.profile),
-						ID:         "", // Will be set below
 					}
+					if deriveProfileID {
+						s.ID = profileid.GenerateFromTrace(
+							tenantID,
+							traceID,
+							labels,
+							int64(p.TimeUnixNano),
+							seriesPosition,
+						).String()
+					}
+					seriesPosition++
 					req.Series = append(req.Series, s)
 				}
 			}
@@ -313,27 +333,6 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 	if len(req.Series) == 0 {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, nil
-	}
-
-	if h.limits.ProfileIDDeterministic(tenantID) {
-		traceID, _ := tracing.ExtractTraceID(ctx)
-		for _, series := range req.Series {
-			if series.ID != "" {
-				continue
-			}
-			rawProfile, err := series.Profile.MarshalVT()
-			if err != nil {
-				level.Warn(h.log).Log("msg", "failed to marshal profile for ID generation", "err", err)
-				continue
-			}
-			series.ID = profileid.GenerateFromRequest(
-				tenantID,
-				series.Labels,
-				rawProfile,
-				series.Profile.TimeNanos,
-				traceID,
-			).String()
-		}
 	}
 
 	for _, series := range req.Series {

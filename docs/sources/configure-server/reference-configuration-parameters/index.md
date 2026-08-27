@@ -3396,14 +3396,15 @@ distributor_usage_groups:
 # is enforced in the distributor. 0 to disable, defaults to 10m.
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
+
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]
 
-# Generate deterministic profile IDs based on profile content hash instead of
-# random UUIDs. If a client provides an ID, it will be used instead. When
-# enabled, IDs are generated from tenant ID, labels, raw profile bytes, and
-# original TimeNanos (if present) or trace ID (if TimeNanos is 0). Experimental.
+# (experimental) Generate profile IDs from tracing metadata instead of random
+# UUIDs. If a client provides an ID, it will be used instead. When enabled, IDs
+# are generated from tenant ID, trace ID, ingress labels, original timestamp,
+# and request position. A trace ID is required. Experimental.
 # CLI flag: -validation.profile-id-deterministic
 [profile_id_deterministic: <boolean> | default = false]
 ```

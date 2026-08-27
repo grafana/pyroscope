@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -914,6 +915,31 @@ func TestDifferentServiceNames(t *testing.T) {
 		assert.NotContains(t, jsonStr, "service.name")
 
 	}
+}
+
+func TestExport_DeterministicProfileIDs(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+	limits := defaultLimits()
+	limits.ProfileIDDeterministicValue = true
+	h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), limits)
+
+	req := createValidOTLPRequest()
+	profile := req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0]
+	req.ResourceProfiles[0].ScopeProfiles[0].Profiles = append(req.ResourceProfiles[0].ScopeProfiles[0].Profiles, profile)
+	ctx := trace.ContextWithSpanContext(
+		user.InjectOrgID(context.Background(), tenant.DefaultTenantID),
+		trace.NewSpanContext(trace.SpanContextConfig{
+			TraceID: trace.TraceID{15: 1},
+			SpanID:  trace.SpanID{7: 1},
+		}),
+	)
+
+	_, err := h.Export(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, *profiles, 1)
+	require.Len(t, (*profiles)[0].Series, 2)
+	assert.NotEmpty(t, (*profiles)[0].Series[0].ID)
+	assert.NotEqual(t, (*profiles)[0].Series[0].ID, (*profiles)[0].Series[1].ID)
 }
 
 type otlpbuilder struct {

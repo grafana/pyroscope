@@ -3,6 +3,7 @@ package profileid
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"hash"
 	"sort"
 
 	"github.com/google/uuid"
@@ -10,47 +11,29 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-// GenerateFromRequest creates a deterministic UUID based on request components.
-// Hash priority:
-// 1. Always: tenantID + sorted labels + raw profile bytes
-// 2. If originalTimeNanos > 0: add TimeNanos
-// 3. Else if traceID is non-empty: add traceID
-// 4. Else: content-only hash
-func GenerateFromRequest(
+// GenerateFromTrace creates a deterministic UUID from the request trace and
+// the profile's ingress metadata.
+func GenerateFromTrace(
 	tenantID string,
-	labels []*typesv1.LabelPair,
-	rawProfile []byte,
-	originalTimeNanos int64,
 	traceID string,
+	labels []*typesv1.LabelPair,
+	timeNanos int64,
+	position uint64,
 ) uuid.UUID {
 	h := sha256.New()
 
-	// Write tenant ID
-	h.Write([]byte(tenantID))
+	writeString(h, tenantID)
+	writeString(h, traceID)
 
-	// Write sorted labels (for consistency)
 	sortedLabels := sortLabels(labels)
+	writeUint64(h, uint64(len(sortedLabels)))
 	for _, label := range sortedLabels {
-		h.Write([]byte(label.Name))
-		h.Write([]byte{0}) // separator
-		h.Write([]byte(label.Value))
-		h.Write([]byte{0}) // separator
+		writeString(h, label.Name)
+		writeString(h, label.Value)
 	}
 
-	// Write raw profile bytes
-	h.Write(rawProfile)
-
-	// Write temporal/trace context for uniqueness
-	if originalTimeNanos > 0 {
-		// Prefer explicit timestamp if provided
-		var timeBytes [8]byte
-		binary.LittleEndian.PutUint64(timeBytes[:], uint64(originalTimeNanos))
-		h.Write(timeBytes[:])
-	} else if traceID != "" {
-		// Fall back to trace ID for uniqueness within trace
-		h.Write([]byte(traceID))
-	}
-	// else: pure content hash (same content = same ID)
+	writeUint64(h, uint64(timeNanos))
+	writeUint64(h, position)
 
 	sum := h.Sum(nil)
 
@@ -65,6 +48,17 @@ func GenerateFromRequest(
 
 	id, _ := uuid.FromBytes(uuidBytes[:])
 	return id
+}
+
+func writeString(h hash.Hash, s string) {
+	writeUint64(h, uint64(len(s)))
+	_, _ = h.Write([]byte(s))
+}
+
+func writeUint64(h hash.Hash, n uint64) {
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], n)
+	_, _ = h.Write(buf[:])
 }
 
 // sortLabels returns a sorted copy of labels for consistent hashing

@@ -195,26 +195,24 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}
 	plainReq.ParseDuration = time.Since(parseStart)
+	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 	if len(plainReq.Series) == 0 {
-		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 		_ = level.Debug(p.log).Log("msg", "empty profile",
 			"application", in.Metadata.LabelSet.ServiceName(),
 			"orgID", tenantID)
 		return nil
 	}
 
-	// Generate IDs for series before calling PushBatch
-	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
-	if p.limits.ProfileIDDeterministic(tenantID) {
-		traceID, _ := tracing.ExtractTraceID(ctx)
-		for _, series := range plainReq.Series {
-			if series.ID == "" && series.RawProfile != nil {
-				series.ID = profileid.GenerateFromRequest(
+	traceID, hasTraceID := tracing.ExtractTraceID(ctx)
+	if p.limits.ProfileIDDeterministic(tenantID) && hasTraceID {
+		for position, series := range plainReq.Series {
+			if series.ID == "" {
+				series.ID = profileid.GenerateFromTrace(
 					tenantID,
-					series.Labels,
-					series.RawProfile,
-					series.Profile.Profile.TimeNanos,
 					traceID,
+					series.Labels,
+					series.Profile.Profile.TimeNanos,
+					uint64(position),
 				).String()
 			}
 		}

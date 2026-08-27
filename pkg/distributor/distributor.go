@@ -322,6 +322,8 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
+	traceID, hasTraceID := tracing.ExtractTraceID(ctx)
+	deriveProfileID := d.limits.ProfileIDDeterministic(tenantID) && hasTraceID
 
 	defer func() {
 		if err == nil {
@@ -349,8 +351,11 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		RawProfileType: distributormodel.RawProfileTypePPROF,
 	}
 	allErrors := multierror.New()
+	var profilePosition uint64
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		for _, grpcSample := range grpcSeries.Samples {
+			position := profilePosition
+			profilePosition++
 			profile, err := pprof.RawFromBytesWithLimit(grpcSample.RawProfile, maxProfileSizeBytes)
 			if err != nil {
 				// check if decompression size has been exceeded
@@ -377,17 +382,13 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 				ID:         grpcSample.ID,
 			}
 
-			// Generate deterministic ID if not provided by client
-			if series.ID == "" && d.limits.ProfileIDDeterministic(tenantID) {
-				// Extract trace ID from context
-				traceID, _ := tracing.ExtractTraceID(ctx)
-
-				series.ID = profileid.GenerateFromRequest(
+			if series.ID == "" && deriveProfileID {
+				series.ID = profileid.GenerateFromTrace(
 					tenantID,
-					grpcSeries.Labels,
-					grpcSample.RawProfile,
-					profile.Profile.TimeNanos, // Original TimeNanos before modification
 					traceID,
+					grpcSeries.Labels,
+					profile.Profile.TimeNanos,
+					position,
 				).String()
 			}
 
