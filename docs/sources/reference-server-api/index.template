@@ -41,7 +41,7 @@ Pyroscope APIs are categorized into two scopes:
 
 Use the Querier API endpoints to discover profile labels and types, select matching series, and retrieve or compare profiling data. The following sections describe query-specific requirements and the available endpoints.
 
-{{% admonition type="note" %}}
+{{"{{% admonition type=\"note\" %}}"}}
 **UTF-8 label names**
 
 To return UTF-8 label names from the `LabelNames` and `Series` APIs, include the following `Accept` header in the request:
@@ -68,7 +68,7 @@ In a JSON request body, escape the selector's quotes:
   ]
 }
 ```
-{{% /admonition %}}
+{{"{{% /admonition %}}"}}
 
 {{ .RenderAPIGroup "/querier.v1.QuerierService" }}
 
