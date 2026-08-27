@@ -391,11 +391,13 @@ An exemplar is a pointer from an aggregated view back to a single profile or tra
 Use `profilecli query exemplars` to list the exemplars in a time range, then pass an ID from the results to `profilecli query profile` to inspect that profile or span on its own.
 This helps when an aggregated profile shows that something is slow but not which request was slow.
 
+Span-aware instrumentation records which trace span was active as it takes each sample, so one profile contains samples from many spans and querying by span returns that span's samples rather than a whole profile.
+Not every profile type produces span exemplars, because the profiler has to be able to attribute each sample to a span as it takes it.
+Refer to [Link tracing and profiling with Span Profiles](../../configure-client/trace-span-profiles/) for the profile types each language supports.
+
 {{< admonition type="note" >}}
 Exemplars are only supported with the v2 storage layer, and so are the `--profile-id` and `--trace-id` flags.
 On a deployment that still runs v1 storage as well, the query time range must fall within the period covered by v2 storage, otherwise the query fails.
-`query exemplars span` additionally requires span-aware SDK instrumentation.
-Refer to [Link tracing and profiling with Span Profiles](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/trace-span-profiles/).
 {{< /admonition >}}
 
 #### List exemplars
@@ -403,26 +405,18 @@ Refer to [Link tracing and profiling with Span Profiles](https://grafana.com/doc
 The `profilecli query exemplars profile` command lists individual profiles, each identified by a profile ID, which is a UUID assigned when the profile is ingested.
 The `profilecli query exemplars span` command lists trace spans, each identified by a span ID of 16 hexadecimal characters.
 Both commands rank the results by value, so the most expensive profiles or spans appear first.
+The same span ID can appear in more than one row when its samples fall into different time buckets. Samples that fall into the same bucket are merged into a single row and their values added together, even when they come from different instances.
 
 1. Specify optional flags.
 
    - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
    - You can specify the profile type via the `--profile-type` flag. The default is `process_cpu:cpu:nanoseconds:cpu:nanoseconds`.
-   - You can set the approximate number of exemplars using the `--top-n` flag. The default is `100`. The command divides the time range into this many buckets and returns at most one exemplar per bucket, so a low `--top-n` over a wide range can return far fewer exemplars than you asked for. If the results look sparse, raise `--top-n` or narrow the time range.
+   - You can cap how many exemplars the command prints using the `--top-n` flag. The default is `100`. The value also sets how the range is divided, because the command splits it into `--top-n` buckets and keeps the highest-value exemplar in each. For profile exemplars the buckets are time windows, so a low `--top-n` over a wide range can return far fewer exemplars than you asked for. For span exemplars each bucket is a time and value window, so one time window can contribute several spans. If the results look sparse, raise `--top-n` or narrow the time range.
    - You can set how many label columns the table shows using the `--max-label-columns` flag. The default is `3`, and `0` hides labels. The command shows the labels that vary the most between exemplars.
    - You can control the output format using `--output=table` (default) or `--output=json`. The JSON format emits an envelope containing `from`, `to`, `profile_type`, and an `exemplars` array, which is useful for scripting.
 
 1. Construct and execute the command.
-
-   - Here's a basic command template:
-     ```bash
-     export PROFILECLI_URL=<pyroscope_server_url>
-     export PROFILECLI_USERNAME=<username>
-     export PROFILECLI_PASSWORD=<password>
-
-     profilecli query exemplars profile --query='{<label_name>="<label_value>"}'
-     ```
 
    - Example command for profile exemplars:
      ```bash
@@ -443,7 +437,7 @@ Both commands rank the results by value, so the most expensive profiles or spans
      +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
      ```
 
-     The `Value` column header names the unit of the profile type you queried, and values are formatted for that unit, so a `nanoseconds` profile type renders durations such as `29.35s` and a `bytes` profile type renders sizes such as `29 MB`. The label columns are chosen automatically. A `Span ID` column appears only when the listed profiles carry span IDs.
+     The `Value` column header names the unit of the profile type you queried, and values are formatted for that unit, so a `nanoseconds` profile type renders durations such as `29.35s` and a `bytes` profile type renders sizes such as `29 MB`. The label columns are chosen automatically.
 
    - Example command for span exemplars:
      ```bash
@@ -469,6 +463,7 @@ Both commands rank the results by value, so the most expensive profiles or spans
 #### Drill down into a single exemplar
 
 Pass an ID from the previous step to `profilecli query profile`, using the flag that matches the kind of ID you have.
+Include a `service_name` matcher in `--query`, because narrowing the query to a single service makes these lookups considerably faster.
 All three flags are repeatable, so you can inspect several profiles, spans, or traces merged together.
 
 | Flag | Accepts | What you get back | Where to get the ID |
