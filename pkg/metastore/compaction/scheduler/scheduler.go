@@ -36,6 +36,7 @@ var _ compaction.Scheduler = (*Scheduler)(nil)
 type JobStore interface {
 	StoreJobPlan(*bbolt.Tx, *raft_log.CompactionJobPlan) error
 	GetJobPlan(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error)
+	GetJobPlanSummary(tx *bbolt.Tx, name string, withSourceBlocks bool) (*store.JobPlanSummary, error)
 	DeleteJobPlan(tx *bbolt.Tx, name string) error
 
 	StoreJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
@@ -176,8 +177,8 @@ type JobFilter struct {
 	IncludeSourceBlocks bool
 }
 
-func (f JobFilter) matches(plan *raft_log.CompactionJobPlan) bool {
-	return f.Tenant == nil || *f.Tenant == plan.Tenant
+func (f JobFilter) matches(tenant string) bool {
+	return f.Tenant == nil || *f.Tenant == tenant
 }
 
 // jobScanCancelInterval is how often the job scan checks for cancellation.
@@ -211,17 +212,15 @@ func (sc *Scheduler) ListJobs(ctx context.Context, tx *bbolt.Tx, filter JobFilte
 		}
 		state := entries.At()
 		job := JobInfo{State: state}
-		switch plan, err := sc.store.GetJobPlan(tx, state.Name); {
+		switch plan, err := sc.store.GetJobPlanSummary(tx, state.Name, filter.IncludeSourceBlocks); {
 		case err == nil:
-			if !filter.matches(plan) {
+			if !filter.matches(plan.Tenant) {
 				continue
 			}
 			job.Tenant = plan.Tenant
 			job.Shard = plan.Shard
-			job.SourceBlocks = uint32(len(plan.SourceBlocks))
-			if filter.IncludeSourceBlocks {
-				job.SourceBlockIDs = plan.SourceBlocks
-			}
+			job.SourceBlocks = plan.SourceBlocks
+			job.SourceBlockIDs = plan.SourceBlockIDs
 		case !errors.Is(err, kvstore.ErrNotFound):
 			return nil, err
 		default:
