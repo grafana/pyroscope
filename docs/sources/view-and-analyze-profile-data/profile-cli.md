@@ -407,7 +407,12 @@ The `profilecli query exemplars span` command lists trace spans, each identified
 Both commands rank the results by value, so the most expensive profiles or spans appear first.
 The same span ID can appear in more than one row when its samples fall into different time buckets. Samples that fall into the same bucket are merged into a single row and their values added together, even when they come from different instances.
 
-1. Specify optional flags.
+To list exemplars, you need to:
+
+1. Specify optional flags. 
+1. Construct and execute the command. 
+
+**Specify optional flags**
 
    - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
    - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
@@ -416,9 +421,9 @@ The same span ID can appear in more than one row when its samples fall into diff
    - You can set how many label columns the table shows using the `--max-label-columns` flag. The default is `3`, and `0` hides labels. The command shows the labels that vary the most between exemplars.
    - You can control the output format using `--output=table` (default) or `--output=json`. The JSON format emits an envelope containing `from`, `to`, `profile_type`, and an `exemplars` array, which is useful for scripting.
 
-1. Construct and execute the command.
+**Construct and execute the command**
 
-   - Example command for profile exemplars:
+ Example command for profile exemplars:
      ```bash
      profilecli query exemplars profile \
          --query='{service_name="my_application_name"}' \
@@ -426,7 +431,7 @@ The same span ID can appear in more than one row when its samples fall into diff
          --top-n=5
      ```
 
-   - Example table output (default):
+Example table output (default):
      ```
      +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
      |              Profile ID              |         Timestamp         | Value (nanoseconds) |   hostname   | pyroscope_spy |  region  |
@@ -437,9 +442,9 @@ The same span ID can appear in more than one row when its samples fall into diff
      +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
      ```
 
-     The `Value` column header names the unit of the profile type you queried, and values are formatted for that unit, so a `nanoseconds` profile type renders durations such as `29.35s` and a `bytes` profile type renders sizes such as `29 MB`. The label columns are chosen automatically.
+The `Value` column header names the unit of the profile type you queried, and values are formatted for that unit, so a `nanoseconds` profile type renders durations such as `29.35s` and a `bytes` profile type renders sizes such as `29 MB`. The label columns are chosen automatically.
 
-   - Example command for span exemplars:
+Example command for span exemplars:
      ```bash
      profilecli query exemplars span \
          --query='{service_name="my_application_name"}' \
@@ -458,7 +463,7 @@ The same span ID can appear in more than one row when its samples fall into diff
      +----------------------------------+------------------+---------------------------+---------------------+----------+
      ```
 
-     Span output identifies spans rather than profiles, so it has no `Profile ID` column. The `Trace ID` column appears only when the listed spans carry trace IDs, and several spans of the same request share one trace ID. Profile exemplars never report trace IDs.
+Span output identifies spans rather than profiles, so it has no `Profile ID` column. The `Trace ID` column appears only when the listed spans carry trace IDs, and several spans of the same request share one trace ID. Profile exemplars never report trace IDs.
 
 #### Drill down into a single exemplar
 
@@ -475,7 +480,7 @@ All three flags are repeatable, so you can inspect several profiles, spans, or t
 These flags select data in different ways, so you can only use one of them per query.
 Trace IDs are only available when the ingested samples carry a `trace_id` label. The OpenTelemetry profiles endpoint writes that label automatically from the span link, and recent `otel-profiling-*` integrations send it. Older integrations record a span ID alone, in which case `--trace-id` returns an empty profile.
 
-- Example command:
+Example command:
   ```bash
   profilecli query profile \
       --query='{service_name="my_application_name"}' \
