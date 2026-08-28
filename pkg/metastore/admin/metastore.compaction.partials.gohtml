@@ -83,6 +83,25 @@
     <span class="badge text-bg-danger ms-2">failed</span> {{ .Failed }}
 {{ end }}
 
+{{ define "compaction-blocks-cell" }}
+    <td class="align-middle">
+        {{ if .SourceBlockLinks }}
+            <details>
+                <summary>{{ .SourceBlocks }}</summary>
+                <ul class="list-unstyled mb-0 mt-2">
+                    {{ range .SourceBlockLinks }}
+                        <li><a class="font-monospace small text-nowrap" href="{{ .Path }}">{{ .ID }}</a></li>
+                    {{ end }}
+                </ul>
+            </details>
+        {{ else if .BlocksPath }}
+            <a href="{{ .BlocksPath }}">{{ .SourceBlocks }}</a>
+        {{ else }}
+            {{ .SourceBlocks }}
+        {{ end }}
+    </td>
+{{ end }}
+
 {{ define "compaction-levels-table" }}
     <div class="table-responsive">
         <table class="table table-bordered table-hover table-striped">

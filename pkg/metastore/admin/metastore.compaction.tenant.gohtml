@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html data-bs-theme="dark">
 <head>
-    <title>Metastore Admin - Compaction - {{ .Tenant }}</title>
+    <title>Metastore Admin - Compaction - {{ if .Segments }}Segments{{ else }}{{ .Tenant }}{{ end }}</title>
     {{ template "compaction-head" . }}
 </head>
 <body>
@@ -13,21 +13,39 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="/metastore-compaction">Compaction</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">{{ .Tenant }}</li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {{ if .Segments }}Multi-tenant segments{{ else }}{{ .Tenant }}{{ end }}
+                    </li>
                 </ol>
             </nav>
-            <h2 class="font-monospace">{{ .Tenant }}</h2>
+            {{ if .Segments }}
+                <h2>
+                    Multi-tenant segments
+                    {{ template "compaction-info" "Blocks of compaction level 0 are the segments written by the segment writers. A segment holds the data of many tenants, so it carries no tenant of its own, and neither do the compaction jobs and queues that operate on it. They are collected here because they cannot be addressed by tenant name." }}
+                </h2>
+            {{ else }}
+                <h2 class="font-monospace">{{ .Tenant }}</h2>
+            {{ end }}
             <p class="text-body-secondary">
                 Compaction jobs and planner queues of a single tenant. The jobs are listed in the
                 scheduling order within each level; the queues hold the blocks that await compaction
                 and have not been turned into jobs yet.
             </p>
             <p class="text-body-secondary">
-                The block counts link to the object store browser, narrowed to the time window the
-                blocks are expected to fall into. The window is a hint, not an exact match: the
-                scheduler does not report which blocks a job or a queue holds, so the listing covers
-                every block of the tenant in that window, at every shard and level.
+                Where the scheduler reports them, the block count expands into the individual source
+                blocks, each linking to the object store browser. Otherwise the count links to the
+                block listing of the tenant, narrowed to the time window the blocks are expected to
+                fall into &mdash; a hint, not an exact match, since that listing covers every block
+                of the tenant in the window, at every shard and level.
             </p>
+            {{ if .Segments }}
+                <p class="text-body-secondary">
+                    Segment links address the object store browser under the
+                    <code>anonymous</code> tenant
+                    {{ template "compaction-info" "Segments are stored under the anonymous tenant directory because they belong to no single tenant. The name only identifies the page in the browser: the block itself is resolved by its shard and identifier, with an empty block tenant." }}
+                    rather than a tenant name.
+                </p>
+            {{ end }}
             {{ if .BlocksPath }}
                 <div class="col-12 mb-2">
                     <a class="btn btn-outline-secondary btn-sm" href="{{ .BlocksPath }}">
@@ -41,8 +59,13 @@
             <div class="row gy-4">
                 <div class="col-12">
                     <div class="alert alert-secondary" role="alert">
-                        No compaction jobs and no queued blocks for this tenant. Either the tenant does not
-                        exist, or all of its blocks have been compacted.
+                        {{ if .Segments }}
+                            No compaction jobs and no queued blocks for the multi-tenant segments:
+                            every segment has been compacted into per-tenant blocks.
+                        {{ else }}
+                            No compaction jobs and no queued blocks for this tenant. Either the tenant does not
+                            exist, or all of its blocks have been compacted.
+                        {{ end }}
                     </div>
                 </div>
             </div>
@@ -110,7 +133,7 @@
                             <th>Reassignments</th>
                             <th>
                                 Blocks
-                                {{ template "compaction-info" "Number of source blocks the job compacts. Follows to the block listing of the tenant, windowed around the time the job was created. The listing is not restricted to the source blocks of the job: the scheduler does not report their identifiers." }}
+                                {{ template "compaction-info" "Number of source blocks the job compacts. Expands into the individual blocks where the scheduler reports their identifiers. Otherwise it follows to the block listing of the tenant, windowed around the time the job was created, which is not restricted to the source blocks of the job." }}
                             </th>
                             <th>Age</th>
                             <th>Assigned</th>
@@ -127,13 +150,7 @@
                                 <td class="align-middle"><span class="badge text-bg-{{ .StatusBadge }}">{{ .Status }}</span></td>
                                 <td class="align-middle font-monospace small">{{ .Worker }}</td>
                                 <td class="align-middle">{{ .Reassignments }}</td>
-                                <td class="align-middle">
-                                    {{ if .BlocksPath }}
-                                        <a href="{{ .BlocksPath }}">{{ .SourceBlocks }}</a>
-                                    {{ else }}
-                                        {{ .SourceBlocks }}
-                                    {{ end }}
-                                </td>
+                                {{ template "compaction-blocks-cell" . }}
                                 <td class="align-middle">{{ .Age }}</td>
                                 <td class="align-middle">{{ .Assigned }}</td>
                                 <td class="align-middle">{{ .Lease }}</td>

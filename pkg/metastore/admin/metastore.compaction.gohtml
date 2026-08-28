@@ -176,7 +176,8 @@
                                 {{ if .Known }}
                                     <a href="{{ .Path }}">{{ .Tenant }}</a>
                                 {{ else }}
-                                    <span class="text-body-secondary">unknown</span>
+                                    <a class="fst-italic" href="{{ .Path }}">multi-tenant segments</a>
+                                    {{ template "compaction-info" "Compaction of level 0 operates on the segments written by the segment writers. A segment holds the data of many tenants and carries no tenant of its own, so all of this work is grouped here rather than under a tenant name." }}
                                 {{ end }}
                             </td>
                             <td class="align-middle">{{ .Jobs }}</td>
@@ -236,7 +237,7 @@
                         <th>Reassignments</th>
                         <th>
                             Blocks
-                            {{ template "compaction-info" "Number of source blocks the job compacts. Follows to the block listing of the tenant, windowed around the time the job was created. The listing is not restricted to the source blocks of the job: the scheduler does not report their identifiers." }}
+                            {{ template "compaction-info" "Number of source blocks the job compacts. Follows to the block listing of the tenant, windowed around the time the job was created. Open the tenant to see the individual source blocks: the overview does not request them, as they would dominate its response." }}
                         </th>
                         <th>Age</th>
                         <th>Lease</th>
@@ -247,10 +248,10 @@
                         <tr>
                             <td class="align-middle font-monospace small">{{ .Name }}</td>
                             <td class="align-middle font-monospace small">
-                                {{ if .TenantPath }}
+                                {{ if .Tenant }}
                                     <a href="{{ .TenantPath }}">{{ .Tenant }}</a>
                                 {{ else }}
-                                    <span class="text-body-secondary">unknown</span>
+                                    <a class="fst-italic" href="{{ .TenantPath }}">segments</a>
                                 {{ end }}
                             </td>
                             <td class="align-middle">{{ .Shard }}</td>
@@ -258,13 +259,7 @@
                             <td class="align-middle"><span class="badge text-bg-{{ .StatusBadge }}">{{ .Status }}</span></td>
                             <td class="align-middle font-monospace small">{{ .Worker }}</td>
                             <td class="align-middle">{{ .Reassignments }}</td>
-                            <td class="align-middle">
-                                {{ if .BlocksPath }}
-                                    <a href="{{ .BlocksPath }}">{{ .SourceBlocks }}</a>
-                                {{ else }}
-                                    {{ .SourceBlocks }}
-                                {{ end }}
-                            </td>
+                            {{ template "compaction-blocks-cell" . }}
                             <td class="align-middle">{{ .Age }}</td>
                             <td class="align-middle">{{ .Lease }}</td>
                         </tr>

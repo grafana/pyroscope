@@ -39,7 +39,7 @@ func TestScheduler_ListJobs(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		jobs, err := scheduler.ListJobs(tx)
+		jobs, err := scheduler.ListJobs(tx, JobFilter{})
 		require.NoError(t, err)
 		require.Len(t, jobs, 2)
 
@@ -48,6 +48,8 @@ func TestScheduler_ListJobs(t *testing.T) {
 		assert.Equal(t, "tenant-a", jobs[0].Tenant)
 		assert.Equal(t, uint32(1), jobs[0].Shard)
 		assert.Equal(t, uint32(2), jobs[0].SourceBlocks)
+		// The source block list is not retained unless it is requested.
+		assert.Nil(t, jobs[0].SourceBlockIDs)
 
 		assert.Equal(t, "job-b", jobs[1].State.Name)
 		assert.Empty(t, jobs[1].Tenant)
@@ -66,9 +68,67 @@ func TestScheduler_ListJobs_empty(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		jobs, err := scheduler.ListJobs(tx)
+		jobs, err := scheduler.ListJobs(tx, JobFilter{})
 		require.NoError(t, err)
 		assert.Empty(t, jobs)
+		return nil
+	}))
+}
+
+func TestScheduler_ListJobs_filter(t *testing.T) {
+	db := test.BoltDB(t)
+	store := NewStore()
+	scheduler := NewScheduler(Config{}, store, nil)
+
+	// A job of a named tenant, a job of no tenant at all (level 0 compacts
+	// the multi-tenant segments), and a job state whose plan is missing.
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		require.NoError(t, store.CreateBuckets(tx))
+		for _, job := range []*raft_log.CompactionJobPlan{
+			{Name: "job-a", Tenant: "tenant-a", Shard: 1, SourceBlocks: []string{"b1", "b2"}},
+			{Name: "job-s", Tenant: "", Shard: 2, SourceBlocks: []string{"b3"}},
+		} {
+			require.NoError(t, store.StoreJobState(tx, &raft_log.CompactionJobState{Name: job.Name}))
+			require.NoError(t, store.StoreJobPlan(tx, job))
+		}
+		require.NoError(t, store.StoreJobState(tx, &raft_log.CompactionJobState{Name: "job-x"}))
+		return nil
+	}))
+
+	names := func(t *testing.T, filter JobFilter) []string {
+		var found []string
+		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+			jobs, err := scheduler.ListJobs(tx, filter)
+			require.NoError(t, err)
+			for _, job := range jobs {
+				found = append(found, job.State.Name)
+			}
+			return nil
+		}))
+		return found
+	}
+
+	tenantA := "tenant-a"
+	noTenant := ""
+
+	// No filter lists everything, including the job without a plan.
+	assert.Equal(t, []string{"job-a", "job-s", "job-x"}, names(t, JobFilter{}))
+	// A named tenant selects only its own jobs.
+	assert.Equal(t, []string{"job-a"}, names(t, JobFilter{Tenant: &tenantA}))
+	// The empty tenant selects the jobs that have no tenant, and excludes
+	// the job whose tenant cannot be determined.
+	assert.Equal(t, []string{"job-s"}, names(t, JobFilter{Tenant: &noTenant}))
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		jobs, err := scheduler.ListJobs(tx, JobFilter{
+			Tenant:              &tenantA,
+			IncludeSourceBlocks: true,
+		})
+		require.NoError(t, err)
+		require.Len(t, jobs, 1)
+		assert.Equal(t, []string{"b1", "b2"}, jobs[0].SourceBlockIDs)
+		// The count is reported either way.
+		assert.Equal(t, uint32(2), jobs[0].SourceBlocks)
 		return nil
 	}))
 }

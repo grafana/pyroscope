@@ -95,6 +95,8 @@ func TestCompactionService_GetCompactionState(t *testing.T) {
 	assert.Equal(t, uint32(3), jobA.SourceBlocks)
 	assert.Equal(t, uint64(42), jobA.Token)
 	assert.Empty(t, jobA.WorkerId)
+	// The identifiers are withheld unless the request asks for them.
+	assert.Empty(t, jobA.SourceBlockIds)
 	jobB := resp.CompactionJobs[1]
 	assert.Equal(t, "job-b", jobB.Name)
 	assert.Empty(t, jobB.Tenant)
@@ -155,6 +157,83 @@ func TestCompactionService_GetCompactionState(t *testing.T) {
 	svc.ownersMu.Lock()
 	assert.Empty(t, svc.owners)
 	svc.ownersMu.Unlock()
+
+	// The source block identifiers are reported on request.
+	resp, err = svc.GetCompactionState(context.Background(), &metastorev1.GetCompactionStateRequest{
+		IncludeSourceBlocks: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, resp.CompactionJobs, 2)
+	assert.Equal(t, []string{"b1", "b2", "b3"}, resp.CompactionJobs[0].SourceBlockIds)
+
+	// A tenant filter narrows both the jobs and the queues. It is distinct
+	// from an absent filter, which selects the entire state.
+	tenantA := "tenant-a"
+	resp, err = svc.GetCompactionState(context.Background(), &metastorev1.GetCompactionStateRequest{
+		Tenant: &tenantA,
+	})
+	require.NoError(t, err)
+	require.Len(t, resp.CompactionJobs, 1)
+	assert.Equal(t, "job-a", resp.CompactionJobs[0].Name)
+	assert.Len(t, resp.CompactionQueues, 1)
+
+	// An empty tenant selects the entities that have no tenant: job-b has no
+	// plan, so its tenant is unknown and it is excluded.
+	noTenant := ""
+	resp, err = svc.GetCompactionState(context.Background(), &metastorev1.GetCompactionStateRequest{
+		Tenant: &noTenant,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, resp.CompactionJobs)
+	assert.Empty(t, resp.CompactionQueues)
+}
+
+// The metastore messages are marshalled with vtproto (see pkg/api/connect),
+// so the presence of the optional tenant filter has to survive the generated
+// code: an absent filter selects the entire state, whereas an empty one
+// selects the entities that have no tenant. Conflating the two would silently
+// turn a segment drill-down into a full state dump.
+func TestGetCompactionState_vtprotoRoundTrip(t *testing.T) {
+	strptr := func(s string) *string { return &s }
+	for _, test := range []struct {
+		name   string
+		tenant *string
+	}{
+		{name: "absent", tenant: nil},
+		{name: "empty", tenant: strptr("")},
+		{name: "set", tenant: strptr("tenant-a")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			in := &metastorev1.GetCompactionStateRequest{
+				Tenant:              test.tenant,
+				IncludeSourceBlocks: true,
+			}
+			b, err := in.MarshalVT()
+			require.NoError(t, err)
+			var out metastorev1.GetCompactionStateRequest
+			require.NoError(t, out.UnmarshalVT(b))
+
+			if test.tenant == nil {
+				assert.Nil(t, out.Tenant)
+			} else {
+				require.NotNil(t, out.Tenant)
+				assert.Equal(t, *test.tenant, *out.Tenant)
+			}
+			assert.True(t, out.IncludeSourceBlocks)
+		})
+	}
+
+	details := &metastorev1.CompactionJobDetails{
+		Name:           "job-a",
+		SourceBlocks:   2,
+		SourceBlockIds: []string{"b1", "b2"},
+	}
+	b, err := details.MarshalVT()
+	require.NoError(t, err)
+	var decoded metastorev1.CompactionJobDetails
+	require.NoError(t, decoded.UnmarshalVT(b))
+	assert.Equal(t, []string{"b1", "b2"}, decoded.SourceBlockIds)
+	assert.Equal(t, uint32(2), decoded.SourceBlocks)
 }
 
 // proposalRecorder is a Raft implementation that records the proposed

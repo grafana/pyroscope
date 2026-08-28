@@ -149,20 +149,44 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPla
 // Config returns the scheduler configuration.
 func (sc *Scheduler) Config() Config { return sc.config }
 
-// JobInfo describes a compaction job in the schedule. Only a summary of
-// the job plan is included: the full plan (the source block and tombstone
-// lists) is deliberately not retained.
+// JobInfo describes a compaction job in the schedule. Only a summary of the
+// job plan is included: the tombstone list is never retained, and the source
+// block list is only retained on request, as it is by far the largest part
+// of the plan.
 type JobInfo struct {
 	State        *raft_log.CompactionJobState
 	Tenant       string
 	Shard        uint32
 	SourceBlocks uint32
+	// SourceBlockIDs is only populated if JobFilter.IncludeSourceBlocks is
+	// set. SourceBlocks reports the number of the source blocks either way.
+	SourceBlockIDs []string
 }
 
-// ListJobs returns the state and the plan summary of every job in the
-// schedule. The jobs are read from the storage snapshot of the given
-// transaction; the in-memory queue is not accessed.
-func (sc *Scheduler) ListJobs(tx *bbolt.Tx) ([]JobInfo, error) {
+// JobFilter narrows the job listing. The zero value lists every job in the
+// schedule and retains no source block lists.
+type JobFilter struct {
+	// Tenant restricts the listing to the jobs of the tenant. If nil, the
+	// jobs of every tenant are listed. If it points at an empty string, only
+	// the jobs that have no tenant are listed: these compact the blocks of
+	// level 0, which are the multi-tenant segments.
+	Tenant *string
+	// IncludeSourceBlocks retains the source block list of the listed jobs.
+	IncludeSourceBlocks bool
+}
+
+func (f JobFilter) matches(plan *raft_log.CompactionJobPlan) bool {
+	return f.Tenant == nil || *f.Tenant == plan.Tenant
+}
+
+// ListJobs returns the state and the plan summary of the jobs in the schedule
+// that match the filter. The jobs are read from the storage snapshot of the
+// given transaction; the in-memory queue is not accessed.
+//
+// Note that the filter cannot reduce the number of storage reads: the tenant
+// of a job is part of its plan, not of its state, so every plan is read
+// regardless. The filter only limits what is retained and returned.
+func (sc *Scheduler) ListJobs(tx *bbolt.Tx, filter JobFilter) ([]JobInfo, error) {
 	entries := sc.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()
@@ -173,11 +197,24 @@ func (sc *Scheduler) ListJobs(tx *bbolt.Tx) ([]JobInfo, error) {
 		job := JobInfo{State: state}
 		switch plan, err := sc.store.GetJobPlan(tx, state.Name); {
 		case err == nil:
+			if !filter.matches(plan) {
+				continue
+			}
 			job.Tenant = plan.Tenant
 			job.Shard = plan.Shard
 			job.SourceBlocks = uint32(len(plan.SourceBlocks))
+			if filter.IncludeSourceBlocks {
+				job.SourceBlockIDs = plan.SourceBlocks
+			}
 		case !errors.Is(err, kvstore.ErrNotFound):
 			return nil, err
+		default:
+			// The plan is missing: the tenant of the job is unknown, so it
+			// cannot be matched against the filter. Such a job is only listed
+			// if no tenant is requested.
+			if filter.Tenant != nil {
+				continue
+			}
 		}
 		jobs = append(jobs, job)
 	}

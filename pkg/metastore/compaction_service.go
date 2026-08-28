@@ -263,7 +263,7 @@ func (svc *CompactionService) updateOwners(worker string, update *raft_log.Compa
 
 func (svc *CompactionService) GetCompactionState(
 	ctx context.Context,
-	_ *metastorev1.GetCompactionStateRequest,
+	req *metastorev1.GetCompactionStateRequest,
 ) (resp *metastorev1.GetCompactionStateResponse, err error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CompactionService.GetCompactionState")
 	defer func() {
@@ -274,14 +274,27 @@ func (svc *CompactionService) GetCompactionState(
 		span.Finish()
 	}()
 
+	// The tenant filter distinguishes "every tenant" from "the entities that
+	// have no tenant", so it is read from the field itself rather than from
+	// the accessor: the field carries explicit presence.
+	var tenantFilter *string
+	if req != nil {
+		tenantFilter = req.Tenant
+	}
+	jobFilter := scheduler.JobFilter{
+		Tenant:              tenantFilter,
+		IncludeSourceBlocks: req.GetIncludeSourceBlocks(),
+	}
+	queueFilter := compactor.QueueFilter{Tenant: tenantFilter}
+
 	var jobs []scheduler.JobInfo
 	var queues []compactor.QueueStats
 	var readErr error
 	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
-		if jobs, readErr = svc.scheduler.ListJobs(tx); readErr != nil {
+		if jobs, readErr = svc.scheduler.ListJobs(tx, jobFilter); readErr != nil {
 			return
 		}
-		queues, readErr = svc.compactor.ListQueues(ctx, tx)
+		queues, readErr = svc.compactor.ListQueues(ctx, tx, queueFilter)
 	}
 	if err = svc.state.ConsistentRead(ctx, read); err != nil {
 		// Preserve the status details, if any: e.g., the raft leader hint
@@ -318,6 +331,7 @@ func (svc *CompactionService) GetCompactionState(
 			AddedAt:         job.State.AddedAt,
 			Failures:        job.State.Failures,
 			SourceBlocks:    job.SourceBlocks,
+			SourceBlockIds:  job.SourceBlockIDs,
 		}
 		if owner := svc.owners[job.State.Name]; owner != nil && owner.token == job.State.Token {
 			details.WorkerId = owner.worker
