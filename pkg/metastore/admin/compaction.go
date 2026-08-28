@@ -78,6 +78,10 @@ type compactionPageContent struct {
 	Attention          []compactionJobRow
 	TotalAttention     int
 	TruncatedAttention int
+
+	// StateAge is how long ago the rendered state was read from the
+	// metastore. Empty if it was read for this request.
+	StateAge string
 }
 
 type compactionTenantPageContent struct {
@@ -112,6 +116,10 @@ type compactionTenantPageContent struct {
 	// BlocksPath links to the block listing of the tenant in the object
 	// store browser. Empty if the tenant is not addressable there.
 	BlocksPath string
+
+	// StateAge is how long ago the rendered state was read from the
+	// metastore. Empty if it was read for this request.
+	StateAge string
 }
 
 // Empty reports whether the tenant is present in the compaction state at all.
@@ -207,35 +215,58 @@ func (a *Admin) CompactionHandler() http.Handler {
 		query := r.URL.Query()
 		drilldown, tenantID := compactionDrilldown(query)
 
-		// The source block identifiers are only requested for a drill-down:
-		// over the entire schedule they would dominate the response size.
-		req := new(metastorev1.GetCompactionStateRequest)
-		if drilldown {
-			req.Tenant = &tenantID
-			req.IncludeSourceBlocks = true
-		}
-		state, err := a.compactionClient.GetCompactionState(r.Context(), req)
-		if err != nil {
-			httputil.Error(w, err)
-			return
+		now := time.Now().UTC()
+		cacheKey := compactionStateCacheKey(drilldown, tenantID)
+		state, fetched, cached := a.compactionCache.get(cacheKey, now)
+		if !cached {
+			// The source block identifiers are only requested for a
+			// drill-down: over the entire schedule they would dominate the
+			// response size.
+			req := new(metastorev1.GetCompactionStateRequest)
+			if drilldown {
+				req.Tenant = &tenantID
+				req.IncludeSourceBlocks = true
+			}
+			var err error
+			if state, err = a.compactionClient.GetCompactionState(r.Context(), req); err != nil {
+				httputil.Error(w, err)
+				return
+			}
+			fetched = now
+			a.compactionCache.put(cacheKey, state, now)
 		}
 
-		now := time.Now().UTC()
+		var err error
 		if drilldown {
 			// The response is filtered again on our side: the request filter
 			// is an optimization, and a server that does not know it returns
 			// the entire state.
 			content := buildCompactionTenantPageContent(state, now, tenantID)
+			content.StateAge = formatStateAge(fetched, now)
 			if err = pageTemplates.compactionTenantTemplate.Execute(w, content); err != nil {
 				httputil.Error(w, err)
 			}
 			return
 		}
 		content := buildCompactionPageContent(state, now, query.Get("q"), query.Get("sort"))
+		content.StateAge = formatStateAge(fetched, now)
 		if err = pageTemplates.compactionTemplate.Execute(w, content); err != nil {
 			httputil.Error(w, err)
 		}
 	})
+}
+
+// formatStateAge describes how old the rendered state is. It is empty when
+// the state was read for this request, so that the page only mentions
+// staleness when there is some.
+func formatStateAge(fetched, now time.Time) string {
+	if fetched.IsZero() {
+		return ""
+	}
+	if d := now.Sub(fetched); d >= time.Second {
+		return formatDuration(d)
+	}
+	return ""
 }
 
 // compactionDrilldown reports which tenant the request drills into, if any.
