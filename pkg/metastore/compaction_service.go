@@ -291,7 +291,7 @@ func (svc *CompactionService) GetCompactionState(
 	var queues []compactor.QueueStats
 	var readErr error
 	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
-		if jobs, readErr = svc.scheduler.ListJobs(tx, jobFilter); readErr != nil {
+		if jobs, readErr = svc.scheduler.ListJobs(ctx, tx, jobFilter); readErr != nil {
 			return
 		}
 		queues, readErr = svc.compactor.ListQueues(ctx, tx, queueFilter)
