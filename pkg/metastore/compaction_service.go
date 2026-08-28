@@ -27,6 +27,17 @@ import (
 // expires, and the job owner is reported as unknown.
 const jobOwnerTTL = time.Hour
 
+// maxCompactionQueueScan caps how many planner queue entries a single
+// GetCompactionState reads.
+//
+// The queue holds one entry per block awaiting compaction and is bounded by
+// nothing but the backlog, so an uncapped scan would let a struggling cluster
+// make its own observability expensive: the scan holds a read transaction,
+// which keeps the database from reusing the pages its writers free. The cap
+// trades a complete count for a bounded one, and the response says which it
+// is. At the measured scan rate this is roughly a tenth of a second.
+const maxCompactionQueueScan = 2_000_000
+
 type CompactionService struct {
 	metastorev1.CompactionServiceServer
 
@@ -285,16 +296,20 @@ func (svc *CompactionService) GetCompactionState(
 		Tenant:              tenantFilter,
 		IncludeSourceBlocks: req.GetIncludeSourceBlocks(),
 	}
-	queueFilter := compactor.QueueFilter{Tenant: tenantFilter}
+	queueFilter := compactor.QueueFilter{
+		Tenant:     tenantFilter,
+		MaxEntries: maxCompactionQueueScan,
+	}
 
 	var jobs []scheduler.JobInfo
 	var queues []compactor.QueueStats
+	var queuesTruncated bool
 	var readErr error
 	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
 		if jobs, readErr = svc.scheduler.ListJobs(ctx, tx, jobFilter); readErr != nil {
 			return
 		}
-		queues, readErr = svc.compactor.ListQueues(ctx, tx, queueFilter)
+		queues, queuesTruncated, readErr = svc.compactor.ListQueues(ctx, tx, queueFilter)
 	}
 	if err = svc.state.ConsistentRead(ctx, read); err != nil {
 		// Preserve the status details, if any: e.g., the raft leader hint
@@ -316,6 +331,8 @@ func (svc *CompactionService) GetCompactionState(
 		JobLeaseDuration: config.LeaseDuration.Nanoseconds(),
 		JobMaxFailures:   config.MaxFailures,
 		MaxJobQueueSize:  config.MaxQueueSize,
+
+		CompactionQueuesTruncated: queuesTruncated,
 	}
 
 	svc.ownersMu.Lock()

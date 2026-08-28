@@ -116,6 +116,12 @@ message GetCompactionStateResponse {
   uint64 job_max_failures = 4;
   // Scheduler queue size limit; failed jobs are evicted when it is exceeded.
   uint64 max_job_queue_size = 5;
+  // Reports that the planner queue scan stopped before reaching the end.
+  // The number of blocks awaiting compaction is not bounded by any
+  // configuration, so the scan is capped to bound the time the metastore
+  // spends serving this request. When set, compaction_queues describes only
+  // a prefix of the queues, and the block counts are lower bounds.
+  bool compaction_queues_truncated = 6;
 }
 
 // CompactionJobDetails describes a compaction job in the scheduler queue.

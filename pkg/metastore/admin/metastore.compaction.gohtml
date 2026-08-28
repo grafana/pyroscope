@@ -83,7 +83,13 @@
                         </div>
                         <div class="card-detail-row">
                             <div class="card-detail-label">Blocks awaiting compaction:</div>
-                            <div class="card-detail-value">{{ .QueuedBlocks }} in {{ .TotalQueues }} planner queues</div>
+                            <div class="card-detail-value">
+                                {{ if .QueuesTruncated }}at least {{ end }}{{ .QueuedBlocks }}
+                                in {{ if .QueuesTruncated }}at least {{ end }}{{ .TotalQueues }} planner queues
+                                {{ if .QueuesTruncated }}
+                                    {{ template "compaction-info" "The metastore stopped scanning the planner queues before reaching the end, so these are lower bounds. The number of blocks awaiting compaction is bounded by nothing but the backlog, and the scan is capped to bound the time the metastore spends serving this page." }}
+                                {{ end }}
+                            </div>
                         </div>
                     </div>
                 </div>
