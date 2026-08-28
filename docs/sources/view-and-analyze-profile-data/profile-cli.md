@@ -389,7 +389,12 @@ This command is useful when you want to inspect merged profile data directly, sa
 
 An exemplar is a pointer from an aggregated view back to a single profile or trace span that contributed to it.
 Use `profilecli query exemplars` to list the exemplars in a time range, then pass an ID from the results to `profilecli query profile` to inspect that profile or span on its own.
-This helps when an aggregated profile shows that something is slow but not which request was slow.
+
+Use these commands when an aggregated profile shows that something is slow but not which profile or trace span it came from, for example when you want to:
+
+- Inspect the single profile behind a spike in a time series, instead of an average over the whole window.
+- Find the most expensive trace spans in a service and see the code that ran during them.
+- Export a single span's profile as a pprof file, to compare it against a typical one.
 
 Span-aware instrumentation records which trace span was active as it takes each sample, so one profile contains samples from many spans and querying by span returns that span's samples rather than a whole profile.
 Not every profile type produces span exemplars, because the profiler has to be able to attribute each sample to a span as it takes it.
