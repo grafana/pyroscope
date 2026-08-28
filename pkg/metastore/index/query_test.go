@@ -325,6 +325,98 @@ func TestIndex_Query(t *testing.T) {
 	})
 }
 
+func TestIndex_QueryMetadata_BlockCreationTimeDiffersFromDataTime(t *testing.T) {
+	const tenant = "tenant-a"
+	dataTime := test.Time("2024-01-01T10:00:00.000Z")
+	creationTime := dataTime.Add(8 * 7 * 24 * time.Hour)
+
+	newBlock := func(idTime time.Time) *metastorev1.BlockMeta {
+		minTime := dataTime.UnixMilli()
+		maxTime := dataTime.Add(time.Hour).UnixMilli()
+		return &metastorev1.BlockMeta{
+			Id:      test.ULID(idTime.Format(time.RFC3339Nano)),
+			Tenant:  1,
+			Shard:   1,
+			MinTime: minTime,
+			MaxTime: maxTime,
+			Datasets: []*metastorev1.Dataset{{
+				Tenant:  1,
+				MinTime: minTime,
+				MaxTime: maxTime,
+				Labels:  []int32{1, 2, 3},
+			}},
+			StringTable: []string{"", tenant, "service_name", "backfill"},
+		}
+	}
+
+	assertQueryable := func(t *testing.T, db *bbolt.DB, idx *Index, expectedIDs ...string) {
+		t.Helper()
+		req := MetadataQuery{
+			Expr:      `{service_name="backfill"}`,
+			StartTime: dataTime,
+			EndTime:   dataTime.Add(time.Hour),
+			Tenant:    []string{tenant},
+			Labels:    []string{"service_name"},
+		}
+		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+			blocks, err := idx.QueryMetadata(tx, context.Background(), req)
+			require.NoError(t, err)
+			require.Len(t, blocks, len(expectedIDs))
+			actualIDs := make([]string, len(blocks))
+			for i := range blocks {
+				actualIDs[i] = blocks[i].Id
+			}
+			assert.ElementsMatch(t, expectedIDs, actualIDs)
+
+			foundLabels, err := idx.QueryMetadataLabels(tx, context.Background(), req)
+			require.NoError(t, err)
+			require.Len(t, foundLabels, 1)
+			assert.Equal(t, "backfill", foundLabels[0].Labels[0].Value)
+			return nil
+		}))
+	}
+
+	db := test.BoltDB(t)
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(idx.Init))
+
+	backfilled := newBlock(creationTime)
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idx.InsertBlock(tx, backfilled.CloneVT())
+	}))
+	assertQueryable(t, db, idx, backfilled.Id)
+
+	t.Run("restored", func(t *testing.T) {
+		restored := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		require.NoError(t, db.View(restored.Restore))
+		assertQueryable(t, db, restored, backfilled.Id)
+	})
+
+	compacted := newBlock(creationTime.Add(time.Hour))
+	compacted.CompactionLevel = 1
+	t.Run("compaction replacement", func(t *testing.T) {
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return idx.ReplaceBlocks(tx, &metastorev1.CompactedBlocks{
+				SourceBlocks: &metastorev1.BlockList{
+					Tenant: tenant,
+					Shard:  1,
+					Blocks: []string{backfilled.Id},
+				},
+				NewBlocks: []*metastorev1.BlockMeta{compacted.CloneVT()},
+			})
+		}))
+		assertQueryable(t, db, idx, compacted.Id)
+	})
+
+	t.Run("block created before data", func(t *testing.T) {
+		createdBeforeData := newBlock(dataTime.Add(-8 * 7 * 24 * time.Hour))
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return idx.InsertBlock(tx, createdBeforeData.CloneVT())
+		}))
+		assertQueryable(t, db, idx, createdBeforeData.Id, compacted.Id)
+	})
+}
+
 func TestIndex_QueryMetadata_StaleReadCacheReloadsShard(t *testing.T) {
 	db := test.BoltDB(t)
 	idxWriter := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
