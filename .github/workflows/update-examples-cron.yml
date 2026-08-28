@@ -5,29 +5,84 @@ on:
     - cron: '0 */8 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
+
+# Two sweeps at once would both reset the branch and race on the PR.
+concurrency:
+  group: update-examples-cron
+  cancel-in-progress: false
+
+env:
+  BRANCH: gh_bot_examples_update
+  REPORT: .tmp/update_examples_report.md
+  TITLE: 'chore(examples): update examples'
 
 jobs:
   update-examples-cron:
+    name: Update examples
     if: github.repository == 'grafana/pyroscope'
+    permissions:
+      contents: read # checkout
+      id-token: write # federated credentials for the app token
     runs-on: ${{ github.repository_owner == 'grafana' && 'ubuntu-x64-small' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: 'false'
       - id: get-github-app-token
-        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         with:
           github_app: pyroscope-development-app
 
-      - run: |
-          make tools/update_examples
-          if ! git diff --exit-code;
-          then
-            make tools/update_examples_pr
-          fi
+      # A failing ecosystem must not hold back the rest of the sweep, so the
+      # exit code is carried to the last step instead of ending the job here.
+      - name: Update examples
+        id: update
         env:
           GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          rc=0
+          make tools/update_examples || rc=$?
+          {
+            echo "rc=$rc"
+            echo "changed=$(git status --porcelain | grep -q . && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Reset branch to the checked out commit
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+        run: |
+          head_oid="$(git rev-parse HEAD)"
+          gh api "repos/${GITHUB_REPOSITORY}/git/refs" --method POST \
+            -f "ref=refs/heads/${BRANCH}" -f "sha=${head_oid}" \
+          || gh api "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCH}" --method PATCH \
+            -f "sha=${head_oid}" -F force=true
+
+      - name: Commit the update
+        if: steps.update.outputs.changed == 'true'
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # v0.2.22
+        with:
+          commit_message: ${{ env.TITLE }}
+          repo: ${{ github.repository }}
+          branch: ${{ env.BRANCH }}
+          # Everything the updater writes, and nothing else.
+          file_pattern: >-
+            examples docs/sources/configure-client go.mod go.sum
+            api/go.mod api/go.sum lidia/go.mod lidia/go.sum
+        env:
+          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+
+      - name: Open or update the PR
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+        run: |
+          gh pr create --head "$BRANCH" --base main --title "$TITLE" --body-file "$REPORT" \
+          || gh pr edit "$BRANCH" --title "$TITLE" --body-file "$REPORT"
+
+      - name: Report updater failures
+        if: steps.update.outputs.rc != '0'
+        run: |
+          echo "one or more updaters failed; see the report on the PR"
+          exit 1

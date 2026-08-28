@@ -18,6 +18,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
@@ -186,6 +187,7 @@ func Test_QueryFrontend_LabelNames_WithFiltering(t *testing.T) {
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
@@ -329,6 +331,7 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,

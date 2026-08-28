@@ -38,7 +38,8 @@ message CompactionJobStatusUpdate {
   metastore.v1.CompactionJobStatus status = 3;
   // Reserved field represents `compacted_blocks`. The message must remain
   // wire-compatible with metastore.v1.CompactionJobStatusUpdate: raft log
-  // entries written by older versions may contain the raw worker request.
+  // entries written by older versions may erroneously contain field data for
+  // metastore.v1.CompactionJobStatusUpdate#compacted_blocks.
   reserved 4;
 }
 

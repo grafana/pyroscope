@@ -168,7 +168,7 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 	if report == nil {
 		return nil, nil
 	}
-	if err := q.resolveSymbolRefs(ctx, tenantIDs, report, maxNodes); err != nil {
+	if err := q.resolveSymbolRefs(ctx, report, maxNodes); err != nil {
 		return nil, err
 	}
 	return report.Tree.Tree, nil

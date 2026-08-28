@@ -87,6 +87,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
+		f.Cfg.Frontend,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
@@ -108,9 +109,15 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 			log.With(f.logger, "component", "async-query-coordinator"),
 			f.asyncQueryStore,
 			f.Overrides,
+			querierHandler,
 			f.reg,
 		)
-		querierHandler = asyncquery.NewHandler(querierHandler, coordinator)
+		f.asyncQueryStore.SetDispatcher(coordinator)
+		querierHandler = asyncquery.NewHandler(
+			log.With(f.logger, "component", "async-query-handler"),
+			querierHandler,
+			coordinator,
+		)
 	}
 
 	vcsService := vcs.New(
@@ -143,6 +150,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
+		f.Cfg.Frontend,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
@@ -164,15 +172,6 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	wrappedHandler := spanlogger.NewLogSpanParametersWrapper(handler, queryFrontendLogger)
 
 	querierHandler := querierv1connect.QuerierServiceHandler(wrappedHandler)
-	if f.Cfg.Frontend.AsyncQueriesEnabled && f.asyncQueryStore != nil {
-		coordinator := asyncquery.NewCoordinator(
-			log.With(f.logger, "component", "async-query-coordinator"),
-			f.asyncQueryStore,
-			f.Overrides,
-			f.reg,
-		)
-		querierHandler = asyncquery.NewHandler(querierHandler, coordinator)
-	}
 
 	vcsService := vcs.New(
 		log.With(f.logger, "component", "vcs-service"),
@@ -208,6 +207,7 @@ func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
 	f.asyncQueryStore = asyncquery.NewStore(
 		log.With(f.logger, "component", "async-query-store"),
 		f.storageBucket,
+		f.reg,
 	)
 	return f.asyncQueryStore, nil
 }

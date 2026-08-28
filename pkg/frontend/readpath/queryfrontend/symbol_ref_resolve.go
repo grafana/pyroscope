@@ -12,7 +12,6 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
-	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 const (
@@ -20,7 +19,11 @@ const (
 	symbolRefLocationMiss     = "miss"
 	symbolRefLocationTimeout  = "timeout"
 
-	defaultResolveTimeout = 20 * time.Second
+	// minResolveTimeout is a last-resort fallback, not the default: the real
+	// default lives in pkg/symbolizer.Symbolizer.ResolveTimeout. This only
+	// guards against a Symbolizer implementation that returns a non-positive
+	// value, which would otherwise hand Resolve an already-expired context.
+	minResolveTimeout = 20 * time.Second
 	// minResolveConcurrency is a last-resort floor, not a default: the real
 	// default lives in pkg/symbolizer.Symbolizer.ResolveConcurrency. This
 	// only guards against a Symbolizer implementation that returns a
@@ -34,7 +37,7 @@ const (
 // reference through the symbolizer. It is a no-op when the report carries no
 // symbol-ref table, or the table has nothing unresolved: today's plain tree
 // bytes are returned untouched either way.
-func (q *QueryFrontend) resolveSymbolRefs(ctx context.Context, tenantIDs []string, report *queryv1.Report, maxNodes int64) error {
+func (q *QueryFrontend) resolveSymbolRefs(ctx context.Context, report *queryv1.Report, maxNodes int64) error {
 	pb := report.GetTree().GetSymbolRefs()
 	if pb == nil {
 		return nil
@@ -52,7 +55,7 @@ func (q *QueryFrontend) resolveSymbolRefs(ctx context.Context, tenantIDs []strin
 	span.SetTag("binaries", len(binaries))
 	span.SetTag("unresolved_references", len(pb.GetUnresolvedAddress()))
 
-	lookup, err := q.resolveBinaries(ctx, tenantIDs, binaries)
+	lookup, err := q.resolveBinaries(ctx, binaries)
 	if err != nil {
 		return err
 	}
@@ -91,9 +94,8 @@ type binaryResolution struct {
 }
 
 // resolveBinaries resolves every UnresolvedBinary concurrently, bounded by
-// the symbolizer's own configured concurrency (the same bound
-// SymbolizePprof's debuginfod fetches use) and timeboxed per binary by the
-// tenants' resolve-timeout limit.
+// the symbolizer's fetch concurrency, and timeboxed
+// per binary by the symbolizer's global resolve timeout.
 //
 // Resolve errors only when its context is done. A binary whose own timebox
 // expires while ctx (the request context) is still live is recorded as a
@@ -102,10 +104,10 @@ type binaryResolution struct {
 // done (canceled, or its own deadline reached), the error is propagated and
 // the request fails, matching how SymbolizePprof errors are treated at these
 // call sites today.
-func (q *QueryFrontend) resolveBinaries(ctx context.Context, tenantIDs []string, binaries []symbolref.UnresolvedBinary) (symbolRefLookup, error) {
-	timeout := validationutil.SmallestPositiveNonZeroDurationPerTenant(tenantIDs, q.limits.SymbolizerResolveTimeout)
+func (q *QueryFrontend) resolveBinaries(ctx context.Context, binaries []symbolref.UnresolvedBinary) (symbolRefLookup, error) {
+	timeout := q.symbolizer.ResolveTimeout()
 	if timeout <= 0 {
-		timeout = defaultResolveTimeout
+		timeout = minResolveTimeout
 	}
 	concurrency := q.symbolizer.ResolveConcurrency()
 	if concurrency < 1 {

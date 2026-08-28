@@ -51,12 +51,12 @@ First, add the Pyroscope dependency:
 <dependency>
   <groupId>io.pyroscope</groupId>
   <artifactId>agent</artifactId>
-  <version>2.5.4</version>
+  <version>2.9.1</version>
 </dependency>
 ```
 
 ```gradle
-implementation("io.pyroscope:agent:2.5.4")
+implementation("io.pyroscope:agent:2.9.1")
 ```
 
 {{< /code >}}
@@ -136,6 +136,26 @@ export PYROSCOPE_SERVER_ADDRESS=http://pyroscope-server:4040
 java -javaagent:pyroscope.jar -jar app.jar
 ```
 
+### Export profiles using OTLP
+
+The Java agent can export async-profiler recordings using the experimental OpenTelemetry Profiles signal. Set
+`PYROSCOPE_FORMAT=otlp` and configure `PYROSCOPE_SERVER_ADDRESS` with the base address of an OTLP/HTTP receiver.
+The agent sends protobuf requests to `<server-address>/v1development/profiles`.
+
+OTLP export requires the default `ASYNC` profiler and isn't supported by the JFR profiler used on Windows.
+
+{{< admonition type="caution" >}}
+The application name and labels configured through `PYROSCOPE_APPLICATION_NAME`, `PYROSCOPE_LABELS`, static labels,
+or dynamic labels aren't included in OTLP profiles. As a result, profiles may appear under
+`service_name="unknown_service"`.
+{{< /admonition >}}
+
+Only one profiling event can run at a time. Allocation and lock thresholds can be configured when their event is
+selected, for example with `PYROSCOPE_PROFILER_EVENT=alloc` and `PYROSCOPE_PROFILER_ALLOC=512k`. Multiple events
+remain supported in sampling mode because they run sequentially.
+
+The OpenTelemetry Profiles protocol and async-profiler output are experimental and may change incompatibly.
+
 ### Add profiling labels to Java applications
 
 You can add dynamic tags (labels) to the profiling data. These tags can filter the data in the UI.
@@ -172,7 +192,7 @@ The Java integration supports JFR format to be able to support multiple events (
 | `PYROSCOPE_AGENT_ENABLED`                   | Enables the agent. The default is `true`.                                                                                                                                                                                                                                                                                                                                                                                        |
 | `PYROSCOPE_APPLICATION_NAME`                | Sets the application name. If not provided, a generated name will be used.                                                                                                                                                                                                                                                                                                                                                       |
 | `PYROSCOPE_PROFILING_INTERVAL`              | Sets the profiling sampling interval for CPU profiling. The default is `10ms`.                                                                                                                                                                                                                                                                                                                                                   |
-| `PYROSCOPE_FORMAT`                          | Sets the profiler output format. The default is `collapsed`, but in order to support multiple formats it must be set to `jfr`.                                                                                                                                                                                                                                                                                                   |
+| `PYROSCOPE_FORMAT`                          | Sets the profiler output format. The default is `collapsed`. Set it to `jfr` to support multiple events or `otlp` to export using the experimental OpenTelemetry Profiles signal.                                                                                                                                                                                                                                                 |
 | `PYROSCOPE_PROFILER_EVENT`                  | Sets the profiler event. With JFR format enabled, this event refers to one of the possible CPU profiling events: `itimer`, `cpu`, `wall`. The default is `itimer`.                                                                                                                                                                                                                                                               |
 | `PYROSCOPE_PROFILER_ALLOC`                  | Sets the threshold to register allocation events, in bytes (equivalent to `--alloc=` in `async-profiler`). The default value is `""` - empty string, which means that allocation profiling is disabled. Setting it to `0` will register every event, causing significant CPU and network overhead, making it not suitable for production environments. We recommend setting a starting value of 512k and adjusting it as needed. |
 | `PYROSCOPE_PROFILER_LOCK`                   | Sets the threshold to register lock events, in nanoseconds (equivalent to `--lock=` in `async-profiler`). The default value is `""` - empty string, which means that lock profiling is disabled. Setting it to `0` will register every event, causing significant CPU and network overhead, making it not suitable for production environments. We recommend setting a starting value of 10ms and adjusting it as needed.        |

@@ -255,3 +255,56 @@ func TestCompactionService_workerID(t *testing.T) {
 	assert.Equal(t, addr.String(), workerID(ctx, new(metastorev1.PollCompactionJobsRequest)))
 	assert.Equal(t, "worker-1", workerID(ctx, &metastorev1.PollCompactionJobsRequest{WorkerId: "worker-1"}))
 }
+
+// Prior to https://github.com/grafana/pyroscope/pull/5465, the prepare step
+// proposed the worker request as-is, so the raft log may contain
+// metastore.v1.PollCompactionJobsRequest entries under the
+// GET_COMPACTION_PLAN_UPDATE command. The FSM decodes the entry payload as
+// raft_log.GetCompactionPlanUpdateRequest: replaying such a log must not fail,
+// and the entry must be interpreted exactly as it was when written.
+func TestGetCompactionPlanUpdateRequest_oldLogEntry(t *testing.T) {
+	oldEntry := &metastorev1.PollCompactionJobsRequest{
+		StatusUpdates: []*metastorev1.CompactionJobStatusUpdate{{
+			Name:   "job-done",
+			Token:  40,
+			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
+			// The field the raft_log message reserves: entries written by
+			// older versions carry the compaction results.
+			CompactedBlocks: &metastorev1.CompactedBlocks{
+				SourceBlocks: &metastorev1.BlockList{Tenant: "tenant-a", Blocks: []string{"b1"}},
+				NewBlocks:    []*metastorev1.BlockMeta{{Id: "b2"}},
+			},
+		}, {
+			Name:   "job-running",
+			Token:  41,
+			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS,
+		}},
+		JobCapacity: 3,
+	}
+
+	raw, err := proto.Marshal(oldEntry)
+	require.NoError(t, err)
+
+	// The FSM command handler decodes the raw entry payload into the request
+	// type registered for the command.
+	var decoded raft_log.GetCompactionPlanUpdateRequest
+	require.NoError(t, proto.Unmarshal(raw, &decoded))
+
+	assert.Equal(t, oldEntry.JobCapacity, decoded.AssignJobsMax)
+	require.Len(t, decoded.StatusUpdates, 2)
+	assert.Equal(t, "job-done", decoded.StatusUpdates[0].Name)
+	assert.Equal(t, uint64(40), decoded.StatusUpdates[0].Token)
+	assert.Equal(t, metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS, decoded.StatusUpdates[0].Status)
+	assert.Equal(t, "job-running", decoded.StatusUpdates[1].Name)
+	assert.Equal(t, uint64(41), decoded.StatusUpdates[1].Token)
+	assert.Equal(t, metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, decoded.StatusUpdates[1].Status)
+
+	// The reserved field is retained as an unknown field, so re-encoding the
+	// entry does not discard the data written by the older version.
+	assert.NotEmpty(t, decoded.StatusUpdates[0].ProtoReflect().GetUnknown())
+	reencoded, err := proto.Marshal(&decoded)
+	require.NoError(t, err)
+	var roundTripped metastorev1.PollCompactionJobsRequest
+	require.NoError(t, proto.Unmarshal(reencoded, &roundTripped))
+	assert.True(t, proto.Equal(oldEntry, &roundTripped), "want: %v\ngot:  %v", oldEntry, &roundTripped)
+}

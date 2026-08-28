@@ -603,11 +603,8 @@ func (f *Pyroscope) initUsageReport() (services.Service, error) {
 	if !f.Cfg.Analytics.Enabled {
 		return nil, nil
 	}
-	f.Cfg.Analytics.Leader = false
-	// ingester is the only component that can be a leader
-	if f.isModuleActive(Ingester) {
-		f.Cfg.Analytics.Leader = true
-	}
+	// Only the write path component creates the cluster seed: ingester on v1, segment writer on v2.
+	f.Cfg.Analytics.Leader = f.isModuleActive(Ingester) || f.isModuleActive(SegmentWriter)
 
 	usagestats.Target(f.Cfg.Target.String())
 

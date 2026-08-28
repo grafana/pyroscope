@@ -16,6 +16,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -280,6 +281,7 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
@@ -354,7 +356,7 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 			}},
 		}, nil)
 
-	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, mockMetadataClient, nil, mockQueryBackend, nil, nil, nil)
+	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, frontend.Config{}, mockMetadataClient, nil, mockQueryBackend, nil, nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), "tenant1")
 	start, end := smpValidTimeRange()

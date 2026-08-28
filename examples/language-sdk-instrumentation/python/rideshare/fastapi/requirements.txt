@@ -10,10 +10,10 @@ idna==3.18
 pycparser==3.0
 pydantic==2.13.4
 pydantic_core==2.46.4
-pyroscope-io==1.2.0
+pyroscope-io==1.2.1
 python-dotenv==1.2.2
 PyYAML==6.0.3
-starlette==1.2.1
+starlette==1.6.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.48.0

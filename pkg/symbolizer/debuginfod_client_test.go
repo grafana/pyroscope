@@ -4,14 +4,22 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -431,4 +439,337 @@ func TestDebuginfodClientNotFoundCache(t *testing.T) {
 	assert.Equal(t, "mock debug info", string(data))
 
 	assert.Equal(t, 2, requestCount)
+}
+
+func TestIsRetryableError_ConnectionFailures(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		retryable bool
+	}{
+		{"connection refused", &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}, true},
+		{"connection reset", &net.OpError{Op: "read", Err: os.NewSyscallError("read", syscall.ECONNRESET)}, true},
+		{"broken pipe", &net.OpError{Op: "write", Err: os.NewSyscallError("write", syscall.EPIPE)}, true},
+		{"eof", io.EOF, false},
+		{"unexpected eof", io.ErrUnexpectedEOF, false},
+		{"dns error", &net.DNSError{Err: "no such host", Name: "example.invalid"}, true},
+		{"deadline exceeded", context.DeadlineExceeded, false},
+		{"canceled", context.Canceled, false},
+		{"http not found", httpStatusError{statusCode: http.StatusNotFound}, false},
+		{"http rate limited", httpStatusError{statusCode: http.StatusTooManyRequests}, true},
+		{"http server error", httpStatusError{statusCode: http.StatusInternalServerError}, true},
+		{"invalid build id", invalidBuildIDError{buildID: "!"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.retryable, isRetryableError(tt.err))
+		})
+	}
+}
+
+// countingTransport counts round trips, including ones that fail to connect.
+type countingTransport struct {
+	inner http.RoundTripper
+	calls atomic.Int32
+}
+
+func (c *countingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.calls.Add(1)
+	return c.inner.RoundTrip(req)
+}
+
+func TestFetchDebuginfo_RetriesRefusedConnections(t *testing.T) {
+	// A closed listener's address yields a real ECONNREFUSED on every dial.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	serverURL := "http://" + l.Addr().String()
+	require.NoError(t, l.Close())
+
+	transport := &countingTransport{inner: http.DefaultTransport}
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:    serverURL,
+		HTTPClient: &http.Client{Transport: transport},
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 2 * time.Millisecond,
+			MaxRetries: 3,
+		},
+		NotFoundCacheMaxItems: 10,
+		NotFoundCacheTTL:      time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	_, err = client.FetchDebuginfo(ctx, "deadbeef")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "after 3 attempts")
+	assert.Equal(t, int32(3), transport.calls.Load(),
+		"refused connections must be retried up to the backoff budget")
+}
+
+func TestFetchDebuginfo_NotFoundCacheExpires(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL: server.URL,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 2 * time.Millisecond,
+			MaxRetries: 1,
+		},
+		NotFoundCacheMaxItems: 1000,
+		NotFoundCacheTTL:      20 * time.Millisecond,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.Error(t, err)
+	require.Equal(t, int32(1), calls.Load())
+
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.Error(t, err)
+	assert.Equal(t, int32(1), calls.Load(), "a 404 within the TTL must be served from the cache")
+
+	time.Sleep(100 * time.Millisecond)
+
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.Error(t, err)
+	assert.Equal(t, int32(2), calls.Load(), "an expired 404 entry must be fetched again")
+}
+
+func TestFetchDebuginfo_CircuitBreakerFailsFast(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	serverURL := "http://" + l.Addr().String()
+	require.NoError(t, l.Close())
+
+	transport := &countingTransport{inner: http.DefaultTransport}
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:    serverURL,
+		HTTPClient: &http.Client{Transport: transport},
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 2 * time.Millisecond,
+			MaxRetries: 1,
+		},
+		NotFoundCacheMaxItems:   1000,
+		NotFoundCacheTTL:        time.Minute,
+		BreakerFailureThreshold: 2,
+		BreakerOpenDuration:     time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	// Two distinct build IDs fail at the network level and trip the breaker.
+	_, err = client.FetchDebuginfo(ctx, "buildid1")
+	require.Error(t, err)
+	_, err = client.FetchDebuginfo(ctx, "buildid2")
+	require.Error(t, err)
+	dialsAfterTrip := transport.calls.Load()
+	require.Greater(t, dialsAfterTrip, int32(0))
+
+	// The third build ID fails fast without touching the network.
+	_, err = client.FetchDebuginfo(ctx, "buildid3")
+	require.Error(t, err)
+	var unavailable upstreamUnavailableError
+	assert.ErrorAs(t, err, &unavailable)
+	assert.Equal(t, dialsAfterTrip, transport.calls.Load(),
+		"an open breaker must not dial the upstream")
+}
+
+func TestFetchDebuginfo_NotFoundDoesNotTripBreaker(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:                 server.URL,
+		NotFoundCacheMaxItems:   1000,
+		NotFoundCacheTTL:        time.Minute,
+		BreakerFailureThreshold: 2,
+		BreakerOpenDuration:     time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	// Distinct build IDs, well past the threshold: a 404 is an answer, not
+	// an upstream failure, so the breaker must stay closed.
+	for i := range 5 {
+		_, err = client.FetchDebuginfo(ctx, "buildid"+strconv.Itoa(i))
+		var notFound buildIDNotFoundError
+		require.ErrorAs(t, err, &notFound)
+	}
+	assert.Equal(t, int32(5), calls.Load(), "every 404 must reach the upstream")
+}
+
+func TestFetchDebuginfo_DeadContextDoesNotStartFetch(t *testing.T) {
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:               "http://127.0.0.1:1",
+		NotFoundCacheMaxItems: 1000,
+		NotFoundCacheTTL:      time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), validation.MockDefaultOverrides())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(tenant.InjectTenantID(context.Background(), "test-tenant"))
+	cancel()
+
+	_, err = client.FetchDebuginfo(ctx, "cafebabe")
+	require.ErrorIs(t, err, context.Canceled)
+
+	// The guard must return before the not-found cache probe, which is
+	// incremented synchronously ahead of the singleflight fetch: a zero
+	// miss count proves no detached fetch was started.
+	assert.Equal(t, float64(0),
+		testutil.ToFloat64(client.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss")),
+		"a dead caller must not reach the cache probe or start a detached fetch")
+}
+
+// gatedTransport fails every dial with a refused connection; dials for the
+// "held" build ID block until the gate closes.
+type gatedTransport struct {
+	gate  chan struct{}
+	dials atomic.Int32
+}
+
+func (g *gatedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	g.dials.Add(1)
+	if strings.Contains(req.URL.Path, "held") {
+		<-g.gate
+	}
+	return nil, &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}
+}
+
+func TestFetchDebuginfo_QueuedFetchesFailFastAfterBreakerOpens(t *testing.T) {
+	transport := &gatedTransport{gate: make(chan struct{})}
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:                 "http://127.0.0.1:1",
+		HTTPClient:              &http.Client{Transport: transport},
+		BackoffConfig:           backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 1},
+		NotFoundCacheMaxItems:   1000,
+		NotFoundCacheTTL:        time.Minute,
+		MaxConcurrentFetches:    1,
+		BreakerFailureThreshold: 1,
+		BreakerOpenDuration:     time.Minute,
+	}, newMetrics(prometheus.NewRegistry()), validation.MockDefaultOverrides())
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	heldErr := make(chan error, 1)
+	go func() {
+		_, err := client.FetchDebuginfo(ctx, "held")
+		heldErr <- err
+	}()
+	require.Eventually(t, func() bool { return transport.dials.Load() == 1 },
+		time.Second, time.Millisecond, "the held fetch must occupy the only slot")
+
+	queuedErr := make(chan error, 1)
+	go func() {
+		_, err := client.FetchDebuginfo(ctx, "queued")
+		queuedErr <- err
+	}()
+	// Give the queued fetch time to block on the fetch slot.
+	time.Sleep(100 * time.Millisecond)
+
+	// Failing the held fetch trips the breaker (threshold 1) while the
+	// queued fetch is still waiting for the slot.
+	close(transport.gate)
+	require.Error(t, <-heldErr)
+
+	var unavailable upstreamUnavailableError
+	require.ErrorAs(t, <-queuedErr, &unavailable)
+	assert.Equal(t, int32(1), transport.dials.Load(),
+		"a fetch that queued before the breaker opened must not dial after it opens")
+}
+
+// highWaterTransport tracks the maximum number of concurrent in-flight
+// round trips.
+type highWaterTransport struct {
+	inner    http.RoundTripper
+	inflight atomic.Int32
+	max      atomic.Int32
+}
+
+func (h *highWaterTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	cur := h.inflight.Add(1)
+	defer h.inflight.Add(-1)
+	for {
+		observed := h.max.Load()
+		if cur <= observed || h.max.CompareAndSwap(observed, cur) {
+			break
+		}
+	}
+	return h.inner.RoundTrip(req)
+}
+
+func TestFetchDebuginfo_BoundsConcurrentUpstreamFetches(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("debug info"))
+	}))
+	defer server.Close()
+
+	transport := &highWaterTransport{inner: http.DefaultTransport}
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClientWithConfig(log.NewNopLogger(), DebuginfodClientConfig{
+		BaseURL:               server.URL,
+		HTTPClient:            &http.Client{Transport: transport},
+		BackoffConfig:         backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 1},
+		NotFoundCacheMaxItems: 1000,
+		NotFoundCacheTTL:      time.Minute,
+		MaxConcurrentFetches:  2,
+	}, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			buildID := "buildid" + strconv.Itoa(i)
+			r, err := client.FetchDebuginfo(ctx, buildID)
+			if err == nil {
+				_ = r.Close()
+			}
+		}()
+	}
+	wg.Wait()
+	assert.LessOrEqual(t, transport.max.Load(), int32(2),
+		"in-flight upstream fetches must stay within MaxConcurrentFetches")
+}
+
+func TestFetchDebuginfo_SendsUserAgent(t *testing.T) {
+	var ua atomic.Value
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ua.Store(r.Header.Get("User-Agent"))
+		_, _ = w.Write([]byte("debug info"))
+	}))
+	defer server.Close()
+
+	limits := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {})
+	client, err := NewDebuginfodClient(log.NewNopLogger(), server.URL, newMetrics(prometheus.NewRegistry()), limits)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+	r, err := client.FetchDebuginfo(ctx, "cafebabe")
+	require.NoError(t, err)
+	require.NoError(t, r.Close())
+	assert.Contains(t, ua.Load().(string), "pyroscope-symbolizer")
 }
