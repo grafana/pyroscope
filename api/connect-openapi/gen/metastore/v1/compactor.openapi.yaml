@@ -399,6 +399,16 @@ components:
           title: updated_at
           format: int64
           description: Unix nanoseconds, when the last status update was observed. Zero if unknown.
+        sourceBlockIds:
+          type: array
+          items:
+            type: string
+          title: source_block_ids
+          description: |-
+            Identifiers of the source blocks to compact. Only populated if the
+             request asks for them: see GetCompactionStateRequest#include_source_blocks.
+             The number of source blocks is always reported in source_blocks (10),
+             whether or not the identifiers are included.
       title: CompactionJobDetails
       additionalProperties: false
       description: |-
@@ -587,6 +597,30 @@ components:
       additionalProperties: false
     metastore.v1.GetCompactionStateRequest:
       type: object
+      properties:
+        tenant:
+          type: string
+          title: tenant
+          description: |-
+            Optional. Restricts the response to the compaction jobs and the planner
+             queues of the tenant.
+
+             If not set, the entire state is returned. If set to an empty string, only
+             the entities that have no tenant are selected: these operate on the blocks
+             of compaction level 0, which are the multi-tenant segments written by the
+             segment writers.
+
+             The filter is an optimization, not a guarantee: a server that does not
+             know the field returns the entire state. Callers must not rely on it for
+             correctness and must filter the response on their side as well.
+          nullable: true
+        includeSourceBlocks:
+          type: boolean
+          title: include_source_blocks
+          description: |-
+            Optional. Includes the identifiers of the job source blocks into the
+             response. Disabled by default: the identifiers dominate the response
+             size, and the entire schedule may hold millions of them.
       title: GetCompactionStateRequest
       additionalProperties: false
     metastore.v1.GetCompactionStateResponse:

@@ -658,9 +658,25 @@ func (x *CompactedBlocks) GetNewBlocks() []*BlockMeta {
 }
 
 type GetCompactionStateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional. Restricts the response to the compaction jobs and the planner
+	// queues of the tenant.
+	//
+	// If not set, the entire state is returned. If set to an empty string, only
+	// the entities that have no tenant are selected: these operate on the blocks
+	// of compaction level 0, which are the multi-tenant segments written by the
+	// segment writers.
+	//
+	// The filter is an optimization, not a guarantee: a server that does not
+	// know the field returns the entire state. Callers must not rely on it for
+	// correctness and must filter the response on their side as well.
+	Tenant *string `protobuf:"bytes,1,opt,name=tenant,proto3,oneof" json:"tenant,omitempty"`
+	// Optional. Includes the identifiers of the job source blocks into the
+	// response. Disabled by default: the identifiers dominate the response
+	// size, and the entire schedule may hold millions of them.
+	IncludeSourceBlocks bool `protobuf:"varint,2,opt,name=include_source_blocks,json=includeSourceBlocks,proto3" json:"include_source_blocks,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *GetCompactionStateRequest) Reset() {
@@ -691,6 +707,20 @@ func (x *GetCompactionStateRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetCompactionStateRequest.ProtoReflect.Descriptor instead.
 func (*GetCompactionStateRequest) Descriptor() ([]byte, []int) {
 	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetCompactionStateRequest) GetTenant() string {
+	if x != nil && x.Tenant != nil {
+		return *x.Tenant
+	}
+	return ""
+}
+
+func (x *GetCompactionStateRequest) GetIncludeSourceBlocks() bool {
+	if x != nil {
+		return x.IncludeSourceBlocks
+	}
+	return false
 }
 
 type GetCompactionStateResponse struct {
@@ -803,9 +833,14 @@ type CompactionJobDetails struct {
 	// Unix nanoseconds, when the current assignment was observed. Zero if unknown.
 	AssignedAt int64 `protobuf:"varint,12,opt,name=assigned_at,json=assignedAt,proto3" json:"assigned_at,omitempty"`
 	// Unix nanoseconds, when the last status update was observed. Zero if unknown.
-	UpdatedAt     int64 `protobuf:"varint,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UpdatedAt int64 `protobuf:"varint,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Identifiers of the source blocks to compact. Only populated if the
+	// request asks for them: see GetCompactionStateRequest#include_source_blocks.
+	// The number of source blocks is always reported in source_blocks (10),
+	// whether or not the identifiers are included.
+	SourceBlockIds []string `protobuf:"bytes,14,rep,name=source_block_ids,json=sourceBlockIds,proto3" json:"source_block_ids,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CompactionJobDetails) Reset() {
@@ -927,6 +962,13 @@ func (x *CompactionJobDetails) GetUpdatedAt() int64 {
 		return x.UpdatedAt
 	}
 	return 0
+}
+
+func (x *CompactionJobDetails) GetSourceBlockIds() []string {
+	if x != nil {
+		return x.SourceBlockIds
+	}
+	return nil
 }
 
 // CompactionQueueDetails describes a planner queue of blocks
@@ -1066,14 +1108,17 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\x0fCompactedBlocks\x12<\n" +
 	"\rsource_blocks\x18\x01 \x01(\v2\x17.metastore.v1.BlockListR\fsourceBlocks\x126\n" +
 	"\n" +
-	"new_blocks\x18\x02 \x03(\v2\x17.metastore.v1.BlockMetaR\tnewBlocks\"\x1b\n" +
-	"\x19GetCompactionStateRequest\"\xc1\x02\n" +
+	"new_blocks\x18\x02 \x03(\v2\x17.metastore.v1.BlockMetaR\tnewBlocks\"w\n" +
+	"\x19GetCompactionStateRequest\x12\x1b\n" +
+	"\x06tenant\x18\x01 \x01(\tH\x00R\x06tenant\x88\x01\x01\x122\n" +
+	"\x15include_source_blocks\x18\x02 \x01(\bR\x13includeSourceBlocksB\t\n" +
+	"\a_tenant\"\xc1\x02\n" +
 	"\x1aGetCompactionStateResponse\x12K\n" +
 	"\x0fcompaction_jobs\x18\x01 \x03(\v2\".metastore.v1.CompactionJobDetailsR\x0ecompactionJobs\x12Q\n" +
 	"\x11compaction_queues\x18\x02 \x03(\v2$.metastore.v1.CompactionQueueDetailsR\x10compactionQueues\x12,\n" +
 	"\x12job_lease_duration\x18\x03 \x01(\x03R\x10jobLeaseDuration\x12(\n" +
 	"\x10job_max_failures\x18\x04 \x01(\x04R\x0ejobMaxFailures\x12+\n" +
-	"\x12max_job_queue_size\x18\x05 \x01(\x04R\x0fmaxJobQueueSize\"\xb7\x03\n" +
+	"\x12max_job_queue_size\x18\x05 \x01(\x04R\x0fmaxJobQueueSize\"\xe1\x03\n" +
 	"\x14CompactionJobDetails\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06tenant\x18\x02 \x01(\tR\x06tenant\x12\x14\n" +
@@ -1090,7 +1135,8 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\vassigned_at\x18\f \x01(\x03R\n" +
 	"assignedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\r \x01(\x03R\tupdatedAt\"\xd9\x01\n" +
+	"updated_at\x18\r \x01(\x03R\tupdatedAt\x12(\n" +
+	"\x10source_block_ids\x18\x0e \x03(\tR\x0esourceBlockIds\"\xd9\x01\n" +
 	"\x16CompactionQueueDetails\x12\x16\n" +
 	"\x06tenant\x18\x01 \x01(\tR\x06tenant\x12\x14\n" +
 	"\x05shard\x18\x02 \x01(\rR\x05shard\x12)\n" +
@@ -1170,6 +1216,7 @@ func file_metastore_v1_compactor_proto_init() {
 		return
 	}
 	file_metastore_v1_types_proto_init()
+	file_metastore_v1_compactor_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -122,6 +122,19 @@ type QueueStats struct {
 	NewestAppendedAt int64
 }
 
+// QueueFilter narrows the queue listing. The zero value lists every queue.
+type QueueFilter struct {
+	// Tenant restricts the listing to the queues of the tenant. If nil, the
+	// queues of every tenant are listed. If it points at an empty string,
+	// only the queues that have no tenant are listed: these hold the blocks
+	// of level 0, which are the multi-tenant segments.
+	Tenant *string
+}
+
+func (f QueueFilter) matches(tenant string) bool {
+	return f.Tenant == nil || *f.Tenant == tenant
+}
+
 // ListQueues aggregates the queued block entries into per-queue statistics.
 // The entries are read from the storage snapshot of the given transaction;
 // the in-memory queue is not accessed.
@@ -129,7 +142,7 @@ type QueueStats struct {
 // The number of entries is not limited and can be very large if compaction
 // does not keep up with the block influx, therefore the scan is bounded by
 // the context.
-func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx) ([]QueueStats, error) {
+func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx, filter QueueFilter) ([]QueueStats, error) {
 	queues := make(map[compactionKey]*QueueStats)
 	entries := c.store.ListEntries(tx)
 	defer func() {
@@ -143,6 +156,9 @@ func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx) ([]QueueStats,
 			}
 		}
 		e := entries.At()
+		if !filter.matches(e.Tenant) {
+			continue
+		}
 		k := compactionKey{tenant: e.Tenant, shard: e.Shard, level: e.Level}
 		q, ok := queues[k]
 		if !ok {

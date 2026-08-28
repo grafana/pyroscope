@@ -85,7 +85,24 @@ enum CompactionJobStatus {
   COMPACTION_STATUS_SUCCESS = 2;
 }
 
-message GetCompactionStateRequest {}
+message GetCompactionStateRequest {
+  // Optional. Restricts the response to the compaction jobs and the planner
+  // queues of the tenant.
+  //
+  // If not set, the entire state is returned. If set to an empty string, only
+  // the entities that have no tenant are selected: these operate on the blocks
+  // of compaction level 0, which are the multi-tenant segments written by the
+  // segment writers.
+  //
+  // The filter is an optimization, not a guarantee: a server that does not
+  // know the field returns the entire state. Callers must not rely on it for
+  // correctness and must filter the response on their side as well.
+  optional string tenant = 1;
+  // Optional. Includes the identifiers of the job source blocks into the
+  // response. Disabled by default: the identifiers dominate the response
+  // size, and the entire schedule may hold millions of them.
+  bool include_source_blocks = 2;
+}
 
 message GetCompactionStateResponse {
   // Jobs in the scheduler queue.
@@ -129,6 +146,11 @@ message CompactionJobDetails {
   int64 assigned_at = 12;
   // Unix nanoseconds, when the last status update was observed. Zero if unknown.
   int64 updated_at = 13;
+  // Identifiers of the source blocks to compact. Only populated if the
+  // request asks for them: see GetCompactionStateRequest#include_source_blocks.
+  // The number of source blocks is always reported in source_blocks (10),
+  // whether or not the identifiers are included.
+  repeated string source_block_ids = 14;
 }
 
 // CompactionQueueDetails describes a planner queue of blocks

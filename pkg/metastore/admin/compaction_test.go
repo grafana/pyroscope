@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
@@ -562,10 +564,13 @@ func TestBuildCompactionPageContent_blockLinksWithoutTenant(t *testing.T) {
 
 	content := buildCompactionPageContent(state, now, "", "")
 	require.Len(t, content.Attention, 1)
+	// The time-windowed listing link needs a tenant to query by, so there is
+	// none; the drill-down instead goes to the segment group.
 	assert.Empty(t, content.Attention[0].BlocksPath)
-	assert.Empty(t, content.Attention[0].TenantPath)
+	assert.Equal(t, "/metastore-compaction?segments=1", content.Attention[0].TenantPath)
 
 	tenantContent := buildCompactionTenantPageContent(state, now, "")
+	assert.True(t, tenantContent.Segments)
 	assert.Empty(t, tenantContent.BlocksPath)
 
 	// The template renders the counts as plain text: no empty links.
@@ -598,6 +603,151 @@ func TestCompactionHandler_blockLinks(t *testing.T) {
 	assert.Contains(t, body, `href="/ops/object-store/tenants/tenant-a/blocks"`)
 	assert.Contains(t, body, `href="/ops/object-store/tenants/tenant-a/blocks?queryFrom=`)
 }
+
+// The request filter is what keeps the drill-down from pulling the source
+// blocks of the entire cluster, so assert exactly what the handler asks for.
+func TestCompactionHandler_request(t *testing.T) {
+	for _, test := range []struct {
+		name               string
+		url                string
+		expectTenant       *string
+		expectSourceBlocks bool
+	}{
+		{
+			name: "overview asks for no filter and no source blocks",
+			url:  "/metastore-compaction",
+		},
+		{
+			name:               "tenant drill-down filters and asks for source blocks",
+			url:                "/metastore-compaction?tenant=tenant-a",
+			expectTenant:       ptr("tenant-a"),
+			expectSourceBlocks: true,
+		},
+		{
+			name:               "segment drill-down selects the empty tenant",
+			url:                "/metastore-compaction?segments=1",
+			expectTenant:       ptr(""),
+			expectSourceBlocks: true,
+		},
+		{
+			name: "an empty tenant parameter is the overview, not the segments",
+			url:  "/metastore-compaction?tenant=",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var got *metastorev1.GetCompactionStateRequest
+			client := mockmetastorev1.NewMockCompactionServiceClient(t)
+			client.EXPECT().
+				GetCompactionState(mock.Anything, mock.Anything).
+				Run(func(_ context.Context, in *metastorev1.GetCompactionStateRequest, _ ...grpc.CallOption) {
+					got = in
+				}).
+				Return(testCompactionState(time.Now()), nil).
+				Once()
+
+			a := &Admin{compactionClient: client}
+			w := httptest.NewRecorder()
+			a.CompactionHandler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, test.url, nil))
+			require.Equal(t, http.StatusOK, w.Code)
+
+			require.NotNil(t, got)
+			if test.expectTenant == nil {
+				assert.Nil(t, got.Tenant, "the tenant filter must be absent, not empty")
+			} else {
+				require.NotNil(t, got.Tenant)
+				assert.Equal(t, *test.expectTenant, *got.Tenant)
+			}
+			assert.Equal(t, test.expectSourceBlocks, got.IncludeSourceBlocks)
+		})
+	}
+}
+
+func TestCompactionHandler_sourceBlockLinks(t *testing.T) {
+	now := time.Now()
+	state := testCompactionState(now)
+	state.CompactionJobs[0].SourceBlockIds = []string{"01M14VWWJJEDW4TPDEFH5H5XWJ", "01M14VWWJJEDW4TPDEFH5H5XWK"}
+
+	client := mockmetastorev1.NewMockCompactionServiceClient(t)
+	client.EXPECT().
+		GetCompactionState(mock.Anything, mock.Anything).
+		Return(state, nil).
+		Once()
+
+	a := &Admin{compactionClient: client}
+	w := httptest.NewRecorder()
+	a.CompactionHandler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metastore-compaction?tenant=tenant-a", nil))
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body,
+		`href="/ops/object-store/tenants/tenant-a/blocks/01M14VWWJJEDW4TPDEFH5H5XWJ`+
+			`?block_tenant=tenant-a&amp;shard=1"`)
+	assert.Contains(t, body, "01M14VWWJJEDW4TPDEFH5H5XWK")
+}
+
+// A server that does not report the source block identifiers must leave the
+// page on the windowed fallback rather than showing an empty block list.
+func TestCompactionHandler_sourceBlockLinksAbsent(t *testing.T) {
+	client := mockmetastorev1.NewMockCompactionServiceClient(t)
+	client.EXPECT().
+		GetCompactionState(mock.Anything, mock.Anything).
+		Return(testCompactionState(time.Now()), nil).
+		Once()
+
+	a := &Admin{compactionClient: client}
+	w := httptest.NewRecorder()
+	a.CompactionHandler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metastore-compaction?tenant=tenant-a", nil))
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.NotContains(t, body, "/blocks/")
+	assert.Contains(t, body, `href="/ops/object-store/tenants/tenant-a/blocks?queryFrom=`)
+}
+
+func TestBlockPath(t *testing.T) {
+	assert.Equal(t,
+		"/ops/object-store/tenants/tenant-a/blocks/block-1?block_tenant=tenant-a&shard=7",
+		blockPath("tenant-a", 7, "block-1"))
+	// Segments belong to no tenant: the path names the anonymous tenant,
+	// while the block tenant, which resolves the block, stays empty.
+	assert.Equal(t,
+		"/ops/object-store/tenants/anonymous/blocks/block-1?block_tenant=&shard=0",
+		blockPath("", 0, "block-1"))
+}
+
+func TestCompactionHandler_segments(t *testing.T) {
+	now := time.Now()
+	state := &metastorev1.GetCompactionStateResponse{
+		JobMaxFailures: 3,
+		CompactionJobs: []*metastorev1.CompactionJobDetails{{
+			Name:           "5f0a-T-S38-L0",
+			Shard:          38,
+			AddedAt:        now.Add(-time.Minute).UnixNano(),
+			SourceBlocks:   1,
+			SourceBlockIds: []string{"01M14VWWJJEDW4TPDEFH5H5XWJ"},
+		}},
+	}
+	client := mockmetastorev1.NewMockCompactionServiceClient(t)
+	client.EXPECT().
+		GetCompactionState(mock.Anything, mock.Anything).
+		Return(state, nil).
+		Once()
+
+	a := &Admin{compactionClient: client}
+	w := httptest.NewRecorder()
+	a.CompactionHandler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metastore-compaction?segments=1", nil))
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "Multi-tenant segments")
+	// The anonymous tenant stands in for the segments, and the page says why.
+	assert.Contains(t, body,
+		`href="/ops/object-store/tenants/anonymous/blocks/01M14VWWJJEDW4TPDEFH5H5XWJ`+
+			`?block_tenant=&amp;shard=38"`)
+	assert.Contains(t, body, "<code>anonymous</code>")
+}
+
+func ptr[T any](v T) *T { return &v }
 
 func TestMatchesTenantFilter(t *testing.T) {
 	assert.True(t, matchesTenantFilter("tenant-a", ""))

@@ -35,7 +35,7 @@ func TestCompactor_ListQueues(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		queues, err := compactor.ListQueues(context.Background(), tx)
+		queues, err := compactor.ListQueues(context.Background(), tx, QueueFilter{})
 		require.NoError(t, err)
 		assert.Equal(t, []QueueStats{
 			{Tenant: "tenant-a", Shard: 1, Level: 0, Blocks: 3, OldestAppendedAt: 100, NewestAppendedAt: 300},
@@ -64,10 +64,50 @@ func TestCompactor_ListQueues_canceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		_, err := compactor.ListQueues(ctx, tx)
+		_, err := compactor.ListQueues(ctx, tx, QueueFilter{})
 		require.ErrorIs(t, err, context.Canceled)
 		return nil
 	}))
+}
+
+func TestCompactor_ListQueues_filter(t *testing.T) {
+	db := test.BoltDB(t)
+	s := store.NewBlockQueueStore()
+	compactor := NewCompactor(DefaultConfig(), s, nil, nil)
+
+	// Level 0 entries have no tenant: they hold the multi-tenant segments.
+	entries := []compaction.BlockEntry{
+		{Index: 1, AppendedAt: 100, ID: "b1", Tenant: "tenant-a", Shard: 1, Level: 1},
+		{Index: 2, AppendedAt: 200, ID: "b2", Tenant: "", Shard: 1, Level: 0},
+		{Index: 3, AppendedAt: 300, ID: "b3", Tenant: "tenant-b", Shard: 1, Level: 1},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		require.NoError(t, s.CreateBuckets(tx))
+		for _, e := range entries {
+			require.NoError(t, s.StoreEntry(tx, e))
+		}
+		return nil
+	}))
+
+	tenants := func(t *testing.T, filter QueueFilter) []string {
+		var found []string
+		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+			queues, err := compactor.ListQueues(context.Background(), tx, filter)
+			require.NoError(t, err)
+			for _, q := range queues {
+				found = append(found, q.Tenant)
+			}
+			return nil
+		}))
+		return found
+	}
+
+	tenantA := "tenant-a"
+	noTenant := ""
+
+	assert.Equal(t, []string{"", "tenant-a", "tenant-b"}, tenants(t, QueueFilter{}))
+	assert.Equal(t, []string{"tenant-a"}, tenants(t, QueueFilter{Tenant: &tenantA}))
+	assert.Equal(t, []string{""}, tenants(t, QueueFilter{Tenant: &noTenant}))
 }
 
 func TestCompactor_ListQueues_empty(t *testing.T) {
@@ -80,7 +120,7 @@ func TestCompactor_ListQueues_empty(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		queues, err := compactor.ListQueues(context.Background(), tx)
+		queues, err := compactor.ListQueues(context.Background(), tx, QueueFilter{})
 		require.NoError(t, err)
 		assert.Empty(t, queues)
 		return nil
