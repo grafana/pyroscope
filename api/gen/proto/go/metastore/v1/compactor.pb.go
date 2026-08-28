@@ -736,8 +736,14 @@ type GetCompactionStateResponse struct {
 	JobMaxFailures uint64 `protobuf:"varint,4,opt,name=job_max_failures,json=jobMaxFailures,proto3" json:"job_max_failures,omitempty"`
 	// Scheduler queue size limit; failed jobs are evicted when it is exceeded.
 	MaxJobQueueSize uint64 `protobuf:"varint,5,opt,name=max_job_queue_size,json=maxJobQueueSize,proto3" json:"max_job_queue_size,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Reports that the planner queue scan stopped before reaching the end.
+	// The number of blocks awaiting compaction is not bounded by any
+	// configuration, so the scan is capped to bound the time the metastore
+	// spends serving this request. When set, compaction_queues describes only
+	// a prefix of the queues, and the block counts are lower bounds.
+	CompactionQueuesTruncated bool `protobuf:"varint,6,opt,name=compaction_queues_truncated,json=compactionQueuesTruncated,proto3" json:"compaction_queues_truncated,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *GetCompactionStateResponse) Reset() {
@@ -803,6 +809,13 @@ func (x *GetCompactionStateResponse) GetMaxJobQueueSize() uint64 {
 		return x.MaxJobQueueSize
 	}
 	return 0
+}
+
+func (x *GetCompactionStateResponse) GetCompactionQueuesTruncated() bool {
+	if x != nil {
+		return x.CompactionQueuesTruncated
+	}
+	return false
 }
 
 // CompactionJobDetails describes a compaction job in the scheduler queue.
@@ -1112,13 +1125,14 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\x19GetCompactionStateRequest\x12\x1b\n" +
 	"\x06tenant\x18\x01 \x01(\tH\x00R\x06tenant\x88\x01\x01\x122\n" +
 	"\x15include_source_blocks\x18\x02 \x01(\bR\x13includeSourceBlocksB\t\n" +
-	"\a_tenant\"\xc1\x02\n" +
+	"\a_tenant\"\x81\x03\n" +
 	"\x1aGetCompactionStateResponse\x12K\n" +
 	"\x0fcompaction_jobs\x18\x01 \x03(\v2\".metastore.v1.CompactionJobDetailsR\x0ecompactionJobs\x12Q\n" +
 	"\x11compaction_queues\x18\x02 \x03(\v2$.metastore.v1.CompactionQueueDetailsR\x10compactionQueues\x12,\n" +
 	"\x12job_lease_duration\x18\x03 \x01(\x03R\x10jobLeaseDuration\x12(\n" +
 	"\x10job_max_failures\x18\x04 \x01(\x04R\x0ejobMaxFailures\x12+\n" +
-	"\x12max_job_queue_size\x18\x05 \x01(\x04R\x0fmaxJobQueueSize\"\xe1\x03\n" +
+	"\x12max_job_queue_size\x18\x05 \x01(\x04R\x0fmaxJobQueueSize\x12>\n" +
+	"\x1bcompaction_queues_truncated\x18\x06 \x01(\bR\x19compactionQueuesTruncated\"\xe1\x03\n" +
 	"\x14CompactionJobDetails\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06tenant\x18\x02 \x01(\tR\x06tenant\x12\x14\n" +

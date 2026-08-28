@@ -661,6 +661,15 @@ components:
           title: max_job_queue_size
           format: int64
           description: Scheduler queue size limit; failed jobs are evicted when it is exceeded.
+        compactionQueuesTruncated:
+          type: boolean
+          title: compaction_queues_truncated
+          description: |-
+            Reports that the planner queue scan stopped before reaching the end.
+             The number of blocks awaiting compaction is not bounded by any
+             configuration, so the scan is capped to bound the time the metastore
+             spends serving this request. When set, compaction_queues describes only
+             a prefix of the queues, and the block counts are lower bounds.
       title: GetCompactionStateResponse
       additionalProperties: false
     metastore.v1.PollCompactionJobsRequest:

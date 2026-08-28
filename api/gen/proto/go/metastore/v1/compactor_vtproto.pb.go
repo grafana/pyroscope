@@ -266,6 +266,7 @@ func (m *GetCompactionStateResponse) CloneVT() *GetCompactionStateResponse {
 	r.JobLeaseDuration = m.JobLeaseDuration
 	r.JobMaxFailures = m.JobMaxFailures
 	r.MaxJobQueueSize = m.MaxJobQueueSize
+	r.CompactionQueuesTruncated = m.CompactionQueuesTruncated
 	if rhs := m.CompactionJobs; rhs != nil {
 		tmpContainer := make([]*CompactionJobDetails, len(rhs))
 		for k, v := range rhs {
@@ -738,6 +739,9 @@ func (this *GetCompactionStateResponse) EqualVT(that *GetCompactionStateResponse
 		return false
 	}
 	if this.MaxJobQueueSize != that.MaxJobQueueSize {
+		return false
+	}
+	if this.CompactionQueuesTruncated != that.CompactionQueuesTruncated {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1602,6 +1606,16 @@ func (m *GetCompactionStateResponse) MarshalToSizedBufferVT(dAtA []byte) (int, e
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.CompactionQueuesTruncated {
+		i--
+		if m.CompactionQueuesTruncated {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x30
+	}
 	if m.MaxJobQueueSize != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MaxJobQueueSize))
 		i--
@@ -2085,6 +2099,9 @@ func (m *GetCompactionStateResponse) SizeVT() (n int) {
 	}
 	if m.MaxJobQueueSize != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.MaxJobQueueSize))
+	}
+	if m.CompactionQueuesTruncated {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3788,6 +3805,26 @@ func (m *GetCompactionStateResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CompactionQueuesTruncated", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.CompactionQueuesTruncated = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

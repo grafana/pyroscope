@@ -123,13 +123,22 @@ type QueueStats struct {
 	NewestAppendedAt int64
 }
 
-// QueueFilter narrows the queue listing. The zero value lists every queue.
+// QueueFilter narrows the queue listing. The zero value lists every queue
+// and scans the queue in full.
 type QueueFilter struct {
 	// Tenant restricts the listing to the queues of the tenant. If nil, the
 	// queues of every tenant are listed. If it points at an empty string,
 	// only the queues that have no tenant are listed: these hold the blocks
 	// of level 0, which are the multi-tenant segments.
 	Tenant *string
+	// MaxEntries caps the number of queue entries read. Zero does not cap.
+	//
+	// The number of entries grows with the compaction backlog and is not
+	// bounded by any configuration, so a caller that must not be held for an
+	// unbounded time gives up a complete answer for a bounded one: the scan
+	// reports that it stopped early, and the statistics it returns cover
+	// only the entries it read.
+	MaxEntries int
 }
 
 func (f QueueFilter) matches(tenant string) bool {
@@ -142,18 +151,26 @@ func (f QueueFilter) matches(tenant string) bool {
 //
 // The number of entries is not limited and can be very large if compaction
 // does not keep up with the block influx, therefore the scan is bounded by
-// the context.
-func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx, filter QueueFilter) ([]QueueStats, error) {
+// the context, and optionally by QueueFilter.MaxEntries.
+//
+// The second return value reports that the scan stopped at the cap, so the
+// statistics describe only a prefix of the queue.
+func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx, filter QueueFilter) ([]QueueStats, bool, error) {
 	queues := make(map[compactionKey]*QueueStats)
 	entries := c.store.ListEntryStats(tx)
 	defer func() {
 		_ = entries.Close()
 	}()
 	var n int
+	var truncated bool
 	for entries.Next() {
+		if filter.MaxEntries > 0 && n >= filter.MaxEntries {
+			truncated = true
+			break
+		}
 		if n++; n%4096 == 0 {
 			if err := ctx.Err(); err != nil {
-				return nil, err
+				return nil, false, err
 			}
 		}
 		e := entries.At()
@@ -177,7 +194,7 @@ func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx, filter QueueFi
 		q.NewestAppendedAt = max(q.NewestAppendedAt, e.AppendedAt)
 	}
 	if err := entries.Err(); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	s := make([]QueueStats, 0, len(queues))
 	for _, q := range queues {
@@ -192,7 +209,7 @@ func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx, filter QueueFi
 		}
 		return cmp.Compare(a.Shard, b.Shard)
 	})
-	return s, nil
+	return s, truncated, nil
 }
 
 func (c *Compactor) Init(tx *bbolt.Tx) error {

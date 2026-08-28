@@ -35,7 +35,7 @@ func TestCompactor_ListQueues(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		queues, err := compactor.ListQueues(context.Background(), tx, QueueFilter{})
+		queues, _, err := compactor.ListQueues(context.Background(), tx, QueueFilter{})
 		require.NoError(t, err)
 		assert.Equal(t, []QueueStats{
 			{Tenant: "tenant-a", Shard: 1, Level: 0, Blocks: 3, OldestAppendedAt: 100, NewestAppendedAt: 300},
@@ -64,7 +64,7 @@ func TestCompactor_ListQueues_canceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		_, err := compactor.ListQueues(ctx, tx, QueueFilter{})
+		_, _, err := compactor.ListQueues(ctx, tx, QueueFilter{})
 		require.ErrorIs(t, err, context.Canceled)
 		return nil
 	}))
@@ -92,7 +92,7 @@ func TestCompactor_ListQueues_filter(t *testing.T) {
 	tenants := func(t *testing.T, filter QueueFilter) []string {
 		var found []string
 		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-			queues, err := compactor.ListQueues(context.Background(), tx, filter)
+			queues, _, err := compactor.ListQueues(context.Background(), tx, filter)
 			require.NoError(t, err)
 			for _, q := range queues {
 				found = append(found, q.Tenant)
@@ -110,6 +110,39 @@ func TestCompactor_ListQueues_filter(t *testing.T) {
 	assert.Equal(t, []string{""}, tenants(t, QueueFilter{Tenant: &noTenant}))
 }
 
+func TestCompactor_ListQueues_truncated(t *testing.T) {
+	db := test.BoltDB(t)
+	s := store.NewBlockQueueStore()
+	compactor := NewCompactor(DefaultConfig(), s, nil, nil)
+
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		require.NoError(t, s.CreateBuckets(tx))
+		for i := 0; i < 10; i++ {
+			require.NoError(t, s.StoreEntry(tx, compaction.BlockEntry{
+				Index: uint64(i), ID: strconv.Itoa(i), Tenant: "tenant-a", AppendedAt: int64(i),
+			}))
+		}
+		return nil
+	}))
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		queues, truncated, err := compactor.ListQueues(context.Background(), tx, QueueFilter{MaxEntries: 4})
+		require.NoError(t, err)
+		assert.True(t, truncated)
+		// The statistics cover only the entries that were read.
+		require.Len(t, queues, 1)
+		assert.Equal(t, uint64(4), queues[0].Blocks)
+
+		// A cap that the queue does not reach is not a truncation.
+		queues, truncated, err = compactor.ListQueues(context.Background(), tx, QueueFilter{MaxEntries: 10})
+		require.NoError(t, err)
+		assert.False(t, truncated)
+		require.Len(t, queues, 1)
+		assert.Equal(t, uint64(10), queues[0].Blocks)
+		return nil
+	}))
+}
+
 func TestCompactor_ListQueues_empty(t *testing.T) {
 	db := test.BoltDB(t)
 	s := store.NewBlockQueueStore()
@@ -120,7 +153,7 @@ func TestCompactor_ListQueues_empty(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		queues, err := compactor.ListQueues(context.Background(), tx, QueueFilter{})
+		queues, _, err := compactor.ListQueues(context.Background(), tx, QueueFilter{})
 		require.NoError(t, err)
 		assert.Empty(t, queues)
 		return nil
