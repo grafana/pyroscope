@@ -49,8 +49,7 @@ export default function App() {
     string | undefined
   >(undefined);
 
-  const queryInput =
-    queryUserInput ?? (service ? buildQuery(service) : '');
+  const queryInput = queryUserInput ?? (service ? buildQuery(service) : '');
 
   const query = usePyroscopeQuery({
     service,

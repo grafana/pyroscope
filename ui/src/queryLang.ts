@@ -318,4 +318,3 @@ export function parseQuery(
   const labelSelector = `{${selectorMatchers.join(', ')}}`;
   return { service, labelSelector };
 }
-
