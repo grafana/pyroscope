@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
@@ -81,6 +83,9 @@ type compactionPageContent struct {
 type compactionTenantPageContent struct {
 	Now    time.Time
 	Tenant string
+	// Segments marks the page of the entities that have no tenant: level 0
+	// compacts the multi-tenant segments written by the segment writers.
+	Segments bool
 
 	// Scheduler configuration.
 	LeaseDuration time.Duration
@@ -174,6 +179,17 @@ type compactionJobRow struct {
 	Assigned      string
 	Lease         string
 	BlocksPath    string
+	// SourceBlockLinks is only populated if the server reported the source
+	// block identifiers. When it is empty, BlocksPath is the fallback: it
+	// points at the block listing of the tenant over the time window the
+	// blocks are expected to fall into.
+	SourceBlockLinks []compactionBlockLink
+}
+
+// compactionBlockLink addresses a single block in the object store browser.
+type compactionBlockLink struct {
+	ID   string
+	Path string
 }
 
 type compactionQueueRow struct {
@@ -188,15 +204,28 @@ type compactionQueueRow struct {
 
 func (a *Admin) CompactionHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		state, err := a.compactionClient.GetCompactionState(r.Context(), new(metastorev1.GetCompactionStateRequest))
+		query := r.URL.Query()
+		drilldown, tenantID := compactionDrilldown(query)
+
+		// The source block identifiers are only requested for a drill-down:
+		// over the entire schedule they would dominate the response size.
+		req := new(metastorev1.GetCompactionStateRequest)
+		if drilldown {
+			req.Tenant = &tenantID
+			req.IncludeSourceBlocks = true
+		}
+		state, err := a.compactionClient.GetCompactionState(r.Context(), req)
 		if err != nil {
 			httputil.Error(w, err)
 			return
 		}
+
 		now := time.Now().UTC()
-		query := r.URL.Query()
-		if tenant := query.Get("tenant"); tenant != "" {
-			content := buildCompactionTenantPageContent(state, now, tenant)
+		if drilldown {
+			// The response is filtered again on our side: the request filter
+			// is an optimization, and a server that does not know it returns
+			// the entire state.
+			content := buildCompactionTenantPageContent(state, now, tenantID)
 			if err = pageTemplates.compactionTenantTemplate.Execute(w, content); err != nil {
 				httputil.Error(w, err)
 			}
@@ -207,6 +236,22 @@ func (a *Admin) CompactionHandler() http.Handler {
 			httputil.Error(w, err)
 		}
 	})
+}
+
+// compactionDrilldown reports which tenant the request drills into, if any.
+//
+// The segments parameter selects the entities that have no tenant: level 0
+// compacts the multi-tenant segments, which cannot be addressed by name and
+// would otherwise be unreachable, as an empty tenant parameter is how the
+// overview is requested.
+func compactionDrilldown(query url.Values) (drilldown bool, tenantID string) {
+	if query.Has("segments") {
+		return true, ""
+	}
+	if t := query.Get("tenant"); t != "" {
+		return true, t
+	}
+	return false, ""
 }
 
 // buildCompactionPageContent aggregates the compaction state into the global
@@ -371,19 +416,20 @@ func buildCompactionPageContent(
 func buildCompactionTenantPageContent(
 	state *metastorev1.GetCompactionStateResponse,
 	now time.Time,
-	tenant string,
+	tenantID string,
 ) *compactionTenantPageContent {
 	content := &compactionTenantPageContent{
 		Now:           now,
-		Tenant:        tenant,
+		Tenant:        tenantID,
+		Segments:      tenantID == "",
 		LeaseDuration: time.Duration(state.JobLeaseDuration),
 		MaxFailures:   state.JobMaxFailures,
-		BlocksPath:    tenantBlocksPath(tenant),
+		BlocksPath:    tenantBlocksPath(tenantID),
 	}
 
 	var jobs []*metastorev1.CompactionJobDetails
 	for _, job := range state.CompactionJobs {
-		if job.Tenant == tenant {
+		if job.Tenant == tenantID {
 			jobs = append(jobs, job)
 		}
 	}
@@ -435,7 +481,7 @@ func buildCompactionTenantPageContent(
 	})
 
 	for _, q := range state.CompactionQueues {
-		if q.Tenant != tenant {
+		if q.Tenant != tenantID {
 			continue
 		}
 		content.TotalQueues++
@@ -481,8 +527,15 @@ func newCompactionJobRow(job *metastorev1.CompactionJobDetails, maxFailures uint
 		Assigned:      formatAge(job.AssignedAt, now),
 		Lease:         formatLease(job, now),
 	}
-	if job.Tenant != "" {
-		row.TenantPath = tenantPath(job.Tenant, "")
+	row.TenantPath = tenantPath(job.Tenant, "")
+	if len(job.SourceBlockIds) > 0 {
+		row.SourceBlockLinks = make([]compactionBlockLink, 0, len(job.SourceBlockIds))
+		for _, id := range job.SourceBlockIds {
+			row.SourceBlockLinks = append(row.SourceBlockLinks, compactionBlockLink{
+				ID:   id,
+				Path: blockPath(job.Tenant, job.Shard, id),
+			})
+		}
 	}
 	if job.AddedAt > 0 {
 		// The source blocks were queued shortly before the job was created.
@@ -626,12 +679,39 @@ func compareJobDetails(a, b *metastorev1.CompactionJobDetails) int {
 // tenantPath builds the link to the drill-down page of the tenant. The sort
 // order of the tenant index is carried over, so that the browser navigation
 // returns to the listing the tenant was picked from.
-func tenantPath(tenant, sortOrder string) string {
-	path := "/metastore-compaction?tenant=" + url.QueryEscape(tenant)
+func tenantPath(tenantID, sortOrder string) string {
+	var path string
+	if tenantID == "" {
+		// Entities with no tenant operate on the multi-tenant segments and
+		// cannot be addressed by name: an empty tenant parameter requests
+		// the overview.
+		path = "/metastore-compaction?segments=1"
+	} else {
+		path = "/metastore-compaction?tenant=" + url.QueryEscape(tenantID)
+	}
 	if sortOrder != "" && sortOrder != tenantSortAttention {
 		path += "&sort=" + url.QueryEscape(sortOrder)
 	}
 	return path
+}
+
+// blockPath links to a single block in the object store browser.
+//
+// The tenant path segment only names the page: the block itself is resolved
+// by the block_tenant parameter and the shard. block_tenant is empty for the
+// multi-tenant segments of level 0, so the anonymous tenant stands in for
+// them in the path, matching the directory the segments are stored under.
+func blockPath(blockTenant string, shard uint32, blockID string) string {
+	pathTenant := blockTenant
+	if pathTenant == "" {
+		pathTenant = tenant.DefaultTenantID
+	}
+	query := url.Values{
+		"shard":        []string{strconv.FormatUint(uint64(shard), 10)},
+		"block_tenant": []string{blockTenant},
+	}
+	return "/ops/object-store/tenants/" + url.PathEscape(pathTenant) +
+		"/blocks/" + url.PathEscape(blockID) + "?" + query.Encode()
 }
 
 // tenantBlocksPath links to the block listing of the tenant in the object

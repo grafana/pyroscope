@@ -412,6 +412,11 @@ func (m *GetCompactionStateRequest) CloneVT() *GetCompactionStateRequest {
 		return (*GetCompactionStateRequest)(nil)
 	}
 	r := new(GetCompactionStateRequest)
+	r.IncludeSourceBlocks = m.IncludeSourceBlocks
+	if rhs := m.Tenant; rhs != nil {
+		tmpVal := *rhs
+		r.Tenant = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -474,6 +479,11 @@ func (m *CompactionJobDetails) CloneVT() *CompactionJobDetails {
 	r.WorkerId = m.WorkerId
 	r.AssignedAt = m.AssignedAt
 	r.UpdatedAt = m.UpdatedAt
+	if rhs := m.SourceBlockIds; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SourceBlockIds = tmpContainer
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -1101,6 +1111,12 @@ func (this *GetCompactionStateRequest) EqualVT(that *GetCompactionStateRequest) 
 	} else if this == nil || that == nil {
 		return false
 	}
+	if p, q := this.Tenant, that.Tenant; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if this.IncludeSourceBlocks != that.IncludeSourceBlocks {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1214,6 +1230,15 @@ func (this *CompactionJobDetails) EqualVT(that *CompactionJobDetails) bool {
 	}
 	if this.UpdatedAt != that.UpdatedAt {
 		return false
+	}
+	if len(this.SourceBlockIds) != len(that.SourceBlockIds) {
+		return false
+	}
+	for i, vx := range this.SourceBlockIds {
+		vy := that.SourceBlockIds[i]
+		if vx != vy {
+			return false
+		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -2522,6 +2547,23 @@ func (m *GetCompactionStateRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.IncludeSourceBlocks {
+		i--
+		if m.IncludeSourceBlocks {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.Tenant != nil {
+		i -= len(*m.Tenant)
+		copy(dAtA[i:], *m.Tenant)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(*m.Tenant)))
+		i--
+		dAtA[i] = 0xa
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -2626,6 +2668,15 @@ func (m *CompactionJobDetails) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.SourceBlockIds) > 0 {
+		for iNdEx := len(m.SourceBlockIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SourceBlockIds[iNdEx])
+			copy(dAtA[i:], m.SourceBlockIds[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SourceBlockIds[iNdEx])))
+			i--
+			dAtA[i] = 0x72
+		}
 	}
 	if m.UpdatedAt != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.UpdatedAt))
@@ -3196,6 +3247,13 @@ func (m *GetCompactionStateRequest) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.Tenant != nil {
+		l = len(*m.Tenant)
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.IncludeSourceBlocks {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -3278,6 +3336,12 @@ func (m *CompactionJobDetails) SizeVT() (n int) {
 	}
 	if m.UpdatedAt != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.UpdatedAt))
+	}
+	if len(m.SourceBlockIds) > 0 {
+		for _, s := range m.SourceBlockIds {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5948,6 +6012,59 @@ func (m *GetCompactionStateRequest) UnmarshalVT(dAtA []byte) error {
 			return fmt.Errorf("proto: GetCompactionStateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.Tenant = &s
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IncludeSourceBlocks", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.IncludeSourceBlocks = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -6461,6 +6578,38 @@ func (m *CompactionJobDetails) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SourceBlockIds", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SourceBlockIds = append(m.SourceBlockIds, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
