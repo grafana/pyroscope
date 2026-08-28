@@ -481,6 +481,21 @@ limits:
   # limit is enforced in the distributor. 0 to disable, defaults to 10m.
   # reject_newer_than: 10m
 
+  # Enable query result caching. This sets the default for tenant overrides.
+  # result_cache_enabled: false
+
+  # Result-cache invalidation generation. This sets the default for tenant
+  # overrides.
+  # result_cache_generation: 1
+
+  # Comma-separated list of aligned result-cache fragment durations. The
+  # smallest duration is also the minimum cache age.
+  # result_cache_fragment_durations: 1d,2h,15m
+
+  # Bypass result caching for metadata queries with a service_name matcher below
+  # this query duration. 0 disables this bypass.
+  # result_cache_metadata_service_name_min_query_duration: 1w
+
   # Maximum number of recording rules a tenant can create. 0 to disable.
   # max_recording_rules: 25
 
@@ -615,6 +630,172 @@ storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
   # backend: "filesystem"
+
+  s3:
+    # The S3 bucket endpoint. It could be an AWS S3 endpoint listed at
+    # https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an
+    # S3-compatible service in hostname:port format.
+    # endpoint: ""
+
+    # S3 region. If unset, the client will issue a S3 GetBucketLocation API call
+    # to autodetect it.
+    # region: ""
+
+    # S3 bucket name
+    # bucket_name: ""
+
+    # S3 secret access key
+    # secret_access_key: ""
+
+    # S3 access key ID
+    # access_key_id: ""
+
+    sse:
+      # Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.
+      # type: ""
+
+      # KMS Key ID used to encrypt objects in S3
+      # kms_key_id: ""
+
+      # KMS Encryption Context used for object encryption. It expects JSON
+      # formatted string.
+      # kms_encryption_context: ""
+
+  gcs:
+    # GCS bucket name
+    # bucket_name: ""
+
+    # JSON either from a Google Developers Console client_credentials.json file,
+    # or a Google Developers service account key. Needs to be valid JSON, not a
+    # filesystem path. If empty, fallback to Google default logic:
+    # 1. A JSON file whose path is specified by the
+    # GOOGLE_APPLICATION_CREDENTIALS environment variable. For workload identity
+    # federation, refer to
+    # https://cloud.google.com/iam/docs/how-to#using-workload-identity-federation
+    # on how to generate the JSON configuration file for on-prem/non-Google
+    # cloud platforms.
+    # 2. A JSON file in a location known to the gcloud command-line tool:
+    # $HOME/.config/gcloud/application_default_credentials.json.
+    # 3. On Google Compute Engine it fetches credentials from the metadata
+    # server.
+    # service_account: ""
+
+  azure:
+    # Azure Active Directory tenant ID. If set alongside `client-id` and
+    # `client-secret`, these values will be used for authentication via a client
+    # secret credential.
+    # az_tenant_id: ""
+
+    # Azure Active Directory client ID. If set alongside `az-tenant-id` and
+    # `client-secret`, these values will be used for authentication via a client
+    # secret credential.
+    # client_id: ""
+
+    # Azure Active Directory client secret. If set alongside `az-tenant-id` and
+    # `client-id`, these values will be used for authentication via a client
+    # secret credential.
+    # client_secret: ""
+
+    # Azure storage account name
+    # account_name: ""
+
+    # Azure storage account key. If unset, Azure managed identities will be used
+    # for authentication instead.
+    # account_key: ""
+
+    # If `connection-string` is set, the value of `endpoint-suffix` will not be
+    # used. Use this method over `account-key` if you need to authenticate via a
+    # SAS token. Or if you use the Azurite emulator.
+    # connection_string: ""
+
+    # Azure storage container name
+    # container_name: ""
+
+    # Azure storage endpoint suffix without schema. The account name will be
+    # prefixed to this value to create the FQDN. If set to empty string, default
+    # endpoint suffix is used.
+    # endpoint_suffix: ""
+
+  swift:
+    # OpenStack Swift authentication API version. 0 to autodetect.
+    # auth_version: 0
+
+    # OpenStack Swift authentication URL
+    # auth_url: ""
+
+    # OpenStack Swift username.
+    # username: ""
+
+    # OpenStack Swift user's domain name.
+    # user_domain_name: ""
+
+    # OpenStack Swift user's domain ID.
+    # user_domain_id: ""
+
+    # OpenStack Swift user ID.
+    # user_id: ""
+
+    # OpenStack Swift API key.
+    # password: ""
+
+    # OpenStack Swift user's domain ID.
+    # domain_id: ""
+
+    # OpenStack Swift user's domain name.
+    # domain_name: ""
+
+    # OpenStack Swift project ID (v2,v3 auth only).
+    # project_id: ""
+
+    # OpenStack Swift project name (v2,v3 auth only).
+    # project_name: ""
+
+    # ID of the OpenStack Swift project's domain (v3 auth only), only needed if
+    # it differs the from user domain.
+    # project_domain_id: ""
+
+    # Name of the OpenStack Swift project's domain (v3 auth only), only needed
+    # if it differs from the user domain.
+    # project_domain_name: ""
+
+    # OpenStack Swift Region to use (v2,v3 auth only).
+    # region_name: ""
+
+    # Name of the OpenStack Swift container to put chunks in.
+    # container_name: ""
+
+  cos:
+    # COS bucket name
+    # bucket: ""
+
+    # COS region name
+    # region: ""
+
+    # COS app id
+    # app_id: ""
+
+    # COS storage endpoint
+    # endpoint: ""
+
+    # COS secret key
+    # secret_key: ""
+
+    # COS secret id
+    # secret_id: ""
+
+  filesystem:
+    # Local filesystem storage directory.
+    # dir: "./data/v2/shared"
+
+  # Prefix for all objects stored in the backend storage. For simplicity, it may
+  # only contain digits and English alphabet characters, hyphens, underscores,
+  # dots and forward slashes.
+  # prefix: ""
+
+result_cache:
+  # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
+  # filesystem, cos.
+  # backend: ""
 
   s3:
     # The S3 bucket endpoint. It could be an AWS S3 endpoint listed at

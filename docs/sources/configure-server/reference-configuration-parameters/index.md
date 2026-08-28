@@ -193,18 +193,22 @@ storage:
 
   # The s3_backend block configures the connection to Amazon S3 object storage
   # backend.
+  # The CLI flags prefix for this block configuration is: storage
   [s3: <s3_storage_backend>]
 
   # The gcs_backend block configures the connection to Google Cloud Storage
   # object storage backend.
+  # The CLI flags prefix for this block configuration is: storage
   [gcs: <gcs_storage_backend>]
 
   # The azure_storage_backend block configures the connection to Azure object
   # storage backend.
+  # The CLI flags prefix for this block configuration is: storage
   [azure: <azure_storage_backend>]
 
   # The swift_storage_backend block configures the connection to OpenStack
   # Object Storage (Swift) object storage backend.
+  # The CLI flags prefix for this block configuration is: storage
   [swift: <swift_storage_backend>]
 
   cos:
@@ -273,6 +277,7 @@ storage:
 
   # The filesystem_storage_backend block configures the usage of local file
   # system as object storage backend.
+  # The CLI flags prefix for this block configuration is: storage
   [filesystem: <filesystem_storage_backend>]
 
   # Prefix for all objects stored in the backend storage. For simplicity, it may
@@ -286,6 +291,114 @@ storage:
   # digits and English alphabet characters, hyphens, underscores, dots and
   # forward slashes.
   # CLI flag: -storage.storage-prefix
+  [storage_prefix: <string> | default = ""]
+
+result_cache:
+  # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
+  # filesystem, cos.
+  # CLI flag: -result-cache.backend
+  [backend: <string> | default = ""]
+
+  # The s3_backend block configures the connection to Amazon S3 object storage
+  # backend.
+  # The CLI flags prefix for this block configuration is: result-cache
+  [s3: <s3_storage_backend>]
+
+  # The gcs_backend block configures the connection to Google Cloud Storage
+  # object storage backend.
+  # The CLI flags prefix for this block configuration is: result-cache
+  [gcs: <gcs_storage_backend>]
+
+  # The azure_storage_backend block configures the connection to Azure object
+  # storage backend.
+  # The CLI flags prefix for this block configuration is: result-cache
+  [azure: <azure_storage_backend>]
+
+  # The swift_storage_backend block configures the connection to OpenStack
+  # Object Storage (Swift) object storage backend.
+  # The CLI flags prefix for this block configuration is: result-cache
+  [swift: <swift_storage_backend>]
+
+  cos:
+    # COS bucket name
+    # CLI flag: -result-cache.cos.bucket
+    [bucket: <string> | default = ""]
+
+    # COS region name
+    # CLI flag: -result-cache.cos.region
+    [region: <string> | default = ""]
+
+    # COS app id
+    # CLI flag: -result-cache.cos.app-id
+    [app_id: <string> | default = ""]
+
+    # COS storage endpoint
+    # CLI flag: -result-cache.cos.endpoint
+    [endpoint: <string> | default = ""]
+
+    # COS secret key
+    # CLI flag: -result-cache.cos.secret-key
+    [secret_key: <string> | default = ""]
+
+    # COS secret id
+    # CLI flag: -result-cache.cos.secret-id
+    [secret_id: <string> | default = ""]
+
+    http:
+      # (advanced) The time an idle connection will remain idle before closing.
+      # CLI flag: -result-cache.cos.http.idle-conn-timeout
+      [idle_conn_timeout: <duration> | default = 1m30s]
+
+      # (advanced) The amount of time the client will wait for a servers
+      # response headers.
+      # CLI flag: -result-cache.cos.http.response-header-timeout
+      [response_header_timeout: <duration> | default = 2m]
+
+      # (advanced) If the client connects to COS via HTTPS and this option is
+      # enabled, the client will accept any certificate and hostname.
+      # CLI flag: -result-cache.cos.http.insecure-skip-verify
+      [insecure_skip_verify: <boolean> | default = false]
+
+      # (advanced) Maximum time to wait for a TLS handshake. 0 means no limit.
+      # CLI flag: -result-cache.cos.tls-handshake-timeout
+      [tls_handshake_timeout: <duration> | default = 10s]
+
+      # (advanced) The time to wait for a server's first response headers after
+      # fully writing the request headers if the request has an Expect header. 0
+      # to send the request body immediately.
+      # CLI flag: -result-cache.cos.expect-continue-timeout
+      [expect_continue_timeout: <duration> | default = 1s]
+
+      # (advanced) Maximum number of idle (keep-alive) connections across all
+      # hosts. 0 means no limit.
+      # CLI flag: -result-cache.cos.max-idle-connections
+      [max_idle_connections: <int> | default = 100]
+
+      # (advanced) Maximum number of idle (keep-alive) connections to keep
+      # per-host. If 0, a built-in default value is used.
+      # CLI flag: -result-cache.cos.max-idle-connections-per-host
+      [max_idle_connections_per_host: <int> | default = 100]
+
+      # (advanced) Maximum number of connections per host. 0 means no limit.
+      # CLI flag: -result-cache.cos.max-connections-per-host
+      [max_connections_per_host: <int> | default = 0]
+
+  # The filesystem_storage_backend block configures the usage of local file
+  # system as object storage backend.
+  # The CLI flags prefix for this block configuration is: result-cache
+  [filesystem: <filesystem_storage_backend>]
+
+  # Prefix for all objects stored in the backend storage. For simplicity, it may
+  # only contain digits and English alphabet characters, hyphens, underscores,
+  # dots and forward slashes.
+  # CLI flag: -result-cache.prefix
+  [prefix: <string> | default = ""]
+
+  # (experimental) Deprecated: Use 'result-cache..prefix' instead. Prefix for
+  # all objects stored in the backend storage. For simplicity, it may only
+  # contain digits and English alphabet characters, hyphens, underscores, dots
+  # and forward slashes.
+  # CLI flag: -result-cache.storage-prefix
   [storage_prefix: <string> | default = ""]
 
 self_profiling:
@@ -3397,6 +3510,25 @@ distributor_usage_groups:
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
 
+# Enable query result caching. This sets the default for tenant overrides.
+# CLI flag: -result-cache.enabled
+[result_cache_enabled: <boolean> | default = false]
+
+# Result-cache invalidation generation. This sets the default for tenant
+# overrides.
+# CLI flag: -result-cache.generation
+[result_cache_generation: <int> | default = 1]
+
+# Comma-separated list of aligned result-cache fragment durations. The smallest
+# duration is also the minimum cache age.
+# CLI flag: -result-cache.fragment-durations
+[result_cache_fragment_durations: <list of durations> | default = 1d,2h,15m]
+
+# Bypass result caching for metadata queries with a service_name matcher below
+# this query duration. 0 disables this bypass.
+# CLI flag: -result-cache.metadata-service-name-min-query-duration
+[result_cache_metadata_service_name_min_query_duration: <duration> | default = 1w]
+
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]
@@ -3404,120 +3536,130 @@ distributor_usage_groups:
 
 ### s3_storage_backend
 
-The s3_backend block configures the connection to Amazon S3 object storage backend.
+The s3_backend block configures the connection to Amazon S3 object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- `result-cache`
+- `storage`
+
+&nbsp;
 
 ```yaml
 # The S3 bucket endpoint. It could be an AWS S3 endpoint listed at
 # https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an
 # S3-compatible service in hostname:port format.
-# CLI flag: -storage.s3.endpoint
+# CLI flag: -<prefix>.s3.endpoint
 [endpoint: <string> | default = ""]
 
 # S3 region. If unset, the client will issue a S3 GetBucketLocation API call to
 # autodetect it.
-# CLI flag: -storage.s3.region
+# CLI flag: -<prefix>.s3.region
 [region: <string> | default = ""]
 
 # S3 bucket name
-# CLI flag: -storage.s3.bucket-name
+# CLI flag: -<prefix>.s3.bucket-name
 [bucket_name: <string> | default = ""]
 
 # S3 secret access key
-# CLI flag: -storage.s3.secret-access-key
+# CLI flag: -<prefix>.s3.secret-access-key
 [secret_access_key: <string> | default = ""]
 
 # S3 access key ID
-# CLI flag: -storage.s3.access-key-id
+# CLI flag: -<prefix>.s3.access-key-id
 [access_key_id: <string> | default = ""]
 
 # (advanced) If enabled, use http:// for the S3 endpoint instead of https://.
 # This could be useful in local dev/test environments while using an
 # S3-compatible backend storage, like Minio.
-# CLI flag: -storage.s3.insecure
+# CLI flag: -<prefix>.s3.insecure
 [insecure: <boolean> | default = false]
 
 # (advanced) The signature version to use for authenticating against S3.
 # Supported values are: v4, v2.
-# CLI flag: -storage.s3.signature-version
+# CLI flag: -<prefix>.s3.signature-version
 [signature_version: <string> | default = "v4"]
 
 # (advanced) Deprecated, use s3.bucket-lookup-type instead. Set this to `true`
 # to force the bucket lookup to be using path-style.
-# CLI flag: -storage.s3.force-path-style
+# CLI flag: -<prefix>.s3.force-path-style
 [force_path_style: <boolean> | default = false]
 
 # (advanced) S3 bucket lookup style, use one of: [path-style
 # virtual-hosted-style auto]
-# CLI flag: -storage.s3.bucket-lookup-type
+# CLI flag: -<prefix>.s3.bucket-lookup-type
 [bucket_lookup_type: <string> | default = "auto"]
 
 # (experimental) If enabled, it will use the default authentication methods of
 # the AWS SDK for go based on known environment variables and known AWS config
 # files.
-# CLI flag: -storage.s3.native-aws-auth-enabled
+# CLI flag: -<prefix>.s3.native-aws-auth-enabled
 [native_aws_auth_enabled: <boolean> | default = false]
 
 sse:
   # Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.
-  # CLI flag: -storage.s3.sse.type
+  # CLI flag: -<prefix>.s3.sse.type
   [type: <string> | default = ""]
 
   # KMS Key ID used to encrypt objects in S3
-  # CLI flag: -storage.s3.sse.kms-key-id
+  # CLI flag: -<prefix>.s3.sse.kms-key-id
   [kms_key_id: <string> | default = ""]
 
   # KMS Encryption Context used for object encryption. It expects JSON formatted
   # string.
-  # CLI flag: -storage.s3.sse.kms-encryption-context
+  # CLI flag: -<prefix>.s3.sse.kms-encryption-context
   [kms_encryption_context: <string> | default = ""]
 
 http:
   # (advanced) The time an idle connection will remain idle before closing.
-  # CLI flag: -storage.s3.http.idle-conn-timeout
-  [idle_conn_timeout: <duration> | default = 10m]
+  # CLI flag: -<prefix>.s3.http.idle-conn-timeout
+  [idle_conn_timeout: <duration> | default = 1m30s]
 
   # (advanced) The amount of time the client will wait for a servers response
   # headers.
-  # CLI flag: -storage.s3.http.response-header-timeout
+  # CLI flag: -<prefix>.s3.http.response-header-timeout
   [response_header_timeout: <duration> | default = 2m]
 
   # (advanced) If the client connects to S3 via HTTPS and this option is
   # enabled, the client will accept any certificate and hostname.
-  # CLI flag: -storage.s3.http.insecure-skip-verify
+  # CLI flag: -<prefix>.s3.http.insecure-skip-verify
   [insecure_skip_verify: <boolean> | default = false]
 
   # (advanced) Maximum time to wait for a TLS handshake. 0 means no limit.
-  # CLI flag: -storage.s3.tls-handshake-timeout
+  # CLI flag: -<prefix>.s3.tls-handshake-timeout
   [tls_handshake_timeout: <duration> | default = 10s]
 
   # (advanced) The time to wait for a server's first response headers after
   # fully writing the request headers if the request has an Expect header. 0 to
   # send the request body immediately.
-  # CLI flag: -storage.s3.expect-continue-timeout
+  # CLI flag: -<prefix>.s3.expect-continue-timeout
   [expect_continue_timeout: <duration> | default = 1s]
 
   # (advanced) Maximum number of idle (keep-alive) connections across all hosts.
   # 0 means no limit.
-  # CLI flag: -storage.s3.max-idle-connections
+  # CLI flag: -<prefix>.s3.max-idle-connections
   [max_idle_connections: <int> | default = 0]
 
   # (advanced) Maximum number of idle (keep-alive) connections to keep per-host.
   # If 0, a built-in default value is used.
-  # CLI flag: -storage.s3.max-idle-connections-per-host
-  [max_idle_connections_per_host: <int> | default = 1000]
+  # CLI flag: -<prefix>.s3.max-idle-connections-per-host
+  [max_idle_connections_per_host: <int> | default = 100]
 
   # (advanced) Maximum number of connections per host. 0 means no limit.
-  # CLI flag: -storage.s3.max-connections-per-host
+  # CLI flag: -<prefix>.s3.max-connections-per-host
   [max_connections_per_host: <int> | default = 0]
 ```
 
 ### gcs_storage_backend
 
-The gcs_backend block configures the connection to Google Cloud Storage object storage backend.
+The gcs_backend block configures the connection to Google Cloud Storage object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- `result-cache`
+- `storage`
+
+&nbsp;
 
 ```yaml
 # GCS bucket name
-# CLI flag: -storage.gcs.bucket-name
+# CLI flag: -<prefix>.gcs.bucket-name
 [bucket_name: <string> | default = ""]
 
 # JSON either from a Google Developers Console client_credentials.json file, or
@@ -3531,196 +3673,211 @@ The gcs_backend block configures the connection to Google Cloud Storage object s
 # 2. A JSON file in a location known to the gcloud command-line tool:
 # $HOME/.config/gcloud/application_default_credentials.json.
 # 3. On Google Compute Engine it fetches credentials from the metadata server.
-# CLI flag: -storage.gcs.service-account
+# CLI flag: -<prefix>.gcs.service-account
 [service_account: <string> | default = ""]
 
 http:
   # (advanced) The time an idle connection will remain idle before closing.
-  # CLI flag: -storage.gcs.http.idle-conn-timeout
-  [idle_conn_timeout: <duration> | default = 10m]
+  # CLI flag: -<prefix>.gcs.http.idle-conn-timeout
+  [idle_conn_timeout: <duration> | default = 1m30s]
 
   # (advanced) The amount of time the client will wait for a servers response
   # headers.
-  # CLI flag: -storage.gcs.http.response-header-timeout
+  # CLI flag: -<prefix>.gcs.http.response-header-timeout
   [response_header_timeout: <duration> | default = 2m]
 
   # (advanced) If the client connects to GCS via HTTPS and this option is
   # enabled, the client will accept any certificate and hostname.
-  # CLI flag: -storage.gcs.http.insecure-skip-verify
+  # CLI flag: -<prefix>.gcs.http.insecure-skip-verify
   [insecure_skip_verify: <boolean> | default = false]
 
   # (advanced) Maximum time to wait for a TLS handshake. 0 means no limit.
-  # CLI flag: -storage.gcs.tls-handshake-timeout
+  # CLI flag: -<prefix>.gcs.tls-handshake-timeout
   [tls_handshake_timeout: <duration> | default = 10s]
 
   # (advanced) The time to wait for a server's first response headers after
   # fully writing the request headers if the request has an Expect header. 0 to
   # send the request body immediately.
-  # CLI flag: -storage.gcs.expect-continue-timeout
+  # CLI flag: -<prefix>.gcs.expect-continue-timeout
   [expect_continue_timeout: <duration> | default = 1s]
 
   # (advanced) Maximum number of idle (keep-alive) connections across all hosts.
   # 0 means no limit.
-  # CLI flag: -storage.gcs.max-idle-connections
+  # CLI flag: -<prefix>.gcs.max-idle-connections
   [max_idle_conns: <int> | default = 0]
 
   # (advanced) Maximum number of idle (keep-alive) connections to keep per-host.
   # If 0, a built-in default value is used.
-  # CLI flag: -storage.gcs.max-idle-connections-per-host
-  [max_idle_conns_per_host: <int> | default = 1000]
+  # CLI flag: -<prefix>.gcs.max-idle-connections-per-host
+  [max_idle_conns_per_host: <int> | default = 100]
 
   # (advanced) Maximum number of connections per host. 0 means no limit.
-  # CLI flag: -storage.gcs.max-connections-per-host
+  # CLI flag: -<prefix>.gcs.max-connections-per-host
   [max_conns_per_host: <int> | default = 0]
 ```
 
 ### azure_storage_backend
 
-The `azure_storage_backend` block configures the connection to Azure object storage backend.
+The `azure_storage_backend` block configures the connection to Azure object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- `result-cache`
+- `storage`
+
+&nbsp;
 
 ```yaml
 # Azure Active Directory tenant ID. If set alongside `client-id` and
 # `client-secret`, these values will be used for authentication via a client
 # secret credential.
-# CLI flag: -storage.azure.az-tenant-id
+# CLI flag: -<prefix>.azure.az-tenant-id
 [az_tenant_id: <string> | default = ""]
 
 # Azure Active Directory client ID. If set alongside `az-tenant-id` and
 # `client-secret`, these values will be used for authentication via a client
 # secret credential.
-# CLI flag: -storage.azure.client-id
+# CLI flag: -<prefix>.azure.client-id
 [client_id: <string> | default = ""]
 
 # Azure Active Directory client secret. If set alongside `az-tenant-id` and
 # `client-id`, these values will be used for authentication via a client secret
 # credential.
-# CLI flag: -storage.azure.client-secret
+# CLI flag: -<prefix>.azure.client-secret
 [client_secret: <string> | default = ""]
 
 # Azure storage account name
-# CLI flag: -storage.azure.account-name
+# CLI flag: -<prefix>.azure.account-name
 [account_name: <string> | default = ""]
 
 # Azure storage account key. If unset, Azure managed identities will be used for
 # authentication instead.
-# CLI flag: -storage.azure.account-key
+# CLI flag: -<prefix>.azure.account-key
 [account_key: <string> | default = ""]
 
 # If `connection-string` is set, the value of `endpoint-suffix` will not be
 # used. Use this method over `account-key` if you need to authenticate via a SAS
 # token. Or if you use the Azurite emulator.
-# CLI flag: -storage.azure.connection-string
+# CLI flag: -<prefix>.azure.connection-string
 [connection_string: <string> | default = ""]
 
 # Azure storage container name
-# CLI flag: -storage.azure.container-name
+# CLI flag: -<prefix>.azure.container-name
 [container_name: <string> | default = ""]
 
 # Azure storage endpoint suffix without schema. The account name will be
 # prefixed to this value to create the FQDN. If set to empty string, default
 # endpoint suffix is used.
-# CLI flag: -storage.azure.endpoint-suffix
+# CLI flag: -<prefix>.azure.endpoint-suffix
 [endpoint_suffix: <string> | default = ""]
 
 # (advanced) Number of retries for recoverable errors
-# CLI flag: -storage.azure.max-retries
+# CLI flag: -<prefix>.azure.max-retries
 [max_retries: <int> | default = 3]
 
 # (advanced) User assigned managed identity. If empty, then System assigned
 # identity is used.
-# CLI flag: -storage.azure.user-assigned-id
+# CLI flag: -<prefix>.azure.user-assigned-id
 [user_assigned_id: <string> | default = ""]
 ```
 
 ### swift_storage_backend
 
-The `swift_storage_backend` block configures the connection to OpenStack Object Storage (Swift) object storage backend.
+The `swift_storage_backend` block configures the connection to OpenStack Object Storage (Swift) object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- `result-cache`
+- `storage`
+
+&nbsp;
 
 ```yaml
 # OpenStack Swift authentication API version. 0 to autodetect.
-# CLI flag: -storage.swift.auth-version
+# CLI flag: -<prefix>.swift.auth-version
 [auth_version: <int> | default = 0]
 
 # OpenStack Swift authentication URL
-# CLI flag: -storage.swift.auth-url
+# CLI flag: -<prefix>.swift.auth-url
 [auth_url: <string> | default = ""]
 
 # OpenStack Swift username.
-# CLI flag: -storage.swift.username
+# CLI flag: -<prefix>.swift.username
 [username: <string> | default = ""]
 
 # OpenStack Swift user's domain name.
-# CLI flag: -storage.swift.user-domain-name
+# CLI flag: -<prefix>.swift.user-domain-name
 [user_domain_name: <string> | default = ""]
 
 # OpenStack Swift user's domain ID.
-# CLI flag: -storage.swift.user-domain-id
+# CLI flag: -<prefix>.swift.user-domain-id
 [user_domain_id: <string> | default = ""]
 
 # OpenStack Swift user ID.
-# CLI flag: -storage.swift.user-id
+# CLI flag: -<prefix>.swift.user-id
 [user_id: <string> | default = ""]
 
 # OpenStack Swift API key.
-# CLI flag: -storage.swift.password
+# CLI flag: -<prefix>.swift.password
 [password: <string> | default = ""]
 
 # OpenStack Swift user's domain ID.
-# CLI flag: -storage.swift.domain-id
+# CLI flag: -<prefix>.swift.domain-id
 [domain_id: <string> | default = ""]
 
 # OpenStack Swift user's domain name.
-# CLI flag: -storage.swift.domain-name
+# CLI flag: -<prefix>.swift.domain-name
 [domain_name: <string> | default = ""]
 
 # OpenStack Swift project ID (v2,v3 auth only).
-# CLI flag: -storage.swift.project-id
+# CLI flag: -<prefix>.swift.project-id
 [project_id: <string> | default = ""]
 
 # OpenStack Swift project name (v2,v3 auth only).
-# CLI flag: -storage.swift.project-name
+# CLI flag: -<prefix>.swift.project-name
 [project_name: <string> | default = ""]
 
 # ID of the OpenStack Swift project's domain (v3 auth only), only needed if it
 # differs the from user domain.
-# CLI flag: -storage.swift.project-domain-id
+# CLI flag: -<prefix>.swift.project-domain-id
 [project_domain_id: <string> | default = ""]
 
 # Name of the OpenStack Swift project's domain (v3 auth only), only needed if it
 # differs from the user domain.
-# CLI flag: -storage.swift.project-domain-name
+# CLI flag: -<prefix>.swift.project-domain-name
 [project_domain_name: <string> | default = ""]
 
 # OpenStack Swift Region to use (v2,v3 auth only).
-# CLI flag: -storage.swift.region-name
+# CLI flag: -<prefix>.swift.region-name
 [region_name: <string> | default = ""]
 
 # Name of the OpenStack Swift container to put chunks in.
-# CLI flag: -storage.swift.container-name
+# CLI flag: -<prefix>.swift.container-name
 [container_name: <string> | default = ""]
 
 # (advanced) Max retries on requests error.
-# CLI flag: -storage.swift.max-retries
+# CLI flag: -<prefix>.swift.max-retries
 [max_retries: <int> | default = 3]
 
 # (advanced) Time after which a connection attempt is aborted.
-# CLI flag: -storage.swift.connect-timeout
+# CLI flag: -<prefix>.swift.connect-timeout
 [connect_timeout: <duration> | default = 10s]
 
 # (advanced) Time after which an idle request is aborted. The timeout watchdog
 # is reset each time some data is received, so the timeout triggers after X time
 # no data is received on a request.
-# CLI flag: -storage.swift.request-timeout
+# CLI flag: -<prefix>.swift.request-timeout
 [request_timeout: <duration> | default = 5s]
 ```
 
 ### filesystem_storage_backend
 
-The `filesystem_storage_backend` block configures the usage of local file system as object storage backend.
+The `filesystem_storage_backend` block configures the usage of local file system as object storage backend. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- `result-cache`
+- `storage`
+
+&nbsp;
 
 ```yaml
 # Local filesystem storage directory.
-# CLI flag: -storage.filesystem.dir
+# CLI flag: -<prefix>.filesystem.dir
 [dir: <string> | default = "./data/v2/shared"]
 ```
 

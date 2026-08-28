@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"iter"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/prometheus/common/model"
@@ -21,12 +23,40 @@ import (
 )
 
 const (
-	bytesInMB = 1048576
+	bytesInMB                       = 1048576
+	maxResultCacheFragmentDurations = 8
+	minResultCacheFragmentDuration  = 15 * time.Minute
 
 	// MinCompactorPartialBlockDeletionDelay is the minimum partial blocks deletion delay that can be configured in Mimir.
 	// Partial blocks are blocks that are not having meta file uploaded yet.
 	MinCompactorPartialBlockDeletionDelay = 4 * time.Hour
 )
+
+// durationListFlag adapts []model.Duration for the comma-separated CLI flag.
+// The Limits field itself remains a plain slice so YAML and JSON use model.Duration.
+type durationListFlag []model.Duration
+
+func (d *durationListFlag) String() string {
+	values := make([]string, len(*d))
+	for i, value := range *d {
+		values[i] = value.String()
+	}
+	return strings.Join(values, ",")
+}
+
+func (d *durationListFlag) Set(value string) error {
+	values := strings.Split(value, ",")
+	result := make([]model.Duration, 0, len(values))
+	for _, value := range values {
+		parsed, err := model.ParseDuration(strings.TrimSpace(value))
+		if err != nil {
+			return err
+		}
+		result = append(result, parsed)
+	}
+	*d = durationListFlag(result)
+	return nil
+}
 
 // Limits describe all the limits for tenants; can be used to describe global default
 // limits via flags, or per-tenant limits via yaml config.
@@ -116,8 +146,12 @@ type Limits struct {
 	S3SSEKMSEncryptionContext string `yaml:"s3_sse_kms_encryption_context" json:"s3_sse_kms_encryption_context" doc:"nocli|description=S3 server-side encryption KMS encryption context. If unset and the key ID override is set, the encryption context will not be provided to S3. Ignored if the SSE type override is not set."`
 
 	// Ensure profiles are dated within the IngestionWindow of the distributor.
-	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
-	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
+	RejectOlderThan                                model.Duration   `yaml:"reject_older_than" json:"reject_older_than"`
+	RejectNewerThan                                model.Duration   `yaml:"reject_newer_than" json:"reject_newer_than"`
+	ResultCacheEnabled                             bool             `yaml:"result_cache_enabled" json:"result_cache_enabled"`
+	ResultCacheGeneration                          uint             `yaml:"result_cache_generation" json:"result_cache_generation"`
+	ResultCacheFragmentDurations                   []model.Duration `yaml:"result_cache_fragment_durations" json:"result_cache_fragment_durations"`
+	ResultCacheMetadataServiceNameMinQueryDuration model.Duration   `yaml:"result_cache_metadata_service_name_min_query_duration" json:"result_cache_metadata_service_name_min_query_duration"`
 
 	// Write path overrides used in distributor.
 	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
@@ -153,6 +187,12 @@ func (e LimitError) Error() string {
 
 // RegisterFlags adds the flags required to config this to the given FlagSet
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
+	f.BoolVar(&l.ResultCacheEnabled, "result-cache.enabled", false, "Enable query result caching. This sets the default for tenant overrides.")
+	f.UintVar(&l.ResultCacheGeneration, "result-cache.generation", 1, "Result-cache invalidation generation. This sets the default for tenant overrides.")
+	l.ResultCacheFragmentDurations = []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}
+	f.Var((*durationListFlag)(&l.ResultCacheFragmentDurations), "result-cache.fragment-durations", "Comma-separated list of aligned result-cache fragment durations. The smallest duration is also the minimum cache age.")
+	l.ResultCacheMetadataServiceNameMinQueryDuration = model.Duration(7 * 24 * time.Hour)
+	f.Var(&l.ResultCacheMetadataServiceNameMinQueryDuration, "result-cache.metadata-service-name-min-query-duration", "Bypass result caching for metadata queries with a service_name matcher below this query duration. 0 disables this bypass.")
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
 	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 256, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
@@ -253,6 +293,14 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Validate validates that this limits config is valid.
 func (l *Limits) Validate() error {
+	if l.ResultCacheEnabled || len(l.ResultCacheFragmentDurations) > 0 {
+		if err := validateResultCacheFragmentDurations(l.ResultCacheFragmentDurations); err != nil {
+			return err
+		}
+	}
+	if l.ResultCacheMetadataServiceNameMinQueryDuration < 0 {
+		return fmt.Errorf("result cache metadata service name minimum query duration must not be negative")
+	}
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
 			return err
@@ -266,6 +314,38 @@ func (l *Limits) Validate() error {
 		}
 	}
 
+	return nil
+}
+
+func validateResultCacheFragmentDurations(values []model.Duration) error {
+	if len(values) == 0 {
+		return fmt.Errorf("result cache fragment durations must not be empty")
+	}
+	if len(values) > maxResultCacheFragmentDurations {
+		return fmt.Errorf("result cache fragment durations must contain at most %d values", maxResultCacheFragmentDurations)
+	}
+	durations := make([]time.Duration, len(values))
+	for i, value := range values {
+		durations[i] = time.Duration(value)
+		if durations[i] <= 0 || durations[i]%time.Millisecond != 0 {
+			return fmt.Errorf("result cache fragment duration %q must be a positive whole number of milliseconds", durations[i])
+		}
+		if durations[i] < minResultCacheFragmentDuration {
+			return fmt.Errorf("result cache fragment duration %q must be at least %q", durations[i], minResultCacheFragmentDuration)
+		}
+		if durations[i]%minResultCacheFragmentDuration != 0 {
+			return fmt.Errorf("result cache fragment duration %q must be a multiple of %q", durations[i], minResultCacheFragmentDuration)
+		}
+	}
+	sort.Slice(durations, func(i, j int) bool { return durations[i] > durations[j] })
+	for i := 1; i < len(durations); i++ {
+		if durations[i-1] == durations[i] {
+			return fmt.Errorf("result cache fragment duration %q is duplicated", durations[i])
+		}
+		if durations[i-1]%durations[i] != 0 {
+			return fmt.Errorf("result cache fragment duration %q must be evenly divisible by %q", durations[i-1], durations[i])
+		}
+	}
 	return nil
 }
 
@@ -558,6 +638,28 @@ func (o *Overrides) RejectNewerThan(tenantID string) time.Duration {
 // RejectOlderThan will ensure that profiles that are older than the return value are rejected.
 func (o *Overrides) RejectOlderThan(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).RejectOlderThan)
+}
+
+func (o *Overrides) ResultCacheEnabled(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ResultCacheEnabled
+}
+
+func (o *Overrides) ResultCacheGeneration(tenantID string) uint32 {
+	return uint32(o.getOverridesForTenant(tenantID).ResultCacheGeneration)
+}
+
+func (o *Overrides) ResultCacheFragmentDurations(tenantID string) []time.Duration {
+	configured := o.getOverridesForTenant(tenantID).ResultCacheFragmentDurations
+	durations := make([]time.Duration, len(configured))
+	for i, duration := range configured {
+		durations[i] = time.Duration(duration)
+	}
+	sort.Slice(durations, func(i, j int) bool { return durations[i] > durations[j] })
+	return durations
+}
+
+func (o *Overrides) ResultCacheMetadataServiceNameMinQueryDuration(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).ResultCacheMetadataServiceNameMinQueryDuration)
 }
 
 // QueryAnalysisEnabled can be used to disable the query analysis endpoint in the query frontend.

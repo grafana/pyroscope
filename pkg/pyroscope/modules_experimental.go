@@ -30,6 +30,8 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/v2/pkg/metrics"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/v2/pkg/querybackend/client"
@@ -383,6 +385,14 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		return nil, err
 	}
 	logger := log.With(f.logger, "component", "query-backend")
+	var resultCacheBucket objstore.Bucket
+	if cfg := f.Cfg.ResultCache.Bucket; cfg.Backend != objstoreclient.None {
+		var err error
+		resultCacheBucket, err = objstoreclient.NewBucket(f.context(), cfg, "result-cache")
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialise result-cache bucket: %w", err)
+		}
+	}
 	blockReader := querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg, f.Overrides)
 	b, err := querybackend.New(
 		f.Cfg.QueryBackend,
@@ -390,6 +400,8 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		f.reg,
 		f.queryBackendClient,
 		blockReader,
+		resultCacheBucket,
+		f.Overrides,
 	)
 	if err != nil {
 		return nil, err

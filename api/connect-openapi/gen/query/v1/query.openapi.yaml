@@ -823,6 +823,10 @@ components:
         collectDiagnostics:
           type: boolean
           title: collect_diagnostics
+        bypassResultCache:
+          type: boolean
+          title: bypass_result_cache
+          description: Prevent child query-backends from attempting result-cache coordination.
       title: InvokeOptions
       additionalProperties: false
     query.v1.InvokeRequest:

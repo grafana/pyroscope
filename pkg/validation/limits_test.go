@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/json"
+	"flag"
 	"reflect"
 	"testing"
 	"time"
@@ -32,6 +33,61 @@ func TestLimitsTagsYamlMatchJson(t *testing.T) {
 	}
 
 	assert.Empty(t, mismatch, "expected no mismatched JSON and YAML tags")
+}
+
+func TestResultCacheFragmentDurations(t *testing.T) {
+	tests := []struct {
+		name    string
+		values  []model.Duration
+		wantErr string
+	}{
+		{name: "valid", values: []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}},
+		{name: "valid unordered", values: []model.Duration{model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour)}},
+		{name: "empty", wantErr: "must not be empty"},
+		{name: "duplicate", values: []model.Duration{model.Duration(time.Hour), model.Duration(time.Hour)}, wantErr: "duplicated"},
+		{name: "not divisible", values: []model.Duration{model.Duration(45 * time.Minute), model.Duration(30 * time.Minute)}, wantErr: "evenly divisible"},
+		{name: "sub-millisecond", values: []model.Duration{model.Duration(time.Microsecond)}, wantErr: "whole number of milliseconds"},
+		{name: "below minimum", values: []model.Duration{model.Duration(5 * time.Minute)}, wantErr: "must be at least"},
+		{name: "long duration", values: []model.Duration{model.Duration(7 * 24 * time.Hour), model.Duration(24 * time.Hour), model.Duration(15 * time.Minute)}},
+		{name: "not 15 minute multiple", values: []model.Duration{model.Duration(20 * time.Minute)}, wantErr: "must be a multiple"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateResultCacheFragmentDurations(test.values)
+			if test.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, test.wantErr)
+		})
+	}
+
+	overrides, err := NewOverrides(Limits{ResultCacheFragmentDurations: []model.Duration{
+		model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour),
+	}}, nil)
+	require.NoError(t, err)
+	require.Equal(t, []time.Duration{24 * time.Hour, 2 * time.Hour, 15 * time.Minute}, overrides.ResultCacheFragmentDurations("tenant-a"))
+
+	var limits Limits
+	require.NoError(t, yaml.Unmarshal([]byte("result_cache_fragment_durations: [1d, 2h, 15m]"), &limits))
+	require.Equal(t, []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
+	require.Error(t, yaml.Unmarshal([]byte("result_cache_fragment_durations: 1d,2h,15m"), &limits))
+
+	flags := flag.NewFlagSet("test", flag.ContinueOnError)
+	limits.RegisterFlags(flags)
+	require.Equal(t, "1d,2h,15m", flags.Lookup("result-cache.fragment-durations").DefValue)
+	require.NoError(t, flags.Parse([]string{"-result-cache.fragment-durations=1d,2h,15m"}))
+	require.Equal(t, []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
+}
+
+func TestResultCacheMetadataServiceNameMinQueryDuration(t *testing.T) {
+	limits := Limits{}
+	limits.RegisterFlags(flag.NewFlagSet("test", flag.ContinueOnError))
+	require.Equal(t, model.Duration(7*24*time.Hour), limits.ResultCacheMetadataServiceNameMinQueryDuration)
+
+	limits.ResultCacheMetadataServiceNameMinQueryDuration = model.Duration(-time.Hour)
+	require.ErrorContains(t, limits.Validate(), "must not be negative")
 }
 
 func TestLimitsYamlMatchJson(t *testing.T) {
