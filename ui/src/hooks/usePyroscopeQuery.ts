@@ -28,12 +28,6 @@ export interface QueryResult {
   loading: boolean;
   error: string | null;
   run: () => void;
-  execute: (
-    service: string,
-    profileType: string,
-    timeRange: string,
-    labelSelector?: string,
-  ) => void;
 }
 
 export function parseTimeRange(range: string): { start: number; end: number } {
@@ -85,49 +79,6 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
     loadServices();
   }, [timeRange, absoluteRange, tenantID]);
 
-  const execute = useCallback(
-    (svc: string, pt: string, tr: string, selector?: string) => {
-      if (!svc || !pt) return;
-      const effectiveSelector =
-        selector ?? paramSelector ?? `{service_name="${svc}"}`;
-
-      const { start, end } = absoluteRange ?? parseTimeRange(tr);
-      const rangeSeconds = (end - start) / 1000;
-      const step = Math.max(15, Math.ceil(rangeSeconds / 100));
-      setLoading(true);
-      Promise.all([
-        fetchFlamegraph({
-          profileTypeID: pt,
-          labelSelector: effectiveSelector,
-          start,
-          end,
-        }),
-        fetchTimeline({
-          profileTypeID: pt,
-          labelSelector: effectiveSelector,
-          start,
-          end,
-          step,
-        }),
-      ])
-        .then(([fg, tl]) => {
-          setFlamegraph(fg);
-          setTimeline(tl);
-          setError(null);
-        })
-        .catch((e: unknown) =>
-          setError(e instanceof Error ? e.message : String(e)),
-        )
-        .finally(() => setLoading(false));
-    },
-    // tenantID is not read inside the callback but is included to invalidate
-    // execute (and run) when the tenant changes, ensuring the run callback is
-    // re-created.
-    //
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [paramSelector, absoluteRange, tenantID],
-  );
-
   useEffect(() => {
     if (!service || !profileType) return;
 
@@ -167,8 +118,39 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
   }, [service, profileType, paramSelector, timeRange, absoluteRange, tenantID]);
 
   const run = useCallback(() => {
-    execute(service, profileType, timeRange, paramSelector);
-  }, [service, profileType, timeRange, paramSelector, execute]);
+    if (!service || !profileType) return;
+    const { start, end } = absoluteRange ?? parseTimeRange(timeRange);
+    const labelSelector = paramSelector ?? `{service_name="${service}"}`;
+    const rangeSeconds = (end - start) / 1000;
+    const step = Math.max(15, Math.ceil(rangeSeconds / 100));
+
+    setLoading(true);
+    Promise.all([
+      fetchFlamegraph({
+        profileTypeID: profileType,
+        labelSelector,
+        start,
+        end,
+      }),
+      fetchTimeline({
+        profileTypeID: profileType,
+        labelSelector,
+        start,
+        end,
+        step,
+      }),
+    ])
+      .then(([fg, tl]) => {
+        setFlamegraph(fg);
+        setTimeline(tl);
+        setError(null);
+      })
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : String(e)),
+      )
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [service, profileType, paramSelector, timeRange, absoluteRange, tenantID]);
 
   return {
     services,
@@ -178,6 +160,5 @@ export function usePyroscopeQuery(params: QueryParams): QueryResult {
     loading,
     error,
     run,
-    execute,
   };
 }

@@ -3,8 +3,6 @@ import { fetchLabelNames, fetchLabelValues } from '@api/client';
 import {
   getCursorContext,
   isInternalLabel,
-  toDisplayLabel,
-  toInternalLabel,
   type CursorContext,
 } from '../queryLang';
 import { useDebouncedValue } from './useDebouncedValue';
@@ -109,21 +107,14 @@ export function useLabelSuggestions({
     const promise =
       ctx.kind === 'name'
         ? fetchLabelNames(ctx.otherMatchers, s, e, controller.signal).then(
-            // Translate to display form first (so __profile_type__ becomes
-            // profile_type) and then drop anything still wrapped in double
-            // underscores — those are reserved internal labels. Dedupe in
-            // case the backend ever returns both an internal name and its
-            // alias.
+            // Drop reserved internal labels wrapped in double underscores
+            // (e.g. __delta__, __session_id__) and dedupe results.
             (names) =>
-              Array.from(
-                new Set(
-                  names.map(toDisplayLabel).filter((n) => !isInternalLabel(n)),
-                ),
-              ),
+              Array.from(new Set(names.filter((n) => !isInternalLabel(n)))),
           )
         : ctx.kind === 'value'
           ? fetchLabelValues(
-              toInternalLabel(ctx.labelName),
+              ctx.labelName,
               ctx.otherMatchers,
               s,
               e,

@@ -7,8 +7,6 @@ import {
   applySuggestion,
   buildQuery,
   parseQuery,
-  toDisplayLabel,
-  toInternalLabel,
   isInternalLabel,
 } from './queryLang.ts';
 
@@ -251,14 +249,6 @@ describe('applySuggestion', () => {
 });
 
 describe('label name translation', () => {
-  it('maps display names to their internal form', () => {
-    assert.equal(toInternalLabel('service_name'), 'service_name');
-  });
-
-  it('maps internal names to their display form', () => {
-    assert.equal(toDisplayLabel('service_name'), 'service_name');
-  });
-
   it('detects internal __xxx__ labels', () => {
     assert.equal(isInternalLabel('__delta__'), true);
     assert.equal(isInternalLabel('__session_id__'), true);
@@ -286,7 +276,7 @@ describe('parseQuery / buildQuery', () => {
     const parsed = parseQuery('{service_name = "api"}');
     assert.deepEqual(parsed, {
       service: 'api',
-      labelSelector: '{service_name="api"}',
+      labelSelector: '{service_name = "api"}',
     });
   });
 
@@ -306,5 +296,28 @@ describe('parseQuery / buildQuery', () => {
       service: 'api',
       labelSelector: '{service_name="api", region=~"us-.*", env!="prod"}',
     });
+  });
+
+  it('extracts service_name when it is not the first matcher', () => {
+    const q = '{env="production", service_name="my-app", version="v1.2"}';
+    const parsed = parseQuery(q);
+    assert.deepEqual(parsed, {
+      service: 'my-app',
+      labelSelector:
+        '{env="production", service_name="my-app", version="v1.2"}',
+    });
+  });
+
+  it('trims leading and trailing whitespace from labelSelector', () => {
+    const q = '  {service_name="api", region="us-east"}  ';
+    const parsed = parseQuery(q);
+    assert.deepEqual(parsed, {
+      service: 'api',
+      labelSelector: '{service_name="api", region="us-east"}',
+    });
+  });
+
+  it('returns null if service_name uses regex or non-equals operator', () => {
+    assert.equal(parseQuery('{service_name=~"api-.*"}'), null);
   });
 });

@@ -41,22 +41,6 @@ export type CursorContext =
 const IDENT = /[A-Za-z0-9_]/;
 const WS = /\s/;
 
-// Label names that are presented to the user in a friendlier form than the
-// backend uses. The query bar accepts and renders the display name; we
-// translate to/from the internal name whenever a matcher crosses the API.
-const DISPLAY_TO_INTERNAL: Record<string, string> = {};
-const INTERNAL_TO_DISPLAY: Record<string, string> = Object.fromEntries(
-  Object.entries(DISPLAY_TO_INTERNAL).map(([d, i]) => [i, d]),
-);
-
-export function toInternalLabel(name: string): string {
-  return DISPLAY_TO_INTERNAL[name] ?? name;
-}
-
-export function toDisplayLabel(name: string): string {
-  return INTERNAL_TO_DISPLAY[name] ?? name;
-}
-
 // Labels wrapped in double underscores (e.g. __delta__, __session_id__) are
 // reserved internals and should not surface in autocomplete.
 export function isInternalLabel(name: string): boolean {
@@ -200,7 +184,7 @@ function parseSlot(q: string, slotStart: number, slotEnd: number): Matcher {
 }
 
 function serializeMatcher(m: Matcher): string {
-  return `{${toInternalLabel(m.name)}${m.op}"${m.value}"}`;
+  return `{${m.name}${m.op}"${m.value}"}`;
 }
 
 export function getCursorContext(query: string, cursor: number): CursorContext {
@@ -302,19 +286,15 @@ export function parseQuery(
   if (braceOpen === -1) return null;
 
   let service = '';
-  const selectorMatchers: string[] = [];
-
   for (const m of matchers) {
     if (!m.complete) continue;
-    const internalName = toInternalLabel(m.name);
-    if (internalName === 'service_name' && m.op === '=') {
+    if (m.name === 'service_name' && m.op === '=') {
       service = m.value;
+      break;
     }
-    selectorMatchers.push(`${internalName}${m.op}"${m.value}"`);
   }
 
   if (!service) return null;
 
-  const labelSelector = `{${selectorMatchers.join(', ')}}`;
-  return { service, labelSelector };
+  return { service, labelSelector: q.trim() };
 }

@@ -80,7 +80,8 @@ export default function App() {
     setActiveLabelSelector(undefined);
   };
 
-  const queryDirty = !!service && queryInput !== buildQuery(service);
+  const queryDirty =
+    !!service && queryInput !== (activeLabelSelector ?? buildQuery(service));
   const handleReset = () => {
     setQueryUserInput(null);
     setActiveLabelSelector(undefined);
