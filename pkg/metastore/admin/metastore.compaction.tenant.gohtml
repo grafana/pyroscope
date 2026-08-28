@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <title>Metastore Admin - Compaction - {{ .Tenant }}</title>
+    {{ template "compaction-head" . }}
+</head>
+<body>
+<main>
+    <div class="container mt-5">
+        {{ template "compaction-page-header" . }}
+
+        <div class="row my-3">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/metastore-compaction">Compaction</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ .Tenant }}</li>
+                </ol>
+            </nav>
+            <h2 class="font-monospace">{{ .Tenant }}</h2>
+            <p class="text-body-secondary">
+                Compaction jobs and planner queues of a single tenant. The jobs are listed in the
+                scheduling order within each level; the queues hold the blocks that await compaction
+                and have not been turned into jobs yet.
+            </p>
+        </div>
+
+        {{ if .Empty }}
+            <div class="row gy-4">
+                <div class="col-12">
+                    <div class="alert alert-secondary" role="alert">
+                        No compaction jobs and no queued blocks for this tenant. Either the tenant does not
+                        exist, or all of its blocks have been compacted.
+                    </div>
+                </div>
+            </div>
+        {{ else }}
+            <div class="row gy-4">
+                <h2>Summary</h2>
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Jobs:</div>
+                                <div class="card-detail-value">{{ .TotalJobs }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Status:</div>
+                                <div class="card-detail-value">{{ template "compaction-status-badges" . }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Job lease duration:</div>
+                                <div class="card-detail-value">{{ .LeaseDuration }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Job failure threshold:</div>
+                                <div class="card-detail-value">{{ .MaxFailures }}</div>
+                            </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">Blocks awaiting compaction:</div>
+                                <div class="card-detail-value">{{ .QueuedBlocks }} in {{ .TotalQueues }} planner queues</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row gy-4">
+                <h2>
+                    Jobs by Level
+                    {{ template "compaction-info" "Jobs of lower compaction levels are prioritized: no job is assigned at a level until all eligible jobs of lower levels are assigned. The priority is global, not per tenant." }}
+                </h2>
+                {{ template "compaction-levels-table" .Levels }}
+            </div>
+
+            <div class="row gy-4">
+                <h2>
+                    Jobs
+                    {{ template "compaction-info" "Jobs are listed in the scheduling order within each level. Reassignments counts expired leases: the job is excluded from assignment when it reaches the failure threshold. The token is the fencing token of the current assignment (the raft log index at assignment time)." }}
+                </h2>
+                {{ if .TruncatedJobs }}
+                    <div class="col-12">
+                        <div class="alert alert-warning" role="alert">
+                            Showing the first {{ len .Jobs }} jobs in the scheduling order; {{ .TruncatedJobs }} more
+                            jobs are not displayed. The summary sections above cover all the jobs of the tenant.
+                        </div>
+                    </div>
+                {{ end }}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-striped">
+                        <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Shard</th>
+                            <th>Level</th>
+                            <th>Status</th>
+                            <th>Worker</th>
+                            <th>Reassignments</th>
+                            <th>Blocks</th>
+                            <th>Age</th>
+                            <th>Assigned</th>
+                            <th>Lease</th>
+                            <th>Token</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {{ range .Jobs }}
+                            <tr>
+                                <td class="align-middle font-monospace small">{{ .Name }}</td>
+                                <td class="align-middle">{{ .Shard }}</td>
+                                <td class="align-middle">{{ .Level }}</td>
+                                <td class="align-middle"><span class="badge text-bg-{{ .StatusBadge }}">{{ .Status }}</span></td>
+                                <td class="align-middle font-monospace small">{{ .Worker }}</td>
+                                <td class="align-middle">{{ .Reassignments }}</td>
+                                <td class="align-middle">{{ .SourceBlocks }}</td>
+                                <td class="align-middle">{{ .Age }}</td>
+                                <td class="align-middle">{{ .Assigned }}</td>
+                                <td class="align-middle">{{ .Lease }}</td>
+                                <td class="align-middle font-monospace small">{{ .Token }}</td>
+                            </tr>
+                        {{ else }}
+                            <tr>
+                                <td colspan="11" class="text-body-secondary">No compaction jobs for this tenant.</td>
+                            </tr>
+                        {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row gy-4">
+                <h2>
+                    Planner Queues
+                    {{ template "compaction-info" "Blocks awaiting compaction, queued per shard and level. New jobs are created from these queues on demand, when workers report spare capacity." }}
+                </h2>
+                {{ if .TruncatedQueues }}
+                    <div class="col-12">
+                        <div class="alert alert-warning" role="alert">
+                            Showing the first {{ len .Queues }} queues ordered by level and shard;
+                            {{ .TruncatedQueues }} more queues are not displayed. The blocks awaiting
+                            compaction counter above covers all the queues of the tenant.
+                        </div>
+                    </div>
+                {{ end }}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-striped">
+                        <thead>
+                        <tr>
+                            <th>Shard</th>
+                            <th>Level</th>
+                            <th>Blocks</th>
+                            <th>Oldest Block</th>
+                            <th>Newest Block</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {{ range .Queues }}
+                            <tr>
+                                <td class="align-middle">{{ .Shard }}</td>
+                                <td class="align-middle">{{ .Level }}</td>
+                                <td class="align-middle">{{ .Blocks }}</td>
+                                <td class="align-middle">{{ .OldestBlock }}</td>
+                                <td class="align-middle">{{ .NewestBlock }}</td>
+                            </tr>
+                        {{ else }}
+                            <tr>
+                                <td colspan="5" class="text-body-secondary">No blocks are awaiting compaction.</td>
+                            </tr>
+                        {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {{ end }}
+    </div>
+</main>
+{{ template "compaction-footer" . }}
+{{ template "compaction-scripts" . }}
+</body>
+</html>
