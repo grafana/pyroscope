@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -94,7 +95,7 @@ func BenchmarkScheduler_ListJobs(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				require.NoError(b, db.View(func(tx *bbolt.Tx) error {
-					jobs, err := sc.ListJobs(tx, test.filter)
+					jobs, err := sc.ListJobs(context.Background(), tx, test.filter)
 					require.NoError(b, err)
 					require.NotEmpty(b, jobs)
 					return nil
@@ -114,7 +115,7 @@ func BenchmarkScheduler_ListJobs_tombstones(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				require.NoError(b, db.View(func(tx *bbolt.Tx) error {
-					_, err := sc.ListJobs(tx, JobFilter{})
+					_, err := sc.ListJobs(context.Background(), tx, JobFilter{})
 					return err
 				}))
 			}

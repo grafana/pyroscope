@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"sync"
@@ -179,6 +180,12 @@ func (f JobFilter) matches(plan *raft_log.CompactionJobPlan) bool {
 	return f.Tenant == nil || *f.Tenant == plan.Tenant
 }
 
+// jobScanCancelInterval is how often the job scan checks for cancellation.
+// The scan holds a read transaction open, which prevents the database from
+// reusing the pages freed by concurrent writes, so abandoning it promptly
+// matters beyond the CPU it saves.
+const jobScanCancelInterval = 512
+
 // ListJobs returns the state and the plan summary of the jobs in the schedule
 // that match the filter. The jobs are read from the storage snapshot of the
 // given transaction; the in-memory queue is not accessed.
@@ -186,13 +193,22 @@ func (f JobFilter) matches(plan *raft_log.CompactionJobPlan) bool {
 // Note that the filter cannot reduce the number of storage reads: the tenant
 // of a job is part of its plan, not of its state, so every plan is read
 // regardless. The filter only limits what is retained and returned.
-func (sc *Scheduler) ListJobs(tx *bbolt.Tx, filter JobFilter) ([]JobInfo, error) {
+//
+// The scan is bounded by the context: the caller may have gone away, and the
+// read transaction should not outlive it.
+func (sc *Scheduler) ListJobs(ctx context.Context, tx *bbolt.Tx, filter JobFilter) ([]JobInfo, error) {
 	entries := sc.store.ListEntries(tx)
 	defer func() {
 		_ = entries.Close()
 	}()
 	var jobs []JobInfo
+	var n int
 	for entries.Next() {
+		if n++; n%jobScanCancelInterval == 0 {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+		}
 		state := entries.At()
 		job := JobInfo{State: state}
 		switch plan, err := sc.store.GetJobPlan(tx, state.Name); {

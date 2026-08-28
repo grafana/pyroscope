@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,7 +41,7 @@ func TestScheduler_ListJobs(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		jobs, err := scheduler.ListJobs(tx, JobFilter{})
+		jobs, err := scheduler.ListJobs(context.Background(), tx, JobFilter{})
 		require.NoError(t, err)
 		require.Len(t, jobs, 2)
 
@@ -68,9 +70,37 @@ func TestScheduler_ListJobs_empty(t *testing.T) {
 	}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		jobs, err := scheduler.ListJobs(tx, JobFilter{})
+		jobs, err := scheduler.ListJobs(context.Background(), tx, JobFilter{})
 		require.NoError(t, err)
 		assert.Empty(t, jobs)
+		return nil
+	}))
+}
+
+func TestScheduler_ListJobs_canceled(t *testing.T) {
+	db := test.BoltDB(t)
+	store := NewStore()
+	scheduler := NewScheduler(Config{}, store, nil)
+
+	// More jobs than the cancellation check interval, so the scan reaches it.
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		require.NoError(t, store.CreateBuckets(tx))
+		for i := 0; i < jobScanCancelInterval*2; i++ {
+			name := fmt.Sprintf("job-%06d", i)
+			require.NoError(t, store.StoreJobState(tx, &raft_log.CompactionJobState{Name: name}))
+			require.NoError(t, store.StoreJobPlan(tx, &raft_log.CompactionJobPlan{
+				Name:   name,
+				Tenant: "tenant-a",
+			}))
+		}
+		return nil
+	}))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		_, err := scheduler.ListJobs(ctx, tx, JobFilter{})
+		require.ErrorIs(t, err, context.Canceled)
 		return nil
 	}))
 }
@@ -98,7 +128,7 @@ func TestScheduler_ListJobs_filter(t *testing.T) {
 	names := func(t *testing.T, filter JobFilter) []string {
 		var found []string
 		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-			jobs, err := scheduler.ListJobs(tx, filter)
+			jobs, err := scheduler.ListJobs(context.Background(), tx, filter)
 			require.NoError(t, err)
 			for _, job := range jobs {
 				found = append(found, job.State.Name)
@@ -120,7 +150,7 @@ func TestScheduler_ListJobs_filter(t *testing.T) {
 	assert.Equal(t, []string{"job-s"}, names(t, JobFilter{Tenant: &noTenant}))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-		jobs, err := scheduler.ListJobs(tx, JobFilter{
+		jobs, err := scheduler.ListJobs(context.Background(), tx, JobFilter{
 			Tenant:              &tenantA,
 			IncludeSourceBlocks: true,
 		})
