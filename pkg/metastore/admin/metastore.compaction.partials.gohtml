@@ -35,13 +35,25 @@
         .card {
             margin-bottom: 1rem;
         }
+        .status-timestamp .badge {
+            font-size: 0.8125rem;
+        }
     </style>
 {{ end }}
 
 {{ define "compaction-page-header" }}
     <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
         <div class="col-12 col-sm-9 text-center text-sm-start">
-            <h1>Metastore: Grafana Pyroscope</h1>
+            <h1 class="mb-2">Metastore: Grafana Pyroscope</h1>
+            <div class="status-timestamp small">
+                <span class="badge text-bg-secondary fw-normal">
+                    <i class="bi bi-clock-history me-1"></i>Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}
+                </span>
+                {{ if .StateAge }}
+                    <span class="text-body-secondary ms-2">state read {{ .StateAge }} ago</span>
+                    {{ template "compaction-info" "Serving this page costs a full scan of the compaction queues, so the state is held briefly and shared between reloads. Reload in a few seconds for a fresh read." }}
+                {{ end }}
+            </div>
         </div>
         <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
             <a href="/">
@@ -49,20 +61,6 @@
             </a>
         </div>
     </div>
-{{ end }}
-
-{{ define "compaction-footer" }}
-<footer class="footer mt-auto py-3">
-    <div class="container">
-        <small class="text-muted">
-            Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}
-            {{ if .StateAge }}
-                &middot; state read {{ .StateAge }} ago
-                {{ template "compaction-info" "Serving this page costs a full scan of the compaction queues, so the state is held briefly and shared between reloads. Reload in a few seconds for a fresh read." }}
-            {{ end }}
-        </small>
-    </div>
-</footer>
 {{ end }}
 
 {{ define "compaction-scripts" }}
