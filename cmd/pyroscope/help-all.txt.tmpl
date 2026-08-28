@@ -1665,6 +1665,8 @@ Usage of ./pyroscope:
     	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 65535)
   -validation.max-sessions-per-series int
     	Maximum number of sessions per series. 0 to disable.
+  -validation.profile-id-deterministic
+    	[experimental] Generate profile IDs from tracing metadata instead of random UUIDs. If a client provides an ID, it will be used instead. When enabled, IDs are generated from tenant ID, trace ID, ingress labels, original timestamp, and request position. A trace ID is required. Experimental.
   -validation.reject-newer-than duration
     	This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m. (default 10m)
   -validation.reject-older-than duration

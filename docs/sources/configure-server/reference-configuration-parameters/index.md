@@ -3404,6 +3404,13 @@ distributor_usage_groups:
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]
+
+# (experimental) Generate profile IDs from tracing metadata instead of random
+# UUIDs. If a client provides an ID, it will be used instead. When enabled, IDs
+# are generated from tenant ID, trace ID, ingress labels, original timestamp,
+# and request position. A trace ID is required. Experimental.
+# CLI flag: -validation.profile-id-deterministic
+[profile_id_deterministic: <boolean> | default = false]
 ```
 
 ### s3_storage_backend
