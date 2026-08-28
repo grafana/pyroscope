@@ -33,7 +33,6 @@ var allStages = fmt.Sprintf("%s, %s, %s",
 
 type metrics struct {
 	receivedCompressedBytes        *prometheus.HistogramVec
-	receivedDecompressedBytes      *prometheus.HistogramVec // deprecated TODO remove
 	receivedSamples                *prometheus.HistogramVec
 	receivedSamplesBytes           *prometheus.HistogramVec
 	receivedSymbolsBytes           *prometheus.HistogramVec
@@ -56,20 +55,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Namespace:                       "pyroscope",
 				Name:                            "distributor_received_compressed_bytes",
 				Help:                            "The number of compressed bytes per profile received by the distributor.",
-				Buckets:                         prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
-				NativeHistogramBucketFactor:     1.1,
-				NativeHistogramMaxBucketNumber:  50,
-				NativeHistogramMinResetDuration: time.Hour,
-			},
-			[]string{"type", "tenant"},
-		),
-		receivedDecompressedBytes: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Namespace: "pyroscope",
-				Name:      "distributor_received_decompressed_bytes",
-				Help: "The number of decompressed bytes per profiles received by the distributor after " +
-					"limits/sampling checks. distributor_received_decompressed_bytes is deprecated, use " +
-					"distributor_received_decompressed_bytes_total instead.",
 				Buckets:                         prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
 				NativeHistogramBucketFactor:     1.1,
 				NativeHistogramMaxBucketNumber:  50,
@@ -165,7 +150,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	if reg != nil {
 		reg.MustRegister(
 			m.receivedCompressedBytes,
-			m.receivedDecompressedBytes,
 			m.receivedSamples,
 			m.receivedSamplesBytes,
 			m.receivedSymbolsBytes,
