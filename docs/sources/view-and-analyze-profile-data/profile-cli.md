@@ -545,15 +545,69 @@ The following commands are also useful in day-to-day operations.
 
 ### Find top contributors by label value
 
-Use `profilecli query top` to identify the biggest contributors in a time window.
-This is useful when triaging spikes and you need a quick ranked view before doing deeper exploration.
+Use `profilecli query top` to rank label values, or combinations of label values, by their total profile value in a time window.
+This is useful when investigating a spike and you need to identify the services, namespaces, or other dimensions that contribute the most before inspecting a profile in detail.
+The command ranks grouped profile values; it does not rank functions or stack frames.
 
-```bash
-profilecli query top \
-  --query='{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}' \
-  --label-names=service_name \
-  --top-n=10
-```
+By default, `query top` queries the last hour of `process_cpu:cpu:nanoseconds:cpu:nanoseconds` profiles, groups results by `service_name`, and shows the top 10 groups.
+`profilecli query top` is available in Grafana Pyroscope 1.19 and later.
+
+1. Specify optional flags.
+
+   - Use `--query` to filter the profiles to analyze. The default is `{}`.
+   - Use `--from` and `--to` to set the time range. The defaults are `now-1h` and `now`.
+   - Use `--profile-type` to select the profile type. The default is `process_cpu:cpu:nanoseconds:cpu:nanoseconds`.
+   - Use the repeatable `--label-names` flag to select the labels to group by. The default is `service_name`; specifying more than one label ranks each combination of their values.
+   - Use `--top-n` to set the number of groups to display. The default is `10`.
+   - Use `--output=table` (default) or `--output=json`.
+
+1. Run the command.
+
+   - To rank services by CPU time during the last 30 minutes:
+     ```bash
+     profilecli query top \
+         --profile-type=process_cpu:cpu:nanoseconds:cpu:nanoseconds \
+         --query='{namespace="production"}' \
+         --from="now-30m" --to="now" \
+         --label-names=service_name \
+         --top-n=10
+     ```
+
+   - To rank combinations of service and namespace:
+     ```bash
+     profilecli query top \
+         --query='{cluster="us-east-1"}' \
+         --label-names=service_name \
+         --label-names=namespace \
+         --top-n=5
+     ```
+
+   - Example table output:
+     ```
+      +------+-----------------+------------+---------------------+
+      | Rank | service_name    | namespace  | Total (nanoseconds) |
+      +------+-----------------+------------+---------------------+
+      |    1 | checkout        | production |               1m12s |
+      |    2 | payments        | production |              48.25s |
+      |    3 | recommendations | production |              31.88s |
+      +------+-----------------+------------+---------------------+
+     ```
+
+     The final column names the sample unit from the selected profile type. Table output formats nanoseconds as durations and bytes as sizes. A missing or empty grouping label is shown as `<unknown>`.
+
+   - To use the ranked data in a script, request JSON output:
+     ```bash
+     profilecli query top \
+         --query='{namespace="production"}' \
+         --label-names=service_name \
+         --output=json
+     ```
+
+     The JSON output contains `from`, `to`, `profile_type`, and a `series` array. Each series has a `labels` object and a numeric `total`; totals are raw values in the profile type's sample unit, rather than the formatted values shown in the table.
+
+{{< admonition type="note" >}}
+`--top-n` limits the results after `profilecli` receives and ranks all matching groups. A broad time range or a high-cardinality grouping can still produce a large query response. Narrow the label selector or time range when needed.
+{{< /admonition >}}
 
 ### Detect high-cardinality labels
 

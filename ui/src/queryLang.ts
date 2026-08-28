@@ -41,28 +41,8 @@ export type CursorContext =
 const IDENT = /[A-Za-z0-9_]/;
 const WS = /\s/;
 
-// Label names that are presented to the user in a friendlier form than the
-// backend uses. The query bar accepts and renders the display name; we
-// translate to/from the internal name whenever a matcher crosses the API.
-const DISPLAY_TO_INTERNAL: Record<string, string> = {
-  profile_type: '__profile_type__',
-};
-const INTERNAL_TO_DISPLAY: Record<string, string> = Object.fromEntries(
-  Object.entries(DISPLAY_TO_INTERNAL).map(([d, i]) => [i, d]),
-);
-
-export function toInternalLabel(name: string): string {
-  return DISPLAY_TO_INTERNAL[name] ?? name;
-}
-
-export function toDisplayLabel(name: string): string {
-  return INTERNAL_TO_DISPLAY[name] ?? name;
-}
-
 // Labels wrapped in double underscores (e.g. __delta__, __session_id__) are
-// reserved internals and should not surface in autocomplete. Aliased labels
-// like __profile_type__ are first translated via `toDisplayLabel`, so this
-// check sees the display form (`profile_type`) and lets them through.
+// reserved internals and should not surface in autocomplete.
 export function isInternalLabel(name: string): boolean {
   return name.startsWith('__') && name.endsWith('__');
 }
@@ -204,7 +184,7 @@ function parseSlot(q: string, slotStart: number, slotEnd: number): Matcher {
 }
 
 function serializeMatcher(m: Matcher): string {
-  return `{${toInternalLabel(m.name)}${m.op}"${m.value}"}`;
+  return `{${m.name}${m.op}"${m.value}"}`;
 }
 
 export function getCursorContext(query: string, cursor: number): CursorContext {
@@ -295,15 +275,26 @@ export function applySuggestion(
   return { next, cursor };
 }
 
-export function buildQuery(service: string, profileType: string): string {
-  return `{service_name="${service}", profile_type="${profileType}"}`;
+export function buildQuery(service: string): string {
+  return `{service_name="${service}"}`;
 }
 
 export function parseQuery(
   q: string,
-): { service: string; profileType: string } | null {
-  const service = q.match(/service_name\s*=\s*"([^"]+)"/)?.[1];
-  const profileType = q.match(/profile_type\s*=\s*"([^"]+)"/)?.[1];
-  if (!service || !profileType) return null;
-  return { service, profileType };
+): { service: string; labelSelector: string } | null {
+  const { matchers, braceOpen } = tokenize(q);
+  if (braceOpen === -1) return null;
+
+  let service = '';
+  for (const m of matchers) {
+    if (!m.complete) continue;
+    if (m.name === 'service_name' && m.op === '=') {
+      service = m.value;
+      break;
+    }
+  }
+
+  if (!service) return null;
+
+  return { service, labelSelector: q.trim() };
 }
