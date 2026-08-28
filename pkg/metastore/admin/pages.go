@@ -14,8 +14,14 @@ var nodesPageHtml string
 //go:embed metastore.client.gohtml
 var clientTestPageHtml string
 
+//go:embed metastore.compaction.partials.gohtml
+var compactionPartialsHtml string
+
 //go:embed metastore.compaction.gohtml
 var compactionPageHtml string
+
+//go:embed metastore.compaction.tenant.gohtml
+var compactionTenantPageHtml string
 
 type metastoreNode struct {
 	// from Discovery
@@ -59,9 +65,10 @@ type clientTestPageContent struct {
 }
 
 type templates struct {
-	nodesTemplate      *template.Template
-	clientTestTemplate *template.Template
-	compactionTemplate *template.Template
+	nodesTemplate            *template.Template
+	clientTestTemplate       *template.Template
+	compactionTemplate       *template.Template
+	compactionTenantTemplate *template.Template
 }
 
 var pageTemplates = initTemplates()
@@ -71,12 +78,19 @@ func initTemplates() *templates {
 	template.Must(nodesTemplate.Parse(nodesPageHtml))
 	clientTestTemplate := template.New("clientTest")
 	template.Must(clientTestTemplate.Parse(clientTestPageHtml))
+	// The compaction pages share the layout and a few tables: the partials
+	// are parsed into both templates before their bodies.
 	compactionTemplate := template.New("compaction")
+	template.Must(compactionTemplate.Parse(compactionPartialsHtml))
 	template.Must(compactionTemplate.Parse(compactionPageHtml))
+	compactionTenantTemplate := template.New("compactionTenant")
+	template.Must(compactionTenantTemplate.Parse(compactionPartialsHtml))
+	template.Must(compactionTenantTemplate.Parse(compactionTenantPageHtml))
 	t := &templates{
-		nodesTemplate:      nodesTemplate,
-		clientTestTemplate: clientTestTemplate,
-		compactionTemplate: compactionTemplate,
+		nodesTemplate:            nodesTemplate,
+		clientTestTemplate:       clientTestTemplate,
+		compactionTemplate:       compactionTemplate,
+		compactionTenantTemplate: compactionTenantTemplate,
 	}
 	return t
 }
