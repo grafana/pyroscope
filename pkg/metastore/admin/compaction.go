@@ -25,6 +25,12 @@ const (
 	maxCompactionAttentionRows = 50
 )
 
+// blockLinkPadding widens the time window of the block listing links. The
+// job and queue timestamps record when the blocks were queued for compaction,
+// whereas the block listing filters on the block time range: the padding
+// compensates for the difference.
+const blockLinkPadding = time.Hour
+
 // Tenant index sort orders. Attention is the default: it surfaces the
 // tenants compaction is not making progress on, which is the reason to
 // open the page in the first place.
@@ -97,6 +103,10 @@ type compactionTenantPageContent struct {
 
 	Queues          []compactionQueueRow
 	TruncatedQueues int
+
+	// BlocksPath links to the block listing of the tenant in the object
+	// store browser. Empty if the tenant is not addressable there.
+	BlocksPath string
 }
 
 // Empty reports whether the tenant is present in the compaction state at all.
@@ -163,6 +173,7 @@ type compactionJobRow struct {
 	Age           string
 	Assigned      string
 	Lease         string
+	BlocksPath    string
 }
 
 type compactionQueueRow struct {
@@ -172,6 +183,7 @@ type compactionQueueRow struct {
 	Blocks      uint64
 	OldestBlock string
 	NewestBlock string
+	BlocksPath  string
 }
 
 func (a *Admin) CompactionHandler() http.Handler {
@@ -366,6 +378,7 @@ func buildCompactionTenantPageContent(
 		Tenant:        tenant,
 		LeaseDuration: time.Duration(state.JobLeaseDuration),
 		MaxFailures:   state.JobMaxFailures,
+		BlocksPath:    tenantBlocksPath(tenant),
 	}
 
 	var jobs []*metastorev1.CompactionJobDetails
@@ -428,14 +441,22 @@ func buildCompactionTenantPageContent(
 		content.TotalQueues++
 		content.QueuedBlocks += q.Blocks
 		if len(content.Queues) < maxCompactionQueueRows {
-			content.Queues = append(content.Queues, compactionQueueRow{
+			row := compactionQueueRow{
 				Tenant:      q.Tenant,
 				Shard:       q.Shard,
 				Level:       q.CompactionLevel,
 				Blocks:      q.Blocks,
 				OldestBlock: formatAge(q.OldestBlockAt, now),
 				NewestBlock: formatAge(q.NewestBlockAt, now),
-			})
+			}
+			if q.OldestBlockAt > 0 && q.NewestBlockAt > 0 {
+				row.BlocksPath = blocksPath(q.Tenant,
+					time.Unix(0, q.OldestBlockAt),
+					time.Unix(0, q.NewestBlockAt))
+			} else {
+				row.BlocksPath = tenantBlocksPath(q.Tenant)
+			}
+			content.Queues = append(content.Queues, row)
 		}
 	}
 	content.TruncatedQueues = content.TotalQueues - len(content.Queues)
@@ -462,6 +483,13 @@ func newCompactionJobRow(job *metastorev1.CompactionJobDetails, maxFailures uint
 	}
 	if job.Tenant != "" {
 		row.TenantPath = tenantPath(job.Tenant, "")
+	}
+	if job.AddedAt > 0 {
+		// The source blocks were queued shortly before the job was created.
+		added := time.Unix(0, job.AddedAt)
+		row.BlocksPath = blocksPath(job.Tenant, added, added)
+	} else {
+		row.BlocksPath = tenantBlocksPath(job.Tenant)
 	}
 	return row
 }
@@ -604,6 +632,38 @@ func tenantPath(tenant, sortOrder string) string {
 		path += "&sort=" + url.QueryEscape(sortOrder)
 	}
 	return path
+}
+
+// tenantBlocksPath links to the block listing of the tenant in the object
+// store browser, over its default time range.
+//
+// Level 0 blocks are segments written by the segment writers: they are
+// multi-tenant and carry no tenant of their own, so the compaction entities
+// that operate on them (identified by an empty tenant) are not addressable
+// in the listing, which queries the metadata by tenant. No link is built
+// for them.
+func tenantBlocksPath(tenant string) string {
+	if tenant == "" {
+		return ""
+	}
+	return "/ops/object-store/tenants/" + url.PathEscape(tenant) + "/blocks"
+}
+
+// blocksPath links to the block listing of the tenant, narrowed to the time
+// window the blocks are expected to fall into. The window is only a hint:
+// the listing filters on the block time range, whereas the window is derived
+// from the time the blocks were queued for compaction, and it is not
+// restricted to the blocks of a single job or queue. The scheduler does not
+// currently report the source block identifiers.
+func blocksPath(tenant string, from, to time.Time) string {
+	if tenant == "" {
+		return ""
+	}
+	query := url.Values{
+		"queryFrom": []string{from.Add(-blockLinkPadding).UTC().Format(time.RFC3339)},
+		"queryTo":   []string{to.Add(blockLinkPadding).UTC().Format(time.RFC3339)},
+	}
+	return tenantBlocksPath(tenant) + "?" + query.Encode()
 }
 
 // formatAge renders the time elapsed since the given timestamp

@@ -498,6 +498,107 @@ func TestTenantPath(t *testing.T) {
 	assert.Equal(t, "/metastore-compaction?tenant=a%2Fb+c%26d", tenantPath("a/b c&d", ""))
 }
 
+func TestBlocksPath(t *testing.T) {
+	from := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	to := from.Add(30 * time.Minute)
+
+	assert.Equal(t, "/ops/object-store/tenants/tenant-a/blocks", tenantBlocksPath("tenant-a"))
+	assert.Equal(t, "/ops/object-store/tenants/a%2Fb/blocks", tenantBlocksPath("a/b"))
+	// The window is padded on both ends.
+	assert.Equal(t,
+		"/ops/object-store/tenants/tenant-a/blocks"+
+			"?queryFrom=2026-08-28T11%3A00%3A00Z&queryTo=2026-08-28T13%3A30%3A00Z",
+		blocksPath("tenant-a", from, to))
+
+	// Level 0 entities carry no tenant and are not addressable in the listing.
+	assert.Empty(t, tenantBlocksPath(""))
+	assert.Empty(t, blocksPath("", from, to))
+}
+
+func TestBuildCompactionPageContent_blockLinks(t *testing.T) {
+	now := time.Now()
+	state := testCompactionState(now)
+	content := buildCompactionPageContent(state, now, "", "")
+
+	// Attention rows link to the blocks of their own tenant.
+	require.Len(t, content.Attention, 2)
+	for _, row := range content.Attention {
+		assert.Contains(t, row.BlocksPath, "/ops/object-store/tenants/tenant-b/blocks?queryFrom=")
+	}
+
+	tenantContent := buildCompactionTenantPageContent(state, now, "tenant-a")
+	assert.Equal(t, "/ops/object-store/tenants/tenant-a/blocks", tenantContent.BlocksPath)
+	require.Len(t, tenantContent.Jobs, 2)
+	for _, row := range tenantContent.Jobs {
+		assert.Contains(t, row.BlocksPath, "/ops/object-store/tenants/tenant-a/blocks?queryFrom=")
+	}
+	// The queue window is derived from the oldest and the newest entries.
+	require.Len(t, tenantContent.Queues, 1)
+	assert.Equal(t,
+		blocksPath("tenant-a",
+			time.Unix(0, state.CompactionQueues[0].OldestBlockAt),
+			time.Unix(0, state.CompactionQueues[0].NewestBlockAt)),
+		tenantContent.Queues[0].BlocksPath)
+}
+
+func TestBuildCompactionPageContent_blockLinksWithoutTenant(t *testing.T) {
+	now := time.Now()
+	// Level 0 jobs and queues operate on multi-tenant segments
+	// and carry no tenant of their own.
+	state := &metastorev1.GetCompactionStateResponse{
+		JobMaxFailures: 3,
+		CompactionJobs: []*metastorev1.CompactionJobDetails{{
+			Name:           "segment-job",
+			Status:         metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS,
+			LeaseExpiresAt: now.Add(-time.Minute).UnixNano(),
+			AddedAt:        now.Add(-time.Hour).UnixNano(),
+		}},
+		CompactionQueues: []*metastorev1.CompactionQueueDetails{{
+			Blocks:        4,
+			OldestBlockAt: now.Add(-time.Minute).UnixNano(),
+			NewestBlockAt: now.UnixNano(),
+		}},
+	}
+
+	content := buildCompactionPageContent(state, now, "", "")
+	require.Len(t, content.Attention, 1)
+	assert.Empty(t, content.Attention[0].BlocksPath)
+	assert.Empty(t, content.Attention[0].TenantPath)
+
+	tenantContent := buildCompactionTenantPageContent(state, now, "")
+	assert.Empty(t, tenantContent.BlocksPath)
+
+	// The template renders the counts as plain text: no empty links.
+	client := mockmetastorev1.NewMockCompactionServiceClient(t)
+	client.EXPECT().
+		GetCompactionState(mock.Anything, mock.Anything).
+		Return(state, nil).
+		Once()
+	w := httptest.NewRecorder()
+	a := &Admin{compactionClient: client}
+	a.CompactionHandler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metastore-compaction", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.NotContains(t, w.Body.String(), "/ops/object-store/")
+}
+
+func TestCompactionHandler_blockLinks(t *testing.T) {
+	client := mockmetastorev1.NewMockCompactionServiceClient(t)
+	client.EXPECT().
+		GetCompactionState(mock.Anything, mock.Anything).
+		Return(testCompactionState(time.Now()), nil).
+		Once()
+
+	a := &Admin{compactionClient: client}
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/metastore-compaction?tenant=tenant-a", nil)
+	a.CompactionHandler().ServeHTTP(w, r)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, `href="/ops/object-store/tenants/tenant-a/blocks"`)
+	assert.Contains(t, body, `href="/ops/object-store/tenants/tenant-a/blocks?queryFrom=`)
+}
+
 func TestMatchesTenantFilter(t *testing.T) {
 	assert.True(t, matchesTenantFilter("tenant-a", ""))
 	assert.True(t, matchesTenantFilter("", ""))

@@ -234,7 +234,10 @@
                         <th>Status</th>
                         <th>Worker</th>
                         <th>Reassignments</th>
-                        <th>Blocks</th>
+                        <th>
+                            Blocks
+                            {{ template "compaction-info" "Number of source blocks the job compacts. Follows to the block listing of the tenant, windowed around the time the job was created. The listing is not restricted to the source blocks of the job: the scheduler does not report their identifiers." }}
+                        </th>
                         <th>Age</th>
                         <th>Lease</th>
                     </tr>
@@ -255,7 +258,13 @@
                             <td class="align-middle"><span class="badge text-bg-{{ .StatusBadge }}">{{ .Status }}</span></td>
                             <td class="align-middle font-monospace small">{{ .Worker }}</td>
                             <td class="align-middle">{{ .Reassignments }}</td>
-                            <td class="align-middle">{{ .SourceBlocks }}</td>
+                            <td class="align-middle">
+                                {{ if .BlocksPath }}
+                                    <a href="{{ .BlocksPath }}">{{ .SourceBlocks }}</a>
+                                {{ else }}
+                                    {{ .SourceBlocks }}
+                                {{ end }}
+                            </td>
                             <td class="align-middle">{{ .Age }}</td>
                             <td class="align-middle">{{ .Lease }}</td>
                         </tr>

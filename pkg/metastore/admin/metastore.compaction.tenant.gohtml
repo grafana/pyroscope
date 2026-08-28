@@ -22,6 +22,19 @@
                 scheduling order within each level; the queues hold the blocks that await compaction
                 and have not been turned into jobs yet.
             </p>
+            <p class="text-body-secondary">
+                The block counts link to the object store browser, narrowed to the time window the
+                blocks are expected to fall into. The window is a hint, not an exact match: the
+                scheduler does not report which blocks a job or a queue holds, so the listing covers
+                every block of the tenant in that window, at every shard and level.
+            </p>
+            {{ if .BlocksPath }}
+                <div class="col-12 mb-2">
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ .BlocksPath }}">
+                        <i class="bi bi-box"></i> Browse all blocks of this tenant
+                    </a>
+                </div>
+            {{ end }}
         </div>
 
         {{ if .Empty }}
@@ -95,7 +108,10 @@
                             <th>Status</th>
                             <th>Worker</th>
                             <th>Reassignments</th>
-                            <th>Blocks</th>
+                            <th>
+                                Blocks
+                                {{ template "compaction-info" "Number of source blocks the job compacts. Follows to the block listing of the tenant, windowed around the time the job was created. The listing is not restricted to the source blocks of the job: the scheduler does not report their identifiers." }}
+                            </th>
                             <th>Age</th>
                             <th>Assigned</th>
                             <th>Lease</th>
@@ -111,7 +127,13 @@
                                 <td class="align-middle"><span class="badge text-bg-{{ .StatusBadge }}">{{ .Status }}</span></td>
                                 <td class="align-middle font-monospace small">{{ .Worker }}</td>
                                 <td class="align-middle">{{ .Reassignments }}</td>
-                                <td class="align-middle">{{ .SourceBlocks }}</td>
+                                <td class="align-middle">
+                                    {{ if .BlocksPath }}
+                                        <a href="{{ .BlocksPath }}">{{ .SourceBlocks }}</a>
+                                    {{ else }}
+                                        {{ .SourceBlocks }}
+                                    {{ end }}
+                                </td>
                                 <td class="align-middle">{{ .Age }}</td>
                                 <td class="align-middle">{{ .Assigned }}</td>
                                 <td class="align-middle">{{ .Lease }}</td>
@@ -147,7 +169,10 @@
                         <tr>
                             <th>Shard</th>
                             <th>Level</th>
-                            <th>Blocks</th>
+                            <th>
+                                Blocks
+                                {{ template "compaction-info" "Number of blocks awaiting compaction in the queue. Follows to the block listing of the tenant, windowed by the oldest and the newest queue entries. The listing is not restricted to the blocks of this queue: it covers every shard and level of the tenant in that window." }}
+                            </th>
                             <th>Oldest Block</th>
                             <th>Newest Block</th>
                         </tr>
@@ -157,7 +182,13 @@
                             <tr>
                                 <td class="align-middle">{{ .Shard }}</td>
                                 <td class="align-middle">{{ .Level }}</td>
-                                <td class="align-middle">{{ .Blocks }}</td>
+                                <td class="align-middle">
+                                    {{ if .BlocksPath }}
+                                        <a href="{{ .BlocksPath }}">{{ .Blocks }}</a>
+                                    {{ else }}
+                                        {{ .Blocks }}
+                                    {{ end }}
+                                </td>
                                 <td class="align-middle">{{ .OldestBlock }}</td>
                                 <td class="align-middle">{{ .NewestBlock }}</td>
                             </tr>
