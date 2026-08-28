@@ -61,6 +61,9 @@ type compactionPageContent struct {
 	// Planner counters over all the queues.
 	QueuedBlocks uint64
 	TotalQueues  int
+	// QueuesTruncated reports that the metastore stopped scanning the
+	// planner queues early, so the counters above are lower bounds.
+	QueuesTruncated bool
 
 	Levels  []compactionLevelSummary
 	Workers []compactionWorkerSummary
@@ -102,8 +105,9 @@ type compactionTenantPageContent struct {
 	LeaseExpired int
 	Failed       int
 
-	QueuedBlocks uint64
-	TotalQueues  int
+	QueuedBlocks    uint64
+	TotalQueues     int
+	QueuesTruncated bool
 
 	Levels []compactionLevelSummary
 
@@ -296,14 +300,15 @@ func buildCompactionPageContent(
 	sortOrder string,
 ) *compactionPageContent {
 	content := &compactionPageContent{
-		Now:           now,
-		LeaseDuration: time.Duration(state.JobLeaseDuration),
-		MaxFailures:   state.JobMaxFailures,
-		MaxQueueSize:  state.MaxJobQueueSize,
-		TotalJobs:     len(state.CompactionJobs),
-		TotalQueues:   len(state.CompactionQueues),
-		Filter:        strings.TrimSpace(filter),
-		Sort:          tenantSortOrder(sortOrder),
+		Now:             now,
+		LeaseDuration:   time.Duration(state.JobLeaseDuration),
+		MaxFailures:     state.JobMaxFailures,
+		MaxQueueSize:    state.MaxJobQueueSize,
+		TotalJobs:       len(state.CompactionJobs),
+		TotalQueues:     len(state.CompactionQueues),
+		QueuesTruncated: state.CompactionQueuesTruncated,
+		Filter:          strings.TrimSpace(filter),
+		Sort:            tenantSortOrder(sortOrder),
 	}
 
 	levels := make(map[uint32]*compactionLevelSummary)
@@ -450,12 +455,13 @@ func buildCompactionTenantPageContent(
 	tenantID string,
 ) *compactionTenantPageContent {
 	content := &compactionTenantPageContent{
-		Now:           now,
-		Tenant:        tenantID,
-		Segments:      tenantID == "",
-		LeaseDuration: time.Duration(state.JobLeaseDuration),
-		MaxFailures:   state.JobMaxFailures,
-		BlocksPath:    tenantBlocksPath(tenantID),
+		Now:             now,
+		Tenant:          tenantID,
+		Segments:        tenantID == "",
+		LeaseDuration:   time.Duration(state.JobLeaseDuration),
+		MaxFailures:     state.JobMaxFailures,
+		BlocksPath:      tenantBlocksPath(tenantID),
+		QueuesTruncated: state.CompactionQueuesTruncated,
 	}
 
 	var jobs []*metastorev1.CompactionJobDetails

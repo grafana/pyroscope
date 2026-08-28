@@ -64,7 +64,7 @@ func BenchmarkCompactor_ListQueues(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				require.NoError(b, db.View(func(tx *bbolt.Tx) error {
-					queues, err := c.ListQueues(ctx, tx, QueueFilter{})
+					queues, _, err := c.ListQueues(ctx, tx, QueueFilter{})
 					require.NoError(b, err)
 					require.NotEmpty(b, queues)
 					return nil
@@ -86,7 +86,7 @@ func BenchmarkCompactor_ListQueues_filtered(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		require.NoError(b, db.View(func(tx *bbolt.Tx) error {
-			_, err := c.ListQueues(ctx, tx, QueueFilter{Tenant: &tenant})
+			_, _, err := c.ListQueues(ctx, tx, QueueFilter{Tenant: &tenant})
 			require.NoError(b, err)
 			return nil
 		}))

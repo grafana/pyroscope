@@ -704,6 +704,32 @@ func TestCompactionHandler_sourceBlockLinksAbsent(t *testing.T) {
 	assert.Contains(t, body, `href="/ops/object-store/tenants/tenant-a/blocks?queryFrom=`)
 }
 
+// A capped queue scan makes the block counters lower bounds, and the page
+// must not present them as exact.
+func TestCompactionHandler_queuesTruncated(t *testing.T) {
+	state := testCompactionState(time.Now())
+	state.CompactionQueuesTruncated = true
+
+	client := mockmetastorev1.NewMockCompactionServiceClient(t)
+	client.EXPECT().
+		GetCompactionState(mock.Anything, mock.Anything).
+		Return(state, nil).
+		Once()
+
+	a := &Admin{compactionClient: client}
+	w := httptest.NewRecorder()
+	a.CompactionHandler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metastore-compaction", nil))
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "at least")
+
+	content := buildCompactionPageContent(state, time.Now(), "", "")
+	assert.True(t, content.QueuesTruncated)
+
+	tenantContent := buildCompactionTenantPageContent(state, time.Now(), "tenant-a")
+	assert.True(t, tenantContent.QueuesTruncated)
+}
+
 func TestBlockPath(t *testing.T) {
 	assert.Equal(t,
 		"/ops/object-store/tenants/tenant-a/blocks/block-1?block_tenant=tenant-a&shard=7",
