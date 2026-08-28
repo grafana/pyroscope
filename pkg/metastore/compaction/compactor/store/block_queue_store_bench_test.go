@@ -37,3 +37,24 @@ func BenchmarkUnmarshalBlockEntry(b *testing.B) {
 		require.NoError(b, unmarshalBlockEntry(&dst, kv))
 	}
 }
+
+// BenchmarkBlockEntryStats is the same entry read the way the queue
+// aggregation reads it: without the identifier, and interning the tenant.
+func BenchmarkBlockEntryStats(b *testing.B) {
+	value := make([]byte, 16+len("tenant-0001"))
+	binary.BigEndian.PutUint64(value[0:8], 1700000000000000000)
+	binary.BigEndian.PutUint32(value[8:12], 1)
+	binary.BigEndian.PutUint32(value[12:16], 7)
+	copy(value[16:], "tenant-0001")
+
+	x := &blockEntryStatsIterator{tenants: make(map[string]string)}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		x.cur.AppendedAt = int64(binary.BigEndian.Uint64(value[0:8]))
+		x.cur.Level = binary.BigEndian.Uint32(value[8:12])
+		x.cur.Shard = binary.BigEndian.Uint32(value[12:16])
+		x.cur.Tenant = x.intern(value[16:])
+	}
+}

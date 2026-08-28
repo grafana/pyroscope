@@ -31,6 +31,7 @@ type BlockQueueStore interface {
 	StoreEntry(*bbolt.Tx, compaction.BlockEntry) error
 	DeleteEntry(tx *bbolt.Tx, index uint64, id string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[compaction.BlockEntry]
+	ListEntryStats(*bbolt.Tx) iter.Iterator[compaction.BlockEntryStats]
 	CreateBuckets(*bbolt.Tx) error
 }
 
@@ -144,7 +145,7 @@ func (f QueueFilter) matches(tenant string) bool {
 // the context.
 func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx, filter QueueFilter) ([]QueueStats, error) {
 	queues := make(map[compactionKey]*QueueStats)
-	entries := c.store.ListEntries(tx)
+	entries := c.store.ListEntryStats(tx)
 	defer func() {
 		_ = entries.Close()
 	}()
