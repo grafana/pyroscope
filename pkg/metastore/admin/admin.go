@@ -41,6 +41,10 @@ type Admin struct {
 	metastoreClient  *metastoreclient.Client // used to test the metastoreclient.Client implementation
 	compactionClient metastorev1.CompactionServiceClient
 
+	// compactionCache keeps the compaction state briefly: serving the page
+	// costs a full scan of the compaction queues. The zero value disables it.
+	compactionCache compactionStateCache
+
 	actionHandlers map[string]formActionHandler
 }
 
@@ -66,6 +70,7 @@ func New(
 		metastoreClient:  metastoreClient,
 		compactionClient: metastoreClient,
 	}
+	adm.compactionCache.ttl = compactionStateCacheTTL
 	adm.addFormActionHandlers()
 	adm.service = services.NewIdleService(adm.starting, adm.stopping)
 

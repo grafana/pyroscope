@@ -54,7 +54,13 @@
 {{ define "compaction-footer" }}
 <footer class="footer mt-auto py-3">
     <div class="container">
-        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+        <small class="text-muted">
+            Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}
+            {{ if .StateAge }}
+                &middot; state read {{ .StateAge }} ago
+                {{ template "compaction-info" "Serving this page costs a full scan of the compaction queues, so the state is held briefly and shared between reloads. Reload in a few seconds for a fresh read." }}
+            {{ end }}
+        </small>
     </div>
 </footer>
 {{ end }}
