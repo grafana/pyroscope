@@ -181,7 +181,7 @@ datasources:
 Modify the Helm deployment by running:
 
 ```bash
-   helm upgrade -n pyroscope-test --reuse-values grafana grafana/grafana \
+   helm upgrade -n pyroscope-test --reuse-values pyroscope grafana/pyroscope \
      --values datasources.yaml
 ```
 
