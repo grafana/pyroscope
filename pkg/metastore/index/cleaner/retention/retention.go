@@ -24,7 +24,7 @@ type Policy interface {
 }
 
 type Config struct {
-	RetentionPeriod model.Duration `yaml:"retention_period" doc:"hidden"`
+	RetentionPeriod model.Duration `yaml:"retention_period"`
 }
 
 type Overrides interface {
