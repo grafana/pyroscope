@@ -3,117 +3,139 @@ package segmentwriter
 import (
 	"context"
 	"errors"
-	"fmt"
+	"io"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/ring"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 
+	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockobjstore"
 )
+
+const testInstanceID = "segment-writer-7"
+
+// Asserted literally rather than rebuilt from the constants, so moving the probe is deliberate.
+const expectedHealthCheckKey = "segments/_health/" + testInstanceID
 
 func TestSegmentWriterService_performBucketHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	const timeout = 100 * time.Millisecond
+	const timeout = time.Second
 
-	// iterCalledWith returns a mock expectation for Iter at the bucket root, invoking
-	// visit with the callback the health check passed in.
-	iterCalledWith := func(visit func(f func(string) error) error) func(*mockobjstore.MockBucket) {
+	uploadReturns := func(errs ...error) func(*mockobjstore.MockBucket) {
 		return func(bucket *mockobjstore.MockBucket) {
-			bucket.On("Iter", mock.Anything, "", mock.Anything).
-				Return(func(_ context.Context, _ string, f func(string) error, _ ...objstore.IterOption) error {
-					return visit(f)
+			var attempt int
+			bucket.On("Upload", mock.Anything, expectedHealthCheckKey, mock.Anything).
+				Return(func(_ context.Context, _ string, r io.Reader, _ ...objstore.ObjectUploadOption) error {
+					// A reader shared across retries would be drained after the first.
+					body, err := io.ReadAll(r)
+					require.NoError(t, err)
+					require.Contains(t, string(body), testInstanceID)
+
+					err = errs[min(attempt, len(errs)-1)]
+					attempt++
+					return err
 				})
 		}
 	}
 
-	// iterFailsWith makes Iter return err without invoking the callback.
-	iterFailsWith := func(err error) func(*mockobjstore.MockBucket) {
-		return iterCalledWith(func(func(string) error) error { return err })
+	uploadThenDelete := func(deleteErr error) func(*mockobjstore.MockBucket) {
+		return func(bucket *mockobjstore.MockBucket) {
+			uploadReturns(nil)(bucket)
+			bucket.On("Delete", mock.Anything, expectedHealthCheckKey).Return(deleteErr)
+		}
 	}
 
 	unreachable := errors.New("dial tcp: connection refused")
 	noSuchBucket := errors.New("NoSuchBucket: the specified bucket does not exist")
+	accessDenied := errors.New("AccessDenied: not authorized to perform s3:DeleteObject")
 
 	for _, tc := range []struct {
-		name    string
-		enabled bool
-		setup   func(*mockobjstore.MockBucket)
-		assert  func(*testing.T, error)
+		name            string
+		enabled         bool
+		setup           func(*mockobjstore.MockBucket)
+		assert          func(*testing.T, error)
+		wantCleanupFail int
 	}{
 		{
-			// The check is skipped entirely: the bucket must not be touched.
+			// Skipped entirely: the bucket must not be touched.
 			name:    "disabled",
 			enabled: false,
 			setup:   func(*mockobjstore.MockBucket) {},
 			assert:  func(t *testing.T, err error) { require.NoError(t, err) },
 		},
 		{
-			// One of only two healthy outcomes: an empty bucket never invokes the
-			// callback, so Iter returns nil.
-			name:    "empty bucket",
+			name:    "upload and delete succeed",
 			enabled: true,
-			setup:   iterCalledWith(func(func(string) error) error { return nil }),
+			setup:   uploadThenDelete(nil),
 			assert:  func(t *testing.T, err error) { require.NoError(t, err) },
 		},
 		{
-			// The other healthy outcome, and the production shape: the callback fires and
-			// its sentinel comes back out of Iter. Treating that as a failure would stop
-			// the segment writer starting against a perfectly healthy bucket.
-			name:    "non-empty bucket",
+			// A blip must not crash-loop an instance the write path would have tolerated.
+			name:    "transient upload failure is retried",
 			enabled: true,
-			setup: iterCalledWith(func(f func(string) error) error {
-				return f("some/object/path")
-			}),
+			setup: func(bucket *mockobjstore.MockBucket) {
+				uploadReturns(unreachable, unreachable, nil)(bucket)
+				bucket.On("Delete", mock.Anything, expectedHealthCheckKey).Return(nil)
+			},
 			assert: func(t *testing.T, err error) { require.NoError(t, err) },
 		},
 		{
-			// The sentinel must be recognised even if a bucket implementation wraps it.
-			// This is what errors.Is buys over comparing the message.
-			name:    "non-empty bucket with wrapped sentinel",
-			enabled: true,
-			setup: iterCalledWith(func(f func(string) error) error {
-				return fmt.Errorf("iter some/prefix: %w", f("some/object/path"))
-			}),
-			assert: func(t *testing.T, err error) { require.NoError(t, err) },
+			// A bucket granting writes but not deletes is still serviceable.
+			name:            "delete permission denied is not fatal",
+			enabled:         true,
+			setup:           uploadThenDelete(accessDenied),
+			assert:          func(t *testing.T, err error) { require.NoError(t, err) },
+			wantCleanupFail: 1,
 		},
 		{
-			// A nonexistent bucket must not start. This is why the success condition
-			// cannot accept "object not found": a list never names a key, so that class
-			// only ever arrives from a missing bucket, and Tencent COS reports any 404 -
-			// NoSuchBucket included - as a not-found.
-			name:    "missing bucket is fatal",
+			name:    "delete timeout is not fatal",
 			enabled: true,
-			setup:   iterFailsWith(noSuchBucket),
+			setup: func(bucket *mockobjstore.MockBucket) {
+				uploadReturns(nil)(bucket)
+				bucket.On("Delete", mock.Anything, expectedHealthCheckKey).
+					Return(func(ctx context.Context, _ string) error {
+						<-ctx.Done()
+						return ctx.Err()
+					})
+			},
+			assert:          func(t *testing.T, err error) { require.NoError(t, err) },
+			wantCleanupFail: 1,
+		},
+		{
+			name:    "missing bucket is fatal once retries are exhausted",
+			enabled: true,
+			setup:   uploadReturns(noSuchBucket),
 			assert: func(t *testing.T, err error) {
 				require.ErrorIs(t, err, noSuchBucket)
 				require.ErrorContains(t, err, "bucket health check failed")
 			},
 		},
 		{
-			// Anything else stops the segment writer starting too, rather than letting it
-			// report itself healthy and drop writes it cannot fulfil. The cause is wrapped
-			// so operators can see it.
-			name:    "bucket unreachable is fatal",
+			name:    "bucket unreachable is fatal once retries are exhausted",
 			enabled: true,
-			setup:   iterFailsWith(unreachable),
+			setup:   uploadReturns(unreachable),
 			assert: func(t *testing.T, err error) {
 				require.ErrorIs(t, err, unreachable)
 				require.ErrorContains(t, err, "bucket health check failed")
 			},
 		},
 		{
-			// Exercised through a real expiring context rather than a synthetic error,
-			// so the timeout plumbing itself is covered.
-			name:    "timeout is fatal",
+			// A real expiring context, so the timeout plumbing itself is covered.
+			name:    "upload timeout is fatal",
 			enabled: true,
 			setup: func(bucket *mockobjstore.MockBucket) {
-				bucket.On("Iter", mock.Anything, "", mock.Anything).
-					Return(func(ctx context.Context, _ string, _ func(string) error, _ ...objstore.IterOption) error {
+				bucket.On("Upload", mock.Anything, expectedHealthCheckKey, mock.Anything).
+					Return(func(ctx context.Context, _ string, _ io.Reader, _ ...objstore.ObjectUploadOption) error {
 						<-ctx.Done()
 						return ctx.Err()
 					})
@@ -130,40 +152,57 @@ func TestSegmentWriterService_performBucketHealthCheck(t *testing.T) {
 			bucket := mockobjstore.NewMockBucket(t)
 			tc.setup(bucket)
 
-			svc := &SegmentWriterService{
-				logger:        log.NewNopLogger(),
-				storageBucket: bucket,
-				config: Config{
-					BucketHealthCheckEnabled: tc.enabled,
-					BucketHealthCheckTimeout: timeout,
-				},
-			}
-
+			svc := newTestServiceForHealthCheck(bucket, tc.enabled, timeout)
 			tc.assert(t, svc.performBucketHealthCheck(context.Background()))
+
+			require.Equal(t, float64(tc.wantCleanupFail),
+				testutil.ToFloat64(svc.bucketHealthCheckCleanupFailures))
 		})
 	}
 }
 
-// The failure has to reach the caller so the dskit service transitions to Failed, which is
-// what stops the instance registering in the ring and ultimately exits the process.
+// The failure must reach the caller: that is what moves the dskit service to Failed, so the
+// instance never registers in the ring.
 func TestSegmentWriterService_starting_bucketHealthCheckFailure(t *testing.T) {
 	t.Parallel()
 
 	unreachable := errors.New("dial tcp: connection refused")
 	bucket := mockobjstore.NewMockBucket(t)
-	bucket.On("Iter", mock.Anything, "", mock.Anything).Return(unreachable)
-
-	svc := &SegmentWriterService{
-		logger:        log.NewNopLogger(),
-		storageBucket: bucket,
-		config: Config{
-			BucketHealthCheckEnabled: true,
-			BucketHealthCheckTimeout: time.Second,
-		},
-	}
+	bucket.On("Upload", mock.Anything, expectedHealthCheckKey, mock.Anything).Return(unreachable)
 
 	// subservices is deliberately left nil: StartManagerAndAwaitHealthy would panic on
 	// it, so returning an error instead proves starting bailed out before the ring.
-	err := svc.starting(context.Background())
+	err := newTestServiceForHealthCheck(bucket, true, time.Second).starting(context.Background())
 	require.ErrorIs(t, err, unreachable)
+}
+
+func newTestServiceForHealthCheck(bucket *mockobjstore.MockBucket, enabled bool, timeout time.Duration) *SegmentWriterService {
+	return &SegmentWriterService{
+		logger:        log.NewNopLogger(),
+		storageBucket: bucket,
+		config: Config{
+			LifecyclerConfig:         ring.LifecyclerConfig{ID: testInstanceID},
+			BucketHealthCheckEnabled: enabled,
+			BucketHealthCheckTimeout: timeout,
+			UploadMaxRetries:         3,
+			UploadMinBackoff:         time.Millisecond,
+			UploadMaxBackoff:         5 * time.Millisecond,
+		},
+		bucketHealthCheckCleanupFailures: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bucket_health_check_cleanup_failures_total",
+		}),
+	}
+}
+
+// The probe shares segments/ with real block data, so it must never parse as a block: the
+// compaction worker deletes keys that resolve to a ULID older than a tombstone's cut-off.
+func TestBucketHealthCheckKeyIsNotABlockPath(t *testing.T) {
+	t.Parallel()
+
+	_, err := block.ParseBlockIDFromPath(expectedHealthCheckKey)
+	require.Error(t, err, "probe key must not parse as a block path")
+
+	// The shard element is a uint32, which is what keeps _health out of any scanned directory.
+	_, err = strconv.ParseUint(strings.TrimSuffix(strings.TrimPrefix(bucketHealthCheckPrefix, block.DirNameSegment+"/"), "/"), 10, 32)
+	require.Error(t, err, "probe directory must not be parseable as a shard")
 }

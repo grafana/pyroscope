@@ -1,6 +1,7 @@
 package segmentwriter
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -10,15 +11,18 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/v2/pkg/block"
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
@@ -39,12 +43,10 @@ const (
 	defaultSegmentDuration      = 500 * time.Millisecond
 	defaultHedgedRequestMaxRate = 2  // 2 hedged requests per second
 	defaultHedgedRequestBurst   = 10 // allow bursts of 10 hedged requests
-)
 
-// errStopIteration aborts the bucket health check iteration: we only care that
-// the bucket is reachable, not about its contents. It is matched with errors.Is
-// so that the check keeps working if a bucket implementation wraps it.
-var errStopIteration = errors.New("stop iteration")
+	// Shares the segments/ prefix so a segments/* bucket policy covers the probe too.
+	bucketHealthCheckPrefix = block.DirNameSegment + "/_health/"
+)
 
 type Config struct {
 	GRPCClientConfig         grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
@@ -100,7 +102,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
 	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", 2*time.Second, "Timeout for metadata update requests.")
-	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write. If the check fails, the segment writer fails to start.")
+	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Uploads and removes a small object at startup to verify bucket write access. Startup fails if the upload fails; a failed removal is only logged.")
 	f.DurationVar(&cfg.BucketHealthCheckTimeout, prefix+".bucket-health-check-timeout", 10*time.Second, "Timeout for bucket health check operations.")
 }
 
@@ -125,6 +127,8 @@ type SegmentWriterService struct {
 
 	storageBucket phlareobj.Bucket
 	segmentWriter *segmentsWriter
+
+	bucketHealthCheckCleanupFailures prometheus.Counter
 }
 
 func New(
@@ -169,6 +173,13 @@ func New(
 	if metastoreClient == nil {
 		return nil, errors.New("metastore client is required for segment writer")
 	}
+	i.bucketHealthCheckCleanupFailures = promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Namespace: "pyroscope",
+		Subsystem: "segment_writer",
+		Name:      "bucket_health_check_cleanup_failures_total",
+		Help:      "Times the startup bucket health check could not remove its probe object.",
+	})
+
 	metrics := newSegmentMetrics(i.reg)
 	headMetrics := memdb.NewHeadMetricsWithPrefix(reg, "pyroscope_segment_writer")
 	i.segmentWriter = newSegmentWriter(i.logger, metrics, headMetrics, config, limits, storageBucket, metastoreClient)
@@ -178,57 +189,61 @@ func New(
 	return i, nil
 }
 
-// performBucketHealthCheck performs a lightweight bucket operation to warm up the connection
-// and detect any object storage issues early. This serves the dual purpose of validating
-// bucket accessibility and reducing latency for the first actual write operation.
-//
-// A failure is fatal: the segment writer cannot serve writes without the bucket, as Push
-// blocks until the segment has been uploaded, and a definitive upload error surfaces as
-// codes.Unknown, which the client does not treat as retryable - so writes routed to a
-// write-broken instance are lost rather than failed over. Returning an error here prevents
-// the instance from starting, instead of letting it report itself ready and silently drop
-// a share of the cell's writes.
-//
-// This completes the plan agreed when the check was introduced in #4453, where warning and
-// continuing was explicitly a staging step until the behaviour had been verified against a
-// live cell.
+// performBucketHealthCheck verifies the segment writer can write to object storage before it
+// joins the ring. Failure is fatal: a definitive upload error surfaces as codes.Unknown, which
+// the client does not retry, so writes to a write-broken instance are lost, not failed over.
 func (i *SegmentWriterService) performBucketHealthCheck(ctx context.Context) error {
 	if !i.config.BucketHealthCheckEnabled {
 		return nil
 	}
 
-	level.Debug(i.logger).Log("msg", "starting bucket health check", "timeout", i.config.BucketHealthCheckTimeout.String())
+	name := bucketHealthCheckPrefix + i.config.LifecyclerConfig.ID
+	payload := bucketHealthCheckPayload(i.config.LifecyclerConfig.ID)
+	level.Debug(i.logger).Log("msg", "starting bucket health check", "object", name)
 
-	healthCheckCtx, cancel := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
-	defer cancel()
+	uploadCtx, cancelUpload := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
+	defer cancelUpload()
 
-	err := i.storageBucket.Iter(healthCheckCtx, "", func(string) error {
-		// We only care about connectivity, not the actual contents,
-		// so stop the iteration as soon as the bucket yields anything.
-		return errStopIteration
+	// An already-expired context skips the loop entirely, so err must start out non-nil.
+	err := uploadCtx.Err()
+	retries := backoff.New(uploadCtx, backoff.Config{
+		MinBackoff: i.config.UploadMinBackoff,
+		MaxBackoff: i.config.UploadMaxBackoff,
+		MaxRetries: i.config.UploadMaxRetries,
 	})
-
-	// A healthy bucket produces exactly two outcomes: nil when it is empty and the callback
-	// never fires, or the sentinel when it does. Nothing else means the bucket answered - in
-	// particular an "object not found" is not a success here. A list never names a key, so no
-	// healthy bucket can report one; what it can report is a missing *bucket*, and at least
-	// one backend (Tencent COS) classifies any 404 as a not-found, so accepting that class
-	// would let a writer configured with a nonexistent bucket join the ring.
-	if err == nil || errors.Is(err, errStopIteration) {
-		level.Debug(i.logger).Log("msg", "bucket health check succeeded")
-		return nil
+	for retries.Ongoing() {
+		if err = i.storageBucket.Upload(uploadCtx, name, bytes.NewReader(payload)); err == nil {
+			break
+		}
+		retries.Wait()
+	}
+	if err != nil {
+		level.Error(i.logger).Log("msg", "bucket health check failed", "object", name, "err", err)
+		return fmt.Errorf("bucket health check failed: %w", err)
 	}
 
-	level.Error(i.logger).Log("msg", "bucket health check failed", "err", err)
-	return fmt.Errorf("bucket health check failed: %w", err)
+	// Best effort: the key is per instance, so a bucket denying deletes keeps one object per
+	// replica, not one per restart.
+	deleteCtx, cancelDelete := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
+	defer cancelDelete()
+	if err := i.storageBucket.Delete(deleteCtx, name); err != nil {
+		i.bucketHealthCheckCleanupFailures.Inc()
+		level.Warn(i.logger).Log("msg", "failed to remove bucket health check object", "object", name, "err", err)
+	}
+
+	level.Debug(i.logger).Log("msg", "bucket health check succeeded")
+	return nil
+}
+
+func bucketHealthCheckPayload(instanceID string) []byte {
+	return []byte(fmt.Sprintf(
+		"pyroscope segment-writer bucket health check\ninstance: %s\nwritten: %s\n"+
+			"Written at startup to verify write access to the bucket. Safe to delete.\n",
+		instanceID, time.Now().UTC().Format(time.RFC3339),
+	))
 }
 
 func (i *SegmentWriterService) starting(ctx context.Context) error {
-	// Perform bucket health check before ring registration to warm up the connection
-	// and avoid slow first requests affecting p99 latency.
-	// On error, the instance fails to start and never registers in the ring, so no
-	// distributor routes writes to it, and the process exits rather than reporting
-	// itself healthy in a state it cannot serve from.
 	if err := i.performBucketHealthCheck(ctx); err != nil {
 		return err
 	}
