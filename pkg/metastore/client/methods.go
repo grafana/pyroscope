@@ -91,6 +91,53 @@ func invoke[R any](ctx context.Context, cl *Client,
 	return nil, b.Err()
 }
 
+// invokeOnceDeadline bounds a single-attempt call. It is generous enough to
+// cover a full state scan of a large backlog, and short enough that an
+// operator is not left waiting on a metastore that cannot answer.
+const invokeOnceDeadline = 10 * time.Second
+
+// invokeOnce makes exactly one attempt and returns the error as it came.
+//
+// It exists for the operational read paths. invoke retries up to fifty times,
+// which masks leader changes on the critical path, but turns a single slow or
+// failing call into a retry storm: every attempt repeats the whole read on a
+// metastore that is, by the time anyone is looking at an admin page, already
+// struggling. Here one failure is reported rather than amplified.
+//
+// The leader hint is still consumed, so that the next call is routed better.
+func invokeOnce[R any](ctx context.Context, cl *Client,
+	f func(ctx context.Context, instance instance) (*R, error),
+) (*R, error) {
+	ctx, cancel := context.WithTimeout(ctx, invokeOnceDeadline)
+	defer cancel()
+
+	it := cl.selectInstance(false)
+	if it == nil {
+		return nil, status.Error(codes.Unavailable, "no metastore instances available")
+	}
+
+	res, err := f(ctx, it)
+	if err == nil {
+		return res, nil
+	}
+
+	cl.logger.Log(
+		"msg", "metastore client error",
+		"err", err,
+		"server_id", it.srv.Raft.ID,
+		"server_address", it.srv.Raft.Address,
+		"server_resolved_address", it.srv.ResolvedAddress,
+	)
+	if node, ok := raftnode.RaftLeaderFromStatusDetails(err); ok {
+		cl.mu.Lock()
+		if strings.Contains(string(it.srv.Raft.ID), string(cl.leader)) {
+			cl.leader = stripPort(node.Id)
+		}
+		cl.mu.Unlock()
+	}
+	return nil, err
+}
+
 func (c *Client) selectInstance(override bool) *client {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -149,6 +196,14 @@ func (c *Client) QueryMetadataLabels(ctx context.Context, in *metastorev1.QueryM
 func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.PollCompactionJobsResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.PollCompactionJobsResponse, error) {
 		return instance.PollCompactionJobs(ctx, in, opts...)
+	})
+}
+
+// GetCompactionState serves the compaction admin page. It is not retried:
+// see invokeOnce.
+func (c *Client) GetCompactionState(ctx context.Context, in *metastorev1.GetCompactionStateRequest, opts ...grpc.CallOption) (*metastorev1.GetCompactionStateResponse, error) {
+	return invokeOnce(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.GetCompactionStateResponse, error) {
+		return instance.GetCompactionState(ctx, in, opts...)
 	})
 }
 

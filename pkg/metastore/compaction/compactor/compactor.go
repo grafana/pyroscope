@@ -1,6 +1,10 @@
 package compactor
 
 import (
+	"cmp"
+	"context"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -27,6 +31,7 @@ type BlockQueueStore interface {
 	StoreEntry(*bbolt.Tx, compaction.BlockEntry) error
 	DeleteEntry(tx *bbolt.Tx, index uint64, id string) error
 	ListEntries(*bbolt.Tx) iter.Iterator[compaction.BlockEntry]
+	ListEntryStats(*bbolt.Tx) iter.Iterator[compaction.BlockEntryStats]
 	CreateBuckets(*bbolt.Tx) error
 }
 
@@ -104,6 +109,107 @@ func (c *Compactor) UpdatePlan(tx *bbolt.Tx, plan *raft_log.CompactionPlanUpdate
 	}
 
 	return nil
+}
+
+// QueueStats describes a queue of blocks awaiting compaction,
+// identified by the tenant, shard, and compaction level.
+type QueueStats struct {
+	Tenant string
+	Shard  uint32
+	Level  uint32
+	Blocks uint64
+	// Unix nanoseconds of the oldest and the newest queue entries.
+	OldestAppendedAt int64
+	NewestAppendedAt int64
+}
+
+// QueueFilter narrows the queue listing. The zero value lists every queue
+// and scans the queue in full.
+type QueueFilter struct {
+	// Tenant restricts the listing to the queues of the tenant. If nil, the
+	// queues of every tenant are listed. If it points at an empty string,
+	// only the queues that have no tenant are listed: these hold the blocks
+	// of level 0, which are the multi-tenant segments.
+	Tenant *string
+	// MaxEntries caps the number of queue entries read. Zero does not cap.
+	//
+	// The number of entries grows with the compaction backlog and is not
+	// bounded by any configuration, so a caller that must not be held for an
+	// unbounded time gives up a complete answer for a bounded one: the scan
+	// reports that it stopped early, and the statistics it returns cover
+	// only the entries it read.
+	MaxEntries int
+}
+
+func (f QueueFilter) matches(tenant string) bool {
+	return f.Tenant == nil || *f.Tenant == tenant
+}
+
+// ListQueues aggregates the queued block entries into per-queue statistics.
+// The entries are read from the storage snapshot of the given transaction;
+// the in-memory queue is not accessed.
+//
+// The number of entries is not limited and can be very large if compaction
+// does not keep up with the block influx, therefore the scan is bounded by
+// the context, and optionally by QueueFilter.MaxEntries.
+//
+// The second return value reports that the scan stopped at the cap, so the
+// statistics describe only a prefix of the queue.
+func (c *Compactor) ListQueues(ctx context.Context, tx *bbolt.Tx, filter QueueFilter) ([]QueueStats, bool, error) {
+	queues := make(map[compactionKey]*QueueStats)
+	entries := c.store.ListEntryStats(tx)
+	defer func() {
+		_ = entries.Close()
+	}()
+	var n int
+	var truncated bool
+	for entries.Next() {
+		if filter.MaxEntries > 0 && n >= filter.MaxEntries {
+			truncated = true
+			break
+		}
+		if n++; n%4096 == 0 {
+			if err := ctx.Err(); err != nil {
+				return nil, false, err
+			}
+		}
+		e := entries.At()
+		if !filter.matches(e.Tenant) {
+			continue
+		}
+		k := compactionKey{tenant: e.Tenant, shard: e.Shard, level: e.Level}
+		q, ok := queues[k]
+		if !ok {
+			q = &QueueStats{
+				Tenant:           e.Tenant,
+				Shard:            e.Shard,
+				Level:            e.Level,
+				OldestAppendedAt: e.AppendedAt,
+				NewestAppendedAt: e.AppendedAt,
+			}
+			queues[k] = q
+		}
+		q.Blocks++
+		q.OldestAppendedAt = min(q.OldestAppendedAt, e.AppendedAt)
+		q.NewestAppendedAt = max(q.NewestAppendedAt, e.AppendedAt)
+	}
+	if err := entries.Err(); err != nil {
+		return nil, false, err
+	}
+	s := make([]QueueStats, 0, len(queues))
+	for _, q := range queues {
+		s = append(s, *q)
+	}
+	slices.SortFunc(s, func(a, b QueueStats) int {
+		if l := cmp.Compare(a.Level, b.Level); l != 0 {
+			return l
+		}
+		if t := strings.Compare(a.Tenant, b.Tenant); t != 0 {
+			return t
+		}
+		return cmp.Compare(a.Shard, b.Shard)
+	})
+	return s, truncated, nil
 }
 
 func (c *Compactor) Init(tx *bbolt.Tx) error {
