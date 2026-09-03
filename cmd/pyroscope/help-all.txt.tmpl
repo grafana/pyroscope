@@ -1082,7 +1082,7 @@ Usage of ./pyroscope:
   -segment-writer.availability-zone string
     	The availability zone where this instance is running.
   -segment-writer.bucket-health-check-enabled
-    	Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write. (default true)
+    	Uploads and removes a small object at startup to verify bucket write access. Startup fails if the upload fails; a failed removal is only logged. (default true)
   -segment-writer.bucket-health-check-timeout duration
     	Timeout for bucket health check operations. (default 10s)
   -segment-writer.consul.acl-token string
