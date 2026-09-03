@@ -34,10 +34,17 @@ func (p *Pool) GetConnFor(addr string) (grpc.ClientConnInterface, error) {
 
 type ConnFactory struct {
 	options func(ring.InstanceDesc) []grpc.DialOption
+	onClose func(addr string)
 }
 
-func NewConnPoolFactory(options func(ring.InstanceDesc) []grpc.DialOption) ring_client.PoolFactory {
-	return &ConnFactory{options: options}
+// NewConnPoolFactory creates a factory of pool clients. The optional onClose
+// hook is called with the instance address after the pool closes the client
+// connection, which happens when the instance is no longer found in the ring.
+func NewConnPoolFactory(
+	options func(ring.InstanceDesc) []grpc.DialOption,
+	onClose func(addr string),
+) ring_client.PoolFactory {
+	return &ConnFactory{options: options, onClose: onClose}
 }
 
 func (f *ConnFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
@@ -49,6 +56,8 @@ func (f *ConnFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClie
 		ClientConnInterface: conn,
 		HealthClient:        health.NoOpClient,
 		Closer:              conn,
+		addr:                inst.Addr,
+		onClose:             f.onClose,
 	}, nil
 }
 
@@ -56,4 +65,14 @@ type poolConn struct {
 	grpc.ClientConnInterface
 	grpc_health_v1.HealthClient
 	io.Closer
+	addr    string
+	onClose func(addr string)
+}
+
+func (c *poolConn) Close() error {
+	err := c.Closer.Close()
+	if c.onClose != nil {
+		c.onClose(c.addr)
+	}
+	return err
 }
