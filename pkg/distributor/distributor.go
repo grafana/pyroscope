@@ -41,6 +41,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 	"github.com/grafana/pyroscope/v2/pkg/clientpool"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/aggregator"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/inflight"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
@@ -83,6 +84,8 @@ type Config struct {
 	PushTimeout time.Duration
 	PoolConfig  clientpool.PoolConfig `yaml:"pool_config,omitempty"`
 
+	MaxInflightBytes int64 `yaml:"max_inflight_bytes" category:"advanced"`
+
 	// Distributors ring
 	DistributorRing util.CommonRingConfig `yaml:"ring"`
 }
@@ -91,6 +94,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
+	fs.Int64Var(&cfg.MaxInflightBytes, "distributor.max-inflight-bytes", 0, "Maximum total size, in bytes, of the uncompressed profiles the distributor may hold in memory at a time. Requests exceeding it are rejected with 503. 0 to disable.")
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 
@@ -115,6 +119,7 @@ type Distributor struct {
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
 	stripper               *sampling.ProfileStripper
+	inflight               *inflight.Limiter
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -180,13 +185,14 @@ func New(
 		Name:      "distributor_ingester_clients",
 		Help:      "The current number of ingester clients.",
 	})
+	m := newMetrics(reg)
 	d := &Distributor{
 		cfg:                     config,
 		logger:                  logger,
 		ingestersRing:           ingesterRing,
 		pool:                    clientpool.NewIngesterPool(config.PoolConfig, ingesterRing, ingesterClientFactory, clients, logger, ingesterClientsOptions...),
 		segmentWriter:           segmentWriter,
-		metrics:                 newMetrics(reg),
+		metrics:                 m,
 		healthyInstancesCount:   atomic.NewUint32(0),
 		aggregator:              aggregator.NewMultiTenantAggregator[*pprof.ProfileMerge](limits, reg),
 		limits:                  limits,
@@ -197,7 +203,9 @@ func New(
 		profileScopeStats:       usagestats.NewMultiCounter("distributor_profiles_received_by_scope", "scope"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
 		stripper:                sampling.NewProfileStripper(),
+		inflight:                inflight.NewLimiter(config.MaxInflightBytes, m.inflightBytesHighWatermark),
 	}
+	m.inflightBytesLimit.Set(float64(config.MaxInflightBytes))
 
 	ingesterRoute := writepath.IngesterFunc(d.sendRequestsToIngester)
 	segmentWriterRoute := writepath.IngesterFunc(d.sendRequestsToSegmentWriter)
@@ -417,6 +425,17 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 	if len(req.Series) == 0 {
 		return noNewProfilesReceivedError()
 	}
+
+	size, profiles := inflightBytes(req)
+	reservation, withinLimit := d.inflight.Reserve(size)
+	defer reservation.Release()
+	if !withinLimit {
+		d.metrics.rejectedRequests.WithLabelValues(reasonMaxInflightBytes).Inc()
+		validation.DiscardedProfiles.WithLabelValues(reasonMaxInflightBytes, tenantID).Add(float64(profiles))
+		validation.DiscardedBytes.WithLabelValues(reasonMaxInflightBytes, tenantID).Add(float64(size))
+		return errMaxInflightBytesReached
+	}
+	ctx = inflight.NewContext(ctx, reservation)
 
 	d.metrics.pushBatchSeries.WithLabelValues(tenantID).Observe(float64(len(req.Series)))
 
@@ -729,6 +748,31 @@ func noNewProfilesReceivedError() *connect.Error {
 	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
 }
 
+const reasonMaxInflightBytes = string(validation.MaxInflightBytes)
+
+var errMaxInflightBytesReached = connect.NewError(connect.CodeUnavailable,
+	fmt.Errorf("the request has been rejected because the distributor exceeded the allowed total size of inflight requests; see -distributor.max-inflight-bytes"))
+
+// inflightBytes estimates how much memory the request occupies, and counts the
+// profiles it carries. The raw size is the uncompressed pprof payload the
+// profile was decoded from; it is not known for profiles built in-process,
+// such as those converted from JFR or OTLP, in which case the encoded size is
+// computed instead.
+func inflightBytes(req *distributormodel.PushRequest) (size, profiles int64) {
+	for _, series := range req.Series {
+		if series.Profile == nil {
+			continue
+		}
+		profiles++
+		if raw := series.Profile.RawSize(); raw > 0 {
+			size += int64(raw)
+			continue
+		}
+		size += int64(series.Profile.SizeVT())
+	}
+	return size, profiles
+}
+
 // If aggregation is configured for the tenant, we try to determine
 // whether the profile is eligible for aggregation based on the series
 // profile rate, and handle it asynchronously, if this is the case.
@@ -783,6 +827,9 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
 			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
+			// Aggregation outlives the source request by design: it must not
+			// hold on to its inflight bytes reservation.
+			localCtx = inflight.NewContext(localCtx, nil)
 			// Obtain the aggregated profile.
 			p, handleErr := handler()
 			if handleErr != nil {
