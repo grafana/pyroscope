@@ -3230,7 +3230,7 @@ panels:
         {{- if .Values.dashboards.nativeHistograms }}
         expr: >-
           sum by (pod)
-          (histogram_sum(irate(pyroscope_segment_writer_segment_ingest_bytes{namespace="$namespace",
+          (histogram_sum(irate(pyroscope_segment_writer_received_bytes{namespace="$namespace",
           container="segment-writer"}[10m]))) /
 
           sum by (pod)
@@ -3239,7 +3239,7 @@ panels:
         {{- else }}
         expr: >-
           sum by (pod)
-          (irate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace="$namespace",
+          (irate(pyroscope_segment_writer_received_bytes_sum{namespace="$namespace",
           container="segment-writer"}[10m])) /
 
           sum by (pod)
@@ -4332,11 +4332,11 @@ panels:
             {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               sum by (pod)
-              (histogram_sum(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace="$namespace"}[$__rate_interval])))
+              (histogram_sum(rate(pyroscope_segment_writer_received_bytes{namespace="$namespace"}[$__rate_interval])))
             {{- else }}
             expr: >-
               sum by (pod)
-              (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace="$namespace"}[$__rate_interval]))
+              (rate(pyroscope_segment_writer_received_bytes_sum{namespace="$namespace"}[$__rate_interval]))
             {{- end }}
             legendFormat: __auto
             range: true
@@ -4417,11 +4417,11 @@ panels:
             {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               sum by (pod)
-              (histogram_sum(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace="$namespace"}[$__rate_interval])))
+              (histogram_sum(rate(pyroscope_segment_writer_received_bytes{namespace="$namespace"}[$__rate_interval])))
             {{- else }}
             expr: >-
               sum by (pod)
-              (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace="$namespace"}[$__rate_interval]))
+              (rate(pyroscope_segment_writer_received_bytes_sum{namespace="$namespace"}[$__rate_interval]))
             {{- end }}
             legendFormat: __auto
             range: true
@@ -4512,11 +4512,11 @@ panels:
             {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               sum by (pod)
-              (histogram_count(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace="$namespace"}[$__rate_interval])))
+              (histogram_count(rate(pyroscope_segment_writer_received_bytes{namespace="$namespace"}[$__rate_interval])))
             {{- else }}
             expr: >-
               sum by (pod)
-              (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace="$namespace"}[$__rate_interval]))
+              (rate(pyroscope_segment_writer_received_bytes_count{namespace="$namespace"}[$__rate_interval]))
             {{- end }}
             legendFormat: __auto
             range: true
@@ -4597,11 +4597,11 @@ panels:
             {{- if .Values.dashboards.nativeHistograms }}
             expr: >-
               sum by (pod)
-              (histogram_count(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace="$namespace"}[$__rate_interval])))
+              (histogram_count(rate(pyroscope_segment_writer_received_bytes{namespace="$namespace"}[$__rate_interval])))
             {{- else }}
             expr: >-
               sum by (pod)
-              (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace="$namespace"}[$__rate_interval]))
+              (rate(pyroscope_segment_writer_received_bytes_count{namespace="$namespace"}[$__rate_interval]))
             {{- end }}
             legendFormat: __auto
             range: true

@@ -7,7 +7,7 @@ import (
 )
 
 type segmentMetrics struct {
-	segmentIngestBytes          *prometheus.HistogramVec
+	receivedBytes               *prometheus.HistogramVec
 	segmentSizeBytes            *prometheus.HistogramVec
 	headSizeBytes               *prometheus.HistogramVec
 	tenantIndexBytes            *prometheus.HistogramVec
@@ -37,11 +37,13 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 	//  - Rename to pyroscope_segment_writer_*
 	//  - Add Help.
 	m := &segmentMetrics{
-		segmentIngestBytes: prometheus.NewHistogramVec(
+		receivedBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace:                       "pyroscope",
-				Subsystem:                       "segment_writer",
-				Name:                            "segment_ingest_bytes",
+				Namespace: "pyroscope",
+				Subsystem: "segment_writer",
+				Name:      "received_bytes",
+				Help: "Uncompressed size of the profiles received for ingestion, in bytes. " +
+					"Measured as received, before the profile is split into datasets.",
 				Buckets:                         prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 20),
 				NativeHistogramBucketFactor:     1.1,
 				NativeHistogramMaxBucketNumber:  32,
@@ -165,7 +167,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 	}
 
 	if reg != nil {
-		reg.MustRegister(m.segmentIngestBytes)
+		reg.MustRegister(m.receivedBytes)
 		reg.MustRegister(m.segmentSizeBytes)
 		reg.MustRegister(m.storeMetadataDuration)
 		reg.MustRegister(m.segmentFlushWaitDuration)

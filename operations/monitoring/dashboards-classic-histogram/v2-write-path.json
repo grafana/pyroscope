@@ -3070,7 +3070,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (irate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace=\"$namespace\", container=\"segment-writer\"}[10m])) /\nsum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))",
+          "expr": "sum by (pod) (irate(pyroscope_segment_writer_received_bytes_sum{namespace=\"$namespace\", container=\"segment-writer\"}[10m])) /\nsum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -4409,7 +4409,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_received_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4512,7 +4512,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_received_bytes_sum{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4628,7 +4628,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace=\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_received_bytes_count{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4731,7 +4731,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (rate(pyroscope_segment_writer_segment_ingest_bytes_count{namespace=\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (pod) (rate(pyroscope_segment_writer_received_bytes_count{namespace=\"$namespace\"}[$__rate_interval]))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/log"
@@ -261,8 +262,12 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	shard := shardKey(req.Shard)
+	i.segmentWriter.metrics.receivedBytes.
+		WithLabelValues(strconv.FormatUint(uint64(shard), 10), req.TenantId).
+		Observe(float64(p.RawSize()))
 
-	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
+	wait := i.segmentWriter.ingest(shard, func(segment segmentIngest) {
 		segment.ingest(req.TenantId, p.Profile, id, req.Labels, req.Annotations)
 	})
 
