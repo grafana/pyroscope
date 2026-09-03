@@ -358,9 +358,9 @@ func TestSymbolMerger_HashCollision(t *testing.T) {
 	const sameHash = uint64(0xdeadbeefcafebabe)
 
 	// Add "foo" – placed at index 1 (index 0 is the sentinel empty string).
-	idxFoo := sm.strings.add(sameHash, "foo")
+	idxFoo := sm.strings.Add(sameHash, "foo")
 	// Add "bar" with the same hash – linear probing must resolve the collision.
-	idxBar := sm.strings.add(sameHash, "bar")
+	idxBar := sm.strings.Add(sameHash, "bar")
 
 	// Both values must get distinct indices.
 	require.NotEqual(t, idxFoo, idxBar)
@@ -368,16 +368,16 @@ func TestSymbolMerger_HashCollision(t *testing.T) {
 	require.Equal(t, int32(2), idxBar)
 
 	// Slice contains sentinel + the two colliding values.
-	require.Equal(t, []string{"", "foo", "bar"}, sm.strings.sl)
+	require.Equal(t, []string{"", "foo", "bar"}, sm.strings.Values)
 
 	// The original hash (not the probe offset) is stored for both entries.
-	require.Equal(t, sameHash, sm.strings.hashes[idxFoo])
-	require.Equal(t, sameHash, sm.strings.hashes[idxBar])
+	require.Equal(t, sameHash, sm.strings.Hashes[idxFoo])
+	require.Equal(t, sameHash, sm.strings.Hashes[idxBar])
 
 	// Re-adding "foo" or "bar" with the same hash must return the original index (deduplication).
-	idxFooAgain := sm.strings.add(sameHash, "foo")
+	idxFooAgain := sm.strings.Add(sameHash, "foo")
 	require.Equal(t, idxFoo, idxFooAgain)
-	idxBarAgain := sm.strings.add(sameHash, "bar")
+	idxBarAgain := sm.strings.Add(sameHash, "bar")
 	require.Equal(t, idxBar, idxBarAgain)
 }
 

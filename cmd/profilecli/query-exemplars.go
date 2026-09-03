@@ -42,6 +42,7 @@ type exemplarEntry struct {
 	Timestamp time.Time
 	Value     int64
 	SpanID    string
+	TraceID   string
 	Labels    map[string]string
 }
 
@@ -114,6 +115,7 @@ func queryExemplars(ctx context.Context, params *queryExemplarsParams) error {
 					Timestamp: time.UnixMilli(ex.Timestamp),
 					Value:     ex.Value,
 					SpanID:    ex.SpanId,
+					TraceID:   ex.TraceId,
 					Labels:    lbls,
 				})
 			}
@@ -224,6 +226,7 @@ func outputExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to 
 		Timestamp time.Time         `json:"timestamp"`
 		Value     int64             `json:"value"`
 		SpanID    string            `json:"span_id,omitempty"`
+		TraceID   string            `json:"trace_id,omitempty"`
 		Labels    map[string]string `json:"labels,omitempty"`
 	}
 	type jsonOutput struct {
@@ -245,6 +248,7 @@ func outputExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to 
 			Timestamp: e.Timestamp,
 			Value:     e.Value,
 			SpanID:    e.SpanID,
+			TraceID:   e.TraceID,
 			Labels:    filterLabels(e.Labels),
 		}
 	}
@@ -319,6 +323,7 @@ func querySpanExemplars(ctx context.Context, params *queryExemplarsParams) error
 				}
 				entries = append(entries, exemplarEntry{
 					SpanID:    ex.SpanId,
+					TraceID:   ex.TraceId,
 					Timestamp: time.UnixMilli(ex.Timestamp),
 					Value:     ex.Value,
 					Labels:    lbls,
@@ -356,6 +361,7 @@ func querySpanExemplars(ctx context.Context, params *queryExemplarsParams) error
 func outputSpanExemplarsJSON(ctx context.Context, entries []exemplarEntry, from, to time.Time, profileType string) error {
 	type jsonExemplar struct {
 		SpanID    string            `json:"span_id"`
+		TraceID   string            `json:"trace_id,omitempty"`
 		Timestamp time.Time         `json:"timestamp"`
 		Value     int64             `json:"value"`
 		Labels    map[string]string `json:"labels,omitempty"`
@@ -376,6 +382,7 @@ func outputSpanExemplarsJSON(ctx context.Context, entries []exemplarEntry, from,
 	for i, e := range entries {
 		out.Exemplars[i] = jsonExemplar{
 			SpanID:    e.SpanID,
+			TraceID:   e.TraceID,
 			Timestamp: e.Timestamp,
 			Value:     e.Value,
 			Labels:    filterLabels(e.Labels),
@@ -387,8 +394,22 @@ func outputSpanExemplarsJSON(ctx context.Context, entries []exemplarEntry, from,
 }
 
 func outputSpanExemplarsTable(ctx context.Context, entries []exemplarEntry, sampleUnit string, labelColumns []string) error {
+	// Only show the Trace ID column when at least one entry actually has one,
+	// since blocks without a trace ID column will leave it empty for every row.
+	hasTraceID := false
+	for _, e := range entries {
+		if e.TraceID != "" {
+			hasTraceID = true
+			break
+		}
+	}
+
 	headers := []string{"Span ID", "Timestamp", fmt.Sprintf("Value (%s)", sampleUnit)}
 	aligns := []int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_RIGHT}
+	if hasTraceID {
+		headers = append([]string{"Trace ID"}, headers...)
+		aligns = append([]int{tablewriter.ALIGN_LEFT}, aligns...)
+	}
 	for _, name := range labelColumns {
 		headers = append(headers, name)
 		aligns = append(aligns, tablewriter.ALIGN_LEFT)
@@ -400,6 +421,9 @@ func outputSpanExemplarsTable(ctx context.Context, entries []exemplarEntry, samp
 
 	for _, e := range entries {
 		row := []string{e.SpanID, e.Timestamp.Format(time.RFC3339), formatUnit(float64(e.Value), sampleUnit)}
+		if hasTraceID {
+			row = append([]string{e.TraceID}, row...)
+		}
 		for _, name := range labelColumns {
 			row = append(row, e.Labels[name])
 		}

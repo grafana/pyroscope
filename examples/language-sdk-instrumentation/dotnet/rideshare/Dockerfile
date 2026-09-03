@@ -1,5 +1,5 @@
 ARG SDK_VERSION=8.0
-ARG PROFILER_VERSION=1.0.0
+ARG PROFILER_VERSION=1.4.0
 # The build images takes an SDK image of the buildplatform, so the platform the build is running on.
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:$SDK_VERSION-bookworm-slim AS build
 

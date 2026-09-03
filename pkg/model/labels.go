@@ -42,11 +42,14 @@ const (
 	LabelNameSessionID          = "__session_id__"
 	LabelNameType               = "__type__"
 	LabelNameUnit               = "__unit__"
+	LabelNameSampled            = "__sampled__"
 
 	LabelNameServiceGitRef     = "service_git_ref"
 	LabelNameServiceName       = "service_name"
 	LabelNameServiceRepository = "service_repository"
 	LabelNameServiceRootPath   = "service_root_path"
+	LabelNameOTELScopeName     = "otel.scope.name"
+	LabelNameOTELScopeVersion  = "otel.scope.version"
 
 	LabelNameOrder     = "__order__"
 	LabelOrderEnforced = "enforced"
@@ -67,9 +70,18 @@ const (
 // instantiation.
 type Labels []*typesv1.LabelPair
 
+// LabelSet is the read-only label representation accepted by index writers.
+type LabelSet interface {
+	Len() int
+	At(int) (name, value string)
+}
+
 func (ls Labels) Len() int           { return len(ls) }
 func (ls Labels) Swap(i, j int)      { ls[i], ls[j] = ls[j], ls[i] }
 func (ls Labels) Less(i, j int) bool { return ls[i].Name < ls[j].Name }
+func (ls Labels) At(i int) (name, value string) {
+	return ls[i].Name, ls[i].Value
+}
 
 // Range calls f on each label.
 func (ls Labels) Range(f func(l *typesv1.LabelPair)) {

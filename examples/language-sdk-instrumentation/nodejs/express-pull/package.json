@@ -10,12 +10,12 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@pyroscope/nodejs": "v0.4.11",
-    "express": "^4.19.2",
-    "morgan": "^1.10.0"
+    "@pyroscope/nodejs": "v0.6.3",
+    "express": "^4.21.2",
+    "morgan": "^1.11.0"
   },
   "resolutions": {
-    "protobufjs": "^7.5.5",
-    "tar": "^6.2.1"
+    "qs": "^6.15.2",
+    "path-to-regexp": "^0.1.13"
   }
 }

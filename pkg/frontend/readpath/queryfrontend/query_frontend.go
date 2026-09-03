@@ -23,6 +23,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
@@ -40,6 +41,13 @@ type QueryBackend interface {
 
 type Symbolizer interface {
 	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
+	Resolve(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error)
+	// ResolveConcurrency is the maximum number of concurrent Resolve calls
+	// the symbolizer allows.
+	ResolveConcurrency() int
+	// ResolveTimeout bounds resolving a single binary's unresolved
+	// addresses.
+	ResolveTimeout() time.Duration
 }
 
 // DiagnosticsStore provides the ability to store query diagnostics.
@@ -58,6 +66,7 @@ type QueryFrontend struct {
 	symbolizer          Symbolizer
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
+	queryPlanType       string
 
 	metrics *queryFrontendMetrics
 }
@@ -65,6 +74,8 @@ type QueryFrontend struct {
 type queryFrontendMetrics struct {
 	fetchedBytesTotal       *prometheus.CounterVec
 	estimationAccuracyRatio prometheus.Histogram
+
+	symbolRefLocationsTotal *prometheus.CounterVec
 }
 
 func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
@@ -99,9 +110,22 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			NativeHistogramMaxBucketNumber:  100,
 			NativeHistogramMinResetDuration: time.Hour,
 		}),
+		symbolRefLocationsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Subsystem: "query_frontend",
+				Name:      "symbol_ref_locations_total",
+				Help:      "Total number of unresolved symbol-ref locations processed by the query frontend, by outcome (resolved, a symbolizer miss, or a per-binary resolve timeout).",
+			},
+			[]string{"result"},
+		),
 	}
 	if reg != nil {
-		reg.MustRegister(m.fetchedBytesTotal, m.estimationAccuracyRatio)
+		reg.MustRegister(
+			m.fetchedBytesTotal,
+			m.estimationAccuracyRatio,
+			m.symbolRefLocationsTotal,
+		)
 	}
 	return m
 }
@@ -109,6 +133,7 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 func NewQueryFrontend(
 	logger log.Logger,
 	limits frontend.Limits,
+	cfg frontend.Config,
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
@@ -125,6 +150,7 @@ func NewQueryFrontend(
 		symbolizer:          sym,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
+		queryPlanType:       cfg.QueryPlannerStrategy,
 		metrics:             newQueryFrontendMetrics(reg),
 	}
 	return qf
@@ -205,7 +231,7 @@ func (q *QueryFrontend) doQuery(
 	endTime := time.UnixMilli(req.EndTime)
 	queryWindow := endTime.Sub(startTime).Round(time.Second)
 	traceID, _ := tracing.ExtractTraceID(ctx)
-	logArgs := []interface{}{
+	logArgs := []any{
 		"msg", "query weight",
 		"trace_id", traceID,
 		"tenant", strings.Join(tenants, ","),
@@ -232,8 +258,14 @@ func (q *QueryFrontend) doQuery(
 		blocks[i], blocks[j] = blocks[j], blocks[i]
 	})
 	xrandMutex.Unlock()
-	// TODO(kolesnikovae): Should be dynamic.
-	p := queryplan.Build(blocks, 4, 20)
+
+	var p *queryv1.QueryPlan
+	switch q.queryPlanType {
+	case "balanced":
+		p = queryplan.BuildBalanced(blocks, 4, 20)
+	default: // Always fallback to the classic planner
+		p = queryplan.Build(blocks, 4, 20)
+	}
 
 	backend := q.querybackend
 	if backendC != nil {

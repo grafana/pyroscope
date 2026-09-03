@@ -17,6 +17,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
@@ -68,6 +69,7 @@ func TestSelectMergeSpanProfile_Symbolization(t *testing.T) {
 			},
 			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
 				l.On("SymbolizerEnabled", "tenant1").Return(true)
+				l.On("SymbolRefTreesEnabled", "tenant1").Return(false)
 				l.On("QuerySanitizeOnMerge", "tenant1").Return(false)
 				s.On("SymbolizePprof", mock.Anything, mock.Anything).
 					Run(func(args mock.Arguments) {
@@ -99,6 +101,7 @@ func TestSelectMergeSpanProfile_Symbolization(t *testing.T) {
 			},
 			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
 				l.On("SymbolizerEnabled", "tenant2").Return(false)
+				l.On("SymbolRefTreesEnabled", "tenant2").Return(false).Maybe() // short-circuited when symbolization is off
 				l.On("QuerySanitizeOnMerge", "tenant2").Return(false)
 			},
 			// No symbolizer wrapping: backend receives QUERY_TREE with SpanSelector intact.
@@ -122,6 +125,7 @@ func TestSelectMergeSpanProfile_Symbolization(t *testing.T) {
 			},
 			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
 				l.On("SymbolizerEnabled", "tenant3").Return(true)
+				l.On("SymbolRefTreesEnabled", "tenant3").Return(false)
 				l.On("QuerySanitizeOnMerge", "tenant3").Return(false)
 			},
 			// No symbolizer wrapping: backend receives QUERY_TREE with SpanSelector intact.
@@ -169,6 +173,7 @@ func TestSelectMergeSpanProfile_Symbolization(t *testing.T) {
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,

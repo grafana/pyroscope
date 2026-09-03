@@ -1240,22 +1240,27 @@ func ZeroLabelStrings(p *profilev1.Profile) {
 	}
 }
 
-var languageMatchers = map[string][]string{
-	"go":     {".go", "/usr/local/go/"},
-	"java":   {"java/", "sun/"},
-	"ruby":   {".rb", "gems/"},
-	"nodejs": {"./node_modules/", ".js"},
-	"dotnet": {"System.", "Microsoft."},
-	"python": {".py"},
-	"rust":   {"main.rs", "core.rs"},
+// languageMatchers is an ordered list so that per-symbol iteration is cheap
+// and the result is deterministic when a symbol matches several languages.
+var languageMatchers = []struct {
+	language string
+	patterns []string
+}{
+	{"go", []string{".go", "/usr/local/go/"}},
+	{"java", []string{"java/", "sun/"}},
+	{"ruby", []string{".rb", "gems/"}},
+	{"nodejs", []string{"./node_modules/", ".js"}},
+	{"dotnet", []string{"System.", "Microsoft."}},
+	{"python", []string{".py"}},
+	{"rust", []string{"main.rs", "core.rs"}},
 }
 
 func GetLanguage(profile *Profile) string {
 	for _, symbol := range profile.StringTable {
-		for lang, matcherPatterns := range languageMatchers {
-			for _, pattern := range matcherPatterns {
+		for _, m := range languageMatchers {
+			for _, pattern := range m.patterns {
 				if strings.HasPrefix(symbol, pattern) || strings.HasSuffix(symbol, pattern) {
-					return lang
+					return m.language
 				}
 			}
 		}

@@ -7,10 +7,8 @@ weight: 400
 
 # Link tracing and profiling with Span Profiles
 
-Span Profiles are a powerful feature that further enhances the value of continuous profiling.
-Span Profiles offer a novel approach to profiling by providing detailed insights into specific execution scopes of applications, moving beyond the traditional system-wide analysis to offer a more dynamic, focused analysis of individual requests or trace spans.
-
-This method enhances understanding of application behavior by directly linking traces with profiling data, enabling engineering teams to pinpoint and resolve performance bottlenecks with precision.
+Span Profiles link tracing and profiling data, so that you can look at the profile of a single request or trace span instead of an aggregate of everything a service did.
+This makes it possible to move from a high-level trace view to the code that made one particular span slow.
 
 Key benefits and features:
 
@@ -18,8 +16,36 @@ Key benefits and features:
 - Seamless integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
 - Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
 
+## How span profiles work
+
+A span profile is not a separate kind of profile.
+Span-aware instrumentation records which trace span is active as the profiler takes each sample, and tags that sample with the span's identity.
+Pyroscope recognizes two labels for this:
+
+- `span_id`: the ID of the span the sample was taken during. Some integrations send this as `profile_id`, which Pyroscope accepts as a legacy alias.
+- `trace_id`: the ID of the trace that span belongs to.
+
+Integrations may attach the span name as well, as an ordinary label.
+
+Because the labels are attached per sample, a single profile contains samples belonging to many different spans.
+Querying by span ID returns the samples of that span rather than a whole profile. This makes it possible to profile one request.
+
+By default, the integrations label only the local root span, the first span created inside the process.
+Samples collected while its child spans run are included in the root span's profile.
+The Go and Java integrations can be configured to label every span instead.
+
+Spans that can have a profile are marked with the `pyroscope.profile.id` span attribute, whose value is the span ID despite the name.
+Grafana uses that attribute to offer a link from a span to its profile.
+
+## What to expect
+
+- The `pyroscope.profile.id` attribute marks spans that *can* have a profile. It does not guarantee that any samples were collected for that span.
+- The profile types available for span profiles depend on the language and the profiler it uses. Refer to the page for your language.
+- If your instrumentation records span names, avoid dynamic names that embed per-request identifiers such as URLs or SQL queries, because those can significantly degrade performance.
+
 {{< admonition type="note">}}
-Span profiling is only effective on spans longer than 20ms to ensure statistical accuracy. 
+Profilers take samples periodically, so a short span can produce no samples at all, and a span with only a handful of samples doesn't show a realistic picture of where its time went.
+How short is too short depends on the profiler's sampling rate, which differs between languages and is often configurable.
 {{< /admonition >}}
 
 ## Get started

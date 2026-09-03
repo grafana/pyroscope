@@ -85,8 +85,9 @@ func TestMain(m *testing.M) {
 }
 
 type env struct {
-	dir  string // project dir of docker-compose, relative to the test working directory
-	path string // path to docker-compose file
+	dir                   string // project dir of docker-compose, relative to the test working directory
+	path                  string // path to docker-compose file
+	completedSuccessfully map[string]struct{}
 }
 
 func (e *env) repoDir() string {
@@ -94,8 +95,10 @@ func (e *env) repoDir() string {
 }
 
 type status struct {
-	Name  string `json:"Name"`
-	State string `json:"State"`
+	Name     string `json:"Name"`
+	Service  string `json:"Service"`
+	State    string `json:"State"`
+	ExitCode int    `json:"ExitCode"`
 }
 
 func (e *env) projectName() string {
@@ -151,23 +154,59 @@ func (e *env) containerStatus(ctx context.Context) ([]status, error) {
 	return stats, nil
 }
 
-func (e *env) containersAllRunning(ctx context.Context) error {
-	status, err := e.containerStatus(ctx)
+func (e *env) containersReady(ctx context.Context) error {
+	statuses, err := e.containerStatus(ctx)
 	if err != nil {
 		return err
 	}
-	if len(status) == 0 {
+	return containerStatusesReady(statuses, e.completedSuccessfully)
+}
+
+func containerStatusesReady(statuses []status, completedSuccessfully map[string]struct{}) error {
+	if len(statuses) == 0 {
 		return errors.New("no containers found")
 	}
 
 	var errs []error
-	for _, s := range status {
-		if s.State != "running" {
-			errs = append(errs, fmt.Errorf("container %s is not running (state=%s)", s.Name, s.State))
+	for _, s := range statuses {
+		if s.State == "running" {
+			continue
 		}
+		_, isCompletedService := completedSuccessfully[s.Service]
+		if isCompletedService && s.State == "exited" && s.ExitCode == 0 {
+			continue
+		}
+		errs = append(errs, fmt.Errorf(
+			"container %s is not ready (service=%s, state=%s, exit_code=%d)",
+			s.Name, s.Service, s.State, s.ExitCode,
+		))
 	}
 
 	return errors.Join(errs...)
+}
+
+func completedSuccessfullyServices(services map[string]interface{}) map[string]struct{} {
+	completed := make(map[string]struct{})
+	for _, service := range services {
+		params, ok := service.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		dependencies, ok := params["depends_on"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for serviceName, dependency := range dependencies {
+			config, ok := dependency.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if config["condition"] == "service_completed_successfully" {
+				completed[serviceName] = struct{}{}
+			}
+		}
+	}
+	return completed
 }
 
 // prepareCompose rewrites the docker-compose file into a temporary copy so that:
@@ -185,6 +224,7 @@ func (e *env) prepareCompose(t testing.TB) *env {
 
 	services, ok := obj["services"].(map[string]interface{})
 	require.True(t, ok, "docker-compose file has no services map")
+	completedSuccessfully := completedSuccessfullyServices(services)
 
 	for serviceName, service := range services {
 		params, ok := service.(map[string]interface{})
@@ -209,7 +249,11 @@ func (e *env) prepareCompose(t testing.TB) *env {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
-	return &env{dir: e.dir, path: path}
+	return &env{
+		dir:                   e.dir,
+		path:                  path,
+		completedSuccessfully: completedSuccessfully,
+	}
 }
 
 // containerPortOf returns the container-side port of a docker-compose ports
@@ -295,13 +339,12 @@ func (e *env) bringUp(t *testing.T, ctx context.Context) {
 	require.NoError(t, e.run(t, ctx, "up", "--detach"))
 }
 
-// waitRunning waits until all containers report a running state, failing the
-// test if they don't within runningTimeout. A container that exits during this
-// window (e.g. a crash on startup) is caught here.
-func (e *env) waitRunning(t testing.TB, ctx context.Context) {
+// waitReady waits until all regular containers are running and all init
+// services have completed successfully. Unexpected exits are caught here.
+func (e *env) waitReady(t testing.TB, ctx context.Context) {
 	poll(t, ctx, runningTimeout, func(progress func(string, ...any)) error {
-		progress("[%s] waiting for all containers to be running...", e.repoDir())
-		return e.containersAllRunning(ctx)
+		progress("[%s] waiting for all containers to be ready...", e.repoDir())
+		return e.containersReady(ctx)
 	})
 }
 
@@ -389,9 +432,7 @@ func labelValue(labels []labelPair, name string) string {
 	return ""
 }
 
-// seriesData maps a service name to its ingested CPU/wall profile types. Those
-// are the types span profiles are attached to; other types (memory, lock, etc.)
-// are not useful for these checks and are dropped.
+// seriesData maps a service name to its ingested profile types.
 type seriesData map[string][]string
 
 func sortedKeys(d seriesData) []string {
@@ -413,10 +454,27 @@ func isCPUOrWallType(profileType string) bool {
 	return strings.HasPrefix(profileType, "process_cpu:") || strings.HasPrefix(profileType, "wall:")
 }
 
-// discoverSeries queries the Series API and returns the application services and
-// their ingested CPU/wall profile types. Self-profiling series and non-CPU/wall
-// types are excluded.
-func (e *env) discoverSeries(ctx context.Context, host string) (seriesData, error) {
+var pythonMemoryProfileTypes = []string{
+	"memory:alloc_objects:count:space:bytes",
+	"memory:alloc_space:bytes:space:bytes",
+	"memory:inuse_objects:count:space:bytes",
+	"memory:inuse_space:bytes:space:bytes",
+}
+
+func (e *env) requiresPythonMemoryProfiles() bool {
+	dir := e.repoDir()
+	return dir == filepath.Join("examples", "tracing", "python") ||
+		strings.HasPrefix(dir, filepath.Join("examples", "language-sdk-instrumentation", "python")+string(filepath.Separator))
+}
+
+func includeAllProfileTypes(string) bool {
+	return true
+}
+
+// discoverSeries queries the Series API and returns the application services
+// and profile types accepted by includeProfileType. Self-profiling series are
+// excluded.
+func (e *env) discoverSeries(ctx context.Context, host string, includeProfileType func(string) bool) (seriesData, error) {
 	start, end := nowWindowMillis()
 	var resp seriesResponse
 	err := e.pyroscopePost(ctx, host, "querier.v1.QuerierService/Series", map[string]any{
@@ -432,13 +490,13 @@ func (e *env) discoverSeries(ctx context.Context, host string) (seriesData, erro
 	for _, ls := range resp.LabelsSet {
 		svc := labelValue(ls.Labels, "service_name")
 		pt := labelValue(ls.Labels, "__profile_type__")
-		if svc == "" || svc == selfProfilingService || !isCPUOrWallType(pt) {
+		if svc == "" || svc == selfProfilingService || !includeProfileType(pt) {
 			continue
 		}
 		data[svc] = append(data[svc], pt)
 	}
 	if len(data) == 0 {
-		return nil, errors.New("no CPU or wall profile series ingested yet")
+		return nil, errors.New("no matching profile series ingested yet")
 	}
 	return data, nil
 }
@@ -672,6 +730,124 @@ func (e *env) isTracing() bool {
 	return strings.HasPrefix(e.repoDir(), filepath.Join("examples", "tracing")+string(filepath.Separator))
 }
 
+func (e *env) profileValidationSkipReason() string {
+	switch e.repoDir() {
+	case filepath.Join("examples", "base-url"):
+		return "the base-url example runs only Pyroscope and nginx, with no profiled application"
+	case filepath.Join("examples", "golang-pgo"):
+		return "the golang-pgo example requires a manually run benchmark to generate profile data"
+	default:
+		return ""
+	}
+}
+
+func TestProfileValidationSkipReason(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		dir      string
+		wantSkip bool
+	}{
+		{dir: "base-url", wantSkip: true},
+		{dir: "golang-pgo", wantSkip: true},
+		{dir: "language-sdk-instrumentation/python/simple", wantSkip: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dir, func(t *testing.T) {
+			e := &env{dir: tt.dir}
+			require.Equal(t, tt.wantSkip, e.profileValidationSkipReason() != "")
+		})
+	}
+}
+
+func TestContainerStatusesReady(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                  string
+		statuses              []status
+		completedSuccessfully map[string]struct{}
+		wantErr               string
+	}{
+		{
+			name:     "running service",
+			statuses: []status{{Name: "app-1", Service: "app", State: "running"}},
+		},
+		{
+			name:                  "successfully completed init service",
+			statuses:              []status{{Name: "migrate-1", Service: "migrate", State: "exited", ExitCode: 0}},
+			completedSuccessfully: map[string]struct{}{"migrate": {}},
+		},
+		{
+			name:                  "failed init service",
+			statuses:              []status{{Name: "migrate-1", Service: "migrate", State: "exited", ExitCode: 1}},
+			completedSuccessfully: map[string]struct{}{"migrate": {}},
+			wantErr:               "container migrate-1 is not ready (service=migrate, state=exited, exit_code=1)",
+		},
+		{
+			name:     "unexpected normal service exit",
+			statuses: []status{{Name: "app-1", Service: "app", State: "exited", ExitCode: 0}},
+			wantErr:  "container app-1 is not ready (service=app, state=exited, exit_code=0)",
+		},
+		{
+			name:    "no containers",
+			wantErr: "no containers found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := containerStatusesReady(tt.statuses, tt.completedSuccessfully)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.EqualError(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestCompletedSuccessfullyServices(t *testing.T) {
+	t.Parallel()
+
+	services := map[string]interface{}{
+		"app": map[string]interface{}{
+			"depends_on": map[string]interface{}{
+				"db":      map[string]interface{}{"condition": "service_started"},
+				"migrate": map[string]interface{}{"condition": "service_completed_successfully"},
+			},
+		},
+		"other": map[string]interface{}{
+			"depends_on": []interface{}{"db"},
+		},
+	}
+
+	require.Equal(t, map[string]struct{}{"migrate": {}}, completedSuccessfullyServices(services))
+}
+
+func TestRequiresPythonMemoryProfiles(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		dir  string
+		want bool
+	}{
+		{dir: "language-sdk-instrumentation/python/simple", want: true},
+		{dir: "language-sdk-instrumentation/python/rideshare/flask", want: true},
+		{dir: "tracing/python", want: true},
+		{dir: "language-sdk-instrumentation/golang-push/simple", want: false},
+		{dir: "tracing/golang-push", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dir, func(t *testing.T) {
+			e := &env{dir: tt.dir}
+			require.Equal(t, tt.want, e.requiresPythonMemoryProfiles())
+		})
+	}
+}
+
 // TestExamples brings each selected example up once and verifies it: profiles
 // are always checked (Series + SelectSeries); tracing examples additionally get
 // the trace-to-profile link checked (SelectMergeSpanProfile).
@@ -683,16 +859,19 @@ func TestExamples(t *testing.T) {
 	for _, e := range examplesToTest(t) {
 		e := e
 		t.Run(e.repoDir(), func(t *testing.T) {
+			if reason := e.profileValidationSkipReason(); reason != "" {
+				t.Skip(reason)
+			}
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(context.Background(), timeoutPerExample)
 			defer cancel()
 
 			e := e.prepareCompose(t)
 			e.bringUp(t, ctx)
-			e.waitRunning(t, ctx)
+			e.waitReady(t, ctx)
 
 			pyroHost := "127.0.0.1:" + e.hostPort(t, ctx, pyroscopeService, pyroscopePort)
-			t.Logf("[%s] all containers running; pyroscope on %s", e.repoDir(), pyroHost)
+			t.Logf("[%s] all containers ready; pyroscope on %s", e.repoDir(), pyroHost)
 
 			t.Run("profiles", func(t *testing.T) {
 				e.checkProfilesQueryable(t, ctx, pyroHost)
@@ -705,7 +884,7 @@ func TestExamples(t *testing.T) {
 				})
 			}
 
-			require.NoError(t, e.containersAllRunning(ctx), "containers must stay running through the run")
+			require.NoError(t, e.containersReady(ctx), "containers must stay ready through the run")
 		})
 	}
 }
@@ -715,28 +894,73 @@ func TestExamples(t *testing.T) {
 func (e *env) checkProfilesQueryable(t *testing.T, ctx context.Context, host string) {
 	dir := e.repoDir()
 	var summary string
+	requireMemoryProfiles := e.requiresPythonMemoryProfiles()
+	requiredMemoryTypes := map[string]struct{}{}
+	if requireMemoryProfiles {
+		for _, profileType := range pythonMemoryProfileTypes {
+			requiredMemoryTypes[profileType] = struct{}{}
+		}
+	}
 	poll(t, ctx, profilesQueryTimeout, func(progress func(string, ...any)) error {
 		progress("[%s] querying Series for ingested profiles...", dir)
-		data, err := e.discoverSeries(ctx, host)
+		includeProfileType := isCPUOrWallType
+		if requireMemoryProfiles {
+			includeProfileType = includeAllProfileTypes
+		}
+		data, err := e.discoverSeries(ctx, host, includeProfileType)
 		if err != nil {
 			return err
 		}
 		progress("[%s] Series found %d service(s): %s; querying SelectSeries...", dir, len(data), strings.Join(sortedKeys(data), ", "))
+		var cpuOrWallSummary string
+		foundMemoryTypes := map[string]string{}
 		for svc, types := range data {
 			for _, pt := range types {
+				_, requiredMemoryType := requiredMemoryTypes[pt]
+				if !isCPUOrWallType(pt) && !requiredMemoryType {
+					continue
+				}
 				nSeries, nPoints, err := e.selectSeries(ctx, host, svc, pt)
 				if err != nil {
 					return err
 				}
 				if nPoints > 0 {
-					summary = fmt.Sprintf("service=%q profileType=%q -> %d series, %d points (%d service(s) ingesting)",
-						svc, pt, nSeries, nPoints, len(data))
-					return nil
+					detail := fmt.Sprintf("service=%q profileType=%q -> %d series, %d points",
+						svc, pt, nSeries, nPoints)
+					if isCPUOrWallType(pt) {
+						cpuOrWallSummary = detail
+						continue
+					}
+					foundMemoryTypes[pt] = detail
+					continue
 				}
 				progress("[%s] SelectSeries service=%q type=%q -> 0 points (waiting for data)", dir, svc, pt)
 			}
 		}
-		return fmt.Errorf("no data points for any of %d discovered series yet", len(data))
+
+		if cpuOrWallSummary == "" {
+			return errors.New("no CPU or wall profile data points yet")
+		}
+		if !requireMemoryProfiles {
+			summary = cpuOrWallSummary
+			return nil
+		}
+
+		var missing []string
+		found := []string{cpuOrWallSummary}
+		for _, profileType := range pythonMemoryProfileTypes {
+			detail, ok := foundMemoryTypes[profileType]
+			if !ok {
+				missing = append(missing, profileType)
+				continue
+			}
+			found = append(found, detail)
+		}
+		if len(missing) > 0 {
+			return fmt.Errorf("memory profile types have no data points yet: %s", strings.Join(missing, ", "))
+		}
+		summary = strings.Join(found, "; ")
+		return nil
 	})
 	t.Logf("[%s] PASS profiles queryable via Series+SelectSeries: %s", dir, summary)
 }
@@ -749,7 +973,7 @@ func (e *env) checkSpanProfilesQueryable(t *testing.T, ctx context.Context, pyro
 	var summary string
 	poll(t, ctx, tracesQueryTimeout, func(progress func(string, ...any)) error {
 		progress("[%s] querying Series for ingested profiles...", dir)
-		data, err := e.discoverSeries(ctx, pyroHost)
+		data, err := e.discoverSeries(ctx, pyroHost, isCPUOrWallType)
 		if err != nil {
 			return err
 		}

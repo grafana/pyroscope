@@ -114,6 +114,7 @@ type Distributor struct {
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
+	stripper               *sampling.ProfileStripper
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -124,6 +125,7 @@ type Distributor struct {
 	bytesReceivedStats      *usagestats.Statistics
 	bytesReceivedTotalStats *usagestats.Counter
 	profileReceivedStats    *usagestats.MultiCounter
+	profileScopeStats       *usagestats.MultiCounter
 	profileSizeStats        *usagestats.MultiStatistics
 
 	router        *writepath.Router
@@ -136,7 +138,9 @@ type Limits interface {
 	IngestionLimit(tenantID string) *ingestlimits.Config
 	IngestionBodyLimitBytes(tenantID string) int64
 	DistributorSampling(tenantID string) *sampling.Config
+	KeepStrippedProfiles(tenantID string) bool
 	IngestionTenantShardSize(tenantID string) int
+	PushMaxConcurrency(tenantID string) int
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
 	MaxLabelNamesPerSeries(tenantID string) int
@@ -190,7 +194,9 @@ func New(
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
+		profileScopeStats:       usagestats.NewMultiCounter("distributor_profiles_received_by_scope", "scope"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
+		stripper:                sampling.NewProfileStripper(),
 	}
 
 	ingesterRoute := writepath.IngesterFunc(d.sendRequestsToIngester)
@@ -412,6 +418,8 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 		return noNewProfilesReceivedError()
 	}
 
+	d.metrics.pushBatchSeries.WithLabelValues(tenantID).Observe(float64(len(req.Series)))
+
 	d.bytesReceivedTotalStats.Inc(int64(req.ReceivedCompressedProfileSize))
 	d.bytesReceivedStats.Record(float64(req.ReceivedCompressedProfileSize))
 	if req.RawProfileType != distributormodel.RawProfileTypePPROF {
@@ -433,11 +441,18 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 
 	res := multierror.New()
 	errorsMutex := new(sync.Mutex)
-	wg := new(sync.WaitGroup)
+	// Bound the per-series fan-out. We use errgroup purely as a limited
+	// WaitGroup: the closures always return nil (errors are funneled into the
+	// multierror below), so a plain Group never cancels siblings and every
+	// series is attempted. The per-tenant limit <= 0 leaves it unbounded (legacy
+	// behavior); SetLimit(0) would block every Go call, so we skip SetLimit
+	// entirely rather than pass a non-positive limit.
+	g := new(errgroup.Group)
+	if limit := d.limits.PushMaxConcurrency(tenantID); limit > 0 {
+		g.SetLimit(limit)
+	}
 	for index, s := range req.Series {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		g.Go(func() error {
 			itErr := util.RecoverPanic(func() error {
 				return d.pushSeries(ctx, s, req.RawProfileType, tenantID, req.ParseDuration)
 			})()
@@ -448,9 +463,10 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 			errorsMutex.Lock()
 			res.Add(itErr)
 			errorsMutex.Unlock()
-		}()
+			return nil
+		})
 	}
-	wg.Wait()
+	_ = g.Wait()
 	return res.Err()
 }
 
@@ -516,7 +532,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	now := model.Now()
 
 	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
-	finalLog := newPushLog(13)
+	finalLog := newPushLog(15)
 	defer func() {
 		finalLog.log(logger, err)
 	}()
@@ -529,13 +545,23 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.addFields("service_name", serviceName)
 	}
 	sort.Sort(phlaremodel.Labels(req.Labels))
+	labels := phlaremodel.Labels(req.Labels)
+	scopeName := labels.Get(phlaremodel.LabelNameOTELScopeName)
+	scopeVersion := labels.Get(phlaremodel.LabelNameOTELScopeVersion)
+	if scopeName != "" {
+		finalLog.addFields("otel_scope_name", scopeName)
+	}
+	if scopeVersion != "" {
+		finalLog.addFields("otel_scope_version", scopeVersion)
+	}
 
 	if req.ID != "" {
 		finalLog.addFields("profile_id", req.ID)
 	}
 
 	req.TotalProfiles = 1
-	req.TotalBytesUncompressed = calculateRequestSize(req)
+	decompressedSize := req.Profile.SizeVT()
+	req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
 	if err := d.checkIngestLimit(req); err != nil {
@@ -574,9 +600,27 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		)
 		finalLog.msg = "skipping profile due to sampling"
 		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
-		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
-		return nil
+
+		if !d.limits.KeepStrippedProfiles(tenantID) {
+			validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(req.TotalBytesUncompressed))
+			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
+			return nil
+		}
+		finalLog.msg = "stripping profile stacktraces, keeping totals"
+
+		// Language detection reads the string table, which is about to be
+		// stripped; the result is cached in the request.
+		d.GetProfileLanguage(req)
+		d.stripper.StripToTotals(req.Profile.Profile)
+		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
+
+		// The stripped part of the profile is discarded, and from here on
+		// the remainder is accounted for like a regular profile.
+		keptSize := req.Profile.SizeVT()
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), tenantID).Add(float64(decompressedSize - keptSize))
+		groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), int64(decompressedSize-keptSize))
+		decompressedSize = keptSize
+		req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	}
 	if samplingSource != nil {
 		if err := req.MarkSampledRequest(samplingSource); err != nil {
@@ -591,11 +635,13 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
+	usageScopeName, usageScopeVersion := sanitizeScopeForUsage(scopeName, scopeVersion)
+	d.metrics.profilesReceived.WithLabelValues(tenantID, usageScopeName, usageScopeVersion).Inc()
+	d.profileScopeStats.Inc(1, usageScopeName)
 	if origin == distributormodel.RawProfileTypePPROF {
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}
 	p := req.Profile
-	decompressedSize := p.SizeVT()
 	profTime := model.TimeFromUnixNano(p.TimeNanos).Time()
 	finalLog.addFields(
 		"profile_time", profTime,
@@ -620,7 +666,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	symbolsSize, samplesSize := profileSizeBytes(p.Profile)
+	symbolsSize, samplesSize := profileSizeBytes(p.Profile, int64(decompressedSize))
 	d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
 	d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
 
@@ -909,15 +955,14 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
-// profileSizeBytes returns the size of symbols and samples in bytes.
-func profileSizeBytes(p *profilev1.Profile) (symbols, samples int64) {
-	fullSize := p.SizeVT()
+// profileSizeBytes returns the size of symbols and samples in bytes from a given fullSize.
+func profileSizeBytes(p *profilev1.Profile, fullSize int64) (symbols, samples int64) {
 	// remove samples
 	samplesSlice := p.Sample
 	p.Sample = nil
 
 	symbols = int64(p.SizeVT())
-	samples = int64(fullSize) - symbols
+	samples = fullSize - symbols
 
 	// count labels in samples
 	samplesLabels := 0
@@ -1062,13 +1107,15 @@ func (d *Distributor) rateLimit(tenantID string, req *distributormodel.ProfileSe
 
 func calculateRequestSize(req *distributormodel.ProfileSeries) int64 {
 	// include the labels in the size calculation
-	bs := int64(0)
-	for _, lbs := range req.Labels {
-		bs += int64(len(lbs.Name))
-		bs += int64(len(lbs.Value))
-	}
+	return labelsSize(req.Labels) + int64(req.Profile.SizeVT())
+}
 
-	bs += int64(req.Profile.SizeVT())
+func labelsSize(lbs []*typesv1.LabelPair) int64 {
+	bs := int64(0)
+	for _, l := range lbs {
+		bs += int64(len(l.Name))
+		bs += int64(len(l.Value))
+	}
 	return bs
 }
 

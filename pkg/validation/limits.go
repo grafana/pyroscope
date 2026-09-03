@@ -39,12 +39,14 @@ type Limits struct {
 	IngestionLimit           *ingestlimits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
 	IngestionBodyLimitMB     float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
 	DistributorSampling      *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
+	KeepStrippedProfiles     bool                 `yaml:"keep_stripped_profiles" json:"keep_stripped_profiles"`
 	MaxLabelNameLength       int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength      int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries   int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
 	MaxSessionsPerSeries     int                  `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
 	EnforceLabelsOrder       bool                 `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 	DisableLabelSanitization bool                 `yaml:"disable_label_sanitization" json:"disable_label_sanitization"`
+	PushMaxConcurrency       int                  `yaml:"push_max_concurrency" json:"push_max_concurrency"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -84,6 +86,7 @@ type Limits struct {
 	MaxQueryParallelism        int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
 	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
+	IncludeStrippedProfiles    bool           `yaml:"include_stripped_profiles" json:"include_stripped_profiles"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
@@ -154,6 +157,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
 	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 256, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
 	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
+	f.IntVar(&l.PushMaxConcurrency, "distributor.push.max-concurrency", 256, "Maximum number of series within a single batched push that are processed concurrently. 0 = unbounded (legacy behavior); 1 = serialize pushes (kill switch).")
 
 	f.IntVar(&l.MaxLabelNameLength, "validation.max-length-label-name", 1024, "Maximum length accepted for label names.")
 	f.IntVar(&l.MaxLabelValueLength, "validation.max-length-label-value", 2048, "Maximum length accepted for label value. This setting also applies to the metric name.")
@@ -193,6 +197,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
 	f.BoolVar(&l.MaxFlameGraphNodesOnSelectMergeProfile, "querier.max-flamegraph-nodes-on-select-merge-profile", false, "Enforce the max nodes limits and defaults on SelectMergeProfile API. Historically this limit was not enforced to enable to gather full pprof profiles without truncation.")
 
+	f.BoolVar(&l.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals as a single sample with stacktraces and sample labels stripped (marked __sampled__) instead of dropping it.")
+	f.BoolVar(&l.IncludeStrippedProfiles, "query-backend.include-stripped-profiles", false, "Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.")
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
 
@@ -330,6 +336,14 @@ func (o *Overrides) DistributorSampling(tenantID string) *sampling.Config {
 	return o.getOverridesForTenant(tenantID).DistributorSampling
 }
 
+func (o *Overrides) KeepStrippedProfiles(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).KeepStrippedProfiles
+}
+
+func (o *Overrides) IncludeStrippedProfiles(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).IncludeStrippedProfiles
+}
+
 // IngestionArtificialDelay returns the artificial ingestion latency for a given user.
 func (o *Overrides) IngestionArtificialDelay(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).IngestionArtificialDelay)
@@ -423,6 +437,13 @@ func (o *Overrides) MaxQueryLength(tenantID string) time.Duration {
 // frontend will process in parallel.
 func (o *Overrides) MaxQueryParallelism(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxQueryParallelism
+}
+
+// PushMaxConcurrency returns the maximum number of series within a single
+// batched push that the distributor processes concurrently. 0 means unbounded
+// (legacy behavior); 1 serializes pushes (kill switch).
+func (o *Overrides) PushMaxConcurrency(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).PushMaxConcurrency
 }
 
 // MaxQueryLookback returns the max lookback period of queries.

@@ -10,7 +10,7 @@ RUN apt-get update && apt-get -y install wget git build-essential libssl-dev lib
     gawk autoconf automake bison libffi-dev libgdbm-dev libsqlite3-dev libtool pkg-config sqlite3 libncurses5-dev \
     libreadline-dev gnupg
 
-ARG GO_VERSION=1.25.11
+ARG GO_VERSION=1.25.13
 RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 ENV PATH=$PATH:/usr/local/go/bin
@@ -34,3 +34,8 @@ RUN /bin/bash -l -c "rvm install ruby-${RUBY_VERSION} && rvm --default use ruby-
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
 ENV PATH=$PATH:/root/.cargo/bin
+
+# The repo is bind-mounted at /pyroscope (see Makefile.examples) and owned by
+# the runner user, while this image runs as root, so git refuses to operate on
+# it until the path is trusted.
+RUN git config --global --add safe.directory /pyroscope

@@ -1027,11 +1027,11 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\x18AddBlockMetadataResponse\"\x94\x01\n" +
 	"\x1eGetCompactionPlanUpdateRequest\x12J\n" +
 	"\x0estatus_updates\x18\x01 \x03(\v2#.raft_log.CompactionJobStatusUpdateR\rstatusUpdates\x12&\n" +
-	"\x0fassign_jobs_max\x18\x02 \x01(\rR\rassignJobsMax\"\x80\x01\n" +
+	"\x0fassign_jobs_max\x18\x02 \x01(\rR\rassignJobsMax\"\x86\x01\n" +
 	"\x19CompactionJobStatusUpdate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\x04R\x05token\x129\n" +
-	"\x06status\x18\x03 \x01(\x0e2!.metastore.v1.CompactionJobStatusR\x06status\"v\n" +
+	"\x06status\x18\x03 \x01(\x0e2!.metastore.v1.CompactionJobStatusR\x06statusJ\x04\b\x04\x10\x05\"v\n" +
 	"\x1fGetCompactionPlanUpdateResponse\x12\x12\n" +
 	"\x04term\x18\x01 \x01(\x04R\x04term\x12?\n" +
 	"\vplan_update\x18\x02 \x01(\v2\x1e.raft_log.CompactionPlanUpdateR\n" +

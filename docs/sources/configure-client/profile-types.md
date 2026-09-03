@@ -67,17 +67,17 @@ This table lists the available profile types based on auto instrumentation using
 
 Using the Pyroscope language SDKs lets you instrument your application directly for precise profiling. You can customize the profiling process according to your application’s specific requirements.
 
-For more information on the language SDKs, refer to [Pyroscope language SDKs](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/).
+For more information on the language SDKs, refer to [Pyroscope language SDKs](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/). For the operating systems and CPU architectures each SDK supports, refer to [Supported operating systems and architectures](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/supported-platforms/).
 
 This table lists the available profile types based on the language SDK.
 
 | Profile type   | Go (push) | Java | .NET       | Ruby | Python | Rust | Node.js |
 | -------------- | --------- | ---- | ---------- | ---- | ------ | ---- | ------- |
 | CPU            | Yes       | Yes  | Yes        | Yes  | Yes    | Yes  | Yes     |
-| Alloc Objects  | Yes       | Yes  | Yes        |      |        |      |         |
-| Alloc Space    | Yes       | Yes  | Yes        |      |        |      |         |
-| Inuse Objects  | Yes       |      | Yes (7.0+) |      |        |      |         |
-| Inuse Space    | Yes       |      | Yes (7.0+) |      |        |      |         |
+| Alloc Objects  | Yes       | Yes  | Yes        |      | Yes    |      |         |
+| Alloc Space    | Yes       | Yes  | Yes        |      | Yes    |      |         |
+| Inuse Objects  | Yes       |      | Yes (7.0+) |      | Yes    |      |         |
+| Inuse Space    | Yes       |      | Yes (7.0+) |      | Yes    |      |         |
 | Goroutines     | Yes       |      |            |      |        |      |         |
 | Mutex Count    | Yes       |      | Yes        |      |        |      |         |
 | Mutex Duration | Yes       |      | Yes        |      |        |      |         |

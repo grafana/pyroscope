@@ -175,6 +175,7 @@ func (l LogSpanParametersWrapper) SelectMergeStacktraces(ctx context.Context, c 
 		"format", c.Msg.Format,
 		"max_nodes", c.Msg.GetMaxNodes(),
 		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
+		"span_selector", lazyJoin(c.Msg.SpanSelector),
 	}, func() (err error) {
 		resp, err = l.client.SelectMergeStacktraces(ctx, c)
 		return err
@@ -199,7 +200,7 @@ func (l LogSpanParametersWrapper) SelectMergeSpanProfile(ctx context.Context, c 
 		"format", c.Msg.Format,
 		"max_nodes", c.Msg.GetMaxNodes(),
 	}, func() (err error) {
-		resp, err = l.client.SelectMergeSpanProfile(ctx, c)
+		resp, err = l.client.SelectMergeSpanProfile(ctx, c) //nolint:staticcheck // Required querier.v1 compatibility wrapper.
 		return err
 	})
 	return resp, err
@@ -223,7 +224,7 @@ func (l LogSpanParametersWrapper) SelectMergeProfile(ctx context.Context, c *con
 		"stacktrace_selector", c.Msg.GetStackTraceSelector(),
 		"profile_id_selector", lazyJoin(c.Msg.ProfileIdSelector),
 	}, func() (err error) {
-		resp, err = l.client.SelectMergeProfile(ctx, c)
+		resp, err = l.client.SelectMergeProfile(ctx, c) //nolint:staticcheck // Required querier.v1 compatibility wrapper.
 		return err
 	})
 	return resp, err
@@ -307,6 +308,7 @@ func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[q
 		"left_profile_type", left.ProfileTypeID,
 		"left_format", left.Format,
 		"left_max_nodes", left.GetMaxNodes(),
+		"left_span_selector", lazyJoin(left.SpanSelector),
 		"right_start", model.Time(right.Start).Time().String(),
 		"right_end", model.Time(right.End).Time().String(),
 		"right_query_window", model.Time(right.End).Sub(model.Time(right.Start)).String(),
@@ -314,6 +316,7 @@ func (l LogSpanParametersWrapper) Diff(ctx context.Context, c *connect.Request[q
 		"right_profile_type", right.ProfileTypeID,
 		"right_format", right.Format,
 		"right_max_nodes", right.GetMaxNodes(),
+		"right_span_selector", lazyJoin(right.SpanSelector),
 	}, func() (err error) {
 		resp, err = l.client.Diff(ctx, c)
 		return err

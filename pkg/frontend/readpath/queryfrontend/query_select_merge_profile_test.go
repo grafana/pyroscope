@@ -19,6 +19,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -41,6 +42,7 @@ func newSMPQueryFrontend(
 	return NewQueryFrontend(
 		log.NewNopLogger(),
 		limits,
+		frontend.Config{},
 		metaClient,
 		nil, // tenantServiceClient
 		backend,
@@ -336,8 +338,9 @@ func TestSelectMergeProfile_TreePath_ReconstructsProfile(t *testing.T) {
 	require.NotNil(t, resp.Msg.PeriodType)
 }
 
-func TestSelectMergeProfile_TreePath_SendsQueryTreeWithFullSymbols(t *testing.T) {
-	// Ensure the tree path sends QUERY_TREE with FullSymbols=true to the backend.
+func TestSelectMergeStacktraces_PprofTreePathForwardsSpanSelector(t *testing.T) {
+	// Ensure the tree-backed pprof path requests full symbols and forwards spans.
+	spanSelector := []string{"0000000000000001"}
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
@@ -379,17 +382,21 @@ func TestSelectMergeProfile_TreePath_SendsQueryTreeWithFullSymbols(t *testing.T)
 	ctx := user.InjectOrgID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 
-	_, err := qf.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	resp, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: smpProfileType,
 		LabelSelector: "{}",
 		Start:         start,
 		End:           end,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+		SpanSelector:  spanSelector,
 	}))
 
 	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.GetPprof().GetProfile())
 	require.NotNil(t, capturedQuery)
 	assert.Equal(t, queryv1.QueryType_QUERY_TREE, capturedQuery.QueryType)
-	assert.True(t, capturedQuery.Tree.GetFullSymbols(), "tree path must request full symbols")
+	assert.Equal(t, queryv1.SymbolMode_SYMBOL_MODE_FULL, capturedQuery.Tree.GetSymbolMode(), "tree path must request full symbols")
+	assert.Equal(t, spanSelector, capturedQuery.Tree.GetSpanSelector())
 }
 
 func TestSelectMergeProfile_TreePath_OtherLocationRef(t *testing.T) {
@@ -677,6 +684,7 @@ func TestSelectMergeProfiles_Symbolization(t *testing.T) {
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,

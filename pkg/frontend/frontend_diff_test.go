@@ -3,6 +3,7 @@ package frontend
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -159,4 +160,44 @@ func Test_Frontend_Diff(t *testing.T) {
 		)
 	})
 
+	t.Run("span-filtered diff", func(t *testing.T) {
+		leftSpan := []string{"0000000000000001"}
+		rightSpan := []string{"0000000000000002"}
+		frontend.GRPCRoundTripper = &mockRoundTripper{callback: func(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error) {
+			return connectgrpc.HandleUnary[querierv1.SelectMergeSpanProfileRequest, querierv1.SelectMergeSpanProfileResponse](ctx, req, func(_ context.Context, req *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
+				want := rightSpan
+				if req.Msg.Start == now {
+					want = leftSpan
+				}
+				if !slices.Equal(req.Msg.SpanSelector, want) {
+					return nil, errors.New("unexpected span selector")
+				}
+				tree := new(model.FunctionNameTree)
+				tree.InsertStack(1, "foo")
+				return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{Tree: tree.Bytes(-1, nil)}), nil
+			})
+		}}
+
+		resp, err := frontend.Diff(ctx, connect.NewRequest(&querierv1.DiffRequest{
+			Left: &querierv1.SelectMergeStacktracesRequest{
+				ProfileTypeID: profileType,
+				LabelSelector: "{}",
+				Start:         now,
+				End:           now + 1000,
+				Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+				SpanSelector:  leftSpan,
+			},
+			Right: &querierv1.SelectMergeStacktracesRequest{
+				ProfileTypeID: profileType,
+				LabelSelector: "{}",
+				Start:         now + 2000,
+				End:           now + 3000,
+				Format:        querierv1.ProfileFormat_PROFILE_FORMAT_DOT,
+				SpanSelector:  rightSpan,
+			},
+		}))
+
+		require.NoError(t, err)
+		require.NotNil(t, resp.Msg.Flamegraph)
+	})
 }

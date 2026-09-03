@@ -174,9 +174,9 @@ func query[Req, Resp any](
 	case *connect.Request[querierv1.SelectMergeStacktracesRequest]:
 		resp, err = svc.SelectMergeStacktraces(ctx, r)
 	case *connect.Request[querierv1.SelectMergeSpanProfileRequest]:
-		resp, err = svc.SelectMergeSpanProfile(ctx, r)
+		resp, err = svc.SelectMergeSpanProfile(ctx, r) //nolint:staticcheck // Required querier.v1 compatibility routing.
 	case *connect.Request[querierv1.SelectMergeProfileRequest]:
-		resp, err = svc.SelectMergeProfile(ctx, r)
+		resp, err = svc.SelectMergeProfile(ctx, r) //nolint:staticcheck // Required querier.v1 compatibility routing.
 	case *connect.Request[querierv1.SelectSeriesRequest]:
 		resp, err = svc.SelectSeries(ctx, r)
 	case *connect.Request[querierv1.SelectHeatmapRequest]:

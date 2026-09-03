@@ -74,16 +74,12 @@ This updates and commits:
 - `tools/update_examples.Dockerfile` — `GO_VERSION` ARG
 - All Go Dockerfiles — `FROM golang:` base image tag (excluding ebpf testdata)
 
-### 4. Update `toolchain` directive in go.mod and go.work files
+### 4. Update `toolchain` directive in go.mod files
 
-Update the `toolchain` directive to `goX.Y.Z` in all go.mod files using `go mod edit`, and the root `go.work` using `go work edit`:
+Update the `toolchain` directive to `goX.Y.Z` in all go.mod files using `go mod edit`:
 
 ```bash
-# For go.mod files:
 go mod edit -toolchain=goX.Y.Z <file>
-
-# For go.work files (go mod edit does NOT work on .work files):
-go work edit -toolchain=goX.Y.Z <file>
 ```
 
 **go.mod files:**
@@ -96,9 +92,6 @@ go work edit -toolchain=goX.Y.Z <file>
 - `examples/language-sdk-instrumentation/golang-push/rideshare-alloy/go.mod`
 - `examples/language-sdk-instrumentation/golang-push/rideshare-k6/go.mod`
 - `examples/language-sdk-instrumentation/golang-push/simple/go.mod`
-
-**go.work (root only — use `go work edit`):**
-- `go.work`
 
 #### Optional: update `go` directive (minor bump only)
 
@@ -119,8 +112,7 @@ go work edit -go=X.Y.0 <file>
 go work edit -toolchain=goX.Y.Z <file>
 ```
 
-Also update the `go` directive in all go.work files (use `go work edit`):
-- `go.work`
+Also update the `go` directive in the examples' go.work files (use `go work edit`; the root repo has no go.work — modules are wired with replace directives):
 - `examples/golang-pgo/go.work`
 - `examples/tracing/golang-push/go.work`
 - `examples/language-sdk-instrumentation/golang-push/rideshare/go.work`
@@ -134,7 +126,7 @@ Also update the `go` directive in all go.work files (use `go work edit`):
 make go/mod
 ```
 
-This runs `go work sync` and `go mod tidy` across all modules. Required because CI runs `check/go/mod`.
+This runs `go mod tidy` across all modules. Required because CI runs `check/go/mod`.
 
 Review the diff. Expected: `go.sum` changes, small indirect dependency bumps. Investigate anything unexpected.
 

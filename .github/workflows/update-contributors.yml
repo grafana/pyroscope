@@ -20,19 +20,12 @@ jobs:
           persist-credentials: 'false'
           ref: main
       - id: get-github-app-token
-        uses: grafana/shared-workflows/actions/create-github-app-token@580590a644e82e79bb2598bdaba0be245a14dda0 # create-github-app-token/v0.2.2
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         with:
           github_app: pyroscope-development-app
-      - name: Get GitHub App User ID
-        id: get-user-id
-        env:
-          GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
-        run: |
-          APP_BOT="pyroscope-development-app[bot]"
-          echo "user-id=$(gh api "/users/${APP_BOT}" --jq .id)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
-          go-version: 1.25.11
+          go-version: 1.25.13
       - name: Update contributors
         run: make update-contributors
 
@@ -40,17 +33,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
         run: |
-          APP_BOT="pyroscope-development-app[bot]"
-          git config --local user.name "${APP_BOT}"
-          git config --local user.email "${{ steps.get-user-id.outputs.user-id }}+${APP_BOT}@users.noreply.github.com"
-          
           if ! git diff --exit-code README.md; then
               BRANCH_NAME="update-contributors-$(date +%Y%m%d)"
-              git checkout -b "${BRANCH_NAME}"
-              git add README.md
-              git commit -m 'docs: updates the list of contributors in README'
-              git push https://x-access-token:${{ steps.get-github-app-token.outputs.token }}@github.com/${{ github.repository }}.git HEAD:${BRANCH_NAME}
-          
+              # Commit through the API so GitHub signs it on behalf of the app:
+              # the ruleset requires verified signatures on every branch.
+              gh api "repos/${{ github.repository }}/git/refs" --method POST \
+                -f "ref=refs/heads/${BRANCH_NAME}" \
+                -f "sha=$(git rev-parse HEAD)"
+              gh api "repos/${{ github.repository }}/contents/README.md" --method PUT \
+                -f "message=docs: updates the list of contributors in README" \
+                -f "branch=${BRANCH_NAME}" \
+                -f "sha=$(git rev-parse HEAD:README.md)" \
+                -f "content=$(base64 -w0 README.md)"
+
               # Check if PR already exists for this branch
               EXISTING_PR=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number' || echo "")
               if [ -z "$EXISTING_PR" ]; then
