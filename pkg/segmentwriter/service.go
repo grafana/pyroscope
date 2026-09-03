@@ -82,7 +82,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 		prefix + ".store":                              fieldcategory.Advanced,
 		prefix + ".tokens-file-path":                   fieldcategory.Advanced,
 	})
-	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, log.NewNopLogger())
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")

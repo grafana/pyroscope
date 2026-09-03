@@ -3,6 +3,8 @@ package querier
 import (
 	"context"
 
+	"github.com/go-kit/log"
+
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
@@ -50,7 +52,7 @@ func NewIngesterQuerier(pool *ring_client.Pool, ring ring.ReadRing) *IngesterQue
 var readNoExtend = ring.NewOp([]ring.InstanceState{ring.ACTIVE}, nil)
 
 // forAllIngesters runs f, in parallel, for all ingesters
-func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, f QueryReplicaFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
+func forAllIngesters[T any](ctx context.Context, logger log.Logger, ingesterQuerier *IngesterQuerier, f QueryReplicaFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
 	replicationSet, err := ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
 	if err != nil {
 		return nil, err
@@ -63,7 +65,7 @@ func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerie
 		}
 		return client.(IngesterQueryClient), nil
 	}
-	return forGivenReplicationSet(ctx, clientFactoryFn, replicationSet, f)
+	return forGivenReplicationSet(ctx, logger, clientFactoryFn, replicationSet, f)
 }
 
 // forAllPlannedIngesters runs f, in parallel, for all ingesters part of the plan
@@ -102,7 +104,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 			return ic.MergeProfilesStacktraces(ctx), nil
 		})
 	} else {
-		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+		responses, err = forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
 			return ic.MergeProfilesStacktraces(ctx), nil
 		})
 	}
@@ -159,7 +161,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 			return ic.MergeProfilesPprof(ctx), nil
 		})
 	} else {
-		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
+		responses, err = forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
 			return ic.MergeProfilesPprof(ctx), nil
 		})
 	}
@@ -209,7 +211,7 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 			return q.MergeProfilesLabels(ctx), nil
 		})
 	} else {
-		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
+		responses, err = forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
 			return ic.MergeProfilesLabels(ctx), nil
 		})
 	}
@@ -240,7 +242,7 @@ func (q *Querier) labelValuesFromIngesters(ctx context.Context, req *typesv1.Lab
 	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelValues Ingesters")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
+	responses, err := forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
 		res, err := ic.LabelValues(childCtx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
@@ -257,7 +259,7 @@ func (q *Querier) labelNamesFromIngesters(ctx context.Context, req *typesv1.Labe
 	sp, ctx := tracing.StartSpanFromContext(ctx, "LabelNames Ingesters")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
+	responses, err := forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
 		res, err := ic.LabelNames(childCtx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
@@ -274,7 +276,7 @@ func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.Serie
 	sp, ctx := tracing.StartSpanFromContext(ctx, "Series Ingesters")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
+	responses, err := forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
 		res, err := ic.Series(childCtx, connect.NewRequest(&ingesterv1.SeriesRequest{
 			Matchers:   req.Matchers,
 			LabelNames: req.LabelNames,
@@ -312,7 +314,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 			return ic.MergeSpanProfile(ctx), nil
 		})
 	} else {
-		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
+		responses, err = forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
 			return ic.MergeSpanProfile(ctx), nil
 		})
 	}
@@ -354,7 +356,7 @@ func (q *Querier) blockSelectFromIngesters(ctx context.Context, req *ingesterv1.
 	sp, ctx := tracing.StartSpanFromContext(ctx, "blockSelectFromIngesters")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.BlockInfo, error) {
+	responses, err := forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.BlockInfo, error) {
 		res, err := ic.BlockMetadata(childCtx, connect.NewRequest(&ingesterv1.BlockMetadataRequest{
 			Start: req.Start,
 			End:   req.End,
