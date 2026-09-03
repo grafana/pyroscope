@@ -68,11 +68,11 @@ Usage of ./pyroscope:
   -compaction-worker.metadata-source string
     	Source of the compaction job source block metadata. Supported values: metastore, object-storage. (default "metastore")
   -compaction-worker.metrics-exporter.enabled
-    	This parameter specifies whether the metrics exporter is enabled.
+    	Deprecated: use recording-rules.enabled. Specifies whether the metrics exporter is enabled.
   -compaction-worker.metrics-exporter.remote-write-address string
     	The address to use for metrics tenant.
   -compaction-worker.metrics-exporter.rules-source.client-address string
-    	The address to use for the recording rules client connection.
+    	Deprecated: use recording-rules.client-address. The address to use for the recording rules client connection.
   -compaction-worker.metrics-exporter.rules-source.static value
     	[experimental] List of static recording rules of the type settingsv1.RecordingRule. Will only be use in the absence of a recording rules client. (default [])
   -compaction-worker.request-timeout duration
@@ -1059,6 +1059,10 @@ Usage of ./pyroscope:
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -query-scheduler.service-discovery-mode string
     	[experimental] Service discovery mode that query-frontends and queriers use to find query-scheduler instances. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. Supported values are: dns, ring. (default "ring")
+  -recording-rules.client-address string
+    	Address of the recording rules source (the tenant-settings service). When empty, static rules from per-tenant overrides are used. Read by the distributor and compaction-worker.
+  -recording-rules.enabled
+    	Enable generating metrics from profiles using recording rules. Read by the query-frontend, distributor and compaction-worker.
   -recording-rules.max-rules-per-tenant int
     	Maximum number of recording rules a tenant can create. 0 to disable. (default 25)
   -retention-period duration

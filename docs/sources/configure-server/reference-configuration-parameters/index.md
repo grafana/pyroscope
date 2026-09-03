@@ -185,6 +185,18 @@ tenant_settings:
     # CLI flag: -tenant-settings.recording-rules.enabled
     [enabled: <boolean> | default = false]
 
+recording_rules:
+  # Enable generating metrics from profiles using recording rules. Read by the
+  # query-frontend, distributor and compaction-worker.
+  # CLI flag: -recording-rules.enabled
+  [enabled: <boolean> | default = false]
+
+  # (advanced) Address of the recording rules source (the tenant-settings
+  # service). When empty, static rules from per-tenant overrides are used. Read
+  # by the distributor and compaction-worker.
+  # CLI flag: -recording-rules.client-address
+  [client_address: <string> | default = ""]
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
@@ -1397,12 +1409,14 @@ The `compaction_worker` block configures the compaction-worker (V2).
 [metadata_fetch_timeout: <duration> | default = 30s]
 
 metrics_exporter:
-  # (advanced) This parameter specifies whether the metrics exporter is enabled.
+  # (advanced) Deprecated: use recording-rules.enabled. Specifies whether the
+  # metrics exporter is enabled.
   # CLI flag: -compaction-worker.metrics-exporter.enabled
   [enabled: <boolean> | default = false]
 
   rules_source:
-    # (advanced) The address to use for the recording rules client connection.
+    # (advanced) Deprecated: use recording-rules.client-address. The address to
+    # use for the recording rules client connection.
     # CLI flag: -compaction-worker.metrics-exporter.rules-source.client-address
     [client_address: <string> | default = ""]
 
