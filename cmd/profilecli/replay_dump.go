@@ -242,7 +242,6 @@ func dumpDataset(
 		_ = ds.Close()
 		return 0, fmt.Errorf("failed to create profile row iterator: %w", err)
 	}
-	// The iterator takes ownership of the dataset and closes it.
 	defer it.Close()
 
 	var count int

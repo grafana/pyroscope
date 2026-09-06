@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 )
 
@@ -28,12 +29,18 @@ func TestDumpBlock_MultipleDatasets(t *testing.T) {
 
 	var md *metastorev1.BlockMeta
 	for _, b := range resp.Blocks {
-		if len(b.Datasets) > 1 {
+		var n int
+		for _, ds := range b.Datasets {
+			if block.DatasetFormat(ds.Format) == block.DatasetFormat0 {
+				n++
+			}
+		}
+		if n > 1 {
 			md = b
 			break
 		}
 	}
-	require.NotNil(t, md, "test data must contain a block with more than one dataset")
+	require.NotNil(t, md, "test data must contain a block with more than one profile dataset")
 
 	var buf bytes.Buffer
 	rw, err := newReplayWriter(&buf, replayHeader{})
