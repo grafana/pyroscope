@@ -22,7 +22,7 @@ func (t *Trie) String() string {
 		for i := 0; i < level; i++ {
 			prefix += "-"
 		}
-		str += fmt.Sprintf("%s %q %q %q\n", prefix, parentName, node.name, node.value)
+		str += fmt.Sprintf("%s %q %q %d\n", prefix, parentName, node.name, node.value)
 		names := [][]byte{}
 		for _, v := range node.children {
 			names = append(names, v.name)
