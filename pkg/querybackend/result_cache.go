@@ -1,12 +1,11 @@
 package querybackend
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,7 +35,7 @@ const (
 type ResultCacheOverrides interface {
 	ResultCacheEnabled(tenantID string) bool
 	ResultCacheGeneration(tenantID string) uint32
-	ResultCacheFragmentDurations(tenantID string) []time.Duration
+	ResultCacheFragments(tenantID string) []phlaremodel.ResultCacheFragment
 	ResultCacheMetadataServiceNameMinQueryDuration(tenantID string) time.Duration
 }
 
@@ -49,10 +48,10 @@ func newResultCacheMetrics(reg prometheus.Registerer) *resultCacheMetrics {
 	m := &resultCacheMetrics{
 		lookups: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "pyroscope", Subsystem: "query_backend", Name: "result_cache_lookups_total",
-		}, []string{"query_type", "fragment_duration", "outcome"}),
+		}, []string{"query_type", "fragment_duration", "tier", "outcome"}),
 		writes: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "pyroscope", Subsystem: "query_backend", Name: "result_cache_writes_total",
-		}, []string{"query_type", "fragment_duration", "outcome"}),
+		}, []string{"query_type", "fragment_duration", "tier", "outcome"}),
 	}
 	if reg != nil {
 		reg.MustRegister(m.lookups, m.writes)
@@ -63,6 +62,7 @@ func newResultCacheMetrics(reg prometheus.Registerer) *resultCacheMetrics {
 type resultCacheWriteJob struct {
 	queryType string
 	duration  string
+	ttl       time.Duration
 	key       string
 	identity  *queryv1.ResultCacheKey
 	reports   []*queryv1.Report
@@ -72,31 +72,32 @@ type resultCacheFragment struct {
 	start    int64
 	end      int64
 	duration time.Duration
+	ttl      time.Duration
 }
 
-func splitResultCacheFragments(start, end int64, durations []time.Duration) []resultCacheFragment {
+func splitResultCacheFragments(start, end int64, configured []phlaremodel.ResultCacheFragment) []resultCacheFragment {
 	if start > end {
 		return nil
 	}
-	durations = append([]time.Duration(nil), durations...)
-	sort.Slice(durations, func(i, j int) bool { return durations[i] > durations[j] })
+	configured = append([]phlaremodel.ResultCacheFragment(nil), configured...)
+	sort.Slice(configured, func(i, j int) bool { return configured[i].Duration > configured[j].Duration })
 	fragments := make([]resultCacheFragment, 0, 1)
 	endExclusive := end + 1
 	for current := start; current < endExclusive; {
-		var selected time.Duration
-		for _, duration := range durations {
-			milliseconds := duration.Milliseconds()
+		var selected phlaremodel.ResultCacheFragment
+		for _, fragment := range configured {
+			milliseconds := time.Duration(fragment.Duration).Milliseconds()
 			if current%milliseconds == 0 && current+milliseconds <= endExclusive {
-				selected = duration
+				selected = fragment
 				break
 			}
 		}
 
 		fragmentEnd := end
-		if selected > 0 {
-			fragmentEnd = current + selected.Milliseconds() - 1
-		} else if len(durations) > 0 {
-			smallest := durations[len(durations)-1].Milliseconds()
+		if selected.Duration > 0 {
+			fragmentEnd = current + time.Duration(selected.Duration).Milliseconds() - 1
+		} else if len(configured) > 0 {
+			smallest := time.Duration(configured[len(configured)-1].Duration).Milliseconds()
 			remainder := current % smallest
 			if remainder < 0 {
 				remainder += smallest
@@ -104,7 +105,7 @@ func splitResultCacheFragments(start, end int64, durations []time.Duration) []re
 			nextBoundary := current + smallest - remainder
 			fragmentEnd = min(end, nextBoundary-1)
 		}
-		fragments = append(fragments, resultCacheFragment{start: current, end: fragmentEnd, duration: selected})
+		fragments = append(fragments, resultCacheFragment{start: current, end: fragmentEnd, duration: time.Duration(selected.Duration), ttl: time.Duration(selected.TTL)})
 		if fragmentEnd == end {
 			break
 		}
@@ -127,6 +128,17 @@ func resultCacheDurationName(duration time.Duration) string {
 		return strconv.FormatInt(int64(duration/time.Second), 10) + "s"
 	}
 	return duration.String()
+}
+
+func smallestResultCacheFragmentDuration(fragments []phlaremodel.ResultCacheFragment) time.Duration {
+	var smallest time.Duration
+	for _, fragment := range fragments {
+		duration := time.Duration(fragment.Duration)
+		if smallest == 0 || duration < smallest {
+			smallest = duration
+		}
+	}
+	return smallest
 }
 
 func resultCacheIdentity(query *queryv1.QueryRequest, blocks []*metastorev1.BlockMeta) *queryv1.ResultCacheKey {
@@ -228,21 +240,32 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 
 	tenant := req.Tenant[0]
 	generation := q.resultCacheOverrides.ResultCacheGeneration(tenant)
-	durations := q.resultCacheOverrides.ResultCacheFragmentDurations(tenant)
+	configured := q.resultCacheOverrides.ResultCacheFragments(tenant)
 	selector, err := canonicalResultCacheSelector(req.LabelSelector)
 	if err != nil {
 		return q.executeWithResultCacheBypassed(ctx, req)
 	}
 	aggregator := newAggregator(req)
-	fragments := splitResultCacheFragments(req.StartTime, req.EndTime, durations)
+	fragments := splitResultCacheFragments(req.StartTime, req.EndTime, configured)
 	span.SetTag("fragments", len(fragments))
 	fragmentResponses := make([]*queryv1.InvokeResponse, len(fragments))
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(resultCacheFragmentConcurrency)
+	fragmentRequests := make([]*queryv1.InvokeRequest, len(fragments))
+	identities := make([]*queryv1.ResultCacheKey, len(fragments))
+	keys := make([]string, len(fragments))
+	writeAllowed := make([]bool, len(fragments))
+
+	lookupCtx := ctx
+	cancelLookup := func() {}
+	if q.resultCacheLookupTimeout > 0 {
+		lookupCtx, cancelLookup = context.WithTimeout(ctx, q.resultCacheLookupTimeout)
+	}
+	defer cancelLookup()
+	lookupGroup, lookupCtx := errgroup.WithContext(lookupCtx)
+	lookupGroup.SetLimit(resultCacheFragmentConcurrency)
 	for i, fragment := range fragments {
 		idx := i
 		fragment := fragment
-		g.Go(func() error {
+		lookupGroup.Go(func() error {
 			fragmentReq := req.CloneVT()
 			fragmentReq.StartTime = fragment.start
 			fragmentReq.EndTime = fragment.end
@@ -254,50 +277,70 @@ func (q *QueryBackend) coordinateResultCache(ctx context.Context, req *queryv1.I
 				fragmentReq.Options = &queryv1.InvokeOptions{}
 			}
 			fragmentReq.Options.BypassResultCache = true
+			fragmentRequests[idx] = fragmentReq
 
-			cacheable := fragment.duration > 0 && fragment.end <= q.now().Add(-durations[len(durations)-1]).UnixMilli()
+			cacheable := fragment.duration > 0 && fragment.end <= q.now().Add(-smallestResultCacheFragmentDuration(configured)).UnixMilli()
 			query := &queryv1.QueryRequest{
 				StartTime: fragment.start, EndTime: fragment.end, LabelSelector: selector, Query: fragmentReq.Query,
 			}
 			identity := resultCacheIdentity(query, blocks)
+			identities[idx] = identity
 			durationName := resultCacheDurationName(fragment.duration)
-			key := ""
-			writeAllowed := false
 			if cacheable {
 				fragmentAggregator := newAggregator(fragmentReq)
-				var hit bool
-				var err error
-				key, err = resultCacheKey(tenant, generation, fragment.duration, identity)
+				key, err := resultCacheKey(tenant, generation, fragment.duration, identity)
+				keys[idx] = key
 				if err == nil {
-					hit, err = q.readResultCache(ctx, queryType, durationName, key, identity, fragmentAggregator)
-				}
-				if err == nil && hit {
-					fragmentResponses[idx] = fragmentAggregator.response()
-					return nil
-				}
-				if err == nil {
-					writeAllowed = true
+					hit, err := q.readResultCache(lookupCtx, queryType, durationName, key, identity, fragmentAggregator)
+					if err == nil && hit {
+						fragmentResponses[idx] = fragmentAggregator.response()
+						return nil
+					}
+					if err == nil {
+						writeAllowed[idx] = true
+					} else if errors.Is(err, context.DeadlineExceeded) {
+						q.resultCacheMetrics.lookups.WithLabelValues(queryType, durationName, "unknown", "timeout").Inc()
+					}
 				}
 			}
+			return nil
+		})
+	}
+	if err := lookupGroup.Wait(); err != nil {
+		return nil, err
+	}
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 
+	executionGroup, executionCtx := errgroup.WithContext(ctx)
+	executionGroup.SetLimit(resultCacheFragmentConcurrency)
+	for i, fragment := range fragments {
+		if fragmentResponses[i] != nil {
+			continue
+		}
+		idx := i
+		fragment := fragment
+		executionGroup.Go(func() error {
+			fragmentReq := fragmentRequests[idx]
 			var resp *queryv1.InvokeResponse
 			var err error
 			if fragmentReq.QueryPlan.GetRoot() == nil {
 				resp = &queryv1.InvokeResponse{}
 			} else {
-				resp, err = q.invokeUncached(ctx, fragmentReq)
+				resp, err = q.invokeUncached(executionCtx, fragmentReq)
 			}
 			if err != nil {
 				return err
 			}
-			if cacheable && writeAllowed && ctx.Err() == nil {
-				q.enqueueResultCacheWrite(resultCacheWriteJob{queryType: queryType, duration: durationName, key: key, identity: identity.CloneVT(), reports: cloneReports(resp.Reports)})
+			if writeAllowed[idx] && ctx.Err() == nil {
+				q.enqueueResultCacheWrite(resultCacheWriteJob{queryType: queryType, duration: resultCacheDurationName(fragment.duration), ttl: fragment.ttl, key: keys[idx], identity: identities[idx].CloneVT(), reports: cloneReports(resp.Reports)})
 			}
 			fragmentResponses[idx] = resp
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
+	if err := executionGroup.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -326,10 +369,10 @@ func (q *QueryBackend) executeWithResultCacheBypassed(ctx context.Context, req *
 
 func (q *QueryBackend) resultCacheEligible(req *queryv1.InvokeRequest) bool {
 	_, validQuery := resultCacheQueryType(req.Query)
-	return q.resultCacheBucket != nil && q.resultCacheOverrides != nil && len(req.Tenant) == 1 &&
+	return q.resultCacheStore != nil && q.resultCacheOverrides != nil && len(req.Tenant) == 1 &&
 		validQuery &&
 		!req.GetOptions().GetCollectDiagnostics() && q.resultCacheOverrides.ResultCacheEnabled(req.Tenant[0]) &&
-		len(q.resultCacheOverrides.ResultCacheFragmentDurations(req.Tenant[0])) > 0 &&
+		len(q.resultCacheOverrides.ResultCacheFragments(req.Tenant[0])) > 0 &&
 		!resultCacheMetadataServiceNameShortRange(req, q.resultCacheOverrides.ResultCacheMetadataServiceNameMinQueryDuration(req.Tenant[0]))
 }
 
@@ -358,41 +401,47 @@ func (q *QueryBackend) readResultCache(ctx context.Context, queryType, duration,
 	span.SetTag("fragment_duration", duration)
 	span.SetTag("fragment_start", time.UnixMilli(expected.GetQuery().GetStartTime()).UTC().Format(time.RFC3339))
 
-	r, err := q.resultCacheBucket.Get(ctx, key)
+	b, tier, err := q.resultCacheStore.Get(ctx, key)
 	if err != nil {
-		if q.resultCacheBucket.IsObjNotFoundErr(err) {
+		if errors.Is(err, errResultCacheNotFound) {
 			span.SetTag("outcome", "miss")
-			q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "miss").Inc()
+			span.SetTag("tier", tier)
+			q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, tier, "miss").Inc()
+			return false, nil
+		}
+		if errors.Is(err, errResultCacheCorrupt) {
+			span.SetTag("outcome", "error")
+			span.SetTag("tier", tier)
+			q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, tier, "error").Inc()
 			return false, nil
 		}
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "error").Inc()
-		return false, err
-	}
-	defer r.Close()
-	b, err := io.ReadAll(r)
-	if err != nil {
-		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "error").Inc()
+		span.SetTag("tier", tier)
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, tier, "error").Inc()
 		return false, err
 	}
 	entry := new(queryv1.ResultCacheEntry)
 	if err := proto.Unmarshal(b, entry); err != nil {
 		span.SetTag("outcome", "error")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "error").Inc()
+		span.SetTag("tier", tier)
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, tier, "error").Inc()
 		return false, nil
 	}
 	if !proto.Equal(entry.Key, expected) {
 		span.SetTag("outcome", "collision")
-		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "collision").Inc()
+		span.SetTag("tier", tier)
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, tier, "collision").Inc()
 		return false, fmt.Errorf("result cache collision")
 	}
 	if err := aggregator.aggregateResponse(&queryv1.InvokeResponse{Reports: entry.Reports}); err != nil {
 		span.SetTag("outcome", "error")
+		span.SetTag("tier", tier)
+		q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, tier, "error").Inc()
 		return false, err
 	}
 	span.SetTag("outcome", "hit")
-	q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, "hit").Inc()
+	span.SetTag("tier", tier)
+	q.resultCacheMetrics.lookups.WithLabelValues(queryType, duration, tier, "hit").Inc()
 	return true, nil
 }
 
@@ -443,7 +492,7 @@ func (q *QueryBackend) enqueueResultCacheWrite(job resultCacheWriteJob) {
 	select {
 	case q.resultCacheWrites <- job:
 	default:
-		q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, "dropped").Inc()
+		q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, "unknown", "dropped").Inc()
 	}
 }
 
@@ -459,18 +508,20 @@ func (q *QueryBackend) runResultCacheWriter(ctx context.Context) {
 			span.SetTag("fragment_duration", job.duration)
 			span.SetTag("fragment_start", time.UnixMilli(job.identity.GetQuery().GetStartTime()).UTC().Format(time.RFC3339))
 			entry := &queryv1.ResultCacheEntry{Key: job.identity, Reports: job.reports}
+			tier := "unknown"
 			data, err := proto.Marshal(entry)
 			if err == nil {
 				writeCtx, cancel := context.WithTimeout(writeCtx, resultCacheWriteTimeout)
-				err = q.resultCacheBucket.Upload(writeCtx, job.key, bytes.NewReader(data))
+				tier, err = q.resultCacheStore.Put(writeCtx, job.key, data, job.ttl)
+				span.SetTag("tier", tier)
 				cancel()
 			}
 			if err != nil {
 				span.SetTag("outcome", "error")
-				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, "error").Inc()
+				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, tier, "error").Inc()
 			} else {
 				span.SetTag("outcome", "success")
-				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, "success").Inc()
+				q.resultCacheMetrics.writes.WithLabelValues(job.queryType, job.duration, tier, "success").Inc()
 			}
 			span.Finish()
 		}

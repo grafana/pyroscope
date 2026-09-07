@@ -7,7 +7,7 @@ Status: Draft
 Add a full-result cache for V2 `LabelNames`, `LabelValues`, and `Series` queries.
 The first query-backend receiving a request coordinates caching: it partitions
 the request into aligned, per-tenant duration tiers, reads matching results from
-a dedicated object-storage bucket, executes cache misses through the existing
+Redis and a dedicated object-storage bucket, executes cache misses through the existing
 query-backend DAG, merges reports, and asynchronously schedules cache writes.
 
 The query frontend continues to validate the request, query the metastore, and
@@ -34,7 +34,7 @@ blocks.
 - Cache complete metadata-query reports for aligned duration tiers.
 - Coordinate cache lookup, execution, merging, and writes in the first
   query-backend.
-- Store cache entries in a dedicated object-storage bucket.
+- Store cache entries in Redis, with large entries in a dedicated object-storage bucket.
 - Enable caching per tenant and invalidate entries through tenant generations.
 - Invalidate entries naturally when the fragment's block set changes.
 - Keep cache writes outside the query result delivery path.
@@ -62,7 +62,7 @@ coordinator:
 
 1. Determine whether the request is eligible for result caching.
 2. Split the request into aligned tiered fragments.
-3. Look up eligible fragments in the result-cache bucket.
+3. Look up eligible fragments in Redis and, for Redis placeholders, the result-cache bucket.
 4. Create fragment-specific plans for misses and uncached fragments.
 5. Execute those fragments through the normal query-backend DAG.
 6. Merge cached and executed reports.
@@ -92,7 +92,13 @@ overrides:
   tenant-a:
     result_cache_enabled: true
     result_cache_generation: 1
-    result_cache_fragment_durations: [24h, 2h, 15m]
+    result_cache_fragments:
+      - duration: 24h
+        ttl: 48h
+      - duration: 2h
+        ttl: 24h
+      - duration: 15m
+        ttl: 24h
     result_cache_metadata_service_name_min_query_duration: 7d
 ```
 
@@ -101,7 +107,13 @@ Defaults:
 ```yaml
 result_cache_enabled: false
 result_cache_generation: 1
-result_cache_fragment_durations: [24h, 2h, 15m]
+result_cache_fragments:
+  - duration: 24h
+    ttl: 48h
+  - duration: 2h
+    ttl: 24h
+  - duration: 15m
+    ttl: 24h
 result_cache_metadata_service_name_min_query_duration: 7d
 ```
 
@@ -110,27 +122,32 @@ Expose these through:
 ```go
 ResultCacheEnabled(tenantID string) bool
 ResultCacheGeneration(tenantID string) uint32
-ResultCacheFragmentDurations(tenantID string) []time.Duration
+ResultCacheFragments(tenantID string) []ResultCacheFragment
 ```
 
 The enable flag controls participation. Generation is only an invalidation
 namespace and must not double as an enable switch. Fragment durations are
-positive, unique, evenly divisible tiers. Durations must be multiples of 15
-minutes, and at most eight tiers may be configured per tenant. The minimum
-duration and tier-count limit bound request fan-out.
+positive, unique, evenly divisible tiers, and each Redis TTL is positive.
+Durations must be multiples of 15 minutes, and at most eight tiers may be
+configured per tenant. The minimum duration and tier-count limit bound request
+fan-out.
 
-## Dedicated cache bucket
+## Redis and cache bucket
 
-Provision a dedicated result-cache bucket through deployment infrastructure or
-IaC. Add a top-level `result_cache` configuration section with a separate
-object-store client configuration; do not reuse `storage`.
+Provision local Redis and a dedicated result-cache bucket through deployment
+infrastructure or IaC. Add a top-level `result_cache` configuration section
+with Redis and separate object-store client configuration; do not reuse
+`storage`. Both Redis and the bucket are required before result caching is
+enabled.
 
-The query-backend owns this client. Query frontends do not need credentials for
-the result-cache bucket.
+The query-backend owns these clients. Query frontends do not need credentials
+for Redis or the result-cache bucket.
 
-The separate bucket provides independent lifecycle policies, IAM permissions,
-cost accounting, and retention. Cache storage errors are fail-open: the query
-executes normally if the bucket is unconfigured or unavailable.
+Serialized entries smaller than 16 KiB are stored directly in Redis. Larger
+entries are uploaded to the bucket first, then represented in Redis by a
+placeholder with the fragment TTL. A Redis miss is a cache miss; a Redis
+placeholder authorizes the bucket read. Cache storage errors are fail-open: the
+query executes normally if Redis or the bucket is unavailable.
 
 The backend requires only read and create-or-replace permissions. Lifecycle
 management owns deletion.
@@ -212,7 +229,8 @@ Empty report lists are valid cache entries.
 An entry is served only when it unmarshals successfully and its stored cache
 identity exactly matches the expected query and sorted block list.
 
-- Object-not-found is a normal cache miss.
+- A Redis miss is a normal cache miss. A Redis placeholder whose object is
+  absent is also a normal cache miss.
 - A read failure is an `error` outcome. Execute normally and do not enqueue a
   write because the current object state is unknown.
 - A corrupt protobuf is an `error` outcome. Execute normally; a successful
@@ -237,7 +255,8 @@ pool then:
 1. Builds and marshals `ResultCacheEntry`.
 2. Uses a service-scoped context with a write timeout, never the request
    context.
-3. Uploads the object to the result-cache bucket.
+3. Stores entries smaller than 16 KiB directly in Redis; uploads larger
+   entries to the bucket, then writes a Redis placeholder.
 4. Records the write outcome.
 
 The queue is bounded. If it is full, the backend drops the write immediately;
@@ -247,6 +266,12 @@ entry.
 Do not enqueue after cache collisions, unknown-state read errors, query errors,
 request cancellation, or for ineligible fragments. Corrupt entries may be
 replaced after a successful execution.
+
+All fragment lookups share the configured `result_cache.lookup_timeout` budget,
+which defaults to one second. Completed hits are retained when the budget is
+exhausted; outstanding lookups are canceled and their fragments execute
+normally. Confirmed misses may still enqueue asynchronous writes, but timed-out
+or failed lookups never do because their cache state is unknown.
 
 The writer belongs to the query-backend service lifecycle. On startup it
 creates the queue and starts its workers. On shutdown it stops accepting new
@@ -285,7 +310,8 @@ Emit global, low-cardinality query-backend counters:
 pyroscope_query_backend_result_cache_lookups_total{
   query_type="label_names",
   fragment_duration="24h",
-  outcome="hit|miss|error|collision"
+  tier="redis|object|unknown",
+  outcome="hit|miss|error|collision|timeout"
 }
 ```
 
@@ -293,6 +319,7 @@ pyroscope_query_backend_result_cache_lookups_total{
 pyroscope_query_backend_result_cache_writes_total{
   query_type="label_names",
   fragment_duration="24h",
+  tier="redis|object|unknown",
   outcome="success|error|dropped"
 }
 ```

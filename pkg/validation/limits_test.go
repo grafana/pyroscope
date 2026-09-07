@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v3"
+
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 func TestLimitsTagsYamlMatchJson(t *testing.T) {
@@ -35,26 +37,25 @@ func TestLimitsTagsYamlMatchJson(t *testing.T) {
 	assert.Empty(t, mismatch, "expected no mismatched JSON and YAML tags")
 }
 
-func TestResultCacheFragmentDurations(t *testing.T) {
+func TestResultCacheFragments(t *testing.T) {
 	tests := []struct {
 		name    string
-		values  []model.Duration
+		values  []phlaremodel.ResultCacheFragment
 		wantErr string
 	}{
-		{name: "valid", values: []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}},
-		{name: "valid unordered", values: []model.Duration{model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour)}},
+		{name: "valid", values: []phlaremodel.ResultCacheFragment{{Duration: model.Duration(24 * time.Hour), TTL: model.Duration(48 * time.Hour)}, {Duration: model.Duration(2 * time.Hour), TTL: model.Duration(24 * time.Hour)}, {Duration: model.Duration(15 * time.Minute), TTL: model.Duration(24 * time.Hour)}}},
+		{name: "valid unordered", values: []phlaremodel.ResultCacheFragment{{Duration: model.Duration(15 * time.Minute), TTL: model.Duration(time.Hour)}, {Duration: model.Duration(24 * time.Hour), TTL: model.Duration(time.Hour)}, {Duration: model.Duration(2 * time.Hour), TTL: model.Duration(time.Hour)}}},
 		{name: "empty", wantErr: "must not be empty"},
-		{name: "duplicate", values: []model.Duration{model.Duration(time.Hour), model.Duration(time.Hour)}, wantErr: "duplicated"},
-		{name: "not divisible", values: []model.Duration{model.Duration(45 * time.Minute), model.Duration(30 * time.Minute)}, wantErr: "evenly divisible"},
-		{name: "sub-millisecond", values: []model.Duration{model.Duration(time.Microsecond)}, wantErr: "whole number of milliseconds"},
-		{name: "below minimum", values: []model.Duration{model.Duration(5 * time.Minute)}, wantErr: "must be at least"},
-		{name: "long duration", values: []model.Duration{model.Duration(7 * 24 * time.Hour), model.Duration(24 * time.Hour), model.Duration(15 * time.Minute)}},
-		{name: "not 15 minute multiple", values: []model.Duration{model.Duration(20 * time.Minute)}, wantErr: "must be a multiple"},
+		{name: "duplicate", values: []phlaremodel.ResultCacheFragment{{Duration: model.Duration(time.Hour), TTL: model.Duration(time.Hour)}, {Duration: model.Duration(time.Hour), TTL: model.Duration(time.Hour)}}, wantErr: "duplicated"},
+		{name: "not divisible", values: []phlaremodel.ResultCacheFragment{{Duration: model.Duration(45 * time.Minute), TTL: model.Duration(time.Hour)}, {Duration: model.Duration(30 * time.Minute), TTL: model.Duration(time.Hour)}}, wantErr: "evenly divisible"},
+		{name: "sub-millisecond", values: []phlaremodel.ResultCacheFragment{{Duration: model.Duration(time.Microsecond), TTL: model.Duration(time.Hour)}}, wantErr: "whole number of milliseconds"},
+		{name: "below minimum", values: []phlaremodel.ResultCacheFragment{{Duration: model.Duration(5 * time.Minute), TTL: model.Duration(time.Hour)}}, wantErr: "must be at least"},
+		{name: "zero TTL", values: []phlaremodel.ResultCacheFragment{{Duration: model.Duration(15 * time.Minute)}}, wantErr: "TTL"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := validateResultCacheFragmentDurations(test.values)
+			err := validateResultCacheFragments(test.values)
 			if test.wantErr == "" {
 				require.NoError(t, err)
 				return
@@ -63,22 +64,22 @@ func TestResultCacheFragmentDurations(t *testing.T) {
 		})
 	}
 
-	overrides, err := NewOverrides(Limits{ResultCacheFragmentDurations: []model.Duration{
-		model.Duration(15 * time.Minute), model.Duration(24 * time.Hour), model.Duration(2 * time.Hour),
+	overrides, err := NewOverrides(Limits{ResultCacheFragments: []phlaremodel.ResultCacheFragment{
+		{Duration: model.Duration(15 * time.Minute), TTL: model.Duration(24 * time.Hour)}, {Duration: model.Duration(24 * time.Hour), TTL: model.Duration(48 * time.Hour)}, {Duration: model.Duration(2 * time.Hour), TTL: model.Duration(24 * time.Hour)},
 	}}, nil)
 	require.NoError(t, err)
-	require.Equal(t, []time.Duration{24 * time.Hour, 2 * time.Hour, 15 * time.Minute}, overrides.ResultCacheFragmentDurations("tenant-a"))
+	require.Equal(t, []phlaremodel.ResultCacheFragment{{Duration: model.Duration(24 * time.Hour), TTL: model.Duration(48 * time.Hour)}, {Duration: model.Duration(2 * time.Hour), TTL: model.Duration(24 * time.Hour)}, {Duration: model.Duration(15 * time.Minute), TTL: model.Duration(24 * time.Hour)}}, overrides.ResultCacheFragments("tenant-a"))
 
 	var limits Limits
-	require.NoError(t, yaml.Unmarshal([]byte("result_cache_fragment_durations: [1d, 2h, 15m]"), &limits))
-	require.Equal(t, []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
-	require.Error(t, yaml.Unmarshal([]byte("result_cache_fragment_durations: 1d,2h,15m"), &limits))
+	require.NoError(t, yaml.Unmarshal([]byte("result_cache_fragments: [{duration: 1d, ttl: 2d}, {duration: 2h, ttl: 1d}, {duration: 15m, ttl: 1d}]"), &limits))
+	require.Equal(t, []phlaremodel.ResultCacheFragment{{Duration: model.Duration(24 * time.Hour), TTL: model.Duration(48 * time.Hour)}, {Duration: model.Duration(2 * time.Hour), TTL: model.Duration(24 * time.Hour)}, {Duration: model.Duration(15 * time.Minute), TTL: model.Duration(24 * time.Hour)}}, limits.ResultCacheFragments)
+	require.Error(t, yaml.Unmarshal([]byte("result_cache_fragments: 1d,2h,15m"), &limits))
 
 	flags := flag.NewFlagSet("test", flag.ContinueOnError)
 	limits.RegisterFlags(flags)
-	require.Equal(t, "1d,2h,15m", flags.Lookup("result-cache.fragment-durations").DefValue)
-	require.NoError(t, flags.Parse([]string{"-result-cache.fragment-durations=1d,2h,15m"}))
-	require.Equal(t, []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}, limits.ResultCacheFragmentDurations)
+	require.Equal(t, "1d:2d,2h:1d,15m:1d", flags.Lookup("result-cache.fragments").DefValue)
+	require.NoError(t, flags.Parse([]string{"-result-cache.fragments=1d:2d,2h:1d,15m:1d"}))
+	require.Equal(t, []phlaremodel.ResultCacheFragment{{Duration: model.Duration(24 * time.Hour), TTL: model.Duration(48 * time.Hour)}, {Duration: model.Duration(2 * time.Hour), TTL: model.Duration(24 * time.Hour)}, {Duration: model.Duration(15 * time.Minute), TTL: model.Duration(24 * time.Hour)}}, limits.ResultCacheFragments)
 }
 
 func TestResultCacheMetadataServiceNameMinQueryDuration(t *testing.T) {

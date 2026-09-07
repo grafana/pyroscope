@@ -2,6 +2,8 @@ package validation
 
 import (
 	"time"
+
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 type MockLimits struct {
@@ -28,7 +30,7 @@ type MockLimits struct {
 	RejectNewerThanValue                                time.Duration
 	ResultCacheEnabledValue                             bool
 	ResultCacheGenerationValue                          uint32
-	ResultCacheFragmentDurationsValue                   []time.Duration
+	ResultCacheFragmentsValue                           []phlaremodel.ResultCacheFragment
 	ResultCacheMetadataServiceNameMinQueryDurationValue time.Duration
 
 	MaxProfileSizeBytesValue              int
@@ -113,8 +115,8 @@ func (m MockLimits) RejectNewerThan(userID string) time.Duration {
 
 func (m MockLimits) ResultCacheEnabled(string) bool      { return m.ResultCacheEnabledValue }
 func (m MockLimits) ResultCacheGeneration(string) uint32 { return m.ResultCacheGenerationValue }
-func (m MockLimits) ResultCacheFragmentDurations(string) []time.Duration {
-	return m.ResultCacheFragmentDurationsValue
+func (m MockLimits) ResultCacheFragments(string) []phlaremodel.ResultCacheFragment {
+	return m.ResultCacheFragmentsValue
 }
 func (m MockLimits) ResultCacheMetadataServiceNameMinQueryDuration(string) time.Duration {
 	return m.ResultCacheMetadataServiceNameMinQueryDurationValue

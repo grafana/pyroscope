@@ -491,9 +491,9 @@ limits:
   # overrides.
   # result_cache_generation: 1
 
-  # Comma-separated list of aligned result-cache fragment durations. The
-  # smallest duration is also the minimum cache age.
-  # result_cache_fragment_durations: 1d,2h,15m
+  # Comma-separated result-cache duration:Redis-TTL pairs. The smallest duration
+  # is also the minimum cache age.
+  # result_cache_fragments: 1d:2d,2h:1d,15m:1d
 
   # Bypass result caching for metadata queries with a service_name matcher below
   # this query duration. 0 disables this bypass.
@@ -960,6 +960,27 @@ result_cache:
   # only contain digits and English alphabet characters, hyphens, underscores,
   # dots and forward slashes.
   # prefix: ""
+
+  redis:
+    # Redis server address for the result cache. Result caching requires Redis
+    # and result-cache object storage.
+    # address: ""
+
+    # Redis username for the result cache.
+    # username: ""
+
+    # Redis password for the result cache.
+    # password: ""
+
+    # Redis database for the result cache.
+    # db: 0
+
+    # Use TLS for result-cache Redis connections.
+    # tls_enabled: false
+
+  # Maximum time a request may spend looking up result-cache entries. 0 disables
+  # the timeout.
+  # lookup_timeout: 1s
 
 self_profiling:
   # When running in single binary (--target=all) Pyroscope will push (Go SDK)

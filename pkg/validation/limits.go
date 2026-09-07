@@ -32,29 +32,37 @@ const (
 	MinCompactorPartialBlockDeletionDelay = 4 * time.Hour
 )
 
-// durationListFlag adapts []model.Duration for the comma-separated CLI flag.
-// The Limits field itself remains a plain slice so YAML and JSON use model.Duration.
-type durationListFlag []model.Duration
+// resultCacheFragmentListFlag adapts result-cache fragments for the
+// comma-separated CLI flag. YAML and JSON use the typed struct directly.
+type resultCacheFragmentListFlag []phlaremodel.ResultCacheFragment
 
-func (d *durationListFlag) String() string {
+func (d *resultCacheFragmentListFlag) String() string {
 	values := make([]string, len(*d))
 	for i, value := range *d {
-		values[i] = value.String()
+		values[i] = value.Duration.String() + ":" + value.TTL.String()
 	}
 	return strings.Join(values, ",")
 }
 
-func (d *durationListFlag) Set(value string) error {
+func (d *resultCacheFragmentListFlag) Set(value string) error {
 	values := strings.Split(value, ",")
-	result := make([]model.Duration, 0, len(values))
+	result := make([]phlaremodel.ResultCacheFragment, 0, len(values))
 	for _, value := range values {
-		parsed, err := model.ParseDuration(strings.TrimSpace(value))
+		parts := strings.Split(strings.TrimSpace(value), ":")
+		if len(parts) != 2 {
+			return fmt.Errorf("result cache fragment %q must be duration:ttl", value)
+		}
+		duration, err := model.ParseDuration(strings.TrimSpace(parts[0]))
 		if err != nil {
 			return err
 		}
-		result = append(result, parsed)
+		ttl, err := model.ParseDuration(strings.TrimSpace(parts[1]))
+		if err != nil {
+			return err
+		}
+		result = append(result, phlaremodel.ResultCacheFragment{Duration: duration, TTL: ttl})
 	}
-	*d = durationListFlag(result)
+	*d = resultCacheFragmentListFlag(result)
 	return nil
 }
 
@@ -146,12 +154,12 @@ type Limits struct {
 	S3SSEKMSEncryptionContext string `yaml:"s3_sse_kms_encryption_context" json:"s3_sse_kms_encryption_context" doc:"nocli|description=S3 server-side encryption KMS encryption context. If unset and the key ID override is set, the encryption context will not be provided to S3. Ignored if the SSE type override is not set."`
 
 	// Ensure profiles are dated within the IngestionWindow of the distributor.
-	RejectOlderThan                                model.Duration   `yaml:"reject_older_than" json:"reject_older_than"`
-	RejectNewerThan                                model.Duration   `yaml:"reject_newer_than" json:"reject_newer_than"`
-	ResultCacheEnabled                             bool             `yaml:"result_cache_enabled" json:"result_cache_enabled"`
-	ResultCacheGeneration                          uint             `yaml:"result_cache_generation" json:"result_cache_generation"`
-	ResultCacheFragmentDurations                   []model.Duration `yaml:"result_cache_fragment_durations" json:"result_cache_fragment_durations"`
-	ResultCacheMetadataServiceNameMinQueryDuration model.Duration   `yaml:"result_cache_metadata_service_name_min_query_duration" json:"result_cache_metadata_service_name_min_query_duration"`
+	RejectOlderThan                                model.Duration                    `yaml:"reject_older_than" json:"reject_older_than"`
+	RejectNewerThan                                model.Duration                    `yaml:"reject_newer_than" json:"reject_newer_than"`
+	ResultCacheEnabled                             bool                              `yaml:"result_cache_enabled" json:"result_cache_enabled"`
+	ResultCacheGeneration                          uint                              `yaml:"result_cache_generation" json:"result_cache_generation"`
+	ResultCacheFragments                           []phlaremodel.ResultCacheFragment `yaml:"result_cache_fragments" json:"result_cache_fragments"`
+	ResultCacheMetadataServiceNameMinQueryDuration model.Duration                    `yaml:"result_cache_metadata_service_name_min_query_duration" json:"result_cache_metadata_service_name_min_query_duration"`
 
 	// Write path overrides used in distributor.
 	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
@@ -189,8 +197,12 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&l.ResultCacheEnabled, "result-cache.enabled", false, "Enable query result caching. This sets the default for tenant overrides.")
 	f.UintVar(&l.ResultCacheGeneration, "result-cache.generation", 1, "Result-cache invalidation generation. This sets the default for tenant overrides.")
-	l.ResultCacheFragmentDurations = []model.Duration{model.Duration(24 * time.Hour), model.Duration(2 * time.Hour), model.Duration(15 * time.Minute)}
-	f.Var((*durationListFlag)(&l.ResultCacheFragmentDurations), "result-cache.fragment-durations", "Comma-separated list of aligned result-cache fragment durations. The smallest duration is also the minimum cache age.")
+	l.ResultCacheFragments = []phlaremodel.ResultCacheFragment{
+		{Duration: model.Duration(24 * time.Hour), TTL: model.Duration(48 * time.Hour)},
+		{Duration: model.Duration(2 * time.Hour), TTL: model.Duration(24 * time.Hour)},
+		{Duration: model.Duration(15 * time.Minute), TTL: model.Duration(24 * time.Hour)},
+	}
+	f.Var((*resultCacheFragmentListFlag)(&l.ResultCacheFragments), "result-cache.fragments", "Comma-separated result-cache duration:Redis-TTL pairs. The smallest duration is also the minimum cache age.")
 	l.ResultCacheMetadataServiceNameMinQueryDuration = model.Duration(7 * 24 * time.Hour)
 	f.Var(&l.ResultCacheMetadataServiceNameMinQueryDuration, "result-cache.metadata-service-name-min-query-duration", "Bypass result caching for metadata queries with a service_name matcher below this query duration. 0 disables this bypass.")
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
@@ -293,8 +305,8 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Validate validates that this limits config is valid.
 func (l *Limits) Validate() error {
-	if l.ResultCacheEnabled || len(l.ResultCacheFragmentDurations) > 0 {
-		if err := validateResultCacheFragmentDurations(l.ResultCacheFragmentDurations); err != nil {
+	if l.ResultCacheEnabled || len(l.ResultCacheFragments) > 0 {
+		if err := validateResultCacheFragments(l.ResultCacheFragments); err != nil {
 			return err
 		}
 	}
@@ -317,7 +329,7 @@ func (l *Limits) Validate() error {
 	return nil
 }
 
-func validateResultCacheFragmentDurations(values []model.Duration) error {
+func validateResultCacheFragments(values []phlaremodel.ResultCacheFragment) error {
 	if len(values) == 0 {
 		return fmt.Errorf("result cache fragment durations must not be empty")
 	}
@@ -326,7 +338,7 @@ func validateResultCacheFragmentDurations(values []model.Duration) error {
 	}
 	durations := make([]time.Duration, len(values))
 	for i, value := range values {
-		durations[i] = time.Duration(value)
+		durations[i] = time.Duration(value.Duration)
 		if durations[i] <= 0 || durations[i]%time.Millisecond != 0 {
 			return fmt.Errorf("result cache fragment duration %q must be a positive whole number of milliseconds", durations[i])
 		}
@@ -335,6 +347,9 @@ func validateResultCacheFragmentDurations(values []model.Duration) error {
 		}
 		if durations[i]%minResultCacheFragmentDuration != 0 {
 			return fmt.Errorf("result cache fragment duration %q must be a multiple of %q", durations[i], minResultCacheFragmentDuration)
+		}
+		if value.TTL <= 0 {
+			return fmt.Errorf("result cache fragment TTL %q must be positive", time.Duration(value.TTL))
 		}
 	}
 	sort.Slice(durations, func(i, j int) bool { return durations[i] > durations[j] })
@@ -648,14 +663,11 @@ func (o *Overrides) ResultCacheGeneration(tenantID string) uint32 {
 	return uint32(o.getOverridesForTenant(tenantID).ResultCacheGeneration)
 }
 
-func (o *Overrides) ResultCacheFragmentDurations(tenantID string) []time.Duration {
-	configured := o.getOverridesForTenant(tenantID).ResultCacheFragmentDurations
-	durations := make([]time.Duration, len(configured))
-	for i, duration := range configured {
-		durations[i] = time.Duration(duration)
-	}
-	sort.Slice(durations, func(i, j int) bool { return durations[i] > durations[j] })
-	return durations
+func (o *Overrides) ResultCacheFragments(tenantID string) []phlaremodel.ResultCacheFragment {
+	configured := o.getOverridesForTenant(tenantID).ResultCacheFragments
+	fragments := append([]phlaremodel.ResultCacheFragment(nil), configured...)
+	sort.Slice(fragments, func(i, j int) bool { return fragments[i].Duration > fragments[j].Duration })
+	return fragments
 }
 
 func (o *Overrides) ResultCacheMetadataServiceNameMinQueryDuration(tenantID string) time.Duration {

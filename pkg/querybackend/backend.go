@@ -19,7 +19,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -58,13 +57,14 @@ type QueryBackend struct {
 	blockReader   QueryHandler
 	hostname      string
 
-	resultCacheBucket    objstore.Bucket
-	resultCacheOverrides ResultCacheOverrides
-	resultCacheMetrics   *resultCacheMetrics
-	resultCacheWrites    chan resultCacheWriteJob
-	resultCacheWorkers   sync.WaitGroup
-	resultCacheStop      context.CancelFunc
-	now                  func() time.Time
+	resultCacheStore         ResultCacheStore
+	resultCacheOverrides     ResultCacheOverrides
+	resultCacheLookupTimeout time.Duration
+	resultCacheMetrics       *resultCacheMetrics
+	resultCacheWrites        chan resultCacheWriteJob
+	resultCacheWorkers       sync.WaitGroup
+	resultCacheStop          context.CancelFunc
+	now                      func() time.Time
 }
 
 func New(
@@ -73,23 +73,25 @@ func New(
 	reg prometheus.Registerer,
 	backendClient QueryHandler,
 	blockReader QueryHandler,
-	resultCacheBucket objstore.Bucket,
+	resultCacheStore ResultCacheStore,
 	resultCacheOverrides ResultCacheOverrides,
+	resultCacheLookupTimeout time.Duration,
 ) (*QueryBackend, error) {
 	hostname, _ := os.Hostname()
 	q := QueryBackend{
-		config:               config,
-		logger:               logger,
-		reg:                  reg,
-		backendClient:        backendClient,
-		blockReader:          blockReader,
-		hostname:             hostname,
-		resultCacheBucket:    resultCacheBucket,
-		resultCacheOverrides: resultCacheOverrides,
-		resultCacheMetrics:   newResultCacheMetrics(reg),
-		now:                  time.Now,
+		config:                   config,
+		logger:                   logger,
+		reg:                      reg,
+		backendClient:            backendClient,
+		blockReader:              blockReader,
+		hostname:                 hostname,
+		resultCacheStore:         resultCacheStore,
+		resultCacheOverrides:     resultCacheOverrides,
+		resultCacheLookupTimeout: resultCacheLookupTimeout,
+		resultCacheMetrics:       newResultCacheMetrics(reg),
+		now:                      time.Now,
 	}
-	if resultCacheBucket != nil {
+	if resultCacheStore != nil {
 		q.resultCacheWrites = make(chan resultCacheWriteJob, resultCacheQueueSize)
 	}
 	q.service = services.NewBasicService(q.starting, q.running, q.stopping)
@@ -98,7 +100,7 @@ func New(
 
 func (q *QueryBackend) Service() services.Service { return q.service }
 func (q *QueryBackend) starting(context.Context) error {
-	if q.resultCacheBucket != nil {
+	if q.resultCacheStore != nil {
 		ctx, cancel := context.WithCancel(context.Background())
 		q.resultCacheStop = cancel
 		q.resultCacheWorkers.Add(resultCacheWorkers)
@@ -119,8 +121,8 @@ func (q *QueryBackend) stopping(error) error {
 		q.resultCacheStop()
 		q.resultCacheWorkers.Wait()
 	}
-	if q.resultCacheBucket != nil {
-		return q.resultCacheBucket.Close()
+	if q.resultCacheStore != nil {
+		return q.resultCacheStore.Close()
 	}
 	return nil
 }

@@ -401,6 +401,33 @@ result_cache:
   # CLI flag: -result-cache.storage-prefix
   [storage_prefix: <string> | default = ""]
 
+  redis:
+    # Redis server address for the result cache. Result caching requires Redis
+    # and result-cache object storage.
+    # CLI flag: -result-cache.redis.address
+    [address: <string> | default = ""]
+
+    # Redis username for the result cache.
+    # CLI flag: -result-cache.redis.username
+    [username: <string> | default = ""]
+
+    # Redis password for the result cache.
+    # CLI flag: -result-cache.redis.password
+    [password: <string> | default = ""]
+
+    # Redis database for the result cache.
+    # CLI flag: -result-cache.redis.db
+    [db: <int> | default = 0]
+
+    # Use TLS for result-cache Redis connections.
+    # CLI flag: -result-cache.redis.tls-enabled
+    [tls_enabled: <boolean> | default = false]
+
+  # Maximum time a request may spend looking up result-cache entries. 0 disables
+  # the timeout.
+  # CLI flag: -result-cache.lookup-timeout
+  [lookup_timeout: <duration> | default = 1s]
+
 self_profiling:
   # When running in single binary (--target=all) Pyroscope will push (Go SDK)
   # profiles to itself. Set to true to disable self-profiling.
@@ -3523,10 +3550,10 @@ distributor_usage_groups:
 # CLI flag: -result-cache.generation
 [result_cache_generation: <int> | default = 1]
 
-# Comma-separated list of aligned result-cache fragment durations. The smallest
-# duration is also the minimum cache age.
-# CLI flag: -result-cache.fragment-durations
-[result_cache_fragment_durations: <list of durations> | default = 1d,2h,15m]
+# Comma-separated result-cache duration:Redis-TTL pairs. The smallest duration
+# is also the minimum cache age.
+# CLI flag: -result-cache.fragments
+[result_cache_fragments: <list of ResultCacheFragments> | default = 1d:2d,2h:1d,15m:1d]
 
 # Bypass result caching for metadata queries with a service_name matcher below
 # this query duration. 0 disables this bypass.
