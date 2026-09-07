@@ -236,10 +236,10 @@ func dumpDataset(
 	if err := ds.Open(ctx, block.SectionTSDB, block.SectionProfiles, block.SectionSymbols); err != nil {
 		return 0, fmt.Errorf("failed to open dataset: %w", err)
 	}
-	defer ds.Close()
 
 	it, err := block.NewProfileRowIterator(ds)
 	if err != nil {
+		_ = ds.Close()
 		return 0, fmt.Errorf("failed to create profile row iterator: %w", err)
 	}
 	defer it.Close()
