@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
@@ -25,7 +26,7 @@ import (
 
 type Config struct {
 	Address          string            `yaml:"address" category:"advanced"`
-	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits must be disabled: its retries ignore the server's pushback."`
+	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
 	ClientTimeout    time.Duration     `yaml:"client_timeout" category:"advanced"`
 }
 
@@ -39,12 +40,16 @@ func (cfg *Config) Validate() error {
 	if cfg.Address == "" {
 		return fmt.Errorf("query-backend.address is required")
 	}
-	// dskit's rate-limit retrier retries every RESOURCE_EXHAUSTED error without
-	// honoring grpc-retry-pushback-ms, which would retry oversized responses.
-	if cfg.GRPCClientConfig.BackoffOnRatelimits {
-		return fmt.Errorf("query-backend.grpc-client-config.backoff-on-ratelimits must be disabled: its retries ignore grpc-retry-pushback-ms")
-	}
 	return cfg.GRPCClientConfig.Validate()
+}
+
+// DisableClientRateLimitRetries turns off dskit's retrier, which ignores grpc-retry-pushback-ms.
+func (cfg *Config) DisableClientRateLimitRetries(logger log.Logger) {
+	if !cfg.GRPCClientConfig.BackoffOnRatelimits {
+		return
+	}
+	level.Warn(logger).Log("msg", "ignoring query-backend.grpc-client-config.backoff-on-ratelimits: its retries ignore grpc-retry-pushback-ms")
+	cfg.GRPCClientConfig.BackoffOnRatelimits = false
 }
 
 type QueryHandler interface {

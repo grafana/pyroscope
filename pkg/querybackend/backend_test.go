@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"testing"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
@@ -111,12 +110,12 @@ func TestQueryBackend_NoRetrySignal_SiblingErrorWins(t *testing.T) {
 	scheduled := make(chan struct{}, 1)
 
 	handler := &testQueryHandler{
-		invoke: func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+		invoke: func(ctx context.Context, _ *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 			select {
 			case scheduled <- struct{}{}:
 				return nil, first
 			default:
-				time.Sleep(50 * time.Millisecond)
+				<-ctx.Done()
 				return nil, undeliverable
 			}
 		},
@@ -137,11 +136,12 @@ func TestQueryBackend_NoRetrySignal_SiblingErrorWins(t *testing.T) {
 	require.True(t, pushback.IsNoRetry(stream.trailer))
 }
 
-func TestConfig_Validate(t *testing.T) {
+func TestConfig_DisableClientRateLimitRetries(t *testing.T) {
 	var cfg Config
 	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
 	require.NoError(t, cfg.Validate())
 
 	cfg.GRPCClientConfig.BackoffOnRatelimits = true
-	require.ErrorContains(t, cfg.Validate(), "backoff-on-ratelimits")
+	cfg.DisableClientRateLimitRetries(log.NewNopLogger())
+	require.False(t, cfg.GRPCClientConfig.BackoffOnRatelimits)
 }

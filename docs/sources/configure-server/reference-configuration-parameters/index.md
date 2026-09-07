@@ -1745,8 +1745,7 @@ The `query_backend` block configures the query-backend (V2 read path).
 [address: <string> | default = "localhost:9095"]
 
 # Configures the gRPC client used to communicate with query-backends.
-# backoff_on_ratelimits must be disabled: its retries ignore the server's
-# pushback.
+# backoff_on_ratelimits is ignored: its retries ignore the server's pushback.
 # The CLI flags prefix for this block configuration is:
 # query-backend.grpc-client-config
 [grpc_client_config: <grpc_client>]
