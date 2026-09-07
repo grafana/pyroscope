@@ -378,8 +378,9 @@ type profileRowIterator struct {
 	labels           immutableLabels
 }
 
-// NewProfileRowIterator takes ownership of the dataset: closing the
-// iterator closes it. The caller must not close the dataset itself.
+// NewProfileRowIterator takes ownership of one open dataset reference on
+// success. Closing the iterator releases that reference. On error, ownership
+// remains with the caller.
 func NewProfileRowIterator(s *Dataset) (iter.Iterator[ProfileEntry], error) {
 	k, v := index.AllPostingsKey()
 	tsdb := s.Index()
