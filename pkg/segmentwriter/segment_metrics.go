@@ -41,7 +41,7 @@ func newSegmentMetrics(reg prometheus.Registerer) *segmentMetrics {
 			prometheus.HistogramOpts{
 				Namespace: "pyroscope",
 				Subsystem: "segment_writer",
-				Name:      "received_bytes",
+				Name:      "received_decompressed_bytes",
 				Help: "Uncompressed size of the profiles received for ingestion, in bytes. " +
 					"Measured as received, before the profile is split into datasets.",
 				Buckets:                         prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 20),
