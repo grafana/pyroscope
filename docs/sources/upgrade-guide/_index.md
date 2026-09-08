@@ -23,7 +23,8 @@ This upgrade guide applies to on-premise installations and not for Grafana Cloud
 
 Version 2.0 introduces a redesigned storage architecture that replaces the v1 write and read paths with new components. If you run Pyroscope on-premises and want to take advantage of improved write throughput, simplified operations, and better compaction, you need to migrate from v1 to v2 storage.
 
-The v2 architecture replaces ingesters with **segment writers** that write directly to object storage, adds a **metastore** for block metadata, and introduces **compaction workers** and a **query backend**. Because the storage format and component topology are different, upgrading to v2 is a migration rather than a configuration change.
+The v2 architecture replaces ingesters with segment writers that write directly to object storage, adds a metastore for block metadata, and introduces compaction workers and a query backend.
+Because the storage format and component topology are different, upgrading to v2 is a migration rather than a configuration change.
 
 For a full description of what changed and why, refer to [About the v2 architecture](../reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture/).
 
