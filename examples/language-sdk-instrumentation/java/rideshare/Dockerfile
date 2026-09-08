@@ -19,7 +19,7 @@ RUN ./gradlew assemble --no-daemon
 
 FROM sapmachine:21-jdk-headless
 
-RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
+RUN apt-get update && apt-get upgrade -y && apt-get install ca-certificates -y && update-ca-certificates
 
 ENV PYROSCOPE_APPLICATION_NAME=rideshare.java.push.app
 ENV PYROSCOPE_FORMAT=jfr
