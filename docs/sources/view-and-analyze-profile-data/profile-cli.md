@@ -539,7 +539,7 @@ By default, it looks for samples within the last hour, though this can be contro
       # By default, the profile is saved to the current directory as `default.pgo`
       ```
 
-## Replay profile data from one cell to another
+## Replay profile data from one deployment to another
 
 Use the `profilecli replay` commands to capture profile data from a source deployment and replay it into a destination deployment.
 This is a two-step workflow: `replay dump` writes matching profiles to a standalone file, and `replay push` continuously sends that file to another deployment.

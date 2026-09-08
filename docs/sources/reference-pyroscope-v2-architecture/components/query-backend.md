@@ -40,7 +40,7 @@ When the distributor retains sampled-out profiles, it stores them as totals-only
 
 The query-backend handles these series differently depending on the query:
 
-- Stack-based queries, such as flame graph, tree, and pprof, always exclude `__sampled__` series, because they have no stacktraces to contribute.
+- Stack-based queries, such as flame graph, tree, pprof, and heatmap, always exclude `__sampled__` series, because they have no stacktraces to contribute.
 - Time-series and totals queries include `__sampled__` series only when the `include_stripped_profiles` limit is enabled for the querying tenant (default `false`). For a multi-tenant query, these series are included only when the setting is enabled for every tenant.
 
 To configure this limit, refer to [`include_stripped_profiles`](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters/#limits) in the configuration reference.

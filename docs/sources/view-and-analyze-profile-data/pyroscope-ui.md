@@ -49,7 +49,7 @@ As you type, the query bar suggests matching label names and label values based 
 - When you type a label name, the query bar suggests available label names.
 - When you type a label value, after `=`, the query bar suggests values for that label.
 
-Suggestions are scoped to the selected time range and to the other label filters already in the query. Continue typing to filter the suggestions, then select one to add it to the query. Autocomplete supports the equals (`=`) matcher.
+Suggestions are scoped to the selected time range and to the other label filters already in the query. Continue typing to filter the suggestions, then select one to add it to the query.
 
 <!-- Add a screenshot or recording of query bar autocomplete. -->
 
