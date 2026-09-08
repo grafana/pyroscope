@@ -36,14 +36,14 @@ Unlike v1 where queries may need to access ingesters for recent data, the v2 que
 
 ## Query sampled-out profiles
 
-When the distributor retains sampled-out profiles, it stores them as totals-only series marked with the `__sampled__="true"` label. Refer to [Retain sampled-out profiles](../distributor/#retain-sampled-out-profiles).
+When the distributor retains sampled-out profiles, it stores them as totals-only series marked with the `__sampled__="true"` label. Refer to [Retain sampled-out profiles](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/components/distributor/#retain-sampled-out-profiles).
 
 The query-backend handles these series differently depending on the query:
 
 - Stack-based queries, such as flame graph, tree, and pprof, always exclude `__sampled__` series, because they have no stacktraces to contribute.
 - Time-series and totals queries include `__sampled__` series only when the `include_stripped_profiles` limit is enabled for the querying tenant (default `false`). For a multi-tenant query, these series are included only when the setting is enabled for every tenant.
 
-To configure this limit, refer to [`include_stripped_profiles`](../../../configure-server/reference-configuration-parameters/#limits) in the configuration reference.
+To configure this limit, refer to [`include_stripped_profiles`](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters/#limits) in the configuration reference.
 
 ## Stateless design
 

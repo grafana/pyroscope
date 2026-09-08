@@ -55,9 +55,9 @@ When enabled, the distributor reduces a sampled-out profile to totals instead of
 - Sample labels are removed, so span- and trace-attributed breakdowns aren't available for these totals.
 - Each retained series is marked with the `__sampled__="true"` label.
 
-Whether these retained profiles appear in query results is controlled separately on the read path. Refer to [Query sampled-out profiles](../query-backend/#query-sampled-out-profiles).
+Whether these retained profiles appear in query results is controlled separately on the read path. Refer to [Query sampled-out profiles](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/components/query-backend/#query-sampled-out-profiles).
 
-To configure this limit, refer to [`keep_stripped_profiles`](../../../configure-server/reference-configuration-parameters/#limits) in the configuration reference.
+To configure this limit, refer to [`keep_stripped_profiles`](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters/#limits) in the configuration reference.
 
 ## Load balancing
 
