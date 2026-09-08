@@ -42,9 +42,9 @@ func (l LogSpanParametersWrapper) logWithRequestMetadata(ctx context.Context, re
 }
 
 // logQuery emits a "query started" line, executes fn, then emits a "query
-// finished" line with latency and (optionally) humanized bytes fetched.
-// reqFields must be a flat key-value list of request-scoped fields that will
-// appear on both lines.
+// finished" line with latency, the error if fn failed, and (optionally)
+// humanized bytes fetched. reqFields must be a flat key-value list of
+// request-scoped fields that will appear on both lines.
 func (l LogSpanParametersWrapper) logQuery(
 	logger *SpanLogger,
 	stats *QueryStats,
@@ -57,10 +57,13 @@ func (l LogSpanParametersWrapper) logQuery(
 	err := fn()
 	latency := time.Since(t)
 
-	finishFields := make([]interface{}, 0, len(reqFields)+8)
+	finishFields := make([]interface{}, 0, len(reqFields)+10)
 	finishFields = append(finishFields, "msg", "query finished")
 	finishFields = append(finishFields, reqFields...)
 	finishFields = append(finishFields, "latency", latency)
+	if err != nil {
+		finishFields = append(finishFields, "err", err)
+	}
 	if stats != nil {
 		finishFields = append(finishFields,
 			"fetched_object_bytes", humanize.Bytes(stats.ObjectStorageBytes),
