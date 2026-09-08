@@ -402,6 +402,7 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 	if err := f.Cfg.QueryBackend.Validate(); err != nil {
 		return nil, err
 	}
+	f.Cfg.QueryBackend.DisableClientRateLimitRetries(f.logger)
 	f.Cfg.QueryBackend.GRPCClientConfig.Middleware = f.grpcClientInterceptors()
 	c, err := querybackendclient.New(
 		f.Cfg.QueryBackend.Address,

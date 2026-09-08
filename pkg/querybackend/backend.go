@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
@@ -19,12 +20,13 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 type Config struct {
 	Address          string            `yaml:"address" category:"advanced"`
-	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
+	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
 	ClientTimeout    time.Duration     `yaml:"client_timeout" category:"advanced"`
 }
 
@@ -39,6 +41,15 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("query-backend.address is required")
 	}
 	return cfg.GRPCClientConfig.Validate()
+}
+
+// DisableClientRateLimitRetries turns off dskit's retrier, which ignores grpc-retry-pushback-ms.
+func (cfg *Config) DisableClientRateLimitRetries(logger log.Logger) {
+	if !cfg.GRPCClientConfig.BackoffOnRatelimits {
+		return
+	}
+	level.Warn(logger).Log("msg", "ignoring query-backend.grpc-client-config.backoff-on-ratelimits: its retries ignore grpc-retry-pushback-ms")
+	cfg.GRPCClientConfig.BackoffOnRatelimits = false
 }
 
 type QueryHandler interface {
@@ -111,6 +122,10 @@ func (q *QueryBackend) Invoke(
 	}
 
 	if err != nil {
+		// A child cannot deliver its response; neither can we.
+		if pushback.IsMarked(err) {
+			pushback.SetNoRetry(ctx)
+		}
 		return nil, err
 	}
 
@@ -139,6 +154,11 @@ func (q *QueryBackend) Invoke(
 		}
 	}
 
+	// The response is complete: all that remains is encoding and the size check in
+	// grpc-go's Server.sendResponse, so a failure there recurs on every attempt.
+	// Queries that failed return above, still retryable.
+	pushback.SetNoRetry(ctx)
+
 	return resp, nil
 }
 
@@ -155,6 +175,7 @@ func (q *QueryBackend) merge(
 	childExecNodes := make([]*queryv1.ExecutionNode, len(children))
 	var mu sync.Mutex
 	var totalBytesFetched atomic.Uint64
+	var noRetry atomic.Bool
 
 	for i, child := range children {
 		idx := i
@@ -166,6 +187,9 @@ func (q *QueryBackend) merge(
 			// TODO: Speculative retry.
 			resp, err := q.backendClient.Invoke(ctx, req)
 			if err != nil {
+				if pushback.IsMarked(err) {
+					noRetry.Store(true)
+				}
 				return err
 			}
 			// Always accumulate bytes regardless of collectDiag so the
@@ -180,6 +204,10 @@ func (q *QueryBackend) merge(
 		}))
 	}
 	if err := g.Wait(); err != nil {
+		// errgroup keeps one error; a sibling's verdict must not be lost with it.
+		if noRetry.Load() {
+			err = pushback.Mark(err)
+		}
 		return nil, nil, 0, err
 	}
 
