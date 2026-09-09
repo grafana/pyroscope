@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.pyroscope:agent:2.9.1")
+    implementation("io.pyroscope:agent:2.9.2")
     implementation("org.jetbrains:annotations:26.0.2")
     implementation("org.springframework.boot:spring-boot-starter-web")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
