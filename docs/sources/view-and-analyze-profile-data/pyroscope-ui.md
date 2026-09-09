@@ -1,7 +1,7 @@
 ---
 title: Use the Pyroscope UI to explore profiling data
 menuTitle: Use the Pyroscope UI
-description: How to use the Pyroscope UI to explore profile data.
+description: Query and visualize profiling data in the Pyroscope UI.
 weight: 200
 aliases:
   - ../ingest-and-analyze-profile-data/profile-ui/
@@ -13,122 +13,59 @@ keywords:
 
 # Use the Pyroscope UI to explore profiling data
 
-Pyroscope's UI is designed to make it easy to visualize and analyze profiling data.
-There are several different modes for viewing, analyzing, uploading, and comparing profiling data.
+The Grafana Pyroscope UI is a single-page interface for querying and visualizing profiling data. You select a service and profile type, refine the query with labels, then inspect a timeline and flame graph.
 
-The Pyroscope UI is only available with Pyroscope open source.
-In Grafana and Grafana Cloud, you can use [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) to inspect your profiling data.
+The Pyroscope UI is available with Pyroscope open source.
 
-![Screenshot of Pyroscope UI](/media/docs/pyroscope/screenshot-pyroscope-comparison-view.png)
+In Grafana and Grafana Cloud, use [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) to explore profiling data. Profiles Drilldown includes comparison and differential flame graph views that aren't in the Pyroscope UI. For an overview of that app, refer to [Use Profiles Drilldown](../explore-profiles/).
 
-While code profiling has been a long-standing practice, continuous profiling represents a modern and more advanced approach to performance monitoring. This technique adds two critical dimensions to traditional profiles:
+<!-- screenshot: full Pyroscope UI showing the navigation bar, query bar, timeline, and flame graph -->
 
-Time
-: Profiling data is collected _continuously_, providing a time-centric view that allows querying performance data from any point in the past.
+## Select a service and time range
 
-Metadata
-: Profiles are enriched with metadata, adding contextual depth to the performance data.
+The navigation bar sets the service, profile type, and time range for the page.
 
-These dimensions, coupled with the detailed nature of performance profiles, make continuous profiling a uniquely valuable tool.
-Pyroscope's UI enhances this further by offering a convenient platform to analyze profiles and get insights that are impossible to get from using other traditional signals like logs, metrics, or tracing.
+1. Select a **Service**, then a **Profile Type**.
+1. Select a time range preset, for example **Last 1h** or **Last 24h**.
+1. Optional: If Pyroscope is multi-tenant, enter a tenant ID when prompted, then use the tenant control to switch tenants later.
 
-In this UI reference, you'll learn how Pyroscope parallels these other modern observability tools by providing a Prometheus-like querying experience. More importantly, you'll learn how to use Pyroscope's extensive UI features for a deeper insight into your application's performance.
+Use **Dark** or **Light** to change the theme. Dark is the default.
 
-## Key features of the Pyroscope UI
+If you edit the query and want to return to the service you selected, click **Reset query**.
 
-The following sections describe Pyroscope UI capabilities.
+## Query profile data
 
-<!-- Add a screenshot with numbered parts for each of the sections described below. -->
+Use the query bar to refine which series the timeline and flame graph use. The query is a Prometheus-style label selector, for example `{service_name="checkout", namespace="production"}`.
 
-## Tag Explorer
+After you change the query, click **Run** to apply it.
 
-The **Tag Explorer** page lets you navigate and analyze performance data through tags and labels.
-This feature is crucial for identifying performance anomalies and understanding the behavior of different application segments under various conditions.
-Pyroscope intentionally doesn't include a query language on this page.
+As you type, the query bar suggests matching label names and label values:
 
-![Pyroscope Tag Explorer](/media/docs/pyroscope/screenshot-pyroscope-tag-explorer.png)
+- When you type a label name, the query bar suggests available label names.
+- When you type a label value after `=`, the query bar suggests values for that label.
 
-To use the **Tag Explorer**:
+Suggestions are scoped to the selected time range and to the other label filters already in the query. Continue typing to filter the suggestions, then select one to add it to the query.
 
-1. Select a tag to view the corresponding profiling data.
-1. Analyze the pie chart and the table of descriptive statistics to determine which tags if any are behaving abnormally.
-1. Select a tag to view the corresponding profiling data.
-1. Make use of the shortcuts to the Single, Comparison, and Diff View pages to further identify the root cause of the performance issue.
+<!-- screenshot: query bar autocomplete suggesting label names or values -->
 
-## Single view
+## Inspect the timeline
 
-The Single View page in Pyroscope's UI is built for in-depth profile analysis. Here, you can explore a single flame graph with multiple viewing options and functionalities:
+The timeline shows how the selected profile type changes over the time range.
 
-**Table view**
-: Breaks down the profiling data into a sortable table format. Selecting **Top Table** displays the table and hides the flame graph.
+Drag across the timeline to zoom into a shorter window. The flame graph updates to match that window. To return to a relative range, select a time range preset in the navigation bar.
 
-**Sandwich view**
-: Displays both the callers and callees for a selected function, offering a comprehensive view of function interactions. Access by clicking in the flame graph and selecting **Sandwhich view**.
+## Explore the flame graph
 
-**Flame Graph** view
-: Visualizes profiling data in a flame graph format, allowing easy identification of resource-intensive functions. Selecting **Flame Graph** displays the flame graph and hides the table.
+The flame graph panel shows where the selected profile spends its value, for example CPU time or memory.
 
-**Both** view
-: Displays both the table and the flame graph. This is the default view for **Single View**.
+Choose a view:
 
-**Export Data**
-: Options to export the flame graph for offline analysis or share it via a flamegraph.com link for collaborative review.
+- **Top Table** shows a sortable table of functions.
+- **Flame Graph** shows the flame graph only.
+- **Both** shows the table and the flame graph. This option is available when the panel is wide enough.
 
-<!-- Visual Placeholder:** *Screenshots demonstrating each view option in the Single View page.* -->
+Use **Search...** to highlight matching frames. To change colors, select **By package name** or **By value**. Use the text alignment controls to align flame graph labels left or right.
 
-This screenshot shows a spike in CPU usage.
-Without profiling, you would go from a spike CPU usage metric to digging through code or guessing the cause.
-However, with profiling, you can use the flame graph and table to see exactly which function is most responsible for the spike.
-Often, this shows up as a single node taking up a noticeably disproportionate width in the flame graph as seen below with the `checkDriverAvailability` function.
+To inspect callers and callees for one function, click a frame and select **Sandwich view**. Click the sandwich pill or reset control to leave sandwich view.
 
-![example-flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
-
-However, in some instances it may be a function that's called many times and is taking up a large amount of space in the flame graph.
-In this case, you can use the sandwich view to see that a logging function called throughout many functions in the codebase is the culprit.
-
-![example-sandwich-view](https://grafana.com/static/img/pyroscope/sandwich-view-2023-11-30.png)
-
-## Comparison view
-
-The Comparison view facilitates side-by-side comparison of profiles either based on different label sets, different time periods, or both.
-This feature is valuable for understanding the impact of changes or differences between two distinct queries of your application.
-
-You can use Comparison view to compare different time ranges whether or not the labels are the same.
-For example, in investigating the cause of a memory leak, the timeline might show a steadily increasing amount of memory allocations over time.
-You can use the Comparison view to compare the memory allocations between two different time periods where allocations were low and where allocations were high.
-This information helps you identify the function that's causing the memory leak.
-
-![Pyroscope Comparison view](/media/docs/pyroscope/screenshot-pyroscope-comparison-view.png)
-
-To run a comparison:
-
-1. Select two different sets of labels (for example, `env:production` vs. `env:development`) and or time periods, reflected by the sub-timelines above each flame graph.
-1. View the resulting flame graphs side by side to identify disparities in performance.
-
-There are many practical use cases for comparison for companies using Pyroscope.
-Some examples of labels below expressed as `label:value` are:
-
-Feature flags
-: Compare application performance with `feature_flag:a` vs. `feature_flag:b`
-
-Deployment environments
-: Contrast `env:production` vs. `env:development`
-
-Release analysis
-: Examine `commit:release-1` vs. `commit:release-2`
-
-Region
-: Compare `region:us-east-1` vs. `region:us-west-1`
-
-## Diff page: Identify changes with differential analysis
-
-The **Diff** page is an extension of the comparison page, crucial for more easily visually showing the differences between two profiling data sets.
-It normalizes the data by comparing the percentage of total time spent in each function so that the resulting flame graph is comparing the __share__ of time spent in each function rather than the absolute amount of time spent in each function.
-This is important because it allows you to compare two different queries that may have different total amounts of time spent in each function.
-
-![Diff view in Pyroscope](/media/docs/pyroscope/screenshot-pyroscope-diff-view.png)
-
-Similar to a `git diff`, it takes the flame graphs from the comparison page and highlights the differences between the two flame graphs where red represents an increase in CPU usage from the baseline to the comparison and green represents a decrease.
-
-<!-- and a diff between two time periods during an introduction of a memory leak:
-![memory leak](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png) -->
+<!-- screenshot: flame graph in Both view with sandwich view enabled -->
