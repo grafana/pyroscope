@@ -17,7 +17,7 @@ The Grafana Pyroscope UI is a single-page interface for querying and visualizing
 
 The Pyroscope UI is available with Pyroscope open source.
 
-In Grafana and Grafana Cloud, use [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) to explore profiling data. Profiles Drilldown includes comparison and differential flame graph views that aren't in the Pyroscope UI. For an overview of that app, refer to [Use Profiles Drilldown](../explore-profiles/).
+In Grafana and Grafana Cloud, use [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) to explore profiling data. Profiles Drilldown includes comparison and differential flame graph views that aren't in the Pyroscope UI. For an overview of that app, refer to [Use Profiles Drilldown](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/view-and-analyze-profile-data/explore-profiles/).
 
 <!-- screenshot: full Pyroscope UI showing the navigation bar, query bar, timeline, and flame graph -->
 
