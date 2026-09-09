@@ -46,11 +46,11 @@ GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/ri
 HELM_ARGS =
 
 HELM_FLAGS_V1 := --set architecture.storage.v1=true --set architecture.storage.v2=false
-HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true $(HELM_FLAGS_V1)
+HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set seaweedfs.enabled=true $(HELM_FLAGS_V1)
 HELM_FLAGS_V1_DEPLOY := $(HELM_FLAGS_V1) --set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
 HELM_FLAGS_V1_MICROSERVICES_DEPLOY := $(HELM_FLAGS_V1_MICROSERVICES) --set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
 HELM_FLAGS_V2 :=
-HELM_FLAGS_V2_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
+HELM_FLAGS_V2_MICROSERVICES := --set architecture.microservices.enabled=true --set seaweedfs.enabled=true
 
 
 # Local deployment params
@@ -441,7 +441,7 @@ goreleaser/lint: $(BIN)/goreleaser
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeconform $(BIN)/helm
-	$(BIN)/helm repo add --force-update minio https://charts.min.io/
+	$(BIN)/helm repo add --force-update seaweedfs https://seaweedfs.github.io/seaweedfs/helm
 	$(BIN)/helm repo add --force-update grafana https://grafana.github.io/helm-charts
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/

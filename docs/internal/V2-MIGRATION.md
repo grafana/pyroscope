@@ -59,7 +59,7 @@ helm upgrade \
   --install \
   --set architecture.microservices.enabled=true \
   --set architecture.overwriteResources.requests.cpu=10m \
-  --set minio.enabled=true \
+  --set seaweedfs.enabled=true \
   --set architecture.storage.v1=true \
   --set architecture.storage.v2=false \
   --set pyroscope.persistence.enabled=true
@@ -75,7 +75,7 @@ helm upgrade \
   ./operations/pyroscope/helm/pyroscope \
   --set architecture.microservices.enabled=true \
   --set architecture.overwriteResources.requests.cpu=10m \
-  --set minio.enabled=true \
+  --set seaweedfs.enabled=true \
   --set architecture.storage.v1=true \
   --set architecture.storage.v2=true \
   --set pyroscope.persistence.enabled=true \
@@ -92,7 +92,7 @@ helm upgrade \
   pyroscope \
   ./operations/pyroscope/helm/pyroscope \
   --set architecture.microservices.enabled=true \
-  --set minio.enabled=true \
+  --set seaweedfs.enabled=true \
   --set architecture.storage.v1=false \
   --set architecture.storage.v2=true \
   --set pyroscope.persistence.enabled=true
