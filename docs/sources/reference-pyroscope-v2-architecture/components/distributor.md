@@ -43,22 +43,6 @@ The distributor cleans and validates data before sending it to segment-writers:
 
 If a request contains invalid data, the distributor returns a 400 HTTP status code with details in the response body.
 
-## Retain sampled-out profiles
-
-When a profile is sampled out, the distributor drops it by default, which leaves gaps in the affected time series.
-To keep the totals for these profiles, set the `keep_stripped_profiles` limit for the tenant (default `false`).
-
-When enabled, the distributor reduces a sampled-out profile to totals instead of dropping it:
-
-- Samples are collapsed to a single totals sample, so the profile totals stay accurate.
-- Stacktraces are removed, because sampled-out profiles don't contribute to stack-based views such as flame graphs.
-- Sample labels are removed, so span- and trace-attributed breakdowns aren't available for these totals.
-- Each retained series is marked with the `__sampled__="true"` label.
-
-Whether these retained profiles appear in query results is controlled separately on the read path. Refer to [Query sampled-out profiles](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/components/query-backend/#query-sampled-out-profiles).
-
-To configure this limit, refer to [`keep_stripped_profiles`](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters/#limits) in the configuration reference.
-
 ## Load balancing
 
 Randomly load balance write requests across distributor instances. If you're running Pyroscope in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.

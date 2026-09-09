@@ -40,19 +40,6 @@ The following sections describe Pyroscope UI capabilities.
 
 <!-- Add a screenshot with numbered parts for each of the sections described below. -->
 
-## Query bar
-
-Use the query bar to select which profiling data to analyze with a label selector, similar to querying in Prometheus.
-
-As you type, the query bar suggests matching label names and label values based on the current query:
-
-- When you type a label name, the query bar suggests available label names.
-- When you type a label value, after `=`, the query bar suggests values for that label.
-
-Suggestions are scoped to the selected time range and to the other label filters already in the query. Continue typing to filter the suggestions, then select one to add it to the query.
-
-<!-- Add a screenshot or recording of query bar autocomplete. -->
-
 ## Tag Explorer
 
 The **Tag Explorer** page lets you navigate and analyze performance data through tags and labels.
