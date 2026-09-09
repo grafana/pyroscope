@@ -47,7 +47,7 @@ If a request contains invalid data, the distributor returns a 400 HTTP status co
 
 The distributor can drop a fraction of ingested profiles to reduce storage volume. By default, sampled-out profiles are discarded. You can keep their totals instead.
 
-For how sampling works and how to configure the write-path and read-path limits, refer to [Write-path sampling](../../sampling/).
+For how sampling works and how to configure the write-path and read-path limits, refer to [Write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/).
 
 ## Load balancing
 
