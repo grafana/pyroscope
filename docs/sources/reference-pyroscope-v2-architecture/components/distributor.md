@@ -43,6 +43,12 @@ The distributor cleans and validates data before sending it to segment-writers:
 
 If a request contains invalid data, the distributor returns a 400 HTTP status code with details in the response body.
 
+## Sampling
+
+The distributor can drop a fraction of ingested profiles to reduce storage volume. By default, sampled-out profiles are discarded. You can keep their totals instead.
+
+For how sampling works and how to configure the write-path and read-path limits, refer to [Write-path sampling](../../sampling/).
+
 ## Load balancing
 
 Randomly load balance write requests across distributor instances. If you're running Pyroscope in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.

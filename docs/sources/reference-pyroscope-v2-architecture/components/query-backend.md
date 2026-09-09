@@ -34,6 +34,12 @@ Unlike v1 where queries may need to access ingesters for recent data, the v2 que
 - Better isolation between read and write paths
 - Easier horizontal scaling
 
+## Sampled-out profiles
+
+When the distributor retains sampled-out profiles, they're stored as totals-only series marked with `__sampled__="true"`. The query-backend excludes those series from stack-based queries. Time-series queries include them only when `include_stripped_profiles` is enabled.
+
+For how sampling works and how to configure the limits, refer to [Write-path sampling](../../sampling/).
+
 ## Stateless design
 
 The query-backend is completely stateless:
