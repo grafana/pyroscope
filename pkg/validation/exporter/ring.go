@@ -40,9 +40,10 @@ const (
 
 // ringOp is used as an instance state filter when obtaining instances from the
 // ring. Instances in the LEAVING state are included to help minimise the number
-// of leader changes during rollout and scaling operations. These instances will
-// be forgotten after ringAutoForgetUnhealthyPeriods (see
-// `KeepInstanceInTheRingOnShutdown`).
+// of leader changes during rollout and scaling operations. With
+// -overrides-exporter.ring.unregister-on-shutdown=false, instances remain in
+// the ring after shutdown and are forgotten after
+// ringAutoForgetUnhealthyPeriods heartbeat timeouts.
 var ringOp = ring.NewOp([]ring.InstanceState{ring.ACTIVE, ring.LEAVING}, nil)
 
 // RingConfig holds the configuration for the overrides-exporter ring.
@@ -52,6 +53,8 @@ type RingConfig struct {
 	// Ring stability (used to decrease token reshuffling on scale-up).
 	WaitStabilityMinDuration time.Duration `yaml:"wait_stability_min_duration" category:"advanced"`
 	WaitStabilityMaxDuration time.Duration `yaml:"wait_stability_max_duration" category:"advanced"`
+
+	UnregisterOnShutdown bool `yaml:"unregister_on_shutdown" category:"advanced"`
 }
 
 // RegisterFlags configures this RingConfig to the given flag set and sets defaults.
@@ -63,6 +66,7 @@ func (c *RingConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	// Ring stability flags.
 	f.DurationVar(&c.WaitStabilityMinDuration, flagNamePrefix+"wait-stability-min-duration", 0, "Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.")
 	f.DurationVar(&c.WaitStabilityMaxDuration, flagNamePrefix+"wait-stability-max-duration", 5*time.Minute, "Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway.")
+	f.BoolVar(&c.UnregisterOnShutdown, flagNamePrefix+"unregister-on-shutdown", true, "Unregister from the ring upon clean shutdown. Disabling it keeps the instance in the ring in LEAVING state until it is auto-forgotten, which minimises leader changes when the instance is expected to rejoin with the same ID shortly.")
 }
 
 // toBasicLifecyclerConfig transforms a RingConfig into configuration that can be used to create a BasicLifecycler.
@@ -81,7 +85,7 @@ func (c *RingConfig) toBasicLifecyclerConfig(logger log.Logger) (ring.BasicLifec
 		HeartbeatTimeout:                c.Ring.HeartbeatTimeout,
 		TokensObservePeriod:             0,
 		NumTokens:                       ringNumTokens,
-		KeepInstanceInTheRingOnShutdown: true,
+		KeepInstanceInTheRingOnShutdown: !c.UnregisterOnShutdown,
 	}, nil
 }
 

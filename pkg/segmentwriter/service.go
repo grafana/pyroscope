@@ -42,21 +42,22 @@ const (
 )
 
 type Config struct {
-	GRPCClientConfig         grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
-	LifecyclerConfig         ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration          time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
-	FlushConcurrency         uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
-	UploadTimeout            time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
-	UploadMaxRetries         int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
-	UploadMinBackoff         time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
-	UploadMaxBackoff         time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
-	UploadHedgeAfter         time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
-	UploadHedgeRateMax       float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
-	UploadHedgeRateBurst     uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
-	MetadataDLQEnabled       bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
-	MetadataUpdateTimeout    time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
-	BucketHealthCheckEnabled bool                  `yaml:"bucket_health_check_enabled,omitempty" category:"advanced"`
-	BucketHealthCheckTimeout time.Duration         `yaml:"bucket_health_check_timeout,omitempty" category:"advanced"`
+	GRPCClientConfig           grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
+	LifecyclerConfig           ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
+	AutoForgetUnhealthyPeriods int                   `yaml:"auto_forget_unhealthy_periods,omitempty" category:"advanced"`
+	SegmentDuration            time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
+	FlushConcurrency           uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
+	UploadTimeout              time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
+	UploadMaxRetries           int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
+	UploadMinBackoff           time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
+	UploadMaxBackoff           time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
+	UploadHedgeAfter           time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
+	UploadHedgeRateMax         float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
+	UploadHedgeRateBurst       uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
+	MetadataDLQEnabled         bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
+	MetadataUpdateTimeout      time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
+	BucketHealthCheckEnabled   bool                  `yaml:"bucket_health_check_enabled,omitempty" category:"advanced"`
+	BucketHealthCheckTimeout   time.Duration         `yaml:"bucket_health_check_timeout,omitempty" category:"advanced"`
 }
 
 func (cfg *Config) Validate() error {
@@ -83,6 +84,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 		prefix + ".tokens-file-path":                   fieldcategory.Advanced,
 	})
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	f.IntVar(&cfg.AutoForgetUnhealthyPeriods, prefix+".auto-forget-unhealthy-periods", 0, "Number of consecutive heartbeat-timeout periods after which a ring member whose heartbeat has gone stale is automatically removed (forgotten) from the ring. This cleans up entries of instances that have left the ring without unregistering, e.g. after a scale-down. 0 disables auto-forget.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
@@ -154,7 +156,23 @@ func New(
 		return nil, err
 	}
 
-	i.subservices, err = services.NewManager(i.lifecycler)
+	subservices := []services.Service{i.lifecycler}
+	if config.AutoForgetUnhealthyPeriods > 0 &&
+		config.LifecyclerConfig.HeartbeatPeriod > 0 &&
+		config.LifecyclerConfig.RingConfig.HeartbeatTimeout > 0 {
+		forgetPeriod := time.Duration(config.AutoForgetUnhealthyPeriods) * config.LifecyclerConfig.RingConfig.HeartbeatTimeout
+		subservices = append(subservices, newAutoForget(
+			i.lifecycler.KVStore,
+			i.lifecycler.ID,
+			forgetPeriod,
+			config.LifecyclerConfig.HeartbeatPeriod,
+			log.With(logger, "component", "segment-writer-auto-forget"),
+		))
+	} else {
+		level.Info(logger).Log("msg", "the segment-writer ring auto-forget is disabled")
+	}
+
+	i.subservices, err = services.NewManager(subservices...)
 	if err != nil {
 		return nil, fmt.Errorf("services manager: %w", err)
 	}
