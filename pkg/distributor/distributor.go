@@ -114,7 +114,7 @@ type Distributor struct {
 	distributorsRing       *ring.Ring
 	healthyInstancesCount  *atomic.Uint32
 	ingestionRateLimiter   *limiter.RateLimiter
-	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
+	aggregator             *aggregator.MultiTenantAggregator[*pendingAggregate]
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
@@ -194,7 +194,7 @@ func New(
 		segmentWriter:           segmentWriter,
 		metrics:                 m,
 		healthyInstancesCount:   atomic.NewUint32(0),
-		aggregator:              aggregator.NewMultiTenantAggregator[*pprof.ProfileMerge](limits, reg),
+		aggregator:              aggregator.NewMultiTenantAggregator[*pendingAggregate](limits, reg),
 		limits:                  limits,
 		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
@@ -804,8 +804,15 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 	if _, hasSessionID := labels.GetLabel(phlaremodel.LabelNameSessionID); hasSessionID {
 		labels = labels.Clone().Delete(phlaremodel.LabelNameSessionID)
 	}
-	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
+	// pending is assigned by the merge below, which the aggregator runs on this
+	// goroutine, and stays nil if the aggregate was never touched by us.
+	var pending *pendingAggregate
+	merge := d.mergeProfile(profile, profileInflightBytes(series.Profile), &pending)
+	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, merge)
 	if err != nil {
+		// A failed aggregate is never handed to an owner, so the contributor
+		// that broke it returns the bytes.
+		pending.release()
 		return false, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if !ok {
@@ -818,30 +825,23 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 		return true, nil
 	}
 
-	// Aggregation is needed, and we own the result handler.
+	// Aggregation is needed, and we own the result handler. Owning it also
+	// means owning the bytes every contributor charged to the aggregate: they
+	// are held until the write completes and released here.
+	//
 	// Note that the labels include the source series labels with
 	// session ID: this is required to ensure fair load distribution.
-	//
-	// The merge accumulator this aggregate owns stays in memory until the
-	// window closes, long after the contributing requests have been answered
-	// and released, so it is reserved here and held until the write completes.
-	// Merge interns its inputs rather than retaining them, so one accumulator
-	// costs about one profile no matter how many requests it aggregates.
-	// The reservation is accounted for but not enforced: the merge has already
-	// happened and the contributors have already been told their profiles were
-	// accepted, so rejecting here would only lose data.
-	pending, _ := d.inflight.Reserve(profileInflightBytes(req.Profile))
 	d.asyncRequests.Add(1)
 	labels = phlaremodel.Labels(req.Labels).Clone()
 	annotations := req.Annotations
 	go func() {
 		defer d.asyncRequests.Done()
-		defer pending.Release()
+		defer pending.release()
 		sendErr := util.RecoverPanic(func() error {
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
 			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
-			localCtx = inflight.NewContext(localCtx, pending)
+			localCtx = inflight.NewContext(localCtx, pending.reservation)
 			// Obtain the aggregated profile.
 			p, handleErr := handler()
 			if handleErr != nil {
@@ -850,7 +850,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 			aggregated := &distributormodel.ProfileSeries{
 				TenantID:    req.TenantID,
 				Labels:      labels,
-				Profile:     pprof.RawFromProto(p.Profile()),
+				Profile:     pprof.RawFromProto(p.merge.Profile()),
 				Annotations: annotations,
 			}
 			config := d.limits.WritePathOverrides(req.TenantID)
@@ -1040,15 +1040,67 @@ func profileSizeBytes(p *profilev1.Profile, fullSize int64) (symbols, samples in
 	return
 }
 
-func mergeProfile(profile *profilev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {
-	return func(m *pprof.ProfileMerge) (*pprof.ProfileMerge, error) {
-		if m == nil {
-			m = new(pprof.ProfileMerge)
+// pendingAggregate is a merge accumulator together with the inflight bytes
+// reserved for it. The accumulator lives until the aggregation window closes,
+// so the reservation belongs to the aggregate rather than to any one of the
+// requests that feed it: every contributor charges its own bytes to it, and
+// the owner of the result releases it once the write completes.
+type pendingAggregate struct {
+	merge *pprof.ProfileMerge
+
+	mu          sync.Mutex
+	reservation *inflight.Reservation
+	released    bool
+}
+
+// charge accounts for a contribution of size bytes. Merge interns its input,
+// so the accumulator grows by at most that much: the reservation is an upper
+// bound on what the aggregate holds, never an underestimate.
+func (a *pendingAggregate) charge(l *inflight.Limiter, size int64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.released {
+		return
+	}
+	if a.reservation == nil {
+		a.reservation, _ = l.Reserve(size)
+		return
+	}
+	a.reservation.Grow(size)
+}
+
+func (a *pendingAggregate) release() {
+	// A contributor that finds the aggregate already failed never reaches the
+	// merge, and so has nothing to release.
+	if a == nil {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.released {
+		return
+	}
+	a.released = true
+	a.reservation.Release()
+}
+
+// mergeProfile returns an aggregation function that folds profile into the
+// aggregate and charges size bytes to it. The aggregate it worked on is
+// reported through out, so that the caller can release the bytes if it ends
+// up owning them.
+func (d *Distributor) mergeProfile(profile *profilev1.Profile, size int64, out **pendingAggregate) aggregator.AggregateFn[*pendingAggregate] {
+	return func(a *pendingAggregate) (*pendingAggregate, error) {
+		if a == nil {
+			a = &pendingAggregate{merge: new(pprof.ProfileMerge)}
 		}
-		if err := m.Merge(profile, true); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		*out = a
+		a.charge(d.inflight, size)
+		// The aggregate is returned even on failure: it carries the
+		// reservation, which still has to be released.
+		if err := a.merge.Merge(profile, true); err != nil {
+			return a, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		return m, nil
+		return a, nil
 	}
 }
 

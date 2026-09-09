@@ -152,3 +152,26 @@ func TestDetach(t *testing.T) {
 		assert.Equal(t, int64(0), l.Bytes())
 	})
 }
+
+func TestReservation_Grow(t *testing.T) {
+	t.Parallel()
+
+	var observed recordingObserver
+	l := NewLimiter(100, &observed)
+
+	r, ok := l.Reserve(40)
+	require.True(t, ok)
+	assert.True(t, r.Grow(30))
+	assert.Equal(t, int64(70), l.Bytes())
+
+	assert.False(t, r.Grow(50), "growing past the limit reports the overflow")
+	assert.Equal(t, int64(120), l.Bytes(), "and still accounts for it")
+	assert.Equal(t, recordingObserver{40, 70, 120}, observed)
+
+	// The whole reservation, including everything it grew by, is returned.
+	r.Release()
+	assert.Equal(t, int64(0), l.Bytes())
+
+	assert.False(t, r.Grow(10), "a released reservation cannot grow")
+	assert.Equal(t, int64(0), l.Bytes())
+}

@@ -39,13 +39,18 @@ func (l *Limiter) Bytes() int64 { return l.bytes.Load() }
 // this way the counter reflects the memory the caller actually holds, and
 // the rejection decision is left to the caller.
 func (l *Limiter) Reserve(size int64) (*Reservation, bool) {
-	r := &Reservation{limiter: l, size: size}
+	r := &Reservation{limiter: l}
+	r.size.Store(size)
 	r.refs.Store(1)
+	return r, l.account(size)
+}
+
+func (l *Limiter) account(size int64) bool {
 	total := l.bytes.Add(size)
 	if l.highWatermark != nil {
 		l.highWatermark.Observe(float64(total))
 	}
-	return r, l.limit <= 0 || total <= l.limit
+	return l.limit <= 0 || total <= l.limit
 }
 
 // Reservation is a reference-counted claim on the limiter capacity. The
@@ -53,8 +58,20 @@ func (l *Limiter) Reserve(size int64) (*Reservation, bool) {
 // accounting to span asynchronous continuations of a request.
 type Reservation struct {
 	limiter *Limiter
-	size    int64
+	size    atomic.Int64
 	refs    atomic.Int32
+}
+
+// Grow adds size bytes to the reservation, for a claim that keeps growing
+// after it is taken. It reports whether the reservation still fits the limit.
+// Growing a fully released reservation is a no-op and reports false.
+func (r *Reservation) Grow(size int64) bool {
+	if r == nil || !r.Retain() {
+		return false
+	}
+	defer r.Release()
+	r.size.Add(size)
+	return r.limiter.account(size)
 }
 
 // Retain acquires an additional reference. It reports false if the
@@ -82,7 +99,7 @@ func (r *Reservation) Release() {
 		return
 	}
 	if r.refs.Dec() == 0 {
-		r.limiter.bytes.Sub(r.size)
+		r.limiter.bytes.Sub(r.size.Load())
 	}
 }
 

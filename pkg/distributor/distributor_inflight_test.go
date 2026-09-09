@@ -21,11 +21,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/inflight"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/testhelper"
@@ -347,4 +350,69 @@ func TestPushBatch_MaxInflightBytes_PendingAggregates(t *testing.T) {
 
 	d.asyncRequests.Wait()
 	assert.Equal(t, int64(0), d.inflight.Bytes(), "released once the aggregate is written")
+}
+
+// distinctStackRequest builds a request for one fixed series whose profile
+// carries a stack unique to n, so each contribution grows the aggregate the
+// merge accumulates rather than folding into what is already there.
+func distinctStackRequest(n int) *distributormodel.PushRequest {
+	fn := fmt.Sprintf("fn_%d", n)
+	return &distributormodel.PushRequest{
+		RawProfileType: distributormodel.RawProfileTypePPROF,
+		Series: []*distributormodel.ProfileSeries{{
+			Labels: []*typesv1.LabelPair{
+				{Name: ProfileName, Value: "process_cpu"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+			},
+			Profile: pprof2.RawFromProto(&profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{Type: 1, Unit: 2}},
+				Sample:      []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{1}}},
+				Mapping:     []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
+				Location:    []*profilev1.Location{{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:    []*profilev1.Function{{Id: 1, Name: 3, SystemName: 3, Filename: 4}},
+				StringTable: []string{"", "cpu", "nanoseconds", fn, fn + ".go"},
+			}),
+		}},
+	}
+}
+
+func TestPushBatch_MaxInflightBytes_AggregateGrowth(t *testing.T) {
+	sw := new(recordingSegmentWriter)
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		l := validation.MockDefaultLimits()
+		l.WritePathOverrides.WritePath = writepath.SegmentWriterPath
+		l.DistributorAggregationPeriod = model.Duration(time.Second)
+		l.DistributorAggregationWindow = model.Duration(time.Second)
+		tenantLimits["user-1"] = l
+	})
+	d, err := New(
+		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
+		overrides, nil, log.NewNopLogger(), sw,
+	)
+	require.NoError(t, err)
+	sw.limiter = d.inflight
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+	const contributions = 200
+	for i := 0; i < contributions; i++ {
+		require.NoError(t, d.PushBatch(ctx, distinctStackRequest(i)))
+	}
+
+	// Every contribution is charged to the aggregate, so the reservation tracks
+	// the accumulator as it grows instead of staying at the first profile.
+	// Profiles are normalized before they are merged, so the charged size is
+	// close to but not exactly the size measured here: bracket it rather than
+	// pin it.
+	one, _ := inflightBytes(distinctStackRequest(0))
+	require.Positive(t, one)
+	reserved := d.inflight.Bytes()
+	assert.Greater(t, reserved, contributions/2*one,
+		"the reservation grows with every contribution, not just the first")
+	assert.LessOrEqual(t, reserved, 2*contributions*one,
+		"and stays within the sum of the contributions")
+
+	d.asyncRequests.Wait()
+	assert.Equal(t, int64(0), d.inflight.Bytes())
 }
