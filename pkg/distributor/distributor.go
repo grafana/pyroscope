@@ -821,15 +821,27 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 	// Aggregation is needed, and we own the result handler.
 	// Note that the labels include the source series labels with
 	// session ID: this is required to ensure fair load distribution.
+	//
+	// The merge accumulator this aggregate owns stays in memory until the
+	// window closes, long after the contributing requests have been answered
+	// and released, so it is reserved here and held until the write completes.
+	// Merge interns its inputs rather than retaining them, so one accumulator
+	// costs about one profile no matter how many requests it aggregates.
+	// The reservation is accounted for but not enforced: the merge has already
+	// happened and the contributors have already been told their profiles were
+	// accepted, so rejecting here would only lose data.
+	pending, _ := d.inflight.Reserve(profileInflightBytes(req.Profile))
 	d.asyncRequests.Add(1)
 	labels = phlaremodel.Labels(req.Labels).Clone()
 	annotations := req.Annotations
 	go func() {
 		defer d.asyncRequests.Done()
+		defer pending.Release()
 		sendErr := util.RecoverPanic(func() error {
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
 			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
+			localCtx = inflight.NewContext(localCtx, pending)
 			// Obtain the aggregated profile.
 			p, handleErr := handler()
 			if handleErr != nil {
@@ -841,13 +853,6 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 				Profile:     pprof.RawFromProto(p.Profile()),
 				Annotations: annotations,
 			}
-			// The aggregated profile is a fresh allocation and needs its own
-			// reservation. It is accounted for but not enforced: the client was
-			// told the profile was accepted and will not retry, so rejecting it
-			// here would lose it for good.
-			reservation, _ := d.inflight.Reserve(profileInflightBytes(aggregated.Profile))
-			defer reservation.Release()
-			localCtx = inflight.NewContext(localCtx, reservation)
 			config := d.limits.WritePathOverrides(req.TenantID)
 			return d.router.Send(localCtx, aggregated, config)
 		})()

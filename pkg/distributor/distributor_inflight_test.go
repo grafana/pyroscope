@@ -317,3 +317,34 @@ func TestPushBatch_MaxInflightBytes_Aggregation(t *testing.T) {
 
 	assert.Equal(t, int64(0), d.inflight.Bytes())
 }
+
+func TestPushBatch_MaxInflightBytes_PendingAggregates(t *testing.T) {
+	sw := new(recordingSegmentWriter)
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		l := validation.MockDefaultLimits()
+		l.WritePathOverrides.WritePath = writepath.SegmentWriterPath
+		l.DistributorAggregationPeriod = model.Duration(time.Second)
+		l.DistributorAggregationWindow = model.Duration(time.Second)
+		tenantLimits["user-1"] = l
+	})
+	d, err := New(
+		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
+		overrides, nil, log.NewNopLogger(), sw,
+	)
+	require.NoError(t, err)
+	sw.limiter = d.inflight
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+	// Two pushes of the same series: the second is aggregated, which leaves a
+	// merge accumulator buffered until the window closes.
+	for i := 0; i < 2; i++ {
+		require.NoError(t, d.PushBatch(ctx, newInflightRequest(1)))
+	}
+	require.Positive(t, d.inflight.Bytes(),
+		"the buffered aggregate stays reserved after its contributors are answered")
+
+	d.asyncRequests.Wait()
+	assert.Equal(t, int64(0), d.inflight.Bytes(), "released once the aggregate is written")
+}
