@@ -2,6 +2,7 @@ package index
 
 import (
 	"fmt"
+	"github.com/go-kit/log"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/test"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func BenchmarkIndex_GetTenantStats(b *testing.B) {
@@ -32,7 +32,7 @@ func BenchmarkIndex_GetTenantStats(b *testing.B) {
 	config.BlockReadCacheSize = 1000
 	config.BlockWriteCacheSize = 1000
 
-	idx := NewIndex(util.Logger, NewStore(), config, nil)
+	idx := NewIndex(log.NewNopLogger(), NewStore(), config, nil)
 	require.NoError(b, db.Update(idx.Init))
 
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

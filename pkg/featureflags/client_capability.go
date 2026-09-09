@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -35,7 +35,7 @@ func GetClientCapabilities(ctx context.Context) (ClientCapabilities, bool) {
 	return value, ok
 }
 
-func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
+func ClientCapabilitiesGRPCMiddleware(logger log.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -56,7 +56,7 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 		}
 
 		// Reuse existing HTTP header parsing
-		clientCapabilities, err := parseClientCapabilities(httpHeader)
+		clientCapabilities, err := parseClientCapabilities(httpHeader, logger)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
@@ -68,10 +68,10 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 
 // ClientCapabilitiesHttpMiddleware creates middleware that extracts and parses the
 // `Accept` header for capabilities the client supports
-func ClientCapabilitiesHttpMiddleware() middleware.Interface {
+func ClientCapabilitiesHttpMiddleware(logger log.Logger) middleware.Interface {
 	return middleware.Func(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			clientCapabilities, err := parseClientCapabilities(r.Header)
+			clientCapabilities, err := parseClientCapabilities(r.Header, logger)
 			if err != nil {
 				http.Error(w, "Invalid header format: "+err.Error(), http.StatusBadRequest)
 				return
@@ -83,7 +83,7 @@ func ClientCapabilitiesHttpMiddleware() middleware.Interface {
 	})
 }
 
-func parseClientCapabilities(header http.Header) (ClientCapabilities, error) {
+func parseClientCapabilities(header http.Header, logger log.Logger) (ClientCapabilities, error) {
 	acceptHeaderValues := header.Values("Accept")
 
 	var capabilities ClientCapabilities
@@ -103,7 +103,7 @@ func parseClientCapabilities(header http.Header) (ClientCapabilities, error) {
 								capabilities.AllowUtf8LabelNames = true
 							}
 						default:
-							level.Debug(util.Logger).Log(
+							level.Debug(logger).Log(
 								"msg", "unknown capability parsed from Accept header",
 								"acceptHeaderKey", k,
 								"acceptHeaderValue", v)

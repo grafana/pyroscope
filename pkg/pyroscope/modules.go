@@ -121,7 +121,7 @@ func (f *Pyroscope) initRuntimeConfig() (services.Service, error) {
 	}
 
 	f.Cfg.RuntimeConfig.Loader = func(r io.Reader) (interface{}, error) {
-		return validation.LoadRuntimeConfig(r)
+		return validation.LoadRuntimeConfig(r, f.logger)
 	}
 
 	// make sure to set default limits before we start loading configuration into memory
@@ -474,7 +474,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
-		featureflags.ClientCapabilitiesGRPCMiddleware(),
+		featureflags.ClientCapabilitiesGRPCMiddleware(f.logger),
 	)
 
 	if f.Cfg.ArchitectureStorage != V1 {
@@ -538,7 +538,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		},
 		httpMetric,
 		httputil.K6Middleware(),
-		featureflags.ClientCapabilitiesHttpMiddleware(),
+		featureflags.ClientCapabilitiesHttpMiddleware(f.logger),
 	}
 	if f.Cfg.SelfProfiling.UseK6Middleware {
 		defaultHTTPMiddleware = append(defaultHTTPMiddleware, httputil.K6Middleware())
