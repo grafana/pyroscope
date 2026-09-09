@@ -22,12 +22,12 @@ docker pull grafana/grafana:latest
 docker compose up
 ```
 
-Using the [Explore Profiles app], you can inspect the profiles for different request types:
+Using the [Profiles Drilldown app], you can inspect the profiles for different request types:
 
 
-[Explore Profiles app]:http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=labels&var-serviceName=ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=pyroscope&var-groupBy=all&var-filters=
+[Profiles Drilldown app]:http://localhost:3000/a/grafana-pyroscope-app/explore?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=labels&var-serviceName=ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=pyroscope&var-groupBy=all&var-filters=
 
-![Explore Profiles screenshot](https://github.com/user-attachments/assets/6e6f1b35-4494-4f8f-afba-b231b09d4565)
+![Profiles Drilldown screenshot](https://github.com/user-attachments/assets/6e6f1b35-4494-4f8f-afba-b231b09d4565)
 
 
 Navigate to the [Explore Tempo page], select a trace and click on a span that has a linked profile:

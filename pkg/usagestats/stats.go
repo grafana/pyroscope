@@ -418,9 +418,8 @@ func (s *MultiStatistics) Value() map[string]interface{} {
 }
 
 func (s *MultiStatistics) Record(v float64, key string) {
-	keyStats := s.getOrCreateStatistics(key)
-	keyStats.Record(v)
-	s.values["__total__"].Record(v)
+	s.getOrCreateStatistics(key).Record(v)
+	s.getOrCreateStatistics("__total__").Record(v)
 }
 
 func (s *MultiStatistics) getOrCreateStatistics(key string) *Statistics {
@@ -588,9 +587,8 @@ func (c *MultiCounter) reset() {
 }
 
 func (c *MultiCounter) Inc(i int64, keyValue string) {
-	v := c.getOrCreateCounter(keyValue)
-	v.Inc(i)
-	c.values["__total__"].Inc(i)
+	c.getOrCreateCounter(keyValue).Inc(i)
+	c.getOrCreateCounter("__total__").Inc(i)
 }
 
 func (c *MultiCounter) getOrCreateCounter(keyValue string) *Counter {

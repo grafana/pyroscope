@@ -7,7 +7,9 @@
 #   - If TARGET is set, select every example at or under that path prefix
 #     (e.g. TARGET=examples/tracing selects all tracing examples).
 #   - Else if BASE_REF is set, select every example that has a changed file in
-#     the diff against BASE_REF (used for pull requests).
+#     the diff against BASE_REF (used for pull requests). If a top-level Go file
+#     under examples/ changes, select all examples because those files implement
+#     the shared test harness.
 #   - Else select all examples.
 #
 # Environment:
@@ -17,7 +19,8 @@
 set -euo pipefail
 
 # All example directories (those containing a docker-compose.yml).
-mapfile -t all_dirs < <(git ls-files 'examples/**/docker-compose.yml' 'examples/**/docker-compose.yaml' | xargs -n1 dirname | sort -u)
+# Exclude _templates/: its docker-compose files are single-service stubs, not runnable examples.
+mapfile -t all_dirs < <(git ls-files 'examples/**/docker-compose.yml' 'examples/**/docker-compose.yaml' | grep -v '/_templates/' | xargs -n1 dirname | sort -u)
 
 emit_under_prefix() {
   local prefix="${1%/}"
@@ -36,6 +39,12 @@ fi
 
 if [[ -n "${BASE_REF:-}" ]]; then
   mapfile -t changed < <(git diff --name-only "${BASE_REF}"...HEAD -- examples)
+  for f in "${changed[@]:-}"; do
+    if [[ "$f" =~ ^examples/[^/]+\.go$ ]]; then
+      printf '%s\n' "${all_dirs[@]}"
+      exit 0
+    fi
+  done
   for d in "${all_dirs[@]}"; do
     for f in "${changed[@]:-}"; do
       if [[ "$f" == "$d"/* ]]; then

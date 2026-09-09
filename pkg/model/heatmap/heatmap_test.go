@@ -650,7 +650,7 @@ func TestHeatmapBuilder(t *testing.T) {
 			// Add all input points
 			for _, p := range tt.input {
 				fp := prommodel.Fingerprint(p.labels.Hash())
-				builder.Add(fp, p.labels, p.timestamp, p.profileID, p.spanID, p.value)
+				builder.Add(fp, p.labels, p.timestamp, p.profileID, p.spanID, p.traceID, p.value)
 			}
 
 			result := builder.Build(nil)
@@ -683,6 +683,8 @@ func TestHeatmapBuilder(t *testing.T) {
 						"series %d point %d profileID mismatch", i, j)
 					assert.Equal(t, expectedPoint.spanID, actualPoint.spanID,
 						"series %d point %d spanID mismatch", i, j)
+					assert.Equal(t, expectedPoint.traceID, actualPoint.traceID,
+						"series %d point %d traceID mismatch", i, j)
 					assert.Equal(t, expectedPoint.value, actualPoint.value,
 						"series %d point %d value mismatch", i, j)
 				}
@@ -697,6 +699,7 @@ type testPoint struct {
 	timestamp int64
 	profileID string
 	spanID    uint64
+	traceID   model.TraceID
 	value     int64
 }
 
@@ -732,11 +735,14 @@ func resultToTestSeries(report *queryv1.HeatmapReport) []testSeries {
 				}
 			}
 
+			var traceID model.TraceID
+			copy(traceID[:], p.TraceId)
 			points[j] = testPoint{
 				labels:    pointLabels,
 				timestamp: p.Timestamp,
 				profileID: report.AttributeTable.Values[p.ProfileId],
 				spanID:    p.SpanId,
+				traceID:   traceID,
 				value:     p.Value,
 			}
 		}

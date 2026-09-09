@@ -46,7 +46,10 @@ func (i *authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		if !i.enabled {
 			return next(InjectTenantID(ctx, DefaultTenantID), req)
 		}
-		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, req.Header())
+		_, ctx, err := ExtractTenantIDFromHeaders(ctx, req.Header())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		}
 
 		resp, err := next(ctx, req)
 		if err != nil && errors.Is(err, ErrNoTenantID) {
@@ -72,7 +75,10 @@ func (i *authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 		if !i.enabled {
 			return next(InjectTenantID(ctx, DefaultTenantID), conn)
 		}
-		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, conn.RequestHeader())
+		_, ctx, err := ExtractTenantIDFromHeaders(ctx, conn.RequestHeader())
+		if err != nil {
+			return connect.NewError(connect.CodeUnauthenticated, err)
+		}
 		if err := next(ctx, conn); err != nil {
 			if errors.Is(err, ErrNoTenantID) {
 				return connect.NewError(connect.CodeUnauthenticated, err)
@@ -85,7 +91,11 @@ func (i *authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 
 var defaultResolver tenant.Resolver = tenant.NewMultiResolver()
 
-// ExtractTenantIDFromHeaders extracts a single TenantID from http headers.
+// ExtractTenantIDFromHeaders extracts the tenant ID(s) from http headers and
+// injects them into the context. It supports both single and multi-tenant
+// requests (pipe-separated org IDs such as "tenant-a|tenant-b").
+// Tenant IDs are deduplicated and sorted before being injected back into the
+// context, so downstream handlers always see a canonical representation.
 func ExtractTenantIDFromHeaders(ctx context.Context, headers http.Header) (string, context.Context, error) {
 	orgID := headers.Get(user.OrgIDHeaderName)
 	if orgID == "" {
@@ -93,12 +103,19 @@ func ExtractTenantIDFromHeaders(ctx context.Context, headers http.Header) (strin
 	}
 	ctx = InjectTenantID(ctx, orgID)
 
-	tenantID, err := defaultResolver.TenantID(ctx)
+	tenantIDs, err := defaultResolver.TenantIDs(ctx)
 	if err != nil {
 		return "", ctx, err
 	}
 
-	return tenantID, ctx, nil
+	// Re-inject the normalized (deduped, sorted) string only
+	// when it differs from the raw header value.
+	normalized := tenant.JoinTenantIDs(tenantIDs)
+	if normalized != orgID {
+		ctx = InjectTenantID(ctx, normalized)
+	}
+
+	return normalized, ctx, nil
 }
 
 // ExtractTenantIDFromContext extracts a single TenantID from the context.

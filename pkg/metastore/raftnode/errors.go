@@ -14,7 +14,13 @@ func IsRaftLeadershipError(err error) bool {
 	return errors.Is(err, raft.ErrLeadershipLost) ||
 		errors.Is(err, raft.ErrNotLeader) ||
 		errors.Is(err, raft.ErrLeadershipTransferInProgress) ||
-		errors.Is(err, raft.ErrRaftShutdown)
+		errors.Is(err, raft.ErrRaftShutdown) ||
+		isRaftLeaderStatusError(err)
+}
+
+func isRaftLeaderStatusError(err error) bool {
+	_, ok := RaftLeaderFromStatusDetails(err)
+	return ok
 }
 
 type RaftLeaderLocator interface {

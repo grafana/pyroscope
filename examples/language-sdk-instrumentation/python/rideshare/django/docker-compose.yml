@@ -1,35 +1,47 @@
 services:
   pyroscope:
-    image: grafana/pyroscope
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: grafana/pyroscope:latest
     ports:
     - 4040:4040
+  migrate:
+    build: ./app
+    command: python manage.py migrate --no-input
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
   us-east:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
       - ./.env.dev
     environment:
       - REGION=us-east
     depends_on:
-      - db
+      migrate:
+        condition: service_completed_successfully
   eu-north:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
       - ./.env.dev
     environment:
       - REGION=eu-north
     depends_on:
-      - db
+      migrate:
+        condition: service_completed_successfully
   ap-south:
     build: ./app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn.conf.py hello_django.wsgi:application
     env_file:
     - ./.env.dev
     environment:
       - REGION=ap-south
     depends_on:
-    - db
+      migrate:
+        condition: service_completed_successfully
   db:
     image: postgres:16-alpine
     ports:
@@ -43,12 +55,15 @@ services:
       context: .
       dockerfile: Dockerfile.load-generator
   grafana:
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
     - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
     - GF_AUTH_ANONYMOUS_ENABLED=true
     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
     volumes:
     - ./grafana-provisioning:/etc/grafana/provisioning
     ports:

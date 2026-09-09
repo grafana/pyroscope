@@ -3,14 +3,26 @@ package convert
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"io"
 	"strconv"
 
+	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )
 
-func ParseTreeNoDict(r io.Reader, cb func(name []byte, val int)) error {
-	t, err := tree.DeserializeNoDict(r)
+func ParseTreeNoDict(ctx context.Context, r io.Reader, cb func(name []byte, val int), limits ingestion.Limits) error {
+	var maxNameLen, maxChildren int
+	if limits != nil {
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		if err != nil {
+			return err
+		}
+		maxNameLen = limits.MaxProfileSymbolValueLength(tenantID)
+		maxChildren = limits.MaxProfileStacktraceSamples(tenantID)
+	}
+	t, err := tree.DeserializeNoDict(r, maxNameLen, maxChildren)
 	if err != nil {
 		return err
 	}

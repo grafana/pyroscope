@@ -15,6 +15,13 @@ a piece of work is finished it should:
 - Have unit for new functionality or tests that would have caught the bug being fixed.
 - If you have made any changes to flags, configs and/or protobuf definitions, run `make generate` and commit the changed files.
 
+### Use signed commits in PRs
+
+Effective June 22, 2026, all Grafana Labs repositories, including Pyroscope, [require signed commits](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-signed-commits).
+To learn how to enable commit verification, refer to [about commit signature verification](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification) and this page to learn about [checking your commit signature verification status](https://docs.github.com/en/authentication/troubleshooting-commit-signature-verification/checking-your-commit-and-tag-signature-verification-status).
+
+**NOTE** Unsigned commits and pull requests will be rejected and closed. This includes pull requests that have been authored by Agents.
+
 ## Requirement
 
 To be able to run make targets you'll need to install:
@@ -35,11 +42,26 @@ Use `make lint` to ensure formatting is correct.
 
 ## Building Grafana Pyroscope
 
-To build:
+To do a full production build (frontend + backend):
 
 ```
-make go/bin
+make build
 ```
+
+This runs `make frontend/build` to build the web UI (in Docker, so Docker must be running) and then
+builds the Go binaries with the frontend assets embedded.
+
+If you're only working on the backend and don't need the embedded UI, use the Docker-free dev build,
+which skips the frontend entirely:
+
+```
+make build-dev
+```
+
+The lower-level `make go/bin` target builds only the Go binaries. By default it embeds the frontend
+assets (build tag `embedassets`), so it requires `ui/dist/` to already exist — build it once with
+`make frontend/build` (or use `make build`/`make build-dev` above). Otherwise the build fails with
+`pattern dist: no matching files found`.
 
 To run the unit test suite:
 

@@ -26,7 +26,7 @@ docker-compose up -d
 Now that everything is set up, you can browse profiling data.
 
 #### Explore profiles
-[Explore profiles app](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+[Profiles Drilldown](http://localhost:3000/a/grafana-pyroscope-app/explore).
 
 ![image](https://github.com/user-attachments/assets/71cb5a6e-2f5f-4f80-b868-d17fc30c2ca1)
 ![image](https://github.com/user-attachments/assets/00e45eac-0d2d-4229-85f0-3d2321c4542a)

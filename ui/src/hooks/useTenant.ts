@@ -4,10 +4,7 @@ import { checkMultitenancy, setOrgID } from '@api/client';
 const STORAGE_KEY = 'pyroscope:tenantID';
 
 export type TenantStatus =
-  | 'loading'
-  | 'single_tenant'
-  | 'needs_tenant_id'
-  | 'multi_tenant';
+  'loading' | 'single_tenant' | 'needs_tenant_id' | 'multi_tenant';
 
 export function useTenant() {
   const [status, setStatus] = useState<TenantStatus>('loading');

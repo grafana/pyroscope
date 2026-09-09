@@ -25,7 +25,7 @@ func (q *QueryFrontend) ProfileTypes(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// Note: Some ProfileTypes API clients rely on the ablility to call it without start/end.
+	// Note: Some ProfileTypes API clients rely on the ability to call it without start/end.
 	// See https://github.com/grafana/grafana/issues/110211
 	// TODO: Consider removing this (breaking change) as part of the next major release.
 	if req.Msg.Start == 0 && req.Msg.End == 0 {

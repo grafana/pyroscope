@@ -274,9 +274,12 @@ paths:
       tags:
         - scope/public
         - querier.v1.QuerierService
-      summary: SelectMergeProfile returns matching profiles aggregated in pprof format. It  will contain all information stored (so including filenames and line  number, if ingested).
+      summary: 'Deprecated: Use SelectMergeStacktraces with PROFILE_FORMAT_PPROF instead.  This RPC will remain supported in querier.v1 for backward compatibility;  future breaking API changes may be introduced in querier.v2.  SelectMergeProfile returns matching profiles aggregated in pprof format. It  will contain all information stored (so including filenames and line  number, if ingested).'
       description: |-
-        SelectMergeProfile returns matching profiles aggregated in pprof format. It
+        Deprecated: Use SelectMergeStacktraces with PROFILE_FORMAT_PPROF instead.
+         This RPC will remain supported in querier.v1 for backward compatibility;
+         future breaking API changes may be introduced in querier.v2.
+         SelectMergeProfile returns matching profiles aggregated in pprof format. It
          will contain all information stored (so including filenames and line
          number, if ingested).
       operationId: querier.v1.QuerierService.SelectMergeProfile
@@ -314,9 +317,12 @@ paths:
       tags:
         - scope/public
         - querier.v1.QuerierService
-      summary: SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph  format. It will combine samples from within the same callstack, with each  element being grouped by its function name.
+      summary: 'Deprecated: Use SelectMergeStacktraces with span_selector instead.  This RPC will remain supported in querier.v1 for backward compatibility;  future breaking API changes may be introduced in querier.v2.  SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph  format. It will combine samples from within the same callstack, with each  element being grouped by its function name.'
       description: |-
-        SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
+        Deprecated: Use SelectMergeStacktraces with span_selector instead.
+         This RPC will remain supported in querier.v1 for backward compatibility;
+         future breaking API changes may be introduced in querier.v2.
+         SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
          format. It will combine samples from within the same callstack, with each
          element being grouped by its function name.
       operationId: querier.v1.QuerierService.SelectMergeSpanProfile
@@ -978,11 +984,56 @@ components:
           $ref: '#/components/schemas/querier.v1.QueryImpact'
       title: AnalyzeQueryResponse
       additionalProperties: false
+    querier.v1.AsyncQueryRequest:
+      type: object
+      properties:
+        requestId:
+          type: string
+          title: request_id
+          description: If set, this is a polling request.
+        type:
+          title: type
+          description: Sets the kind of async query.
+          $ref: '#/components/schemas/querier.v1.AsyncQueryType'
+      title: AsyncQueryRequest
+      additionalProperties: false
+    querier.v1.AsyncQueryResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          title: request_id
+          description: Id of the async query.
+        status:
+          title: status
+          description: 'Status of the query: unknown, in_progress, success, failed'
+          $ref: '#/components/schemas/querier.v1.AsyncQueryStatus'
+        errorMessage:
+          type: string
+          title: error_message
+          description: Populated on FAILURE.
+      title: AsyncQueryResponse
+      additionalProperties: false
+    querier.v1.AsyncQueryStatus:
+      type: string
+      title: AsyncQueryStatus
+      enum:
+        - ASYNC_QUERY_STATUS_UNKNOWN
+        - ASYNC_QUERY_STATUS_IN_PROGRESS
+        - ASYNC_QUERY_STATUS_SUCCESS
+        - ASYNC_QUERY_STATUS_FAILURE
+    querier.v1.AsyncQueryType:
+      type: string
+      title: AsyncQueryType
+      enum:
+        - ASYNC_QUERY_TYPE_DISABLED
+        - ASYNC_QUERY_TYPE_FORCE
     querier.v1.DiffRequest:
       type: object
       properties:
         left:
           title: left
+          description: The format of each request is ignored; diff queries always compare trees.
           $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
         right:
           title: right
@@ -1083,6 +1134,15 @@ components:
           title: values
       title: Level
       additionalProperties: false
+    querier.v1.PprofProfile:
+      type: object
+      properties:
+        profile:
+          title: profile
+          $ref: '#/components/schemas/google.v1.Profile'
+      title: PprofProfile
+      additionalProperties: false
+      description: PprofProfile contains pprof output and related response metadata.
     querier.v1.ProfileFormat:
       type: string
       title: ProfileFormat
@@ -1091,6 +1151,7 @@ components:
         - PROFILE_FORMAT_FLAMEGRAPH
         - PROFILE_FORMAT_TREE
         - PROFILE_FORMAT_DOT
+        - PROFILE_FORMAT_PPROF
     querier.v1.ProfileTypesRequest:
       type: object
       properties:
@@ -1348,6 +1409,16 @@ components:
               - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
           title: profile_id_selector
           description: List of Profile UUIDs to query
+        traceIdSelector:
+          type: array
+          examples:
+            - - 7c9e66797425440de944be07fc1f90ae
+          items:
+            type: string
+            examples:
+              - - 7c9e66797425440de944be07fc1f90ae
+          title: trace_id_selector
+          description: List of trace IDs (32 hex characters, 128-bit) to filter samples by.
       title: SelectMergeProfileRequest
       additionalProperties: false
     querier.v1.SelectMergeSpanProfileRequest:
@@ -1494,6 +1565,33 @@ components:
               - - 7c9e6679-7425-40de-944b-e07fc1f90ae7
           title: profile_id_selector
           description: List of Profile UUIDs to query
+        async:
+          title: async
+          description: (experimental) Used for making and polling async queries.
+          nullable: true
+          $ref: '#/components/schemas/querier.v1.AsyncQueryRequest'
+        traceIdSelector:
+          type: array
+          examples:
+            - - 7c9e66797425440de944be07fc1f90ae
+          items:
+            type: string
+            examples:
+              - - 7c9e66797425440de944be07fc1f90ae
+          title: trace_id_selector
+          description: List of trace IDs (32 hex characters, 128-bit) to filter samples by.
+        spanSelector:
+          type: array
+          examples:
+            - - 9a517183f26a089d
+              - 5a4fe264a9c987fe
+          items:
+            type: string
+            examples:
+              - - 9a517183f26a089d
+                - 5a4fe264a9c987fe
+          title: span_selector
+          description: List of span IDs (16 hex characters, 64-bit) to filter samples by.
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:
@@ -1511,6 +1609,15 @@ components:
           type: string
           title: dot
           description: DOT graph representation.
+        async:
+          title: async
+          description: (experimental) Used for responding to async queries.
+          nullable: true
+          $ref: '#/components/schemas/querier.v1.AsyncQueryResponse'
+        pprof:
+          title: pprof
+          description: Profile in pprof format.
+          $ref: '#/components/schemas/querier.v1.PprofProfile'
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectSeriesRequest:
@@ -1689,6 +1796,12 @@ components:
           description: |-
             Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
              label overlaps with the series label, it is not included here.
+        traceId:
+          type: string
+          examples:
+            - 4bf92f3577b34da6a3ce929d0e0e4736
+          title: trace_id
+          description: Trace ID associated with the span, encoded as 32 lowercase hexadecimal characters.
       title: Exemplar
       additionalProperties: false
       description: |-

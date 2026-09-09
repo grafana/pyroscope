@@ -141,11 +141,14 @@ func (p *partitionRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 		location := p.src.Locations[unresolvedLocs.At()]
 		location.MappingId = p.mappings.tryLookup(location.MappingId)
 		if len(p.src.Functions) == 0 {
+			// Line records cannot reference any function and are dropped,
+			// but the location itself must be kept: not-yet-symbolized
+			// native partitions consist entirely of line-less locations.
 			location.Line = nil
-			continue
-		}
-		for j, line := range location.Line {
-			location.Line[j].FunctionId = p.functions.tryLookup(line.FunctionId)
+		} else {
+			for j, line := range location.Line {
+				location.Line[j].FunctionId = p.functions.tryLookup(line.FunctionId)
+			}
 		}
 		unresolvedLocs.setValue(location)
 	}

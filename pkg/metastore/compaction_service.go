@@ -68,7 +68,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	// First, we ask the current leader to prepare the change. This is a read
 	// operation conducted through the raft log: at this stage, we only
 	// prepare changes; the command handler does not alter the state.
-	request := &raft_log.GetCompactionPlanUpdateRequest{
+	proposeReq := &raft_log.GetCompactionPlanUpdateRequest{
 		StatusUpdates: make([]*raft_log.CompactionJobStatusUpdate, 0, len(req.StatusUpdates)),
 		AssignJobsMax: req.JobCapacity,
 	}
@@ -82,7 +82,7 @@ func (svc *CompactionService) PollCompactionJobs(
 		if update.CompactedBlocks != nil {
 			compacted[update.Name] = update
 		}
-		request.StatusUpdates = append(request.StatusUpdates, &raft_log.CompactionJobStatusUpdate{
+		proposeReq.StatusUpdates = append(proposeReq.StatusUpdates, &raft_log.CompactionJobStatusUpdate{
 			Name:   update.Name,
 			Token:  update.Token,
 			Status: update.Status,
@@ -90,7 +90,7 @@ func (svc *CompactionService) PollCompactionJobs(
 	}
 
 	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE)
-	proposeResp, err := svc.raft.Propose(ctx, cmd, req)
+	proposeResp, err := svc.raft.Propose(ctx, cmd, proposeReq)
 	if err != nil {
 		if !raftnode.IsRaftLeadershipError(err) {
 			level.Error(svc.logger).Log("msg", "failed to prepare compaction plan", "err", err)

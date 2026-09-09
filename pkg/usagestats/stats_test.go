@@ -2,6 +2,7 @@ package usagestats
 
 import (
 	"encoding/json"
+	"fmt"
 	"runtime"
 	"sync"
 	"testing"
@@ -220,4 +221,23 @@ func TestPanics(t *testing.T) {
 		NewFloat(editionKey)
 		Edition("new edition")
 	})
+}
+
+func TestMultiCounter_ConcurrentInc(t *testing.T) {
+	// Concurrent Inc with distinct keys overlaps map inserts with the
+	// "__total__" access; run with -race to guard the counter's thread-safety.
+	mc := NewMultiCounter("test_multi_counter_concurrent", "key_name")
+
+	const goroutines = 8
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := 0; g < goroutines; g++ {
+		go func(g int) {
+			defer wg.Done()
+			mc.Inc(1, fmt.Sprintf("key_%d", g))
+		}(g)
+	}
+	wg.Wait()
+
+	require.Equal(t, int64(goroutines), mc.Value()["total"])
 }

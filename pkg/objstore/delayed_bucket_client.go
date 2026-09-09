@@ -112,5 +112,10 @@ func (m *DelayedBucketClient) Provider() objstore.ObjProvider {
 }
 
 func (m *DelayedBucketClient) delay() {
-	time.Sleep(m.minDelay + time.Duration(rand.Int63n(m.maxDelay.Nanoseconds()-m.minDelay.Nanoseconds())))
+	if m.minDelay == m.maxDelay {
+		time.Sleep(m.minDelay)
+		return
+	}
+
+	time.Sleep(m.minDelay + time.Duration(rand.Int63n(int64(m.maxDelay-m.minDelay))))
 }

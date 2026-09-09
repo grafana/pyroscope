@@ -49,6 +49,21 @@ type Config struct {
 	WorkerConcurrency int               `yaml:"scheduler_worker_concurrency" category:"advanced"`
 	GRPCClientConfig  grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
 
+	// AsyncQueriesEnabled toggles the experimental async query path on
+	// SelectMergeStacktraces. Off by default; when false, the Async field
+	// on the request is rejected with Unimplemented.
+	AsyncQueriesEnabled bool `yaml:"async_queries_enabled" category:"experimental"`
+
+	// QueryPlannerStrategy sets the query planner strategy. By default this is
+	// "classic" which provides the legacy query planner behavior.
+	//
+	// Optionally this can be "balanced" which uses the balanced query planner
+	// algorithm.
+	//
+	// TODO(bryanhuhta): Once "balanced" has been validated in production, make
+	// it the only strategy and remove both the classic planner and this option.
+	QueryPlannerStrategy string `yaml:"query_planner_strategy" category:"advanced" doc:"hidden"`
+
 	// Used to find local IP address, that is sent to scheduler and querier-worker.
 	InfNames   []string `yaml:"instance_interface_names" category:"advanced" doc:"default=[<private network interfaces>]"`
 	Addr       string   `yaml:"instance_addr" category:"advanced"`
@@ -73,12 +88,22 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.StringVar(&cfg.Addr, "query-frontend.instance-addr", "", "IP address to advertise to the querier (via scheduler) (default is auto-detected from network interfaces).")
 	f.BoolVar(&cfg.EnableIPv6, "query-frontend.instance-enable-ipv6", false, "Enable using a IPv6 instance address. (default false)")
 	f.IntVar(&cfg.Port, "query-frontend.instance-port", 0, "Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).")
+	f.BoolVar(&cfg.AsyncQueriesEnabled, "query-frontend.async-queries-enabled", false, "Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)")
+	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
 }
 
 func (cfg *Config) Validate() error {
 	if cfg.QuerySchedulerDiscovery.Mode == schedulerdiscovery.ModeRing && cfg.SchedulerAddress != "" {
 		return fmt.Errorf("scheduler address cannot be specified when query-scheduler service discovery mode is set to '%s'", cfg.QuerySchedulerDiscovery.Mode)
+	}
+
+	switch cfg.QueryPlannerStrategy {
+	case "":
+		cfg.QueryPlannerStrategy = "classic"
+	case "classic", "balanced":
+	default:
+		return fmt.Errorf("unknown query planner strategy: %q", cfg.QueryPlannerStrategy)
 	}
 
 	return cfg.GRPCClientConfig.Validate()
@@ -115,6 +140,8 @@ type Limits interface {
 	SymbolizerEnabled(string) bool
 	QuerySanitizeOnMerge(string) bool
 	QueryTreeEnabled(string) bool
+	SymbolRefTreesEnabled(string) bool
+	SymbolizerMaxUnresolvedLocations(string) int
 	validation.FlameGraphLimits
 }
 

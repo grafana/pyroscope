@@ -26,6 +26,7 @@ var dotnet = flag.Bool("dotnet", false, "")
 var node = flag.Bool("node", false, "")
 var rust = flag.Bool("rust", false, "")
 var tempo = flag.Bool("tempo", false, "")
+var report = flag.String("report", ".tmp/update_examples_report.md", "path to write the run report to, used as the PR body")
 
 // this program requires ruby, bundle, yarn, go to be installed
 func main() {
@@ -43,34 +44,49 @@ func main() {
 		*tempo = true
 	}
 
-	if *golang {
-		updateGolang()
-		updateGodeltaprof()
-		updateJfrParser()
-		s.sh("make go/mod")
+	languages := []struct {
+		name    string
+		enabled bool
+		update  func()
+	}{
+		{"go", *golang, func() {
+			updateGolang()
+			updateGodeltaprof()
+			updateJfrParser()
+			s.sh("make go/mod")
+		}},
+		{"java", *java, func() {
+			updateJava()
+			updateOtelProfilingJava()
+		}},
+		{"ruby", *ruby, updateRuby},
+		{"python", *python, updatePython},
+		{"dotnet", *dotnet, updateDotnet},
+		{"node", *node, updateNodeJS},
+		{"rust", *rust, updateRust},
+		{"tempo", *tempo, updateTempo},
 	}
 
-	if *java {
-		updateJava()
-		updateOtelProfilingJava()
+	var results []updateResult
+	var failed []string
+	for _, l := range languages {
+		if !l.enabled {
+			continue
+		}
+		before := changedFiles()
+		err := runUpdate(l.update)
+		if err != nil {
+			log.Printf("updating %s failed: %v", l.name, err)
+			failed = append(failed, l.name)
+			revertNewlyChanged(before)
+		}
+		results = append(results, updateResult{name: l.name, err: err})
 	}
-	if *ruby {
-		updateRuby()
-	}
-	if *python {
-		updatePython()
-	}
-	if *dotnet {
-		updateDotnet()
-	}
-	if *node {
-		updateNodeJS()
-	}
-	if *rust {
-		updateRust()
-	}
-	if *tempo {
-		updateTempo()
+
+	writeReport(*report, results)
+
+	if len(failed) > 0 {
+		log.Fatalf("failed to update: %s", strings.Join(failed, ", "))
 	}
 }
 
@@ -155,6 +171,7 @@ func updateTempo() {
 	reDockerTempo := regexp.MustCompile(`grafana/tempo:\d+\.\d+\.\d+`)
 	replDockerTempo := fmt.Sprintf("grafana/tempo:%s", last.version())
 	for _, f := range []string{
+		"examples/_templates/tempo/docker-compose.yml",
 		"examples/tracing/dotnet/docker-compose.yml",
 		"examples/tracing/golang-push/docker-compose.yml",
 		"examples/tracing/java/docker-compose.yml",
@@ -162,7 +179,6 @@ func updateTempo() {
 		"examples/tracing/python/docker-compose.yaml",
 		"examples/tracing/ruby/docker-compose.yml",
 		"examples/tracing/tempo/docker-compose.yml",
-		"tools/tracing/docker-compose.yml",
 	} {
 		replaceInplace(reDockerTempo, f, replDockerTempo)
 	}
@@ -430,7 +446,7 @@ func getTags(repo string) []Tag {
 		resp, err := http.DefaultClient.Do(req)
 		requireNoError(err, "do request")
 		if resp.StatusCode != 200 {
-			log.Fatalf("status code %d", resp.StatusCode)
+			panic(fmt.Errorf("GET %s: status code %d", url, resp.StatusCode))
 		}
 		defer resp.Body.Close()
 		err = json.NewDecoder(resp.Body).Decode(&pageTags)
@@ -478,8 +494,185 @@ func (s *sh) cmd(cmdArgs ...string) (string, string) {
 	return stdout.String(), stderr.String()
 }
 
+type updateResult struct {
+	name string
+	err  error
+}
+
+func writeReport(path string, results []updateResult) {
+	var b strings.Builder
+	b.WriteString("`make tools/update_examples`\n")
+
+	var updated, failed []updateResult
+	for _, r := range results {
+		if r.err == nil {
+			updated = append(updated, r)
+		} else {
+			failed = append(failed, r)
+		}
+	}
+
+	examples, other := changedExamples()
+	if len(examples) > 0 {
+		b.WriteString("\n### Examples updated\n\n")
+		for _, e := range examples {
+			fmt.Fprintf(&b, "- %s\n", e)
+		}
+	}
+	if len(other) > 0 {
+		b.WriteString("\n### Other files updated\n\n")
+		for _, f := range other {
+			fmt.Fprintf(&b, "- %s\n", f)
+		}
+	}
+	if len(examples) == 0 && len(other) == 0 {
+		b.WriteString("\nNo files changed.\n")
+	}
+
+	if len(failed) > 0 {
+		b.WriteString("\n### Updaters that failed\n\n")
+		for _, r := range failed {
+			fmt.Fprintf(&b, "- **%s**: `%v`\n", r.name, r.err)
+		}
+	}
+	if len(updated) > 0 {
+		fmt.Fprintf(&b, "\nUpdaters that ran clean: %s.\n", strings.Join(names(updated), ", "))
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		log.Fatalf("creating report dir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		log.Fatalf("writing report: %v", err)
+	}
+}
+
+func names(results []updateResult) []string {
+	out := make([]string, 0, len(results))
+	for _, r := range results {
+		out = append(out, r.name)
+	}
+	return out
+}
+
+func gitLines(args ...string) []string {
+	out, err := exec.Command("git", args...).Output()
+	if err != nil {
+		log.Fatalf("git %s: %v", strings.Join(args, " "), err)
+	}
+	var lines []string
+	for l := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		if l != "" {
+			lines = append(lines, l)
+		}
+	}
+	return lines
+}
+
+func modifiedFiles() []string {
+	return gitLines("diff", "--name-only")
+}
+
+func untrackedFiles() []string {
+	return gitLines("ls-files", "--others", "--exclude-standard")
+}
+
+// Untracked files count as changed because the commit the cron creates picks
+// them up as well.
+func changedFiles() []string {
+	return append(modifiedFiles(), untrackedFiles()...)
+}
+
+func revertNewlyChanged(before []string) {
+	was := make(map[string]bool, len(before))
+	for _, f := range before {
+		was[f] = true
+	}
+
+	var restore, remove []string
+	for _, f := range modifiedFiles() {
+		if !was[f] {
+			restore = append(restore, f)
+		}
+	}
+	for _, f := range untrackedFiles() {
+		if !was[f] {
+			remove = append(remove, f)
+		}
+	}
+	if len(restore) == 0 && len(remove) == 0 {
+		return
+	}
+	slices.Sort(restore)
+	slices.Sort(remove)
+
+	if len(restore) > 0 {
+		args := append([]string{"checkout", "--"}, restore...)
+		if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			log.Fatalf("reverting partial changes: %v: %s", err, out)
+		}
+	}
+	for _, f := range remove {
+		if err := os.Remove(f); err != nil {
+			log.Fatalf("removing partial change %s: %v", f, err)
+		}
+	}
+	log.Printf("reverted partial changes: %s", strings.Join(append(restore, remove...), ", "))
+}
+
+func changedExamples() (examples, other []string) {
+	seenExample := map[string]bool{}
+	seenOther := map[string]bool{}
+	for _, f := range changedFiles() {
+		if dir := owningExample(f); dir != "" {
+			if !seenExample[dir] {
+				seenExample[dir] = true
+				examples = append(examples, dir)
+			}
+			continue
+		}
+		if !seenOther[f] {
+			seenOther[f] = true
+			other = append(other, f)
+		}
+	}
+	slices.Sort(examples)
+	slices.Sort(other)
+	return examples, other
+}
+
+func owningExample(file string) string {
+	dir := filepath.Dir(file)
+	for dir != "." && dir != string(filepath.Separator) && strings.HasPrefix(dir, "examples") {
+		for _, name := range []string{"docker-compose.yml", "docker-compose.yaml"} {
+			if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+				return dir
+			}
+		}
+		dir = filepath.Dir(dir)
+	}
+	return ""
+}
+
+// runUpdate isolates one language's updates so that a failure in one ecosystem
+// does not skip the ones queued behind it. The updaters signal failure by
+// panicking via requireNoError.
+func runUpdate(update func()) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(error); ok {
+				err = e
+				return
+			}
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	update()
+	return nil
+}
+
 func requireNoError(err error, msg string) {
 	if err != nil {
-		log.Fatalf("msg %s err %v", msg, err)
+		panic(fmt.Errorf("%s: %w", msg, err))
 	}
 }

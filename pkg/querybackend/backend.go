@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
@@ -18,12 +20,13 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 type Config struct {
 	Address          string            `yaml:"address" category:"advanced"`
-	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
+	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
 	ClientTimeout    time.Duration     `yaml:"client_timeout" category:"advanced"`
 }
 
@@ -38,6 +41,15 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("query-backend.address is required")
 	}
 	return cfg.GRPCClientConfig.Validate()
+}
+
+// DisableClientRateLimitRetries turns off dskit's retrier, which ignores grpc-retry-pushback-ms.
+func (cfg *Config) DisableClientRateLimitRetries(logger log.Logger) {
+	if !cfg.GRPCClientConfig.BackoffOnRatelimits {
+		return
+	}
+	level.Warn(logger).Log("msg", "ignoring query-backend.grpc-client-config.backoff-on-ratelimits: its retries ignore grpc-retry-pushback-ms")
+	cfg.GRPCClientConfig.BackoffOnRatelimits = false
 }
 
 type QueryHandler interface {
@@ -94,6 +106,7 @@ func (q *QueryBackend) Invoke(
 	var resp *queryv1.InvokeResponse
 	var err error
 	var childNodes []*queryv1.ExecutionNode
+	var mergeBytes uint64
 
 	// Capture the node type before merge() sets QueryPlan to nil.
 	root := req.QueryPlan.Root
@@ -101,7 +114,7 @@ func (q *QueryBackend) Invoke(
 
 	switch nodeType {
 	case queryv1.QueryNode_MERGE:
-		resp, childNodes, err = q.merge(ctx, req, root.Children, collectDiag)
+		resp, childNodes, mergeBytes, err = q.merge(ctx, req, root.Children, collectDiag)
 	case queryv1.QueryNode_READ:
 		resp, err = q.read(ctx, req, root.Blocks)
 	default:
@@ -109,26 +122,42 @@ func (q *QueryBackend) Invoke(
 	}
 
 	if err != nil {
+		// A child cannot deliver its response; neither can we.
+		if pushback.IsMarked(err) {
+			pushback.SetNoRetry(ctx)
+		}
 		return nil, err
 	}
 
-	if collectDiag {
-		// For READ nodes, BlockReader already set the ExecutionNode with stats.
-		// We just need to wrap it for MERGE nodes.
-		if nodeType == queryv1.QueryNode_MERGE {
-			execNode := &queryv1.ExecutionNode{
+	// For MERGE nodes, unconditionally expose the summed BytesFetched so the
+	// query-frontend counter is correct even when diagnostics are not collected
+	// (the common production case).  For READ nodes, BlockReader already set
+	// the ExecutionNode.
+	if nodeType == queryv1.QueryNode_MERGE {
+		if resp.Diagnostics == nil {
+			resp.Diagnostics = &queryv1.Diagnostics{}
+		}
+		stats := &queryv1.ExecutionStats{BytesFetched: mergeBytes}
+		if collectDiag {
+			resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
 				Type:        nodeType,
 				Executor:    q.hostname,
 				StartTimeNs: startTime.UnixNano(),
 				EndTimeNs:   time.Now().UnixNano(),
 				Children:    childNodes,
+				Stats:       stats,
 			}
-			if resp.Diagnostics == nil {
-				resp.Diagnostics = &queryv1.Diagnostics{}
+		} else {
+			resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
+				Stats: stats,
 			}
-			resp.Diagnostics.ExecutionNode = execNode
 		}
 	}
+
+	// The response is complete: all that remains is encoding and the size check in
+	// grpc-go's Server.sendResponse, so a failure there recurs on every attempt.
+	// Queries that failed return above, still retryable.
+	pushback.SetNoRetry(ctx)
 
 	return resp, nil
 }
@@ -138,13 +167,15 @@ func (q *QueryBackend) merge(
 	request *queryv1.InvokeRequest,
 	children []*queryv1.QueryNode,
 	collectDiag bool,
-) (*queryv1.InvokeResponse, []*queryv1.ExecutionNode, error) {
+) (*queryv1.InvokeResponse, []*queryv1.ExecutionNode, uint64, error) {
 	request.QueryPlan = nil
 	m := newAggregator(request)
 	g, ctx := errgroup.WithContext(ctx)
 
 	childExecNodes := make([]*queryv1.ExecutionNode, len(children))
 	var mu sync.Mutex
+	var totalBytesFetched atomic.Uint64
+	var noRetry atomic.Bool
 
 	for i, child := range children {
 		idx := i
@@ -156,8 +187,14 @@ func (q *QueryBackend) merge(
 			// TODO: Speculative retry.
 			resp, err := q.backendClient.Invoke(ctx, req)
 			if err != nil {
+				if pushback.IsMarked(err) {
+					noRetry.Store(true)
+				}
 				return err
 			}
+			// Always accumulate bytes regardless of collectDiag so the
+			// query-frontend counter is correct in the common (non-diagnostic) path.
+			totalBytesFetched.Add(resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched())
 			if collectDiag && resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
 				mu.Lock()
 				childExecNodes[idx] = resp.Diagnostics.ExecutionNode
@@ -167,7 +204,11 @@ func (q *QueryBackend) merge(
 		}))
 	}
 	if err := g.Wait(); err != nil {
-		return nil, nil, err
+		// errgroup keeps one error; a sibling's verdict must not be lost with it.
+		if noRetry.Load() {
+			err = pushback.Mark(err)
+		}
+		return nil, nil, 0, err
 	}
 
 	var executionNodes []*queryv1.ExecutionNode
@@ -178,7 +219,7 @@ func (q *QueryBackend) merge(
 	}
 
 	resp := m.response()
-	return resp, executionNodes, nil
+	return resp, executionNodes, totalBytesFetched.Load(), nil
 }
 
 func (q *QueryBackend) read(

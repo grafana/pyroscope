@@ -202,6 +202,22 @@ func TestTimeBasedRetentionPolicy(t *testing.T) {
 			expectedTombstones: 1,
 		},
 		{
+			name:          "old partition with recent data is retained",
+			defaultConfig: Config{RetentionPeriod: model.Duration(12 * time.Hour)},
+			gracePeriod:   time.Hour,
+			maxTombstones: 10,
+			now:           now,
+			blocks: []testBlock{
+				{
+					tenant:    "tenant-1",
+					shard:     1,
+					createdAt: now.Add(-30 * time.Hour),
+					minTime:   now.Add(-2 * time.Hour),
+					maxTime:   now.Add(-time.Hour),
+				},
+			},
+		},
+		{
 			name:          "anonymous tenant deleted when no other tenant shards",
 			defaultConfig: Config{RetentionPeriod: model.Duration(12 * time.Hour)},
 			overrides:     map[string]Config{},
@@ -364,8 +380,8 @@ func TestTimeBasedRetentionPolicy(t *testing.T) {
 						Id:          test.ULID(block.createdAt.Format(time.RFC3339)),
 						Tenant:      1,
 						Shard:       block.shard,
-						MinTime:     block.minTime.UnixNano(),
-						MaxTime:     block.maxTime.UnixNano(),
+						MinTime:     block.minTime.UnixMilli(),
+						MaxTime:     block.maxTime.UnixMilli(),
 						StringTable: []string{"", block.tenant},
 					}))
 				}

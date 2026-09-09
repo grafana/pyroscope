@@ -443,6 +443,42 @@ func Test_permutation(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+// Regression test: steps used to be a fixed-size [4096]uint32 array, so any
+// resize past 4096 total ring tokens would panic
+func Test_permutation_grows_past_former_fixed_size(t *testing.T) {
+	var p perm
+	require.NotPanics(t, func() { p.resize(5000) })
+	assert.Len(t, p.v, 5000)
+}
+
+func Test_Distributor_Distribute_LargeRing(t *testing.T) {
+	const numInstances = 5
+	const numTokens = 1024 // total tokens: 5120, exceeds the former 4096 limit.
+
+	instances := make([]ring.InstanceDesc, numInstances)
+	for i := range instances {
+		instances[i] = ring.InstanceDesc{
+			Id:     fmt.Sprintf("segment-writer-%d", i),
+			Tokens: make([]uint32, numTokens),
+		}
+	}
+
+	r := testhelper.NewMockRing(instances, 1)
+	m := new(mockplacement.MockPlacement)
+	k := placement.Key{Tenant: 1, Dataset: 1, Fingerprint: 1}
+	m.On("Policy", k).Return(placement.Policy{
+		TenantShards:  numInstances,
+		DatasetShards: numInstances,
+		PickShard:     zeroShard,
+	})
+	d := NewDistributor(m, r)
+
+	require.NotPanics(t, func() {
+		_, err := d.Distribute(k)
+		require.NoError(t, err)
+	})
+}
+
 func collectN(i iter.Iterator[ring.InstanceDesc], n int) []string {
 	s := make([]string, 0, n)
 	for n > 0 && i.Next() {

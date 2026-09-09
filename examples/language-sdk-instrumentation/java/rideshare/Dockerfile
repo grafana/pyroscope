@@ -19,7 +19,7 @@ RUN ./gradlew assemble --no-daemon
 
 FROM sapmachine:21-jdk-headless
 
-RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
+RUN apt-get update && apt-get upgrade -y && apt-get install ca-certificates -y && update-ca-certificates
 
 ENV PYROSCOPE_APPLICATION_NAME=rideshare.java.push.app
 ENV PYROSCOPE_FORMAT=jfr
@@ -37,6 +37,6 @@ COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/buil
 
 WORKDIR /opt/app
 
-ADD https://github.com/grafana/pyroscope-java/releases/download/v2.5.4/pyroscope.jar /opt/app/pyroscope.jar
+ADD https://github.com/grafana/pyroscope-java/releases/download/v2.9.2/pyroscope.jar /opt/app/pyroscope.jar
 
 CMD sh -c "exec java -Dserver.port=${RIDESHARE_LISTEN_PORT} -javaagent:pyroscope.jar -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar"

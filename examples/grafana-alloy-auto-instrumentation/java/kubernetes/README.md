@@ -49,7 +49,7 @@ You can open grafana in your browser by port-forwarding traffic to the service:
 kubectl port-forward -n pyroscope-java deployment/grafana 3000 3000
 ```
 
-Now that everything is set up, you can browse profiling data through the [Explore profiles app](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+Now that everything is set up, you can browse profiling data through the [Profiles Drilldown app](http://localhost:3000/a/grafana-pyroscope-app/explore).
 
 ![image](https://github.com/user-attachments/assets/16f5559a-0bbc-4cf3-9589-fa4374bbc7e8)
 ![image](https://github.com/user-attachments/assets/ca28d228-93c3-4e16-a63c-285005c7b203)

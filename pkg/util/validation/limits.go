@@ -2,6 +2,18 @@ package validation
 
 import "time"
 
+func AllTruePerTenant(tenantIDs []string, f func(string) bool) bool {
+	if len(tenantIDs) == 0 {
+		return false
+	}
+	for _, tenantID := range tenantIDs {
+		if !f(tenantID) {
+			return false
+		}
+	}
+	return true
+}
+
 // SmallestPositiveNonZeroIntPerTenant is returning the minimal positive and
 // non-zero value of the supplied limit function for all given tenants. In many
 // limits a value of 0 means unlimited so the method will return 0 only if all

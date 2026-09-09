@@ -177,3 +177,46 @@ func Test_StatsTracker(t *testing.T) {
 	assert.Empty(t, s.Shards)
 	assert.Empty(t, stats.counters)
 }
+
+func Test_StatsTracker_SameDatasetNameAcrossTenants(t *testing.T) {
+	const window = time.Second * 10
+	stats := NewDistributionStats(window)
+	var now time.Duration
+
+	for ; now < window; now += time.Second {
+		stats.recordStats(now.Nanoseconds(), iter.NewSliceIterator([]Sample{
+			{TenantID: "tenant-a", DatasetName: "dataset-a", ShardID: 1, Size: 10},
+			{TenantID: "tenant-b", DatasetName: "dataset-a", ShardID: 2, Size: 30},
+		}))
+	}
+
+	// Each tenant must get its own dataset entry: otherwise the usage of
+	// one tenant is attributed to another, and no placement rule is built
+	// for the former.
+	expected := &adaptive_placementpb.DistributionStats{
+		Tenants: []*adaptive_placementpb.TenantStats{
+			{TenantId: "tenant-a"},
+			{TenantId: "tenant-b"},
+		},
+		Datasets: []*adaptive_placementpb.DatasetStats{
+			{
+				Tenant: 0,
+				Name:   "dataset-a",
+				Shards: []uint32{0},
+				Usage:  []uint64{5},
+			},
+			{
+				Tenant: 1,
+				Name:   "dataset-a",
+				Shards: []uint32{1},
+				Usage:  []uint64{15},
+			},
+		},
+		Shards: []*adaptive_placementpb.ShardStats{
+			{Id: 1},
+			{Id: 2},
+		},
+		CreatedAt: now.Nanoseconds(),
+	}
+	assert.Equal(t, expected.String(), stats.build(now.Nanoseconds()).String())
+}

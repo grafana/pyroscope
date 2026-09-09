@@ -43,7 +43,7 @@ func (n *Node) bootstrap() error {
 }
 
 func (n *Node) bootstrapPeersWithRetries() (peers []raft.Server, err error) {
-	prov := dns.NewProvider(n.logger, n.reg, dns.MiekgdnsResolverType)
+	prov := dns.NewProvider(dns.MiekgdnsResolverType, 2, n.logger, n.reg)
 	attempt := func() bool {
 		peers, err = n.bootstrapPeers(prov)
 		level.Debug(n.logger).Log("msg", "resolving bootstrap peers", "peers", fmt.Sprint(peers), "err", err)

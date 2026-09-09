@@ -13,11 +13,17 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/tenant"
+	"github.com/grafana/dskit/tracing"
+	"github.com/sony/gobreaker/v2"
+	"golang.org/x/sync/semaphore"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/dgraph-io/ristretto/v2"
+
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 // DebuginfodClientConfig holds configuration for the debuginfod client.
@@ -29,6 +35,17 @@ type DebuginfodClientConfig struct {
 
 	NotFoundCacheMaxItems int64
 	NotFoundCacheTTL      time.Duration
+
+	// BreakerFailureThreshold consecutive network-level failures open the
+	// circuit breaker for BreakerOpenDuration. A threshold <= 0 disables
+	// the breaker.
+	BreakerFailureThreshold int
+	BreakerOpenDuration     time.Duration
+
+	// MaxConcurrentFetches bounds in-flight upstream fetches (the
+	// politeness budget toward the debuginfod server).
+	// <= 0 uses defaultMaxDebuginfodConcurrency.
+	MaxConcurrentFetches int
 }
 
 // DebuginfodHTTPClient implements the DebuginfodClient interface using HTTP.
@@ -42,13 +59,18 @@ type DebuginfodHTTPClient struct {
 	group singleflight.Group
 
 	notFoundCache *ristretto.Cache[string, bool]
+	breaker       *gobreaker.CircuitBreaker[[]byte]
+	fetchSlots    *semaphore.Weighted
 }
 
-// NewDebuginfodClient creates a new client for fetching debug information from a debuginfod server.
-func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, limits Limits) (*DebuginfodHTTPClient, error) {
-	return NewDebuginfodClientWithConfig(logger, DebuginfodClientConfig{
-		BaseURL: baseURL,
-		//UserAgent:  "Pyroscope-Symbolizer/1.0",
+func defaultDebuginfodClientConfig(baseURL string) DebuginfodClientConfig {
+	userAgent := "pyroscope-symbolizer (github.com/grafana/pyroscope)"
+	if build.Version != "" {
+		userAgent = fmt.Sprintf("pyroscope-symbolizer/%s (github.com/grafana/pyroscope)", build.Version)
+	}
+	return DebuginfodClientConfig{
+		BaseURL:   baseURL,
+		UserAgent: userAgent,
 		BackoffConfig: backoff.Config{
 			MinBackoff: 1 * time.Second,
 			MaxBackoff: 10 * time.Second,
@@ -56,7 +78,14 @@ func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, li
 		},
 		NotFoundCacheMaxItems: 100000,
 		NotFoundCacheTTL:      7 * 24 * time.Hour,
-	}, metrics, limits)
+
+		BreakerFailureThreshold: 5,
+		BreakerOpenDuration:     time.Minute,
+	}
+}
+
+func NewDebuginfodClient(logger log.Logger, baseURL string, metrics *metrics, limits Limits) (*DebuginfodHTTPClient, error) {
+	return NewDebuginfodClientWithConfig(logger, defaultDebuginfodClientConfig(baseURL), metrics, limits)
 }
 
 // NewDebuginfodClientWithConfig creates a new client with the specified configuration.
@@ -90,33 +119,81 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 		return nil, fmt.Errorf("failed to create not-found cache: %w", err)
 	}
 
+	cfg.HTTPClient = httpClient
+	maxFetches := cfg.MaxConcurrentFetches
+	if maxFetches <= 0 {
+		maxFetches = defaultMaxDebuginfodConcurrency
+	}
 	client := &DebuginfodHTTPClient{
-		cfg: DebuginfodClientConfig{
-			BaseURL:       cfg.BaseURL,
-			UserAgent:     cfg.UserAgent,
-			HTTPClient:    httpClient,
-			BackoffConfig: cfg.BackoffConfig,
-		},
+		cfg:           cfg,
 		metrics:       metrics,
 		logger:        logger,
 		notFoundCache: cache,
 		limits:        limits,
+		fetchSlots:    semaphore.NewWeighted(int64(maxFetches)),
+		breaker: gobreaker.NewCircuitBreaker[[]byte](gobreaker.Settings{
+			Name:    "debuginfod",
+			Timeout: cfg.BreakerOpenDuration,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return cfg.BreakerFailureThreshold > 0 &&
+					counts.ConsecutiveFailures >= uint32(cfg.BreakerFailureThreshold)
+			},
+			// Any HTTP response, 404 included, proves the upstream reachable;
+			// only network-level failures count toward tripping.
+			IsSuccessful: func(err error) bool { return !isNetworkFailure(err) },
+			OnStateChange: func(_ string, _, to gobreaker.State) {
+				if to == gobreaker.StateOpen {
+					metrics.debuginfodBreakerTrips.Inc()
+					level.Warn(logger).Log("msg", "debuginfod circuit breaker opened",
+						"consecutive_failures", cfg.BreakerFailureThreshold,
+						"open_for", cfg.BreakerOpenDuration)
+				}
+			},
+		}),
 	}
 
 	return client, nil
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
+//
+// Concurrent callers for the same build ID share one fetch, detached from
+// any single caller's cancellation. The error contract follows from that:
+// a done caller gets its own context error without waiting for the shared
+// fetch to finish, and every other error comes from the shared fetch — it
+// may wrap a context error (e.g. the HTTP client's timeout) that says
+// nothing about the caller's own context.
 func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
 	status := statusSuccess
+	sanitizedBuildID, err := sanitizeBuildID(buildID)
+	span, ctx := tracing.StartSpanFromContext(ctx, "debuginfod_fetch")
 	defer func() {
 		c.metrics.debuginfodRequestDuration.WithLabelValues(status).Observe(time.Since(start).Seconds())
+		// The raw ID is unvalidated profile input; tag only the sanitized
+		// form (empty when invalid).
+		span.SetTag("build_id", sanitizedBuildID)
+		span.SetTag("outcome", status)
+		// A 404 and a breaker/negative-cache skip are expected outcomes,
+		// not span errors.
+		if status != statusSuccess && status != statusErrorNotFound && status != statusErrorUnavailable {
+			span.SetError()
+		}
+		span.Finish()
 	}()
 
-	sanitizedBuildID, err := sanitizeBuildID(buildID)
 	if err != nil {
 		status = statusErrorInvalidID
+		return nil, err
+	}
+
+	// A dead caller must not start (or join) a detached fetch
+	if err := ctx.Err(); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			status = statusErrorTimeout
+		} else {
+			status = statusErrorCanceled
+		}
 		return nil, err
 	}
 
@@ -127,15 +204,47 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	}
 	c.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 
-	v, err, _ := c.group.Do(sanitizedBuildID, func() (interface{}, error) {
-		return c.fetchDebugInfoWithRetries(ctx, sanitizedBuildID)
+	// Detached so one caller's cancellation cannot fail the fetch for the
+	// others; context values are preserved, and the HTTP client's timeout
+	// plus bounded retries keep the detached fetch finite.
+	localCtx := context.WithoutCancel(ctx)
+	resCh := c.group.DoChan(sanitizedBuildID, func() (interface{}, error) {
+		// The slot wait stays outside the breaker so that a fetch that queued
+		// while the breaker was closed fails fast once it opens rather
+		// than dial a dead upstream, and so that queue time does not count toward
+		// the breaker's stats. Slot holders are bounded by the HTTP client
+		// timeout and the retry budget, so acquiring on the uncancellable
+		// context stays finite.
+		if err := c.fetchSlots.Acquire(localCtx, 1); err != nil {
+			return nil, err
+		}
+		defer c.fetchSlots.Release(1)
+		data, err := c.breaker.Execute(func() ([]byte, error) {
+			return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
+		})
+		if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
+			return nil, upstreamUnavailableError{buildID: sanitizedBuildID}
+		}
+		return data, err
 	})
+
+	// A done caller stops waiting; the fetch keeps running for the rest.
+	var v interface{}
+	select {
+	case res := <-resCh:
+		v, err = res.Val, res.Err
+	case <-ctx.Done():
+		err = ctx.Err()
+	}
 
 	if err != nil {
 		var bnfErr buildIDNotFoundError
+		var unavailableErr upstreamUnavailableError
 		switch {
 		case errors.As(err, &bnfErr):
 			status = statusErrorNotFound
+		case errors.As(err, &unavailableErr):
+			status = statusErrorUnavailable
 		case errors.Is(err, context.Canceled):
 			status = statusErrorCanceled
 		case errors.Is(err, context.DeadlineExceeded):
@@ -228,7 +337,9 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 	}
 
 	var lastErr error
+	attempts := 0
 	for backOff.Ongoing() {
+		attempts++
 		data, err := attempt()
 		if err == nil {
 			return data, nil
@@ -253,10 +364,26 @@ func (c *DebuginfodHTTPClient) fetchDebugInfoWithRetries(ctx context.Context, sa
 	}
 
 	if lastErr != nil {
-		return nil, fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", backOff.NumRetries(), lastErr)
+		return nil, fmt.Errorf("failed to fetch debuginfo after %d attempts: %w", attempts, lastErr)
 	}
 
 	return data, nil
+}
+
+// isNetworkFailure reports whether the upstream never produced an HTTP
+// response for err.
+func isNetworkFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	if _, ok := isHTTPStatusError(err); ok {
+		return false
+	}
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
 
 // categorizeHTTPStatusCode maps HTTP status codes to metric status strings.
@@ -287,37 +414,18 @@ func isRetryableError(err error) bool {
 		return false
 	}
 
-	if isInvalidBuildIDError(err) {
-		return false
-	}
-
-	var bnfErr buildIDNotFoundError
-	if errors.As(err, &bnfErr) {
-		return false
-	}
-
 	if statusCode, ok := isHTTPStatusError(err); ok {
-		// Don't retry 4xx client errors except for 429 (too many requests)
-		if statusCode == http.StatusTooManyRequests {
-			return true
-		}
-		if statusCode >= 400 && statusCode < 500 {
-			return false
-		}
-		// Retry on 5xx server errors
-		return statusCode >= 500
+		// Other statuses are answers, not failures.
+		return statusCode == http.StatusTooManyRequests || statusCode >= 500
 	}
 
 	if os.IsTimeout(err) {
 		return true
 	}
 
+	// Anything the transport surfaces without an HTTP response.
 	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return netErr.Timeout()
-	}
-
-	return false
+	return errors.As(err, &netErr)
 }
 
 // sanitizeBuildID ensures that the buildID is a safe and valid string for use in file paths.

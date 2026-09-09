@@ -571,8 +571,12 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 		}
 	}
 
-	// Remove the virtual root.
-	t.root = root.children[0].children
+	// Remove the virtual root and detach it: parent-pointer walks
+	// (IterateStacks) must stop at the real roots instead of surfacing
+	// the marshal format's zero-valued node in every stack.
+	vr := root.children[0]
+	vr.parent = nil
+	t.root = vr.children
 
 	return t, nil
 }

@@ -263,8 +263,16 @@ export function QueryDiagnosticsPage() {
     loadTenants();
   }, []);
 
-  const loadStoredDiagnostic = useCallback(
-    async (tenant: string, id: string) => {
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const loadId = urlParams.get('load');
+    const tenant = urlParams.get('tenant');
+
+    if (!loadId || !tenant) {
+      return;
+    }
+
+    async function loadStoredDiagnostic(tenant: string, id: string) {
       try {
         const diagnostic: RawDiagnostic = await loadDiagnostic(tenant, id);
 
@@ -284,50 +292,34 @@ export function QueryDiagnosticsPage() {
         };
 
         setParams(newParams);
-        populateFromDiagnostic(diagnostic, newParams);
+        setDiagnosticsId(diagnostic.id);
+        setResponseTimeMs(diagnostic.response_time_ms);
+
+        if (diagnostic.plan) {
+          const tree = convertQueryPlanToTree(diagnostic.plan);
+          setPlanTree(tree);
+          setPlanJson(JSON.stringify(diagnostic.plan, null, 2));
+
+          const blocks = extractBlocksFromPlan(diagnostic.plan);
+          const startTime = parseTimeForStats(newParams.startTime);
+          const endTime = parseTimeForStats(newParams.endTime);
+          const stats = buildMetadataStats(blocks, startTime, endTime);
+          setMetadataStats(stats);
+        }
+
+        if (diagnostic.execution) {
+          const tree = convertExecutionNodeToTree(diagnostic.execution);
+          setExecutionTree(tree);
+        }
       } catch (err) {
         setGlobalError(
           err instanceof Error ? err.message : 'Failed to load diagnostic',
         );
       }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const loadId = urlParams.get('load');
-    const tenant = urlParams.get('tenant');
-
-    if (loadId && tenant) {
-      loadStoredDiagnostic(tenant, loadId);
-    }
-  }, [loadStoredDiagnostic]);
-
-  const populateFromDiagnostic = (
-    diagnostic: RawDiagnostic,
-    currentParams: QueryParams,
-  ) => {
-    setDiagnosticsId(diagnostic.id);
-    setResponseTimeMs(diagnostic.response_time_ms);
-
-    if (diagnostic.plan) {
-      const tree = convertQueryPlanToTree(diagnostic.plan);
-      setPlanTree(tree);
-      setPlanJson(JSON.stringify(diagnostic.plan, null, 2));
-
-      const blocks = extractBlocksFromPlan(diagnostic.plan);
-      const startTime = parseTimeForStats(currentParams.startTime);
-      const endTime = parseTimeForStats(currentParams.endTime);
-      const stats = buildMetadataStats(blocks, startTime, endTime);
-      setMetadataStats(stats);
     }
 
-    if (diagnostic.execution) {
-      const tree = convertExecutionNodeToTree(diagnostic.execution);
-      setExecutionTree(tree);
-    }
-  };
+    loadStoredDiagnostic(tenant, loadId);
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!params.tenantId) {

@@ -107,36 +107,36 @@ api:
 [memberlist: <memberlist>]
 
 pyroscopedb:
-  # Directory used for local storage.
+  # [v1 storage only] Directory used for local storage.
   # CLI flag: -pyroscopedb.data-path
   [data_path: <string> | default = "./data"]
 
-  # Upper limit to the duration of a Pyroscope block.
+  # [v1 storage only] Upper limit to the duration of a Pyroscope block.
   # CLI flag: -pyroscopedb.max-block-duration
   [max_block_duration: <duration> | default = 1h]
 
-  # How big should a single row group be uncompressed
+  # [v1 storage only] How big should a single row group be uncompressed
   # CLI flag: -pyroscopedb.row-group-target-size
   [row_group_target_size: <int> | default = 1342177280]
 
-  # Specifies the dimension by which symbols are partitioned. By default, the
-  # partitioning is determined automatically.
+  # [v1 storage only] Specifies the dimension by which symbols are partitioned.
+  # By default, the partitioning is determined automatically.
   # CLI flag: -pyroscopedb.symbols-partition-label
   [symbols_partition_label: <string> | default = ""]
 
-  # How much available disk space to keep in GiB
+  # [v1 storage only] How much available disk space to keep in GiB
   # CLI flag: -pyroscopedb.retention-policy-min-free-disk-gb
   [min_free_disk_gb: <int> | default = 10]
 
-  # Which percentage of free disk space to keep
+  # [v1 storage only] Which percentage of free disk space to keep
   # CLI flag: -pyroscopedb.retention-policy-min-disk-available-percentage
   [min_disk_available_percentage: <float> | default = 0.05]
 
-  # How often to enforce disk retention
+  # [v1 storage only] How often to enforce disk retention
   # CLI flag: -pyroscopedb.retention-policy-enforcement-interval
   [enforcement_interval: <duration> | default = 5m]
 
-  # Disable retention policy enforcement
+  # [v1 storage only] Disable retention policy enforcement
   # CLI flag: -pyroscopedb.retention-policy-disable
   [disable_enforcement: <boolean> | default = false]
 
@@ -167,6 +167,14 @@ runtime_config:
     # (experimental) Primary cluster validation label.
     # CLI flag: -runtime-config.http-client-cluster-validation.label
     [label: <string> | default = ""]
+
+  # (advanced) Disable HTTP keep-alives for the runtime config HTTP client. When
+  # enabled, each reload opens a new connection, which prevents long-lived
+  # connections from being pinned to a single backend when the runtime config
+  # URL is served by multiple replicas behind a connection-level (L4) load
+  # balancer, such as a Kubernetes Service.
+  # CLI flag: -runtime-config.http-client-disable-keep-alives
+  [http_client_disable_keep_alives: <boolean> | default = true]
 
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]
@@ -324,6 +332,23 @@ self_profiling:
 # query old data.
 # CLI flag: -architecture.storage
 [architecture_storage: <string> | default = "v1-v2-dual"]
+
+admin_server:
+  # Controls the admin server for metrics, pprof and admin endpoints.
+  # 'disabled': all routes on the main port (default). 'additional': admin
+  # server started, operational routes served on both ports. 'exclusive': admin
+  # server started, operational routes removed from main port.
+  # CLI flag: -admin-server.mode
+  [mode: <string> | default = "disabled"]
+
+  # Address for the admin HTTP server. Defaults to localhost so the port is not
+  # exposed externally. Use :: or 0.0.0.0 to listen on all interfaces.
+  # CLI flag: -admin-server.http-listen-address
+  [http_listen_address: <string> | default = "localhost"]
+
+  # Port for the admin HTTP server (metrics, pprof, admin).
+  # CLI flag: -admin-server.http-listen-port
+  [http_listen_port: <int> | default = 4042]
 
 embedded_grafana:
   # The directory where the Grafana data will be stored.
@@ -1145,6 +1170,13 @@ lifecycler:
   # CLI flag: -segment-writer.lifecycler.ID
   [id: <string> | default = "<hostname>"]
 
+# (advanced) Number of consecutive heartbeat-timeout periods after which a ring
+# member whose heartbeat has gone stale is automatically removed (forgotten)
+# from the ring. This cleans up entries of instances that have left the ring
+# without unregistering, e.g. after a scale-down. 0 disables auto-forget.
+# CLI flag: -segment-writer.auto-forget-unhealthy-periods
+[auto_forget_unhealthy_periods: <int> | default = 0]
+
 # (advanced) Timeout when flushing segments to bucket.
 # CLI flag: -segment-writer.segment-duration
 [segment_duration: <duration> | default = 500ms]
@@ -1301,7 +1333,7 @@ index:
 
   # (advanced) Interval for index cleanup check. 0 to disable.
   # CLI flag: -metastore.index.cleanup-interval
-  [cleanup_interval: <duration> | default = 0s]
+  [cleanup_interval: <duration> | default = 15m]
 
   # (advanced) Dead Letter Queue check interval. 0 to disable.
   # CLI flag: -metastore.index.dlq-recovery-check-interval
@@ -1359,6 +1391,17 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # (advanced) Maximum duration of the cleanup operations.
 # CLI flag: -compaction-worker.cleanup-max-duration
 [cleanup_max_duration: <duration> | default = 15s]
+
+# (advanced) Source of the compaction job source block metadata. Supported
+# values: metastore, object-storage.
+# CLI flag: -compaction-worker.metadata-source
+[metadata_source: <string> | default = "metastore"]
+
+# (advanced) Timeout for reading the metadata of a single block from object
+# storage. Only effective when metadata-source is object-storage. 0 disables the
+# timeout.
+# CLI flag: -compaction-worker.metadata-fetch-timeout
+[metadata_fetch_timeout: <duration> | default = 30s]
 
 metrics_exporter:
   # (advanced) This parameter specifies whether the metrics exporter is enabled.
@@ -1548,84 +1591,84 @@ lifecycler:
     # CLI flag: -distributor.excluded-zones
     [excluded_zones: <string> | default = ""]
 
-  # (advanced) Number of tokens for each ingester.
+  # (advanced) [v1 storage only] Number of tokens for each ingester.
   # CLI flag: -ingester.num-tokens
   [num_tokens: <int> | default = 128]
 
-  # (advanced) Period at which to heartbeat to consul.
+  # (advanced) [v1 storage only] Period at which to heartbeat to consul.
   # CLI flag: -ingester.heartbeat-period
   [heartbeat_period: <duration> | default = 5s]
 
-  # (advanced) Heartbeat timeout after which instance is assumed to be
-  # unhealthy.
+  # (advanced) [v1 storage only] Heartbeat timeout after which instance is
+  # assumed to be unhealthy.
   # CLI flag: -ingester.heartbeat-timeout
   [heartbeat_timeout: <duration> | default = 1m]
 
-  # (advanced) Observe tokens after generating to resolve collisions. Useful
-  # when using gossiping ring.
+  # (advanced) [v1 storage only] Observe tokens after generating to resolve
+  # collisions. Useful when using gossiping ring.
   # CLI flag: -ingester.observe-period
   [observe_period: <duration> | default = 0s]
 
-  # (advanced) Period to wait for a claim from another member; will join
-  # automatically after this.
+  # (advanced) [v1 storage only] Period to wait for a claim from another member;
+  # will join automatically after this.
   # CLI flag: -ingester.join-after
   [join_after: <duration> | default = 0s]
 
-  # (advanced) Minimum duration to wait after the internal readiness checks have
-  # passed but before succeeding the readiness endpoint. This is used to
-  # slowdown deployment controllers (eg. Kubernetes) after an instance is ready
-  # and before they proceed with a rolling update, to give the rest of the
-  # cluster instances enough time to receive ring updates.
+  # (advanced) [v1 storage only] Minimum duration to wait after the internal
+  # readiness checks have passed but before succeeding the readiness endpoint.
+  # This is used to slowdown deployment controllers (eg. Kubernetes) after an
+  # instance is ready and before they proceed with a rolling update, to give the
+  # rest of the cluster instances enough time to receive ring updates.
   # CLI flag: -ingester.min-ready-duration
   [min_ready_duration: <duration> | default = 15s]
 
-  # Name of network interface to read address from.
+  # [v1 storage only] Name of network interface to read address from.
   # CLI flag: -ingester.lifecycler.interface
   [interface_names: <list of strings> | default = [<private network interfaces>]]
 
-  # (advanced) Enable IPv6 support. Required to make use of IP addresses from
-  # IPv6 interfaces.
+  # (advanced) [v1 storage only] Enable IPv6 support. Required to make use of IP
+  # addresses from IPv6 interfaces.
   # CLI flag: -ingester.enable-inet6
   [enable_inet6: <boolean> | default = false]
 
-  # (advanced) Duration to sleep for before exiting, to ensure metrics are
-  # scraped.
+  # (advanced) [v1 storage only] Duration to sleep for before exiting, to ensure
+  # metrics are scraped.
   # CLI flag: -ingester.final-sleep
   [final_sleep: <duration> | default = 0s]
 
-  # File path where tokens are stored. If empty, tokens are not stored at
-  # shutdown and restored at startup.
+  # [v1 storage only] File path where tokens are stored. If empty, tokens are
+  # not stored at shutdown and restored at startup.
   # CLI flag: -ingester.tokens-file-path
   [tokens_file_path: <string> | default = ""]
 
-  # The availability zone where this instance is running.
+  # [v1 storage only] The availability zone where this instance is running.
   # CLI flag: -ingester.availability-zone
   [availability_zone: <string> | default = ""]
 
-  # (advanced) Unregister from the ring upon clean shutdown. It can be useful to
-  # disable for rolling restarts with consistent naming in conjunction with
-  # -distributor.extend-writes=false.
+  # (advanced) [v1 storage only] Unregister from the ring upon clean shutdown.
+  # It can be useful to disable for rolling restarts with consistent naming in
+  # conjunction with -distributor.extend-writes=false.
   # CLI flag: -ingester.unregister-on-shutdown
   [unregister_on_shutdown: <boolean> | default = true]
 
-  # (advanced) When enabled the readiness probe succeeds only after all
-  # instances are ACTIVE and healthy in the ring, otherwise only the instance
-  # itself is checked. This option should be disabled if in your cluster
-  # multiple instances can be rolled out simultaneously, otherwise rolling
-  # updates may be slowed down.
+  # (advanced) [v1 storage only] When enabled the readiness probe succeeds only
+  # after all instances are ACTIVE and healthy in the ring, otherwise only the
+  # instance itself is checked. This option should be disabled if in your
+  # cluster multiple instances can be rolled out simultaneously, otherwise
+  # rolling updates may be slowed down.
   # CLI flag: -ingester.readiness-check-ring-health
   [readiness_check_ring_health: <boolean> | default = true]
 
-  # (advanced) IP address to advertise in the ring.
+  # (advanced) [v1 storage only] IP address to advertise in the ring.
   # CLI flag: -ingester.lifecycler.addr
   [address: <string> | default = ""]
 
-  # (advanced) port to advertise in consul (defaults to
+  # (advanced) [v1 storage only] port to advertise in consul (defaults to
   # server.grpc-listen-port).
   # CLI flag: -ingester.lifecycler.port
   [port: <int> | default = 0]
 
-  # (advanced) ID to register in the ring.
+  # (advanced) [v1 storage only] ID to register in the ring.
   # CLI flag: -ingester.lifecycler.ID
   [id: <string> | default = "<hostname>"]
 ```
@@ -1673,6 +1716,11 @@ The `query_frontend` block configures the query-frontend.
 # query-frontend.grpc-client-config
 [grpc_client_config: <grpc_client>]
 
+# (experimental) Enable the experimental asynchronous query path on
+# SelectMergeStacktraces (default false)
+# CLI flag: -query-frontend.async-queries-enabled
+[async_queries_enabled: <boolean> | default = false]
+
 # (advanced) List of network interface names to look up when finding the
 # instance IP address. This address is sent to query-scheduler and querier,
 # which uses it to send the query response back to query-frontend.
@@ -1703,8 +1751,8 @@ The `query_backend` block configures the query-backend (V2 read path).
 # CLI flag: -query-backend.address
 [address: <string> | default = "localhost:9095"]
 
-# Configures the gRPC client used to communicate between the query-frontends and
-# the query-schedulers.
+# Configures the gRPC client used to communicate with query-backends.
+# backoff_on_ratelimits is ignored: its retries ignore the server's pushback.
 # The CLI flags prefix for this block configuration is:
 # query-backend.grpc-client-config
 [grpc_client_config: <grpc_client>]
@@ -2033,189 +2081,196 @@ bucket_store:
 The `compactor` block configures the compactor.
 
 ```yaml
-# (advanced) List of compaction time ranges.
+# (advanced) [v1 storage only] List of compaction time ranges.
 # CLI flag: -compactor.block-ranges
 [block_ranges: <list of durations> | default = 1h0m0s,2h0m0s,8h0m0s]
 
-# (advanced) Number of Go routines to use when downloading blocks for compaction
-# and uploading resulting blocks.
+# (advanced) [v1 storage only] Number of Go routines to use when downloading
+# blocks for compaction and uploading resulting blocks.
 # CLI flag: -compactor.block-sync-concurrency
 [block_sync_concurrency: <int> | default = 8]
 
-# (advanced) Number of Go routines to use when syncing block meta files from the
-# long term storage.
+# (advanced) [v1 storage only] Number of Go routines to use when syncing block
+# meta files from the long term storage.
 # CLI flag: -compactor.meta-sync-concurrency
 [meta_sync_concurrency: <int> | default = 20]
 
-# Directory to temporarily store blocks during compaction. This directory is not
-# required to be persisted between restarts.
+# [v1 storage only] Directory to temporarily store blocks during compaction.
+# This directory is not required to be persisted between restarts.
 # CLI flag: -compactor.data-dir
 [data_dir: <string> | default = "./data-compactor"]
 
-# (advanced) The frequency at which the compaction runs
+# (advanced) [v1 storage only] The frequency at which the compaction runs
 # CLI flag: -compactor.compaction-interval
 [compaction_interval: <duration> | default = 30m]
 
-# (advanced) How many times to retry a failed compaction within a single
-# compaction run.
+# (advanced) [v1 storage only] How many times to retry a failed compaction
+# within a single compaction run.
 # CLI flag: -compactor.compaction-retries
 [compaction_retries: <int> | default = 3]
 
-# (advanced) Max number of concurrent compactions running.
+# (advanced) [v1 storage only] Max number of concurrent compactions running.
 # CLI flag: -compactor.compaction-concurrency
 [compaction_concurrency: <int> | default = 1]
 
-# How long the compactor waits before compacting first-level blocks that are
-# uploaded by the ingesters. This configuration option allows for the reduction
-# of cases where the compactor begins to compact blocks before all ingesters
-# have uploaded their blocks to the storage.
+# [v1 storage only] How long the compactor waits before compacting first-level
+# blocks that are uploaded by the ingesters. This configuration option allows
+# for the reduction of cases where the compactor begins to compact blocks before
+# all ingesters have uploaded their blocks to the storage.
 # CLI flag: -compactor.first-level-compaction-wait-period
 [first_level_compaction_wait_period: <duration> | default = 25m]
 
-# (advanced) How frequently compactor should run blocks cleanup and maintenance,
-# as well as update the bucket index.
+# (advanced) [v1 storage only] How frequently compactor should run blocks
+# cleanup and maintenance, as well as update the bucket index.
 # CLI flag: -compactor.cleanup-interval
 [cleanup_interval: <duration> | default = 15m]
 
-# (advanced) Max number of tenants for which blocks cleanup and maintenance
-# should run concurrently.
+# (advanced) [v1 storage only] Max number of tenants for which blocks cleanup
+# and maintenance should run concurrently.
 # CLI flag: -compactor.cleanup-concurrency
 [cleanup_concurrency: <int> | default = 20]
 
-# (advanced) Time before a block marked for deletion is deleted from bucket. If
-# not 0, blocks will be marked for deletion and compactor component will
-# permanently delete blocks marked for deletion from the bucket. If 0, blocks
-# will be deleted straight away. Note that deleting blocks immediately can cause
-# query failures.
+# (advanced) [v1 storage only] Time before a block marked for deletion is
+# deleted from bucket. If not 0, blocks will be marked for deletion and
+# compactor component will permanently delete blocks marked for deletion from
+# the bucket. If 0, blocks will be deleted straight away. Note that deleting
+# blocks immediately can cause query failures.
 # CLI flag: -compactor.deletion-delay
 [deletion_delay: <duration> | default = 12h]
 
 # (advanced)
 [tenant_cleanup_delay: <duration> | default = ]
 
-# (advanced) Max time for starting compactions for a single tenant. After this
-# time no new compactions for the tenant are started before next compaction
-# cycle. This can help in multi-tenant environments to avoid single tenant using
-# all compaction time, but also in single-tenant environments to force new
-# discovery of blocks more often. 0 = disabled.
+# (advanced) [v1 storage only] Max time for starting compactions for a single
+# tenant. After this time no new compactions for the tenant are started before
+# next compaction cycle. This can help in multi-tenant environments to avoid
+# single tenant using all compaction time, but also in single-tenant
+# environments to force new discovery of blocks more often. 0 = disabled.
 # CLI flag: -compactor.max-compaction-time
 [max_compaction_time: <duration> | default = 1h]
 
-# (advanced) Maximum time to wait for in-flight cleanup and ring operations to
-# finish during shutdown. If the timeout is reached, the compactor will
-# forcefully stop. 0 = no timeout (wait indefinitely).
+# (advanced) [v1 storage only] Maximum time to wait for in-flight cleanup and
+# ring operations to finish during shutdown. If the timeout is reached, the
+# compactor will forcefully stop. 0 = no timeout (wait indefinitely).
 # CLI flag: -compactor.shutdown-timeout
 [shutdown_timeout: <duration> | default = 0s]
 
-# (experimental) If enabled, will delete the bucket-index, markers and debug
-# files in the tenant bucket when there are no blocks left in the index.
+# (experimental) [v1 storage only] If enabled, will delete the bucket-index,
+# markers and debug files in the tenant bucket when there are no blocks left in
+# the index.
 # CLI flag: -compactor.no-blocks-file-cleanup-enabled
 [no_blocks_file_cleanup_enabled: <boolean> | default = false]
 
-# (advanced) If enabled, the compactor will downsample profiles in blocks at
-# compaction level 3 and above. The original profiles are also kept.
+# (advanced) [v1 storage only] If enabled, the compactor will downsample
+# profiles in blocks at compaction level 3 and above. The original profiles are
+# also kept.
 # CLI flag: -compactor.downsampler-enabled
 [downsampler_enabled: <boolean> | default = false]
 
-# (advanced) Number of goroutines opening blocks before compaction.
+# (advanced) [v1 storage only] Number of goroutines opening blocks before
+# compaction.
 # CLI flag: -compactor.max-opening-blocks-concurrency
 [max_opening_blocks_concurrency: <int> | default = 16]
 
-# (advanced) Comma separated list of tenants that can be compacted. If
-# specified, only these tenants will be compacted by compactor, otherwise all
-# tenants can be compacted. Subject to sharding.
+# (advanced) [v1 storage only] Comma separated list of tenants that can be
+# compacted. If specified, only these tenants will be compacted by compactor,
+# otherwise all tenants can be compacted. Subject to sharding.
 # CLI flag: -compactor.enabled-tenants
 [enabled_tenants: <string> | default = ""]
 
-# (advanced) Comma separated list of tenants that cannot be compacted by this
-# compactor. If specified, and compactor would normally pick given tenant for
-# compaction (via -compactor.enabled-tenants or sharding), it will be ignored
-# instead.
+# (advanced) [v1 storage only] Comma separated list of tenants that cannot be
+# compacted by this compactor. If specified, and compactor would normally pick
+# given tenant for compaction (via -compactor.enabled-tenants or sharding), it
+# will be ignored instead.
 # CLI flag: -compactor.disabled-tenants
 [disabled_tenants: <string> | default = ""]
 
 sharding_ring:
   # The key-value store used to share the hash ring across multiple instances.
   kvstore:
-    # Backend storage to use for the ring. Supported values are: consul, etcd,
-    # inmemory, memberlist, multi.
+    # [v1 storage only] Backend storage to use for the ring. Supported values
+    # are: consul, etcd, inmemory, memberlist, multi.
     # CLI flag: -compactor.ring.store
     [store: <string> | default = "memberlist"]
 
-    # (advanced) The prefix for the keys in the store. Should end with a /.
+    # (advanced) [v1 storage only] The prefix for the keys in the store. Should
+    # end with a /.
     # CLI flag: -compactor.ring.prefix
     [prefix: <string> | default = "collectors/"]
 
     consul:
-      # Hostname and port of Consul.
+      # [v1 storage only] Hostname and port of Consul.
       # CLI flag: -compactor.ring.consul.hostname
       [host: <string> | default = "localhost:8500"]
 
-      # (advanced) ACL Token used to interact with Consul.
+      # (advanced) [v1 storage only] ACL Token used to interact with Consul.
       # CLI flag: -compactor.ring.consul.acl-token
       [acl_token: <string> | default = ""]
 
-      # (advanced) HTTP timeout when talking to Consul
+      # (advanced) [v1 storage only] HTTP timeout when talking to Consul
       # CLI flag: -compactor.ring.consul.client-timeout
       [http_client_timeout: <duration> | default = 20s]
 
-      # (advanced) Enable consistent reads to Consul.
+      # (advanced) [v1 storage only] Enable consistent reads to Consul.
       # CLI flag: -compactor.ring.consul.consistent-reads
       [consistent_reads: <boolean> | default = false]
 
-      # (advanced) Rate limit when watching key or prefix in Consul, in requests
-      # per second. 0 disables the rate limit.
+      # (advanced) [v1 storage only] Rate limit when watching key or prefix in
+      # Consul, in requests per second. 0 disables the rate limit.
       # CLI flag: -compactor.ring.consul.watch-rate-limit
       [watch_rate_limit: <float> | default = 1]
 
-      # (advanced) Burst size used in rate limit. Values less than 1 are treated
-      # as 1.
+      # (advanced) [v1 storage only] Burst size used in rate limit. Values less
+      # than 1 are treated as 1.
       # CLI flag: -compactor.ring.consul.watch-burst-size
       [watch_burst_size: <int> | default = 1]
 
-      # (advanced) Maximum duration to wait before retrying a Compare And Swap
-      # (CAS) operation.
+      # (advanced) [v1 storage only] Maximum duration to wait before retrying a
+      # Compare And Swap (CAS) operation.
       # CLI flag: -compactor.ring.consul.cas-retry-delay
       [cas_retry_delay: <duration> | default = 1s]
 
     etcd:
-      # The etcd endpoints to connect to.
+      # [v1 storage only] The etcd endpoints to connect to.
       # CLI flag: -compactor.ring.etcd.endpoints
       [endpoints: <list of strings> | default = []]
 
-      # (advanced) The dial timeout for the etcd connection.
+      # (advanced) [v1 storage only] The dial timeout for the etcd connection.
       # CLI flag: -compactor.ring.etcd.dial-timeout
       [dial_timeout: <duration> | default = 10s]
 
-      # (advanced) The maximum number of retries to do for failed ops.
+      # (advanced) [v1 storage only] The maximum number of retries to do for
+      # failed ops.
       # CLI flag: -compactor.ring.etcd.max-retries
       [max_retries: <int> | default = 10]
 
-      # (advanced) Enable TLS.
+      # (advanced) [v1 storage only] Enable TLS.
       # CLI flag: -compactor.ring.etcd.tls-enabled
       [tls_enabled: <boolean> | default = false]
 
-      # (advanced) Path to the client certificate, which will be used for
-      # authenticating with the server. Also requires the key path to be
-      # configured.
+      # (advanced) [v1 storage only] Path to the client certificate, which will
+      # be used for authenticating with the server. Also requires the key path
+      # to be configured.
       # CLI flag: -compactor.ring.etcd.tls-cert-path
       [tls_cert_path: <string> | default = ""]
 
-      # (advanced) Path to the key for the client certificate. Also requires the
-      # client certificate to be configured.
+      # (advanced) [v1 storage only] Path to the key for the client certificate.
+      # Also requires the client certificate to be configured.
       # CLI flag: -compactor.ring.etcd.tls-key-path
       [tls_key_path: <string> | default = ""]
 
-      # (advanced) Path to the CA certificates to validate server certificate
-      # against. If not set, the host's root CA certificates are used.
+      # (advanced) [v1 storage only] Path to the CA certificates to validate
+      # server certificate against. If not set, the host's root CA certificates
+      # are used.
       # CLI flag: -compactor.ring.etcd.tls-ca-path
       [tls_ca_path: <string> | default = ""]
 
-      # (advanced) Override the expected name on the server certificate.
+      # (advanced) [v1 storage only] Override the expected name on the server
+      # certificate.
       # CLI flag: -compactor.ring.etcd.tls-server-name
       [tls_server_name: <string> | default = ""]
 
-      # (advanced) Skip validating server certificate.
+      # (advanced) [v1 storage only] Skip validating server certificate.
       # CLI flag: -compactor.ring.etcd.tls-insecure-skip-verify
       [tls_insecure_skip_verify: <boolean> | default = false]
 
@@ -2253,89 +2308,98 @@ sharding_ring:
       # CLI flag: -compactor.ring.etcd.tls-cipher-suites
       [tls_cipher_suites: <string> | default = ""]
 
-      # (advanced) Override the default minimum TLS version. Allowed values:
-      # VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+      # (advanced) [v1 storage only] Override the default minimum TLS version.
+      # Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
       # CLI flag: -compactor.ring.etcd.tls-min-version
       [tls_min_version: <string> | default = ""]
 
-      # Etcd username.
+      # [v1 storage only] Etcd username.
       # CLI flag: -compactor.ring.etcd.username
       [username: <string> | default = ""]
 
-      # Etcd password.
+      # [v1 storage only] Etcd password.
       # CLI flag: -compactor.ring.etcd.password
       [password: <string> | default = ""]
 
     multi:
-      # (advanced) Primary backend storage used by multi-client.
+      # (advanced) [v1 storage only] Primary backend storage used by
+      # multi-client.
       # CLI flag: -compactor.ring.multi.primary
       [primary: <string> | default = ""]
 
-      # (advanced) Secondary backend storage used by multi-client.
+      # (advanced) [v1 storage only] Secondary backend storage used by
+      # multi-client.
       # CLI flag: -compactor.ring.multi.secondary
       [secondary: <string> | default = ""]
 
-      # (advanced) Mirror writes to the secondary store.
+      # (advanced) [v1 storage only] Mirror writes to the secondary store.
       # CLI flag: -compactor.ring.multi.mirror-enabled
       [mirror_enabled: <boolean> | default = false]
 
-      # (advanced) Timeout for storing a value to the secondary store.
+      # (advanced) [v1 storage only] Timeout for storing a value to the
+      # secondary store.
       # CLI flag: -compactor.ring.multi.mirror-timeout
       [mirror_timeout: <duration> | default = 2s]
 
-  # (advanced) Period at which to heartbeat to the ring. 0 = disabled.
+  # (advanced) [v1 storage only] Period at which to heartbeat to the ring. 0 =
+  # disabled.
   # CLI flag: -compactor.ring.heartbeat-period
   [heartbeat_period: <duration> | default = 15s]
 
-  # (advanced) The heartbeat timeout after which compactors are considered
-  # unhealthy within the ring. 0 = never (timeout disabled).
+  # (advanced) [v1 storage only] The heartbeat timeout after which compactors
+  # are considered unhealthy within the ring. 0 = never (timeout disabled).
   # CLI flag: -compactor.ring.heartbeat-timeout
   [heartbeat_timeout: <duration> | default = 1m]
 
-  # (advanced) Instance ID to register in the ring.
+  # (advanced) [v1 storage only] Instance ID to register in the ring.
   # CLI flag: -compactor.ring.instance-id
   [instance_id: <string> | default = "<hostname>"]
 
-  # List of network interface names to look up when finding the instance IP
-  # address.
+  # [v1 storage only] List of network interface names to look up when finding
+  # the instance IP address.
   # CLI flag: -compactor.ring.instance-interface-names
   [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
 
-  # (advanced) Port to advertise in the ring (defaults to
+  # (advanced) [v1 storage only] Port to advertise in the ring (defaults to
   # -server.http-listen-port).
   # CLI flag: -compactor.ring.instance-port
   [instance_port: <int> | default = 0]
 
-  # (advanced) IP address to advertise in the ring. Default is auto-detected.
+  # (advanced) [v1 storage only] IP address to advertise in the ring. Default is
+  # auto-detected.
   # CLI flag: -compactor.ring.instance-addr
   [instance_addr: <string> | default = ""]
 
-  # (advanced) Enable using a IPv6 instance address. (default false)
+  # (advanced) [v1 storage only] Enable using a IPv6 instance address. (default
+  # false)
   # CLI flag: -compactor.ring.instance-enable-ipv6
   [instance_enable_ipv6: <boolean> | default = false]
 
-  # (advanced) Minimum time to wait for ring stability at startup. 0 to disable.
+  # (advanced) [v1 storage only] Minimum time to wait for ring stability at
+  # startup. 0 to disable.
   # CLI flag: -compactor.ring.wait-stability-min-duration
   [wait_stability_min_duration: <duration> | default = 0s]
 
-  # (advanced) Maximum time to wait for ring stability at startup. If the
-  # compactor ring keeps changing after this period of time, the compactor will
-  # start anyway.
+  # (advanced) [v1 storage only] Maximum time to wait for ring stability at
+  # startup. If the compactor ring keeps changing after this period of time, the
+  # compactor will start anyway.
   # CLI flag: -compactor.ring.wait-stability-max-duration
   [wait_stability_max_duration: <duration> | default = 5m]
 
-  # (advanced) Timeout for waiting on compactor to become ACTIVE in the ring.
+  # (advanced) [v1 storage only] Timeout for waiting on compactor to become
+  # ACTIVE in the ring.
   # CLI flag: -compactor.ring.wait-active-instance-timeout
   [wait_active_instance_timeout: <duration> | default = 10m]
 
-# (advanced) The sorting to use when deciding which compaction jobs should run
-# first for a given tenant. Supported values are:
+# (advanced) [v1 storage only] The sorting to use when deciding which compaction
+# jobs should run first for a given tenant. Supported values are:
 # smallest-range-oldest-blocks-first, newest-blocks-first.
 # CLI flag: -compactor.compaction-jobs-order
 [compaction_jobs_order: <string> | default = "smallest-range-oldest-blocks-first"]
 
-# (advanced) Experimental: The strategy to use when splitting blocks during
-# compaction. Supported values are: fingerprint, stacktracePartition.
+# (advanced) [v1 storage only] Experimental: The strategy to use when splitting
+# blocks during compaction. Supported values are: fingerprint,
+# stacktracePartition.
 # CLI flag: -compactor.compaction-split-by
 [compaction_split_by: <string> | default = "fingerprint"]
 ```
@@ -2394,6 +2458,12 @@ The `symbolizer` block configures the symbolizer (V2).
 # server.
 # CLI flag: -symbolizer.max-debuginfod-concurrency
 [max_debuginfod_concurrency: <int> | default = 10]
+
+# (advanced) Maximum time the query frontend waits to resolve a single binary's
+# unresolved addresses for a symbol-ref tree query, before falling back to
+# binary!0xaddr frames for that binary.
+# CLI flag: -symbolizer.resolve-timeout
+[resolve_timeout: <duration> | default = 20s]
 ```
 
 ### overrides_exporter
@@ -2591,6 +2661,13 @@ ring:
   # start anyway.
   # CLI flag: -overrides-exporter.ring.wait-stability-max-duration
   [wait_stability_max_duration: <duration> | default = 5m]
+
+  # (advanced) Unregister from the ring upon clean shutdown. Disabling it keeps
+  # the instance in the ring in LEAVING state until it is auto-forgotten, which
+  # minimises leader changes when the instance is expected to rejoin with the
+  # same ID shortly.
+  # CLI flag: -overrides-exporter.ring.unregister-on-shutdown
+  [unregister_on_shutdown: <boolean> | default = true]
 ```
 
 ### grpc_client
@@ -2806,6 +2883,18 @@ The `memberlist` block configures the Gossip memberlist.
 # processing a large number of messages from other nodes.
 # CLI flag: -memberlist.received-messages-queue-size
 [received_messages_queue_size: <int> | default = 1024]
+
+# (advanced) Size of the per-key internal queue for processing messages received
+# from other nodes. Increasing this value may help to avoid dropping per-key
+# updates when the node is processing many updates for the same key.
+# CLI flag: -memberlist.processed-messages-queue-size
+[processed_messages_queue_size: <int> | default = 1024]
+
+# (advanced) Compression algorithm used for outgoing messages when
+# -memberlist.compression-enabled is true. Supported values: lzw, snappy.
+# Ignored when -memberlist.compression-enabled is false.
+# CLI flag: -memberlist.compression-algorithm
+[compression_algorithm: <string> | default = "lzw"]
 
 # Gossip address to advertise to other members in the cluster. Used for NAT
 # traversal.
@@ -3054,6 +3143,12 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -distributor.ingestion-burst-size-mb
 [ingestion_burst_size_mb: <float> | default = 2]
 
+# When a profile is sampled out, retain its totals as a single sample with
+# stacktraces and sample labels stripped (marked __sampled__) instead of
+# dropping it.
+# CLI flag: -distributor.sampling.keep-stripped-profiles
+[keep_stripped_profiles: <boolean> | default = false]
+
 # Maximum length accepted for label names.
 # CLI flag: -validation.max-length-label-name
 [max_label_name_length: <int> | default = 1024]
@@ -3079,6 +3174,12 @@ The `limits` block configures default and per-tenant limits imposed by component
 # disabled, labels with dots are accepted as-is using UTF-8 validation.
 # CLI flag: -validation.disable-label-sanitization
 [disable_label_sanitization: <boolean> | default = true]
+
+# Maximum number of series within a single batched push that are processed
+# concurrently. 0 = unbounded (legacy behavior); 1 = serialize pushes (kill
+# switch).
+# CLI flag: -distributor.push.max-concurrency
+[push_max_concurrency: <int> | default = 256]
 
 # Maximum size of a profile in bytes. This is based off the uncompressed size. 0
 # to disable.
@@ -3173,16 +3274,16 @@ distributor_usage_groups:
 # CLI flag: -distributor.ingestion-tenant-shard-size
 [ingestion_tenant_shard_size: <int> | default = 0]
 
-# Maximum number of active series of profiles per tenant, per ingester. 0 to
-# disable.
+# [v1 storage only] Maximum number of active series of profiles per tenant, per
+# ingester. 0 to disable.
 # CLI flag: -ingester.max-local-series-per-tenant
 [max_local_series_per_tenant: <int> | default = 0]
 
-# Maximum number of active series of profiles per tenant, across the cluster. 0
-# to disable. When the global limit is enabled, each ingester is configured with
-# a dynamic local limit based on the replication factor and the current number
-# of healthy ingesters, and is kept updated whenever the number of ingesters
-# change.
+# [v1 storage only] Maximum number of active series of profiles per tenant,
+# across the cluster. 0 to disable. When the global limit is enabled, each
+# ingester is configured with a dynamic local limit based on the replication
+# factor and the current number of healthy ingesters, and is kept updated
+# whenever the number of ingesters change.
 # CLI flag: -ingester.max-global-series-per-tenant
 [max_global_series_per_tenant: <int> | default = 5000]
 
@@ -3213,6 +3314,11 @@ distributor_usage_groups:
 # CLI flag: -querier.query-analysis-series-enabled
 [query_analysis_series_enabled: <boolean> | default = false]
 
+# Include profiles that were sampled out and stored with stacktraces stripped
+# (marked __sampled__) in query results.
+# CLI flag: -query-backend.include-stripped-profiles
+[include_stripped_profiles: <boolean> | default = false]
+
 # Maximum number of flame graph nodes by default. 0 to disable.
 # CLI flag: -querier.max-flamegraph-nodes-default
 [max_flamegraph_nodes_default: <int> | default = 8192]
@@ -3236,42 +3342,48 @@ distributor_usage_groups:
 # CLI flag: -querier.sanitize-on-merge
 [query_sanitize_on_merge: <boolean> | default = true]
 
-# Delete blocks containing samples older than the specified retention period. 0
-# to disable.
+# Maximum number of concurrent async queries per tenant. 0 to disable async
+# queries.
+# CLI flag: -query-frontend.max-async-query-concurrency
+[max_async_query_concurrency: <int> | default = 5]
+
+# [v1 storage only] Delete blocks containing samples older than the specified
+# retention period. 0 to disable.
 # CLI flag: -compactor.blocks-retention-period
 [compactor_blocks_retention_period: <duration> | default = 0s]
 
-# The number of shards to use when splitting blocks. 0 to disable splitting.
+# [v1 storage only] The number of shards to use when splitting blocks. 0 to
+# disable splitting.
 # CLI flag: -compactor.split-and-merge-shards
 [compactor_split_and_merge_shards: <int> | default = 0]
 
-# Number of stages split shards will be written to. Number of output split
-# shards is controlled by -compactor.split-and-merge-shards.
+# [v1 storage only] Number of stages split shards will be written to. Number of
+# output split shards is controlled by -compactor.split-and-merge-shards.
 # CLI flag: -compactor.split-and-merge-stage-size
 [compactor_split_and_merge_stage_size: <int> | default = 0]
 
-# Number of groups that blocks for splitting should be grouped into. Each group
-# of blocks is then split separately. Number of output split shards is
-# controlled by -compactor.split-and-merge-shards.
+# [v1 storage only] Number of groups that blocks for splitting should be grouped
+# into. Each group of blocks is then split separately. Number of output split
+# shards is controlled by -compactor.split-and-merge-shards.
 # CLI flag: -compactor.split-groups
 [compactor_split_groups: <int> | default = 1]
 
-# Max number of compactors that can compact blocks for single tenant. 0 to
-# disable the limit and use all compactors.
+# [v1 storage only] Max number of compactors that can compact blocks for single
+# tenant. 0 to disable the limit and use all compactors.
 # CLI flag: -compactor.compactor-tenant-shard-size
 [compactor_tenant_shard_size: <int> | default = 0]
 
-# If a partial block (unfinished block without meta.json file) hasn't been
-# modified for this time, it will be marked for deletion. The minimum accepted
-# value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to
-# disable.
+# [v1 storage only] If a partial block (unfinished block without meta.json file)
+# hasn't been modified for this time, it will be marked for deletion. The
+# minimum accepted value is 4h0m0s: a lower value will be ignored and the
+# feature disabled. 0 to disable.
 # CLI flag: -compactor.partial-block-deletion-delay
 [compactor_partial_block_deletion_delay: <duration> | default = 1d]
 
-# If enabled, the compactor will downsample profiles in blocks at compaction
-# level 3 and above. The original profiles are also kept. Note: This set the
-# default for the teanant overrides, in order to be effective it also requires
-# compactor.downsampler-enabled to be set to true.
+# [v1 storage only] If enabled, the compactor will downsample profiles in blocks
+# at compaction level 3 and above. The original profiles are also kept. Note:
+# This set the default for the teanant overrides, in order to be effective it
+# also requires compactor.downsampler-enabled to be set to true.
 # CLI flag: -compactor.compactor-downsampler-enabled
 [compactor_downsampler_enabled: <boolean> | default = true]
 
@@ -3298,6 +3410,14 @@ distributor_usage_groups:
 # is enforced in the distributor. 0 to disable, defaults to 10m.
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
+
+# Retention period for the data. 0 means data never deleted.
+# CLI flag: -retention-period
+[retention_period: <duration> | default = 31d]
+
+# Maximum number of recording rules a tenant can create. 0 to disable.
+# CLI flag: -recording-rules.max-rules-per-tenant
+[max_recording_rules: <int> | default = 25]
 ```
 
 ### s3_storage_backend

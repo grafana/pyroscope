@@ -21,6 +21,16 @@ type Key struct {
 
 var ErrElementNotFound = errors.New("element not found")
 
+// ErrMaxElementsExceeded is returned by Upsert when inserting a new element
+// would exceed the configured maximum number of elements in the collection.
+type ErrMaxElementsExceeded struct {
+	Max int
+}
+
+func (e ErrMaxElementsExceeded) Error() string {
+	return fmt.Sprintf("maximum number of elements reached: limit=%d", e.Max)
+}
+
 type ErrConflictGeneration struct {
 	ObservedGeneration int64
 	StoreGeneration    int64
@@ -123,7 +133,12 @@ func (s *GenericStore[T, H]) Delete(ctx context.Context, id string) error {
 	})
 }
 
-func (s *GenericStore[T, H]) Upsert(ctx context.Context, elem T, observedGeneration *int64) error {
+// Upsert inserts or updates elem in the collection. If maxElements is greater
+// than 0, inserting a new element is rejected with ErrMaxElementsExceeded once
+// the collection already holds maxElements elements. Updates to an existing
+// element are never affected by maxElements. The check runs inside the write
+// transaction, so the limit is enforced atomically against concurrent upserts.
+func (s *GenericStore[T, H]) Upsert(ctx context.Context, elem T, observedGeneration *int64, maxElements int) error {
 	return s.Update(ctx, func(_ context.Context, coll *Collection[T]) error {
 		// iterate over the store list to find the element with the same idx
 		pos := -1
@@ -135,6 +150,10 @@ func (s *GenericStore[T, H]) Upsert(ctx context.Context, elem T, observedGenerat
 
 		// new element required
 		if pos == -1 {
+			if maxElements > 0 && len(coll.Elements) >= maxElements {
+				return &ErrMaxElementsExceeded{Max: maxElements}
+			}
+
 			// create a new rule
 			coll.Elements = append(coll.Elements, elem)
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"math"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockquerierv1connect"
 )
@@ -204,6 +206,70 @@ func (s *routerTestSuite) Test_Series() {
 	resp, err := s.router.Series(s.ctx, req)
 	s.Require().NoError(err)
 	s.Assert().Equal(expected, resp)
+}
+
+func (s *routerTestSuite) Test_SelectMergeStacktraces_Pprof() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(5, 0)},
+	})
+
+	profileType, err := model.ParseProfileTypeSelector("process_cpu:cpu:nanoseconds:cpu:nanoseconds")
+	s.Require().NoError(err)
+	makeProfile := func(value int64) *querierv1.SelectMergeStacktracesResponse {
+		tree := new(model.FunctionNameTree)
+		tree.InsertStack(value, "foo")
+		return &querierv1.SelectMergeStacktracesResponse{
+			Pprof: &querierv1.PprofProfile{Profile: pprof.FromTree(tree, profileType, 0)},
+		}
+	}
+
+	spanSelector := []string{"0000000000000001"}
+	matchRequest := mock.MatchedBy(func(req *connect.Request[querierv1.SelectMergeStacktracesRequest]) bool {
+		return req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF &&
+			slices.Equal(req.Msg.SpanSelector, spanSelector)
+	})
+	s.oldFrontend.On("SelectMergeStacktraces", mock.Anything, matchRequest).
+		Return(connect.NewResponse(makeProfile(1)), nil).Once()
+	s.newFrontend.On("SelectMergeStacktraces", mock.Anything, matchRequest).
+		Return(connect.NewResponse(makeProfile(2)), nil).Once()
+
+	resp, err := s.router.SelectMergeStacktraces(s.ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		Start:         10,
+		End:           10000,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+		SpanSelector:  spanSelector,
+	}))
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp.Msg.GetPprof().GetProfile())
+	s.Require().Len(resp.Msg.Pprof.Profile.Sample, 1)
+	s.Equal([]int64{3}, resp.Msg.Pprof.Profile.Sample[0].Value)
+}
+
+func (s *routerTestSuite) Test_SelectMergeStacktraces_PprofRejectsMissingPayload() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
+		EnableQueryBackend:     true,
+		EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(5, 0)},
+	})
+
+	s.oldFrontend.On("SelectMergeStacktraces", mock.Anything, mock.Anything).
+		Return(connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Flamegraph: &querierv1.FlameGraph{},
+		}), nil).Once()
+	s.newFrontend.On("SelectMergeStacktraces", mock.Anything, mock.Anything).
+		Return(connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Pprof: &querierv1.PprofProfile{},
+		}), nil).Once()
+
+	_, err := s.router.SelectMergeStacktraces(s.ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+		Start:  10,
+		End:    10000,
+		Format: querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+	}))
+
+	s.Require().ErrorContains(err, "old read path returned no pprof profile")
 }
 
 func (s *routerTestSuite) Test_TimeSeries_Limit() {

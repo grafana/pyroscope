@@ -2,6 +2,7 @@ package tree
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 
 	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
@@ -13,7 +14,7 @@ type parentNode struct {
 }
 
 // used in the cloud
-func DeserializeNoDict(r io.Reader) (*Tree, error) {
+func DeserializeNoDict(r io.Reader, maxNameLen, maxChildren int) (*Tree, error) {
 	t := New()
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
 
@@ -26,10 +27,13 @@ func DeserializeNoDict(r io.Reader) (*Tree, error) {
 		parents = parents[1:]
 
 		nameLen, err := varint.Read(br)
-		// if err == io.EOF {
-		// 	return t, nil
-		// }
-		nameBuf := make([]byte, nameLen) // TODO: there are better ways to do this?
+		if err != nil {
+			return nil, err
+		}
+		if maxNameLen > 0 && nameLen > uint64(maxNameLen) {
+			return nil, fmt.Errorf("tree node name length %d exceeds maximum %d", nameLen, maxNameLen)
+		}
+		nameBuf := make([]byte, nameLen)
 		_, err = io.ReadAtLeast(br, nameBuf, int(nameLen))
 		if err != nil {
 			return nil, err
@@ -51,6 +55,9 @@ func DeserializeNoDict(r io.Reader) (*Tree, error) {
 		childrenLen, err := varint.Read(br)
 		if err != nil {
 			return nil, err
+		}
+		if maxChildren > 0 && childrenLen > uint64(maxChildren) {
+			return nil, fmt.Errorf("tree node children count %d exceeds maximum %d", childrenLen, maxChildren)
 		}
 
 		for i := uint64(0); i < childrenLen; i++ {

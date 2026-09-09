@@ -385,6 +385,125 @@ This command is useful when you want to inspect merged profile data directly, sa
      ...
      ```
 
+### Find and inspect exemplars
+
+An exemplar is a pointer from an aggregated view back to a single profile or trace span that contributed to it.
+Use `profilecli query exemplars` to list the exemplars in a time range, then pass an ID from the results to `profilecli query profile` to inspect that profile or span on its own.
+
+Use these commands when an aggregated profile shows that something is slow but not which profile or trace span it came from, for example when you want to:
+
+- Inspect the single profile behind a spike in a time series, instead of an average over the whole window.
+- Find the most expensive trace spans in a service and see the code that ran during them.
+- Export a single span's profile as a pprof file, to compare it against a typical one.
+
+Span-aware instrumentation records which trace span was active as it takes each sample, so one profile contains samples from many spans and querying by span returns that span's samples rather than a whole profile.
+Not every profile type produces span exemplars, because the profiler has to be able to attribute each sample to a span as it takes it.
+Refer to [Link tracing and profiling with Span Profiles](../../configure-client/trace-span-profiles/) for the profile types each language supports.
+
+{{< admonition type="note" >}}
+Exemplars are only supported with the v2 storage layer, and so are the `--profile-id` and `--trace-id` flags.
+On a deployment that still runs v1 storage as well, the query time range must fall within the period covered by v2 storage, otherwise the query fails.
+{{< /admonition >}}
+
+#### List exemplars
+
+The `profilecli query exemplars profile` command lists individual profiles, each identified by a profile ID, which is a UUID assigned when the profile is ingested.
+The `profilecli query exemplars span` command lists trace spans, each identified by a span ID of 16 hexadecimal characters.
+Both commands rank the results by value, so the most expensive profiles or spans appear first.
+The same span ID can appear in more than one row when its samples fall into different time buckets. Samples that fall into the same bucket are merged into a single row and their values added together, even when they come from different instances.
+
+To list exemplars, you need to:
+
+1. Specify optional flags. 
+1. Construct and execute the command. 
+
+**Specify optional flags**
+
+   - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
+   - You can provide a custom time range using the `--from` and `--to` flags, for example, `--from="now-3h" --to="now"`.
+   - You can specify the profile type via the `--profile-type` flag. The default is `process_cpu:cpu:nanoseconds:cpu:nanoseconds`.
+   - You can cap how many exemplars the command prints using the `--top-n` flag. The default is `100`. The value also sets how the range is divided, because the command splits it into `--top-n` buckets and keeps the highest-value exemplar in each. For profile exemplars the buckets are time windows, so a low `--top-n` over a wide range can return far fewer exemplars than you asked for. For span exemplars each bucket is a time and value window, so one time window can contribute several spans. If the results look sparse, raise `--top-n` or narrow the time range.
+   - You can set how many label columns the table shows using the `--max-label-columns` flag. The default is `3`, and `0` hides labels. The command shows the labels that vary the most between exemplars.
+   - You can control the output format using `--output=table` (default) or `--output=json`. The JSON format emits an envelope containing `from`, `to`, `profile_type`, and an `exemplars` array, which is useful for scripting.
+
+**Construct and execute the command**
+
+ Example command for profile exemplars:
+     ```bash
+     profilecli query exemplars profile \
+         --query='{service_name="my_application_name"}' \
+         --from="now-5m" --to="now" \
+         --top-n=5
+     ```
+
+Example table output (default):
+     ```
+     +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
+     |              Profile ID              |         Timestamp         | Value (nanoseconds) |   hostname   | pyroscope_spy |  region  |
+     +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
+     | f6591ef9-8f5a-46c3-a6f7-fb28929dd111 | 2026-08-26T18:00:05+02:00 |              29.35s | 55a7b15f975a | gospy         | eu-north |
+     | f41c6f0e-06dc-44ff-975b-1698933b3ab0 | 2026-08-26T17:56:36+02:00 |              26.27s | 55a7b15f975a | gospy         | eu-north |
+     | f17d25d3-429e-4f17-b2d8-5c0f597b37e2 | 2026-08-26T18:00:35+02:00 |              23.44s | 55a7b15f975a | gospy         | eu-north |
+     +--------------------------------------+---------------------------+---------------------+--------------+---------------+----------+
+     ```
+
+The `Value` column header names the unit of the profile type you queried, and values are formatted for that unit, so a `nanoseconds` profile type renders durations such as `29.35s` and a `bytes` profile type renders sizes such as `29 MB`. The label columns are chosen automatically.
+
+Example command for span exemplars:
+     ```bash
+     profilecli query exemplars span \
+         --query='{service_name="my_application_name"}' \
+         --from="now-5m" --to="now" \
+         --top-n=5
+     ```
+
+   - Example table output (default):
+     ```
+     +----------------------------------+------------------+---------------------------+---------------------+----------+
+     |             Trace ID             |     Span ID      |         Timestamp         | Value (nanoseconds) |  region  |
+     +----------------------------------+------------------+---------------------------+---------------------+----------+
+     | 4bf92f3577b34da6a3ce929d0e0e4736 | 90cf4e12878d89ac | 2026-08-26T17:58:05+02:00 |              19.18s | eu-north |
+     | 4bf92f3577b34da6a3ce929d0e0e4736 | 5985c8cff1cea41a | 2026-08-26T17:58:35+02:00 |              19.09s | eu-north |
+     | 8a3d1f60b27c94e5f0a1b2c3d4e5f607 | 6433a011496b3aae | 2026-08-26T18:00:35+02:00 |              18.91s | eu-north |
+     +----------------------------------+------------------+---------------------------+---------------------+----------+
+     ```
+
+Span output identifies spans rather than profiles, so it has no `Profile ID` column. The `Trace ID` column appears only when the listed spans carry trace IDs, and several spans of the same request share one trace ID. Profile exemplars never report trace IDs.
+
+#### Drill down into a single exemplar
+
+Pass an ID from the previous step to `profilecli query profile`, using the flag that matches the kind of ID you have.
+Include a `service_name` matcher in `--query`, because narrowing the query to a single service makes these lookups considerably faster.
+All three flags are repeatable, so you can inspect several profiles, spans, or traces merged together.
+
+| Flag | Accepts | What you get back | Where to get the ID |
+| --- | --- | --- | --- |
+| `--profile-id` | A profile ID (UUID) | The whole profile | `profilecli query exemplars profile` |
+| `--span-selector` | A span ID (16 hexadecimal characters) | Only the samples tagged with that span | `profilecli query exemplars span` |
+| `--trace-id` | A trace ID (32 hexadecimal characters) | The samples of every span in that trace | `profilecli query exemplars span`, or a trace you opened in your tracing backend |
+
+These flags select data in different ways, so you can only use one of them per query.
+Trace IDs are only available when the ingested samples carry a `trace_id` label. The OpenTelemetry profiles endpoint writes that label automatically from the span link, and recent `otel-profiling-*` integrations send it. Older integrations record a span ID alone, in which case `--trace-id` returns an empty profile.
+
+Example command:
+  ```bash
+  profilecli query profile \
+      --query='{service_name="my_application_name"}' \
+      --from="now-5m" --to="now" \
+      --span-selector=90cf4e12878d89ac \
+      --output=pprof=./slow-span.pprof
+  ```
+
+`profilecli` rejects the following combinations:
+
+- `--profile-id` with `--span-selector` or `--trace-id`
+- `--span-selector` with `--trace-id`, `--stacktrace-selector`, or `--async`
+
+{{< admonition type="caution" >}}
+A query returns an empty profile rather than an error when nothing matches the ID you supplied, for example when a `--span-selector` query runs against blocks that were written without per-sample span IDs.
+If a query returns nothing, confirm that the ID came from an exemplar query over the same time range, and that the profiles were ingested with span-aware instrumentation.
+{{< /admonition >}}
+
 ### Export a profile for Go PGO
 
 You can use the `profilecli query go-pgo` command to retrieve an aggregated profile from a Pyroscope server for use with Go PGO.
@@ -426,15 +545,69 @@ The following commands are also useful in day-to-day operations.
 
 ### Find top contributors by label value
 
-Use `profilecli query top` to identify the biggest contributors in a time window.
-This is useful when triaging spikes and you need a quick ranked view before doing deeper exploration.
+Use `profilecli query top` to rank label values, or combinations of label values, by their total profile value in a time window.
+This is useful when investigating a spike and you need to identify the services, namespaces, or other dimensions that contribute the most before inspecting a profile in detail.
+The command ranks grouped profile values; it does not rank functions or stack frames.
 
-```bash
-profilecli query top \
-  --query='{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}' \
-  --label-names=service_name \
-  --top-n=10
-```
+By default, `query top` queries the last hour of `process_cpu:cpu:nanoseconds:cpu:nanoseconds` profiles, groups results by `service_name`, and shows the top 10 groups.
+`profilecli query top` is available in Grafana Pyroscope 1.19 and later.
+
+1. Specify optional flags.
+
+   - Use `--query` to filter the profiles to analyze. The default is `{}`.
+   - Use `--from` and `--to` to set the time range. The defaults are `now-1h` and `now`.
+   - Use `--profile-type` to select the profile type. The default is `process_cpu:cpu:nanoseconds:cpu:nanoseconds`.
+   - Use the repeatable `--label-names` flag to select the labels to group by. The default is `service_name`; specifying more than one label ranks each combination of their values.
+   - Use `--top-n` to set the number of groups to display. The default is `10`.
+   - Use `--output=table` (default) or `--output=json`.
+
+1. Run the command.
+
+   - To rank services by CPU time during the last 30 minutes:
+     ```bash
+     profilecli query top \
+         --profile-type=process_cpu:cpu:nanoseconds:cpu:nanoseconds \
+         --query='{namespace="production"}' \
+         --from="now-30m" --to="now" \
+         --label-names=service_name \
+         --top-n=10
+     ```
+
+   - To rank combinations of service and namespace:
+     ```bash
+     profilecli query top \
+         --query='{cluster="us-east-1"}' \
+         --label-names=service_name \
+         --label-names=namespace \
+         --top-n=5
+     ```
+
+   - Example table output:
+     ```
+      +------+-----------------+------------+---------------------+
+      | Rank | service_name    | namespace  | Total (nanoseconds) |
+      +------+-----------------+------------+---------------------+
+      |    1 | checkout        | production |               1m12s |
+      |    2 | payments        | production |              48.25s |
+      |    3 | recommendations | production |              31.88s |
+      +------+-----------------+------------+---------------------+
+     ```
+
+     The final column names the sample unit from the selected profile type. Table output formats nanoseconds as durations and bytes as sizes. A missing or empty grouping label is shown as `<unknown>`.
+
+   - To use the ranked data in a script, request JSON output:
+     ```bash
+     profilecli query top \
+         --query='{namespace="production"}' \
+         --label-names=service_name \
+         --output=json
+     ```
+
+     The JSON output contains `from`, `to`, `profile_type`, and a `series` array. Each series has a `labels` object and a numeric `total`; totals are raw values in the profile type's sample unit, rather than the formatted values shown in the table.
+
+{{< admonition type="note" >}}
+`--top-n` limits the results after `profilecli` receives and ranks all matching groups. A broad time range or a high-cardinality grouping can still produce a large query response. Narrow the label selector or time range when needed.
+{{< /admonition >}}
 
 ### Detect high-cardinality labels
 
@@ -457,11 +630,120 @@ profilecli ready --url=http://localhost:4040
 
 ### Manage recording rules from the CLI
 
-Use `profilecli recording-rules` commands to list, create, get, and delete recording rules without leaving your terminal.
-This is useful for GitOps-style workflows and automated rollout validation.
+Recording rules let you pre-aggregate profiling data into Prometheus-compatible metrics.
+You can then set alerts, build dashboards, and track function-level costs over time without running ad-hoc queries.
+Use `profilecli recording-rules` commands to list, create, get, and delete recording rules from your terminal so you can manage rules in GitOps workflows and automated rollout validation.
+
+{{< admonition type="note" >}}
+When you connect to a Grafana Cloud data source, the `recording-rules` commands require a token with the `profiles-config:read` scope (for `list` and `get`) or the `profiles-config:write` scope (for `create` and `delete`).
+{{< /admonition >}}
+
+For a conceptual overview of recording rules and the Cloud UI wizard, refer to [Use recording rules](https://grafana.com/docs/grafana-cloud/observe-and-act/send-data/profiles/recording-rules/).
+
+#### List recording rules
+
+Use `profilecli recording-rules list` to view all recording rules for the current tenant.
+Rules that were provisioned through server configuration are marked as read-only.
 
 ```bash
 profilecli recording-rules list
+```
+
+Example output:
+
+```
+Rule with Id nEiOJaMEBL (backend provisioned - read only)
+matchers:
+    - '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}'
+metric_name: profiles_recorded_cpu_usage_function_total_x509_certificate_verify_nanoseconds
+group_by:
+    - service_name
+function_name: crypto/x509.(*Certificate).Verify
+```
+
+#### Get a recording rule
+
+Use `profilecli recording-rules get` to retrieve a single recording rule by its ID.
+Use the `-o` flag to save the rule to a file, which is useful for editing and re-creating.
+
+```bash
+profilecli recording-rules get <RULE_ID>
+```
+
+To save the rule to a file:
+
+```bash
+profilecli recording-rules get <RULE_ID> -o rule.yaml
+```
+
+Replace the following:
+
+- `<RULE_ID>`: the ID of the rule, for example `wUkyJdAuRq`
+
+#### Create a recording rule
+
+Use `profilecli recording-rules create` to create a new recording rule from a YAML or JSON file.
+
+1. Create a rule definition file. The file must contain the following fields:
+
+   ```yaml
+   matchers:
+     - '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", region="emea"}'
+   metric_name: profiles_recorded_cpu_usage_function_total_gc_nanoseconds
+   group_by:
+     - service_name
+   function_name: runtime.gcBgMarkWorker
+   ```
+
+   | Field | Required | Description |
+   | --- | --- | --- |
+   | `matchers` | Yes | Label selectors that filter the profiles to aggregate. Must contain exactly one `__profile_type__` matcher with an equality match. |
+   | `metric_name` | Yes | The Prometheus metric name for the resulting time series. |
+   | `group_by` | No | Label names to group by. Each unique combination of values produces a separate time series. |
+   | `function_name` | No | A function name to filter stack traces. Only samples that include this function contribute to the metric. |
+   | `external_labels` | No | Extra label pairs to attach to every time series the rule produces. Useful for adding environment or team identifiers. |
+
+   An example with `external_labels`:
+
+   ```yaml
+   matchers:
+     - '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}'
+   metric_name: profiles_recorded_cpu_usage_total_nanoseconds
+   group_by:
+     - service_name
+   external_labels:
+     - name: env
+       value: production
+   ```
+
+1. Run the create command:
+
+   ```bash
+   profilecli recording-rules create -f rule.yaml
+   ```
+
+   Example output:
+
+   ```
+   New recorded rule created with id: YLKtohSNyV
+   ```
+
+#### Delete a recording rule
+
+Use `profilecli recording-rules delete` to remove a recording rule by its ID.
+
+```bash
+profilecli recording-rules delete <RULE_ID>
+```
+
+Replace the following:
+
+- `<RULE_ID>`: the ID of the rule to delete
+
+Example output:
+
+```
+Deleted recording rule with id: YLKtohSNyV
 ```
 
 ### Validate source mapping coverage

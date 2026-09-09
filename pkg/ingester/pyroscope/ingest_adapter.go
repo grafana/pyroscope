@@ -34,6 +34,8 @@ type PushService interface {
 
 type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
 }
 
 func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger) http.Handler {
@@ -53,9 +55,8 @@ func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.Ing
 	pprofable, ok := in.Profile.(ingestion.ParseableToPprof)
 	if ok {
 		return p.parseToPprof(ctx, in, pprofable)
-	} else {
-		return in.Profile.Parse(ctx, p, p, in.Metadata)
 	}
+	return in.Profile.Parse(ctx, p, p, in.Metadata, p.limits)
 }
 
 const (

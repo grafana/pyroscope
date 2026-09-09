@@ -75,8 +75,10 @@ func main() {
 	queryProfileOutput := queryProfileCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
 	queryProfileForce := queryProfileCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
 	queryProfileFunctionNamesOnly := queryProfileCmd.Flag("function-names-only", "Faster call, without details about mappings, line number, and inlining").Default("false").Bool()
+	queryProfileAsync := queryProfileCmd.Flag("async", "Force async query execution, polling until results are ready.").Default("false").Bool()
 	queryProfileParams := addQueryProfileParams(queryProfileCmd)
 	queryProfileCmd.Flag("profile-id", "Profile ID (UUID) to query a specific profile. Repeatable for multiple IDs. Use 'query exemplars profile' to find IDs.").StringsVar(&queryProfileParams.ProfileIDs)
+	queryProfileCmd.Flag("trace-id", "Trace ID (32 hex characters) to filter samples by. Repeatable for multiple traces.").StringsVar(&queryProfileParams.TraceIDs)
 	queryGoPGOCmd := queryCmd.Command("go-pgo", "Request profile for Go PGO.")
 	queryGoPGOOutput := queryGoPGOCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("pprof=./default.pgo").String()
 	queryGoPGOForce := queryGoPGOCmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").Bool()
@@ -143,6 +145,12 @@ func main() {
 	recordingRulesDeleteId := recordingRulesDeleteCmd.Arg("rule_id", "Recording rule Id to delete").Required().String()
 	recordingRulesParams := addRecordingRulesListParams(recordingRulesCmd)
 
+	replayCmd := app.Command("replay", "Dump profile data from a source cell and replay it into a destination cell.")
+	replayDumpCmd := replayCmd.Command("dump", "Query a source cell's metastore and bucket, and write the matching profiles to a standalone dump file.")
+	replayDumpParams := addReplayDumpParams(replayDumpCmd)
+	replayPushCmd := replayCmd.Command("push", "Continuously push profiles from a dump file into a destination cell, looping over the recorded time window.")
+	replayPushParams := addReplayPushParams(replayPushCmd)
+
 	debuginfoCmd := app.Command("debuginfo", "Operations on debuginfo (experimental).")
 	debuginfoUploadCmd := debuginfoCmd.Command("upload", "Upload debuginfo.")
 	debuginfoUploadParams := addDebuginfoUploadParams(debuginfoUploadCmd)
@@ -175,7 +183,7 @@ func main() {
 			}
 		}
 	case queryProfileCmd.FullCommand():
-		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly); err != nil {
+		if err := queryProfile(ctx, queryProfileParams, *queryProfileOutput, *queryProfileForce, *queryProfileFunctionNamesOnly, *queryProfileAsync); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryGoPGOCmd.FullCommand():
@@ -276,6 +284,14 @@ func main() {
 		}
 	case recordingRulesDeleteCmd.FullCommand():
 		if err := deleteRecordingRule(ctx, recordingRulesDeleteId, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case replayDumpCmd.FullCommand():
+		if err := replayDump(ctx, replayDumpParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case replayPushCmd.FullCommand():
+		if err := replayPush(ctx, replayPushParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case debuginfoUploadCmd.FullCommand():

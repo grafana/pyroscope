@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"connectrpc.com/connect"
@@ -23,6 +24,10 @@ func (f *Frontend) SelectMergeProfile(
 	c *connect.Request[querierv1.SelectMergeProfileRequest],
 ) (*connect.Response[profilev1.Profile], error) {
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeProfileProcedure)
+	// trace_id_selector is v2-only; this legacy frontend would drop it on split.
+	if len(c.Msg.TraceIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
+	}
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

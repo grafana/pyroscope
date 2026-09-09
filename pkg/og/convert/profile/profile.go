@@ -21,7 +21,7 @@ func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
 func (*RawProfile) ContentType() string { return "binary/octet-stream" }
 
-func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter storage.MetricsExporter, md ingestion.Metadata) error {
+func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter storage.MetricsExporter, md ingestion.Metadata, limits ingestion.Limits) error {
 	input := &storage.PutInput{
 		StartTime:       md.StartTime,
 		EndTime:         md.EndTime,
@@ -40,7 +40,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter 
 	case ingestion.FormatTrie:
 		err = transporttrie.IterateRaw(r, make([]byte, 0, 256), cb)
 	case ingestion.FormatTree:
-		err = convert.ParseTreeNoDict(r, cb)
+		err = convert.ParseTreeNoDict(ctx, r, cb, limits)
 	case ingestion.FormatLines:
 		err = convert.ParseIndividualLines(r, cb)
 	case ingestion.FormatGroups:

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -104,7 +105,11 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			sp.LogError(err)
 			sp.SetError()
 			otelSpan.AddEvent(msg)
-			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
+			if connect.CodeOf(err) == connect.CodeResourceExhausted {
+				httputil.ErrorWithStatus(w, err, http.StatusTooManyRequests)
+			} else {
+				httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
+			}
 		}
 	}
 }
@@ -135,7 +140,10 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 
 	if sr := q.Get("sampleRate"); sr != "" {
 		sampleRate, err := strconv.Atoi(sr)
-		if err != nil {
+		if err != nil || sampleRate < 0 {
+			if err == nil {
+				err = fmt.Errorf("sample rate must be positive")
+			}
 			_ = h.log.Log(
 				"err", err,
 				"msg", fmt.Sprintf("invalid sample rate: %q", sr),

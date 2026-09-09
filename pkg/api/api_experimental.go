@@ -19,8 +19,8 @@ func (a *API) RegisterSegmentWriter(svc *segmentwriter.SegmentWriterService) {
 
 // RegisterSegmentWriterRing registers the ring UI page associated with the distributor for writes.
 func (a *API) RegisterSegmentWriterRing(r http.Handler) {
-	a.RegisterRoute("/ring-segment-writer", r, a.registerOptionsRingPage()...)
-	a.indexPage.AddLinks(defaultWeight, "Segment Writer", []IndexPageLink{
+	a.registerAdminRoute("/ring-segment-writer", r, a.registerOptionsRingPage()...)
+	a.addOperationalLinks(defaultWeight, "Segment Writer", []IndexPageLink{
 		{Desc: "Ring status", Path: "/ring-segment-writer"},
 	})
 }
@@ -30,26 +30,26 @@ func (a *API) RegisterQueryBackend(svc *querybackend.QueryBackend) {
 }
 
 func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
-	a.RegisterRoute("/metastore-nodes", adm.NodeListHandler(), a.registerOptionsRingPage()...)
-	a.RegisterRoute("/metastore-client-test", adm.ClientTestHandler(), a.registerOptionsRingPage()...)
-	a.indexPage.AddLinks(defaultWeight, "Metastore", []IndexPageLink{
+	a.registerAdminRoute("/metastore-nodes", adm.NodeListHandler(), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/metastore-client-test", adm.ClientTestHandler(), a.registerOptionsRingPage()...)
+	a.addOperationalLinks(defaultWeight, "Metastore", []IndexPageLink{
 		{Desc: "Nodes", Path: "/metastore-nodes"},
 		{Desc: "Client Test", Path: "/metastore-client-test"},
 	})
 }
 
 func (a *API) RegisterQueryDiagnosticsAdmin(adm *querydiagnostics.Admin) {
-	a.RegisterRoute("/query-diagnostics", adm.DiagnosticsHandler(), a.registerOptionsRingPage()...)
-	a.RegisterRoute("/query-diagnostics/list", adm.DiagnosticsListHandler(), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/query-diagnostics", adm.DiagnosticsHandler(), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/query-diagnostics/list", adm.DiagnosticsListHandler(), a.registerOptionsRingPage()...)
 
 	// JSON API endpoints for React frontend
-	a.RegisterRoute("/query-diagnostics/api/tenants", adm.TenantsAPIHandler(), a.registerOptionsRingPage()...)
-	a.RegisterRoute("/query-diagnostics/api/diagnostics", adm.DiagnosticsListAPIHandler(), a.registerOptionsRingPage()...)
-	a.RegisterRoute("/query-diagnostics/api/diagnostics/", adm.DiagnosticsGetAPIHandler(), WithGzipMiddleware(), WithMethod("GET"), WithPrefix())
-	a.RegisterRoute("/query-diagnostics/api/export/", adm.DiagnosticsExportAPIHandler(), WithMethod("GET"), WithPrefix())
-	a.RegisterRoute("/query-diagnostics/api/import", adm.DiagnosticsImportAPIHandler(), WithMethod("POST"))
+	a.registerAdminRoute("/query-diagnostics/api/tenants", adm.TenantsAPIHandler(), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/query-diagnostics/api/diagnostics", adm.DiagnosticsListAPIHandler(), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/query-diagnostics/api/diagnostics/", adm.DiagnosticsGetAPIHandler(), WithGzipMiddleware(), WithMethod("GET"), WithPrefix())
+	a.registerAdminRoute("/query-diagnostics/api/export/", adm.DiagnosticsExportAPIHandler(), WithMethod("GET"), WithPrefix())
+	a.registerAdminRoute("/query-diagnostics/api/import", adm.DiagnosticsImportAPIHandler(), WithMethod("POST"))
 
-	a.indexPage.AddLinks(defaultWeight, "Query Diagnostics", []IndexPageLink{
+	a.addOperationalLinks(defaultWeight, "Query Diagnostics", []IndexPageLink{
 		{Desc: "Collect Diagnostics", Path: "/query-diagnostics"},
 		{Desc: "View Stored Diagnostics", Path: "/query-diagnostics/list"},
 	})

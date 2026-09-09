@@ -3,7 +3,9 @@ package model
 import (
 	"bytes"
 	"math"
+	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -421,6 +423,43 @@ func Test_IterateStacks_LargeRootCount(t *testing.T) {
 	})
 
 	require.Equal(t, rootCount, visitedCount, "should visit all %d root nodes", rootCount)
+}
+
+// Test_UnmarshalTree_IterateStacks_NoVirtualRootFrame verifies stacks from
+// an unmarshaled tree match the stacks of the tree that was marshaled: the
+// marshal format's virtual root node is removed from the tree structure and
+// must also be detached from the parent chain, or IterateStacks' parent
+// walk surfaces it as a spurious zero-valued root frame in every stack.
+func Test_UnmarshalTree_IterateStacks_NoVirtualRootFrame(t *testing.T) {
+	src := emptyTree()
+	src.InsertStack(1, "a", "b")
+	src.InsertStack(2, "a", "c")
+
+	collect := func(tr *Tree[FunctionName, FunctionNameI]) map[string]int64 {
+		out := make(map[string]int64)
+		tr.IterateStacks(func(_ FunctionName, self int64, stack []FunctionName) {
+			slices.Reverse(stack)
+			parts := make([]string, len(stack))
+			for i, s := range stack {
+				parts[i] = string(s)
+			}
+			out[strings.Join(parts, "/")] += self
+		})
+		return out
+	}
+
+	want := collect(src)
+	require.Equal(t, map[string]int64{"a/b": 1, "a/c": 2}, want)
+
+	unmarshaled, err := UnmarshalTree[FunctionName, FunctionNameI](src.Bytes(0, nil))
+	require.NoError(t, err)
+	require.Equal(t, want, collect(unmarshaled))
+
+	// MergeTreeBytes adopts the unmarshaled tree wholesale on first merge,
+	// so it exercises the same parent-chain path.
+	m := NewTreeMerger[FunctionName, FunctionNameI]()
+	require.NoError(t, m.MergeTreeBytes(src.Bytes(0, nil)))
+	require.Equal(t, want, collect(m.Tree()))
 }
 
 func Test_TreeFromBackendProfileSampleType(t *testing.T) {

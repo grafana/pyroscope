@@ -16,7 +16,6 @@ import (
 	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/metastore"
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
@@ -26,6 +25,8 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockdiscovery"
 	"github.com/grafana/pyroscope/v2/pkg/util/health"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
+
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 )
 
 func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore.Bucket) MetastoreSet {
@@ -35,9 +36,11 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	raftAddresses := make([]string, n)
 	raftIds := make([]string, n)
 	bootstrapPeers := make([]string, n)
+	raftPorts, err := test.GetFreePorts(n)
+	require.NoError(t, err)
 	for i := 0; i < n; i++ {
 		grpcAddresses[i] = fmt.Sprintf("localhost:%d", 10500+i)
-		raftAddresses[i] = fmt.Sprintf("localhost:%d", 10500+2*i)
+		raftAddresses[i] = fmt.Sprintf("localhost:%d", raftPorts[i])
 		raftIds[i] = fmt.Sprintf("node-%d", i)
 		bootstrapPeers[i] = fmt.Sprintf("%s/%s", raftAddresses[i], raftIds[i])
 	}
@@ -73,7 +76,7 @@ func NewMetastoreSet(t *testing.T, cfg *metastore.Config, n int, bucket objstore
 	listeners, dialOpt := test.CreateInMemoryListeners(grpcAddresses)
 	d := MockStaticDiscovery(t, servers)
 	client := metastoreclient.New(l, cfg.GRPCClientConfig, d, dialOpt)
-	err := client.Service().StartAsync(context.Background())
+	err = client.Service().StartAsync(context.Background())
 	require.NoError(t, err)
 
 	res := MetastoreSet{

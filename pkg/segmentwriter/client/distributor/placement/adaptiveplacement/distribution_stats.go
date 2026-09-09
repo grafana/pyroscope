@@ -114,7 +114,7 @@ func (d *DistributionStats) build(now int64) *adaptive_placementpb.DistributionS
 	defer d.mu.Unlock()
 
 	tenants := make(map[string]int)
-	datasets := make(map[string]int)
+	datasets := make(map[datasetKey]int)
 	shards := make(map[shard]int)
 
 	// Although, not strictly required, we iterate over the keys
@@ -144,10 +144,11 @@ func (d *DistributionStats) build(now int64) *adaptive_placementpb.DistributionS
 			})
 		}
 
-		di, ok := datasets[k.dataset]
+		dk := datasetKey{tenant: k.tenant, dataset: k.dataset}
+		di, ok := datasets[dk]
 		if !ok {
 			di = len(stats.Datasets)
-			datasets[k.dataset] = di
+			datasets[dk] = di
 			stats.Datasets = append(stats.Datasets, &adaptive_placementpb.DatasetStats{
 				Tenant: uint32(ti),
 				Name:   k.dataset,

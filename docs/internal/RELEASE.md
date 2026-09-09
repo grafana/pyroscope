@@ -12,9 +12,10 @@
    > ✅ Correct: `release/v1.3`
    >
    > ⚠️  Incorrect: `release/v1.3.0`  
-3. Create the tag for the release (e.g., `vX.Y.Z`)
-4. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
-5. Create a GitHub label for backports:
+3. Update `renovate.json` so `baseBranchPatterns` includes the new release branch and only the latest two release branches.
+4. Create a signed tag for the release using the version as the tag message (e.g., `git tag -s "vX.Y.Z" -m "vX.Y.Z"`)
+5. Push the release branch and tag to the remote. Note that the tag will kick off a release workflow via [goreleaser](https://github.com/grafana/pyroscope/actions/workflows/release.yml).
+6. Create a GitHub label for backports:
 
    ```gh label create "backport release/vX.Y" -d "This label will backport a merged PR to the release/vX.Y branch" -c "#0052cc"```
 
@@ -35,7 +36,9 @@ Make sure each release note has full links to the relevant pull requests.
 
 ### Homebrew
 
-For releases that publish the `latest` tag (`IMAGE_PUBLISH_LATEST=true`), the release workflow regenerates the Homebrew formulas and opens a pull request against [grafana/homebrew-pyroscope](https://github.com/grafana/homebrew-pyroscope). The tap's `main` branch requires reviewed PRs (org ruleset), so the workflow cannot push to it directly. **A maintainer must review and merge that PR to publish the new version via `brew`.** This step does not block the rest of the release; the binaries, container images, and GitHub release are published regardless.
+For releases that publish the `latest` tag (`IMAGE_PUBLISH_LATEST=true`), the release workflow dispatches the [`update-homebrew-formulas`](../../.github/workflows/update-homebrew-formulas.yml) workflow, which regenerates the Homebrew formulas and opens a pull request against [grafana/homebrew-pyroscope](https://github.com/grafana/homebrew-pyroscope). The tap's ruleset requires verified commit signatures and reviewed PRs on `main`, so the workflow creates the commit through the GitHub API (which signs it on behalf of the app) and opens a PR instead of pushing to `main`. **A maintainer must review and merge that PR to publish the new version via `brew`.** This step does not block the rest of the release; the binaries, container images, and GitHub release are published regardless.
+
+If the formula update needs to be re-run (for example, the release run failed after publishing), dispatch `update-homebrew-formulas` manually with the release tag as input.
 
 ### Website Release Notes
 
@@ -75,8 +78,7 @@ The Helm chart version and Pyroscope application version are **separate and won'
 
 ## Backport
 
-A PR to be backported must have the appropriate `backport release/vX.Y` label(s) AND one of [these expected labels](https://github.com/grafana/grafana-github-actions/blob/7d2b4af1112747f82e12adfbc00be44fecb3b616/backport/backport.ts#L16):
-`['type/docs', 'type/bug', 'product-approved', 'type/ci']`. Note that these labels must be present before the PR is merged.
+A PR to be backported must have the appropriate `backport release/vX.Y` label(s). Backport PRs are created automatically when the labeled PR is merged, or when the label is added to an already-merged PR.
 
 [Example backport PR](https://github.com/grafana/pyroscope/pull/4352)
 
@@ -89,7 +91,7 @@ the version number. These documentation changes should be done with a PR against
 
 Before tagging, check for open security PRs from Dependabot or Renovate. Review, merge, and backport any applicable security fixes to the `release/vX.Y` branch.
 
-Once the release notes are merged, a `vX.Y.Z` patch release tag must be created and pushed to remote to create a new release.
+Once the release notes are merged, a signed `vX.Y.Z` patch release tag must be created using the version as the tag message and pushed to remote to create a new release.
 
 > [!WARNING]
 > If you are releasing a patch version, for an older major/minor version (example:
@@ -112,10 +114,10 @@ make release/prepare
 
 This will build and packages all artifacts without pushing or creating the GitHub release.
 
-Once you're ready you can then tag your release.
+Once you're ready you can then create a signed tag for your release.
 
 ```bash
-git tag v0.1.0
+git tag -s "v0.1.0" -m "v0.1.0"
 ```
 
 And finally push the release using:

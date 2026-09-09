@@ -50,9 +50,8 @@ func (b *backendTreeSymbolizer) Invoke(ctx context.Context, req *queryv1.InvokeR
 				MaxNodes:           q.Tree.GetMaxNodes(),
 				ProfileIdSelector:  q.Tree.GetProfileIdSelector(),
 				StackTraceSelector: q.Tree.GetStackTraceSelector(),
-				// SpanSelector is not forwarded: PprofQuery has no span_selector field.
-				// To support span-filtered symbolization, span_selector must be added to
-				// the PprofQuery proto and the backend must handle it.
+				SpanSelector:       q.Tree.GetSpanSelector(),
+				TraceIdSelector:    q.Tree.GetTraceIdSelector(),
 			}
 			q.Tree = nil
 		}
@@ -144,4 +143,41 @@ func (q *QueryFrontend) shouldSymbolize(ctx context.Context, tenants []string, b
 	)
 
 	return blocksWithUnsymbolized > 0
+}
+
+// useSymbolRefTrees determines whether a tree query should request a
+// symbol-ref report (SYMBOL_MODE_REFS) instead of going through the legacy
+// pprof detour: a symbolizer must be configured, and every tenant on the
+// request must have both symbolization and the feature enabled.
+func (q *QueryFrontend) useSymbolRefTrees(tenants []string) bool {
+	if q.symbolizer == nil {
+		return false
+	}
+	for _, t := range tenants {
+		if !q.limits.SymbolizerEnabled(t) || !q.limits.SymbolRefTreesEnabled(t) {
+			return false
+		}
+	}
+	return true
+}
+
+// symbolRefTreeQuery marks tree as a symbol-ref query and carries the
+// per-tenant unresolved-locations limit on it, for the backend to enforce
+// while building and merging. A multi-tenant query takes the largest limit
+// across its tenants, and a tenant with the limit disabled (0) makes the
+// query unlimited.
+func (q *QueryFrontend) symbolRefTreeQuery(tree *queryv1.TreeQuery, tenants []string) {
+	tree.SymbolMode = queryv1.SymbolMode_SYMBOL_MODE_REFS
+	var largest int64
+	for _, t := range tenants {
+		v := int64(q.limits.SymbolizerMaxUnresolvedLocations(t))
+		if v <= 0 {
+			largest = 0
+			break
+		}
+		if v > largest {
+			largest = v
+		}
+	}
+	tree.MaxUnresolvedLocations = largest
 }
