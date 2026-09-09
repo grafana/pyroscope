@@ -764,13 +764,16 @@ func inflightBytes(req *distributormodel.PushRequest) (size, profiles int64) {
 			continue
 		}
 		profiles++
-		if raw := series.Profile.RawSize(); raw > 0 {
-			size += int64(raw)
-			continue
-		}
-		size += int64(series.Profile.SizeVT())
+		size += profileInflightBytes(series.Profile)
 	}
 	return size, profiles
+}
+
+func profileInflightBytes(p *pprof.Profile) int64 {
+	if raw := p.RawSize(); raw > 0 {
+		return int64(raw)
+	}
+	return int64(p.SizeVT())
 }
 
 // If aggregation is configured for the tenant, we try to determine
@@ -827,9 +830,6 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
 			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
-			// Aggregation outlives the source request by design: it must not
-			// hold on to its inflight bytes reservation.
-			localCtx = inflight.NewContext(localCtx, nil)
 			// Obtain the aggregated profile.
 			p, handleErr := handler()
 			if handleErr != nil {
@@ -841,6 +841,13 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 				Profile:     pprof.RawFromProto(p.Profile()),
 				Annotations: annotations,
 			}
+			// The aggregated profile is a fresh allocation and needs its own
+			// reservation. It is accounted for but not enforced: the client was
+			// told the profile was accepted and will not retry, so rejecting it
+			// here would lose it for good.
+			reservation, _ := d.inflight.Reserve(profileInflightBytes(aggregated.Profile))
+			defer reservation.Release()
+			localCtx = inflight.NewContext(localCtx, reservation)
 			config := d.limits.WritePathOverrides(req.TenantID)
 			return d.router.Send(localCtx, aggregated, config)
 		})()
@@ -914,7 +921,9 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 	}
 	tracker.samplesPending.Store(int32(len(profiles)))
 	for ingester, samples := range samplesByIngester {
+		release := inflight.Detach(ctx)
 		go func(ingester ring.InstanceDesc, samples []*profileTracker) {
+			defer release()
 			// Use a background context to make sure all ingesters get samples even if we return early
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()

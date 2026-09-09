@@ -2,7 +2,9 @@ package distributor
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,10 +15,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/inflight"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -187,4 +194,126 @@ func TestInflightBytes(t *testing.T) {
 		assert.Equal(t, int64(2*p.SizeVT()), size)
 		assert.Equal(t, int64(2), profiles)
 	})
+}
+
+// blockingIngester holds every Push until release is closed.
+type blockingIngester struct {
+	testhelper.FakePoolClient
+	started chan struct{}
+	release chan struct{}
+}
+
+func (i *blockingIngester) List(context.Context, *grpc_health_v1.HealthListRequest, ...grpc.CallOption) (*grpc_health_v1.HealthListResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (i *blockingIngester) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	i.started <- struct{}{}
+	<-i.release
+	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+func TestPushBatch_MaxInflightBytes_IngesterQuorum(t *testing.T) {
+	slow := &blockingIngester{started: make(chan struct{}, 1), release: make(chan struct{})}
+	fast := newFakeIngester(t, false)
+	ingesters := map[string]client.PoolClient{"1": fast, "2": fast, "3": slow}
+
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		tenantLimits["user-1"] = validation.MockDefaultLimits()
+	})
+	d, err := New(
+		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "1"}, {Addr: "2"}, {Addr: "3"}}, 3),
+		&poolFactory{f: func(addr string) (client.PoolClient, error) { return ingesters[addr], nil }},
+		overrides, nil, log.NewNopLogger(), nil,
+	)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+	// Quorum is 2 of 3, so the push returns while the third replica is still
+	// holding the profile.
+	require.NoError(t, d.PushBatch(ctx, newInflightRequest(1)))
+	select {
+	case <-slow.started:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the blocked replica was never called")
+	}
+	assert.Positive(t, d.inflight.Bytes(), "bytes stay reserved while a replica is still writing")
+
+	close(slow.release)
+	assert.Eventually(t, func() bool { return d.inflight.Bytes() == 0 },
+		10*time.Second, 10*time.Millisecond, "bytes are released once every replica is done")
+}
+
+// recordingSegmentWriter captures, for every push, whether the request carried
+// an inflight reservation and how many bytes the limiter held at that moment.
+type recordingSegmentWriter struct {
+	limiter *inflight.Limiter
+
+	mu       sync.Mutex
+	reserved []bool
+	bytes    []int64
+}
+
+func (s *recordingSegmentWriter) CheckReady(context.Context) error { return nil }
+
+func (s *recordingSegmentWriter) Push(ctx context.Context, _ *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reserved = append(s.reserved, inflight.FromContext(ctx) != nil)
+	s.bytes = append(s.bytes, s.limiter.Bytes())
+	return &segmentwriterv1.PushResponse{}, nil
+}
+
+func (s *recordingSegmentWriter) snapshot() ([]bool, []int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]bool(nil), s.reserved...), append([]int64(nil), s.bytes...)
+}
+
+func TestPushBatch_MaxInflightBytes_Aggregation(t *testing.T) {
+	sw := new(recordingSegmentWriter)
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		l := validation.MockDefaultLimits()
+		l.WritePathOverrides.WritePath = writepath.SegmentWriterPath
+		l.DistributorAggregationPeriod = model.Duration(time.Second)
+		l.DistributorAggregationWindow = model.Duration(time.Second)
+		tenantLimits["user-1"] = l
+	})
+	d, err := New(
+		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
+		overrides, nil, log.NewNopLogger(), sw,
+	)
+	require.NoError(t, err)
+	sw.limiter = d.inflight
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+	const (
+		clients  = 10
+		requests = 10
+	)
+	var wg sync.WaitGroup
+	wg.Add(clients)
+	for i := 0; i < clients; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < requests; j++ {
+				assert.NoError(t, d.PushBatch(ctx, newInflightRequest(1)))
+			}
+		}()
+	}
+	wg.Wait()
+	d.asyncRequests.Wait()
+
+	reserved, bytes := sw.snapshot()
+	require.NotEmpty(t, reserved)
+	require.Less(t, len(reserved), clients*requests, "aggregation should have collapsed some requests")
+	// Aggregated profiles are a fresh allocation sent after the originating
+	// request has returned, so they need a reservation of their own.
+	assert.NotContains(t, reserved, false, "every write to the segment writer carries a reservation")
+	assert.NotContains(t, bytes, int64(0), "the reservation is held for the duration of the write")
+
+	assert.Equal(t, int64(0), d.inflight.Bytes())
 }
