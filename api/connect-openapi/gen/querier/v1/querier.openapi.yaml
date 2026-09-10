@@ -1114,6 +1114,48 @@ components:
           format: int64
       title: FlameGraphDiff
       additionalProperties: false
+    querier.v1.FunctionRow:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        self:
+          type:
+            - integer
+            - string
+          title: self
+          format: int64
+          description: Sample value attributed directly to this function.
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: |-
+            Sample value whose stack contains this function. Recursive occurrences
+             count once per sample, so total never exceeds FunctionTable.total.
+      title: FunctionRow
+      additionalProperties: false
+    querier.v1.FunctionTable:
+      type: object
+      properties:
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.FunctionRow'
+          title: functions
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: Sum of sample values across the entire selected profile, before limiting rows.
+      title: FunctionTable
+      additionalProperties: false
+      description: FunctionTable aggregates samples by function name before tree truncation.
     querier.v1.HeatmapQueryType:
       type: string
       title: HeatmapQueryType
@@ -1152,6 +1194,7 @@ components:
         - PROFILE_FORMAT_TREE
         - PROFILE_FORMAT_DOT
         - PROFILE_FORMAT_PPROF
+        - PROFILE_FORMAT_FUNCTIONS
     querier.v1.ProfileTypesRequest:
       type: object
       properties:
@@ -1592,6 +1635,16 @@ components:
                 - 5a4fe264a9c987fe
           title: span_selector
           description: List of span IDs (16 hex characters, 64-bit) to filter samples by.
+        maxFunctions:
+          type:
+            - integer
+            - string
+          title: max_functions
+          format: int64
+          description: |-
+            Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value
+             descending, then name ascending. Zero defaults to 2000; -1 returns all.
+             Applied after merging all results. Independent of max_nodes.
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:
@@ -1618,6 +1671,9 @@ components:
           title: pprof
           description: Profile in pprof format.
           $ref: '#/components/schemas/querier.v1.PprofProfile'
+        functions:
+          title: functions
+          $ref: '#/components/schemas/querier.v1.FunctionTable'
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectSeriesRequest:

@@ -156,8 +156,9 @@ A request body with the following fields is required:
 |`left.end` | Milliseconds since epoch. | `1676289600000` |
 |`left.async.requestId` | If set, this is a polling request. |  |
 |`left.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`left.maxFunctions` | Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value  descending, then name ascending. Zero defaults to 2000; -1 returns all.  Applied after merging all results. Independent of max_nodes. |  |
 |`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`left.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`left.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
@@ -170,8 +171,9 @@ A request body with the following fields is required:
 |`right.end` | Milliseconds since epoch. | `1676289600000` |
 |`right.async.requestId` | If set, this is a polling request. |  |
 |`right.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`right.maxFunctions` | Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value  descending, then name ascending. Zero defaults to 2000; -1 returns all.  Applied after merging all results. Independent of max_nodes. |  |
 |`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`right.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`right.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
@@ -517,7 +519,7 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`start` | Milliseconds since epoch. | `1676282400000` |
 |`end` | Milliseconds since epoch. | `1676289600000` |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
@@ -574,8 +576,9 @@ A request body with the following fields is required:
 |`end` | Milliseconds since epoch. | `1676289600000` |
 |`async.requestId` | If set, this is a polling request. |  |
 |`async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
+|`maxFunctions` | Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value  descending, then name ascending. Zero defaults to 2000; -1 returns all.  Applied after merging all results. Independent of max_nodes. |  |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
@@ -737,6 +740,29 @@ print(resp.content)
 
 {{< /code >}}
 
+
+#### Exact function tables
+
+Request `PROFILE_FORMAT_FUNCTIONS` from `SelectMergeStacktraces` to retrieve a top table independently of flamegraph detail limits:
+
+```json
+{
+  "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+  "labelSelector": "{service_name=\"my-service\"}",
+  "start": "1676282400000",
+  "end": "1676289600000",
+  "format": "PROFILE_FORMAT_FUNCTIONS",
+  "maxFunctions": "2000"
+}
+```
+
+The response contains `functions.functions`, an array of rows with `name`, `self`, and `total`, and `functions.total`, the total sample value of the selected profile. Values use the selected profile type's sample unit. As with other protobuf JSON responses, 64-bit integer values are encoded as strings.
+
+`self` counts samples attributed directly to a function. `total` counts samples whose stack contains that function; recursive occurrences count once per sample. Functions with the same name are combined across call sites. The synthetic flamegraph root and truncation groups are not introduced into the table.
+
+Rows are ordered by descending `self`, with ties ordered by ascending function name. `maxFunctions` defaults to 2000 when omitted or zero; a positive value selects that many rows, and `-1` returns all rows. The limit is applied after all query results are merged, including queries spanning v1 and v2 storage. `functions.total` always includes samples from omitted rows, so clients can calculate percentages using the full profile total. `maxNodes` has no effect on this format.
+
+Both storage versions support function tables and span selection. Stack trace, profile ID, and trace ID selectors require v2 storage for this format. In v2, already symbolized profiles are aggregated into compact function reports in the query backend. Native profiles requiring deferred symbolization retain complete stacks until names are resolved. The legacy v1 path also transfers untruncated trees internally before aggregating function rows, so those paths can require more backend memory and network traffic than a truncated flamegraph query.
 
 
 ## Pyroscope Legacy HTTP API

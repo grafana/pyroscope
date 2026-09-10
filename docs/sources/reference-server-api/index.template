@@ -72,6 +72,29 @@ In a JSON request body, escape the selector's quotes:
 
 {{ .RenderAPIGroup "/querier.v1.QuerierService" }}
 
+#### Exact function tables
+
+Request `PROFILE_FORMAT_FUNCTIONS` from `SelectMergeStacktraces` to retrieve a top table independently of flamegraph detail limits:
+
+```json
+{
+  "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+  "labelSelector": "{service_name=\"my-service\"}",
+  "start": "1676282400000",
+  "end": "1676289600000",
+  "format": "PROFILE_FORMAT_FUNCTIONS",
+  "maxFunctions": "2000"
+}
+```
+
+The response contains `functions.functions`, an array of rows with `name`, `self`, and `total`, and `functions.total`, the total sample value of the selected profile. Values use the selected profile type's sample unit. As with other protobuf JSON responses, 64-bit integer values are encoded as strings.
+
+`self` counts samples attributed directly to a function. `total` counts samples whose stack contains that function; recursive occurrences count once per sample. Functions with the same name are combined across call sites. The synthetic flamegraph root and truncation groups are not introduced into the table.
+
+Rows are ordered by descending `self`, with ties ordered by ascending function name. `maxFunctions` defaults to 2000 when omitted or zero; a positive value selects that many rows, and `-1` returns all rows. The limit is applied after all query results are merged, including queries spanning v1 and v2 storage. `functions.total` always includes samples from omitted rows, so clients can calculate percentages using the full profile total. `maxNodes` has no effect on this format.
+
+Both storage versions support function tables and span selection. Stack trace, profile ID, and trace ID selectors require v2 storage for this format. In v2, already symbolized profiles are aggregated into compact function reports in the query backend. Native profiles requiring deferred symbolization retain complete stacks until names are resolved. The legacy v1 path also transfers untruncated trees internally before aggregating function rows, so those paths can require more backend memory and network traffic than a truncated flamegraph query.
+
 
 ## Pyroscope Legacy HTTP API
 

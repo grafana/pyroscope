@@ -65,6 +65,35 @@ func (r *Router) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		limit, err := phlaremodel.ValidateMaxFunctions(c.Msg.MaxFunctions)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
+			func(a, b *querierv1.SelectMergeStacktracesRequest) {
+				if a != nil && b != nil {
+					a.MaxFunctions, b.MaxFunctions = -1, -1
+				}
+			},
+			func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
+				if a.Functions == nil || b.Functions == nil {
+					return nil, connect.NewError(connect.CodeInternal, errors.New("read path returned no function table"))
+				}
+				var merger phlaremodel.FunctionTableMerger
+				merger.Merge(a.Functions)
+				merger.Merge(b.Functions)
+				return &querierv1.SelectMergeStacktracesResponse{Functions: merger.Table()}, nil
+			})
+		if err != nil {
+			return nil, err
+		}
+		if resp.Msg.Functions == nil {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("read path returned no function table"))
+		}
+		phlaremodel.LimitFunctionTable(resp.Msg.Functions, limit)
+		return resp, nil
+	}
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
 		return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},

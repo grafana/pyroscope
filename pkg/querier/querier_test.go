@@ -580,10 +580,13 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 	for _, tc := range []struct {
 		blockSelect bool
 		name        string
+		format      querierv1.ProfileFormat
 	}{
 		// This tests the interoperability between older ingesters and new queriers
-		{false, "WithoutBlockHints"},
-		{true, "WithBlockHints"},
+		{false, "WithoutBlockHints", querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH},
+		{true, "WithBlockHints", querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH},
+		{false, "FunctionsWithoutBlockHints", querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS},
+		{true, "FunctionsWithBlockHints", querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
@@ -591,7 +594,13 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 				ProfileTypeID: "memory:inuse_space:bytes:space:byte",
 				Start:         now + 0,
 				End:           now + 2,
+				Format:        tc.format,
+				MaxFunctions:  -1,
 			})
+			if tc.format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+				maxNodes := int64(1)
+				req.Msg.MaxNodes = &maxNodes
+			}
 			bidi1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
 				{
 					LabelsSets: []*typesv1.Labels{
@@ -670,11 +679,23 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 			flame, err := querier.SelectMergeStacktraces(context.Background(), req)
 			require.NoError(t, err)
 
-			sort.Strings(flame.Msg.Flamegraph.Names)
-			require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Msg.Flamegraph.Names)
-			require.Equal(t, []int64{0, 2, 0, 0}, flame.Msg.Flamegraph.Levels[0].Values)
-			require.Equal(t, int64(2), flame.Msg.Flamegraph.Total)
-			require.Equal(t, int64(2), flame.Msg.Flamegraph.MaxSelf)
+			if tc.format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+				require.Equal(t, int64(2), flame.Msg.Functions.Total)
+				require.Equal(t, []*querierv1.FunctionRow{
+					{Name: "foo", Self: 2, Total: 2}, {Name: "bar", Total: 2}, {Name: "buzz", Total: 2},
+				}, flame.Msg.Functions.Functions)
+				for _, bidi := range []*fakeBidiClientStacktraces{bidi1, bidi2, bidi3} {
+					if bidi.request != nil {
+						require.Equal(t, int64(-1), bidi.request.GetMaxNodes())
+					}
+				}
+			} else {
+				sort.Strings(flame.Msg.Flamegraph.Names)
+				require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Msg.Flamegraph.Names)
+				require.Equal(t, []int64{0, 2, 0, 0}, flame.Msg.Flamegraph.Levels[0].Values)
+				require.Equal(t, int64(2), flame.Msg.Flamegraph.Total)
+				require.Equal(t, int64(2), flame.Msg.Flamegraph.MaxSelf)
+			}
 			var selected []testProfile
 			selected = append(selected, bidi1.kept...)
 			selected = append(selected, bidi2.kept...)
@@ -1112,6 +1133,7 @@ type testProfile struct {
 }
 
 type fakeBidiClientStacktraces struct {
+	request  *ingestv1.MergeProfilesStacktracesRequest
 	profiles chan *ingestv1.ProfileSets
 	batches  []*ingestv1.ProfileSets
 	kept     []testProfile
@@ -1130,6 +1152,7 @@ func newFakeBidiClientStacktraces(batches []*ingestv1.ProfileSets) *fakeBidiClie
 
 func (f *fakeBidiClientStacktraces) Send(in *ingestv1.MergeProfilesStacktracesRequest) error {
 	if in.Request != nil {
+		f.request = in
 		return nil
 	}
 	for i, b := range in.Profiles {

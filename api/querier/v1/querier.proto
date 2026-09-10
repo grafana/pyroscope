@@ -131,6 +131,10 @@ message SelectMergeStacktracesRequest {
   repeated string trace_id_selector = 10 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
   // List of span IDs (16 hex characters, 64-bit) to filter samples by.
   repeated string span_selector = 11 [(gnostic.openapi.v3.property).example = {yaml: "['9a517183f26a089d','5a4fe264a9c987fe']"}];
+  // Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value
+  // descending, then name ascending. Zero defaults to 2000; -1 returns all.
+  // Applied after merging all results. Independent of max_nodes.
+  int64 max_functions = 12;
 }
 
 enum ProfileFormat {
@@ -152,6 +156,9 @@ enum ProfileFormat {
   // Return a pprof profile, including available mappings, locations, filenames,
   // and line numbers, in SelectMergeStacktracesResponse.pprof.
   PROFILE_FORMAT_PPROF = 4;
+  // Return exact per-function self and total values, independent of max_nodes,
+  // in SelectMergeStacktracesResponse.functions.
+  PROFILE_FORMAT_FUNCTIONS = 5;
 }
 
 message SelectMergeStacktracesResponse {
@@ -164,6 +171,23 @@ message SelectMergeStacktracesResponse {
   optional AsyncQueryResponse async = 4;
   // Profile in pprof format.
   PprofProfile pprof = 5;
+  FunctionTable functions = 6;
+}
+
+// FunctionTable aggregates samples by function name before tree truncation.
+message FunctionTable {
+  repeated FunctionRow functions = 1;
+  // Sum of sample values across the entire selected profile, before limiting rows.
+  int64 total = 2;
+}
+
+message FunctionRow {
+  string name = 1;
+  // Sample value attributed directly to this function.
+  int64 self = 2;
+  // Sample value whose stack contains this function. Recursive occurrences
+  // count once per sample, so total never exceeds FunctionTable.total.
+  int64 total = 3;
 }
 
 // PprofProfile contains pprof output and related response metadata.

@@ -265,6 +265,10 @@ type queryContext struct {
 }
 
 func (q *queryContext) execute(query *queryv1.Query) error {
+	// A dataset's query context is shared by concurrently executed query
+	// types. Keep each query's tracing context local to that execution.
+	local := *q
+	q = &local
 	var span *tracing.Span
 	span, q.ctx = tracing.StartSpanFromContext(q.ctx, "executeQuery."+util.ToCamel(query.QueryType.String()))
 	defer span.Finish()
