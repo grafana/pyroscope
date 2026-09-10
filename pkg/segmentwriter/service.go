@@ -11,13 +11,13 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
-	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -44,7 +44,8 @@ const (
 	defaultHedgedRequestMaxRate = 2  // 2 hedged requests per second
 	defaultHedgedRequestBurst   = 10 // allow bursts of 10 hedged requests
 
-	// Shares the segments/ prefix so a segments/* bucket policy covers the probe too.
+	// The probe has to exercise the prefix the write path itself uses: a policy that grants
+	// another prefix while denying this one would pass the check and fail every real write.
 	bucketHealthCheckPrefix = block.DirNameSegment + "/_health/"
 )
 
@@ -104,7 +105,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
 	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", 2*time.Second, "Timeout for metadata update requests.")
-	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Uploads and removes a small object at startup to verify bucket write access. Startup fails if the upload fails; a failed removal is only logged.")
+	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Uploads a small object at startup to verify bucket write access. Startup fails if the upload fails. Removal of the object is best effort: it is skipped on filesystem storage, which keeps one object per startup, and a failed removal is only logged.")
 	f.DurationVar(&cfg.BucketHealthCheckTimeout, prefix+".bucket-health-check-timeout", 10*time.Second, "Timeout for bucket health check operations.")
 }
 
@@ -210,47 +211,55 @@ func New(
 // performBucketHealthCheck verifies the segment writer can write to object storage before it
 // joins the ring. Failure is fatal: a definitive upload error surfaces as codes.Unknown, which
 // the client does not retry, so writes to a write-broken instance are lost, not failed over.
+// One attempt is enough, as the restart is the retry and the supervisor backs it off.
 func (i *SegmentWriterService) performBucketHealthCheck(ctx context.Context) error {
 	if !i.config.BucketHealthCheckEnabled {
 		return nil
 	}
 
-	name := bucketHealthCheckPrefix + i.config.LifecyclerConfig.ID
+	name := bucketHealthCheckKey(i.config.LifecyclerConfig.ID)
 	payload := bucketHealthCheckPayload(i.config.LifecyclerConfig.ID)
 	level.Debug(i.logger).Log("msg", "starting bucket health check", "object", name)
 
-	uploadCtx, cancelUpload := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
-	defer cancelUpload()
-
-	// An already-expired context skips the loop entirely, so err must start out non-nil.
-	err := uploadCtx.Err()
-	retries := backoff.New(uploadCtx, backoff.Config{
-		MinBackoff: i.config.UploadMinBackoff,
-		MaxBackoff: i.config.UploadMaxBackoff,
-		MaxRetries: i.config.UploadMaxRetries,
-	})
-	for retries.Ongoing() {
-		if err = i.storageBucket.Upload(uploadCtx, name, bytes.NewReader(payload)); err == nil {
-			break
-		}
-		retries.Wait()
-	}
-	if err != nil {
+	uploadCtx, cancel := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
+	defer cancel()
+	if err := i.storageBucket.Upload(uploadCtx, name, bytes.NewReader(payload)); err != nil {
 		level.Error(i.logger).Log("msg", "bucket health check failed", "object", name, "err", err)
 		return fmt.Errorf("bucket health check failed: %w", err)
 	}
 
-	// Best effort: the key is per instance, so a bucket denying deletes keeps one object per
-	// replica, not one per restart.
-	deleteCtx, cancelDelete := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
-	defer cancelDelete()
+	i.removeBucketHealthCheckObject(ctx, name)
+	level.Debug(i.logger).Log("msg", "bucket health check succeeded")
+	return nil
+}
+
+// removeBucketHealthCheckObject clears the probe away again, best effort: a bucket that grants
+// writes but not deletes is still serviceable, and keeping one small object per start is the
+// price of a probe the bucket cannot refuse to create. Those leftovers can be expired with a
+// lifecycle rule scoped to the probe prefix, never to segments/ itself.
+func (i *SegmentWriterService) removeBucketHealthCheckObject(ctx context.Context, name string) {
+	// The filesystem bucket deletes by walking up and removing parents it has just found empty.
+	// A writer creating the first real segment inside that window would lose it, so the probe
+	// stays: on this backend it is a stray file, not lost data.
+	if i.storageBucket.Provider() == objstore.FILESYSTEM {
+		level.Debug(i.logger).Log("msg", "keeping bucket health check object", "object", name,
+			"reason", "deleting it on the filesystem backend can remove concurrently written segments")
+		return
+	}
+
+	deleteCtx, cancel := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
+	defer cancel()
 	if err := i.storageBucket.Delete(deleteCtx, name); err != nil {
 		i.bucketHealthCheckCleanupFailures.Inc()
 		level.Warn(i.logger).Log("msg", "failed to remove bucket health check object", "object", name, "err", err)
 	}
+}
 
-	level.Debug(i.logger).Log("msg", "bucket health check succeeded")
-	return nil
+// bucketHealthCheckKey is unique per start, which keeps the probe a create rather than an
+// overwrite. The distinction matters: GCS grants such as roles/storage.objectCreator allow
+// creating an object and deny replacing one, and the write path only ever creates.
+func bucketHealthCheckKey(instanceID string) string {
+	return bucketHealthCheckPrefix + instanceID + "/" + uuid.New().String()
 }
 
 func bucketHealthCheckPayload(instanceID string) []byte {
