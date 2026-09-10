@@ -116,6 +116,31 @@ func TestSetupModuleManager_V2_ExcludesV1Components(t *testing.T) {
 	})
 }
 
+func TestShouldRegisterUI(t *testing.T) {
+	tests := []struct {
+		name         string
+		architecture StorageLayer
+		targets      []string
+		want         bool
+	}{
+		{name: "v2 all", architecture: V2, targets: []string{All}, want: true},
+		{name: "v2 query frontend", architecture: V2, targets: []string{QueryFrontend}, want: true},
+		{name: "v2 query backend", architecture: V2, targets: []string{QueryBackend}, want: false},
+		{name: "v2 legacy querier", architecture: V2, targets: []string{Querier}, want: false},
+		{name: "v2 non-query component", architecture: V2, targets: []string{Distributor}, want: false},
+		{name: "v1 querier", architecture: V1, targets: []string{Querier}, want: true},
+		{name: "dual-storage querier", architecture: V1V2Dual, targets: []string{Querier}, want: true},
+		{name: "query frontend among multiple targets", architecture: V2, targets: []string{Distributor, QueryFrontend}, want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &Pyroscope{Cfg: Config{ArchitectureStorage: tt.architecture, Target: tt.targets}}
+			assert.Equal(t, tt.want, f.shouldRegisterUI())
+		})
+	}
+}
+
 func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 	t.Run("registers default v2 architecture flag with default value", func(t *testing.T) {
 		cfg := newTestConfig(t, []string{})
