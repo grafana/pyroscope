@@ -1033,11 +1033,32 @@ components:
       properties:
         left:
           title: left
-          description: The format of each request is ignored; diff queries always compare trees.
+          description: Baseline selection. Its format is ignored.
           $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
         right:
           title: right
+          description: Comparison selection. Its format is ignored.
           $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
+        format:
+          title: format
+          description: |-
+            Output format: unspecified or PROFILE_FORMAT_FLAMEGRAPH compares trees;
+             PROFILE_FORMAT_FUNCTIONS returns exact function values for both sides (v2 only).
+          $ref: '#/components/schemas/querier.v1.ProfileFormat'
+        maxNodes:
+          type:
+            - integer
+            - string
+          title: max_nodes
+          format: int64
+          description: |-
+            Maximum function rows for PROFILE_FORMAT_FUNCTIONS. Applied after joining
+             complete results by name, ranked by the larger inclusive share on either
+             side, descending, then name ascending. A side with zero total has zero share.
+             Zero or omitted uses the tenant default; -1 returns all if permitted.
+             In functions mode, left.max_nodes and right.max_nodes are ignored.
+             For flamegraph output, use the per-side max_nodes fields instead.
+          nullable: true
       title: DiffRequest
       additionalProperties: false
     querier.v1.DiffResponse:
@@ -1046,6 +1067,9 @@ components:
         flamegraph:
           title: flamegraph
           $ref: '#/components/schemas/querier.v1.FlameGraphDiff'
+        functions:
+          title: functions
+          $ref: '#/components/schemas/querier.v1.FunctionTableDiff'
       title: DiffResponse
       additionalProperties: false
     querier.v1.FlameGraph:
@@ -1114,6 +1138,41 @@ components:
           format: int64
       title: FlameGraphDiff
       additionalProperties: false
+    querier.v1.FunctionDiffRow:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        leftSelf:
+          type:
+            - integer
+            - string
+          title: left_self
+          format: int64
+        leftTotal:
+          type:
+            - integer
+            - string
+          title: left_total
+          format: int64
+        rightSelf:
+          type:
+            - integer
+            - string
+          title: right_self
+          format: int64
+        rightTotal:
+          type:
+            - integer
+            - string
+          title: right_total
+          format: int64
+      title: FunctionDiffRow
+      additionalProperties: false
+      description: |-
+        Values use the profile type's sample unit. Missing functions have zero values
+         on the absent side. Inclusive totals count recursive occurrences once per sample.
     querier.v1.FunctionRow:
       type: object
       properties:
@@ -1156,6 +1215,31 @@ components:
       title: FunctionTable
       additionalProperties: false
       description: FunctionTable aggregates samples by function name before tree truncation.
+    querier.v1.FunctionTableDiff:
+      type: object
+      properties:
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.FunctionDiffRow'
+          title: functions
+        leftTotal:
+          type:
+            - integer
+            - string
+          title: left_total
+          format: int64
+          description: Full baseline profile total, before limiting rows.
+        rightTotal:
+          type:
+            - integer
+            - string
+          title: right_total
+          format: int64
+          description: Full comparison profile total, before limiting rows.
+      title: FunctionTableDiff
+      additionalProperties: false
+      description: Exact function values for the baseline and comparison, before normalization.
     querier.v1.HeatmapQueryType:
       type: string
       title: HeatmapQueryType

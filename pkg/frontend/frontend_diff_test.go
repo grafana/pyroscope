@@ -201,3 +201,12 @@ func Test_Frontend_Diff(t *testing.T) {
 		require.NotNil(t, resp.Msg.Flamegraph)
 	})
 }
+
+func Test_Frontend_DiffFunctions_Unimplemented(t *testing.T) {
+	t.Parallel()
+	resp, err := new(Frontend).Diff(context.Background(), connect.NewRequest(&querierv1.DiffRequest{
+		Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS,
+	}))
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
+}

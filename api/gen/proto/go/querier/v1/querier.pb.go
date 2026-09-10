@@ -1131,9 +1131,20 @@ func (x *SelectMergeSpanProfileResponse) GetTree() []byte {
 
 type DiffRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The format of each request is ignored; diff queries always compare trees.
-	Left          *SelectMergeStacktracesRequest `protobuf:"bytes,1,opt,name=left,proto3" json:"left,omitempty"`
-	Right         *SelectMergeStacktracesRequest `protobuf:"bytes,2,opt,name=right,proto3" json:"right,omitempty"`
+	// Baseline selection. Its format is ignored.
+	Left *SelectMergeStacktracesRequest `protobuf:"bytes,1,opt,name=left,proto3" json:"left,omitempty"`
+	// Comparison selection. Its format is ignored.
+	Right *SelectMergeStacktracesRequest `protobuf:"bytes,2,opt,name=right,proto3" json:"right,omitempty"`
+	// Output format: unspecified or PROFILE_FORMAT_FLAMEGRAPH compares trees;
+	// PROFILE_FORMAT_FUNCTIONS returns exact function values for both sides (v2 only).
+	Format ProfileFormat `protobuf:"varint,3,opt,name=format,proto3,enum=querier.v1.ProfileFormat" json:"format,omitempty"`
+	// Maximum function rows for PROFILE_FORMAT_FUNCTIONS. Applied after joining
+	// complete results by name, ranked by the larger inclusive share on either
+	// side, descending, then name ascending. A side with zero total has zero share.
+	// Zero or omitted uses the tenant default; -1 returns all if permitted.
+	// In functions mode, left.max_nodes and right.max_nodes are ignored.
+	// For flamegraph output, use the per-side max_nodes fields instead.
+	MaxNodes      *int64 `protobuf:"varint,4,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1182,9 +1193,24 @@ func (x *DiffRequest) GetRight() *SelectMergeStacktracesRequest {
 	return nil
 }
 
+func (x *DiffRequest) GetFormat() ProfileFormat {
+	if x != nil {
+		return x.Format
+	}
+	return ProfileFormat_PROFILE_FORMAT_UNSPECIFIED
+}
+
+func (x *DiffRequest) GetMaxNodes() int64 {
+	if x != nil && x.MaxNodes != nil {
+		return *x.MaxNodes
+	}
+	return 0
+}
+
 type DiffResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Flamegraph    *FlameGraphDiff        `protobuf:"bytes,1,opt,name=flamegraph,proto3" json:"flamegraph,omitempty"`
+	Functions     *FunctionTableDiff     `protobuf:"bytes,2,opt,name=functions,proto3" json:"functions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1226,6 +1252,154 @@ func (x *DiffResponse) GetFlamegraph() *FlameGraphDiff {
 	return nil
 }
 
+func (x *DiffResponse) GetFunctions() *FunctionTableDiff {
+	if x != nil {
+		return x.Functions
+	}
+	return nil
+}
+
+// Exact function values for the baseline and comparison, before normalization.
+type FunctionTableDiff struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Functions []*FunctionDiffRow     `protobuf:"bytes,1,rep,name=functions,proto3" json:"functions,omitempty"`
+	// Full baseline profile total, before limiting rows.
+	LeftTotal int64 `protobuf:"varint,2,opt,name=left_total,json=leftTotal,proto3" json:"left_total,omitempty"`
+	// Full comparison profile total, before limiting rows.
+	RightTotal    int64 `protobuf:"varint,3,opt,name=right_total,json=rightTotal,proto3" json:"right_total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FunctionTableDiff) Reset() {
+	*x = FunctionTableDiff{}
+	mi := &file_querier_v1_querier_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionTableDiff) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionTableDiff) ProtoMessage() {}
+
+func (x *FunctionTableDiff) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionTableDiff.ProtoReflect.Descriptor instead.
+func (*FunctionTableDiff) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *FunctionTableDiff) GetFunctions() []*FunctionDiffRow {
+	if x != nil {
+		return x.Functions
+	}
+	return nil
+}
+
+func (x *FunctionTableDiff) GetLeftTotal() int64 {
+	if x != nil {
+		return x.LeftTotal
+	}
+	return 0
+}
+
+func (x *FunctionTableDiff) GetRightTotal() int64 {
+	if x != nil {
+		return x.RightTotal
+	}
+	return 0
+}
+
+// Values use the profile type's sample unit. Missing functions have zero values
+// on the absent side. Inclusive totals count recursive occurrences once per sample.
+type FunctionDiffRow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	LeftSelf      int64                  `protobuf:"varint,2,opt,name=left_self,json=leftSelf,proto3" json:"left_self,omitempty"`
+	LeftTotal     int64                  `protobuf:"varint,3,opt,name=left_total,json=leftTotal,proto3" json:"left_total,omitempty"`
+	RightSelf     int64                  `protobuf:"varint,4,opt,name=right_self,json=rightSelf,proto3" json:"right_self,omitempty"`
+	RightTotal    int64                  `protobuf:"varint,5,opt,name=right_total,json=rightTotal,proto3" json:"right_total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FunctionDiffRow) Reset() {
+	*x = FunctionDiffRow{}
+	mi := &file_querier_v1_querier_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionDiffRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionDiffRow) ProtoMessage() {}
+
+func (x *FunctionDiffRow) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionDiffRow.ProtoReflect.Descriptor instead.
+func (*FunctionDiffRow) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *FunctionDiffRow) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *FunctionDiffRow) GetLeftSelf() int64 {
+	if x != nil {
+		return x.LeftSelf
+	}
+	return 0
+}
+
+func (x *FunctionDiffRow) GetLeftTotal() int64 {
+	if x != nil {
+		return x.LeftTotal
+	}
+	return 0
+}
+
+func (x *FunctionDiffRow) GetRightSelf() int64 {
+	if x != nil {
+		return x.RightSelf
+	}
+	return 0
+}
+
+func (x *FunctionDiffRow) GetRightTotal() int64 {
+	if x != nil {
+		return x.RightTotal
+	}
+	return 0
+}
+
 type FlameGraph struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Names         []string               `protobuf:"bytes,1,rep,name=names,proto3" json:"names,omitempty"`
@@ -1238,7 +1412,7 @@ type FlameGraph struct {
 
 func (x *FlameGraph) Reset() {
 	*x = FlameGraph{}
-	mi := &file_querier_v1_querier_proto_msgTypes[15]
+	mi := &file_querier_v1_querier_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1250,7 +1424,7 @@ func (x *FlameGraph) String() string {
 func (*FlameGraph) ProtoMessage() {}
 
 func (x *FlameGraph) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[15]
+	mi := &file_querier_v1_querier_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1263,7 +1437,7 @@ func (x *FlameGraph) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlameGraph.ProtoReflect.Descriptor instead.
 func (*FlameGraph) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{15}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *FlameGraph) GetNames() []string {
@@ -1308,7 +1482,7 @@ type FlameGraphDiff struct {
 
 func (x *FlameGraphDiff) Reset() {
 	*x = FlameGraphDiff{}
-	mi := &file_querier_v1_querier_proto_msgTypes[16]
+	mi := &file_querier_v1_querier_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1320,7 +1494,7 @@ func (x *FlameGraphDiff) String() string {
 func (*FlameGraphDiff) ProtoMessage() {}
 
 func (x *FlameGraphDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[16]
+	mi := &file_querier_v1_querier_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1333,7 +1507,7 @@ func (x *FlameGraphDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlameGraphDiff.ProtoReflect.Descriptor instead.
 func (*FlameGraphDiff) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{16}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *FlameGraphDiff) GetNames() []string {
@@ -1387,7 +1561,7 @@ type Level struct {
 
 func (x *Level) Reset() {
 	*x = Level{}
-	mi := &file_querier_v1_querier_proto_msgTypes[17]
+	mi := &file_querier_v1_querier_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1399,7 +1573,7 @@ func (x *Level) String() string {
 func (*Level) ProtoMessage() {}
 
 func (x *Level) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[17]
+	mi := &file_querier_v1_querier_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1412,7 +1586,7 @@ func (x *Level) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Level.ProtoReflect.Descriptor instead.
 func (*Level) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{17}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Level) GetValues() []int64 {
@@ -1448,7 +1622,7 @@ type SelectMergeProfileRequest struct {
 
 func (x *SelectMergeProfileRequest) Reset() {
 	*x = SelectMergeProfileRequest{}
-	mi := &file_querier_v1_querier_proto_msgTypes[18]
+	mi := &file_querier_v1_querier_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1460,7 +1634,7 @@ func (x *SelectMergeProfileRequest) String() string {
 func (*SelectMergeProfileRequest) ProtoMessage() {}
 
 func (x *SelectMergeProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[18]
+	mi := &file_querier_v1_querier_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1473,7 +1647,7 @@ func (x *SelectMergeProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectMergeProfileRequest.ProtoReflect.Descriptor instead.
 func (*SelectMergeProfileRequest) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{18}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SelectMergeProfileRequest) GetProfileTypeID() string {
@@ -1559,7 +1733,7 @@ type SelectSeriesRequest struct {
 
 func (x *SelectSeriesRequest) Reset() {
 	*x = SelectSeriesRequest{}
-	mi := &file_querier_v1_querier_proto_msgTypes[19]
+	mi := &file_querier_v1_querier_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1571,7 +1745,7 @@ func (x *SelectSeriesRequest) String() string {
 func (*SelectSeriesRequest) ProtoMessage() {}
 
 func (x *SelectSeriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[19]
+	mi := &file_querier_v1_querier_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1584,7 +1758,7 @@ func (x *SelectSeriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectSeriesRequest.ProtoReflect.Descriptor instead.
 func (*SelectSeriesRequest) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{19}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SelectSeriesRequest) GetProfileTypeID() string {
@@ -1666,7 +1840,7 @@ type SelectSeriesResponse struct {
 
 func (x *SelectSeriesResponse) Reset() {
 	*x = SelectSeriesResponse{}
-	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	mi := &file_querier_v1_querier_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1678,7 +1852,7 @@ func (x *SelectSeriesResponse) String() string {
 func (*SelectSeriesResponse) ProtoMessage() {}
 
 func (x *SelectSeriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[20]
+	mi := &file_querier_v1_querier_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1691,7 +1865,7 @@ func (x *SelectSeriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectSeriesResponse.ProtoReflect.Descriptor instead.
 func (*SelectSeriesResponse) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{20}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SelectSeriesResponse) GetSeries() []*v1.Series {
@@ -1728,7 +1902,7 @@ type SelectHeatmapRequest struct {
 
 func (x *SelectHeatmapRequest) Reset() {
 	*x = SelectHeatmapRequest{}
-	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	mi := &file_querier_v1_querier_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1740,7 +1914,7 @@ func (x *SelectHeatmapRequest) String() string {
 func (*SelectHeatmapRequest) ProtoMessage() {}
 
 func (x *SelectHeatmapRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[21]
+	mi := &file_querier_v1_querier_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1753,7 +1927,7 @@ func (x *SelectHeatmapRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectHeatmapRequest.ProtoReflect.Descriptor instead.
 func (*SelectHeatmapRequest) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{21}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SelectHeatmapRequest) GetProfileTypeID() string {
@@ -1828,7 +2002,7 @@ type SelectHeatmapResponse struct {
 
 func (x *SelectHeatmapResponse) Reset() {
 	*x = SelectHeatmapResponse{}
-	mi := &file_querier_v1_querier_proto_msgTypes[22]
+	mi := &file_querier_v1_querier_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1840,7 +2014,7 @@ func (x *SelectHeatmapResponse) String() string {
 func (*SelectHeatmapResponse) ProtoMessage() {}
 
 func (x *SelectHeatmapResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[22]
+	mi := &file_querier_v1_querier_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1853,7 +2027,7 @@ func (x *SelectHeatmapResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectHeatmapResponse.ProtoReflect.Descriptor instead.
 func (*SelectHeatmapResponse) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{22}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SelectHeatmapResponse) GetSeries() []*v1.HeatmapSeries {
@@ -1874,7 +2048,7 @@ type AnalyzeQueryRequest struct {
 
 func (x *AnalyzeQueryRequest) Reset() {
 	*x = AnalyzeQueryRequest{}
-	mi := &file_querier_v1_querier_proto_msgTypes[23]
+	mi := &file_querier_v1_querier_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1886,7 +2060,7 @@ func (x *AnalyzeQueryRequest) String() string {
 func (*AnalyzeQueryRequest) ProtoMessage() {}
 
 func (x *AnalyzeQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[23]
+	mi := &file_querier_v1_querier_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1899,7 +2073,7 @@ func (x *AnalyzeQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeQueryRequest.ProtoReflect.Descriptor instead.
 func (*AnalyzeQueryRequest) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{23}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *AnalyzeQueryRequest) GetStart() int64 {
@@ -1933,7 +2107,7 @@ type AnalyzeQueryResponse struct {
 
 func (x *AnalyzeQueryResponse) Reset() {
 	*x = AnalyzeQueryResponse{}
-	mi := &file_querier_v1_querier_proto_msgTypes[24]
+	mi := &file_querier_v1_querier_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1945,7 +2119,7 @@ func (x *AnalyzeQueryResponse) String() string {
 func (*AnalyzeQueryResponse) ProtoMessage() {}
 
 func (x *AnalyzeQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[24]
+	mi := &file_querier_v1_querier_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1958,7 +2132,7 @@ func (x *AnalyzeQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeQueryResponse.ProtoReflect.Descriptor instead.
 func (*AnalyzeQueryResponse) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{24}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *AnalyzeQueryResponse) GetQueryScopes() []*QueryScope {
@@ -1993,7 +2167,7 @@ type QueryScope struct {
 
 func (x *QueryScope) Reset() {
 	*x = QueryScope{}
-	mi := &file_querier_v1_querier_proto_msgTypes[25]
+	mi := &file_querier_v1_querier_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2005,7 +2179,7 @@ func (x *QueryScope) String() string {
 func (*QueryScope) ProtoMessage() {}
 
 func (x *QueryScope) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[25]
+	mi := &file_querier_v1_querier_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2018,7 +2192,7 @@ func (x *QueryScope) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryScope.ProtoReflect.Descriptor instead.
 func (*QueryScope) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{25}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *QueryScope) GetComponentType() string {
@@ -2095,7 +2269,7 @@ type QueryImpact struct {
 
 func (x *QueryImpact) Reset() {
 	*x = QueryImpact{}
-	mi := &file_querier_v1_querier_proto_msgTypes[26]
+	mi := &file_querier_v1_querier_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2107,7 +2281,7 @@ func (x *QueryImpact) String() string {
 func (*QueryImpact) ProtoMessage() {}
 
 func (x *QueryImpact) ProtoReflect() protoreflect.Message {
-	mi := &file_querier_v1_querier_proto_msgTypes[26]
+	mi := &file_querier_v1_querier_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2120,7 +2294,7 @@ func (x *QueryImpact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryImpact.ProtoReflect.Descriptor instead.
 func (*QueryImpact) Descriptor() ([]byte, []int) {
-	return file_querier_v1_querier_proto_rawDescGZIP(), []int{26}
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *QueryImpact) GetTotalBytesInTimeRange() uint64 {
@@ -2223,14 +2397,34 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\n" +
 	"flamegraph\x18\x01 \x01(\v2\x16.querier.v1.FlameGraphR\n" +
 	"flamegraph\x12\x12\n" +
-	"\x04tree\x18\x02 \x01(\fR\x04tree\"\x8d\x01\n" +
+	"\x04tree\x18\x02 \x01(\fR\x04tree\"\xf0\x01\n" +
 	"\vDiffRequest\x12=\n" +
 	"\x04left\x18\x01 \x01(\v2).querier.v1.SelectMergeStacktracesRequestR\x04left\x12?\n" +
-	"\x05right\x18\x02 \x01(\v2).querier.v1.SelectMergeStacktracesRequestR\x05right\"J\n" +
+	"\x05right\x18\x02 \x01(\v2).querier.v1.SelectMergeStacktracesRequestR\x05right\x121\n" +
+	"\x06format\x18\x03 \x01(\x0e2\x19.querier.v1.ProfileFormatR\x06format\x12 \n" +
+	"\tmax_nodes\x18\x04 \x01(\x03H\x00R\bmaxNodes\x88\x01\x01B\f\n" +
+	"\n" +
+	"_max_nodes\"\x87\x01\n" +
 	"\fDiffResponse\x12:\n" +
 	"\n" +
 	"flamegraph\x18\x01 \x01(\v2\x1a.querier.v1.FlameGraphDiffR\n" +
-	"flamegraph\"~\n" +
+	"flamegraph\x12;\n" +
+	"\tfunctions\x18\x02 \x01(\v2\x1d.querier.v1.FunctionTableDiffR\tfunctions\"\x8e\x01\n" +
+	"\x11FunctionTableDiff\x129\n" +
+	"\tfunctions\x18\x01 \x03(\v2\x1b.querier.v1.FunctionDiffRowR\tfunctions\x12\x1d\n" +
+	"\n" +
+	"left_total\x18\x02 \x01(\x03R\tleftTotal\x12\x1f\n" +
+	"\vright_total\x18\x03 \x01(\x03R\n" +
+	"rightTotal\"\xa1\x01\n" +
+	"\x0fFunctionDiffRow\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
+	"\tleft_self\x18\x02 \x01(\x03R\bleftSelf\x12\x1d\n" +
+	"\n" +
+	"left_total\x18\x03 \x01(\x03R\tleftTotal\x12\x1d\n" +
+	"\n" +
+	"right_self\x18\x04 \x01(\x03R\trightSelf\x12\x1f\n" +
+	"\vright_total\x18\x05 \x01(\x03R\n" +
+	"rightTotal\"~\n" +
 	"\n" +
 	"FlameGraph\x12\x14\n" +
 	"\x05names\x18\x01 \x03(\tR\x05names\x12)\n" +
@@ -2377,7 +2571,7 @@ func file_querier_v1_querier_proto_rawDescGZIP() []byte {
 }
 
 var file_querier_v1_querier_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_querier_v1_querier_proto_goTypes = []any{
 	(ProfileFormat)(0),                     // 0: querier.v1.ProfileFormat
 	(AsyncQueryType)(0),                    // 1: querier.v1.AsyncQueryType
@@ -2398,93 +2592,98 @@ var file_querier_v1_querier_proto_goTypes = []any{
 	(*SelectMergeSpanProfileResponse)(nil), // 16: querier.v1.SelectMergeSpanProfileResponse
 	(*DiffRequest)(nil),                    // 17: querier.v1.DiffRequest
 	(*DiffResponse)(nil),                   // 18: querier.v1.DiffResponse
-	(*FlameGraph)(nil),                     // 19: querier.v1.FlameGraph
-	(*FlameGraphDiff)(nil),                 // 20: querier.v1.FlameGraphDiff
-	(*Level)(nil),                          // 21: querier.v1.Level
-	(*SelectMergeProfileRequest)(nil),      // 22: querier.v1.SelectMergeProfileRequest
-	(*SelectSeriesRequest)(nil),            // 23: querier.v1.SelectSeriesRequest
-	(*SelectSeriesResponse)(nil),           // 24: querier.v1.SelectSeriesResponse
-	(*SelectHeatmapRequest)(nil),           // 25: querier.v1.SelectHeatmapRequest
-	(*SelectHeatmapResponse)(nil),          // 26: querier.v1.SelectHeatmapResponse
-	(*AnalyzeQueryRequest)(nil),            // 27: querier.v1.AnalyzeQueryRequest
-	(*AnalyzeQueryResponse)(nil),           // 28: querier.v1.AnalyzeQueryResponse
-	(*QueryScope)(nil),                     // 29: querier.v1.QueryScope
-	(*QueryImpact)(nil),                    // 30: querier.v1.QueryImpact
-	(*v1.ProfileType)(nil),                 // 31: types.v1.ProfileType
-	(*v1.Labels)(nil),                      // 32: types.v1.Labels
-	(*v1.StackTraceSelector)(nil),          // 33: types.v1.StackTraceSelector
-	(*v11.Profile)(nil),                    // 34: google.v1.Profile
-	(v1.TimeSeriesAggregationType)(0),      // 35: types.v1.TimeSeriesAggregationType
-	(v1.ExemplarType)(0),                   // 36: types.v1.ExemplarType
-	(*v1.Series)(nil),                      // 37: types.v1.Series
-	(*v1.HeatmapSeries)(nil),               // 38: types.v1.HeatmapSeries
-	(*v1.LabelValuesRequest)(nil),          // 39: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),           // 40: types.v1.LabelNamesRequest
-	(*v1.GetProfileStatsRequest)(nil),      // 41: types.v1.GetProfileStatsRequest
-	(*v1.LabelValuesResponse)(nil),         // 42: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),          // 43: types.v1.LabelNamesResponse
-	(*v1.GetProfileStatsResponse)(nil),     // 44: types.v1.GetProfileStatsResponse
+	(*FunctionTableDiff)(nil),              // 19: querier.v1.FunctionTableDiff
+	(*FunctionDiffRow)(nil),                // 20: querier.v1.FunctionDiffRow
+	(*FlameGraph)(nil),                     // 21: querier.v1.FlameGraph
+	(*FlameGraphDiff)(nil),                 // 22: querier.v1.FlameGraphDiff
+	(*Level)(nil),                          // 23: querier.v1.Level
+	(*SelectMergeProfileRequest)(nil),      // 24: querier.v1.SelectMergeProfileRequest
+	(*SelectSeriesRequest)(nil),            // 25: querier.v1.SelectSeriesRequest
+	(*SelectSeriesResponse)(nil),           // 26: querier.v1.SelectSeriesResponse
+	(*SelectHeatmapRequest)(nil),           // 27: querier.v1.SelectHeatmapRequest
+	(*SelectHeatmapResponse)(nil),          // 28: querier.v1.SelectHeatmapResponse
+	(*AnalyzeQueryRequest)(nil),            // 29: querier.v1.AnalyzeQueryRequest
+	(*AnalyzeQueryResponse)(nil),           // 30: querier.v1.AnalyzeQueryResponse
+	(*QueryScope)(nil),                     // 31: querier.v1.QueryScope
+	(*QueryImpact)(nil),                    // 32: querier.v1.QueryImpact
+	(*v1.ProfileType)(nil),                 // 33: types.v1.ProfileType
+	(*v1.Labels)(nil),                      // 34: types.v1.Labels
+	(*v1.StackTraceSelector)(nil),          // 35: types.v1.StackTraceSelector
+	(*v11.Profile)(nil),                    // 36: google.v1.Profile
+	(v1.TimeSeriesAggregationType)(0),      // 37: types.v1.TimeSeriesAggregationType
+	(v1.ExemplarType)(0),                   // 38: types.v1.ExemplarType
+	(*v1.Series)(nil),                      // 39: types.v1.Series
+	(*v1.HeatmapSeries)(nil),               // 40: types.v1.HeatmapSeries
+	(*v1.LabelValuesRequest)(nil),          // 41: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),           // 42: types.v1.LabelNamesRequest
+	(*v1.GetProfileStatsRequest)(nil),      // 43: types.v1.GetProfileStatsRequest
+	(*v1.LabelValuesResponse)(nil),         // 44: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),          // 45: types.v1.LabelNamesResponse
+	(*v1.GetProfileStatsResponse)(nil),     // 46: types.v1.GetProfileStatsResponse
 }
 var file_querier_v1_querier_proto_depIdxs = []int32{
-	31, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
-	32, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
+	33, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
+	34, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
 	0,  // 2: querier.v1.SelectMergeStacktracesRequest.format:type_name -> querier.v1.ProfileFormat
-	33, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	35, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	13, // 4: querier.v1.SelectMergeStacktracesRequest.async:type_name -> querier.v1.AsyncQueryRequest
-	19, // 5: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
+	21, // 5: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
 	14, // 6: querier.v1.SelectMergeStacktracesResponse.async:type_name -> querier.v1.AsyncQueryResponse
 	12, // 7: querier.v1.SelectMergeStacktracesResponse.pprof:type_name -> querier.v1.PprofProfile
 	10, // 8: querier.v1.SelectMergeStacktracesResponse.functions:type_name -> querier.v1.FunctionTable
 	11, // 9: querier.v1.FunctionTable.functions:type_name -> querier.v1.FunctionRow
-	34, // 10: querier.v1.PprofProfile.profile:type_name -> google.v1.Profile
+	36, // 10: querier.v1.PprofProfile.profile:type_name -> google.v1.Profile
 	1,  // 11: querier.v1.AsyncQueryRequest.type:type_name -> querier.v1.AsyncQueryType
 	2,  // 12: querier.v1.AsyncQueryResponse.status:type_name -> querier.v1.AsyncQueryStatus
 	0,  // 13: querier.v1.SelectMergeSpanProfileRequest.format:type_name -> querier.v1.ProfileFormat
-	19, // 14: querier.v1.SelectMergeSpanProfileResponse.flamegraph:type_name -> querier.v1.FlameGraph
+	21, // 14: querier.v1.SelectMergeSpanProfileResponse.flamegraph:type_name -> querier.v1.FlameGraph
 	8,  // 15: querier.v1.DiffRequest.left:type_name -> querier.v1.SelectMergeStacktracesRequest
 	8,  // 16: querier.v1.DiffRequest.right:type_name -> querier.v1.SelectMergeStacktracesRequest
-	20, // 17: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
-	21, // 18: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
-	21, // 19: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
-	33, // 20: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	35, // 21: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
-	33, // 22: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	36, // 23: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	37, // 24: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
-	3,  // 25: querier.v1.SelectHeatmapRequest.query_type:type_name -> querier.v1.HeatmapQueryType
-	36, // 26: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	38, // 27: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
-	29, // 28: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
-	30, // 29: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
-	4,  // 30: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	39, // 31: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	40, // 32: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	6,  // 33: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	8,  // 34: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	15, // 35: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	22, // 36: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	23, // 37: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	25, // 38: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
-	17, // 39: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	41, // 40: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	27, // 41: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
-	5,  // 42: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	42, // 43: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	43, // 44: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	7,  // 45: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	9,  // 46: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	16, // 47: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	34, // 48: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	24, // 49: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	26, // 50: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
-	18, // 51: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	44, // 52: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	28, // 53: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
-	42, // [42:54] is the sub-list for method output_type
-	30, // [30:42] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	0,  // 17: querier.v1.DiffRequest.format:type_name -> querier.v1.ProfileFormat
+	22, // 18: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
+	19, // 19: querier.v1.DiffResponse.functions:type_name -> querier.v1.FunctionTableDiff
+	20, // 20: querier.v1.FunctionTableDiff.functions:type_name -> querier.v1.FunctionDiffRow
+	23, // 21: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
+	23, // 22: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
+	35, // 23: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	37, // 24: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
+	35, // 25: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	38, // 26: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	39, // 27: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
+	3,  // 28: querier.v1.SelectHeatmapRequest.query_type:type_name -> querier.v1.HeatmapQueryType
+	38, // 29: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	40, // 30: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
+	31, // 31: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
+	32, // 32: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
+	4,  // 33: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	41, // 34: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	42, // 35: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	6,  // 36: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	8,  // 37: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	15, // 38: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	24, // 39: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	25, // 40: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	27, // 41: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
+	17, // 42: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	43, // 43: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	29, // 44: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
+	5,  // 45: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	44, // 46: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	45, // 47: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	7,  // 48: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	9,  // 49: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	16, // 50: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	36, // 51: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	26, // 52: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	28, // 53: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
+	18, // 54: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	46, // 55: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	30, // 56: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
+	45, // [45:57] is the sub-list for method output_type
+	33, // [33:45] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }
@@ -2495,16 +2694,17 @@ func file_querier_v1_querier_proto_init() {
 	file_querier_v1_querier_proto_msgTypes[4].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[5].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[11].OneofWrappers = []any{}
-	file_querier_v1_querier_proto_msgTypes[18].OneofWrappers = []any{}
-	file_querier_v1_querier_proto_msgTypes[19].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_msgTypes[13].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_msgTypes[20].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[21].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_msgTypes[23].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_querier_v1_querier_proto_rawDesc), len(file_querier_v1_querier_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   27,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

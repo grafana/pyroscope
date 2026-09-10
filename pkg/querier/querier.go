@@ -537,6 +537,9 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 // FIXME(kolesnikovae): The method is never used and should be removed.
 func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
+	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("function diffs are only supported with the v2 query backend"))
+	}
 	sp, ctx := tracing.StartSpanFromContext(ctx, "Diff")
 	defer func() {
 		sp.SetTag("leftStart", model.Time(req.Msg.Left.Start).Time().String())

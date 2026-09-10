@@ -29,23 +29,34 @@ func (q *QueryFrontend) selectMergeStacktracesFunctions(ctx context.Context, c *
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if _, err := model.ParseProfileTypeSelector(c.Msg.ProfileTypeID); err != nil {
+	table, err := q.queryFunctionTable(ctx, c.Msg)
+	if err != nil {
+		return nil, err
+	}
+	model.LimitFunctionTable(table, maxNodes)
+	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Functions: table}), nil
+}
+
+// queryFunctionTable returns all functions for a validated time range. Callers
+// apply row limits only after all aggregation and any cross-profile join.
+func (q *QueryFrontend) queryFunctionTable(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*querierv1.FunctionTable, error) {
+	if _, err := model.ParseProfileTypeSelector(req.ProfileTypeID); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	selector, err := buildLabelSelectorWithProfileType(c.Msg.LabelSelector, c.Msg.ProfileTypeID)
+	selector, err := buildLabelSelectorWithProfileType(req.LabelSelector, req.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	// TODO: Native symbolization for function tables is deliberately omitted for now.
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
-		StartTime: c.Msg.Start, EndTime: c.Msg.End, LabelSelector: selector,
+		StartTime: req.Start, EndTime: req.End, LabelSelector: selector,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_FUNCTIONS,
 			Functions: &queryv1.FunctionsQuery{
-				SpanSelector:       c.Msg.SpanSelector,
-				StackTraceSelector: c.Msg.StackTraceSelector,
-				ProfileIdSelector:  c.Msg.ProfileIdSelector,
-				TraceIdSelector:    c.Msg.TraceIdSelector,
+				SpanSelector:       req.SpanSelector,
+				StackTraceSelector: req.StackTraceSelector,
+				ProfileIdSelector:  req.ProfileIdSelector,
+				TraceIdSelector:    req.TraceIdSelector,
 			},
 		}},
 	}, nil)
@@ -59,6 +70,5 @@ func (q *QueryFrontend) selectMergeStacktracesFunctions(ctx context.Context, c *
 		}
 		table = report.Functions.Functions
 	}
-	model.LimitFunctionTable(table, maxNodes)
-	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Functions: table}), nil
+	return table, nil
 }

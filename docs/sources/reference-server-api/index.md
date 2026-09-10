@@ -152,11 +152,12 @@ A request body with the following fields is required:
 
 |Field | Description | Example |
 |:-----|:------------|:--------|
+|`format` | Output format: unspecified or PROFILE_FORMAT_FLAMEGRAPH compares trees;  PROFILE_FORMAT_FUNCTIONS returns exact function values for both sides (v2 only).. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`left.start` | Milliseconds since epoch. | `1676282400000` |
 |`left.end` | Milliseconds since epoch. | `1676289600000` |
 |`left.async.requestId` | If set, this is a polling request. |  |
 |`left.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
+|`left.format` | Output format: unspecified or PROFILE_FORMAT_FLAMEGRAPH compares trees;  PROFILE_FORMAT_FUNCTIONS returns exact function values for both sides (v2 only).. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`left.maxNodes` | Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,  limits function rows after merging all results, ranked by self value  descending, then name ascending. Zero or omitted uses the tenant default;  -1 returns all, subject to the tenant's configured maximum. |  |
 |`left.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
@@ -166,11 +167,12 @@ A request body with the following fields is required:
 |`left.stackTraceSelector.goPgo.aggregateCallees` | Aggregate callees causes the leaf location line number to be ignored,  thus aggregating all callee samples (but not callers). |  |
 |`left.stackTraceSelector.goPgo.keepLocations` | Specifies the number of leaf locations to keep. |  |
 |`left.traceIdSelector` | List of trace IDs (32 hex characters, 128-bit) to filter samples by. | `["7c9e66797425440de944be07fc1f90ae"]` |
+|`maxNodes` | Maximum function rows for PROFILE_FORMAT_FUNCTIONS. Applied after joining  complete results by name, ranked by the larger inclusive share on either  side, descending, then name ascending. A side with zero total has zero share.  Zero or omitted uses the tenant default; -1 returns all if permitted.  In functions mode, left.max_nodes and right.max_nodes are ignored.  For flamegraph output, use the per-side max_nodes fields instead. |  |
 |`right.start` | Milliseconds since epoch. | `1676282400000` |
 |`right.end` | Milliseconds since epoch. | `1676289600000` |
 |`right.async.requestId` | If set, this is a polling request. |  |
 |`right.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
+|`right.format` | Output format: unspecified or PROFILE_FORMAT_FLAMEGRAPH compares trees;  PROFILE_FORMAT_FUNCTIONS returns exact function values for both sides (v2 only).. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`right.maxNodes` | Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,  limits function rows after merging all results, ranked by self value  descending, then name ascending. Zero or omitted uses the tenant default;  -1 returns all, subject to the tenant's configured maximum. |  |
 |`right.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
@@ -761,6 +763,39 @@ Rows are ordered by descending `self`, with ties ordered by ascending function n
 
 Function tables are available only with v2 storage and support stack trace, profile ID, span, and trace ID selectors. The frozen v1 read path returns an `unimplemented` error for this format. Queries spanning v1 and v2 storage also fail with `unimplemented`, so a successful response always covers the entire requested range. Function tables use the function names stored with the profiles. Native symbolization is deliberately omitted for now.
 
+
+#### Exact function diffs
+
+Request `PROFILE_FORMAT_FUNCTIONS` at the top level of `Diff` (`POST /querier.v1.QuerierService/Diff`) to compare complete function tables:
+
+```json
+{
+  "format": "PROFILE_FORMAT_FUNCTIONS",
+  "maxNodes": "2000",
+  "left": {
+    "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "labelSelector": "{service_name=\"my-service\"}",
+    "start": "1676282400000",
+    "end": "1676286000000"
+  },
+  "right": {
+    "profileTypeID": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "labelSelector": "{service_name=\"my-service\"}",
+    "start": "1676286000000",
+    "end": "1676289600000"
+  }
+}
+```
+
+`left` is the baseline and `right` is the comparison. The response contains `functions.functions`, an array of rows with `name`, `leftSelf`, `leftTotal`, `rightSelf`, and `rightTotal`. Each row has exact exclusive (`Self`) and inclusive (`Total`) sample values on both sides, with zero values for a missing function. Recursive occurrences count once per sample for inclusive totals. The enclosing `functions.leftTotal` and `functions.rightTotal` are the full selected profile totals before limiting rows. Values use the profile type's sample unit and are encoded as strings in protobuf JSON.
+
+Rows are joined by function name before applying the top-level `maxNodes`. Ranking is descending by `max(leftTotal / baselineProfileTotal, rightTotal / comparisonProfileTotal)`, with ties ordered by ascending name. A side with zero profile total contributes zero to this ranking. This keeps functions with a large inclusive share in either profile. Ratios are compared without rounding. The limit uses the same tenant defaults and maximum as a single function table. Per-side `maxNodes` and `format` are ignored in functions mode.
+
+The API returns raw values without percentage or duration normalization. To reproduce Grafana's top-table display, calculate the baseline and comparison percentages from each row's inclusive total and its respective full profile total, round each percentage to two decimal places, then calculate `100 * (comparison - baseline) / baseline`. Presentation of zero baselines and empty profiles remains a client decision.
+
+Both selections must use the same profile type and be served entirely by v2 storage for every requested tenant. A selection requiring v1 storage returns `unimplemented`. Each selection supports the same stack trace, profile ID, span, and trace ID selectors as a single function table. Per-side asynchronous requests are not supported. Native symbolization is deliberately omitted for now.
+
+Omitting the top-level format, or selecting `PROFILE_FORMAT_FLAMEGRAPH`, preserves the existing flamegraph diff behavior and its per-side node limits. The legacy `/pyroscope/render-diff` handler calls `Diff` with the default format and converts the flamegraph response to flamebearer JSON; it does not expose function-table diffs.
 
 ## Pyroscope Legacy HTTP API
 

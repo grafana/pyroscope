@@ -588,6 +588,15 @@ func Test_SelectFunctions_Unimplemented(t *testing.T) {
 	}
 }
 
+func Test_DiffFunctions_Unimplemented(t *testing.T) {
+	t.Parallel()
+	resp, err := new(Querier).Diff(context.Background(), connect.NewRequest(&querierv1.DiffRequest{
+		Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS,
+	}))
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
+}
+
 func Test_SelectMergeStacktraces(t *testing.T) {
 	now := time.Now().UnixMilli()
 	for _, tc := range []struct {
