@@ -26,6 +26,9 @@ func (f *Frontend) SelectMergeStacktraces(
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dot format is only supported with the v2 query backend"))
 	}
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("functions format is only supported with the v2 query backend"))
+	}
 	// trace_id_selector is v2-only; this legacy frontend would drop it on split.
 	if len(c.Msg.TraceIdSelector) > 0 {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))
@@ -35,9 +38,6 @@ func (f *Frontend) SelectMergeStacktraces(
 	}
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
 		return f.selectMergeStacktracesPprof(ctx, c)
-	}
-	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
-		return f.selectMergeStacktracesFunctions(ctx, c)
 	}
 	t, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
@@ -51,57 +51,6 @@ func (f *Frontend) SelectMergeStacktraces(
 		resp.Tree = t.Bytes(c.Msg.GetMaxNodes(), nil)
 	}
 	return connect.NewResponse(&resp), nil
-}
-
-func (f *Frontend) selectMergeStacktracesFunctions(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	limit, err := phlaremodel.ValidateMaxFunctions(c.Msg.MaxFunctions)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	if c.Msg.StackTraceSelector != nil || len(c.Msg.ProfileIdSelector) > 0 {
-		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("function queries with stack_trace_selector or profile_id_selector require the v2 query backend"))
-	}
-	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
-	tenantIDs, err := tenant.TenantIDs(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, model.Interval{Start: model.Time(c.Msg.Start), End: model.Time(c.Msg.End)}, model.Now())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	var merger phlaremodel.FunctionTableMerger
-	if !validated.IsEmpty {
-		g, ctx := errgroup.WithContext(ctx)
-		if maxConcurrent := validationutil.SmallestPositiveNonZeroIntPerTenant(tenantIDs, f.limits.MaxQueryParallelism); maxConcurrent > 0 {
-			g.SetLimit(maxConcurrent)
-		}
-		interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
-		intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
-		for intervals.Next() {
-			r := intervals.At()
-			g.Go(func() error {
-				msg := c.Msg.CloneVT()
-				msg.Start, msg.End = r.Start.UnixMilli(), r.End.UnixMilli()
-				msg.MaxFunctions = -1
-				resp, err := connectgrpc.RoundTripUnary[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, f, connectgrpc.CloneRequest(c, msg))
-				if err != nil {
-					return err
-				}
-				if resp.Msg.Functions == nil {
-					return connect.NewError(connect.CodeInternal, errors.New("querier returned no function table"))
-				}
-				merger.Merge(resp.Msg.Functions)
-				return nil
-			})
-		}
-		if err := g.Wait(); err != nil {
-			return nil, err
-		}
-	}
-	table := merger.Table()
-	phlaremodel.LimitFunctionTable(table, limit)
-	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Functions: table}), nil
 }
 
 func (f *Frontend) selectMergeStacktracesTree(

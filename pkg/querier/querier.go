@@ -668,6 +668,9 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dot format is only supported with the v2 query backend"))
 	}
+	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("functions format is only supported with the v2 query backend"))
+	}
 	if len(req.Msg.SpanSelector) > 0 && req.Msg.StackTraceSelector != nil {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("combining span_selector with stack_trace_selector is only supported with the v2 query backend"))
 	}
@@ -688,30 +691,6 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		}), nil
 	}
 
-	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
-		limit, err := phlaremodel.ValidateMaxFunctions(req.Msg.MaxFunctions)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		if req.Msg.StackTraceSelector != nil {
-			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("function queries with stack_trace_selector require the v2 query backend"))
-		}
-		msg := req.Msg.CloneVT()
-		// Legacy ingesters and store gateways return trees. Disable truncation
-		// throughout that internal path, then send only function rows upstream.
-		unlimited := int64(-1)
-		msg.MaxNodes = &unlimited
-		tree, err := q.selectStacktracesTree(ctx, msg)
-		if err != nil {
-			return nil, err
-		}
-		table, err := phlaremodel.FunctionTableFromTree(ctx, tree)
-		if err != nil {
-			return nil, err
-		}
-		phlaremodel.LimitFunctionTable(table, limit)
-		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Functions: table}), nil
-	}
 	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
 		mn := maxNodesDefault
 		req.Msg.MaxNodes = &mn
