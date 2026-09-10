@@ -11,6 +11,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/tracing"
+	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
@@ -202,92 +203,121 @@ func (r *replicasPerBlockID) removeBlock(ulid string) {
 	delete(r.meta, ulid)
 }
 
-// this step removes sharded blocks that don't have all the shards present for a time window
-func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() (bool, error) {
-	type compactionKey struct {
-		level   int32
-		minTime int64
+// hasShardedBlocks reports whether any block carries a compactor shard label.
+func (r *replicasPerBlockID) hasShardedBlocks() bool {
+	for blockID := range r.m {
+		if meta, ok := r.meta[blockID]; ok {
+			if _, _, ok := shardFromBlock(meta); ok {
+				return true
+			}
+		}
 	}
-	compactions := make(map[compactionKey][]string)
+	return false
+}
 
-	// group blocks by compaction level
+// pruneIncompleteShardedBlocks drops sharded blocks for any window instant that
+// is missing a shard. It must run before pruneSupersededBlocks, so an incomplete
+// set's lower-level ancestors survive as a fallback. deduplicationLevel is the
+// level at/above which blocks are deduplicated (3 when sharded).
+func (r *replicasPerBlockID) pruneIncompleteShardedBlocks(deduplicationLevel int32) error {
+	// Completeness is checked per sharding (shard count) and per time instant, not
+	// by compaction level: a window's shards can legitimately sit at different
+	// levels (a partial late re-merge advances only some), so keying on level would
+	// falsely split a complete window and prune it. Different shard counts (e.g. a
+	// shard-count reconfiguration) are separate shardings and checked independently.
+	//
+	// For each distinct window start we require every shard to have a trusted block
+	// covering that instant. Coverage (minTime <= t < maxTime), rather than an exact
+	// minTime match, keeps a wider block (a shard merged to a longer span) counted
+	// for the later windows it overlaps, so sibling shards' blocks there are not
+	// orphaned and silently pruned. Only blocks >= deduplicationLevel count;
+	// intermediate lower blocks are never served (pruneSupersededBlocks drops them)
+	// so must not satisfy a shard.
+	type shardedBlock struct {
+		id      string
+		shard   uint64
+		minTime int64
+		maxTime int64
+	}
+	byShardCount := make(map[uint64][]shardedBlock)
 	for blockID := range r.m {
 		meta, ok := r.meta[blockID]
 		if !ok {
-			return false, fmt.Errorf("meta missing for block id %s", blockID)
+			return fmt.Errorf("meta missing for block id %s", blockID)
 		}
-
-		key := compactionKey{
-			level:   0,
-			minTime: meta.MinTime,
-		}
-
-		if meta.Compaction != nil {
-			key.level = meta.Compaction.Level
-		}
-		compactions[key] = append(compactions[key], blockID)
-	}
-
-	// now we go through every group and check if we see at least a block for each shard
-	var (
-		shardsSeen       []bool
-		shardedBlocks    []string
-		hasShardedBlocks bool
-	)
-	for _, blocks := range compactions {
-		shardsSeen = shardsSeen[:0]
-		shardedBlocks = shardedBlocks[:0]
-		for _, block := range blocks {
-			meta, ok := r.meta[block]
-			if !ok {
-				return false, fmt.Errorf("meta missing for block id %s", block)
-			}
-
-			shardIdx, shards, ok := shardFromBlock(meta)
-			if !ok {
-				// not a sharded block continue
-				continue
-			}
-			hasShardedBlocks = true
-			shardedBlocks = append(shardedBlocks, block)
-
-			if len(shardsSeen) == 0 {
-				if cap(shardsSeen) < int(shards) {
-					shardsSeen = make([]bool, shards)
-				} else {
-					shardsSeen = shardsSeen[:shards]
-					for idx := range shardsSeen {
-						shardsSeen[idx] = false
-					}
-				}
-			}
-
-			if len(shardsSeen) != int(shards) {
-				return false, fmt.Errorf("shard length mismatch, shards seen: %d, shards as per label: %d", len(shardsSeen), shards)
-			}
-
-			shardsSeen[shardIdx] = true
-		}
-		// check if all shards are present
-		allShardsPresent := true
-		for _, shardSeen := range shardsSeen {
-			if !shardSeen {
-				allShardsPresent = false
-				break
-			}
-		}
-
-		if allShardsPresent {
+		shard, shardCount, ok := shardFromBlock(meta)
+		if !ok {
 			continue
 		}
+		if meta.Compaction == nil || meta.Compaction.Level < deduplicationLevel {
+			continue
+		}
+		byShardCount[shardCount] = append(byShardCount[shardCount],
+			shardedBlock{id: blockID, shard: shard, minTime: meta.MinTime, maxTime: meta.MaxTime})
+	}
 
-		// now remove all blocks that are shareded but not complete
-		for _, block := range shardedBlocks {
-			r.removeBlock(block)
+	for shardCount, blocks := range byShardCount {
+		// Distinct window starts, ascending: pruning an earlier incomplete window
+		// first removes wide blocks that would otherwise mask a gap in a later one.
+		starts := make([]int64, 0, len(blocks))
+		seen := make(map[int64]struct{}, len(blocks))
+		for _, b := range blocks {
+			if _, ok := seen[b.minTime]; !ok {
+				seen[b.minTime] = struct{}{}
+				starts = append(starts, b.minTime)
+			}
+		}
+		sort.Slice(starts, func(i, j int) bool { return starts[i] < starts[j] })
+
+		shardsSeen := make([]bool, shardCount)
+		for _, t := range starts {
+			for i := range shardsSeen {
+				shardsSeen[i] = false
+			}
+			for _, b := range blocks {
+				if _, live := r.m[b.id]; !live {
+					continue // already pruned by an earlier incomplete window
+				}
+				if b.shard < shardCount && b.minTime <= t && t < b.maxTime {
+					shardsSeen[b.shard] = true
+				}
+			}
+			complete := true
+			for _, s := range shardsSeen {
+				if !s {
+					complete = false
+					break
+				}
+			}
+			if complete {
+				continue
+			}
+
+			// A shard is missing at this instant; dropping these can hide data (there
+			// may be no lower-level fallback), so log rather than prune silently. We
+			// prune the blocks that start here and fall back to the lower levels.
+			var pruned int
+			for _, b := range blocks {
+				if b.minTime != t {
+					continue
+				}
+				if _, live := r.m[b.id]; live {
+					r.removeBlock(b.id)
+					pruned++
+				}
+			}
+			if pruned > 0 {
+				level.Warn(r.logger).Log(
+					"msg", "pruning incomplete sharded blocks from query plan; a shard is missing for this time window and its data will not be queried",
+					"min_time", model.Time(t).Time().String(),
+					"shards_expected", shardCount,
+					"blocks_pruned", pruned,
+				)
+			}
 		}
 	}
 
-	return hasShardedBlocks, nil
+	return nil
 }
 
 // prunes blocks that are contained by a higher compaction level block
@@ -355,13 +385,10 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 		hash                    = xxhash.New()
 		plan                    = make(map[string]*blockPlanEntry)
 		smallestCompactionLevel = int32(0)
+		shardCounts             = make(map[uint64]struct{})
 	)
 
-	sharded, err := r.pruneIncompleteShardedBlocks()
-	if err != nil {
-		level.Warn(r.logger).Log("msg", "block planning failed to prune incomplete sharded blocks", "err", err)
-		return nil
-	}
+	sharded := r.hasShardedBlocks()
 
 	// Depending on whether split sharding is used, the compaction level at
 	// which the data gets deduplicated differs: if split sharding is enabled,
@@ -369,6 +396,13 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 	var deduplicationLevel int32 = 2
 	if sharded {
 		deduplicationLevel = 3
+	}
+
+	// Prune incomplete sharded sets first, so that any lower-level ancestors
+	// survive as a fallback, then collapse the surviving blocks per shard.
+	if err := r.pruneIncompleteShardedBlocks(deduplicationLevel); err != nil {
+		level.Warn(r.logger).Log("msg", "block planning failed to prune incomplete sharded blocks", "err", err)
+		return nil
 	}
 
 	if err := r.pruneSupersededBlocks(sharded); err != nil {
@@ -391,6 +425,11 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 		// or a block without compaction section, we want the queriers to deduplicate
 		if meta.Compaction == nil || meta.Compaction.Level < deduplicationLevel {
 			deduplicate = true
+		}
+
+		// track the distinct shardings present in the plan (see below).
+		if _, shardCount, ok := shardFromBlock(meta); ok {
+			shardCounts[shardCount] = struct{}{}
 		}
 
 		// record the lowest compaction level
@@ -440,6 +479,16 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*blockPla
 
 		// set the selected replica
 		r.m[blockID] = []string{selectedReplica}
+	}
+
+	// If more than one sharding scheme survived into the plan (e.g. an _of_2 and
+	// an _of_4 set for overlapping data), they partition the same series
+	// differently, so a series can appear in both. The sharded fast path assumes
+	// each series is served by exactly one block, which only holds for a single
+	// complete sharding - so force query-time deduplication to reconcile the
+	// overlap instead of double-counting.
+	if len(shardCounts) > 1 {
+		deduplicate = true
 	}
 
 	// adapt the plan to make sure all replicas will deduplicate
