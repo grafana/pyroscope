@@ -76,8 +76,8 @@ This table lists the available profile types based on the language SDK.
 | CPU            | Yes       | Yes  | Yes        | Yes  | Yes    | Yes  | Yes     |
 | Alloc Objects  | Yes       | Yes  | Yes        |      | Yes    |      |         |
 | Alloc Space    | Yes       | Yes  | Yes        |      | Yes    |      |         |
-| Inuse Objects  | Yes       |      | Yes (7.0+) |      | Yes    |      |         |
-| Inuse Space    | Yes       |      | Yes (7.0+) |      | Yes    |      |         |
+| Inuse Objects  | Yes       |      | Yes (7.0+) |      | Yes    | Yes  |         |
+| Inuse Space    | Yes       |      | Yes (7.0+) |      | Yes    | Yes  |         |
 | Goroutines     | Yes       |      |            |      |        |      |         |
 | Mutex Count    | Yes       |      | Yes        |      |        |      |         |
 | Mutex Duration | Yes       |      | Yes        |      |        |      |         |

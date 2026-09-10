@@ -576,11 +576,120 @@ profilecli ready --url=http://localhost:4040
 
 ### Manage recording rules from the CLI
 
-Use `profilecli recording-rules` commands to list, create, get, and delete recording rules without leaving your terminal.
-This is useful for GitOps-style workflows and automated rollout validation.
+Recording rules let you pre-aggregate profiling data into Prometheus-compatible metrics.
+You can then set alerts, build dashboards, and track function-level costs over time without running ad-hoc queries.
+Use `profilecli recording-rules` commands to list, create, get, and delete recording rules from your terminal so you can manage rules in GitOps workflows and automated rollout validation.
+
+{{< admonition type="note" >}}
+When you connect to a Grafana Cloud data source, the `recording-rules` commands require a token with the `profiles-config:read` scope (for `list` and `get`) or the `profiles-config:write` scope (for `create` and `delete`).
+{{< /admonition >}}
+
+For a conceptual overview of recording rules and the Cloud UI wizard, refer to [Use recording rules](https://grafana.com/docs/grafana-cloud/observe-and-act/send-data/profiles/recording-rules/).
+
+#### List recording rules
+
+Use `profilecli recording-rules list` to view all recording rules for the current tenant.
+Rules that were provisioned through server configuration are marked as read-only.
 
 ```bash
 profilecli recording-rules list
+```
+
+Example output:
+
+```
+Rule with Id nEiOJaMEBL (backend provisioned - read only)
+matchers:
+    - '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}'
+metric_name: profiles_recorded_cpu_usage_function_total_x509_certificate_verify_nanoseconds
+group_by:
+    - service_name
+function_name: crypto/x509.(*Certificate).Verify
+```
+
+#### Get a recording rule
+
+Use `profilecli recording-rules get` to retrieve a single recording rule by its ID.
+Use the `-o` flag to save the rule to a file, which is useful for editing and re-creating.
+
+```bash
+profilecli recording-rules get <RULE_ID>
+```
+
+To save the rule to a file:
+
+```bash
+profilecli recording-rules get <RULE_ID> -o rule.yaml
+```
+
+Replace the following:
+
+- `<RULE_ID>`: the ID of the rule, for example `wUkyJdAuRq`
+
+#### Create a recording rule
+
+Use `profilecli recording-rules create` to create a new recording rule from a YAML or JSON file.
+
+1. Create a rule definition file. The file must contain the following fields:
+
+   ```yaml
+   matchers:
+     - '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", region="emea"}'
+   metric_name: profiles_recorded_cpu_usage_function_total_gc_nanoseconds
+   group_by:
+     - service_name
+   function_name: runtime.gcBgMarkWorker
+   ```
+
+   | Field | Required | Description |
+   | --- | --- | --- |
+   | `matchers` | Yes | Label selectors that filter the profiles to aggregate. Must contain exactly one `__profile_type__` matcher with an equality match. |
+   | `metric_name` | Yes | The Prometheus metric name for the resulting time series. |
+   | `group_by` | No | Label names to group by. Each unique combination of values produces a separate time series. |
+   | `function_name` | No | A function name to filter stack traces. Only samples that include this function contribute to the metric. |
+   | `external_labels` | No | Extra label pairs to attach to every time series the rule produces. Useful for adding environment or team identifiers. |
+
+   An example with `external_labels`:
+
+   ```yaml
+   matchers:
+     - '{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}'
+   metric_name: profiles_recorded_cpu_usage_total_nanoseconds
+   group_by:
+     - service_name
+   external_labels:
+     - name: env
+       value: production
+   ```
+
+1. Run the create command:
+
+   ```bash
+   profilecli recording-rules create -f rule.yaml
+   ```
+
+   Example output:
+
+   ```
+   New recorded rule created with id: YLKtohSNyV
+   ```
+
+#### Delete a recording rule
+
+Use `profilecli recording-rules delete` to remove a recording rule by its ID.
+
+```bash
+profilecli recording-rules delete <RULE_ID>
+```
+
+Replace the following:
+
+- `<RULE_ID>`: the ID of the rule to delete
+
+Example output:
+
+```
+Deleted recording rule with id: YLKtohSNyV
 ```
 
 ### Validate source mapping coverage
