@@ -27,11 +27,25 @@ If you need accurate totals for cost or capacity views, keep the sampled-out pro
 
 The distributor applies per-tenant sampling rules after it validates an incoming profile. When a profile matches a rule, the distributor makes a probabilistic decision to accept or drop it.
 
+{{< mermaid >}}
+flowchart TD
+    A[Profile ingested] --> B[Distributor validates profile]
+    B --> C{Matches a sampling rule?}
+    C -->|No| K[Forward to segment-writers]
+    C -->|Yes| D{Probabilistic decision}
+    D -->|Kept| K
+    D -->|Sampled out| E{keep_stripped_profiles}
+    E -->|false, default| F[Drop profile]
+    E -->|true| G["Strip to totals, add __sampled__=&quot;true&quot;"]
+    G --> H[Store totals-only series]
+{{< /mermaid >}}
+
 - If the profile is accepted, the distributor forwards it to [segment-writers](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/components/segment-writer/) as usual.
-- If the profile is sampled out and `keep_stripped_profiles` is `false` (the default), the distributor drops it.
-- If the profile is sampled out and `keep_stripped_profiles` is `true`, the distributor reduces the profile to totals and stores it with the `__sampled__="true"` label.
+- If the profile is sampled out, the distributor drops it by default. To keep totals for sampled-out profiles instead, refer to [Retain sampled-out profiles](#retain-sampled-out-profiles).
 
 This is not the same as ingest-limit throttling. When a tenant hits an ingestion limit, the distributor returns HTTP 429 for rejected requests. Sampled-out profiles don't produce that error.
+
+Sampling is configured per tenant through runtime overrides, using usage groups and a per-group probability. To configure sampling, refer to [Configure write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/).
 
 ## Retain sampled-out profiles
 
@@ -65,4 +79,3 @@ Write-path sampling is one of several sampling ideas in the Pyroscope ecosystem:
 
 - **Profiler sample rate**: How often a language SDK or profiler collects stack traces. Refer to the [language SDK](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/) documentation for the language you instrument.
 - **Scrape-target sampling**: How Grafana Alloy profiles a subset of scrape targets. Refer to [Sampling scrape targets](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/sampling/).
-- **Compaction**: How Pyroscope merges small segments into larger blocks. Compaction doesn't sample profiles on ingest. Refer to [Compaction](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/compaction/).
