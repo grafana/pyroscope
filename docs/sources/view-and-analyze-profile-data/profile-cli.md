@@ -387,7 +387,7 @@ This command is useful when you want to inspect merged profile data directly, sa
 
 ### Read an exact functions table
 
-Use `profilecli query functions` to list functions ranked by self value. This command requires a server with v2 function-table support; the v1 read path returns an `unimplemented` error.
+Use `profilecli query functions` to list functions ranked by self value. This command requires a server with v2 function-table support; the v1 read path returns an `unimplemented` error. Function tables use the function names stored with the profiles. Native symbolization is deliberately omitted for now.
 
 ```bash
 profilecli query functions \

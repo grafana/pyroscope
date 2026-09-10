@@ -15,7 +15,6 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
@@ -123,37 +122,29 @@ func TestSelectFunctions_Empty(t *testing.T) {
 	require.Zero(t, resp.Msg.Functions.Total)
 }
 
-func TestSelectFunctions_ResolvesSymbolsBeforeAggregation(t *testing.T) {
-	tree, refs := buildSymbolRefFixture(t)
+func TestSelectFunctions_NativeSymbolizationOmitted(t *testing.T) {
 	limits := mockfrontend.NewMockLimits(t)
 	limits.On("MaxFlameGraphNodesMax", smpTenant).Return(1000)
 	limits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	limits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	limits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
-	limits.On("SymbolizerEnabled", smpTenant).Return(true)
-	limits.On("SymbolRefTreesEnabled", smpTenant).Return(true)
-	limits.On("SymbolizerMaxUnresolvedLocations", smpTenant).Return(1000)
+	limits.On("SymbolizerEnabled", smpTenant).Return(true).Maybe()
+	limits.On("SymbolRefTreesEnabled", smpTenant).Return(true).Maybe()
+	// Even with a symbolizer configured, function queries must use backend
+	// function reports without invoking native symbolization.
 	sym := mockqueryfrontend.NewMockSymbolizer(t)
-	sym.On("ResolveConcurrency").Return(1)
-	sym.On("ResolveTimeout").Return(time.Second)
-	// Two different locations resolve to the existing caller's name. Their
-	// self values must merge, while total must not double-count recursion.
-	sym.On("Resolve", mock.Anything, "build-a", "libfoo.so", []uint64{0x100, 0x200}).Return([][]lidia.SourceInfoFrame{
-		{{FunctionName: "known_func"}}, nil,
-	}, nil)
-	sym.On("Resolve", mock.Anything, "build-b", "libbar.so", []uint64{0x300}).Return([][]lidia.SourceInfoFrame{
-		{{FunctionName: "known_func"}},
-	}, nil)
 	metadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	metadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
 	backend := mockqueryfrontend.NewMockQueryBackend(t)
 	backend.On("Invoke", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		req := args.Get(1).(*queryv1.InvokeRequest)
-		require.Equal(t, queryv1.QueryType_QUERY_TREE, req.Query[0].QueryType)
-		require.Zero(t, req.Query[0].Tree.MaxNodes)
-		require.Equal(t, queryv1.SymbolMode_SYMBOL_MODE_REFS, req.Query[0].Tree.SymbolMode)
+		require.Equal(t, queryv1.QueryType_QUERY_FUNCTIONS, req.Query[0].QueryType)
+		require.Nil(t, req.Query[0].Tree)
 	}).Return(&queryv1.InvokeResponse{Reports: []*queryv1.Report{{
-		ReportType: queryv1.ReportType_REPORT_TREE, Tree: &queryv1.TreeReport{Tree: tree, SymbolRefs: refs},
+		ReportType: queryv1.ReportType_REPORT_FUNCTIONS,
+		Functions: &queryv1.FunctionsReport{Functions: &querierv1.FunctionTable{
+			Total: 10, Functions: []*querierv1.FunctionRow{{Name: "known_func", Self: 7, Total: 10}},
+		}},
 	}}}, nil)
 	qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, sym, nil, nil)
 	start, end := smpValidTimeRange()
