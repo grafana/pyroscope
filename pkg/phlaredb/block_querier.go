@@ -317,6 +317,10 @@ type singleBlockQuerier struct {
 	index    *index.Reader
 	profiles map[profileTableKey]*parquetReader[*schemav1.ProfilePersister]
 	symbols  symbolsResolver
+
+	// symbolCache, when non-nil, is a process-level decoded-symbol cache passed
+	// down to the symdb reader (MetaVersion3 blocks) via symdb.WithSymbolCache.
+	symbolCache *symdb.SymbolCache
 }
 
 type profileTableKey struct {
@@ -324,13 +328,25 @@ type profileTableKey struct {
 	aggregation string
 }
 
-func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
+// SingleBlockQuerierOption configures a singleBlockQuerier.
+type SingleBlockQuerierOption func(*singleBlockQuerier)
+
+// WithSymbolCache attaches a process-level decoded-symbol cache, used for
+// MetaVersion3 blocks. A nil cache is equivalent to not setting the option.
+func WithSymbolCache(c *symdb.SymbolCache) SingleBlockQuerierOption {
+	return func(q *singleBlockQuerier) { q.symbolCache = c }
+}
+
+func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta, opts ...SingleBlockQuerierOption) *singleBlockQuerier {
 	q := &singleBlockQuerier{
 		logger:   phlarecontext.Logger(phlarectx),
 		metrics:  blockMetricsFromContext(phlarectx),
 		profiles: make(map[profileTableKey]*parquetReader[*schemav1.ProfilePersister], 3),
 		bucket:   phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
 		meta:     meta,
+	}
+	for _, opt := range opts {
+		opt(q)
 	}
 	for _, f := range meta.Files {
 		k, ok := parseProfileTableName(f.RelPath)
@@ -2112,7 +2128,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		case block.MetaVersion2:
 			q.symbols, err = newSymbolsResolverV2(ctx, q.bucket, q.meta)
 		case block.MetaVersion3:
-			q.symbols, err = symdb.Open(ctx, q.bucket, q.meta)
+			q.symbols, err = symdb.Open(ctx, q.bucket, q.meta, symdb.WithSymbolCache(q.symbolCache))
 		default:
 			panic(fmt.Errorf("unsupported block version %d id %s", q.meta.Version, q.meta.ULID.String()))
 		}
