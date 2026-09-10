@@ -158,8 +158,7 @@ A request body with the following fields is required:
 |`left.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
-|`left.maxFunctions` | Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value  descending, then name ascending. Zero defaults to 2000; -1 returns all.  Applied after merging all results. Independent of max_nodes. |  |
-|`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`left.maxNodes` | Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,  limits function rows after merging all results, ranked by self value  descending, then name ascending. Zero or omitted uses the tenant default;  -1 returns all, subject to the tenant's configured maximum. |  |
 |`left.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`left.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
 |`left.spanSelector` | List of span IDs (16 hex characters, 64-bit) to filter samples by. | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
@@ -173,8 +172,7 @@ A request body with the following fields is required:
 |`right.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
-|`right.maxFunctions` | Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value  descending, then name ascending. Zero defaults to 2000; -1 returns all.  Applied after merging all results. Independent of max_nodes. |  |
-|`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`right.maxNodes` | Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,  limits function rows after merging all results, ranked by self value  descending, then name ascending. Zero or omitted uses the tenant default;  -1 returns all, subject to the tenant's configured maximum. |  |
 |`right.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`right.profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
 |`right.spanSelector` | List of span IDs (16 hex characters, 64-bit) to filter samples by. | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
@@ -578,8 +576,7 @@ A request body with the following fields is required:
 |`async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
 |`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
-|`maxFunctions` | Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value  descending, then name ascending. Zero defaults to 2000; -1 returns all.  Applied after merging all results. Independent of max_nodes. |  |
-|`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
+|`maxNodes` | Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,  limits function rows after merging all results, ranked by self value  descending, then name ascending. Zero or omitted uses the tenant default;  -1 returns all, subject to the tenant's configured maximum. |  |
 |`profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
 |`spanSelector` | List of span IDs (16 hex characters, 64-bit) to filter samples by. | `["9a517183f26a089d","5a4fe264a9c987fe"]` |
@@ -743,7 +740,7 @@ print(resp.content)
 
 #### Exact function tables
 
-Request `PROFILE_FORMAT_FUNCTIONS` from `SelectMergeStacktraces` to retrieve a top table independently of flamegraph detail limits:
+Request `PROFILE_FORMAT_FUNCTIONS` from `SelectMergeStacktraces` to retrieve an exact top table:
 
 ```json
 {
@@ -752,7 +749,7 @@ Request `PROFILE_FORMAT_FUNCTIONS` from `SelectMergeStacktraces` to retrieve a t
   "start": "1676282400000",
   "end": "1676289600000",
   "format": "PROFILE_FORMAT_FUNCTIONS",
-  "maxFunctions": "2000"
+  "maxNodes": "2000"
 }
 ```
 
@@ -760,7 +757,7 @@ The response contains `functions.functions`, an array of rows with `name`, `self
 
 `self` counts samples attributed directly to a function. `total` counts samples whose stack contains that function; recursive occurrences count once per sample. Functions with the same name are combined across call sites. The synthetic flamegraph root and truncation groups are not introduced into the table.
 
-Rows are ordered by descending `self`, with ties ordered by ascending function name. `maxFunctions` defaults to 2000 when omitted or zero; a positive value selects that many rows, and `-1` returns all rows. The limit is applied after all query results are merged. `functions.total` always includes samples from omitted rows, so clients can calculate percentages using the full profile total. `maxNodes` has no effect on this format.
+Rows are ordered by descending `self`, with ties ordered by ascending function name. `maxNodes` limits the number of function rows. Omitted or zero uses the tenant's `max_flamegraph_nodes_default` setting (8192 by default; zero disables the default limit). A positive value selects that many rows, and `-1` returns all rows if the tenant's `max_flamegraph_nodes_max` setting permits unlimited queries. Explicit limits must respect that tenant maximum. The row limit is applied after all query results are merged, so returned function values remain exact. `functions.total` always includes samples from omitted rows, so clients can calculate percentages using the full profile total.
 
 Function tables are available only with v2 storage and support stack trace, profile ID, span, and trace ID selectors. The frozen v1 read path returns an `unimplemented` error for this format. Queries spanning v1 and v2 storage also fail with `unimplemented`, so a successful response always covers the entire requested range. Already symbolized profiles are aggregated into compact function reports in the query backend. Native profiles requiring deferred symbolization retain complete stacks until names are resolved, which can require more backend memory and network traffic than a truncated flamegraph query.
 

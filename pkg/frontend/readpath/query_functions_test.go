@@ -57,7 +57,7 @@ func TestRouter_FunctionsStorageVersions(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, "tenant-a", id)
 				require.Equal(t, querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, req.Msg.Format)
-				require.Equal(t, int64(1), req.Msg.MaxFunctions)
+				require.Equal(t, int64(1), req.Msg.GetMaxNodes())
 				require.GreaterOrEqual(t, req.Msg.Start, split.UnixMilli())
 				return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Functions: want}), nil
 			}}
@@ -65,7 +65,7 @@ func TestRouter_FunctionsStorageVersions(t *testing.T) {
 				EnableQueryBackend: true, EnableQueryBackendFrom: QueryBackendFrom{Time: split},
 			}}, nil, oldClient, newClient)
 			resp, err := router.SelectMergeStacktraces(tenant.InjectTenantID(context.Background(), "tenant-a"), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
-				Start: tc.start.UnixMilli(), End: tc.end.UnixMilli(), Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxFunctions: 1,
+				Start: tc.start.UnixMilli(), End: tc.end.UnixMilli(), Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: new(int64(1)),
 			}))
 			if tc.wantError {
 				require.Nil(t, resp)

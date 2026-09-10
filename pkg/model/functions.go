@@ -3,7 +3,6 @@ package model
 import (
 	"cmp"
 	"context"
-	"fmt"
 	"slices"
 	"sync"
 
@@ -98,18 +97,8 @@ func (m *FunctionTableMerger) Table() *querierv1.FunctionTable {
 	return table
 }
 
-func ValidateMaxFunctions(limit int64) (int64, error) {
-	if limit < -1 {
-		return 0, fmt.Errorf("max_functions must be -1, zero, or positive")
-	}
-	if limit == 0 {
-		return 2000, nil
-	}
-	return limit, nil
-}
-
 // LimitFunctionTable sorts and limits the final result, preserving its total.
-// A negative limit returns every function.
+// A nonpositive limit returns every function.
 func LimitFunctionTable(table *querierv1.FunctionTable, limit int64) {
 	slices.SortFunc(table.Functions, func(a, b *querierv1.FunctionRow) int {
 		if c := cmp.Compare(b.Self, a.Self); c != 0 {
@@ -117,7 +106,7 @@ func LimitFunctionTable(table *querierv1.FunctionTable, limit int64) {
 		}
 		return cmp.Compare(a.Name, b.Name)
 	})
-	if limit >= 0 && limit < int64(len(table.Functions)) {
+	if limit > 0 && limit < int64(len(table.Functions)) {
 		table.Functions = table.Functions[:limit]
 	}
 }

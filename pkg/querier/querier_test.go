@@ -580,7 +580,7 @@ func Test_SelectFunctions_Unimplemented(t *testing.T) {
 	q := &Querier{logger: log.NewNopLogger()}
 	for _, limit := range []int64{0, 1, -1, -2} {
 		resp, err := q.SelectMergeStacktraces(context.Background(), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
-			Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxFunctions: limit,
+			Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &limit,
 		}))
 		require.Nil(t, resp)
 		require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))

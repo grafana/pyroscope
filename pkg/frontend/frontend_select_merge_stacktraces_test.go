@@ -61,7 +61,7 @@ func TestFrontend_SelectFunctions_Unimplemented(t *testing.T) {
 		// No limits or upstream are configured: v1 must reject the format
 		// before validating the request or dispatching any queries.
 		resp, err := new(Frontend).SelectMergeStacktraces(context.Background(), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
-			Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxFunctions: limit,
+			Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &limit,
 		}))
 		require.Nil(t, resp)
 		require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))

@@ -16,10 +16,6 @@ import (
 )
 
 func (q *QueryFrontend) selectMergeStacktracesFunctions(ctx context.Context, c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	limit, err := model.ValidateMaxFunctions(c.Msg.MaxFunctions)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -30,6 +26,10 @@ func (q *QueryFrontend) selectMergeStacktracesFunctions(ctx context.Context, c *
 	}
 	if empty {
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Functions: new(querierv1.FunctionTable)}), nil
+	}
+	maxNodes, err := validation.ValidateMaxNodes(q.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if _, err := model.ParseProfileTypeSelector(c.Msg.ProfileTypeID); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -65,7 +65,7 @@ func (q *QueryFrontend) selectMergeStacktracesFunctions(ctx context.Context, c *
 		}
 		table = report.Functions.Functions
 	}
-	model.LimitFunctionTable(table, limit)
+	model.LimitFunctionTable(table, maxNodes)
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{Functions: table}), nil
 }
 

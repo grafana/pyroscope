@@ -115,8 +115,10 @@ message SelectMergeStacktracesRequest {
   int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
   // Milliseconds since epoch.
   int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
-  // Limit the nodes returned to only show the node with the max_node's biggest
-  // total
+  // Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,
+  // limits function rows after merging all results, ranked by self value
+  // descending, then name ascending. Zero or omitted uses the tenant default;
+  // -1 returns all, subject to the tenant's configured maximum.
   optional int64 max_nodes = 5;
   // Profile format specifies the format of profile to be returned.
   // If not specified, the profile will be returned in flame graph format.
@@ -131,10 +133,6 @@ message SelectMergeStacktracesRequest {
   repeated string trace_id_selector = 10 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
   // List of span IDs (16 hex characters, 64-bit) to filter samples by.
   repeated string span_selector = 11 [(gnostic.openapi.v3.property).example = {yaml: "['9a517183f26a089d','5a4fe264a9c987fe']"}];
-  // Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value
-  // descending, then name ascending. Zero defaults to 2000; -1 returns all.
-  // Applied after merging all results. Independent of max_nodes.
-  int64 max_functions = 12;
 }
 
 enum ProfileFormat {
@@ -156,8 +154,8 @@ enum ProfileFormat {
   // Return a pprof profile, including available mappings, locations, filenames,
   // and line numbers, in SelectMergeStacktracesResponse.pprof.
   PROFILE_FORMAT_PPROF = 4;
-  // Return exact per-function self and total values, independent of max_nodes,
-  // in SelectMergeStacktracesResponse.functions.
+  // Return exact per-function self and total values in
+  // SelectMergeStacktracesResponse.functions, with max_nodes limiting row count.
   PROFILE_FORMAT_FUNCTIONS = 5;
 }
 

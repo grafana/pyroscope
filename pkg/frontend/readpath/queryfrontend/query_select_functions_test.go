@@ -25,15 +25,27 @@ import (
 
 func TestSelectFunctions_LimitsAndSelectors(t *testing.T) {
 	for _, tc := range []struct {
-		name  string
-		limit int64
-		want  int
-	}{{"default", 0, 2000}, {"explicit", 1, 1}, {"all", -1, 2001}} {
+		name         string
+		limit        *int64
+		defaultLimit int
+		want         int
+	}{
+		{name: "omitted", defaultLimit: 2000, want: 2000},
+		{name: "zero uses tenant default", limit: new(int64(0)), defaultLimit: 1000, want: 1000},
+		{name: "unlimited tenant default", want: 2001},
+		{name: "explicit", limit: new(int64(1)), want: 1},
+		{name: "all", limit: new(int64(-1)), want: 2001},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			limits := mockfrontend.NewMockLimits(t)
 			limits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 			limits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 			limits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+			if tc.limit == nil || *tc.limit == 0 {
+				limits.On("MaxFlameGraphNodesDefault", smpTenant).Return(tc.defaultLimit)
+			} else {
+				limits.On("MaxFlameGraphNodesMax", smpTenant).Return(0)
+			}
 			metadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 			metadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
 			backend := mockqueryfrontend.NewMockQueryBackend(t)
@@ -56,15 +68,16 @@ func TestSelectFunctions_LimitsAndSelectors(t *testing.T) {
 			}}}, nil)
 			qf := newSMPQueryFrontend(t, limits, metadata, backend)
 			start, end := smpValidTimeRange()
-			maxNodes := int64(1)
 			resp, err := qf.SelectMergeStacktraces(tenant.InjectTenantID(context.Background(), smpTenant), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 				ProfileTypeID: smpProfileType, LabelSelector: "{}", Start: start, End: end,
-				Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &maxNodes, MaxFunctions: tc.limit,
+				Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: tc.limit,
 				StackTraceSelector: selector, ProfileIdSelector: []string{"profile-id"}, SpanSelector: []string{"0000000000000001"},
 			}))
 			require.NoError(t, err)
 			require.Len(t, resp.Msg.Functions.Functions, tc.want)
 			require.Equal(t, "function2000", resp.Msg.Functions.Functions[0].Name)
+			require.Equal(t, int64(2000), resp.Msg.Functions.Functions[0].Self)
+			require.Equal(t, int64(2000), resp.Msg.Functions.Functions[0].Total)
 			require.Equal(t, int64(2001000), resp.Msg.Functions.Total)
 			require.Nil(t, resp.Msg.Flamegraph)
 			require.Empty(t, resp.Msg.Tree)
@@ -73,14 +86,28 @@ func TestSelectFunctions_LimitsAndSelectors(t *testing.T) {
 }
 
 func TestSelectFunctions_InvalidLimit(t *testing.T) {
-	_, err := new(QueryFrontend).SelectMergeStacktraces(context.Background(), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
-		Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxFunctions: -2,
-	}))
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	for _, limit := range []int64{11, -1} {
+		t.Run(fmt.Sprint(limit), func(t *testing.T) {
+			limits := mockfrontend.NewMockLimits(t)
+			limits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+			limits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+			limits.On("MaxFlameGraphNodesMax", smpTenant).Return(10)
+			qf := newSMPQueryFrontend(t, limits, new(mockmetastorev1.MockMetadataQueryServiceClient), mockqueryfrontend.NewMockQueryBackend(t))
+			start, end := smpValidTimeRange()
+			resp, err := qf.SelectMergeStacktraces(tenant.InjectTenantID(context.Background(), smpTenant), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+				ProfileTypeID: smpProfileType, LabelSelector: "{}", Start: start, End: end,
+				Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &limit,
+			}))
+			require.Nil(t, resp)
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+			require.ErrorContains(t, err, "max flamegraph nodes limit")
+		})
+	}
 }
 
 func TestSelectFunctions_Empty(t *testing.T) {
 	limits := mockfrontend.NewMockLimits(t)
+	limits.On("MaxFlameGraphNodesDefault", smpTenant).Return(2000)
 	limits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	limits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	metadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
@@ -99,6 +126,7 @@ func TestSelectFunctions_Empty(t *testing.T) {
 func TestSelectFunctions_ResolvesSymbolsBeforeAggregation(t *testing.T) {
 	tree, refs := buildSymbolRefFixture(t)
 	limits := mockfrontend.NewMockLimits(t)
+	limits.On("MaxFlameGraphNodesMax", smpTenant).Return(1000)
 	limits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	limits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	limits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
@@ -132,7 +160,7 @@ func TestSelectFunctions_ResolvesSymbolsBeforeAggregation(t *testing.T) {
 	maxNodes := int64(1)
 	resp, err := qf.SelectMergeStacktraces(tenant.InjectTenantID(context.Background(), smpTenant), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: smpProfileType, LabelSelector: "{}", Start: start, End: end,
-		Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &maxNodes, MaxFunctions: 1,
+		Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &maxNodes,
 	}))
 	require.NoError(t, err)
 	require.Equal(t, int64(10), resp.Msg.Functions.Total)

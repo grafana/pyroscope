@@ -48,8 +48,8 @@ const (
 	// Return a pprof profile, including available mappings, locations, filenames,
 	// and line numbers, in SelectMergeStacktracesResponse.pprof.
 	ProfileFormat_PROFILE_FORMAT_PPROF ProfileFormat = 4
-	// Return exact per-function self and total values, independent of max_nodes,
-	// in SelectMergeStacktracesResponse.functions.
+	// Return exact per-function self and total values in
+	// SelectMergeStacktracesResponse.functions, with max_nodes limiting row count.
 	ProfileFormat_PROFILE_FORMAT_FUNCTIONS ProfileFormat = 5
 )
 
@@ -478,8 +478,10 @@ type SelectMergeStacktracesRequest struct {
 	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
 	// Milliseconds since epoch.
 	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
-	// Limit the nodes returned to only show the node with the max_node's biggest
-	// total
+	// Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,
+	// limits function rows after merging all results, ranked by self value
+	// descending, then name ascending. Zero or omitted uses the tenant default;
+	// -1 returns all, subject to the tenant's configured maximum.
 	MaxNodes *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 	// Profile format specifies the format of profile to be returned.
 	// If not specified, the profile will be returned in flame graph format.
@@ -493,11 +495,7 @@ type SelectMergeStacktracesRequest struct {
 	// List of trace IDs (32 hex characters, 128-bit) to filter samples by.
 	TraceIdSelector []string `protobuf:"bytes,10,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
 	// List of span IDs (16 hex characters, 64-bit) to filter samples by.
-	SpanSelector []string `protobuf:"bytes,11,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
-	// Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value
-	// descending, then name ascending. Zero defaults to 2000; -1 returns all.
-	// Applied after merging all results. Independent of max_nodes.
-	MaxFunctions  int64 `protobuf:"varint,12,opt,name=max_functions,json=maxFunctions,proto3" json:"max_functions,omitempty"`
+	SpanSelector  []string `protobuf:"bytes,11,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -607,13 +605,6 @@ func (x *SelectMergeStacktracesRequest) GetSpanSelector() []string {
 		return x.SpanSelector
 	}
 	return nil
-}
-
-func (x *SelectMergeStacktracesRequest) GetMaxFunctions() int64 {
-	if x != nil {
-		return x.MaxFunctions
-	}
-	return 0
 }
 
 type SelectMergeStacktracesResponse struct {
@@ -2172,7 +2163,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\"A\n" +
 	"\x0eSeriesResponse\x12/\n" +
 	"\n" +
-	"labels_set\x18\x02 \x03(\v2\x10.types.v1.LabelsR\tlabelsSet\"\xe3\x06\n" +
+	"labels_set\x18\x02 \x03(\v2\x10.types.v1.LabelsR\tlabelsSet\"\xbe\x06\n" +
 	"\x1dSelectMergeStacktracesRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
@@ -2185,8 +2176,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x05async\x18\t \x01(\v2\x1d.querier.v1.AsyncQueryRequestH\x02R\x05async\x88\x01\x01\x12W\n" +
 	"\x11trace_id_selector\x18\n" +
 	" \x03(\tB+\xbaG(:&\x12$['7c9e66797425440de944be07fc1f90ae']R\x0ftraceIdSelector\x12S\n" +
-	"\rspan_selector\x18\v \x03(\tB.\xbaG+:)\x12'['9a517183f26a089d','5a4fe264a9c987fe']R\fspanSelector\x12#\n" +
-	"\rmax_functions\x18\f \x01(\x03R\fmaxFunctionsB\f\n" +
+	"\rspan_selector\x18\v \x03(\tB.\xbaG+:)\x12'['9a517183f26a089d','5a4fe264a9c987fe']R\fspanSelectorB\f\n" +
 	"\n" +
 	"_max_nodesB\x17\n" +
 	"\x15_stack_trace_selectorB\b\n" +

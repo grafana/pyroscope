@@ -1584,8 +1584,10 @@ components:
           title: max_nodes
           format: int64
           description: |-
-            Limit the nodes returned to only show the node with the max_node's biggest
-             total
+            Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,
+             limits function rows after merging all results, ranked by self value
+             descending, then name ascending. Zero or omitted uses the tenant default;
+             -1 returns all, subject to the tenant's configured maximum.
           nullable: true
         format:
           title: format
@@ -1635,16 +1637,6 @@ components:
                 - 5a4fe264a9c987fe
           title: span_selector
           description: List of span IDs (16 hex characters, 64-bit) to filter samples by.
-        maxFunctions:
-          type:
-            - integer
-            - string
-          title: max_functions
-          format: int64
-          description: |-
-            Maximum function rows for PROFILE_FORMAT_FUNCTIONS, ordered by self value
-             descending, then name ascending. Zero defaults to 2000; -1 returns all.
-             Applied after merging all results. Independent of max_nodes.
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:

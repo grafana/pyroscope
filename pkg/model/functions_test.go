@@ -66,17 +66,6 @@ func TestFunctionTableMerger_GlobalRanking(t *testing.T) {
 	})
 }
 
-func TestValidateMaxFunctions(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct{ input, want int64 }{{0, 2000}, {-1, -1}, {1, 1}, {3000, 3000}} {
-		got, err := ValidateMaxFunctions(tc.input)
-		require.NoError(t, err)
-		require.Equal(t, tc.want, got)
-	}
-	_, err := ValidateMaxFunctions(-2)
-	require.Error(t, err)
-}
-
 func BenchmarkFunctionTableFromTree(b *testing.B) {
 	tree := new(FunctionNameTree)
 	for i := range 10000 {

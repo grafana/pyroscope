@@ -138,7 +138,6 @@ func (m *SelectMergeStacktracesRequest) CloneVT() *SelectMergeStacktracesRequest
 	r.End = m.End
 	r.Format = m.Format
 	r.Async = m.Async.CloneVT()
-	r.MaxFunctions = m.MaxFunctions
 	if rhs := m.MaxNodes; rhs != nil {
 		tmpVal := *rhs
 		r.MaxNodes = &tmpVal
@@ -929,9 +928,6 @@ func (this *SelectMergeStacktracesRequest) EqualVT(that *SelectMergeStacktracesR
 		if vx != vy {
 			return false
 		}
-	}
-	if this.MaxFunctions != that.MaxFunctions {
-		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -2496,11 +2492,6 @@ func (m *SelectMergeStacktracesRequest) MarshalToSizedBufferVT(dAtA []byte) (int
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
-	}
-	if m.MaxFunctions != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MaxFunctions))
-		i--
-		dAtA[i] = 0x60
 	}
 	if len(m.SpanSelector) > 0 {
 		for iNdEx := len(m.SpanSelector) - 1; iNdEx >= 0; iNdEx-- {
@@ -4147,9 +4138,6 @@ func (m *SelectMergeStacktracesRequest) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
-	if m.MaxFunctions != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.MaxFunctions))
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -5508,25 +5496,6 @@ func (m *SelectMergeStacktracesRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.SpanSelector = append(m.SpanSelector, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 12:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MaxFunctions", wireType)
-			}
-			m.MaxFunctions = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.MaxFunctions |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
