@@ -1224,8 +1224,10 @@ lifecycler:
 # CLI flag: -segment-writer.metadata-update-timeout
 [metadata_update_timeout: <duration> | default = 2s]
 
-# (advanced) Enables bucket health check on startup. This both validates
-# credentials and warms up the connection to reduce latency for the first write.
+# (advanced) Uploads a small object at startup to verify bucket write access.
+# Startup fails if the upload fails. Removal of the object is best effort: it is
+# skipped on filesystem storage, which keeps one object per startup, and a
+# failed removal is only logged.
 # CLI flag: -segment-writer.bucket-health-check-enabled
 [bucket_health_check_enabled: <boolean> | default = true]
 
