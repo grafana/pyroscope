@@ -102,5 +102,5 @@ pyroscope:
         requests:
           memory: 16Mi
           cpu: 0.1
-minio:
+seaweedfs:
   enabled: true
