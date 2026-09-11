@@ -15,13 +15,13 @@ keywords:
 
 After you configure write-path sampling, you use Pyroscope's own metrics to confirm that sampling is active and to measure how much data it drops. This page describes the metrics to watch and shows example queries, broken down by tenant and usage group.
 
-To configure sampling, refer to [Configure write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/). 
+To configure sampling, refer to [Configure write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/). 
 
-For how sampling works and what happens to sampled-out profiles, refer to [Write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/) in the v2 architecture reference.
+For how sampling works and what happens to sampled-out profiles, refer to [Write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/) in the v2 architecture reference.
 
 ## Before you begin
 
-- Run the Pyroscope v2 architecture with sampling configured for at least one tenant. Refer to [Configure write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/).
+- Run the Pyroscope v2 architecture with sampling configured for at least one tenant. Refer to [Configure write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/).
 - Scrape Pyroscope's own metrics with Prometheus or a compatible agent. Pyroscope exposes metrics at the `/metrics` endpoint on the HTTP listen port, `4040` by default.
 - The distributor makes the sampling decision, so these metrics come from the distributor. In microservices mode, aggregate the metrics across all distributor instances.
 
@@ -48,10 +48,10 @@ sum(rate(pyroscope_discarded_samples_total{reason="dropped_by_sampling_rules"}[5
 
 The result is the number of profiles per second that sampling drops across all tenants. A value above zero confirms that sampling is active.
 
-If the query returns no data or stays at zero when you expect drops, then sampling isn't matching any profiles. Confirm that your usage groups and probabilities are correct. Refer to [Troubleshoot sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/#troubleshoot-sampling).
+If the query returns no data or stays at zero when you expect drops, then sampling isn't matching any profiles. Confirm that your usage groups and probabilities are correct. Refer to [Troubleshoot sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/#troubleshoot-sampling).
 
 {{< admonition type="note" >}}
-When `keep_stripped_profiles` is enabled, `pyroscope_discarded_bytes_total` can stay low even though sampling is active, because Pyroscope retains the profile totals and only the stripped stack-trace bytes count as discarded. Use `pyroscope_discarded_samples_total` to confirm sampling in that case. Pyroscope also marks the retained series with the `__sampled__="true"` label. For details, refer to [Retain sampled-out profiles](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/#retain-sampled-out-profiles).
+When `keep_stripped_profiles` is enabled, `pyroscope_discarded_bytes_total` can stay low even though sampling is active, because Pyroscope retains the profile totals and only the stripped stack-trace bytes count as discarded. Use `pyroscope_discarded_samples_total` to confirm sampling in that case. Pyroscope also marks the retained series with the `__sampled__="true"` label. For details, refer to [Retain sampled-out profiles](/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/#retain-sampled-out-profiles).
 {{< /admonition >}}
 
 ## Measure the volume that sampling drops
@@ -110,7 +110,7 @@ sum by (tenant, usage_group) (rate(pyroscope_usage_group_discarded_bytes_total{r
 )
 ```
 
-The result is one series per tenant and usage group, giving the fraction of that group's ingested bytes that sampling drops. Compare this value against the probability that you set for the group in [Configure write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/). A group with probability `0.1` keeps about 10% of its profiles, so it drops close to 90% of the matching volume.
+The result is one series per tenant and usage group, giving the fraction of that group's ingested bytes that sampling drops. Compare this value against the probability that you set for the group in [Configure write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/). A group with probability `0.1` keeps about 10% of its profiles, so it drops close to 90% of the matching volume.
 
 ## Alert on dropped volume
 
@@ -143,5 +143,5 @@ Set the threshold to match the probabilities that you configure. A group with a 
 
 ## Next steps
 
-- Adjust per-group probabilities. Refer to [Configure write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/).
-- Retain totals for sampled-out profiles. Refer to [Retain sampled-out profiles](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/#retain-sampled-out-profiles).
+- Adjust per-group probabilities. Refer to [Configure write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/configure-sampling/).
+- Retain totals for sampled-out profiles. Refer to [Retain sampled-out profiles](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/#retain-sampled-out-profiles).
