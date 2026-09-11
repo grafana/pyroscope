@@ -41,6 +41,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 	"github.com/grafana/pyroscope/v2/pkg/clientpool"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/aggregator"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/inflight"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
@@ -83,6 +84,8 @@ type Config struct {
 	PushTimeout time.Duration
 	PoolConfig  clientpool.PoolConfig `yaml:"pool_config,omitempty"`
 
+	MaxInflightBytes int64 `yaml:"max_inflight_bytes" category:"advanced"`
+
 	// Distributors ring
 	DistributorRing util.CommonRingConfig `yaml:"ring"`
 }
@@ -91,6 +94,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
+	fs.Int64Var(&cfg.MaxInflightBytes, "distributor.max-inflight-bytes", 0, "Maximum total size, in bytes, of the uncompressed profiles the distributor may hold in memory at a time. Requests exceeding it are rejected with 503. 0 to disable.")
 	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 
@@ -110,11 +114,12 @@ type Distributor struct {
 	distributorsRing       *ring.Ring
 	healthyInstancesCount  *atomic.Uint32
 	ingestionRateLimiter   *limiter.RateLimiter
-	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
+	aggregator             *aggregator.MultiTenantAggregator[*pendingAggregate]
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
 	stripper               *sampling.ProfileStripper
+	inflight               *inflight.Limiter
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -180,15 +185,16 @@ func New(
 		Name:      "distributor_ingester_clients",
 		Help:      "The current number of ingester clients.",
 	})
+	m := newMetrics(reg)
 	d := &Distributor{
 		cfg:                     config,
 		logger:                  logger,
 		ingestersRing:           ingesterRing,
 		pool:                    clientpool.NewIngesterPool(config.PoolConfig, ingesterRing, ingesterClientFactory, clients, logger, ingesterClientsOptions...),
 		segmentWriter:           segmentWriter,
-		metrics:                 newMetrics(reg),
+		metrics:                 m,
 		healthyInstancesCount:   atomic.NewUint32(0),
-		aggregator:              aggregator.NewMultiTenantAggregator[*pprof.ProfileMerge](limits, reg),
+		aggregator:              aggregator.NewMultiTenantAggregator[*pendingAggregate](limits, reg),
 		limits:                  limits,
 		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
@@ -197,7 +203,9 @@ func New(
 		profileScopeStats:       usagestats.NewMultiCounter("distributor_profiles_received_by_scope", "scope"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
 		stripper:                sampling.NewProfileStripper(),
+		inflight:                inflight.NewLimiter(config.MaxInflightBytes, m.inflightBytesHighWatermark),
 	}
+	m.inflightBytesLimit.Set(float64(config.MaxInflightBytes))
 
 	ingesterRoute := writepath.IngesterFunc(d.sendRequestsToIngester)
 	segmentWriterRoute := writepath.IngesterFunc(d.sendRequestsToSegmentWriter)
@@ -417,6 +425,17 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 	if len(req.Series) == 0 {
 		return noNewProfilesReceivedError()
 	}
+
+	size, profiles := inflightBytes(req)
+	reservation, withinLimit := d.inflight.Reserve(size)
+	defer reservation.Release()
+	if !withinLimit {
+		d.metrics.rejectedRequests.WithLabelValues(reasonMaxInflightBytes).Inc()
+		validation.DiscardedProfiles.WithLabelValues(reasonMaxInflightBytes, tenantID).Add(float64(profiles))
+		validation.DiscardedBytes.WithLabelValues(reasonMaxInflightBytes, tenantID).Add(float64(size))
+		return errMaxInflightBytesReached
+	}
+	ctx = inflight.NewContext(ctx, reservation)
 
 	d.metrics.pushBatchSeries.WithLabelValues(tenantID).Observe(float64(len(req.Series)))
 
@@ -729,6 +748,34 @@ func noNewProfilesReceivedError() *connect.Error {
 	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
 }
 
+const reasonMaxInflightBytes = string(validation.MaxInflightBytes)
+
+var errMaxInflightBytesReached = connect.NewError(connect.CodeUnavailable,
+	fmt.Errorf("the request has been rejected because the distributor exceeded the allowed total size of inflight requests; see -distributor.max-inflight-bytes"))
+
+// inflightBytes estimates how much memory the request occupies, and counts the
+// profiles it carries. The raw size is the uncompressed pprof payload the
+// profile was decoded from; it is not known for profiles built in-process,
+// such as those converted from JFR or OTLP, in which case the encoded size is
+// computed instead.
+func inflightBytes(req *distributormodel.PushRequest) (size, profiles int64) {
+	for _, series := range req.Series {
+		if series.Profile == nil {
+			continue
+		}
+		profiles++
+		size += profileInflightBytes(series.Profile)
+	}
+	return size, profiles
+}
+
+func profileInflightBytes(p *pprof.Profile) int64 {
+	if raw := p.RawSize(); raw > 0 {
+		return int64(raw)
+	}
+	return int64(p.SizeVT())
+}
+
 // If aggregation is configured for the tenant, we try to determine
 // whether the profile is eligible for aggregation based on the series
 // profile rate, and handle it asynchronously, if this is the case.
@@ -757,8 +804,15 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 	if _, hasSessionID := labels.GetLabel(phlaremodel.LabelNameSessionID); hasSessionID {
 		labels = labels.Clone().Delete(phlaremodel.LabelNameSessionID)
 	}
-	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
+	// pending is assigned by the merge below, which the aggregator runs on this
+	// goroutine, and stays nil if the aggregate was never touched by us.
+	var pending *pendingAggregate
+	merge := d.mergeProfile(profile, profileInflightBytes(series.Profile), &pending)
+	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, merge)
 	if err != nil {
+		// A failed aggregate is never handed to an owner, so the contributor
+		// that broke it returns the bytes.
+		pending.release()
 		return false, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if !ok {
@@ -771,7 +825,10 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 		return true, nil
 	}
 
-	// Aggregation is needed, and we own the result handler.
+	// Aggregation is needed, and we own the result handler. Owning it also
+	// means owning the bytes every contributor charged to the aggregate: they
+	// are held until the write completes and released here.
+	//
 	// Note that the labels include the source series labels with
 	// session ID: this is required to ensure fair load distribution.
 	d.asyncRequests.Add(1)
@@ -779,10 +836,12 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 	annotations := req.Annotations
 	go func() {
 		defer d.asyncRequests.Done()
+		defer pending.release()
 		sendErr := util.RecoverPanic(func() error {
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
 			localCtx = tenant.InjectTenantID(localCtx, req.TenantID)
+			localCtx = inflight.NewContext(localCtx, pending.reservation)
 			// Obtain the aggregated profile.
 			p, handleErr := handler()
 			if handleErr != nil {
@@ -791,7 +850,7 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 			aggregated := &distributormodel.ProfileSeries{
 				TenantID:    req.TenantID,
 				Labels:      labels,
-				Profile:     pprof.RawFromProto(p.Profile()),
+				Profile:     pprof.RawFromProto(p.merge.Profile()),
 				Annotations: annotations,
 			}
 			config := d.limits.WritePathOverrides(req.TenantID)
@@ -867,7 +926,9 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 	}
 	tracker.samplesPending.Store(int32(len(profiles)))
 	for ingester, samples := range samplesByIngester {
+		release := inflight.Detach(ctx)
 		go func(ingester ring.InstanceDesc, samples []*profileTracker) {
+			defer release()
 			// Use a background context to make sure all ingesters get samples even if we return early
 			localCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), d.cfg.PushTimeout)
 			defer cancel()
@@ -979,15 +1040,67 @@ func profileSizeBytes(p *profilev1.Profile, fullSize int64) (symbols, samples in
 	return
 }
 
-func mergeProfile(profile *profilev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {
-	return func(m *pprof.ProfileMerge) (*pprof.ProfileMerge, error) {
-		if m == nil {
-			m = new(pprof.ProfileMerge)
+// pendingAggregate is a merge accumulator together with the inflight bytes
+// reserved for it. The accumulator lives until the aggregation window closes,
+// so the reservation belongs to the aggregate rather than to any one of the
+// requests that feed it: every contributor charges its own bytes to it, and
+// the owner of the result releases it once the write completes.
+type pendingAggregate struct {
+	merge *pprof.ProfileMerge
+
+	mu          sync.Mutex
+	reservation *inflight.Reservation
+	released    bool
+}
+
+// charge accounts for a contribution of size bytes. Merge interns its input,
+// so the accumulator grows by at most that much: the reservation is an upper
+// bound on what the aggregate holds, never an underestimate.
+func (a *pendingAggregate) charge(l *inflight.Limiter, size int64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.released {
+		return
+	}
+	if a.reservation == nil {
+		a.reservation, _ = l.Reserve(size)
+		return
+	}
+	a.reservation.Grow(size)
+}
+
+func (a *pendingAggregate) release() {
+	// A contributor that finds the aggregate already failed never reaches the
+	// merge, and so has nothing to release.
+	if a == nil {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.released {
+		return
+	}
+	a.released = true
+	a.reservation.Release()
+}
+
+// mergeProfile returns an aggregation function that folds profile into the
+// aggregate and charges size bytes to it. The aggregate it worked on is
+// reported through out, so that the caller can release the bytes if it ends
+// up owning them.
+func (d *Distributor) mergeProfile(profile *profilev1.Profile, size int64, out **pendingAggregate) aggregator.AggregateFn[*pendingAggregate] {
+	return func(a *pendingAggregate) (*pendingAggregate, error) {
+		if a == nil {
+			a = &pendingAggregate{merge: new(pprof.ProfileMerge)}
 		}
-		if err := m.Merge(profile, true); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		*out = a
+		a.charge(d.inflight, size)
+		// The aggregate is returned even on failure: it carries the
+		// reservation, which still has to be released.
+		if err := a.merge.Merge(profile, true); err != nil {
+			return a, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		return m, nil
+		return a, nil
 	}
 }
 

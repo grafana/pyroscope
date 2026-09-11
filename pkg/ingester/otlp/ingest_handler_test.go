@@ -1042,6 +1042,13 @@ func TestHTTPExportErrorStatusCodes(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 		},
 		{
+			// 500 reads as permanent to the OpenTelemetry Collector, which
+			// drops the batch instead of retrying it.
+			name:       "instance over capacity is retryable (503)",
+			pushErr:    connect.NewError(connect.CodeUnavailable, fmt.Errorf("too many inflight bytes")),
+			wantStatus: http.StatusServiceUnavailable,
+		},
+		{
 			name:       "unexpected push failure is a server error (500)",
 			pushErr:    fmt.Errorf("ingester unreachable"),
 			wantStatus: http.StatusInternalServerError,
@@ -1079,6 +1086,11 @@ func TestExportGRPCStatusCodes(t *testing.T) {
 			name:     "tenant over ingestion limit maps to ResourceExhausted",
 			pushErr:  connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("limit of 0 B/month reached")),
 			wantCode: codes.ResourceExhausted,
+		},
+		{
+			name:     "instance over capacity maps to Unavailable",
+			pushErr:  connect.NewError(connect.CodeUnavailable, fmt.Errorf("too many inflight bytes")),
+			wantCode: codes.Unavailable,
 		},
 		{
 			name:     "unexpected push failure stays Unknown",
