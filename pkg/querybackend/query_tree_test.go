@@ -1,10 +1,7 @@
 package querybackend
 
 import (
-	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -19,7 +16,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_Basic() {
 		QueryPlan:     s.plan,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
+			Tree:      &queryv1.TreeQuery{FullSymbols: true},
 		}},
 		Tenant: s.tenant,
 	})
@@ -65,14 +62,14 @@ func (s *testSuite) Test_QueryTree_FullSymbols_NotSetByDefault() {
 // path (LocationRefName tree) and the standard path (FuntionName tree) produce the
 // same total sample count for identical queries, since both resolve the same samples.
 func (s *testSuite) Test_QueryTree_FullSymbols_TotalsMatchNonFullSymbols() {
-	invoke := func(mode queryv1.SymbolMode) *queryv1.TreeReport {
+	invoke := func(fullSymbols bool) *queryv1.TreeReport {
 		resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
 			EndTime:       time.Now().UnixMilli(),
 			LabelSelector: "{}",
 			QueryPlan:     s.plan,
 			Query: []*queryv1.Query{{
 				QueryType: queryv1.QueryType_QUERY_TREE,
-				Tree:      &queryv1.TreeQuery{SymbolMode: mode},
+				Tree:      &queryv1.TreeQuery{FullSymbols: fullSymbols},
 			}},
 			Tenant: s.tenant,
 		})
@@ -81,9 +78,9 @@ func (s *testSuite) Test_QueryTree_FullSymbols_TotalsMatchNonFullSymbols() {
 		return resp.Reports[0].Tree
 	}
 
-	lrTree, err := phlaremodel.UnmarshalTree[phlaremodel.LocationRefName, phlaremodel.LocationRefNameI](invoke(queryv1.SymbolMode_SYMBOL_MODE_FULL).Tree)
+	lrTree, err := phlaremodel.UnmarshalTree[phlaremodel.LocationRefName, phlaremodel.LocationRefNameI](invoke(true).Tree)
 	s.Require().NoError(err)
-	fnTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](invoke(queryv1.SymbolMode_SYMBOL_MODE_NAME).Tree)
+	fnTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](invoke(false).Tree)
 	s.Require().NoError(err)
 
 	s.Assert().Equal(fnTree.Total(), lrTree.Total())
@@ -99,7 +96,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_SymbolConsistency() {
 		QueryPlan:     s.plan,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
+			Tree:      &queryv1.TreeQuery{FullSymbols: true},
 		}},
 		Tenant: s.tenant,
 	})
@@ -138,7 +135,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_NoDuplicateStrings() {
 		QueryPlan:     s.plan,
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
+			Tree:      &queryv1.TreeQuery{FullSymbols: true},
 		}},
 		Tenant: s.tenant,
 	})
@@ -164,7 +161,7 @@ func (s *testSuite) Test_QueryTree_FullSymbols_Filter() {
 			QueryPlan:     s.plan,
 			Query: []*queryv1.Query{{
 				QueryType: queryv1.QueryType_QUERY_TREE,
-				Tree:      &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL},
+				Tree:      &queryv1.TreeQuery{FullSymbols: true},
 			}},
 			Tenant: s.tenant,
 		})
@@ -183,94 +180,4 @@ func (s *testSuite) Test_QueryTree_FullSymbols_Filter() {
 
 	s.Assert().Greater(allTree.Total(), filteredTree.Total())
 	s.Assert().Less(len(filtered.Symbols.Locations), len(all.Symbols.Locations))
-}
-
-func TestTreeSymbolMode(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		query   *queryv1.TreeQuery
-		want    queryv1.SymbolMode
-		wantErr string
-	}{
-		{name: "unset defaults to name", query: &queryv1.TreeQuery{}, want: queryv1.SymbolMode_SYMBOL_MODE_NAME},
-		{name: "name", query: &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_NAME}, want: queryv1.SymbolMode_SYMBOL_MODE_NAME},
-		{name: "full", query: &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL}, want: queryv1.SymbolMode_SYMBOL_MODE_FULL},
-		{name: "refs", query: &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_REFS}, want: queryv1.SymbolMode_SYMBOL_MODE_REFS},
-		{
-			name:  "deprecated full_symbols maps to full",
-			query: &queryv1.TreeQuery{FullSymbols: true}, //nolint:staticcheck // exercises the deprecated bridge
-			want:  queryv1.SymbolMode_SYMBOL_MODE_FULL,
-		},
-		{
-			name:    "full_symbols combined with symbol_mode is rejected",
-			query:   &queryv1.TreeQuery{FullSymbols: true, SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_FULL}, //nolint:staticcheck // exercises the deprecated bridge
-			wantErr: "must not be combined",
-		},
-		{
-			name:    "unknown mode is rejected",
-			query:   &queryv1.TreeQuery{SymbolMode: queryv1.SymbolMode(99)},
-			wantErr: "unsupported symbol_mode",
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			mode, err := treeSymbolMode(tc.query)
-			if tc.wantErr != "" {
-				require.ErrorContains(t, err, tc.wantErr)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, tc.want, mode)
-		})
-	}
-}
-
-// Test_QueryTree_SymbolModeConflict verifies that a query combining the
-// deprecated full_symbols bool with an explicit symbol_mode is rejected end
-// to end, rather than silently preferring one and dropping the other.
-func (s *testSuite) Test_QueryTree_SymbolModeConflict() {
-	_, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
-		EndTime:       time.Now().UnixMilli(),
-		LabelSelector: "{}",
-		QueryPlan:     s.plan,
-		Query: []*queryv1.Query{{
-			QueryType: queryv1.QueryType_QUERY_TREE,
-			Tree:      &queryv1.TreeQuery{FullSymbols: true, SymbolMode: queryv1.SymbolMode_SYMBOL_MODE_REFS}, //nolint:staticcheck // exercises the deprecated bridge
-		}},
-		Tenant: s.tenant,
-	})
-	s.Require().Error(err)
-	s.Assert().Contains(err.Error(), "full_symbols must not be combined with symbol_mode")
-}
-
-// Test_QueryTree_SymbolRefs_NativeDatasetKeepsPlainPath verifies that a
-// SYMBOL_MODE_REFS query against a dataset not labeled unsymbolized (every
-// dataset in the test fixtures) keeps today's FunctionName path exactly:
-// no SymbolRefTable is attached, and the tree matches a names-only query
-// byte for byte in structure (same totals, no TREE->PPROF detour).
-func (s *testSuite) Test_QueryTree_SymbolRefs_NativeDatasetKeepsPlainPath() {
-	invoke := func(mode queryv1.SymbolMode) *queryv1.TreeReport {
-		resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
-			EndTime:       time.Now().UnixMilli(),
-			LabelSelector: "{}",
-			QueryPlan:     s.plan,
-			Query: []*queryv1.Query{{
-				QueryType: queryv1.QueryType_QUERY_TREE,
-				Tree:      &queryv1.TreeQuery{MaxNodes: 16, SymbolMode: mode},
-			}},
-			Tenant: s.tenant,
-		})
-		s.Require().NoError(err)
-		s.Require().Len(resp.Reports, 1)
-		return resp.Reports[0].Tree
-	}
-
-	plain := invoke(queryv1.SymbolMode_SYMBOL_MODE_NAME)
-	symbolRefs := invoke(queryv1.SymbolMode_SYMBOL_MODE_REFS)
-	s.Assert().Nil(symbolRefs.SymbolRefs, "a native dataset must not attach a SymbolRefTable")
-
-	plainTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](plain.Tree)
-	s.Require().NoError(err)
-	symbolRefsTree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](symbolRefs.Tree)
-	s.Require().NoError(err)
-	s.Assert().Equal(plainTree.String(), symbolRefsTree.String())
 }

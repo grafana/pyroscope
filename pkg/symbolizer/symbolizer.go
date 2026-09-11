@@ -23,7 +23,6 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
-	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
@@ -33,95 +32,19 @@ type DebuginfodClient interface {
 	FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error)
 }
 
-// Resolver resolves debug symbols for addresses within a single binary (identified by
-// buildID). result[i] is aligned to addrs[i]; a nil/empty slice at index i means address i
-// could not be resolved. A non-nil error is returned only when the caller's own
-// ctx is done (context.Canceled or context.DeadlineExceeded), in which case
-// result is nil; any other failure degrades to unresolved slots.
-// A buildID that is empty or fails validation resolves nothing: every result slot is nil.
-type Resolver interface {
-	Resolve(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error)
-}
-
-var _ Resolver = (*Symbolizer)(nil)
-
-// Resolve implements Resolver.
-func (s *Symbolizer) Resolve(ctx context.Context, buildID, binaryName string, addrs []uint64) ([][]lidia.SourceInfoFrame, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("resolve symbols: %w", err)
-	}
-
-	if buildID == "" {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("empty_build_id").Inc()
-		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
-	}
-
-	if _, err := sanitizeBuildID(buildID); err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("invalid_build_id").Inc()
-		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
-	}
-
-	lidiaBytes, err := s.getLidiaBytes(ctx, buildID)
-	// Whatever the fetch outcome, only this caller's own context ends the
-	// call: errors from below may carry context errors that are not ours,
-	// and the shared fetch can succeed after our context is done.
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		return nil, fmt.Errorf("resolve symbols: %w", ctxErr)
-	}
-	if err != nil {
-		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", buildID, "binaryName", binaryName, "err", err)
-		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
-	}
-
-	lidiaReader := NewReaderAtCloser(lidiaBytes)
-	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
-	if err != nil {
-		s.metrics.debugSymbolResolutionErrors.WithLabelValues("lidia_error").Inc()
-		level.Warn(s.logger).Log("msg", "Failed to open Lidia file", "err", err)
-		return make([][]lidia.SourceInfoFrame, len(addrs)), nil
-	}
-	defer table.Close()
-
-	return s.resolveWithTable(table, addrs), nil
-}
-
-func (s *Symbolizer) resolveWithTable(table *lidia.Table, addrs []uint64) [][]lidia.SourceInfoFrame {
-	result := make([][]lidia.SourceInfoFrame, len(addrs))
-	var framesBuf []lidia.SourceInfoFrame
-
-	resolveStart := time.Now()
-	defer func() {
-		s.metrics.debugSymbolResolution.WithLabelValues(statusSuccess).Observe(time.Since(resolveStart).Seconds())
-	}()
-
-	for i, addr := range addrs {
-		frames, err := table.Lookup(framesBuf, addr)
-		if err != nil || len(frames) == 0 {
-			continue // result[i] stays nil
-		}
-		result[i] = frames
-	}
-	return result
-}
-
 type Config struct {
-	DebuginfodURL            string        `yaml:"debuginfod_url" category:"advanced"`
-	MaxDebuginfodConcurrency int           `yaml:"max_debuginfod_concurrency" category:"advanced"`
-	ResolveTimeout           time.Duration `yaml:"resolve_timeout" category:"advanced"`
+	DebuginfodURL            string `yaml:"debuginfod_url" category:"advanced"`
+	MaxDebuginfodConcurrency int    `yaml:"max_debuginfod_concurrency" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DebuginfodURL, "symbolizer.debuginfod-url", "https://debuginfod.elfutils.org", "URL of the debuginfod server")
 	f.IntVar(&cfg.MaxDebuginfodConcurrency, "symbolizer.max-debuginfod-concurrency", 10, "Maximum number of concurrent symbolization requests to debuginfod server.")
-	f.DurationVar(&cfg.ResolveTimeout, "symbolizer.resolve-timeout", defaultResolveTimeout, "Maximum time the query frontend waits to resolve a single binary's unresolved addresses for a symbol-ref tree query, before falling back to binary!0xaddr frames for that binary.")
 }
 
 func (cfg *Config) Validate() error {
 	if cfg.MaxDebuginfodConcurrency < 1 {
 		return fmt.Errorf("invalid max-debuginfod-concurrency value, must be positive")
-	}
-	if cfg.ResolveTimeout <= 0 {
-		return fmt.Errorf("invalid resolve-timeout value, must be positive")
 	}
 	return nil
 }
@@ -208,39 +131,16 @@ func (s *Symbolizer) SymbolizePprof(ctx context.Context, profile *googlev1.Profi
 	return nil
 }
 
-// defaultMaxDebuginfodConcurrency is used whenever Config.MaxDebuginfodConcurrency
-// is not positive, so every concurrency-bounded caller normalizes the same way.
-const (
-	defaultMaxDebuginfodConcurrency = 10
-	defaultResolveTimeout           = 20 * time.Second
-)
-
-// ResolveConcurrency returns the maximum number of concurrent Resolve calls
-// (or debuginfod fetches) this symbolizer allows, normalizing a non-positive
-// configured value to defaultMaxDebuginfodConcurrency.
-func (s *Symbolizer) ResolveConcurrency() int {
-	if s.cfg.MaxDebuginfodConcurrency <= 0 {
-		return defaultMaxDebuginfodConcurrency
-	}
-	return s.cfg.MaxDebuginfodConcurrency
-}
-
-// ResolveTimeout bounds resolving a single binary's unresolved addresses,
-// normalizing a non-positive configured value to defaultResolveTimeout.
-func (s *Symbolizer) ResolveTimeout() time.Duration {
-	if s.cfg.ResolveTimeout <= 0 {
-		return defaultResolveTimeout
-	}
-	return s.cfg.ResolveTimeout
-}
-
 // symbolizeMappingsConcurrently symbolizes multiple mappings concurrently with a concurrency limit.
 func (s *Symbolizer) symbolizeMappingsConcurrently(
 	ctx context.Context,
 	profile *googlev1.Profile,
 	locationsByMapping map[uint64][]*googlev1.Location,
 ) ([]symbolizedLocation, error) {
-	maxConcurrency := s.ResolveConcurrency()
+	maxConcurrency := s.cfg.MaxDebuginfodConcurrency
+	if maxConcurrency <= 0 {
+		maxConcurrency = 10
+	}
 
 	type mappingJob struct {
 		mappingID uint64
@@ -282,26 +182,15 @@ func (s *Symbolizer) symbolizeMappingsConcurrently(
 				return fmt.Errorf("extract build ID for mapping %d: %w", job.mappingID, err)
 			}
 
-			addrs := make([]uint64, len(job.locations))
-			for i, loc := range job.locations {
-				addrs[i] = loc.Address
-			}
-
-			frames, err := s.Resolve(ctx, buildID, binaryName, addrs)
-			if err != nil {
-				return fmt.Errorf("resolve mapping %d: %w", job.mappingID, err)
-			}
+			req := s.createSymbolizationRequest(binaryName, buildID, job.locations)
+			s.symbolize(ctx, &req)
 
 			// Collect symbolized locations for this mapping
 			symbolizedLocs := make([]symbolizedLocation, len(job.locations))
 			for i, loc := range job.locations {
-				lines := frames[i]
-				if len(lines) == 0 {
-					lines = s.createFallbackSymbol(binaryName, loc.Address)
-				}
 				symbolizedLocs[i] = symbolizedLocation{
 					loc:     loc,
-					lines:   lines,
+					symLoc:  req.locations[i],
 					mapping: mapping,
 				}
 			}
@@ -386,6 +275,23 @@ func (s *Symbolizer) extractBuildID(profile *googlev1.Profile, mapping *googlev1
 	return sanitizedBuildID, nil
 }
 
+// createSymbolizationRequest creates a symbolization request for a mapping group
+func (s *Symbolizer) createSymbolizationRequest(binaryName, buildID string, locs []*googlev1.Location) request {
+	req := request{
+		buildID:    buildID,
+		binaryName: binaryName,
+		locations:  make([]*location, len(locs)),
+	}
+
+	for i, loc := range locs {
+		req.locations[i] = &location{
+			address: loc.Address,
+		}
+	}
+
+	return req
+}
+
 func (s *Symbolizer) updateAllSymbolsInProfile(
 	profile *googlev1.Profile,
 	symbolizedLocs []symbolizedLocation,
@@ -397,7 +303,7 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 
 	for _, item := range symbolizedLocs {
 		loc := item.loc
-		lines := item.lines
+		symLoc := item.symLoc
 		mapping := item.mapping
 
 		locIdx := loc.Id - 1
@@ -405,9 +311,9 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 			continue
 		}
 
-		profile.Location[locIdx].Line = make([]*googlev1.Line, len(lines))
+		profile.Location[locIdx].Line = make([]*googlev1.Line, len(symLoc.lines))
 
-		for j, line := range lines {
+		for j, line := range symLoc.lines {
 			nameIdx, ok := stringMap[line.FunctionName]
 			if !ok {
 				nameIdx = int64(len(profile.StringTable))
@@ -456,6 +362,63 @@ func (s *Symbolizer) updateAllSymbolsInProfile(
 		}
 
 		mapping.HasFunctions = true
+	}
+}
+
+func (s *Symbolizer) symbolize(ctx context.Context, req *request) {
+	if req.buildID == "" {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("empty_build_id").Inc()
+		s.setFallbackSymbols(req)
+		return
+	}
+
+	lidiaBytes, err := s.getLidiaBytes(ctx, req.buildID)
+	if err != nil {
+		level.Warn(s.logger).Log("msg", "Failed to get debug info", "buildID", req.buildID, "err", err)
+		s.setFallbackSymbols(req)
+		return
+	}
+
+	lidiaReader := NewReaderAtCloser(lidiaBytes)
+	table, err := lidia.OpenReader(lidiaReader, lidia.WithCRC())
+	if err != nil {
+		s.metrics.debugSymbolResolutionErrors.WithLabelValues("lidia_error").Inc()
+		level.Warn(s.logger).Log("msg", "Failed to open Lidia file", "err", err)
+		s.setFallbackSymbols(req)
+		return
+	}
+	defer table.Close()
+
+	s.symbolizeWithTable(table, req)
+}
+
+// setFallbackSymbols sets fallback symbols for all locations in the request
+func (s *Symbolizer) setFallbackSymbols(req *request) {
+	for _, loc := range req.locations {
+		loc.lines = s.createFallbackSymbol(req.binaryName, loc)
+	}
+}
+
+func (s *Symbolizer) symbolizeWithTable(table *lidia.Table, req *request) {
+	var framesBuf []lidia.SourceInfoFrame
+
+	resolveStart := time.Now()
+	defer func() {
+		s.metrics.debugSymbolResolution.WithLabelValues(statusSuccess).Observe(time.Since(resolveStart).Seconds())
+	}()
+
+	for _, loc := range req.locations {
+		frames, err := table.Lookup(framesBuf, loc.address)
+		if err != nil {
+			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
+			continue
+		}
+
+		if len(frames) == 0 {
+			loc.lines = s.createFallbackSymbol(req.binaryName, loc)
+			continue
+		}
+		loc.lines = frames
 	}
 }
 
@@ -614,9 +577,14 @@ func (s *Symbolizer) processELFData(data []byte, maxSize int64) (lidiaData []byt
 	return memBuffer.Bytes(), nil
 }
 
-func (s *Symbolizer) createFallbackSymbol(binaryName string, address uint64) []lidia.SourceInfoFrame {
+func (s *Symbolizer) createFallbackSymbol(binaryName string, loc *location) []lidia.SourceInfoFrame {
+	prefix := "unknown"
+	if binaryName != "" {
+		prefix = binaryName
+	}
+
 	return []lidia.SourceInfoFrame{{
-		FunctionName: symbolref.FallbackSymbolName(binaryName, address),
+		FunctionName: fmt.Sprintf("%s!0x%x", prefix, loc.address),
 		LineNumber:   0,
 	}}
 }
