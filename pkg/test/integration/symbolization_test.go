@@ -25,29 +25,27 @@ import (
 
 const testBuildID = "2fa2055ef20fabc972d5751147e093275514b142"
 
-// startSymbolizationCluster starts a debuginfod server preloaded with
-// testdata/symbols.debug under testBuildID, then a V2 cluster wired to it,
-// plus any additional options (e.g. cluster.WithSymbolRefTreesEnabled()).
-// Both are torn down via t.Cleanup.
-func startSymbolizationCluster(t *testing.T, ctx context.Context, opts ...cluster.ClusterOption) *cluster.Cluster {
-	t.Helper()
+func TestMicroServicesIntegrationV2Symbolization(t *testing.T) {
 	debuginfodServer, err := NewTestDebuginfodServer()
 	require.NoError(t, err)
 
 	_, currentFile, _, _ := runtime.Caller(0)
 	testDataDir := filepath.Join(filepath.Dir(currentFile), "..", "..", "symbolizer", "testdata")
 	debugFilePath := filepath.Join(testDataDir, "symbols.debug")
+
 	debuginfodServer.AddDebugFile(testBuildID, debugFilePath)
 
 	require.NoError(t, debuginfodServer.Start())
-	t.Cleanup(func() {
+	defer func() {
 		_ = debuginfodServer.Stop()
-	})
+	}()
 
-	c := cluster.NewMicroServiceCluster(append([]cluster.ClusterOption{
+	c := cluster.NewMicroServiceCluster(
 		cluster.WithV2(),
 		cluster.WithSymbolizer(debuginfodServer.URL()),
-	}, opts...)...)
+	)
+
+	ctx := context.Background()
 
 	require.NoError(t, c.Prepare(ctx))
 	for _, comp := range c.Components {
@@ -56,17 +54,10 @@ func startSymbolizationCluster(t *testing.T, ctx context.Context, opts ...cluste
 
 	require.NoError(t, c.Start(ctx))
 	t.Log("Cluster ready")
-	t.Cleanup(func() {
+	defer func() {
 		waitStopped := c.Stop()
 		require.NoError(t, waitStopped(ctx))
-	})
-
-	return c
-}
-
-func TestMicroServicesIntegrationV2Symbolization(t *testing.T) {
-	ctx := context.Background()
-	c := startSymbolizationCluster(t, ctx)
+	}()
 
 	t.Run("SymbolizationFlow", func(t *testing.T) {
 		testSymbolizationFlow(t, ctx, c)
@@ -86,7 +77,57 @@ func testSymbolizationFlow(t *testing.T, ctx context.Context, c *cluster.Cluster
 		{
 			name: "fully unsymbolized",
 			profile: func(now time.Time) *profile.Profile {
-				return buildUnsymbolizedTestProfile(testBuildID)
+				p := &profile.Profile{
+					DurationNanos: int64(10 * time.Second),
+					Period:        1000000000,
+					SampleType: []*profile.ValueType{
+						{Type: "cpu", Unit: "nanoseconds"},
+					},
+					PeriodType: &profile.ValueType{
+						Type: "cpu",
+						Unit: "nanoseconds",
+					},
+				}
+
+				m := &profile.Mapping{
+					ID:           1,
+					Start:        0,
+					Limit:        0x1000000,
+					Offset:       0,
+					File:         "libfoo.so",
+					BuildID:      testBuildID,
+					HasFunctions: false,
+				}
+				p.Mapping = []*profile.Mapping{m}
+
+				loc1 := &profile.Location{
+					ID:      1,
+					Mapping: m,
+					Address: 0x1500,
+				}
+				loc2 := &profile.Location{
+					ID:      2,
+					Mapping: m,
+					Address: 0x3c5a,
+				}
+				p.Location = []*profile.Location{loc1, loc2}
+
+				p.Sample = []*profile.Sample{
+					{
+						Location: []*profile.Location{loc1},
+						Value:    []int64{100},
+					},
+					{
+						Location: []*profile.Location{loc2},
+						Value:    []int64{200},
+					},
+					{
+						Location: []*profile.Location{loc1, loc2},
+						Value:    []int64{3},
+					},
+				}
+
+				return p
 			},
 			expected: `PeriodType: cpu nanoseconds
 Period: 1000000000
@@ -316,63 +357,4 @@ func requireSymbolizedFrames(t *testing.T, p *profilev1.Profile, symbols map[str
 		_, ok := frames[frame{name: name, address: address}]
 		require.True(t, ok, "missing symbolized frame %s@%#x (got: %v)", name, address, frames)
 	}
-}
-
-// buildUnsymbolizedTestProfile returns a profile with a single mapping
-// (libfoo.so, HasFunctions false) under buildID and two line-less
-// locations: 0x1500 (resolves to "main", inlining "fprintf", in
-// testdata/symbols.debug) and 0x3c5a (resolves to "atoll_b"). Three
-// samples exercise each location alone and both together.
-func buildUnsymbolizedTestProfile(buildID string) *profile.Profile {
-	p := &profile.Profile{
-		DurationNanos: int64(10 * time.Second),
-		Period:        1000000000,
-		SampleType: []*profile.ValueType{
-			{Type: "cpu", Unit: "nanoseconds"},
-		},
-		PeriodType: &profile.ValueType{
-			Type: "cpu",
-			Unit: "nanoseconds",
-		},
-	}
-
-	m := &profile.Mapping{
-		ID:           1,
-		Start:        0,
-		Limit:        0x1000000,
-		Offset:       0,
-		File:         "libfoo.so",
-		BuildID:      buildID,
-		HasFunctions: false,
-	}
-	p.Mapping = []*profile.Mapping{m}
-
-	loc1 := &profile.Location{
-		ID:      1,
-		Mapping: m,
-		Address: 0x1500,
-	}
-	loc2 := &profile.Location{
-		ID:      2,
-		Mapping: m,
-		Address: 0x3c5a,
-	}
-	p.Location = []*profile.Location{loc1, loc2}
-
-	p.Sample = []*profile.Sample{
-		{
-			Location: []*profile.Location{loc1},
-			Value:    []int64{100},
-		},
-		{
-			Location: []*profile.Location{loc2},
-			Value:    []int64{200},
-		},
-		{
-			Location: []*profile.Location{loc1, loc2},
-			Value:    []int64{3},
-		},
-	}
-
-	return p
 }
