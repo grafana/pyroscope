@@ -82,7 +82,7 @@ func newTestDistributor(t testing.TB, logger log.Logger, overrides *validation.O
 		{Addr: "foo"},
 	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, overrides, nil, logger, nil)
+	}}, overrides, nil, logger, nil, nil)
 	return d, ing, err
 }
 
@@ -154,7 +154,7 @@ func Test_Replication(t *testing.T) {
 		{Addr: "3"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(ctx, req)
@@ -176,7 +176,7 @@ func Test_Subservices(t *testing.T) {
 		{Addr: "foo"},
 	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -339,7 +339,7 @@ func Test_Limits(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 
@@ -431,7 +431,7 @@ func Test_Sessions_Limit(t *testing.T) {
 					l := validation.MockDefaultLimits()
 					l.MaxSessionsPerSeries = tc.maxSessions
 					tenantLimits["user-1"] = l
-				}), nil, log.NewLogfmtLogger(os.Stdout), nil)
+				}), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 			limit := d.limits.MaxSessionsPerSeries("user-1")
@@ -699,7 +699,7 @@ func Test_IngestLimits(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 			require.NoError(t, err)
 
 			err = d.PushBatch(tenant.InjectTenantID(context.Background(), "user-1"), tc.pushReq)
@@ -1239,7 +1239,7 @@ func Test_SampleLabels_Ingester(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 				return newFakeIngester(t, false), nil
-			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
 			series, err = d.visitSampleSeries(tc.pushReq, visitSampleSeriesForIngester)
@@ -1796,7 +1796,7 @@ func Test_SampleLabels_SegmentWriter(t *testing.T) {
 				{Addr: "foo"},
 			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 				return newFakeIngester(t, false), nil
-			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+			}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 			require.NoError(t, err)
 			var series []*distributormodel.ProfileSeries
@@ -1832,7 +1832,7 @@ func TestBadPushRequest(t *testing.T) {
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, handlerOptions...))
@@ -1912,6 +1912,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 		overrides,
 		nil,
 		log.NewLogfmtLogger(os.Stdout),
+		nil,
 		nil,
 	)
 	require.NoError(t, err)
@@ -2025,7 +2026,7 @@ func TestPush_Aggregation(t *testing.T) {
 			}
 			tenantLimits["user-1"] = l
 		}),
-		nil, log.NewLogfmtLogger(os.Stdout), nil,
+		nil, log.NewLogfmtLogger(os.Stdout), nil, nil,
 	)
 	require.NoError(t, err)
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")
@@ -2113,6 +2114,7 @@ func TestPushBatch_SeriesHistogram(t *testing.T) {
 		overrides,
 		reg,
 		log.NewLogfmtLogger(os.Stdout),
+		nil,
 		nil,
 	)
 	require.NoError(t, err)
@@ -2351,7 +2353,7 @@ func TestPush_LabelRewrites(t *testing.T) {
 		{Addr: "mock"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")
@@ -2720,7 +2722,7 @@ func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distribu
 		{Addr: "foo"},
 	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil, nil)
 	require.NoError(t, err)
 	return d, ing
 }
@@ -2773,6 +2775,73 @@ func TestPushSeries_KeepStrippedProfiles(t *testing.T) {
 	assert.Empty(t, received.Mapping)
 	assert.Equal(t, want.StringTable, received.StringTable)
 	assert.Equal(t, keptSize, received.SizeVT())
+}
+
+type fakeRuler struct {
+	rules []*phlaremodel.RecordingRule
+}
+
+func (r fakeRuler) RecordingRules(string) []*phlaremodel.RecordingRule { return r.rules }
+
+// A total rule that groups by a sample label makes the stripped totals carry
+// that label, which the pprof split then promotes to series labels. This drives
+// a labeled totals sample through the full push -> split path: the label slices
+// must not alias source samples (which keep dropped labels past len()), or the
+// split panics indexing the rebuilt string table.
+func TestPushSeries_KeepStrippedProfiles_SampleSeries(t *testing.T) {
+	d, ing := newStripTestDistributor(t, true)
+	d.stripper = sampling.NewProfileStripper(fakeRuler{rules: []*phlaremodel.RecordingRule{
+		{GroupBy: []string{"user_id"}}, // total rule (no FunctionName)
+	}})
+
+	prof := stripTestProfile()
+	// user_id=9, u1=10, u2=11, bytes=12. bytes is unreferenced by the rule and
+	// gets dropped, leaving it past len() in the sample's label backing array.
+	prof.StringTable = append(prof.StringTable, "user_id", "u1", "u2", "bytes")
+	prof.Sample = []*profilev1.Sample{
+		{LocationId: []uint64{1}, Value: []int64{10, 1000}, Label: []*profilev1.Label{
+			{Key: 9, Str: 10},
+			{Key: 12, Num: 42},
+		}},
+		{LocationId: []uint64{2}, Value: []int64{5, 500}, Label: []*profilev1.Label{
+			{Key: 9, Str: 11},
+		}},
+	}
+
+	req := &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+		},
+		Profile: pprof2.RawFromProto(prof),
+	}
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	byUser := make(map[string]*pushv1.RawProfileSeries)
+	for _, r := range ing.requests {
+		for _, s := range r.Series {
+			byUser[phlaremodel.Labels(s.Labels).Get("user_id")] = s
+		}
+	}
+	require.Len(t, byUser, 2)
+
+	for user, want := range map[string][]int64{"u1": {10, 1000}, "u2": {5, 500}} {
+		series := byUser[user]
+		require.NotNil(t, series, "missing series for user_id=%s", user)
+		assert.Equal(t, "true", phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameSampled))
+
+		received, err := pprof2.RawFromBytes(series.Samples[0].RawProfile)
+		require.NoError(t, err)
+		require.Len(t, received.Sample, 1)
+		assert.Equal(t, want, received.Sample[0].Value)
+		assert.Empty(t, received.Sample[0].LocationId)
+		assert.Empty(t, received.Sample[0].Label)
+		assert.NotContains(t, received.StringTable, "bytes")
+	}
 }
 
 func TestPushSeries_DropSampledOutProfiles(t *testing.T) {
