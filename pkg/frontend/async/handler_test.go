@@ -51,3 +51,20 @@ func TestHandlerPollTenantIsolation(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 }
+
+func TestHandlerPollCopiesFunctionsResponse(t *testing.T) {
+	ctx := context.Background()
+	store := NewStore(log.NewNopLogger(), objstore.NewInMemBucket(), nil)
+	const tenantID = "tenant-a"
+	const requestID = "550e8400-e29b-41d4-a716-446655440002"
+	require.NoError(t, store.create(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesRequest{
+		Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS,
+	}))
+	want := &querierv1.FunctionTable{Total: 5, Functions: []*querierv1.FunctionRow{{Name: "foo", Self: 5, Total: 5}}}
+	require.NoError(t, store.complete(ctx, tenantID, requestID, &querierv1.SelectMergeStacktracesResponse{Functions: want}))
+	handler := &Handler{logger: log.NewNopLogger(), coordinator: &Coordinator{store: store}}
+	resp, err := handler.poll(ctx, tenantID, requestID)
+	require.NoError(t, err)
+	require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.GetAsync().GetStatus())
+	require.True(t, proto.Equal(want, resp.Msg.Functions))
+}

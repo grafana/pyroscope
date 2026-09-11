@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
@@ -16,6 +17,13 @@ func (q *QueryFrontend) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],
 ) (*connect.Response[querierv1.DiffResponse], error) {
+	switch c.Msg.Format {
+	case querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS:
+		return q.diffFunctions(ctx, c)
+	case querierv1.ProfileFormat_PROFILE_FORMAT_UNSPECIFIED, querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH:
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unsupported diff format"))
+	}
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

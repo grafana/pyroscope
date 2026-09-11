@@ -80,10 +80,11 @@ func QueryReportType(q queryv1.QueryType) queryv1.ReportType {
 }
 
 type reportAggregator struct {
-	request     *queryv1.InvokeRequest
-	sm          sync.Mutex
-	staged      map[queryv1.ReportType]*queryv1.Report
-	aggregators map[queryv1.ReportType]aggregator
+	request         *queryv1.InvokeRequest
+	sm              sync.Mutex
+	staged          map[queryv1.ReportType]*queryv1.Report
+	aggregatorMutex sync.Mutex
+	aggregators     map[queryv1.ReportType]aggregator
 }
 
 func newAggregator(request *queryv1.InvokeRequest) *reportAggregator {
@@ -144,14 +145,19 @@ func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 }
 
 func (ra *reportAggregator) aggregateReportNoCheck(report *queryv1.Report) (err error) {
+	// Different report types can first arrive concurrently. Protect the map
+	// lookup and initialization, then let each aggregator merge concurrently.
+	ra.aggregatorMutex.Lock()
 	a, ok := ra.aggregators[report.ReportType]
 	if !ok {
 		a, err = getAggregator(ra.request, report)
 		if err != nil {
+			ra.aggregatorMutex.Unlock()
 			return err
 		}
 		ra.aggregators[report.ReportType] = a
 	}
+	ra.aggregatorMutex.Unlock()
 	return a.aggregate(report)
 }
 

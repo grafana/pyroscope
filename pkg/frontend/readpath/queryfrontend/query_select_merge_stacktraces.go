@@ -24,6 +24,8 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	}
 
 	switch c.Msg.Format {
+	case querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS:
+		return q.selectMergeStacktracesFunctions(ctx, c)
 	case querierv1.ProfileFormat_PROFILE_FORMAT_DOT:
 		return q.selectMergeStacktracesDot(ctx, c)
 	case querierv1.ProfileFormat_PROFILE_FORMAT_PPROF:

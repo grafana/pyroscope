@@ -19,6 +19,9 @@ func (f *Frontend) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],
 ) (*connect.Response[querierv1.DiffResponse], error) {
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("function diffs are only supported with the v2 query backend"))
+	}
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceDiffProcedure)
 	g, ctx := errgroup.WithContext(ctx)
 	tenantIDs, err := tenant.TenantIDs(ctx)

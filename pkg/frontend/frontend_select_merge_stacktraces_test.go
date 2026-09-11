@@ -54,3 +54,17 @@ func TestFrontend_SelectMergeStacktraces_SpanPprofUsesLegacySpanRPC(t *testing.T
 	require.NotNil(t, resp.Msg.GetPprof().GetProfile())
 	require.Len(t, resp.Msg.Pprof.Profile.Sample, 1)
 }
+
+func TestFrontend_SelectFunctions_Unimplemented(t *testing.T) {
+	t.Parallel()
+	for _, limit := range []int64{0, 1, -1, -2} {
+		// No limits or upstream are configured: v1 must reject the format
+		// before validating the request or dispatching any queries.
+		resp, err := new(Frontend).SelectMergeStacktraces(context.Background(), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+			Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &limit,
+		}))
+		require.Nil(t, resp)
+		require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
+		require.ErrorContains(t, err, "functions format is only supported with the v2 query backend")
+	}
+}

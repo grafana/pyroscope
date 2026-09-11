@@ -89,6 +89,8 @@ func main() {
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
 	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
 	queryTopParams := addQueryTopParams(queryTopCmd)
+	queryFunctionsCmd := queryCmd.Command("functions", "List functions by self value with exact self and total values. V2 only.")
+	queryFunctionsParams := addQueryFunctionsParams(queryFunctionsCmd)
 	queryExemplarsCmd := queryCmd.Command("exemplars", "Query exemplars from profile data. V2 only.")
 	queryExemplarsProfileCmd := queryExemplarsCmd.Command("profile", "List profile exemplars for a time window.")
 	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsProfileCmd)
@@ -210,6 +212,10 @@ func main() {
 		}
 	case queryTopCmd.FullCommand():
 		if err := queryTop(ctx, queryTopParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryFunctionsCmd.FullCommand():
+		if err := queryFunctions(ctx, queryFunctionsParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryExemplarsProfileCmd.FullCommand():

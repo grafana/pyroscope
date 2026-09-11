@@ -65,6 +65,21 @@ func (r *Router) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
+			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
+			func(_, _ *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
+				// The frozen v1 path cannot contribute an exact function table.
+				return nil, connect.NewError(connect.CodeUnimplemented, errors.New("functions format is only supported with the v2 query backend"))
+			})
+		if err != nil {
+			return nil, err
+		}
+		if resp.Msg.Functions == nil {
+			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("read path does not support functions format"))
+		}
+		return resp, nil
+	}
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
 		return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
@@ -213,6 +228,13 @@ func (r *Router) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],
 ) (*connect.Response[querierv1.DiffResponse], error) {
+	switch c.Msg.Format {
+	case querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS:
+		return r.diffFunctions(ctx, c)
+	case querierv1.ProfileFormat_PROFILE_FORMAT_UNSPECIFIED, querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH:
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unsupported diff format"))
+	}
 	g, ctx := errgroup.WithContext(ctx)
 	getTree := func(dst *phlaremodel.FunctionNameTree, req *querierv1.SelectMergeStacktracesRequest) func() error {
 		return func() error {

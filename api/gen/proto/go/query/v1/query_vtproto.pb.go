@@ -8,9 +8,9 @@ import (
 	context "context"
 	binary "encoding/binary"
 	fmt "fmt"
-	v12 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	v13 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	v13 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	v12 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
 	grpc "google.golang.org/grpc"
@@ -195,6 +195,7 @@ func (m *Query) CloneVT() *Query {
 	r.Pprof = m.Pprof.CloneVT()
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
+	r.Functions = m.Functions.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -340,6 +341,7 @@ func (m *Report) CloneVT() *Report {
 	r.Pprof = m.Pprof.CloneVT()
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
+	r.Functions = m.Functions.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -348,6 +350,70 @@ func (m *Report) CloneVT() *Report {
 }
 
 func (m *Report) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *FunctionsQuery) CloneVT() *FunctionsQuery {
+	if m == nil {
+		return (*FunctionsQuery)(nil)
+	}
+	r := new(FunctionsQuery)
+	if rhs := m.SpanSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SpanSelector = tmpContainer
+	}
+	if rhs := m.StackTraceSelector; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface {
+			CloneVT() *v11.StackTraceSelector
+		}); ok {
+			r.StackTraceSelector = vtpb.CloneVT()
+		} else {
+			r.StackTraceSelector = proto.Clone(rhs).(*v11.StackTraceSelector)
+		}
+	}
+	if rhs := m.ProfileIdSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileIdSelector = tmpContainer
+	}
+	if rhs := m.TraceIdSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.TraceIdSelector = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *FunctionsQuery) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *FunctionsReport) CloneVT() *FunctionsReport {
+	if m == nil {
+		return (*FunctionsReport)(nil)
+	}
+	r := new(FunctionsReport)
+	r.Query = m.Query.CloneVT()
+	if rhs := m.Functions; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v12.FunctionTable }); ok {
+			r.Functions = vtpb.CloneVT()
+		} else {
+			r.Functions = proto.Clone(rhs).(*v12.FunctionTable)
+		}
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *FunctionsReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -579,34 +645,34 @@ func (m *TreeSymbols) CloneVT() *TreeSymbols {
 	}
 	r := new(TreeSymbols)
 	if rhs := m.Mappings; rhs != nil {
-		tmpContainer := make([]*v12.Mapping, len(rhs))
+		tmpContainer := make([]*v13.Mapping, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v12.Mapping }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v13.Mapping }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v12.Mapping)
+				tmpContainer[k] = proto.Clone(v).(*v13.Mapping)
 			}
 		}
 		r.Mappings = tmpContainer
 	}
 	if rhs := m.Locations; rhs != nil {
-		tmpContainer := make([]*v12.Location, len(rhs))
+		tmpContainer := make([]*v13.Location, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v12.Location }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v13.Location }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v12.Location)
+				tmpContainer[k] = proto.Clone(v).(*v13.Location)
 			}
 		}
 		r.Locations = tmpContainer
 	}
 	if rhs := m.Functions; rhs != nil {
-		tmpContainer := make([]*v12.Function, len(rhs))
+		tmpContainer := make([]*v13.Function, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v12.Function }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v13.Function }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v12.Function)
+				tmpContainer[k] = proto.Clone(v).(*v13.Function)
 			}
 		}
 		r.Functions = tmpContainer
@@ -1280,6 +1346,9 @@ func (this *Query) EqualVT(that *Query) bool {
 	if !this.TimeSeriesCompact.EqualVT(that.TimeSeriesCompact) {
 		return false
 	}
+	if !this.Functions.EqualVT(that.Functions) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1511,11 +1580,92 @@ func (this *Report) EqualVT(that *Report) bool {
 	if !this.TimeSeriesCompact.EqualVT(that.TimeSeriesCompact) {
 		return false
 	}
+	if !this.Functions.EqualVT(that.Functions) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
 func (this *Report) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*Report)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *FunctionsQuery) EqualVT(that *FunctionsQuery) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.SpanSelector) != len(that.SpanSelector) {
+		return false
+	}
+	for i, vx := range this.SpanSelector {
+		vy := that.SpanSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if equal, ok := interface{}(this.StackTraceSelector).(interface {
+		EqualVT(*v11.StackTraceSelector) bool
+	}); ok {
+		if !equal.EqualVT(that.StackTraceSelector) {
+			return false
+		}
+	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
+		return false
+	}
+	if len(this.ProfileIdSelector) != len(that.ProfileIdSelector) {
+		return false
+	}
+	for i, vx := range this.ProfileIdSelector {
+		vy := that.ProfileIdSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.TraceIdSelector) != len(that.TraceIdSelector) {
+		return false
+	}
+	for i, vx := range this.TraceIdSelector {
+		vy := that.TraceIdSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *FunctionsQuery) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FunctionsQuery)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *FunctionsReport) EqualVT(that *FunctionsReport) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
+	if equal, ok := interface{}(this.Functions).(interface{ EqualVT(*v12.FunctionTable) bool }); ok {
+		if !equal.EqualVT(that.Functions) {
+			return false
+		}
+	} else if !proto.Equal(this.Functions, that.Functions) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *FunctionsReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FunctionsReport)
 	if !ok {
 		return false
 	}
@@ -1828,12 +1978,12 @@ func (this *TreeSymbols) EqualVT(that *TreeSymbols) bool {
 		vy := that.Mappings[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v12.Mapping{}
+				p = &v13.Mapping{}
 			}
 			if q == nil {
-				q = &v12.Mapping{}
+				q = &v13.Mapping{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v12.Mapping) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v13.Mapping) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -1849,12 +1999,12 @@ func (this *TreeSymbols) EqualVT(that *TreeSymbols) bool {
 		vy := that.Locations[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v12.Location{}
+				p = &v13.Location{}
 			}
 			if q == nil {
-				q = &v12.Location{}
+				q = &v13.Location{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v12.Location) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v13.Location) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -1870,12 +2020,12 @@ func (this *TreeSymbols) EqualVT(that *TreeSymbols) bool {
 		vy := that.Functions[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v12.Function{}
+				p = &v13.Function{}
 			}
 			if q == nil {
-				q = &v12.Function{}
+				q = &v13.Function{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v12.Function) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v13.Function) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -3039,6 +3189,16 @@ func (m *Query) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Functions != nil {
+		size, err := m.Functions.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x52
+	}
 	if m.TimeSeriesCompact != nil {
 		size, err := m.TimeSeriesCompact.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -3479,6 +3639,16 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Functions != nil {
+		size, err := m.Functions.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x52
+	}
 	if m.TimeSeriesCompact != nil {
 		size, err := m.TimeSeriesCompact.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -3563,6 +3733,153 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ReportType))
 		i--
 		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *FunctionsQuery) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FunctionsQuery) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *FunctionsQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.TraceIdSelector) > 0 {
+		for iNdEx := len(m.TraceIdSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.TraceIdSelector[iNdEx])
+			copy(dAtA[i:], m.TraceIdSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.TraceIdSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.ProfileIdSelector) > 0 {
+		for iNdEx := len(m.ProfileIdSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileIdSelector[iNdEx])
+			copy(dAtA[i:], m.ProfileIdSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileIdSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if m.StackTraceSelector != nil {
+		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.StackTraceSelector)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.SpanSelector) > 0 {
+		for iNdEx := len(m.SpanSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SpanSelector[iNdEx])
+			copy(dAtA[i:], m.SpanSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SpanSelector[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *FunctionsReport) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FunctionsReport) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *FunctionsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Functions != nil {
+		if vtmsg, ok := interface{}(m.Functions).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Functions)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -5382,6 +5699,10 @@ func (m *Query) SizeVT() (n int) {
 		l = m.TimeSeriesCompact.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if m.Functions != nil {
+		l = m.Functions.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -5557,6 +5878,72 @@ func (m *Report) SizeVT() (n int) {
 	}
 	if m.TimeSeriesCompact != nil {
 		l = m.TimeSeriesCompact.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Functions != nil {
+		l = m.Functions.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *FunctionsQuery) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.SpanSelector) > 0 {
+		for _, s := range m.SpanSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.StackTraceSelector != nil {
+		if size, ok := interface{}(m.StackTraceSelector).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.StackTraceSelector)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.ProfileIdSelector) > 0 {
+		for _, s := range m.ProfileIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.TraceIdSelector) > 0 {
+		for _, s := range m.TraceIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *FunctionsReport) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Functions != nil {
+		if size, ok := interface{}(m.Functions).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Functions)
+		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -7373,6 +7760,42 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Functions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Functions == nil {
+				m.Functions = &FunctionsQuery{}
+			}
+			if err := m.Functions.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -8554,6 +8977,364 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 			}
 			if err := m.TimeSeriesCompact.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
+			}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Functions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Functions == nil {
+				m.Functions = &FunctionsReport{}
+			}
+			if err := m.Functions.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *FunctionsQuery) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FunctionsQuery: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FunctionsQuery: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SpanSelector = append(m.SpanSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StackTraceSelector", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.StackTraceSelector == nil {
+				m.StackTraceSelector = &v11.StackTraceSelector{}
+			}
+			if unmarshal, ok := interface{}(m.StackTraceSelector).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.StackTraceSelector); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileIdSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileIdSelector = append(m.ProfileIdSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TraceIdSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TraceIdSelector = append(m.TraceIdSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *FunctionsReport) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FunctionsReport: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FunctionsReport: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &FunctionsQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Functions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Functions == nil {
+				m.Functions = &v12.FunctionTable{}
+			}
+			if unmarshal, ok := interface{}(m.Functions).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Functions); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		default:
@@ -9749,7 +10530,7 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Mappings = append(m.Mappings, &v12.Mapping{})
+			m.Mappings = append(m.Mappings, &v13.Mapping{})
 			if unmarshal, ok := interface{}(m.Mappings[len(m.Mappings)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -9791,7 +10572,7 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Locations = append(m.Locations, &v12.Location{})
+			m.Locations = append(m.Locations, &v13.Location{})
 			if unmarshal, ok := interface{}(m.Locations[len(m.Locations)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -9833,7 +10614,7 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Functions = append(m.Functions, &v12.Function{})
+			m.Functions = append(m.Functions, &v13.Function{})
 			if unmarshal, ok := interface{}(m.Functions[len(m.Functions)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -11113,7 +11894,7 @@ func (m *HeatmapQuery) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.QueryType |= v13.HeatmapQueryType(b&0x7F) << shift
+				m.QueryType |= v12.HeatmapQueryType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

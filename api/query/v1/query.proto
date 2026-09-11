@@ -88,6 +88,7 @@ message Query {
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
+  FunctionsQuery functions = 10;
   // function_details
   // call_graph
   // top_table
@@ -104,6 +105,7 @@ enum QueryType {
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
+  QUERY_FUNCTIONS = 9;
 }
 
 message InvokeResponse {
@@ -163,6 +165,7 @@ message Report {
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
+  FunctionsReport functions = 10;
 }
 
 enum ReportType {
@@ -175,6 +178,21 @@ enum ReportType {
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
+  REPORT_FUNCTIONS = 9;
+}
+
+// Function queries retain every function at each merge stage. The public
+// frontend applies its row limit only after the complete result is available.
+message FunctionsQuery {
+  repeated string span_selector = 1;
+  optional types.v1.StackTraceSelector stack_trace_selector = 2;
+  repeated string profile_id_selector = 3;
+  repeated string trace_id_selector = 4;
+}
+
+message FunctionsReport {
+  FunctionsQuery query = 1;
+  querier.v1.FunctionTable functions = 2;
 }
 
 message LabelNamesQuery {}

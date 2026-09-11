@@ -111,7 +111,7 @@ func addQueryProfileParams(queryCmd commander) *queryProfileParams {
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
 	queryCmd.Flag("stacktrace-selector", "Only query locations with those symbols. Provide multiple times starting with the root").StringsVar(&params.StacktraceSelector)
 	queryCmd.Flag("span-selector", "Only query profiles with the given span IDs. Provide multiple times for multiple spans.").StringsVar(&params.SpanSelector)
-	queryCmd.Flag("max-nodes", "Maximum number of nodes to return in the profile").Int64Var(&params.MaxNodes)
+	queryCmd.Flag("max-nodes", "Maximum number of nodes or function rows to return.").Int64Var(&params.MaxNodes)
 	return params
 }
 

@@ -575,6 +575,28 @@ func Test_isEndpointNotExisting(t *testing.T) {
 	assert.True(t, isEndpointNotExistingErr(endpointNotExistingErr))
 }
 
+func Test_SelectFunctions_Unimplemented(t *testing.T) {
+	t.Parallel()
+	q := &Querier{logger: log.NewNopLogger()}
+	for _, limit := range []int64{0, 1, -1, -2} {
+		resp, err := q.SelectMergeStacktraces(context.Background(), connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+			Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, MaxNodes: &limit,
+		}))
+		require.Nil(t, resp)
+		require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
+		require.ErrorContains(t, err, "functions format is only supported with the v2 query backend")
+	}
+}
+
+func Test_DiffFunctions_Unimplemented(t *testing.T) {
+	t.Parallel()
+	resp, err := new(Querier).Diff(context.Background(), connect.NewRequest(&querierv1.DiffRequest{
+		Format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS,
+	}))
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
+}
+
 func Test_SelectMergeStacktraces(t *testing.T) {
 	now := time.Now().UnixMilli()
 	for _, tc := range []struct {

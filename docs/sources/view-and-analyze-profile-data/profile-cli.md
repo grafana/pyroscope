@@ -385,6 +385,35 @@ This command is useful when you want to inspect merged profile data directly, sa
      ...
      ```
 
+### Read an exact functions table
+
+Use `profilecli query functions` to list functions ranked by self value. This command requires a server with v2 function-table support; the v1 read path returns an `unimplemented` error. Function tables use the function names stored with the profiles. Native symbolization is deliberately omitted for now.
+
+```bash
+profilecli query functions \
+    --query='{service_name="checkout"}' \
+    --profile-type=process_cpu:cpu:nanoseconds:cpu:nanoseconds \
+    --from="now-30m" --to="now" \
+    --max-nodes=20
+```
+
+The command uses the same connection, authentication, time range, and selector flags as `query profile`, including `--stacktrace-selector`, `--profile-id`, `--span-selector`, and `--trace-id`. The default profile type is CPU time and the default time range is the last hour.
+
+Table output shows each function's self and inclusive total values, formatted as durations, byte sizes, or counts. Percentages use the full profile total, which is printed above the table. Recursive occurrences count once per sample in the inclusive total. Rows are ordered by descending self value, with ties ordered by function name.
+
+`--max-nodes` limits function rows after the server merges all matching data, preserving exact values for the returned functions. Omitted or zero uses the tenant's configured default (8192 by default). `--max-nodes=-1` requests every function when the tenant's configured maximum permits unlimited queries.
+
+For scripts, use `--output=json`:
+
+```bash
+profilecli query functions \
+    --query='{service_name="checkout"}' \
+    --max-nodes=20 \
+    --output=json
+```
+
+JSON output contains `from`, `to`, `profile_type`, the full profile `total`, and a `functions` array with `name`, `self`, and `total` for each row. Values are raw integers in the selected profile type's sample unit. The full profile total includes samples from omitted rows. An empty result contains `"functions": []`.
+
 ### Find and inspect exemplars
 
 An exemplar is a pointer from an aggregated view back to a single profile or trace span that contributed to it.

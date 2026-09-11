@@ -537,6 +537,9 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 // FIXME(kolesnikovae): The method is never used and should be removed.
 func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
+	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("function diffs are only supported with the v2 query backend"))
+	}
 	sp, ctx := tracing.StartSpanFromContext(ctx, "Diff")
 	defer func() {
 		sp.SetTag("leftStart", model.Time(req.Msg.Left.Start).Time().String())
@@ -667,6 +670,9 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 
 	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dot format is only supported with the v2 query backend"))
+	}
+	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("functions format is only supported with the v2 query backend"))
 	}
 	if len(req.Msg.SpanSelector) > 0 && req.Msg.StackTraceSelector != nil {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("combining span_selector with stack_trace_selector is only supported with the v2 query backend"))

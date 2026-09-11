@@ -59,6 +59,10 @@ func treeSymbolMode(t *queryv1.TreeQuery) (queryv1.SymbolMode, error) {
 }
 
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
+	return queryTreeOrFunctions(q, query, nil)
+}
+
+func queryTreeOrFunctions(q *queryContext, query *queryv1.Query, functions *queryv1.FunctionsQuery) (*queryv1.Report, error) {
 	mode, err := treeSymbolMode(query.Tree)
 	if err != nil {
 		return nil, err
@@ -114,12 +118,18 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	case len(spanSelector) > 0:
 		if !columns.HasSpanID() {
 			// Block has no SpanID column: no samples can match the span selector.
+			if functions != nil {
+				return emptyFunctionsReport(functions), nil
+			}
 			return &queryv1.Report{Tree: &queryv1.TreeReport{Query: query.Tree.CloneVT()}}, nil
 		}
 		indices = append(indices, columns.SpanID.ColumnIndex)
 	case len(traceSelector) > 0:
 		if !columns.HasTraceID() {
 			// Block has no TraceID column: no samples can match the trace selector.
+			if functions != nil {
+				return emptyFunctionsReport(functions), nil
+			}
 			return &queryv1.Report{Tree: &queryv1.TreeReport{Query: query.Tree.CloneVT()}}, nil
 		}
 		indices = append(indices, columns.TraceID.ColumnIndex)
@@ -202,6 +212,15 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	tree, err := resolver.Tree()
 	if err != nil {
 		return nil, err
+	}
+	if functions != nil {
+		table, err := model.FunctionTableFromTree(q.ctx, tree)
+		if err != nil {
+			return nil, err
+		}
+		return &queryv1.Report{Functions: &queryv1.FunctionsReport{
+			Query: functions.CloneVT(), Functions: table,
+		}}, nil
 	}
 
 	resp := &queryv1.Report{

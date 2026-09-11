@@ -115,8 +115,10 @@ message SelectMergeStacktracesRequest {
   int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
   // Milliseconds since epoch.
   int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
-  // Limit the nodes returned to only show the node with the max_node's biggest
-  // total
+  // Maximum nodes to return, ranked by total value. For PROFILE_FORMAT_FUNCTIONS,
+  // limits function rows after merging all results, ranked by self value
+  // descending, then name ascending. Zero or omitted uses the tenant default;
+  // -1 returns all, subject to the tenant's configured maximum.
   optional int64 max_nodes = 5;
   // Profile format specifies the format of profile to be returned.
   // If not specified, the profile will be returned in flame graph format.
@@ -152,6 +154,9 @@ enum ProfileFormat {
   // Return a pprof profile, including available mappings, locations, filenames,
   // and line numbers, in SelectMergeStacktracesResponse.pprof.
   PROFILE_FORMAT_PPROF = 4;
+  // Return exact per-function self and total values in
+  // SelectMergeStacktracesResponse.functions, with max_nodes limiting row count.
+  PROFILE_FORMAT_FUNCTIONS = 5;
 }
 
 message SelectMergeStacktracesResponse {
@@ -164,6 +169,23 @@ message SelectMergeStacktracesResponse {
   optional AsyncQueryResponse async = 4;
   // Profile in pprof format.
   PprofProfile pprof = 5;
+  FunctionTable functions = 6;
+}
+
+// FunctionTable aggregates samples by function name before tree truncation.
+message FunctionTable {
+  repeated FunctionRow functions = 1;
+  // Sum of sample values across the entire selected profile, before limiting rows.
+  int64 total = 2;
+}
+
+message FunctionRow {
+  string name = 1;
+  // Sample value attributed directly to this function.
+  int64 self = 2;
+  // Sample value whose stack contains this function. Recursive occurrences
+  // count once per sample, so total never exceeds FunctionTable.total.
+  int64 total = 3;
 }
 
 // PprofProfile contains pprof output and related response metadata.
@@ -228,13 +250,44 @@ message SelectMergeSpanProfileResponse {
 }
 
 message DiffRequest {
-  // The format of each request is ignored; diff queries always compare trees.
+  // Baseline selection. Its format is ignored.
   SelectMergeStacktracesRequest left = 1;
+  // Comparison selection. Its format is ignored.
   SelectMergeStacktracesRequest right = 2;
+  // Output format: unspecified or PROFILE_FORMAT_FLAMEGRAPH compares trees;
+  // PROFILE_FORMAT_FUNCTIONS returns exact function values for both sides (v2 only).
+  ProfileFormat format = 3;
+  // Maximum function rows for PROFILE_FORMAT_FUNCTIONS. Applied after joining
+  // complete results by name, ranked by the larger inclusive share on either
+  // side, descending, then name ascending. A side with zero total has zero share.
+  // Zero or omitted uses the tenant default; -1 returns all if permitted.
+  // In functions mode, left.max_nodes and right.max_nodes are ignored.
+  // For flamegraph output, use the per-side max_nodes fields instead.
+  optional int64 max_nodes = 4;
 }
 
 message DiffResponse {
   FlameGraphDiff flamegraph = 1;
+  FunctionTableDiff functions = 2;
+}
+
+// Exact function values for the baseline and comparison, before normalization.
+message FunctionTableDiff {
+  repeated FunctionDiffRow functions = 1;
+  // Full baseline profile total, before limiting rows.
+  int64 left_total = 2;
+  // Full comparison profile total, before limiting rows.
+  int64 right_total = 3;
+}
+
+// Values use the profile type's sample unit. Missing functions have zero values
+// on the absent side. Inclusive totals count recursive occurrences once per sample.
+message FunctionDiffRow {
+  string name = 1;
+  int64 left_self = 2;
+  int64 left_total = 3;
+  int64 right_self = 4;
+  int64 right_total = 5;
 }
 
 message FlameGraph {
