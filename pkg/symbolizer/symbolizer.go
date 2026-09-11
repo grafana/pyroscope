@@ -23,7 +23,6 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
-	"github.com/grafana/pyroscope/v2/pkg/model/symbolref"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
@@ -587,8 +586,13 @@ func (s *Symbolizer) processELFData(data []byte, maxSize int64) (lidiaData []byt
 }
 
 func (s *Symbolizer) createFallbackSymbol(binaryName string, address uint64) []lidia.SourceInfoFrame {
+	prefix := "unknown"
+	if binaryName != "" {
+		prefix = binaryName
+	}
+
 	return []lidia.SourceInfoFrame{{
-		FunctionName: symbolref.FallbackSymbolName(binaryName, address),
+		FunctionName: fmt.Sprintf("%s!0x%x", prefix, address),
 		LineNumber:   0,
 	}}
 }
