@@ -346,6 +346,8 @@ func getFieldCustomType(t reflect.Type) (string, bool) {
 		return typeURL, true
 	case reflect.TypeOf(time.Duration(0)).String():
 		return typeDuration, true
+	case reflect.TypeOf(model.Duration(0)).String():
+		return typeDuration, true
 	case reflect.TypeOf(flagext.StringSliceCSV{}).String():
 		return typeString, true
 	case reflect.TypeOf(flagext.CIDRSliceCSV{}).String():
@@ -423,6 +425,8 @@ func getCustomFieldType(t reflect.Type) (string, bool) {
 	case reflect.TypeOf(&url.URL{}).String():
 		return typeURL, true
 	case reflect.TypeOf(time.Duration(0)).String():
+		return typeDuration, true
+	case reflect.TypeOf(model.Duration(0)).String():
 		return typeDuration, true
 	case reflect.TypeOf(flagext.StringSliceCSV{}).String():
 		return typeString, true

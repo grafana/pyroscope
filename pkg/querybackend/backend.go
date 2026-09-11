@@ -67,6 +67,15 @@ type QueryBackend struct {
 	backendClient QueryHandler
 	blockReader   QueryHandler
 	hostname      string
+
+	resultCacheStore         ResultCacheStore
+	resultCacheOverrides     ResultCacheOverrides
+	resultCacheLookupTimeout time.Duration
+	resultCacheMetrics       *resultCacheMetrics
+	resultCacheWrites        chan resultCacheWriteJob
+	resultCacheWorkers       sync.WaitGroup
+	resultCacheStop          context.CancelFunc
+	now                      func() time.Time
 }
 
 func New(
@@ -75,23 +84,59 @@ func New(
 	reg prometheus.Registerer,
 	backendClient QueryHandler,
 	blockReader QueryHandler,
+	resultCacheStore ResultCacheStore,
+	resultCacheOverrides ResultCacheOverrides,
+	resultCacheLookupTimeout time.Duration,
 ) (*QueryBackend, error) {
 	hostname, _ := os.Hostname()
 	q := QueryBackend{
-		config:        config,
-		logger:        logger,
-		reg:           reg,
-		backendClient: backendClient,
-		blockReader:   blockReader,
-		hostname:      hostname,
+		config:                   config,
+		logger:                   logger,
+		reg:                      reg,
+		backendClient:            backendClient,
+		blockReader:              blockReader,
+		hostname:                 hostname,
+		resultCacheStore:         resultCacheStore,
+		resultCacheOverrides:     resultCacheOverrides,
+		resultCacheLookupTimeout: resultCacheLookupTimeout,
+		resultCacheMetrics:       newResultCacheMetrics(reg),
+		now:                      time.Now,
 	}
-	q.service = services.NewIdleService(q.starting, q.stopping)
+	if resultCacheStore != nil {
+		q.resultCacheWrites = make(chan resultCacheWriteJob, resultCacheQueueSize)
+	}
+	q.service = services.NewBasicService(q.starting, q.running, q.stopping)
 	return &q, nil
 }
 
-func (q *QueryBackend) Service() services.Service      { return q.service }
-func (q *QueryBackend) starting(context.Context) error { return nil }
-func (q *QueryBackend) stopping(error) error           { return nil }
+func (q *QueryBackend) Service() services.Service { return q.service }
+func (q *QueryBackend) starting(context.Context) error {
+	if q.resultCacheStore != nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		q.resultCacheStop = cancel
+		q.resultCacheWorkers.Add(resultCacheWorkers)
+		for range resultCacheWorkers {
+			go q.runResultCacheWriter(ctx)
+		}
+	}
+	return nil
+}
+
+func (q *QueryBackend) running(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (q *QueryBackend) stopping(error) error {
+	if q.resultCacheStop != nil {
+		q.resultCacheStop()
+		q.resultCacheWorkers.Wait()
+	}
+	if q.resultCacheStore != nil {
+		return q.resultCacheStore.Close()
+	}
+	return nil
+}
 
 func (q *QueryBackend) Invoke(
 	ctx context.Context,
@@ -99,6 +144,24 @@ func (q *QueryBackend) Invoke(
 ) (*queryv1.InvokeResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
 	defer span.Finish()
+	if req.GetOptions().GetBypassResultCache() {
+		return q.invokeUncached(ctx, req)
+	}
+	return q.coordinateResultCache(ctx, req)
+}
+
+func (q *QueryBackend) invokeUncached(
+	ctx context.Context,
+	req *queryv1.InvokeRequest,
+) (*queryv1.InvokeResponse, error) {
+	if req.GetQueryPlan().GetRoot() == nil {
+		if _, ok := resultCacheQueryType(req.Query); ok {
+			return &queryv1.InvokeResponse{
+				Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{Stats: &queryv1.ExecutionStats{}}},
+			}, nil
+		}
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("query plan is empty"))
+	}
 
 	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
 	startTime := time.Now()
@@ -200,7 +263,7 @@ func (q *QueryBackend) merge(
 				childExecNodes[idx] = resp.Diagnostics.ExecutionNode
 				mu.Unlock()
 			}
-			return m.aggregateResponse(resp, nil)
+			return m.aggregateResponse(resp)
 		}))
 	}
 	if err := g.Wait(); err != nil {

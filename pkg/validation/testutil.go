@@ -2,6 +2,8 @@ package validation
 
 import (
 	"time"
+
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 type MockLimits struct {
@@ -24,8 +26,12 @@ type MockLimits struct {
 	DistributorAggregationWindowValue time.Duration
 	DistributorAggregationPeriodValue time.Duration
 
-	RejectOlderThanValue time.Duration
-	RejectNewerThanValue time.Duration
+	RejectOlderThanValue                                time.Duration
+	RejectNewerThanValue                                time.Duration
+	ResultCacheEnabledValue                             bool
+	ResultCacheGenerationValue                          uint32
+	ResultCacheFragmentsValue                           []phlaremodel.ResultCacheFragment
+	ResultCacheMetadataServiceNameMinQueryDurationValue time.Duration
 
 	MaxProfileSizeBytesValue              int
 	MaxProfileStacktraceSamplesValue      int
@@ -105,6 +111,15 @@ func (m MockLimits) RejectOlderThan(userID string) time.Duration {
 
 func (m MockLimits) RejectNewerThan(userID string) time.Duration {
 	return m.RejectNewerThanValue
+}
+
+func (m MockLimits) ResultCacheEnabled(string) bool      { return m.ResultCacheEnabledValue }
+func (m MockLimits) ResultCacheGeneration(string) uint32 { return m.ResultCacheGenerationValue }
+func (m MockLimits) ResultCacheFragments(string) []phlaremodel.ResultCacheFragment {
+	return m.ResultCacheFragmentsValue
+}
+func (m MockLimits) ResultCacheMetadataServiceNameMinQueryDuration(string) time.Duration {
+	return m.ResultCacheMetadataServiceNameMinQueryDurationValue
 }
 
 func (m MockLimits) SymbolizerEnabled(s string) bool       { return m.SymbolizerEnabledValue }

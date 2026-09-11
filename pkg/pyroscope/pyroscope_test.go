@@ -62,6 +62,11 @@ func TestFlagDefaults(t *testing.T) {
 	require.Contains(t, gotFlags[flagToCheck], "(default 4040)")
 }
 
+func TestResultCacheRedisRequiresObjectStorage(t *testing.T) {
+	cfg := newTestConfig(t, []string{"-result-cache.redis.address=localhost:6379"})
+	require.ErrorContains(t, cfg.Validate(), "result-cache Redis requires result-cache object storage")
+}
+
 // newTestConfig creates a Config with flags registered and parsed.
 func newTestConfig(t *testing.T, args []string) Config {
 	t.Helper()

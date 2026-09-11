@@ -104,6 +104,7 @@ type Config struct {
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
 	Storage       StorageConfig       `yaml:"storage"`
+	ResultCache   ResultCacheConfig   `yaml:"result_cache"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
 
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
@@ -138,6 +139,37 @@ func newDefaultConfig() *Config {
 
 type StorageConfig struct {
 	Bucket objstoreclient.Config `yaml:",inline"`
+}
+
+type ResultCacheConfig struct {
+	Bucket        objstoreclient.Config  `yaml:",inline"`
+	Redis         ResultCacheRedisConfig `yaml:"redis"`
+	LookupTimeout time.Duration          `yaml:"lookup_timeout"`
+}
+
+type ResultCacheRedisConfig struct {
+	Address    string         `yaml:"address"`
+	Username   string         `yaml:"username"`
+	Password   flagext.Secret `yaml:"password"`
+	DB         int            `yaml:"db"`
+	TLSEnabled bool           `yaml:"tls_enabled"`
+}
+
+func (c ResultCacheRedisConfig) Enabled() bool {
+	return c.Address != ""
+}
+
+func (c *ResultCacheConfig) RegisterFlags(f *flag.FlagSet) {
+	c.Bucket.RegisterFlagsWithPrefix("result-cache.", f)
+	// Unlike primary storage, result-cache storage is opt-in and must not
+	// silently use the local filesystem when no dedicated bucket is configured.
+	c.Bucket.Backend = objstoreclient.None
+	f.StringVar(&c.Redis.Address, "result-cache.redis.address", "", "Redis server address for the result cache. Result caching requires Redis and result-cache object storage.")
+	f.StringVar(&c.Redis.Username, "result-cache.redis.username", "", "Redis username for the result cache.")
+	f.Var(&c.Redis.Password, "result-cache.redis.password", "Redis password for the result cache.")
+	f.IntVar(&c.Redis.DB, "result-cache.redis.db", 0, "Redis database for the result cache.")
+	f.BoolVar(&c.Redis.TLSEnabled, "result-cache.redis.tls-enabled", false, "Use TLS for result-cache Redis connections.")
+	f.DurationVar(&c.LookupTimeout, "result-cache.lookup-timeout", time.Second, "Maximum time a request may spend looking up result-cache entries. 0 disables the timeout.")
 }
 
 func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
@@ -336,6 +368,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	// Register to throwaway flags first. Default values are remembered during registration and cannot be changed,
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
 	c.Storage.RegisterFlags(throwaway)
+	c.ResultCache.RegisterFlags(throwaway)
 	c.Server.RegisterFlags(throwaway)
 	c.Distributor.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Frontend.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
@@ -433,6 +466,17 @@ func (c *Config) Validate() error {
 
 	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
 		return err
+	}
+	if c.ResultCache.Bucket.Backend != objstoreclient.None {
+		if err := c.ResultCache.Bucket.Validate(util.Logger); err != nil {
+			return err
+		}
+	}
+	if c.ResultCache.Redis.Enabled() && c.ResultCache.Bucket.Backend == objstoreclient.None {
+		return fmt.Errorf("result-cache Redis requires result-cache object storage")
+	}
+	if c.ResultCache.LookupTimeout < 0 {
+		return fmt.Errorf("result-cache lookup timeout must not be negative")
 	}
 
 	if err := c.TenantSettings.Validate(); err != nil {

@@ -2,6 +2,7 @@ package pyroscope
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"slices"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
@@ -30,6 +32,7 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/v2/pkg/metrics"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/v2/pkg/querybackend/client"
@@ -383,6 +386,25 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		return nil, err
 	}
 	logger := log.With(f.logger, "component", "query-backend")
+	var resultCacheStore querybackend.ResultCacheStore
+	if f.Cfg.ResultCache.Redis.Enabled() {
+		cfg := f.Cfg.ResultCache.Bucket
+		var err error
+		resultCacheBucket, err := objstoreclient.NewBucket(f.context(), cfg, "result-cache")
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialise result-cache bucket: %w", err)
+		}
+		redisOptions := &redis.Options{
+			Addr:     f.Cfg.ResultCache.Redis.Address,
+			Username: f.Cfg.ResultCache.Redis.Username,
+			Password: f.Cfg.ResultCache.Redis.Password.String(),
+			DB:       f.Cfg.ResultCache.Redis.DB,
+		}
+		if f.Cfg.ResultCache.Redis.TLSEnabled {
+			redisOptions.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+		}
+		resultCacheStore = querybackend.NewResultCacheStore(resultCacheBucket, redis.NewClient(redisOptions))
+	}
 	blockReader := querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg, f.Overrides)
 	b, err := querybackend.New(
 		f.Cfg.QueryBackend,
@@ -390,6 +412,9 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		f.reg,
 		f.queryBackendClient,
 		blockReader,
+		resultCacheStore,
+		f.Overrides,
+		f.Cfg.ResultCache.LookupTimeout,
 	)
 	if err != nil {
 		return nil, err
