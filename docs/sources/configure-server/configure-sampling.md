@@ -14,16 +14,16 @@ keywords:
 
 Write-path sampling lets the distributor drop a fraction of ingested profiles per tenant to reduce the volume of data that Pyroscope stores. Sampling is server-side and independent of the sample rate that your profiler uses when it collects stack traces.
 
-For how sampling works and what happens to sampled-out profiles, refer to [Write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/) in the v2 architecture reference.
+For how sampling works and what happens to sampled-out profiles, refer to [Write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/) in the v2 architecture reference.
 
 {{< admonition type="tip" >}}
-If you send profiles to Grafana Cloud, you can use [Adaptive Profiles](https://grafana.com/docs/grafana-cloud/observe-and-act/adaptive-telemetry/adaptive-profiles/) instead of configuring write-path sampling yourself. Adaptive Profiles is a managed feature that samples every service at a reduced rate by default and boosts services to full resolution on demand.
+If you send profiles to Grafana Cloud, you can use [Adaptive Profiles](/docs/grafana-cloud/observe-and-act/adaptive-telemetry/adaptive-profiles/) instead of configuring write-path sampling yourself. Adaptive Profiles is a managed feature that samples every service at a reduced rate by default and boosts services to full resolution on demand.
 {{< /admonition >}}
 
 ## Before you begin
 
 - Run the Pyroscope v2 architecture. Write-path sampling applies to the v2 distributor.
-- Enable runtime configuration so that you can set per-tenant overrides. Refer to [Runtime configuration and per-tenant overrides](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/about-configurations/#runtime-configuration-and-per-tenant-overrides).
+- Enable runtime configuration so that you can set per-tenant overrides. Refer to [Runtime configuration and per-tenant overrides](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/about-configurations/#runtime-configuration-and-per-tenant-overrides).
 
 ## Configure sampling
 
@@ -48,11 +48,11 @@ overrides:
 
 When a profile matches more than one usage group, the lowest probability applies.
 
-By default, the distributor drops sampled-out profiles, which leaves gaps in the affected time series. To keep totals for sampled-out profiles instead, set the `keep_stripped_profiles` limit for the tenant. For details, refer to [Retain sampled-out profiles](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/#retain-sampled-out-profiles).
+By default, the distributor drops sampled-out profiles, which leaves gaps in the affected time series. To keep totals for sampled-out profiles instead, set the `keep_stripped_profiles` limit for the tenant. For details, refer to [Retain sampled-out profiles](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/#retain-sampled-out-profiles).
 
 ## Troubleshoot sampling
 
-Here are some common issues and how to troubleshoot them.
+Here are some common issues and how to troubleshoot them. To confirm that sampling is active and to measure how much data it drops, refer to [Monitor write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/monitor-sampling/).
 
 ### Sampling doesn't take effect
 
@@ -61,6 +61,7 @@ Sampling only applies to profiles that match a configured usage group. Profiles 
 - Confirm that `distributor_usage_groups` classifies the profiles that you want to sample.
 - Confirm that the group names under `distributor_sampling.usage_groups` match the usage group names.
 - Allow up to `-runtime-config.reload-period` (default `10s`) for changes to the runtime configuration file to take effect.
+- Check whether `pyroscope_discarded_samples_total{reason="dropped_by_sampling_rules"}` is incrementing. If it isn't, no profiles are matching your sampling rules. Refer to [Confirm that sampling is active](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/monitor-sampling/#confirm-that-sampling-is-active) for the full query.
 
 ### Sampled-out profiles don't return an error
 
