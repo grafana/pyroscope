@@ -265,6 +265,142 @@ PYROSCOPE_PROFILER_ALLOC=512k
 PYROSCOPE_PROFILER_LOCK=10ms
 ```
 
+## Collect CPU profiles in pull mode
+
+{{< admonition type="note" >}}
+These settings require an agent build containing the pull-mode support in
+[pyroscope-java PR #366](https://github.com/grafana/pyroscope-java/pull/366).
+Verify that your agent build includes this feature before enabling it.
+{{< /admonition >}}
+
+Pull mode exposes CPU profiles at `GET /debug/pprof/profile`. Each request
+records a fresh profile and returns gzip-compressed pprof data for an HTTP
+collector such as [Grafana Alloy](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.scrape/).
+The agent does not upload profiles in this mode.
+
+### Configure pull mode
+
+For an application started with `-javaagent:pyroscope.jar`, set:
+
+```shell
+export PYROSCOPE_PROFILING_MODE=pull
+export PYROSCOPE_FORMAT=pprof
+export PYROSCOPE_APPLICATION_NAME=my-java-app
+java -javaagent:pyroscope.jar -jar app.jar
+```
+
+These settings also work through the existing system-property and
+`pyroscope.properties` configuration providers.
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `PYROSCOPE_PROFILING_MODE` | `push` | Select `pull` to enable the HTTP listener. |
+| `PYROSCOPE_FORMAT` | `jfr` | Must be `pprof` for pull mode. |
+| `PYROSCOPE_PULL_BIND_ADDRESS` | `127.0.0.1` | Interface on which to accept scrapes. |
+| `PYROSCOPE_PULL_PORT` | `4041` | Listener port. Zero selects an available port. |
+| `PYROSCOPE_PROFILER_EVENT` | `itimer` | Pull mode supports `itimer` and `cpu`. |
+| `PYROSCOPE_PROFILING_INTERVAL` | `10ms` | Interval between CPU samples. |
+
+Programmatic configuration uses the same builder as push mode:
+
+```java
+import io.pyroscope.http.Format;
+import io.pyroscope.javaagent.PyroscopeAgent;
+import io.pyroscope.javaagent.config.Config;
+import io.pyroscope.javaagent.config.ProfilingMode;
+
+PyroscopeAgent.start(new Config.Builder()
+    .setApplicationName("my-java-app")
+    .setProfilingMode(ProfilingMode.PULL)
+    .setFormat(Format.PPROF)
+    .setPullBindAddress("127.0.0.1")
+    .setPullPort(4041)
+    .build());
+```
+
+The listener starts with the agent and closes on `PyroscopeAgent.stop()`.
+Its threads are daemon threads, so it does not keep the JVM alive. An explicit
+custom scheduler still takes precedence over the built-in scheduler selection.
+
+### Scrape CPU profiles
+
+```shell
+curl --fail 'http://127.0.0.1:4041/debug/pprof/profile?seconds=10' -o profile.pb.gz
+go tool pprof -top profile.pb.gz
+```
+
+`seconds` is an integer from 1 to 300 and defaults to 10. The request blocks
+while recording. Configure the collector timeout to allow both the recording
+duration and profile encoding. `PYROSCOPE_UPLOAD_INTERVAL` does not limit a
+pull recording. Only one recording can run at a time; overlapping scrapes
+receive HTTP 429. Invalid durations receive HTTP 400, unsupported methods
+receive HTTP 405, and collection failures receive HTTP 500.
+
+The response uses `application/octet-stream` and contains a gzip file, without
+an HTTP `Content-Encoding` header. This lets collectors and pprof tools consume
+the compressed profile directly. Responses are marked `Cache-Control: no-store`.
+There is no cached last profile to accidentally ingest twice. Shutdown cancels
+an active recording and closes its connection. A disconnected client can leave
+its recording running until the requested duration expires.
+
+For Alloy in the same network namespace as the application:
+
+```alloy
+pyroscope.scrape "java" {
+  targets = [{ "__address__" = "127.0.0.1:4041", "service_name" = "my-java-app" }]
+  forward_to = [pyroscope.write.local.receiver]
+
+  profiling_config {
+    profile.process_cpu {
+      enabled = true
+    }
+    profile.memory {
+      enabled = false
+    }
+    profile.block {
+      enabled = false
+    }
+    profile.mutex {
+      enabled = false
+    }
+    profile.goroutine {
+      enabled = false
+    }
+  }
+}
+
+pyroscope.write "local" {
+  endpoint {
+    url = "http://localhost:4040"
+  }
+}
+```
+
+Set `service_name` and other target labels in the collector. The application
+name does not configure the collector's service name. Labels embedded in the
+application name, `PYROSCOPE_LABELS` and `Pyroscope.setStaticLabels()` are included
+as pprof sample labels, in that precedence order (later values win).
+
+For a remote collector, configure an appropriate bind address and target
+address. The built-in endpoint has no TLS or authentication; use a trusted
+network or an authenticated reverse proxy when exposing it beyond loopback.
+
+### Supported profiles and limitations
+
+This initial implementation uses async-profiler on the Linux and macOS
+platforms supported by the agent. JFR profiling on Windows is not supported
+in pull mode. Allocation, lock and wall profiling, sequential sampling and
+async-profiler extra arguments are rejected in pull configuration.
+
+The encoder converts symbolized collapsed CPU stacks into pprof locations and
+functions, reversing stack order and storing sample counts and estimated CPU
+nanoseconds (`count * profiling interval`). Collapsed output does not carry
+source locations, dynamic labels or trace context. Scoped dynamic-label
+collection is disabled in pull mode, and startup logs this limitation. Use
+JFR push mode when those details are required.
+
+Push mode remains the default.
+
 ## Java profiling examples
 
 Check out the following resources to learn more about Java profiling:
