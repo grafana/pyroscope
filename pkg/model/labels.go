@@ -61,6 +61,8 @@ const (
 	AttrServiceName         = semconv.ServiceNameKey
 	AttrServiceNameFallback = "unknown_service"
 
+	AttrTelemetrySDKLanguage = semconv.TelemetrySDKLanguageKey
+
 	labelSep = '\xfe'
 
 	ProfileNameOffCpu = "off_cpu" // todo better name?

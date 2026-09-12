@@ -269,6 +269,7 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
+		language := getLanguageFromAttributes(rp.Resource.GetAttributes())
 		for _, sp := range rp.ScopeProfiles {
 			for _, p := range sp.Profiles {
 				sz := proto.Size(p)
@@ -301,6 +302,7 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 						RawProfile: nil,
 						Profile:    pprof.RawFromProto(pprofProfile.profile),
 						ID:         uuid.New().String(),
+						Language:   language,
 					}
 					req.Series = append(req.Series, s)
 				}
@@ -342,6 +344,18 @@ func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 
 	}
 	return fallback
+}
+
+// getLanguageFromAttributes extracts the profile language from the OTLP
+// resource attribute "telemetry.sdk.language", as defined by the semantic
+// conventions: https://opentelemetry.io/docs/specs/semconv/resource/#telemetry-sdk
+func getLanguageFromAttributes(attrs []*v1.KeyValue) string {
+	for _, attr := range attrs {
+		if attr.Key == string(model.AttrTelemetrySDKLanguage) {
+			return stringValueFromAnyValue(attr.GetValue())
+		}
+	}
+	return ""
 }
 
 // getDefaultLabels returns the required base labels for Pyroscope profiles
