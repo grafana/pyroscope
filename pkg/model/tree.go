@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+	"unique"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 
@@ -123,6 +125,7 @@ type node[N NodeName] struct {
 	children    []*node[N]
 	self, total int64
 	name        N
+	handle      unique.Handle[string]
 }
 
 func (t *Tree[N, I]) String() string {
@@ -157,6 +160,10 @@ func (t *Tree[N, I]) Total() (v int64) {
 }
 
 func (t *Tree[N, I]) InsertStack(v int64, stack ...N) {
+	t.InsertStackBuf(nil, v, stack...)
+}
+
+func (t *Tree[N, I]) InsertStackBuf(buf *nodeBuffer[N], v int64, stack ...N) {
 	if v <= 0 {
 		return
 	}
@@ -165,27 +172,192 @@ func (t *Tree[N, I]) InsertStack(v int64, stack ...N) {
 	for s := range stack {
 		name := stack[s]
 		n.total += v
-		// Inlined node.insert
-		i, j := 0, len(n.children)
-		for i < j {
-			h := int(uint(i+j) >> 1)
-			if n.children[h].name < name {
-				i = h + 1
+		var child *node[N]
+		l := len(n.children)
+		if l < 8 {
+			for _, c := range n.children {
+				if c.name == name {
+					child = c
+					break
+				}
+			}
+			if child == nil {
+				if buf != nil {
+					child = buf.newNode()
+					child.parent = n
+					child.name = name
+				} else {
+					child = &node[N]{parent: n, name: name}
+				}
+				i := 0
+				for i < l && n.children[i].name < name {
+					i++
+				}
+				n.children = append(n.children, child)
+				copy(n.children[i+1:], n.children[i:])
+				n.children[i] = child
+			}
+		} else {
+			i, j := 0, l
+			for i < j {
+				h := int(uint(i+j) >> 1)
+				if n.children[h].name < name {
+					i = h + 1
+				} else {
+					j = h
+				}
+			}
+			if i < l && n.children[i].name == name {
+				child = n.children[i]
 			} else {
-				j = h
+				if buf != nil {
+					child = buf.newNode()
+					child.parent = n
+					child.name = name
+				} else {
+					child = &node[N]{parent: n, name: name}
+				}
+				n.children = append(n.children, child)
+				copy(n.children[i+1:], n.children[i:])
+				n.children[i] = child
 			}
 		}
-		if i < len(n.children) && n.children[i].name == name {
-			n = n.children[i]
-		} else {
-			child := &node[N]{parent: n, name: name}
-			n.children = append(n.children, child)
-			copy(n.children[i+1:], n.children[i:])
-			n.children[i] = child
-			n = child
-		}
+		n = child
 	}
 	// Leaf.
+	n.total += v
+	n.self += v
+	t.root = r.children
+}
+
+func stringToNodeName[N NodeName](s string) (N, error) {
+	var n N
+	switch p := any(&n).(type) {
+	case *FunctionName:
+		*p = FunctionName(s)
+	case *string:
+		*p = s
+	case *LocationRefName:
+		id, err := strconv.Atoi(s)
+		if err != nil {
+			return n, err
+		}
+		*p = LocationRefName(id)
+	case *int:
+		id, err := strconv.Atoi(s)
+		if err != nil {
+			return n, err
+		}
+		*p = id
+	default:
+		val := reflect.ValueOf(&n).Elem()
+		switch val.Kind() {
+		case reflect.String:
+			val.SetString(s)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			id, err := strconv.Atoi(s)
+			if err != nil {
+				return n, err
+			}
+			val.SetInt(int64(id))
+		default:
+			return n, fmt.Errorf("unsupported NodeName type %T", n)
+		}
+	}
+	return n, nil
+}
+
+func (t *Tree[N, I]) InsertStackHandles(v int64, stack ...unique.Handle[string]) {
+	t.InsertStackHandlesBuf(nil, v, stack...)
+}
+
+func (t *Tree[N, I]) InsertStackHandlesBuf(buf *nodeBuffer[N], v int64, stack ...unique.Handle[string]) {
+	if v <= 0 || len(stack) == 0 {
+		return
+	}
+
+	// Validate handles upfront and pre-convert to node names to prevent path splicing.
+	var stackBuf [32]N
+	var names []N
+	if len(stack) <= len(stackBuf) {
+		names = stackBuf[:len(stack)]
+	} else {
+		names = make([]N, len(stack))
+	}
+	for i, h := range stack {
+		name, err := stringToNodeName[N](h.Value())
+		if err != nil {
+			return
+		}
+		names[i] = name
+	}
+
+	r := &node[N]{children: t.root}
+	n := r
+	var zeroHandle unique.Handle[string]
+	for s, h := range stack {
+		name := names[s]
+		n.total += v
+		var child *node[N]
+		l := len(n.children)
+		if l < 8 {
+			for _, c := range n.children {
+				if c.handle == h || c.name == name {
+					child = c
+					if child.handle == zeroHandle {
+						child.handle = h
+					}
+					break
+				}
+			}
+			if child == nil {
+				if buf != nil {
+					child = buf.newNode()
+					child.parent = n
+					child.name = name
+					child.handle = h
+				} else {
+					child = &node[N]{parent: n, name: name, handle: h}
+				}
+				i := 0
+				for i < l && n.children[i].name < name {
+					i++
+				}
+				n.children = append(n.children, child)
+				copy(n.children[i+1:], n.children[i:])
+				n.children[i] = child
+			}
+		} else {
+			i, j := 0, l
+			for i < j {
+				mid := int(uint(i+j) >> 1)
+				if n.children[mid].name < name {
+					i = mid + 1
+				} else {
+					j = mid
+				}
+			}
+			if i < l && n.children[i].name == name {
+				child = n.children[i]
+				if child.handle == zeroHandle {
+					child.handle = h
+				}
+			} else {
+				if buf != nil {
+					child = buf.newNode()
+					child.parent = n
+					child.name = name
+					child.handle = h
+				} else {
+					child = &node[N]{parent: n, name: name, handle: h}
+				}
+				n.children = append(n.children, child)
+				copy(n.children[i+1:], n.children[i:])
+				n.children[i] = child
+			}
+		}
+		n = child
+	}
 	n.total += v
 	n.self += v
 	t.root = r.children
@@ -262,9 +434,13 @@ func (t *Tree[N, I]) Merge(src *Tree[N, I]) {
 		dt.self += st.self
 		dt.total += st.total
 
+		var zeroHandle unique.Handle[string]
 		for _, srcChildNode := range st.children {
 			// Note that we don't copy the name, but reference it.
 			dstChildNode := dt.insert(srcChildNode.name, nodeBuffer.newNode)
+			if dstChildNode.handle == zeroHandle && srcChildNode.handle != zeroHandle {
+				dstChildNode.handle = srcChildNode.handle
+			}
 			srcNodes = append(srcNodes, srcChildNode)
 			dstNodes = append(dstNodes, dstChildNode)
 		}
@@ -278,12 +454,14 @@ func (t *Tree[N, I]) FormatNodeNames(fn func(N) N) {
 	nodes = append(nodes, &node[N]{children: t.root})
 	var n *node[N]
 	var fix bool
+	var zeroHandle unique.Handle[string]
 	for len(nodes) > 0 {
 		n, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
 		m := n.name
 		n.name = fn(m)
 		if m != n.name {
 			fix = true
+			n.handle = zeroHandle
 		}
 		nodes = append(nodes, n.children...)
 	}
@@ -315,6 +493,7 @@ func (t *Tree[N, I]) Fix() {
 		})
 		p := n[0]
 		j := 1
+		var zeroHandle unique.Handle[string]
 		for _, c := range n[1:] {
 			if p.name == c.name {
 				for _, x := range c.children {
@@ -323,6 +502,9 @@ func (t *Tree[N, I]) Fix() {
 				p.children = append(p.children, c.children...)
 				p.total += c.total
 				p.self += c.self
+				if p.handle == zeroHandle && c.handle != zeroHandle {
+					p.handle = c.handle
+				}
 				continue
 			}
 			p = c
@@ -516,8 +698,8 @@ func (nb *nodeBuffer[N]) newNode() *node[N] {
 	}
 	n := &nb.nodes[0]
 	nb.nodes = nb.nodes[1:]
+	*n = node[N]{}
 	return n
-
 }
 
 func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
