@@ -33,6 +33,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -45,6 +46,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/pprof"
 	pproftesthelper "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -165,6 +167,47 @@ func Test_Replication(t *testing.T) {
 	resp, err = d.Push(ctx, req)
 	require.Error(t, err)
 	require.Nil(t, resp)
+}
+
+func TestPush_DeterministicProfileIDs(t *testing.T) {
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.ProfileIDDeterministic = true
+	})
+	d, ing, err := newTestDistributor(t, log.NewNopLogger(), overrides)
+	require.NoError(t, err)
+
+	profile := collectTestProfileBytes(t)
+	parsed, err := pprof2.RawFromBytes(profile)
+	require.NoError(t, err)
+	labels := []*typesv1.LabelPair{
+		{Name: "__name__", Value: "cpu"},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service"},
+	}
+	ctx := trace.ContextWithSpanContext(
+		tenant.InjectTenantID(context.Background(), "tenant"),
+		trace.NewSpanContext(trace.SpanContextConfig{
+			TraceID: trace.TraceID{15: 1},
+			SpanID:  trace.SpanID{7: 1},
+		}),
+	)
+	_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
+		Labels:  labels,
+		Samples: []*pushv1.RawSample{{RawProfile: profile}, {RawProfile: profile}},
+	}}}))
+	require.NoError(t, err)
+
+	ids := make(map[string]struct{})
+	for _, request := range ing.requests {
+		for _, series := range request.Series {
+			for _, sample := range series.Samples {
+				ids[sample.ID] = struct{}{}
+			}
+		}
+	}
+	require.Equal(t, map[string]struct{}{
+		profileid.GenerateFromTrace("tenant", "00000000000000000000000000000001", labels, parsed.Profile.TimeNanos, 0).String(): {},
+		profileid.GenerateFromTrace("tenant", "00000000000000000000000000000001", labels, parsed.Profile.TimeNanos, 1).String(): {},
+	}, ids)
 }
 
 func Test_Subservices(t *testing.T) {
