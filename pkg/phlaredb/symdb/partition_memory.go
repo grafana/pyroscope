@@ -54,8 +54,8 @@ type stacktraces struct {
 
 func (p *stacktraces) size() uint64 {
 	p.m.RLock()
-	// TODO: map footprint isn't accounted
-	v := stacktraceTreeNodeSize * cap(p.tree.nodes)
+	// TODO: hashToIdx map footprint isn't accounted.
+	v := stacktraceTreeNodeSize*cap(p.tree.nodes) + stacktraceTreeEdgeSize*cap(p.tree.edges.slots)
 	p.m.RUnlock()
 	return uint64(v)
 }
