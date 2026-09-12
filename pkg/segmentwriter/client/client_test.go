@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -141,6 +142,23 @@ func (s *segwriterClientSuite) Test_Push_HappyPath() {
 
 	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
 	s.Assert().NoError(err)
+}
+
+func (s *segwriterClientSuite) Test_Push_MetricsDeletedOnConnRemoval() {
+	s.service.On("Push", mock.Anything, mock.Anything).
+		Return(&segmentwriterv1.PushResponse{}, nil).
+		Once()
+
+	_, err := s.client.Push(context.Background(), &segmentwriterv1.PushRequest{})
+	s.Require().NoError(err)
+	s.Require().Equal(1, testutil.CollectAndCount(s.client.metrics.sentBytes))
+
+	// This is what the pool does with instances that left the ring;
+	// the connection is closed asynchronously.
+	s.client.pool.RemoveClientFor("localhost")
+	s.Require().Eventually(func() bool {
+		return testutil.CollectAndCount(s.client.metrics.sentBytes) == 0
+	}, 5*time.Second, 10*time.Millisecond)
 }
 
 func (s *segwriterClientSuite) Test_Push_EmptyRing() {
