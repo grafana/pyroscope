@@ -168,6 +168,18 @@ Use `profilecli upload` when you have an exported pprof file and want to:
 - Ensure you have `profilecli` installed on your system by following the [installation](#install-profile-cli) steps above.
 - Have a profile file ready for upload. Note that you can only upload pprof files at this time.
 
+{{< admonition type="note" >}}
+Pyroscope preserves the timestamp in an uploaded profile unless you use `--override-timestamp`. By default, the server rejects profiles more than one hour old and limits queries to the last seven days. To import and query older profiles in a self-hosted deployment, configure limits that cover the historical period. For example:
+
+```yaml
+limits:
+  reject_older_than: 90d
+  max_query_lookback: 90d
+```
+
+Setting either limit to `0s` disables it. The default maximum query length is 24 hours, so query a narrow interval around the profile timestamp or increase `max_query_length`. Also ensure that `retention_period` provides the required availability after import.
+{{< /admonition >}}
+
 ### Upload steps
 
 1. Identify the pprof file.
