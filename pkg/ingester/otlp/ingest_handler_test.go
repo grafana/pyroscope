@@ -27,6 +27,7 @@ import (
 	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 	v1experimental "go.opentelemetry.io/proto/otlp/profiles/v1development"
+	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/model"
@@ -914,6 +915,86 @@ func TestDifferentServiceNames(t *testing.T) {
 		assert.NotContains(t, jsonStr, "service.name")
 
 	}
+}
+
+func TestCustomProfileTypeLanguageLabeling(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var profiles []*model.PushRequest
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		c := (args.Get(1)).(*model.PushRequest)
+		profiles = append(profiles, c)
+	}).Return(nil, nil)
+
+	otlpb := new(otlpbuilder)
+	otlpb.dictionary.MappingTable = []*v1experimental.Mapping{{
+		MemoryStart:      0x1000,
+		MemoryLimit:      0x2000,
+		FilenameStrindex: otlpb.addstr("app"),
+	}}
+	otlpb.dictionary.LocationTable = []*v1experimental.Location{{
+		MappingIndex: 0,
+		Address:      0x1100,
+	}}
+	otlpb.dictionary.StackTable = []*v1experimental.Stack{{
+		LocationIndices: []int32{0},
+	}}
+	otlpb.profile.Samples = []*v1experimental.Sample{{
+		StackIndex: 0,
+		Values:     []int64{42},
+	}}
+	// Matches the cpp-ld-preload-memory-profiling demo: a custom sample
+	// type with a "space"/"bytes" period type (Go heap-profile convention).
+	otlpb.profile.SampleType = &v1experimental.ValueType{
+		TypeStrindex: otlpb.addstr("alloc_objects"),
+		UnitStrindex: otlpb.addstr("count"),
+	}
+	otlpb.profile.PeriodType = &v1experimental.ValueType{
+		TypeStrindex: otlpb.addstr("space"),
+		UnitStrindex: otlpb.addstr("bytes"),
+	}
+	otlpb.profile.Period = 16
+	otlpb.profile.TimeUnixNano = 239
+
+	req := &v1experimental2.ExportProfilesServiceRequest{
+		ResourceProfiles: []*v1experimental.ResourceProfiles{{
+			Resource: &resourcev1.Resource{
+				Attributes: []*v1.KeyValue{
+					{
+						Key: "service.name",
+						Value: &v1.AnyValue{
+							Value: &v1.AnyValue_StringValue{StringValue: "cpp.ld-preload.memory"},
+						},
+					},
+					{
+						Key: "telemetry.sdk.language",
+						Value: &v1.AnyValue{
+							Value: &v1.AnyValue_StringValue{StringValue: "cpp"},
+						},
+					},
+				},
+			},
+			ScopeProfiles: []*v1experimental.ScopeProfiles{{
+				Profiles: []*v1experimental.Profile{
+					&otlpb.profile,
+				}}}}},
+		Dictionary: &otlpb.dictionary}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(profiles))
+	require.Equal(t, 1, len(profiles[0].Series))
+
+	series := profiles[0].Series[0]
+	labelsMap := make(map[string]string)
+	for _, label := range series.Labels {
+		labelsMap[label.Name] = label.Value
+	}
+
+	assert.Equal(t, "cpp.ld-preload.memory", labelsMap[phlaremodel.LabelNameServiceName])
+	assert.Equal(t, "cpp", labelsMap["telemetry.sdk.language"])
+	assert.Equal(t, "cpp", series.Language, "Language must be read from telemetry.sdk.language, not guessed from symbols")
 }
 
 type otlpbuilder struct {
