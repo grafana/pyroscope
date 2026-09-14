@@ -17,11 +17,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/tracing"
 	prommodel "github.com/prometheus/common/model"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	"github.com/grafana/pyroscope/v2/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/v2/pkg/og/storage"
 	"github.com/grafana/pyroscope/v2/pkg/og/storage/tree"
@@ -36,6 +38,7 @@ type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
 	MaxProfileSymbolValueLength(tenantID string) int
 	MaxProfileStacktraceSamples(tenantID string) int
+	ProfileIDDeterministic(tenantID string) bool
 }
 
 func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger) http.Handler {
@@ -192,13 +195,36 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}
 	plainReq.ParseDuration = time.Since(parseStart)
+	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 	if len(plainReq.Series) == 0 {
-		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 		_ = level.Debug(p.log).Log("msg", "empty profile",
 			"application", in.Metadata.LabelSet.ServiceName(),
 			"orgID", tenantID)
 		return nil
 	}
+
+	traceID, hasTraceID := tracing.ExtractTraceID(ctx)
+	if p.limits.ProfileIDDeterministic(tenantID) && hasTraceID {
+		for position, series := range plainReq.Series {
+			if series.ID == "" {
+				series.ID = profileid.GenerateFromTrace(
+					tenantID,
+					traceID,
+					series.Labels,
+					series.Profile.Profile.TimeNanos,
+					uint64(position),
+				).String()
+			}
+		}
+	}
+
+	// Ensure all series have IDs (fallback to random)
+	for _, series := range plainReq.Series {
+		if series.ID == "" {
+			series.ID = uuid.NewString()
+		}
+	}
+
 	err = p.svc.PushBatch(ctx, plainReq)
 	if err != nil {
 		return fmt.Errorf("pushing IngestInput-pprof failed %w", err)

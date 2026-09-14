@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +45,17 @@ type probeSegmentWriter struct {
 	// runs and only read afterwards, so concurrent reads are race-free.
 	failServices  map[string]bool
 	panicServices map[string]bool
+}
+
+type recordingSegmentWriter struct {
+	request *segmentwriterv1.PushRequest
+}
+
+func (r *recordingSegmentWriter) CheckReady(context.Context) error { return nil }
+
+func (r *recordingSegmentWriter) Push(_ context.Context, req *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+	r.request = req
+	return &segmentwriterv1.PushResponse{}, nil
 }
 
 func (p *probeSegmentWriter) CheckReady(context.Context) error { return nil }
@@ -168,6 +180,22 @@ func TestPushBatch_LimitZeroUnbounded(t *testing.T) {
 	const n = 16
 	probe := runPushBatchProbe(t, 0, n)
 	assert.Equal(t, int64(n), probe.pushed.Load(), "all series must complete (no SetLimit(0) deadlock)")
+}
+
+func TestPushBatch_PreservesProfileIDToSegmentWriter(t *testing.T) {
+	writer := new(recordingSegmentWriter)
+	d := newProbeDistributor(t, writer, 1)
+	series := probeProfileSeries(1)
+	profileID := uuid.New()
+	series[0].ID = profileID.String()
+
+	err := d.PushBatch(tenant.InjectTenantID(context.Background(), "user-1"), &distributormodel.PushRequest{
+		RawProfileType: distributormodel.RawProfileTypePPROF,
+		Series:         series,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, writer.request)
+	assert.Equal(t, profileID[:], writer.request.ProfileId)
 }
 
 // TestPushBatch_AggregatesAllErrors: every failing series is attempted and its

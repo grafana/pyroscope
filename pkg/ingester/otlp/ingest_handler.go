@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -24,12 +25,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/tenant"
+	"github.com/grafana/dskit/tracing"
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
@@ -54,6 +57,7 @@ type PushService interface {
 
 type Limits interface {
 	IngestionBodyLimitBytes(tenantID string) int64
+	ProfileIDDeterministic(tenantID string) bool
 }
 
 func NewOTLPIngestHandler(cfg server.Config, svc PushService, l log.Logger, limits Limits) Handler {
@@ -248,7 +252,7 @@ func toGRPCStatus(err error) error {
 }
 
 func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	_, err := tenant.TenantID(ctx)
+	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.Unauthenticated, "failed to extract tenant ID from context: %s", err.Error())
 	}
@@ -266,6 +270,9 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 	req := &distributormodel.PushRequest{
 		RawProfileType: distributormodel.RawProfileTypeOTEL,
 	}
+	traceID, hasTraceID := tracing.ExtractTraceID(ctx)
+	deriveProfileID := h.limits.ProfileIDDeterministic(tenantID) && hasTraceID
+	var seriesPosition uint64
 
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
@@ -281,7 +288,14 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
 
-				for samplesServiceName, pprofProfile := range pprofProfiles {
+				serviceNames := make([]string, 0, len(pprofProfiles))
+				for serviceName := range pprofProfiles {
+					serviceNames = append(serviceNames, serviceName)
+				}
+				sort.Strings(serviceNames)
+
+				for _, samplesServiceName := range serviceNames {
+					pprofProfile := pprofProfiles[samplesServiceName]
 					labels := getDefaultLabels()
 					labels = append(labels, pprofProfile.name)
 					processedKeys := map[string]bool{model.LabelNameProfileName: true}
@@ -300,8 +314,17 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 						Labels:     labels,
 						RawProfile: nil,
 						Profile:    pprof.RawFromProto(pprofProfile.profile),
-						ID:         uuid.New().String(),
 					}
+					if deriveProfileID {
+						s.ID = profileid.GenerateFromTrace(
+							tenantID,
+							traceID,
+							labels,
+							int64(p.TimeUnixNano),
+							seriesPosition,
+						).String()
+					}
+					seriesPosition++
 					req.Series = append(req.Series, s)
 				}
 			}
@@ -310,6 +333,12 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 	if len(req.Series) == 0 {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+	}
+
+	for _, series := range req.Series {
+		if series.ID == "" {
+			series.ID = uuid.NewString()
+		}
 	}
 
 	if err := h.svc.PushBatch(ctx, req); err != nil {
