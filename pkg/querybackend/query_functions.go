@@ -23,12 +23,24 @@ func queryFunctions(q *queryContext, query *queryv1.Query) (*queryv1.Report, err
 	}
 	// Zero max_nodes disables truncation in both the symbol resolver and tree
 	// builder. Aggregate before serialization, keeping all functions for merges.
-	return queryTreeOrFunctions(q, &queryv1.Query{Tree: &queryv1.TreeQuery{
+	return queryTreeOrAggregate(q, &queryv1.Query{Tree: &queryv1.TreeQuery{
 		SpanSelector:       f.SpanSelector,
 		StackTraceSelector: f.StackTraceSelector,
 		ProfileIdSelector:  f.ProfileIdSelector,
 		TraceIdSelector:    f.TraceIdSelector,
-	}}, f)
+	}}, f, nil)
+}
+
+// emptyAggregateReport returns the empty report for whichever aggregate the
+// query asked for, or nil when it asked for the tree itself.
+func emptyAggregateReport(functions *queryv1.FunctionsQuery, sandwich *queryv1.SandwichQuery) *queryv1.Report {
+	switch {
+	case functions != nil:
+		return emptyFunctionsReport(functions)
+	case sandwich != nil:
+		return emptySandwichReport(sandwich)
+	}
+	return nil
 }
 
 func emptyFunctionsReport(query *queryv1.FunctionsQuery) *queryv1.Report {

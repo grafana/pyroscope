@@ -674,6 +674,9 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("functions format is only supported with the v2 query backend"))
 	}
+	if req.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_SANDWICH {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sandwich format is only supported with the v2 query backend"))
+	}
 	if len(req.Msg.SpanSelector) > 0 && req.Msg.StackTraceSelector != nil {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("combining span_selector with stack_trace_selector is only supported with the v2 query backend"))
 	}

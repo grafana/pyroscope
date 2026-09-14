@@ -577,6 +577,96 @@ components:
         - HEATMAP_QUERY_TYPE_UNSPECIFIED
         - HEATMAP_QUERY_TYPE_INDIVIDUAL
         - HEATMAP_QUERY_TYPE_SPAN
+    querier.v1.SandwichNode:
+      type: object
+      properties:
+        nameIndex:
+          type: integer
+          title: name_index
+          format: int32
+          description: |-
+            Index into SandwichReport.names. A name is repeated at many nodes, so
+             carrying it inline would roughly triple the encoded size of a half.
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: |-
+            Value of the sandwich function attributable to this node. On the callee
+             side this is the callee's own total.
+        self:
+          type:
+            - integer
+            - string
+          title: self
+          format: int64
+          description: |-
+            Value attributed directly to this node. Meaningless on the caller side,
+             where a node stands for a call path rather than for its own samples, and
+             left at zero there.
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.SandwichNode'
+          title: children
+        truncated:
+          type: boolean
+          title: truncated
+          description: |-
+            Set on the stand-in node for the children dropped by truncation. Its total
+             is their sum, so a pane can show how much it is not showing.
+      title: SandwichNode
+      additionalProperties: false
+    querier.v1.SandwichReport:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+          description: |-
+            Function names, referenced by SandwichNode.name_index. Shared by both
+             halves, which overlap heavily: the sandwich function heads each of them,
+             and a recursive or shared frame appears on both sides.
+        callers:
+          title: callers
+          description: |-
+            Callers, rooted at the sandwich function. Each child is an immediate
+             caller, so the path from the root outwards runs towards main. A caller
+             node's total is only what it contributed to the sandwich function, not
+             that caller's own total.
+          $ref: '#/components/schemas/querier.v1.SandwichNode'
+        callees:
+          title: callees
+          description: Callees, rooted at the sandwich function, merged across its occurrences.
+          $ref: '#/components/schemas/querier.v1.SandwichNode'
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: |-
+            Sample value whose stack contains the function, counted once per sample, so
+             this matches FunctionRow.total for the same function and can be compared
+             against it. Both halves are built from every occurrence, which is what makes
+             a recursive function appear on both sides at several depths, so the root
+             total of either half can exceed this.
+        self:
+          type:
+            - integer
+            - string
+          title: self
+          format: int64
+          description: Sample value attributed directly to the function.
+      title: SandwichReport
+      additionalProperties: false
+      description: |-
+        SandwichReport holds the two halves of a sandwich view for one function,
+         aggregated over every occurrence of it before tree truncation.
     query.v1.AttributeTable:
       type: object
       properties:
@@ -1101,12 +1191,15 @@ components:
           $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
         functions:
           title: functions
+          $ref: '#/components/schemas/query.v1.FunctionsQuery'
+        sandwich:
+          title: sandwich
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.FunctionsQuery'
+          $ref: '#/components/schemas/query.v1.SandwichQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1197,6 +1290,7 @@ components:
         - QUERY_HEATMAP
         - QUERY_TIME_SERIES_COMPACT
         - QUERY_FUNCTIONS
+        - QUERY_SANDWICH
     query.v1.Report:
       type: object
       properties:
@@ -1233,6 +1327,9 @@ components:
         functions:
           title: functions
           $ref: '#/components/schemas/query.v1.FunctionsReport'
+        sandwich:
+          title: sandwich
+          $ref: '#/components/schemas/query.v1.SandwichReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1249,6 +1346,51 @@ components:
         - REPORT_HEATMAP
         - REPORT_TIME_SERIES_COMPACT
         - REPORT_FUNCTIONS
+        - REPORT_SANDWICH
+    query.v1.SandwichQuery:
+      type: object
+      properties:
+        function:
+          type: string
+          title: function
+          description: Function to build the sandwich around.
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+        stackTraceSelector:
+          title: stack_trace_selector
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
+      title: SandwichQuery
+      additionalProperties: false
+      description: |-
+        Sandwich queries keep both halves whole at each merge stage, for the same
+         reason function queries keep every row: a half truncated before the merge
+         cannot be corrected afterwards. The public frontend truncates once, at the
+         end.
+    query.v1.SandwichReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.SandwichQuery'
+        sandwich:
+          title: sandwich
+          $ref: '#/components/schemas/querier.v1.SandwichReport'
+      title: SandwichReport
+      additionalProperties: false
     query.v1.Series:
       type: object
       properties:

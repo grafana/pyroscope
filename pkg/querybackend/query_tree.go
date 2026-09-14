@@ -59,10 +59,20 @@ func treeSymbolMode(t *queryv1.TreeQuery) (queryv1.SymbolMode, error) {
 }
 
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	return queryTreeOrFunctions(q, query, nil)
+	return queryTreeOrAggregate(q, query, nil, nil)
 }
 
-func queryTreeOrFunctions(q *queryContext, query *queryv1.Query, functions *queryv1.FunctionsQuery) (*queryv1.Report, error) {
+// queryTreeOrAggregate builds the tree, then either serializes it or hands it to
+// whichever aggregate the query asked for. At most one aggregate may be set.
+func queryTreeOrAggregate(
+	q *queryContext,
+	query *queryv1.Query,
+	functions *queryv1.FunctionsQuery,
+	sandwich *queryv1.SandwichQuery,
+) (*queryv1.Report, error) {
+	if functions != nil && sandwich != nil {
+		return nil, fmt.Errorf("functions and sandwich aggregates cannot be combined")
+	}
 	mode, err := treeSymbolMode(query.Tree)
 	if err != nil {
 		return nil, err
@@ -118,8 +128,8 @@ func queryTreeOrFunctions(q *queryContext, query *queryv1.Query, functions *quer
 	case len(spanSelector) > 0:
 		if !columns.HasSpanID() {
 			// Block has no SpanID column: no samples can match the span selector.
-			if functions != nil {
-				return emptyFunctionsReport(functions), nil
+			if r := emptyAggregateReport(functions, sandwich); r != nil {
+				return r, nil
 			}
 			return &queryv1.Report{Tree: &queryv1.TreeReport{Query: query.Tree.CloneVT()}}, nil
 		}
@@ -127,8 +137,8 @@ func queryTreeOrFunctions(q *queryContext, query *queryv1.Query, functions *quer
 	case len(traceSelector) > 0:
 		if !columns.HasTraceID() {
 			// Block has no TraceID column: no samples can match the trace selector.
-			if functions != nil {
-				return emptyFunctionsReport(functions), nil
+			if r := emptyAggregateReport(functions, sandwich); r != nil {
+				return r, nil
 			}
 			return &queryv1.Report{Tree: &queryv1.TreeReport{Query: query.Tree.CloneVT()}}, nil
 		}
@@ -220,6 +230,15 @@ func queryTreeOrFunctions(q *queryContext, query *queryv1.Query, functions *quer
 		}
 		return &queryv1.Report{Functions: &queryv1.FunctionsReport{
 			Query: functions.CloneVT(), Functions: table,
+		}}, nil
+	}
+	if sandwich != nil {
+		report, err := model.SandwichFromTree(q.ctx, tree, sandwich.Function)
+		if err != nil {
+			return nil, err
+		}
+		return &queryv1.Report{Sandwich: &queryv1.SandwichReport{
+			Query: sandwich.CloneVT(), Sandwich: report,
 		}}, nil
 	}
 

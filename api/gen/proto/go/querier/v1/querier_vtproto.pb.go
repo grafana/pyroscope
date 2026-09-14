@@ -164,6 +164,10 @@ func (m *SelectMergeStacktracesRequest) CloneVT() *SelectMergeStacktracesRequest
 		copy(tmpContainer, rhs)
 		r.SpanSelector = tmpContainer
 	}
+	if rhs := m.SandwichFunction; rhs != nil {
+		tmpVal := *rhs
+		r.SandwichFunction = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -185,6 +189,7 @@ func (m *SelectMergeStacktracesResponse) CloneVT() *SelectMergeStacktracesRespon
 	r.Async = m.Async.CloneVT()
 	r.Pprof = m.Pprof.CloneVT()
 	r.Functions = m.Functions.CloneVT()
+	r.Sandwich = m.Sandwich.CloneVT()
 	if rhs := m.Tree; rhs != nil {
 		tmpBytes := make([]byte, len(rhs))
 		copy(tmpBytes, rhs)
@@ -241,6 +246,58 @@ func (m *FunctionRow) CloneVT() *FunctionRow {
 }
 
 func (m *FunctionRow) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SandwichReport) CloneVT() *SandwichReport {
+	if m == nil {
+		return (*SandwichReport)(nil)
+	}
+	r := new(SandwichReport)
+	r.Callers = m.Callers.CloneVT()
+	r.Callees = m.Callees.CloneVT()
+	r.Total = m.Total
+	r.Self = m.Self
+	if rhs := m.Names; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Names = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SandwichReport) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SandwichNode) CloneVT() *SandwichNode {
+	if m == nil {
+		return (*SandwichNode)(nil)
+	}
+	r := new(SandwichNode)
+	r.NameIndex = m.NameIndex
+	r.Total = m.Total
+	r.Self = m.Self
+	r.Truncated = m.Truncated
+	if rhs := m.Children; rhs != nil {
+		tmpContainer := make([]*SandwichNode, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Children = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SandwichNode) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -981,6 +1038,9 @@ func (this *SelectMergeStacktracesRequest) EqualVT(that *SelectMergeStacktracesR
 			return false
 		}
 	}
+	if p, q := this.SandwichFunction, that.SandwichFunction; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1013,6 +1073,9 @@ func (this *SelectMergeStacktracesResponse) EqualVT(that *SelectMergeStacktraces
 		return false
 	}
 	if !this.Functions.EqualVT(that.Functions) {
+		return false
+	}
+	if !this.Sandwich.EqualVT(that.Sandwich) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1081,6 +1144,88 @@ func (this *FunctionRow) EqualVT(that *FunctionRow) bool {
 
 func (this *FunctionRow) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*FunctionRow)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SandwichReport) EqualVT(that *SandwichReport) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Callers.EqualVT(that.Callers) {
+		return false
+	}
+	if !this.Callees.EqualVT(that.Callees) {
+		return false
+	}
+	if this.Total != that.Total {
+		return false
+	}
+	if this.Self != that.Self {
+		return false
+	}
+	if len(this.Names) != len(that.Names) {
+		return false
+	}
+	for i, vx := range this.Names {
+		vy := that.Names[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SandwichReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SandwichReport)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SandwichNode) EqualVT(that *SandwichNode) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.NameIndex != that.NameIndex {
+		return false
+	}
+	if this.Total != that.Total {
+		return false
+	}
+	if this.Self != that.Self {
+		return false
+	}
+	if len(this.Children) != len(that.Children) {
+		return false
+	}
+	for i, vx := range this.Children {
+		vy := that.Children[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &SandwichNode{}
+			}
+			if q == nil {
+				q = &SandwichNode{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if this.Truncated != that.Truncated {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SandwichNode) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SandwichNode)
 	if !ok {
 		return false
 	}
@@ -2624,6 +2769,13 @@ func (m *SelectMergeStacktracesRequest) MarshalToSizedBufferVT(dAtA []byte) (int
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.SandwichFunction != nil {
+		i -= len(*m.SandwichFunction)
+		copy(dAtA[i:], *m.SandwichFunction)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(*m.SandwichFunction)))
+		i--
+		dAtA[i] = 0x62
+	}
 	if len(m.SpanSelector) > 0 {
 		for iNdEx := len(m.SpanSelector) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.SpanSelector[iNdEx])
@@ -2749,6 +2901,16 @@ func (m *SelectMergeStacktracesResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Sandwich != nil {
+		size, err := m.Sandwich.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x3a
 	}
 	if m.Functions != nil {
 		size, err := m.Functions.MarshalToSizedBufferVT(dAtA[:i])
@@ -2903,6 +3065,148 @@ func (m *FunctionRow) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Name)))
 		i--
 		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SandwichReport) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SandwichReport) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SandwichReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Names) > 0 {
+		for iNdEx := len(m.Names) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Names[iNdEx])
+			copy(dAtA[i:], m.Names[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Names[iNdEx])))
+			i--
+			dAtA[i] = 0x2a
+		}
+	}
+	if m.Self != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Self))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.Total != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Total))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.Callees != nil {
+		size, err := m.Callees.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Callers != nil {
+		size, err := m.Callers.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SandwichNode) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SandwichNode) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SandwichNode) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Truncated {
+		i--
+		if m.Truncated {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.Children) > 0 {
+		for iNdEx := len(m.Children) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Children[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if m.Self != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Self))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.Total != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Total))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.NameIndex != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.NameIndex))
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -4404,6 +4708,10 @@ func (m *SelectMergeStacktracesRequest) SizeVT() (n int) {
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
 	}
+	if m.SandwichFunction != nil {
+		l = len(*m.SandwichFunction)
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -4436,6 +4744,10 @@ func (m *SelectMergeStacktracesResponse) SizeVT() (n int) {
 	}
 	if m.Functions != nil {
 		l = m.Functions.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Sandwich != nil {
+		l = m.Sandwich.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -4476,6 +4788,64 @@ func (m *FunctionRow) SizeVT() (n int) {
 	}
 	if m.Total != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Total))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SandwichReport) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Callers != nil {
+		l = m.Callers.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Callees != nil {
+		l = m.Callees.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Total != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Total))
+	}
+	if m.Self != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Self))
+	}
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SandwichNode) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.NameIndex != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.NameIndex))
+	}
+	if m.Total != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Total))
+	}
+	if m.Self != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Self))
+	}
+	if len(m.Children) > 0 {
+		for _, e := range m.Children {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.Truncated {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5820,6 +6190,39 @@ func (m *SelectMergeStacktracesRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.SpanSelector = append(m.SpanSelector, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SandwichFunction", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.SandwichFunction = &s
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -6081,6 +6484,42 @@ func (m *SelectMergeStacktracesResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sandwich", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Sandwich == nil {
+				m.Sandwich = &SandwichReport{}
+			}
+			if err := m.Sandwich.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -6306,6 +6745,361 @@ func (m *FunctionRow) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SandwichReport) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SandwichReport: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SandwichReport: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Callers", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Callers == nil {
+				m.Callers = &SandwichNode{}
+			}
+			if err := m.Callers.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Callees", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Callees == nil {
+				m.Callees = &SandwichNode{}
+			}
+			if err := m.Callees.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Total", wireType)
+			}
+			m.Total = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Total |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Self", wireType)
+			}
+			m.Self = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Self |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SandwichNode) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SandwichNode: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SandwichNode: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NameIndex", wireType)
+			}
+			m.NameIndex = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.NameIndex |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Total", wireType)
+			}
+			m.Total = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Total |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Self", wireType)
+			}
+			m.Self = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Self |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Children", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Children = append(m.Children, &SandwichNode{})
+			if err := m.Children[len(m.Children)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Truncated", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Truncated = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

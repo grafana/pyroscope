@@ -29,6 +29,9 @@ func (f *Frontend) SelectMergeStacktraces(
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("functions format is only supported with the v2 query backend"))
 	}
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_SANDWICH {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sandwich format is only supported with the v2 query backend"))
+	}
 	// trace_id_selector is v2-only; this legacy frontend would drop it on split.
 	if len(c.Msg.TraceIdSelector) > 0 {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("trace_id_selector is only supported with the v2 query backend"))

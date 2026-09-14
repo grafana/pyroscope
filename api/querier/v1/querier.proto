@@ -133,6 +133,9 @@ message SelectMergeStacktracesRequest {
   repeated string trace_id_selector = 10 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
   // List of span IDs (16 hex characters, 64-bit) to filter samples by.
   repeated string span_selector = 11 [(gnostic.openapi.v3.property).example = {yaml: "['9a517183f26a089d','5a4fe264a9c987fe']"}];
+  // Function to build the sandwich around. Required by PROFILE_FORMAT_SANDWICH
+  // and ignored by every other format.
+  optional string sandwich_function = 12 [(gnostic.openapi.v3.property).example = {yaml: "runtime.mallocgc"}];
 }
 
 enum ProfileFormat {
@@ -157,6 +160,11 @@ enum ProfileFormat {
   // Return exact per-function self and total values in
   // SelectMergeStacktracesResponse.functions, with max_nodes limiting row count.
   PROFILE_FORMAT_FUNCTIONS = 5;
+  // Return the callers and callees of sandwich_function, aggregated over every
+  // occurrence of it, in SelectMergeStacktracesResponse.sandwich. A truncated
+  // tree can neither answer this nor say what it is missing, so the aggregation
+  // happens here. max_nodes is applied per half.
+  PROFILE_FORMAT_SANDWICH = 6;
 }
 
 message SelectMergeStacktracesResponse {
@@ -170,6 +178,7 @@ message SelectMergeStacktracesResponse {
   // Profile in pprof format.
   PprofProfile pprof = 5;
   FunctionTable functions = 6;
+  SandwichReport sandwich = 7;
 }
 
 // FunctionTable aggregates samples by function name before tree truncation.
@@ -186,6 +195,47 @@ message FunctionRow {
   // Sample value whose stack contains this function. Recursive occurrences
   // count once per sample, so total never exceeds FunctionTable.total.
   int64 total = 3;
+}
+
+// SandwichReport holds the two halves of a sandwich view for one function,
+// aggregated over every occurrence of it before tree truncation.
+message SandwichReport {
+  // Function names, referenced by SandwichNode.name_index. Shared by both
+  // halves, which overlap heavily: the sandwich function heads each of them,
+  // and a recursive or shared frame appears on both sides.
+  repeated string names = 5;
+  // Callers, rooted at the sandwich function. Each child is an immediate
+  // caller, so the path from the root outwards runs towards main. A caller
+  // node's total is only what it contributed to the sandwich function, not
+  // that caller's own total.
+  SandwichNode callers = 1;
+  // Callees, rooted at the sandwich function, merged across its occurrences.
+  SandwichNode callees = 2;
+  // Sample value whose stack contains the function, counted once per sample, so
+  // this matches FunctionRow.total for the same function and can be compared
+  // against it. Both halves are built from every occurrence, which is what makes
+  // a recursive function appear on both sides at several depths, so the root
+  // total of either half can exceed this.
+  int64 total = 3;
+  // Sample value attributed directly to the function.
+  int64 self = 4;
+}
+
+message SandwichNode {
+  // Index into SandwichReport.names. A name is repeated at many nodes, so
+  // carrying it inline would roughly triple the encoded size of a half.
+  int32 name_index = 1;
+  // Value of the sandwich function attributable to this node. On the callee
+  // side this is the callee's own total.
+  int64 total = 2;
+  // Value attributed directly to this node. Meaningless on the caller side,
+  // where a node stands for a call path rather than for its own samples, and
+  // left at zero there.
+  int64 self = 3;
+  repeated SandwichNode children = 4;
+  // Set on the stand-in node for the children dropped by truncation. Its total
+  // is their sum, so a pane can show how much it is not showing.
+  bool truncated = 5;
 }
 
 // PprofProfile contains pprof output and related response metadata.
