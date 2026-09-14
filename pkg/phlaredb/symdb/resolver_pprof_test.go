@@ -368,6 +368,27 @@ func Test_Resolver_pprof_options(t *testing.T) {
 	}
 }
 
+func Test_Resolver_pprof_GoPGOAggregateCallees_lineLessCallee(t *testing.T) {
+	db := NewSymDB(DefaultConfig().WithDirectory(t.TempDir()))
+	indexed := db.WriteProfileSymbols(0, mixedLocationsProfile())
+
+	r := NewResolver(context.Background(), db,
+		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+			GoPgo: &typesv1.GoPGO{AggregateCallees: true},
+		}))
+	defer r.Release()
+	r.AddSamples(0, indexed[0].Samples)
+
+	p, err := r.Pprof()
+	require.NoError(t, err)
+	require.Len(t, p.Sample, 1)
+	assert.Equal(t, []int64{77}, p.Sample[0].Value)
+	require.Len(t, p.Location, 2)
+	assert.Equal(t, uint64(0x3c5a), p.Location[p.Sample[0].LocationId[0]-1].Address)
+	assert.Empty(t, p.Location[p.Sample[0].LocationId[0]-1].Line)
+	assert.Equal(t, int64(5), p.Location[p.Sample[0].LocationId[1]-1].Line[0].Line)
+}
+
 // The test examines how strings are copied from the Symbols
 // to the Profile at resolve.
 //
