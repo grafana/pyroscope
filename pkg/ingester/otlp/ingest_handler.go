@@ -208,6 +208,9 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 		case connect.CodeOf(err) == connect.CodeResourceExhausted:
 			level.Warn(h.log).Log("msg", "rejecting profiles over ingestion limit", "err", err)
 			http.Error(w, err.Error(), http.StatusTooManyRequests)
+		case connect.CodeOf(err) == connect.CodeUnavailable:
+			level.Warn(h.log).Log("msg", "rejecting profiles, instance is over capacity", "err", err)
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		default:
 			level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
