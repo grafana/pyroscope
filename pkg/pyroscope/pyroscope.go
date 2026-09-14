@@ -791,17 +791,12 @@ func (f *Pyroscope) Run() error {
 		}
 	}
 
-	// only query-frontend, query-backend, querier and target all should register the UI
-	if slices.Contains(f.Cfg.Target, All) ||
-		slices.Contains(f.Cfg.Target, QueryFrontend) ||
-		slices.Contains(f.Cfg.Target, QueryBackend) ||
-		slices.Contains(f.Cfg.Target, Querier) {
-
+	if f.shouldRegisterUI() {
 		if err = f.API.RegisterCatchAll(); err != nil {
 			return err
 		}
 	} else {
-		f.API.RegisterRedirectToAdmin()
+		f.API.RegisterNoUI()
 	}
 
 	serviceFailed := func(service services.Service) {
@@ -864,6 +859,14 @@ func (f *Pyroscope) Run() error {
 	}
 
 	return err
+}
+
+func (f *Pyroscope) shouldRegisterUI() bool {
+	if slices.Contains(f.Cfg.Target, All) || slices.Contains(f.Cfg.Target, QueryFrontend) {
+		return true
+	}
+
+	return f.Cfg.ArchitectureStorage != V2 && slices.Contains(f.Cfg.Target, Querier)
 }
 
 func (f *Pyroscope) readyHandler(sm *services.Manager) http.HandlerFunc {
