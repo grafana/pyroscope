@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 
@@ -60,6 +61,41 @@ func (FunctionNameI) unmarshalNode(b []byte, offset int) (FunctionName, int64, i
 	return name, int64(value), offset, nil
 }
 
+func (FunctionNameI) mergeNode(parent *node[FunctionName], b []byte, offset int, format func(FunctionName) FunctionName, newNode func() *node[FunctionName]) (*node[FunctionName], int, error) { //nolint:unused
+	nameLen, o := varint.Uvarint(b[offset:])
+	if o < 0 {
+		return nil, 0, errMalformedTreeBytes
+	}
+	offset += o
+	if int(nameLen) > len(b)-offset {
+		return nil, 0, errMalformedTreeBytes
+	}
+	nameBytes := b[offset : offset+int(nameLen)]
+	offset += int(nameLen)
+	value, o := varint.Uvarint(b[offset:])
+	if o < 0 {
+		return nil, 0, errMalformedTreeBytes
+	}
+	offset += o
+
+	var n *node[FunctionName]
+	if format != nil {
+		// The format function may retain the name: hand it an owned copy.
+		n = parent.insert(format(FunctionName(nameBytes)), newNode)
+	} else {
+		// Look up the child through a zero-copy view of the name: an owned
+		// copy is only allocated when a new node is actually inserted.
+		name := FunctionName(unsafeString(nameBytes))
+		i, found := parent.find(name)
+		if found == nil {
+			found = parent.insertAt(i, FunctionName(nameBytes), newNode)
+		}
+		n = found
+	}
+	n.self += int64(value)
+	return n, offset, nil
+}
+
 const OtherLocationRef = LocationRefName(-1)
 
 type LocationRefName int
@@ -99,6 +135,27 @@ func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, in
 	return LocationRefName(name), int64(value), offset, nil
 }
 
+func (LocationRefNameI) mergeNode(parent *node[LocationRefName], b []byte, offset int, format func(LocationRefName) LocationRefName, newNode func() *node[LocationRefName]) (*node[LocationRefName], int, error) { //nolint:unused
+	name64, o := varint.Uvarint(b[offset:])
+	if o < 0 {
+		return nil, 0, errMalformedTreeBytes
+	}
+	offset += o
+	value, o := varint.Uvarint(b[offset:])
+	if o < 0 {
+		return nil, 0, errMalformedTreeBytes
+	}
+	offset += o
+
+	name := LocationRefName(name64)
+	if format != nil {
+		name = format(name)
+	}
+	n := parent.insert(name, newNode)
+	n.self += int64(value)
+	return n, offset, nil
+}
+
 type NodeName interface {
 	~string | ~int
 }
@@ -108,6 +165,18 @@ type NodeNameI[N ~string | ~int] interface {
 	newOther() N
 	marshalNode(io.Writer, varint.Writer, *node[N], func(N) N) error
 	unmarshalNode([]byte, int) (N, int64, int, error)
+	// mergeNode parses the node record at the given offset and merges it
+	// into the parent's children: the node's self value is added to the
+	// existing child with the same (optionally formatted) name, or a new
+	// child is inserted. Returns the merged node and the next offset.
+	mergeNode(*node[N], []byte, int, func(N) N, func() *node[N]) (*node[N], int, error)
+}
+
+func unsafeString(b []byte) string { //nolint:unused
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(&b[0], len(b))
 }
 
 type LocationRefNameTree = Tree[LocationRefName, LocationRefNameI]
@@ -343,12 +412,26 @@ func (n *node[N]) String() string {
 }
 
 func (n *node[N]) insert(name N, newNode func() *node[N]) *node[N] {
+	i, child := n.find(name)
+	if child != nil {
+		return child
+	}
+	return n.insertAt(i, name, newNode)
+}
+
+// find locates the child with the given name, returning the position where
+// it is, or where it would be inserted, and the child itself (nil if absent).
+func (n *node[N]) find(name N) (int, *node[N]) {
 	i := sort.Search(len(n.children), func(i int) bool {
 		return n.children[i].name >= name
 	})
 	if i < len(n.children) && n.children[i].name == name {
-		return n.children[i]
+		return i, n.children[i]
 	}
+	return i, nil
+}
+
+func (n *node[N]) insertAt(i int, name N, newNode func() *node[N]) *node[N] {
 	// We don't clone the name: it is caller responsibility
 	// to maintain the memory ownership.
 	var child *node[N]
@@ -499,25 +582,31 @@ func MustUnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) *Tree[N, I] {
 	return t
 }
 
+// nodeBuffer arena-allocates nodes in chunks. Chunks grow geometrically from
+// the initial size hint and are capped: the hint is derived from the input
+// size and may overestimate the node count severalfold, so allocating (and
+// zeroing) it all upfront wastes more memory than it saves in malloc calls.
+const maxNodeBufferChunk = 8 << 10
+
 type nodeBuffer[N NodeName] struct {
-	size  int
+	chunk int
 	nodes []node[N]
 }
 
 func newNodeBuffer[N NodeName](size int) *nodeBuffer[N] {
 	return &nodeBuffer[N]{
-		size: size,
+		chunk: min(max(size, 64), maxNodeBufferChunk),
 	}
 }
 
 func (nb *nodeBuffer[N]) newNode() *node[N] {
 	if len(nb.nodes) == 0 {
-		nb.nodes = make([]node[N], nb.size)
+		nb.nodes = make([]node[N], nb.chunk)
+		nb.chunk = min(nb.chunk*2, maxNodeBufferChunk)
 	}
 	n := &nb.nodes[0]
 	nb.nodes = nb.nodes[1:]
 	return n
-
 }
 
 func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
@@ -530,7 +619,7 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 	if e := len(b) / estimateBytesPerNode; e > estimateBytesPerNode {
 		size = e
 	}
-	parents := make([]*node[N], 1, size)
+	parents := make([]*node[N], 1, min(size, 4<<10))
 	// Virtual root node.
 	root := new(node[N])
 	parents[0] = root
@@ -539,6 +628,7 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 
 	nodeBuffer := newNodeBuffer[N](size)
 
+	var records int
 	for len(parents) > 0 {
 		parent, parents = parents[len(parents)-1], parents[:len(parents)-1]
 		// specific start
@@ -559,12 +649,7 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 		n := parent.insert(name, nodeBuffer.newNode)
 		n.children = make([]*node[N], 0, childrenLen)
 		n.self = value
-
-		pn := n
-		for pn.parent != nil {
-			pn.total += n.self
-			pn = pn.parent
-		}
+		records++
 
 		for i := uint64(0); i < childrenLen; i++ {
 			parents = append(parents, n)
@@ -573,8 +658,95 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 
 	// Remove the virtual root.
 	t.root = root.children[0].children
+	t.recomputeTotals(records)
 
 	return t, nil
+}
+
+// mergeBytes merges a marshaled tree directly into t, without materializing
+// an intermediate tree. Node totals are NOT maintained: the caller must
+// recompute them (see recomputeTotals) before the totals are read.
+// Returns the number of node records merged, which bounds the tree growth.
+// On a malformed input an error is returned and t may be partially merged.
+func (t *Tree[N, I]) mergeBytes(b []byte, format func(N) N) (int, error) {
+	var initializer I
+	if len(b) < 2 {
+		return 0, nil
+	}
+	// The stream starts with a virtual root record; its name and value
+	// are ignored, only the children count matters.
+	_, _, offset, err := initializer.unmarshalNode(b, 0)
+	if err != nil {
+		return 0, err
+	}
+	childrenLen, o := varint.Uvarint(b[offset:])
+	if o < 0 {
+		return 0, errMalformedTreeBytes
+	}
+	offset += o
+
+	root := &node[N]{children: t.root}
+	parents := make([]*node[N], 0, defaultDFSSize)
+	for i := uint64(0); i < childrenLen; i++ {
+		parents = append(parents, root)
+	}
+
+	// Most records of a merged tree are expected to hit existing nodes,
+	// so the arena starts small and grows on demand.
+	nodeBuffer := newNodeBuffer[N](256)
+
+	var records int
+	var parent *node[N]
+	for len(parents) > 0 {
+		parent, parents = parents[len(parents)-1], parents[:len(parents)-1]
+
+		n, next, err := initializer.mergeNode(parent, b, offset, format, nodeBuffer.newNode)
+		if err != nil {
+			return records, err
+		}
+		offset = next
+		records++
+
+		childrenLen, o = varint.Uvarint(b[offset:])
+		if o < 0 {
+			return records, errMalformedTreeBytes
+		}
+		offset += o
+
+		if childrenLen > 0 {
+			if cap(n.children) == 0 {
+				n.children = make([]*node[N], 0, childrenLen)
+			}
+			for i := uint64(0); i < childrenLen; i++ {
+				parents = append(parents, n)
+			}
+		}
+	}
+
+	t.root = root.children
+	return records, nil
+}
+
+// recomputeTotals derives every node's total from the self values of its
+// subtree in a single pass: in reverse level order all children of a node
+// are visited before the node itself. The size hint pre-allocates the
+// traversal buffer; it does not have to be exact.
+func (t *Tree[N, I]) recomputeTotals(sizeHint int) {
+	if len(t.root) == 0 {
+		return
+	}
+	order := make([]*node[N], 0, max(sizeHint, 1024))
+	order = append(order, t.root...)
+	for i := 0; i < len(order); i++ {
+		order = append(order, order[i].children...)
+	}
+	for i := len(order) - 1; i >= 0; i-- {
+		n := order[i]
+		n.total = n.self
+		for _, c := range n.children {
+			n.total += c.total
+		}
+	}
 }
 
 // TreeFromBackendProfile is a wrapper...
