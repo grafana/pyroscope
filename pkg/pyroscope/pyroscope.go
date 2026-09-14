@@ -55,6 +55,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/metastore"
 	metastoreadmin "github.com/grafana/pyroscope/v2/pkg/metastore/admin"
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
+	"github.com/grafana/pyroscope/v2/pkg/metrics"
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
@@ -83,25 +84,26 @@ import (
 )
 
 type Config struct {
-	Target            flagext.StringSliceCSV  `yaml:"target,omitempty"`
-	API               api.Config              `yaml:"api"`
-	Server            server.Config           `yaml:"server,omitempty"`
-	Metastore         metastore.Config        `yaml:"metastore"`
-	Distributor       distributor.Config      `yaml:"distributor,omitempty"`
-	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
-	QueryBackend      querybackend.Config     `yaml:"query_backend"`
-	AdaptivePlacement placement.Config        `yaml:"adaptive_placement"`
-	Symbolizer        symbolizer.Config       `yaml:"symbolizer"`
-	Worker            worker.Config           `yaml:"frontend_worker"`
-	LimitsConfig      validation.Limits       `yaml:"limits"`
-	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"`
-	MemberlistKV      memberlist.KVConfig     `yaml:"memberlist"`
-	PhlareDB          phlaredb.Config         `yaml:"pyroscopedb,omitempty"`
-	Tracing           tracing.Config          `yaml:"tracing"`
-	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
-	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
-	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
-	TenantSettings    settings.Config         `yaml:"tenant_settings"`
+	Target            flagext.StringSliceCSV       `yaml:"target,omitempty"`
+	API               api.Config                   `yaml:"api"`
+	Server            server.Config                `yaml:"server,omitempty"`
+	Metastore         metastore.Config             `yaml:"metastore"`
+	Distributor       distributor.Config           `yaml:"distributor,omitempty"`
+	Frontend          frontend.Config              `yaml:"frontend,omitempty"`
+	QueryBackend      querybackend.Config          `yaml:"query_backend"`
+	AdaptivePlacement placement.Config             `yaml:"adaptive_placement"`
+	Symbolizer        symbolizer.Config            `yaml:"symbolizer"`
+	Worker            worker.Config                `yaml:"frontend_worker"`
+	LimitsConfig      validation.Limits            `yaml:"limits"`
+	SegmentWriter     segmentwriter.Config         `yaml:"segment_writer"`
+	MemberlistKV      memberlist.KVConfig          `yaml:"memberlist"`
+	PhlareDB          phlaredb.Config              `yaml:"pyroscopedb,omitempty"`
+	Tracing           tracing.Config               `yaml:"tracing"`
+	OverridesExporter exporter.Config              `yaml:"overrides_exporter"`
+	RuntimeConfig     runtimeconfig.Config         `yaml:"runtime_config"`
+	CompactionWorker  compactionworker.Config      `yaml:"compaction_worker"`
+	TenantSettings    settings.Config              `yaml:"tenant_settings"`
+	RecordingRules    metrics.RecordingRulesConfig `yaml:"recording_rules"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -267,6 +269,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.AdminServer.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
+	c.RecordingRules.RegisterFlags(f)
 
 	// Legacy flags
 	c.StoreGateway.RegisterFlags(f, util.Logger)
@@ -392,6 +395,8 @@ func (c *Config) Validate() error {
 	if len(c.Target) == 0 {
 		return errors.New("no modules specified")
 	}
+
+	c.RecordingRules.ReconcileWithExporter(&c.CompactionWorker.MetricsExporter)
 
 	if err := c.Frontend.Validate(); err != nil {
 		return err
@@ -643,7 +648,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		API:                   {Server, AdminServer},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
-		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing},
+		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing, RecordingRulesClient},
 		PlacementAgent:        {Overrides, API, Storage},
 		PlacementManager:      {Overrides, API, Storage},
 		SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},

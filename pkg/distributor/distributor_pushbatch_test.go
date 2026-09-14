@@ -88,7 +88,7 @@ func newProbeDistributor(t *testing.T, sw SegmentWriterClient, maxConcurrency in
 		Config{DistributorRing: ringConfig},
 		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
-		overrides, nil, log.NewNopLogger(), sw,
+		overrides, nil, log.NewNopLogger(), sw, nil,
 	)
 	require.NoError(t, err)
 	return d
