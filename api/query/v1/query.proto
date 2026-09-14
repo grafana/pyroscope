@@ -89,6 +89,7 @@ message Query {
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
   FunctionsQuery functions = 10;
+  SandwichQuery sandwich = 11;
   // function_details
   // call_graph
   // top_table
@@ -106,6 +107,7 @@ enum QueryType {
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
   QUERY_FUNCTIONS = 9;
+  QUERY_SANDWICH = 10;
 }
 
 message InvokeResponse {
@@ -166,6 +168,7 @@ message Report {
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
   FunctionsReport functions = 10;
+  SandwichReport sandwich = 11;
 }
 
 enum ReportType {
@@ -179,6 +182,7 @@ enum ReportType {
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
   REPORT_FUNCTIONS = 9;
+  REPORT_SANDWICH = 10;
 }
 
 // Function queries retain every function at each merge stage. The public
@@ -193,6 +197,24 @@ message FunctionsQuery {
 message FunctionsReport {
   FunctionsQuery query = 1;
   querier.v1.FunctionTable functions = 2;
+}
+
+// Sandwich queries keep both halves whole at each merge stage, for the same
+// reason function queries keep every row: a half truncated before the merge
+// cannot be corrected afterwards. The public frontend truncates once, at the
+// end.
+message SandwichQuery {
+  // Function to build the sandwich around.
+  string function = 1;
+  repeated string span_selector = 2;
+  optional types.v1.StackTraceSelector stack_trace_selector = 3;
+  repeated string profile_id_selector = 4;
+  repeated string trace_id_selector = 5;
+}
+
+message SandwichReport {
+  SandwichQuery query = 1;
+  querier.v1.SandwichReport sandwich = 2;
 }
 
 message LabelNamesQuery {}

@@ -80,6 +80,22 @@ func (r *Router) SelectMergeStacktraces(
 		}
 		return resp, nil
 	}
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_SANDWICH {
+		resp, err := Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
+			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
+			func(_, _ *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
+				// The frozen v1 path cannot contribute a sandwich: it would have
+				// to find every occurrence of the function in a truncated tree.
+				return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sandwich format is only supported with the v2 query backend"))
+			})
+		if err != nil {
+			return nil, err
+		}
+		if resp.Msg.Sandwich == nil {
+			return nil, connect.NewError(connect.CodeUnimplemented, errors.New("read path does not support sandwich format"))
+		}
+		return resp, nil
+	}
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
 		return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
