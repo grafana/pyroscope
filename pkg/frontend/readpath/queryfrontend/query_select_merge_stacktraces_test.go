@@ -200,7 +200,6 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 			},
 			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
 				l.On("SymbolizerEnabled", "tenant1").Return(true)
-				l.On("SymbolRefTreesEnabled", "tenant1").Return(false)
 				l.On("QuerySanitizeOnMerge", "tenant1").Return(false)
 				s.On("SymbolizePprof", mock.Anything, mock.Anything).
 					Run(func(args mock.Arguments) {
@@ -225,7 +224,6 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 			},
 			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
 				l.On("SymbolizerEnabled", "tenant2").Return(false)
-				l.On("SymbolRefTreesEnabled", "tenant2").Return(false).Maybe() // short-circuited when symbolization is off
 				l.On("QuerySanitizeOnMerge", "tenant2").Return(false)
 			},
 		},
@@ -243,7 +241,6 @@ func TestSelectMergeStacktrace_Symbolization(t *testing.T) {
 			},
 			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
 				l.On("SymbolizerEnabled", "tenant3").Return(true)
-				l.On("SymbolRefTreesEnabled", "tenant3").Return(false)
 				l.On("QuerySanitizeOnMerge", "tenant3").Return(false)
 			},
 		},
