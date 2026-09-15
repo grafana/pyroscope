@@ -20,6 +20,7 @@ The Pyroscope UI is available with Pyroscope open source.
 In Grafana and Grafana Cloud, use [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/visualizations/simplified-exploration/profiles/) to explore profiling data. Profiles Drilldown includes comparison and differential flame graph views that aren't in the Pyroscope UI.
 
 <!-- screenshot: full Pyroscope UI showing the navigation bar, query bar, timeline, and flame graph -->
+![Full Pyroscope UI showing the navigation bar, query bar, timeline, and flame graph](/media/docs/pyroscope/pyroscope-ui/pyroscope-ui-full.png)
 
 ## Select a service and time range
 
@@ -47,6 +48,7 @@ As you type, the query bar suggests matching label names and label values:
 Suggestions are scoped to the selected time range and to the other label filters already in the query. Continue typing to filter the suggestions, then select one to add it to the query.
 
 <!-- screenshot: query bar autocomplete suggesting label names or values -->
+![Query bar autocomplete suggesting label names or values](/media/docs/pyroscope/pyroscope-ui/pyroscope-ui-query-autocomplete.png)
 
 ## Inspect the timeline
 
@@ -69,3 +71,4 @@ Use **Search...** to highlight matching frames. To change colors, select **By pa
 To inspect callers and callees for one function, click a frame and select **Sandwich view**. Click the sandwich pill or reset control to leave sandwich view.
 
 <!-- screenshot: flame graph in Both view with sandwich view enabled -->
+![Flame graph in Both view with sandwich view enabled](/media/docs/pyroscope/pyroscope-ui/pyroscope-ui-sandwich-view.png)
