@@ -27,7 +27,7 @@ If you send profiles to Grafana Cloud, you can use [Adaptive Profiles](/docs/gra
 
 ## Configure sampling
 
-You configure sampling per tenant through runtime overrides. First enable usage groups to classify incoming profiles, then set a sampling probability for one or more usage groups.
+You configure sampling per tenant through [runtime overrides](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/about-configurations/#runtime-configuration-and-per-tenant-overrides). First enable usage groups to classify incoming profiles, then set a sampling probability for one or more usage groups.
 
 The probability is the fraction of matching profiles that the distributor keeps. A value of `1.0` keeps all profiles, and a lower value keeps that fraction and samples out the rest.
 
@@ -52,7 +52,7 @@ By default, the distributor drops sampled-out profiles, which leaves gaps in the
 
 ## Troubleshoot sampling
 
-Here are some common issues and how to troubleshoot them. To confirm that sampling is active and to measure how much data it drops, refer to [Monitor write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/monitor-sampling/).
+Here are some common issues and how to troubleshoot them.
 
 ### Sampling doesn't take effect
 
@@ -61,7 +61,7 @@ Sampling only applies to profiles that match a configured usage group. Profiles 
 - Confirm that `distributor_usage_groups` classifies the profiles that you want to sample.
 - Confirm that the group names under `distributor_sampling.usage_groups` match the usage group names.
 - Allow up to `-runtime-config.reload-period` (default `10s`) for changes to the runtime configuration file to take effect.
-- Check whether `pyroscope_discarded_samples_total{reason="dropped_by_sampling_rules"}` is incrementing. If it isn't, no profiles are matching your sampling rules. Refer to [Confirm that sampling is active](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/monitor-sampling/#confirm-that-sampling-is-active) for the full query.
+- Check whether `pyroscope_discarded_samples_total{reason="dropped_by_sampling_rules"}` is incrementing. If it isn't, no profiles are matching your sampling rules.
 
 ### Sampled-out profiles don't return an error
 
