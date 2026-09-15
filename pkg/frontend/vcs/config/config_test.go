@@ -314,6 +314,11 @@ func TestFindMapping(t *testing.T) {
 			fileSpec:    FileSpec{Path: "organization/test/File.java"},
 			shouldBeNil: true,
 		},
+		{
+			name:        "path prefix should not match partial path segment",
+			fileSpec:    FileSpec{Path: "javax/swing/JFrame.java"},
+			shouldBeNil: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -334,4 +339,32 @@ func TestFindMapping(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMappingConfig_Match(t *testing.T) {
+	t.Run("function name prefix matches full path segment only", func(t *testing.T) {
+		mapping := MappingConfig{
+			FunctionName: []Match{{Prefix: "java"}},
+		}
+
+		assert.Equal(t, 4, mapping.Match(FileSpec{FunctionName: "java/lang/Math.floorMod"}))
+		assert.Equal(t, -1, mapping.Match(FileSpec{FunctionName: "javax/swing/JFrame.<init>"}))
+	})
+
+	t.Run("path prefix matches full path segment only", func(t *testing.T) {
+		mapping := MappingConfig{
+			Path: []Match{{Prefix: "/usr/src/app"}},
+		}
+
+		assert.Equal(t, len("/usr/src/app"), mapping.Match(FileSpec{Path: "/usr/src/app/index.js"}))
+		assert.Equal(t, -1, mapping.Match(FileSpec{Path: "/usr/src/application/index.js"}))
+	})
+
+	t.Run("trailing slash prefix keeps matching descendants", func(t *testing.T) {
+		mapping := MappingConfig{
+			Path: []Match{{Prefix: "vendor/"}},
+		}
+
+		assert.Equal(t, len("vendor/"), mapping.Match(FileSpec{Path: "vendor/github.com/pkg/errors/errors.go"}))
+	})
 }
