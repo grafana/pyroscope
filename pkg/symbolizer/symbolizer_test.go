@@ -54,7 +54,7 @@ func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocks
 
 	s, err := New(
 		log.NewNopLogger(),
-		Config{MaxDebuginfodConcurrency: 1, ResolveTimeout: defaultResolveTimeout},
+		Config{MaxDebuginfodConcurrency: 1},
 		inp.Registry,
 		lidiaBucket,
 		inp.Limits,
@@ -68,7 +68,7 @@ func newSymbolizerTest(t *testing.T, inp *symbolizerInputs) (*Symbolizer, *mocks
 // A bucket failure that is not a missing object still falls through to
 // debuginfod: the cache probe is best-effort, and only the cache metric
 // distinguishes it from a miss.
-func TestResolveBucketErrorFallsThroughToDebuginfod(t *testing.T) {
+func TestGetLidiaBytes_BucketErrorFallsThroughToDebuginfod(t *testing.T) {
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	bucket.On("Get", mock.Anything, mock.Anything).Return(nil, errors.New("bucket unavailable")).Once()
@@ -76,22 +76,20 @@ func TestResolveBucketErrorFallsThroughToDebuginfod(t *testing.T) {
 	mockClient.On("FetchDebuginfo", mock.Anything, "buildid").
 		Return(nil, buildIDNotFoundError{buildID: "buildid"}).Once()
 
-	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1, ResolveTimeout: defaultResolveTimeout}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
+	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
 	require.NoError(t, err)
 	s.client = mockClient
 
 	ctx := tenant.InjectTenantID(context.Background(), "tenant")
-	frames, err := s.Resolve(ctx, "buildid", "binary", []uint64{0x1500})
-	require.NoError(t, err)
-	require.Len(t, frames, 1)
-	require.Nil(t, frames[0])
+	_, err = s.getLidiaBytes(ctx, "buildid")
+	require.Error(t, err)
 	require.Equal(t, float64(1),
 		testutil.ToFloat64(s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "error")))
 }
 
 // A probe that fails because the caller's context died is not a bucket
 // failure: no error metric, no debuginfod fetch.
-func TestResolveCanceledProbeDoesNotFallThrough(t *testing.T) {
+func TestGetLidiaBytes_CanceledProbeDoesNotFallThrough(t *testing.T) {
 	mockClient := mocksymbolizer.NewMockDebuginfodClient(t)
 	bucket := mockobjstore.NewMockBucket(t)
 	ctx, cancel := context.WithCancel(tenant.InjectTenantID(context.Background(), "tenant"))
@@ -100,11 +98,11 @@ func TestResolveCanceledProbeDoesNotFallThrough(t *testing.T) {
 		Return(nil, context.Canceled).Once()
 	bucket.On("IsObjNotFoundErr", mock.Anything).Return(false).Maybe()
 
-	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1, ResolveTimeout: defaultResolveTimeout}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
+	s, err := New(log.NewNopLogger(), Config{MaxDebuginfodConcurrency: 1}, prometheus.NewRegistry(), bucket, validation.MockDefaultOverrides())
 	require.NoError(t, err)
 	s.client = mockClient
 
-	_, err = s.Resolve(ctx, "buildid", "binary", []uint64{0x1500})
+	_, err = s.getLidiaBytes(ctx, "buildid")
 	require.ErrorIs(t, err, context.Canceled)
 	require.Equal(t, float64(0),
 		testutil.ToFloat64(s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "error")))
@@ -456,15 +454,33 @@ func TestSymbolizationWithLidiaData(t *testing.T) {
 	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", buildID)).Return(getLidiaData(), nil).Once()
 	mockBucket.On("Get", mock.Anything, lidiaObjectPath("tenant", buildID)).Return(getLidiaData(), nil).Once()
 
+	req := &request{
+		buildID:    buildID,
+		binaryName: "test-binary",
+		locations: []*location{
+			{
+				address: 0x1b743d6,
+			},
+		},
+	}
+
 	ctx := tenant.InjectTenantID(context.Background(), "tenant")
-	frames, err := sym.Resolve(ctx, buildID, "test-binary", []uint64{0x1b743d6})
-	require.NoError(t, err)
-	require.NotEmpty(t, frames[0])
+	sym.symbolize(ctx, req)
+	require.NotEmpty(t, req.locations[0].lines)
 
 	// Second request should also fetch from store
-	frames2, err := sym.Resolve(ctx, buildID, "test-binary", []uint64{0x1b743d6})
-	require.NoError(t, err)
-	require.NotEmpty(t, frames2[0])
+	req2 := &request{
+		buildID:    buildID,
+		binaryName: "test-binary",
+		locations: []*location{
+			{
+				address: 0x1b743d6,
+			},
+		},
+	}
+
+	sym.symbolize(ctx, req2)
+	require.NotEmpty(t, req2.locations[0].lines)
 }
 
 // TestSymbolizeWithObjectStore validates the symbolizer's behavior with the object store
@@ -494,9 +510,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			require.NoError(t, err)
 		}).Return(nil).Once()
 
-		frames, err := s.Resolve(ctx, "build-id", "", []uint64{0x1500})
-		require.NoError(t, err)
-		require.NotEmpty(t, frames[0])
+		req1 := createRequest(t, "build-id", 0x1500)
+		s.symbolize(ctx, req1)
+		require.NotEmpty(t, req1.locations[0].lines)
 		require.NotEmpty(t, capturedLidiaData)
 
 		mockClient.AssertExpectations(t)
@@ -512,9 +528,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
 		).Once()
 
-		frames, err := s.Resolve(ctx, "build-id", "", []uint64{0x1500})
-		require.NoError(t, err)
-		require.NotEmpty(t, frames[0])
+		req2 := createRequest(t, "build-id", 0x1500)
+		s.symbolize(ctx, req2)
+		require.NotEmpty(t, req2.locations[0].lines)
 
 		mockClient.AssertExpectations(t)
 		mockBucket.AssertExpectations(t)
@@ -527,9 +543,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			io.NopCloser(bytes.NewReader(capturedLidiaData)), nil,
 		).Once()
 
-		frames, err := s.Resolve(ctx, "build-id", "", []uint64{0x3c5a})
-		require.NoError(t, err)
-		require.NotEmpty(t, frames[0])
+		req3 := createRequest(t, "build-id", 0x3c5a)
+		s.symbolize(ctx, req3)
+		require.NotEmpty(t, req3.locations[0].lines)
 
 		mockClient.AssertExpectations(t)
 		mockBucket.AssertExpectations(t)
@@ -552,9 +568,9 @@ func TestSymbolizeWithObjectStore(t *testing.T) {
 			require.NoError(t, err)
 		}).Return(nil).Once()
 
-		frames, err := s.Resolve(ctx, "different-build-id", "", []uint64{0x1500})
-		require.NoError(t, err)
-		require.NotEmpty(t, frames[0])
+		req4 := createRequest(t, "different-build-id", 0x1500)
+		s.symbolize(ctx, req4)
+		require.NotEmpty(t, req4.locations[0].lines)
 		require.NotEmpty(t, capturedLidiaData2)
 
 		mockClient.AssertExpectations(t)
@@ -601,11 +617,11 @@ func TestSymbolizerMetrics(t *testing.T) {
 				).Once()
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) {
-				_, err := s.Resolve(ctx, "build-id", "", []uint64{0x1500})
-				require.NoError(t, err)
+				req1 := createRequest(t, "build-id", 0x1500)
+				s.symbolize(ctx, req1)
 
-				_, err = s.Resolve(ctx, "build-id", "", []uint64{0x1500})
-				require.NoError(t, err)
+				req2 := createRequest(t, "build-id", 0x1500)
+				s.symbolize(ctx, req2)
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds":   0,
@@ -621,10 +637,8 @@ func TestSymbolizerMetrics(t *testing.T) {
 					Return(nil, buildIDNotFoundError{buildID: "unknown-build-id"}).Once()
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) {
-				frames, err := s.Resolve(ctx, "unknown-build-id", "some-binary", []uint64{0x1500})
-				require.NoError(t, err)
-				require.Len(t, frames, 1)
-				require.Nil(t, frames[0])
+				req := createRequest(t, "unknown-build-id", 0x1500)
+				s.symbolize(ctx, req)
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds":   0,
@@ -643,8 +657,8 @@ func TestSymbolizerMetrics(t *testing.T) {
 				).Once()
 			},
 			setupTest: func(s *Symbolizer, ctx context.Context) {
-				_, err := s.Resolve(ctx, "invalid-elf", "", []uint64{0x1500})
-				require.NoError(t, err)
+				req := createRequest(t, "invalid-elf", 0x1500)
+				s.symbolize(ctx, req)
 			},
 			expected: map[string]int{
 				"pyroscope_profile_symbolization_duration_seconds": 0,
@@ -739,6 +753,18 @@ func extractGzipFile(t *testing.T, gzipPath string) ([]byte, error) {
 	return io.ReadAll(gzipReader)
 }
 
+func createRequest(t *testing.T, buildID string, address uint64) *request {
+	t.Helper()
+	return &request{
+		buildID: buildID,
+		locations: []*location{
+			{
+				address: address,
+			},
+		},
+	}
+}
+
 func TestConfigValidate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -760,16 +786,11 @@ func TestConfigValidate(t *testing.T) {
 			setup:   func(cfg *Config) { cfg.MaxDebuginfodConcurrency = -1 },
 			wantErr: true,
 		},
-		{
-			name:    "invalid config with zero resolve timeout",
-			setup:   func(cfg *Config) { cfg.ResolveTimeout = 0 },
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := Config{MaxDebuginfodConcurrency: 10, ResolveTimeout: defaultResolveTimeout}
+			cfg := Config{MaxDebuginfodConcurrency: 10}
 			tt.setup(&cfg)
 			err := cfg.Validate()
 			if tt.wantErr {
@@ -796,8 +817,13 @@ func TestUpdateAllSymbolsInProfile(t *testing.T) {
 		}
 
 		symbolizedLocs := []symbolizedLocation{{
-			loc:     profile.Location[0],
-			lines:   []lidia.SourceInfoFrame{{LineNumber: 42, FunctionName: "testFunction", FilePath: "/path/to/test.go"}},
+			loc: profile.Location[0],
+			symLoc: &location{
+				address: 0x1500,
+				lines: []lidia.SourceInfoFrame{{
+					LineNumber: 42, FunctionName: "testFunction", FilePath: "/path/to/test.go",
+				}},
+			},
 			mapping: profile.Mapping[0],
 		}}
 
@@ -829,13 +855,17 @@ func TestUpdateAllSymbolsInProfile(t *testing.T) {
 
 		symbolizedLocs := []symbolizedLocation{
 			{
-				loc:     profile.Location[0],
-				lines:   []lidia.SourceInfoFrame{{LineNumber: 100, FunctionName: "testFunction", FilePath: "/path/to/test.go"}},
+				loc: profile.Location[0],
+				symLoc: &location{address: 0x1500, lines: []lidia.SourceInfoFrame{{
+					LineNumber: 100, FunctionName: "testFunction", FilePath: "/path/to/test.go",
+				}}},
 				mapping: profile.Mapping[0],
 			},
 			{
-				loc:     profile.Location[1],
-				lines:   []lidia.SourceInfoFrame{{LineNumber: 50, FunctionName: "testFunction", FilePath: "/path/to/test.go"}},
+				loc: profile.Location[1],
+				symLoc: &location{address: 0x1600, lines: []lidia.SourceInfoFrame{{
+					LineNumber: 50, FunctionName: "testFunction", FilePath: "/path/to/test.go",
+				}}},
 				mapping: profile.Mapping[0],
 			},
 		}
