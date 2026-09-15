@@ -1,6 +1,7 @@
 package index
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -107,6 +108,62 @@ func BenchmarkIndex_GetTenantStats(b *testing.B) {
 					require.NotEqual(b, int64(0), stats.OldestProfileTime)
 					require.NotEqual(b, int64(0), stats.NewestProfileTime)
 				}
+			}
+		})
+	}
+}
+
+func BenchmarkIndex_QueryHistoricalData(b *testing.B) {
+	const (
+		partitionDuration = 6 * time.Hour
+		tenant            = "tenant"
+	)
+
+	for _, numPartitions := range []int{4 * 31, 4 * 365} {
+		b.Run(fmt.Sprintf("Partitions%d", numPartitions), func(b *testing.B) {
+			db := test.BoltDB(b)
+			idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+			require.NoError(b, db.Update(idx.Init))
+
+			startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			for i := 0; i < numPartitions; i++ {
+				creationTime := startTime.Add(time.Duration(i) * partitionDuration)
+				dataTime := creationTime
+				if i == numPartitions-1 {
+					dataTime = startTime
+				}
+				minTime := dataTime.UnixMilli()
+				maxTime := dataTime.Add(time.Hour).UnixMilli()
+				md := &metastorev1.BlockMeta{
+					Id:      test.ULID(creationTime.Format(time.RFC3339Nano)),
+					Tenant:  1,
+					Shard:   1,
+					MinTime: minTime,
+					MaxTime: maxTime,
+					Datasets: []*metastorev1.Dataset{{
+						Tenant:  1,
+						MinTime: minTime,
+						MaxTime: maxTime,
+					}},
+					StringTable: []string{"", tenant},
+				}
+				require.NoError(b, db.Update(func(tx *bbolt.Tx) error {
+					return idx.InsertBlock(tx, md)
+				}))
+			}
+
+			query := MetadataQuery{
+				Expr:      `{}`,
+				StartTime: startTime,
+				EndTime:   startTime.Add(time.Hour),
+				Tenant:    []string{tenant},
+			}
+			b.ResetTimer()
+			for b.Loop() {
+				require.NoError(b, db.View(func(tx *bbolt.Tx) error {
+					_, err := idx.QueryMetadata(tx, context.Background(), query)
+					return err
+				}))
 			}
 		})
 	}
