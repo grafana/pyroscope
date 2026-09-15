@@ -73,6 +73,18 @@ type BlockEntry struct {
 	Level      uint32
 }
 
+// BlockEntryStats describes a queued block entry without its identifier.
+//
+// Aggregating the queues does not need the identifier, and it is the largest
+// part of an entry: materializing one per queued block dominates the cost of
+// scanning a backlog. See BlockQueueStore.ListEntryStats.
+type BlockEntryStats struct {
+	AppendedAt int64
+	Tenant     string
+	Shard      uint32
+	Level      uint32
+}
+
 func NewBlockEntry(cmd *raft.Log, md *metastorev1.BlockMeta) BlockEntry {
 	return BlockEntry{
 		Index:      cmd.Index,

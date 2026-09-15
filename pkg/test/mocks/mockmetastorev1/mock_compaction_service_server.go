@@ -22,6 +22,65 @@ func (_m *MockCompactionServiceServer) EXPECT() *MockCompactionServiceServer_Exp
 	return &MockCompactionServiceServer_Expecter{mock: &_m.Mock}
 }
 
+// GetCompactionState provides a mock function with given fields: _a0, _a1
+func (_m *MockCompactionServiceServer) GetCompactionState(_a0 context.Context, _a1 *metastorev1.GetCompactionStateRequest) (*metastorev1.GetCompactionStateResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCompactionState")
+	}
+
+	var r0 *metastorev1.GetCompactionStateResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetCompactionStateRequest) (*metastorev1.GetCompactionStateResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.GetCompactionStateRequest) *metastorev1.GetCompactionStateResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*metastorev1.GetCompactionStateResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *metastorev1.GetCompactionStateRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCompactionServiceServer_GetCompactionState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCompactionState'
+type MockCompactionServiceServer_GetCompactionState_Call struct {
+	*mock.Call
+}
+
+// GetCompactionState is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *metastorev1.GetCompactionStateRequest
+func (_e *MockCompactionServiceServer_Expecter) GetCompactionState(_a0 interface{}, _a1 interface{}) *MockCompactionServiceServer_GetCompactionState_Call {
+	return &MockCompactionServiceServer_GetCompactionState_Call{Call: _e.mock.On("GetCompactionState", _a0, _a1)}
+}
+
+func (_c *MockCompactionServiceServer_GetCompactionState_Call) Run(run func(_a0 context.Context, _a1 *metastorev1.GetCompactionStateRequest)) *MockCompactionServiceServer_GetCompactionState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*metastorev1.GetCompactionStateRequest))
+	})
+	return _c
+}
+
+func (_c *MockCompactionServiceServer_GetCompactionState_Call) Return(_a0 *metastorev1.GetCompactionStateResponse, _a1 error) *MockCompactionServiceServer_GetCompactionState_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCompactionServiceServer_GetCompactionState_Call) RunAndReturn(run func(context.Context, *metastorev1.GetCompactionStateRequest) (*metastorev1.GetCompactionStateResponse, error)) *MockCompactionServiceServer_GetCompactionState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PollCompactionJobs provides a mock function with given fields: _a0, _a1
 func (_m *MockCompactionServiceServer) PollCompactionJobs(_a0 context.Context, _a1 *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	ret := _m.Called(_a0, _a1)
