@@ -52,7 +52,7 @@ By default, the distributor drops sampled-out profiles, which leaves gaps in the
 
 ## Troubleshoot sampling
 
-Here are some common issues and how to troubleshoot them.
+Here are some common issues and how to troubleshoot them. To confirm that sampling is active and to measure how much data it drops, refer to [Monitor write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/monitor-sampling/).
 
 ### Sampling doesn't take effect
 
@@ -61,7 +61,7 @@ Sampling only applies to profiles that match a configured usage group. Profiles 
 - Confirm that `distributor_usage_groups` classifies the profiles that you want to sample.
 - Confirm that the group names under `distributor_sampling.usage_groups` match the usage group names.
 - Allow up to `-runtime-config.reload-period` (default `10s`) for changes to the runtime configuration file to take effect.
-- Check whether `pyroscope_discarded_samples_total{reason="dropped_by_sampling_rules"}` is incrementing. If it isn't, no profiles are matching your sampling rules.
+- Check whether `pyroscope_discarded_samples_total{reason="dropped_by_sampling_rules"}` is incrementing. If it isn't, no profiles are matching your sampling rules. Refer to [Confirm that sampling is active](/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/monitor-sampling/#confirm-that-sampling-is-active) for the full query.
 
 ### Sampled-out profiles don't return an error
 
