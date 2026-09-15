@@ -55,7 +55,7 @@ pyroscope_head_size_bytes{type="functions"} 96
 pyroscope_head_size_bytes{type="locations"} 152
 pyroscope_head_size_bytes{type="mappings"} 96
 pyroscope_head_size_bytes{type="profiles"} 564
-pyroscope_head_size_bytes{type="stacktraces"} 96
+pyroscope_head_size_bytes{type="stacktraces"} 72
 pyroscope_head_size_bytes{type="strings"} 66
 
 `),
