@@ -71,6 +71,6 @@ func (bs *BucketStore) createBlock(ctx context.Context, meta *block.Meta) (*Bloc
 	return &Block{
 		meta:        outMeta,
 		logger:      bs.logger,
-		BlockCloser: phlaredb.NewSingleBlockQuerierFromMeta(ctx, bs.bucket, outMeta),
+		BlockCloser: phlaredb.NewSingleBlockQuerierFromMeta(ctx, bs.bucket, outMeta, phlaredb.WithSymbolCache(bs.symbolCache)),
 	}, nil
 }
