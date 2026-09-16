@@ -10,9 +10,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		cacheRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "pyroscope",
-				Subsystem: "metastore",
-				Name:      "index_cache_requests_total",
+				Name: "index_cache_requests_total",
 				Help: "Total number of metastore index cache lookups, partitioned by cache and result. " +
 					"The block cache has two tiers; result distinguishes which tier served the " +
 					"lookup (read_hit / write_hit) or whether both tiers missed.",

@@ -14,6 +14,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
@@ -136,6 +137,7 @@ func Test_QueryFrontend_Series_ProfileTypeQueryServedFromMetadata(t *testing.T) 
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,

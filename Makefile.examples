@@ -15,7 +15,7 @@ examples/check-templates:
 .PHONY: tools/update_examples
 tools/update_examples:
 	docker buildx build --platform linux/amd64 -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
-	docker run --rm  --platform=linux/amd64 -e GITHUB_TOKEN=$(GITHUB_TOKEN) -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go -report $(UPDATE_EXAMPLES_REPORT)"
+	docker run --rm  --platform=linux/amd64 -e GITHUB_TOKEN -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go -report $(UPDATE_EXAMPLES_REPORT)"
 
 
 # Deliberately not IMAGE_PREFIX/IMAGE_PLATFORM, whose global defaults point at a

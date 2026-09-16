@@ -1,4 +1,5 @@
-FROM node:25
+# Must stay glibc: the SDK ships prebuilt binaries.
+FROM node:25-trixie-slim
 
 WORKDIR /app
 

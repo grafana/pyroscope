@@ -164,7 +164,7 @@ func (q *QueryFrontend) selectMergeProfileTree(
 					ProfileIdSelector:  req.ProfileIdSelector,
 					TraceIdSelector:    req.TraceIdSelector,
 					SpanSelector:       req.SpanSelector,
-					SymbolMode:         queryv1.SymbolMode_SYMBOL_MODE_FULL,
+					FullSymbols:        true,
 				},
 			}},
 		},

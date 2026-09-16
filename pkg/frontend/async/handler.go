@@ -3,8 +3,11 @@ package async
 import (
 	"context"
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tenant"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -16,12 +19,14 @@ import (
 // handler unchanged.
 type Handler struct {
 	querierv1connect.QuerierServiceHandler
+	logger      log.Logger
 	coordinator *Coordinator
 }
 
-func NewHandler(next querierv1connect.QuerierServiceHandler, coordinator *Coordinator) *Handler {
+func NewHandler(logger log.Logger, next querierv1connect.QuerierServiceHandler, coordinator *Coordinator) *Handler {
 	return &Handler{
 		QuerierServiceHandler: next,
+		logger:                logger,
 		coordinator:           coordinator,
 	}
 }
@@ -67,6 +72,9 @@ func (h *Handler) submit(
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	requestID, err := h.coordinator.Submit(ctx, tenantID, req)
 	if err != nil {
+		// No request ID exists yet, so this line is only findable by tenant:
+		// the submission never became part of any request's lifecycle.
+		level.Warn(h.logger).Log("msg", "async query submission rejected", "tenant", tenantID, "err", err)
 		return nil, connect.NewError(connect.CodeResourceExhausted, err)
 	}
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
@@ -82,11 +90,17 @@ func (h *Handler) poll(
 	tenantID string,
 	requestID string,
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	logger := log.With(h.logger, "tenant", tenantID, "request_id", requestID)
+
 	result, err := h.coordinator.PollQuery(ctx, tenantID, requestID)
 	if err != nil {
+		level.Warn(logger).Log("msg", "async query poll failed", "err", err)
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if result == nil {
+		// Also covers a poll for another tenant's request: get() reports a
+		// cross-tenant lookup as not found rather than leaking its existence.
+		level.Warn(logger).Log("msg", "async query polled but not found")
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("async query not found"))
 	}
 
@@ -109,5 +123,17 @@ func (h *Handler) poll(
 		resp.Async.ErrorMessage = result.Metadata.ErrorMessage
 	}
 
+	logger = log.With(logger,
+		"status", string(result.Metadata.Status),
+		"age", time.Since(result.Metadata.CreatedAt).Round(time.Millisecond),
+	)
+	switch result.Metadata.Status {
+	case StatusInProgress:
+		level.Debug(logger).Log("msg", "async query polled, still in progress")
+	case StatusFailure:
+		level.Error(logger).Log("msg", "async query result returned to client", "err", result.Metadata.ErrorMessage)
+	default:
+		level.Info(logger).Log("msg", "async query result returned to client")
+	}
 	return connect.NewResponse(resp), nil
 }

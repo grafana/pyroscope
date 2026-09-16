@@ -4,5 +4,5 @@
     "github>grafana/grafana-renovate-config//presets/base",
     "security:only-security-updates"
   ],
-  "baseBranchPatterns": ["$default", "release/v2.2", "release/v2.1"]
+  "baseBranchPatterns": ["$default", "release/v2.3", "release/v2.2"]
 }

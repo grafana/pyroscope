@@ -91,6 +91,9 @@ func (r *pprofGoPGO) appendSamples() {
 
 func (r *pprofGoPGO) clearCalleeLineNumber() {
 	for _, s := range r.profile.Sample {
-		r.profile.Location[s.LocationId[0]-1].Line[0].Line = 0
+		loc := r.profile.Location[s.LocationId[0]-1]
+		if len(loc.Line) > 0 {
+			loc.Line[0].Line = 0
+		}
 	}
 }
