@@ -287,8 +287,7 @@ export PYROSCOPE_APPLICATION_NAME=my-java-app
 java -javaagent:pyroscope.jar -jar app.jar
 ```
 
-These settings also work through the existing system-property and
-`pyroscope.properties` configuration providers.
+You can also configure these settings through system properties or the pyroscope.properties configuration provider.
 
 | Setting | Default | Description |
 | --- | --- | --- |
