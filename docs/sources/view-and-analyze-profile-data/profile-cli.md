@@ -539,6 +539,81 @@ By default, it looks for samples within the last hour, though this can be contro
       # By default, the profile is saved to the current directory as `default.pgo`
       ```
 
+## Replay profile data from one deployment to another
+
+Use the `profilecli replay` commands to capture profile data from a source deployment and replay it into a destination deployment.
+This is a two-step workflow: `replay dump` writes matching profiles to a standalone file, and `replay push` continuously sends that file to another deployment.
+
+This is useful when you want to reproduce a production workload in a test or staging environment for load testing, debugging, or validating changes without pointing clients at the destination.
+
+{{< admonition type="note" >}}
+These commands work with Pyroscope v2 deployments. `replay dump` reads directly from the metastore and object storage of the source deployment, so run it where you have network access to both. `replay push` sends data to the destination deployment through the standard push API.
+{{< /admonition >}}
+
+### Before you begin
+
+- Ensure you have `profilecli` installed by following the [installation](#install-profile-cli) steps.
+- For `replay dump`, have access to the source deployment's metastore address and object storage bucket.
+- For `replay push`, have the destination deployment's URL and credentials, the same way you would for `profilecli upload`.
+
+### Dump profiles to a file
+
+The `profilecli replay dump` command queries the source deployment's metastore for blocks that match your query and time range, reads those blocks from object storage, reconstructs individual pprof profiles with their original labels and timestamps, and writes them to a dump file.
+
+Configure the source with these flags:
+
+- Set the object storage backend and bucket with the storage flags, for example `--storage.backend`, `--storage.s3.bucket-name`, and `--storage.s3.endpoint`. Run `profilecli help replay dump` for the full list.
+- Set the metastore address with `--metastore.address` (default `localhost:9095`). You can pass a comma-separated list of peers.
+- Set the tenant to dump with `--tenant-id`. This flag is required, and only a single tenant is supported.
+- Narrow the data with `--query` (default `{}`), `--from` (default `now-1h`), and `--to` (default `now`).
+- Set the destination file with `--output` (or `-o`). This flag is required. Use `--force` (or `-f`) to overwrite an existing file.
+
+Example command:
+
+```bash
+profilecli replay dump \
+    --storage.backend=s3 \
+    --storage.s3.bucket-name=my-pyroscope-bucket \
+    --metastore.address=localhost:9095 \
+    --tenant-id=my-tenant \
+    --query='{service_name="checkout"}' \
+    --from="now-3h" --to="now" \
+    --output=./checkout.replay
+```
+
+### Push profiles from a file
+
+The `profilecli replay push` command reads a dump file and pushes the profiles to a destination deployment.
+By default, it loops over the recorded time window, rescheduling timestamps so the destination keeps receiving data that looks like the original recording.
+
+Configure the command with these flags:
+
+- Set the dump file with `--input` (or `-i`). This flag is required. You can pass a local path or an `http(s)` URL, such as a signed object storage URL.
+- Set the destination and credentials with the same connection flags as other commands, for example `--url`, `--username`, `--password`, and `--tenant-id`. Refer to [Common flags and environment variables](#common-flags-and-environment-variables).
+- Control replay behavior with `--loop` (default `true`), `--speed` (default `1`), `--batch-size` (default `100`), and `--batch-wait` (default `500ms`). A `--speed` of `2` replays twice as fast, and `0.5` replays half as fast. Set `--loop=false` to replay the window once and exit.
+
+The dump file must contain a single tenant. The command sends all profiles to one destination tenant, so multi-tenant dumps aren't supported.
+
+Example command:
+
+```bash
+export PROFILECLI_URL=https://pyroscope.example.net
+export PROFILECLI_TENANT_ID=my-tenant
+
+profilecli replay push --input=./checkout.replay
+```
+
+Example command replaying once at double speed:
+
+```bash
+profilecli replay push \
+    --input=./checkout.replay \
+    --loop=false \
+    --speed=2
+```
+
+To stop a looping replay, interrupt the command with Ctrl+C.
+
 ## Other useful commands
 
 The following commands are also useful in day-to-day operations.

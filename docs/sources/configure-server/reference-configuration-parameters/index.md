@@ -1224,8 +1224,10 @@ lifecycler:
 # CLI flag: -segment-writer.metadata-update-timeout
 [metadata_update_timeout: <duration> | default = 2s]
 
-# (advanced) Enables bucket health check on startup. This both validates
-# credentials and warms up the connection to reduce latency for the first write.
+# (advanced) Uploads a small object at startup to verify bucket write access.
+# Startup fails if the upload fails. Removal of the object is best effort: it is
+# skipped on filesystem storage, which keeps one object per startup, and a
+# failed removal is only logged.
 # CLI flag: -segment-writer.bucket-health-check-enabled
 [bucket_health_check_enabled: <boolean> | default = true]
 
@@ -2458,12 +2460,6 @@ The `symbolizer` block configures the symbolizer (V2).
 # server.
 # CLI flag: -symbolizer.max-debuginfod-concurrency
 [max_debuginfod_concurrency: <int> | default = 10]
-
-# (advanced) Maximum time the query frontend waits to resolve a single binary's
-# unresolved addresses for a symbol-ref tree query, before falling back to
-# binary!0xaddr frames for that binary.
-# CLI flag: -symbolizer.resolve-timeout
-[resolve_timeout: <duration> | default = 20s]
 ```
 
 ### overrides_exporter
