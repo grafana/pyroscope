@@ -328,10 +328,14 @@ go tool pprof -top profile.pb.gz
 
 `seconds` is an integer from 1 to 300 and defaults to 10. The request blocks
 while recording. Configure the collector timeout to allow both the recording
-duration and profile encoding. `PYROSCOPE_UPLOAD_INTERVAL` does not limit a
-pull recording. Only one recording can run at a time; overlapping scrapes
-receive HTTP 429. Invalid durations receive HTTP 400, unsupported methods
-receive HTTP 405, and collection failures receive HTTP 500.
+duration and profile encoding. 
+`PYROSCOPE_UPLOAD_INTERVAL` does not limit a pull recording.
+
+Only one recording can run at a time: 
+* Overlapping scrapes receive `HTTP 429`
+* Invalid durations receive `HTTP 400`
+* Unsupported methods receive `HTTP 405` 
+* Collection failures receive `HTTP 500`
 
 The response uses `application/octet-stream` and contains a gzip file, without
 an HTTP `Content-Encoding` header. This lets collectors and pprof tools consume
