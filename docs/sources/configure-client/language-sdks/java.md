@@ -339,10 +339,13 @@ Only one recording can run at a time:
 
 The response uses `application/octet-stream` and contains a gzip file, without
 an HTTP `Content-Encoding` header. This lets collectors and pprof tools consume
-the compressed profile directly. Responses are marked `Cache-Control: no-store`.
-There is no cached last profile to accidentally ingest twice. Shutdown cancels
-an active recording and closes its connection. A disconnected client can leave
-its recording running until the requested duration expires.
+the compressed profile directly. 
+
+Responses are marked `Cache-Control: no-store`.
+There is no cached last profile to accidentally ingest twice. 
+
+Shutdown cancels an active recording and closes its connection. 
+A disconnected client can leave its recording running until the requested duration expires.
 
 For Alloy in the same network namespace as the application:
 
