@@ -268,9 +268,7 @@ PYROSCOPE_PROFILER_LOCK=10ms
 ## Collect CPU profiles in pull mode
 
 {{< admonition type="note" >}}
-These settings require an agent build containing the pull-mode support in
-[pyroscope-java PR #366](https://github.com/grafana/pyroscope-java/pull/366).
-Verify that your agent build includes this feature before enabling it.
+Before you enable these settings, verify that your agent build includes the pull-mode support, introduced with [pyroscope-java PR #366](https://github.com/grafana/pyroscope-java/pull/366).
 {{< /admonition >}}
 
 Pull mode exposes CPU profiles at `GET /debug/pprof/profile`. Each request
