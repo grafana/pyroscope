@@ -128,3 +128,5 @@ Plan for object storage costs based on:
 - **Write operations**: Segment flushes and compaction uploads
 - **Read operations**: Query execution
 - **Storage**: Retained profile data
+
+To reduce write and read operation costs, refer to the [segment-writer configuration](../components/segment-writer/#reduce-object-storage-costs) for tuning the segment duration, shards per writer, and ingestion consistency.
