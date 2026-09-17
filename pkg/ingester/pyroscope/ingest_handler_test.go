@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -182,6 +183,49 @@ func createJFRRequestBody(t *testing.T, jfr, labels []byte) ([]byte, string) {
 	err = w.Close()
 	require.NoError(t, err)
 	return b.Bytes(), w.FormDataContentType()
+}
+
+type errorPushService struct{ err error }
+
+func (s *errorPushService) PushBatch(context.Context, *model.PushRequest) error { return s.err }
+
+func (s *errorPushService) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	return nil, s.err
+}
+
+func TestIngestPropagatesLimitStatus(t *testing.T) {
+	profile, err := os.ReadFile(repoRoot + "pkg/pprof/testdata/heap")
+	require.NoError(t, err)
+	reqBody, ct := createPProfRequest(t, profile, nil, nil)
+
+	for _, tc := range []struct {
+		name       string
+		pushErr    error
+		wantStatus int
+	}{
+		{
+			name:       "tenant over ingestion limit (429)",
+			pushErr:    connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("limit of 0 B/month reached")),
+			wantStatus: http.StatusTooManyRequests,
+		},
+		{
+			name:       "other ingest failure keeps 422",
+			pushErr:    fmt.Errorf("boom"),
+			wantStatus: http.StatusUnprocessableEntity,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := NewPyroscopeIngestHandler(&errorPushService{err: tc.pushErr}, validation.MockLimits{}, log.NewNopLogger())
+
+			ctx := tenant.InjectTenantID(context.Background(), "tenant-a")
+			req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=pprof.test{qwe=asd}&spyName=foo239", bytes.NewReader(reqBody))
+			req.Header.Set("Content-Type", ct)
+			res := httptest.NewRecorder()
+
+			h.ServeHTTP(res, req)
+			assert.Equal(t, tc.wantStatus, res.Code)
+		})
+	}
 }
 
 func BenchmarkIngestJFR(b *testing.B) {

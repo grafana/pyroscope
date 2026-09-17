@@ -42,11 +42,26 @@ Use `make lint` to ensure formatting is correct.
 
 ## Building Grafana Pyroscope
 
-To build:
+To do a full production build (frontend + backend):
 
 ```
-make go/bin
+make build
 ```
+
+This runs `make frontend/build` to build the web UI (in Docker, so Docker must be running) and then
+builds the Go binaries with the frontend assets embedded.
+
+If you're only working on the backend and don't need the embedded UI, use the Docker-free dev build,
+which skips the frontend entirely:
+
+```
+make build-dev
+```
+
+The lower-level `make go/bin` target builds only the Go binaries. By default it embeds the frontend
+assets (build tag `embedassets`), so it requires `ui/dist/` to already exist — build it once with
+`make frontend/build` (or use `make build`/`make build-dev` above). Otherwise the build fails with
+`pattern dist: no matching files found`.
 
 To run the unit test suite:
 

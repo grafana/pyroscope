@@ -313,6 +313,7 @@ func (i *iterator) At() ring.InstanceDesc {
 type perm struct{ v []uint32 }
 
 func (p *perm) resize(n int) {
+	s := loadSteps(n)
 	d := max(0, n-len(p.v))
 	p.v = slices.Grow(p.v, d)[:n]
 	// We do want to start with 0 (in contrast to the standard
@@ -321,26 +322,40 @@ func (p *perm) resize(n int) {
 	// Although, it's possible to make the change incrementally,
 	// for simplicity, we just rebuild the permutation.
 	for i := 0; i < n; i++ {
-		j := steps[i]
+		j := s[i]
 		p.v[i], p.v[j] = p.v[j], uint32(i)
 	}
 }
 
-var steps [4 << 10]uint32
+var (
+	stepsMu sync.Mutex
+	steps   []uint32
+)
+
+// The seed impacts mapping of shards to nodes.
+const stepsSeed = -3035313949336265834
 
 func init() {
-	// The seed impacts mapping of shards to nodes.
-	// TODO(kolesnikovae):
-	//  Stochastic approach does not work well
-	//  in all the cases; it should be replaced
-	//  with a deterministic one.
-	const randSeed = -3035313949336265834
-	setSeed(randSeed)
+	loadSteps(4 << 10)
 }
 
-func setSeed(n int64) {
-	r := rand.New(rand.NewSource(n))
-	for i := range steps {
-		steps[i] = uint32(r.Intn(i + 1))
+// loadSteps returns a shuffle table with at least n entries, growing it
+// from the same fixed seed if it's too small.
+//
+// TODO(kolesnikovae):
+//
+//	Stochastic approach does not work well
+//	in all the cases; it should be replaced
+//	with a deterministic one.
+func loadSteps(n int) []uint32 {
+	stepsMu.Lock()
+	defer stepsMu.Unlock()
+	if n > len(steps) {
+		r := rand.New(rand.NewSource(stepsSeed))
+		steps = make([]uint32, n)
+		for i := range steps {
+			steps[i] = uint32(r.Intn(i + 1))
+		}
 	}
+	return steps
 }

@@ -16,15 +16,33 @@ import { formatBytes, formatMs, formatTime, getBasePath } from '../utils';
 import type { DiagnosticSummary } from '../types';
 
 type SortField =
-  | 'created_at'
-  | 'method'
-  | 'response_time_ms'
-  | 'response_size_bytes';
+  'created_at' | 'method' | 'response_time_ms' | 'response_size_bytes';
 type SortDirection = 'asc' | 'desc';
+
+function SortIcon({
+  field,
+  sortField,
+  sortDirection,
+}: {
+  field: SortField;
+  sortField: SortField;
+  sortDirection: SortDirection;
+}) {
+  if (sortField !== field) {
+    return <span className="sort-icon text-muted">⇅</span>;
+  }
+  return (
+    <span className="sort-icon active">
+      {sortDirection === 'asc' ? '↑' : '↓'}
+    </span>
+  );
+}
 
 export function DiagnosticsListPage() {
   const [tenants, setTenants] = useState<string[]>([]);
-  const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get('tenant'),
+  );
   const [diagnostics, setDiagnostics] = useState<DiagnosticSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,16 +68,9 @@ export function DiagnosticsListPage() {
   }, []);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tenant = urlParams.get('tenant');
-    if (tenant) {
-      setSelectedTenant(tenant);
-    }
-  }, []);
-
-  useEffect(() => {
+    // selectedTenant never goes back to null once set, so there is no stale
+    // diagnostics list to clear here.
     if (!selectedTenant) {
-      setDiagnostics([]);
       return;
     }
 
@@ -189,17 +200,6 @@ export function DiagnosticsListPage() {
     },
     [selectedTenant],
   );
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <span className="sort-icon text-muted">⇅</span>;
-    }
-    return (
-      <span className="sort-icon active">
-        {sortDirection === 'asc' ? '↑' : '↓'}
-      </span>
-    );
-  };
 
   return (
     <div className="diagnostics-list-page">
@@ -380,26 +380,46 @@ export function DiagnosticsListPage() {
                               className="col-narrow sortable"
                               onClick={() => handleSort('created_at')}
                             >
-                              Created <SortIcon field="created_at" />
+                              Created{' '}
+                              <SortIcon
+                                field="created_at"
+                                sortField={sortField}
+                                sortDirection={sortDirection}
+                              />
                             </th>
                             <th
                               className="col-narrow sortable"
                               onClick={() => handleSort('method')}
                             >
-                              Method <SortIcon field="method" />
+                              Method{' '}
+                              <SortIcon
+                                field="method"
+                                sortField={sortField}
+                                sortDirection={sortDirection}
+                              />
                             </th>
                             <th className="col-payload">Payload</th>
                             <th
                               className="col-narrow sortable"
                               onClick={() => handleSort('response_time_ms')}
                             >
-                              Time <SortIcon field="response_time_ms" />
+                              Time{' '}
+                              <SortIcon
+                                field="response_time_ms"
+                                sortField={sortField}
+                                sortDirection={sortDirection}
+                              />
                             </th>
                             <th
                               className="col-narrow sortable"
                               onClick={() => handleSort('response_size_bytes')}
                             >
-                              Size <SortIcon field="response_size_bytes" />
+                              Size{' '}
+                              <SortIcon
+                                field="response_size_bytes"
+                                sortField={sortField}
+                                sortDirection={sortDirection}
+                              />
                             </th>
                             <th className="col-narrow"></th>
                           </tr>

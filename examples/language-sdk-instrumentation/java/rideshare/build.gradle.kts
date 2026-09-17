@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("org.springframework.boot") version "3.3.6"
+    id("org.springframework.boot") version "3.5.16"
     id("io.spring.dependency-management") version "1.1.6"
 }
 
@@ -11,10 +11,8 @@ repositories {
     mavenCentral()
 }
 
-ext["tomcat.version"] = "10.1.35"
-
 dependencies {
-    implementation("io.pyroscope:agent:2.5.4")
+    implementation("io.pyroscope:agent:2.9.2")
     implementation("org.jetbrains:annotations:26.0.2")
     implementation("org.springframework.boot:spring-boot-starter-web")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")

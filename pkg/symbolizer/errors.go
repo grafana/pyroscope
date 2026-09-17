@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+// errObjectNotFound marks a bucket cache probe that found no object — the
+// expected outcome for a build ID that was never fetched or uploaded.
+var errObjectNotFound = errors.New("object not found in bucket")
+
 type invalidBuildIDError struct {
 	buildID string
 }
@@ -19,6 +23,14 @@ type buildIDNotFoundError struct {
 
 func (e buildIDNotFoundError) Error() string {
 	return fmt.Sprintf("build ID not found: %s", e.buildID)
+}
+
+type upstreamUnavailableError struct {
+	buildID string
+}
+
+func (e upstreamUnavailableError) Error() string {
+	return fmt.Sprintf("debuginfod upstream unavailable, not fetching build ID: %s", e.buildID)
 }
 
 type httpStatusError struct {

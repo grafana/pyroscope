@@ -34,13 +34,13 @@
           "uid": "${loki_datasource}"
         },
         "enable": false,
-        "expr": "{namespace=\"$namespace\",container=\"eventrouter\"} != \"Preemption is not helpful\" != \"Failed deploy model\" | logfmt | type=\"Warning\"",
+        "expr": "{cluster=\"$cluster\", job=~\"loki\\.source\\.kubernetes_events|integrations/kubernetes/eventhandler\", namespace=\"$namespace\"} != \"Preemption is not helpful\" != \"Failed deploy model\" | logfmt | type=\"Warning\"",
         "hide": false,
         "iconColor": "orange",
         "instant": false,
         "name": "K8s Warnings",
-        "tagKeys": "type,object_kind,object_name",
-        "textFormat": "{{message}}",
+        "tagKeys": "type,kind,name",
+        "textFormat": "{{msg}}",
         "titleFormat": ""
       },
       {
@@ -49,13 +49,13 @@
           "uid": "${loki_datasource}"
         },
         "enable": true,
-        "expr": "{namespace=\"$namespace\",container=\"eventrouter\"} | logfmt | type!=\"Normal\" | type!=\"Warning\"",
+        "expr": "{cluster=\"$cluster\", job=~\"loki\\.source\\.kubernetes_events|integrations/kubernetes/eventhandler\", namespace=\"$namespace\"} | logfmt | type!=\"Normal\" | type!=\"Warning\"",
         "hide": false,
         "iconColor": "red",
         "instant": false,
         "name": "K8s Errors",
-        "tagKeys": "type,object_kind,object_name",
-        "textFormat": "{{message}}"
+        "tagKeys": "type,kind,name",
+        "textFormat": "{{msg}}"
       },
       {
         "datasource": {
@@ -63,13 +63,13 @@
           "uid": "${loki_datasource}"
         },
         "enable": false,
-        "expr": "{namespace=\"$namespace\",container=\"eventrouter\"} | logfmt",
+        "expr": "{cluster=\"$cluster\", job=~\"loki\\.source\\.kubernetes_events|integrations/kubernetes/eventhandler\", namespace=\"$namespace\"} | logfmt",
         "hide": false,
         "iconColor": "blue",
         "instant": false,
         "name": "K8s All Events",
-        "tagKeys": "type,object_kind,object_name",
-        "textFormat": "{{message}}"
+        "tagKeys": "type,kind,name",
+        "textFormat": "{{msg}}"
       }
     ]
   },
@@ -3070,7 +3070,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (histogram_sum(irate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))) /\nsum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))",
+          "expr": "sum by (pod) (histogram_sum(irate(pyroscope_segment_writer_received_decompressed_bytes{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))) /\nsum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", container=\"segment-writer\"}[10m]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -4409,7 +4409,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_sum(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (histogram_sum(rate(pyroscope_segment_writer_received_decompressed_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4512,7 +4512,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_sum(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (histogram_sum(rate(pyroscope_segment_writer_received_decompressed_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4628,7 +4628,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_count(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (histogram_count(rate(pyroscope_segment_writer_received_decompressed_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4731,7 +4731,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (pod) (histogram_count(rate(pyroscope_segment_writer_segment_ingest_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
+              "expr": "sum by (pod) (histogram_count(rate(pyroscope_segment_writer_received_decompressed_bytes{namespace=\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"

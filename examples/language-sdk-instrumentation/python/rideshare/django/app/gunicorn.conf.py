@@ -18,6 +18,7 @@ def post_fork(server, worker):
         server_address=os.getenv("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040"),
         basic_auth_username=os.getenv("PYROSCOPE_BASIC_AUTH_USER", ""),
         basic_auth_password=os.getenv("PYROSCOPE_BASIC_AUTH_PASSWORD", ""),
+        mem_enabled=True,
         tags={
             "region": os.getenv("REGION", ""),
         },

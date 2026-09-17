@@ -2696,32 +2696,6 @@ func strippedTestProfile() *profilev1.Profile {
 	}
 }
 
-func TestStripProfileToTotals(t *testing.T) {
-	p := stripTestProfile()
-	stripProfileToTotals(p)
-
-	want := strippedTestProfile()
-	require.Len(t, p.Sample, 1)
-	assert.Equal(t, want.Sample[0].Value, p.Sample[0].Value)
-	assert.Empty(t, p.Sample[0].LocationId)
-	assert.Empty(t, p.Sample[0].Label)
-	assert.Empty(t, p.Location)
-	assert.Empty(t, p.Function)
-	assert.Empty(t, p.Mapping)
-	assert.Equal(t, want.StringTable, p.StringTable)
-	assert.Equal(t, want.SampleType, p.SampleType)
-	assert.Equal(t, want.PeriodType, p.PeriodType)
-	assert.Equal(t, want.SizeVT(), p.SizeVT())
-}
-
-func TestStripProfileToTotals_NoSamples(t *testing.T) {
-	p := stripTestProfile()
-	p.Sample = nil
-	stripProfileToTotals(p)
-	assert.Empty(t, p.Sample)
-	assert.Empty(t, p.Location)
-}
-
 func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distributor, *fakeIngester) {
 	t.Helper()
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
@@ -2828,39 +2802,4 @@ func TestPushSeries_DropSampledOutProfiles(t *testing.T) {
 	ing.mtx.Lock()
 	defer ing.mtx.Unlock()
 	assert.Empty(t, ing.requests)
-}
-
-func TestStripProfileToTotals_SampleLabels(t *testing.T) {
-	p := stripTestProfile()
-	// Indices into the extended string table: span_id=9, abc=10, def=11.
-	p.StringTable = append(p.StringTable, "span_id", "abc", "def")
-	p.Sample = []*profilev1.Sample{
-		{LocationId: []uint64{1}, Value: []int64{1, 10}, Label: []*profilev1.Label{{Key: 9, Str: 10}}},
-		{LocationId: []uint64{2}, Value: []int64{2, 20}, Label: []*profilev1.Label{{Key: 9, Str: 10}}},
-		{LocationId: []uint64{1}, Value: []int64{4, 40}, Label: []*profilev1.Label{{Key: 9, Str: 11}}},
-		{LocationId: []uint64{2}, Value: []int64{8, 80}},
-		// Numeric labels are dropped (as Normalize would do), so this
-		// sample must aggregate with the unlabeled one.
-		{LocationId: []uint64{1}, Value: []int64{16, 160}, Label: []*profilev1.Label{{Key: 9, Num: 42}}},
-	}
-
-	stripProfileToTotals(p)
-
-	require.Len(t, p.Sample, 3)
-	assert.Equal(t, []int64{24, 240}, p.Sample[0].Value)
-	assert.Empty(t, p.Sample[0].Label)
-	assert.Equal(t, []int64{3, 30}, p.Sample[1].Value)
-	require.Len(t, p.Sample[1].Label, 1)
-	assert.Equal(t, "span_id", p.StringTable[p.Sample[1].Label[0].Key])
-	assert.Equal(t, "abc", p.StringTable[p.Sample[1].Label[0].Str])
-	assert.Equal(t, []int64{4, 40}, p.Sample[2].Value)
-	require.Len(t, p.Sample[2].Label, 1)
-	assert.Equal(t, "def", p.StringTable[p.Sample[2].Label[0].Str])
-	for _, s := range p.Sample {
-		assert.Empty(t, s.LocationId)
-	}
-	assert.Empty(t, p.Location)
-	assert.Empty(t, p.Function)
-	assert.Empty(t, p.Mapping)
-	assert.Equal(t, []string{"", "samples", "count", "cpu", "nanoseconds", "span_id", "abc", "def"}, p.StringTable)
 }

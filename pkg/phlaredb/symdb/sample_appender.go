@@ -22,11 +22,11 @@ import (
 //     matches the chunk range. In addition, values are ordered by stack trace
 //     ID without being sorted explicitly.
 type SampleAppender struct {
+	hashmap map[uint32]uint64
 	// Max number of elements in the map.
 	// Once the limit is exceeded, values
 	// are migrated to the chunked set.
 	maxMapSize uint32
-	hashmap    map[uint32]uint64
 	chunkSize  uint32 // Must be a power of 2.
 	chunks     [][]uint64
 	size       int

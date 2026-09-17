@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,12 +12,16 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/user"
 	"github.com/klauspost/compress/gzip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	v1experimental2 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
@@ -978,20 +983,7 @@ func createValidOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
 	}
 }
 
-func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
-	svc := mockotlp.NewMockPushService(t)
-	var capturedTenantID string
-	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
-		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
-		require.NoError(t, err)
-		capturedTenantID = tenantID
-	}).Return(nil, nil)
-
-	logger := test.NewTestingLogger(t)
-	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
-
-	jsonRequest := `{
+const otlpProfileJSON = `{
 		"resourceProfiles": [{
 			"scopeProfiles": [{
 				"profiles": [{
@@ -1009,7 +1001,20 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 		}
 	}`
 
-	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(jsonRequest)))
+func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+	var capturedTenantID string
+	svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+		tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+		require.NoError(t, err)
+		capturedTenantID = tenantID
+	}).Return(nil, nil)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(otlpProfileJSON)))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set(user.OrgIDHeaderName, "json-tenant")
 
@@ -1018,6 +1023,82 @@ func TestHTTPRequestWithJSONAndTenantAccepted(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "json-tenant", capturedTenantID)
+}
+
+func TestHTTPExportErrorStatusCodes(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		pushErr    error
+		wantStatus int
+	}{
+		{
+			name:       "tenant over ingestion limit is a client error (429)",
+			pushErr:    connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("limit of 0 B/month reached, next reset at 2026-08-01T00:00:00Z")),
+			wantStatus: http.StatusTooManyRequests,
+		},
+		{
+			name:       "validation failure is a client error (400)",
+			pushErr:    validation.NewErrorf(validation.ProfileSizeLimit, "profile size exceeds limit"),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "unexpected push failure is a server error (500)",
+			pushErr:    fmt.Errorf("ingester unreachable"),
+			wantStatus: http.StatusInternalServerError,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			svc.On("PushBatch", mock.Anything, mock.Anything).Return(tc.pushErr)
+
+			logger := test.NewTestingLogger(t)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+			httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader([]byte(otlpProfileJSON)))
+			httpReq.Header.Set("Content-Type", "application/json")
+			httpReq.Header.Set(user.OrgIDHeaderName, "tenant-a")
+
+			w := httptest.NewRecorder()
+			httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+
+			assert.Equal(t, tc.wantStatus, w.Code)
+		})
+	}
+}
+
+func TestExportGRPCStatusCodes(t *testing.T) {
+	req := &v1experimental2.ExportProfilesServiceRequest{}
+	require.NoError(t, protojson.Unmarshal([]byte(otlpProfileJSON), req))
+
+	for _, tc := range []struct {
+		name     string
+		pushErr  error
+		wantCode codes.Code
+	}{
+		{
+			name:     "tenant over ingestion limit maps to ResourceExhausted",
+			pushErr:  connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("limit of 0 B/month reached")),
+			wantCode: codes.ResourceExhausted,
+		},
+		{
+			name:     "unexpected push failure stays Unknown",
+			pushErr:  fmt.Errorf("ingester unreachable"),
+			wantCode: codes.Unknown,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			svc.On("PushBatch", mock.Anything, mock.Anything).Return(tc.pushErr)
+
+			logger := test.NewTestingLogger(t)
+			h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+			ctx := user.InjectOrgID(context.Background(), "tenant-a")
+			_, err := h.Export(ctx, req)
+			require.Error(t, err)
+			assert.Equal(t, tc.wantCode, status.Code(err))
+		})
+	}
 }
 
 func TestExportSetsDecompressedSizeForOTLP(t *testing.T) {
@@ -1086,27 +1167,9 @@ func TestHTTPRequestWithGzipCompressionAndJSON(t *testing.T) {
 	logger := test.NewTestingLogger(t)
 	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
 
-	jsonRequest := `{
-		"resourceProfiles": [{
-			"scopeProfiles": [{
-				"profiles": [{
-					"sampleType": {"typeStrindex": 0, "unitStrindex": 1},
-					"samples": [{"stackIndex": 0, "values": [100]}],
-					"timeUnixNano": "1234567890"
-				}]
-			}]
-		}],
-		"dictionary": {
-			"stringTable": ["samples", "count", "test.so"],
-			"mappingTable": [{"memoryStart": "4096", "memoryLimit": "8192", "filenameStrindex": 2}],
-			"locationTable": [{"mappingIndex": 0, "address": "4352"}],
-			"stackTable": [{"locationIndices": [0]}]
-		}
-	}`
-
 	var gzipBuf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&gzipBuf)
-	_, err := gzipWriter.Write([]byte(jsonRequest))
+	_, err := gzipWriter.Write([]byte(otlpProfileJSON))
 	require.NoError(t, err)
 	err = gzipWriter.Close()
 	require.NoError(t, err)

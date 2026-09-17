@@ -1,0 +1,6 @@
+MERGE {children: 2, blocks: 0}
+	READ {children: 0, blocks: 1}
+		id:"1"
+	READ {children: 0, blocks: 2}
+		id:"2"
+		id:"3"

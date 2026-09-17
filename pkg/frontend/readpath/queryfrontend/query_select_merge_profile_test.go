@@ -19,6 +19,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -41,6 +42,7 @@ func newSMPQueryFrontend(
 	return NewQueryFrontend(
 		log.NewNopLogger(),
 		limits,
+		frontend.Config{},
 		metaClient,
 		nil, // tenantServiceClient
 		backend,
@@ -682,6 +684,7 @@ func TestSelectMergeProfiles_Symbolization(t *testing.T) {
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,

@@ -1,4 +1,6 @@
-GITHUB_REPOSITORY ?= grafana/pyroscope
+# Written by tools/update_examples.go and used as the PR body by the cron.
+# Lives under .tmp so that it is not picked up as part of the update itself.
+UPDATE_EXAMPLES_REPORT ?= .tmp/update_examples_report.md
 
 # Sync all example files from templates.
 .PHONY: examples/sync-templates
@@ -13,53 +15,45 @@ examples/check-templates:
 .PHONY: tools/update_examples
 tools/update_examples:
 	docker buildx build --platform linux/amd64 -t update_pyroscope_examples -f tools/update_examples.Dockerfile  tools
-	docker run --rm  --platform=linux/amd64 -e GITHUB_TOKEN=$(GITHUB_TOKEN) -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go"
+	docker run --rm  --platform=linux/amd64 -e GITHUB_TOKEN -v$(shell pwd):/pyroscope -w /pyroscope update_pyroscope_examples bash -l -c "go run tools/update_examples.go -report $(UPDATE_EXAMPLES_REPORT)"
 
-.PHONY: tools/update_examples_pr
-tools/update_examples_pr:
-	git config --local user.name 'Pyroscope Bot'
-	git config --local user.email 'dmitry+bot@pyroscope.io'
-	git checkout -b gh_bot_examples_update
-	git add .
-	git commit -m "chore(examples): update examples"
-	git push -f https://x-access-token:$(GITHUB_TOKEN)@github.com/$(GITHUB_REPOSITORY).git gh_bot_examples_update 2> /dev/null
-	gh pr create --head gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY) || \
-	   gh pr edit gh_bot_examples_update --title "chore(examples): update examples" --body "make tools/update_examples" --repo $(GITHUB_REPOSITORY)
 
+# Deliberately not IMAGE_PREFIX/IMAGE_PLATFORM, whose global defaults point at a
+# different registry and the host architecture.
+RIDESHARE_IMAGE_PREFIX ?= us-docker.pkg.dev/grafanalabs-dev/docker-pyroscope-dev/
+RIDESHARE_IMAGE_PLATFORM ?= linux/amd64
 
 .PHONY: rideshare/docker/push
-rideshare/docker/push: IMAGE_PLATFORM := linux/amd64
-rideshare/docker/push: IMAGE_PREFIX := us-docker.pkg.dev/grafanalabs-dev/docker-pyroscope-dev/
 rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust rideshare/docker/push-nodejs
 
 .PHONY: rideshare/docker/push-golang
 rideshare/docker/push-golang:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG) examples/language-sdk-instrumentation/golang-push/rideshare
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-golang -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG) examples/language-sdk-instrumentation/golang-push/rideshare
 
 .PHONY: rideshare/docker/push-loadgen
 rideshare/docker/push-loadgen:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/language-sdk-instrumentation/golang-push/rideshare/Dockerfile.load-generator examples/language-sdk-instrumentation/golang-push/rideshare
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-loadgen -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/language-sdk-instrumentation/golang-push/rideshare/Dockerfile.load-generator examples/language-sdk-instrumentation/golang-push/rideshare
 
 .PHONY: rideshare/docker/push-python
 rideshare/docker/push-python:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-python -t $(IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG) examples/language-sdk-instrumentation/python/rideshare/flask
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-python -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG) examples/language-sdk-instrumentation/python/rideshare/flask
 
 .PHONY: rideshare/docker/push-ruby
 rideshare/docker/push-ruby:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG) examples/language-sdk-instrumentation/ruby/rideshare_rails
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-ruby -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG) examples/language-sdk-instrumentation/ruby/rideshare_rails
 
 .PHONY: rideshare/docker/push-dotnet
 rideshare/docker/push-dotnet:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet:$(IMAGE_TAG) examples/language-sdk-instrumentation/dotnet/rideshare/
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-dotnet -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-dotnet:$(IMAGE_TAG) examples/language-sdk-instrumentation/dotnet/rideshare/
 
 .PHONY: rideshare/docker/push-java
 rideshare/docker/push-java:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-java -t $(IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG) examples/language-sdk-instrumentation/java/rideshare
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-java -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG) examples/language-sdk-instrumentation/java/rideshare
 
 .PHONY: rideshare/docker/push-rust
 rideshare/docker/push-rust:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG) examples/language-sdk-instrumentation/rust/rideshare
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-rust -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG) examples/language-sdk-instrumentation/rust/rideshare
 
 .PHONY: rideshare/docker/push-nodejs
 rideshare/docker/push-nodejs:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-nodejs -t $(IMAGE_PREFIX)pyroscope-rideshare-nodejs:$(IMAGE_TAG) examples/language-sdk-instrumentation/nodejs/express
+	docker buildx build --push --platform $(RIDESHARE_IMAGE_PLATFORM) -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-nodejs -t $(RIDESHARE_IMAGE_PREFIX)pyroscope-rideshare-nodejs:$(IMAGE_TAG) examples/language-sdk-instrumentation/nodejs/express

@@ -197,7 +197,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
 	f.BoolVar(&l.MaxFlameGraphNodesOnSelectMergeProfile, "querier.max-flamegraph-nodes-on-select-merge-profile", false, "Enforce the max nodes limits and defaults on SelectMergeProfile API. Historically this limit was not enforced to enable to gather full pprof profiles without truncation.")
 
-	f.BoolVar(&l.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals and labels with stacktraces stripped (marked __sampled__) instead of dropping it.")
+	f.BoolVar(&l.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals as a single sample with stacktraces and sample labels stripped (marked __sampled__) instead of dropping it.")
 	f.BoolVar(&l.IncludeStrippedProfiles, "query-backend.include-stripped-profiles", false, "Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.")
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")

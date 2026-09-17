@@ -26,13 +26,16 @@ Pyroscope最有用的功能之一是能够以对你有意义的方式来标记�
 标记一些静态的东西，如`reigon`，可以在初始化代码中的`config.tags`变量中完成:
 ```
 pyroscope.configure(
-    app_name       = "ride-sharing-app",
-    server_address = "http://pyroscope:4040",
-    tags           = {
+    application_name = "ride-sharing-app",
+    server_address   = "http://pyroscope:4040",
+    mem_enabled      = True,
+    tags             = {
         "region":   f'{os.getenv("REGION")}', # 根据环境变量标记该区域
     }
 )
 ```
+
+内存分析与 CPU 分析同时运行，并生成累计分配对象、累计分配空间、当前使用对象和当前使用空间四种分析数据。示例会保留一个有上限的滚动分配窗口，从而生成有意义的累计和实时内存分析数据，而不会无限增加内存使用量。
 
 ## 在函数中动态地添加标签
 像我们对 `vehicle` 标签所做的那样，可以在我们的实用程序 `find_nearest_vehicle()` 函数中使用 `with pyroscope.tag_wrapper()` 上下文区块来完成更动态的标记
@@ -107,4 +110,4 @@ docker-compose up --build
 ### 未来路线图
 我们希望你能尝试一下这个例子，看看你能用什么方式来适配你的 python 应用。持续剖析已经成为监测和调试性能问题的一个越来越流行的工具（可以说是可观察性的第四个支柱）。
 
-我们希望通过增加与流行工具的集成、内存分析等内容来继续改进这个pip包，我们很想听听 _你希望看到的功能_。
+我们希望通过增加与流行工具的集成来继续改进这个pip包，我们很想听听 _你希望看到的功能_。

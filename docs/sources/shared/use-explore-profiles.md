@@ -57,3 +57,6 @@ Flame graphs help you visualize resource allocation and performance bottlenecks,
 
 On views with a flame graph, you can use **Explain flame graph** to provide an AI flame graph analysis that explains the performance bottleneck, root cause, and recommended fix.
 For more information, refer to [Flame graph AI](https://grafana.com/docs/grafana-cloud/monitor-applications/profiles/flamegraph-ai/).
+
+The flame graph view offers **Top table**, **Flame graph**, and **Call tree** views of your profiling data.
+For details about each view, refer to [Flame graph visualization panel](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/visualizations/flame-graph/).

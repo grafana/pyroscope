@@ -85,9 +85,13 @@ buf/lint: $(BIN)/buf
 	cd api/ && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 	cd pkg && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
+# api and lidia are separate modules: `./...` does not cross module
+# boundaries, so each needs its own invocation.
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --rerun-fails=2 --packages "$$(go list ./... ./lidia/... | grep -v /test/integration)" -- $(GO_TEST_FLAGS)
+	$(BIN)/gotestsum --rerun-fails=2 --packages "$$(go list ./... | grep -v /test/integration)" -- $(GO_TEST_FLAGS)
+	cd api && $(BIN)/gotestsum --rerun-fails=2 --packages ./... -- $(GO_TEST_FLAGS)
+	cd lidia && $(BIN)/gotestsum --rerun-fails=2 --packages ./... -- $(GO_TEST_FLAGS)
 
 .PHONY: go/test-integration
 go/test-integration: $(BIN)/gotestsum
@@ -197,8 +201,10 @@ go/bin-profilecli:
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
-	$(BIN)/golangci-lint run ./... ./lidia/...
-	$(GO) vet ./... ./lidia/...
+	$(BIN)/golangci-lint run ./...
+	$(GO) vet ./...
+	cd api && $(BIN)/golangci-lint run ./... && $(GO) vet ./...
+	cd lidia && $(BIN)/golangci-lint run ./... && $(GO) vet ./...
 
 .PHONY: update-contributors
 update-contributors: ## Update the contributors in README.md
@@ -210,9 +216,7 @@ go/mod: $(foreach P,$(GO_MOD_PATHS),go/mod_tidy/$P)
 .PHONY: go/mod_tidy_root
 go/mod_tidy_root:
 	GO111MODULE=on go mod download
-	# doesn't work for go workspace
-	# GO111MODULE=on go mod verify
-	go work sync
+	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
 
 .PHONY: go/mod_tidy/%

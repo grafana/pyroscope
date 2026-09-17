@@ -114,6 +114,7 @@ type Distributor struct {
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
+	stripper               *sampling.ProfileStripper
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -124,6 +125,7 @@ type Distributor struct {
 	bytesReceivedStats      *usagestats.Statistics
 	bytesReceivedTotalStats *usagestats.Counter
 	profileReceivedStats    *usagestats.MultiCounter
+	profileScopeStats       *usagestats.MultiCounter
 	profileSizeStats        *usagestats.MultiStatistics
 
 	router        *writepath.Router
@@ -192,7 +194,9 @@ func New(
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
+		profileScopeStats:       usagestats.NewMultiCounter("distributor_profiles_received_by_scope", "scope"),
 		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
+		stripper:                sampling.NewProfileStripper(),
 	}
 
 	ingesterRoute := writepath.IngesterFunc(d.sendRequestsToIngester)
@@ -528,7 +532,7 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	now := model.Now()
 
 	logger := spanlogger.FromContext(ctx, log.With(d.logger, "tenant", tenantID))
-	finalLog := newPushLog(13)
+	finalLog := newPushLog(15)
 	defer func() {
 		finalLog.log(logger, err)
 	}()
@@ -541,6 +545,15 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		finalLog.addFields("service_name", serviceName)
 	}
 	sort.Sort(phlaremodel.Labels(req.Labels))
+	labels := phlaremodel.Labels(req.Labels)
+	scopeName := labels.Get(phlaremodel.LabelNameOTELScopeName)
+	scopeVersion := labels.Get(phlaremodel.LabelNameOTELScopeVersion)
+	if scopeName != "" {
+		finalLog.addFields("otel_scope_name", scopeName)
+	}
+	if scopeVersion != "" {
+		finalLog.addFields("otel_scope_version", scopeVersion)
+	}
 
 	if req.ID != "" {
 		finalLog.addFields("profile_id", req.ID)
@@ -593,12 +606,12 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 			groups.CountDiscardedBytes(string(validation.SkippedBySamplingRules), req.TotalBytesUncompressed)
 			return nil
 		}
-		finalLog.msg = "stripping profile stacktraces, keeping samples and labels"
+		finalLog.msg = "stripping profile stacktraces, keeping totals"
 
 		// Language detection reads the string table, which is about to be
 		// stripped; the result is cached in the request.
 		d.GetProfileLanguage(req)
-		stripProfileToTotals(req.Profile.Profile)
+		d.stripper.StripToTotals(req.Profile.Profile)
 		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
 
 		// The stripped part of the profile is discarded, and from here on
@@ -622,6 +635,9 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 
 	usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 	d.profileReceivedStats.Inc(1, profLanguage)
+	usageScopeName, usageScopeVersion := sanitizeScopeForUsage(scopeName, scopeVersion)
+	d.metrics.profilesReceived.WithLabelValues(tenantID, usageScopeName, usageScopeVersion).Inc()
+	d.profileScopeStats.Inc(1, usageScopeName)
 	if origin == distributormodel.RawProfileTypePPROF {
 		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(req.RawProfile)))
 	}
@@ -937,98 +953,6 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 	}
 
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
-}
-
-// stripProfileToTotals reduces the profile to one sample per distinct
-// sample label set, each holding the summed values of its group:
-// stacktraces and symbols are dropped, only the totals are kept.
-// Sample labels survive so that span- and trace-attributed totals
-// remain distinguishable.
-func stripProfileToTotals(p *profilev1.Profile) {
-	kept := p.Sample[:0]
-	for _, s := range p.Sample {
-		// Mirror Normalize: non-string labels are unsupported, and samples
-		// it would drop (value length mismatch, negative values) must not
-		// contribute to the totals.
-		if len(s.Value) != len(p.SampleType) || hasNegativeValue(s) {
-			continue
-		}
-		s.Label = dropNonStringLabels(s.Label)
-		sort.Sort(pprof.LabelsByKeyValue(s.Label))
-		kept = append(kept, s)
-	}
-	p.Sample = kept
-	sort.Sort(pprof.SamplesByLabels(p.Sample))
-	groups := pprof.GroupSamplesByLabels(p)
-	totals := make([]*profilev1.Sample, len(groups))
-	for i, g := range groups {
-		total := &profilev1.Sample{Value: make([]int64, len(p.SampleType)), Label: g.Labels}
-		for _, s := range g.Samples {
-			for j, v := range s.Value {
-				total.Value[j] += v
-			}
-		}
-		totals[i] = total
-	}
-	p.Sample = totals
-
-	p.Location = nil
-	p.Function = nil
-	p.Mapping = nil
-
-	oldStrings := p.StringTable
-	newStrings := []string{""}
-	remap := map[int64]int64{0: 0}
-	intern := func(old int64) int64 {
-		if n, ok := remap[old]; ok {
-			return n
-		}
-		n := int64(len(newStrings))
-		newStrings = append(newStrings, oldStrings[old])
-		remap[old] = n
-		return n
-	}
-	p.DropFrames = intern(p.DropFrames)
-	p.KeepFrames = intern(p.KeepFrames)
-	p.DefaultSampleType = intern(p.DefaultSampleType)
-	for _, vt := range p.SampleType {
-		vt.Type = intern(vt.Type)
-		vt.Unit = intern(vt.Unit)
-	}
-	if p.PeriodType != nil {
-		p.PeriodType.Type = intern(p.PeriodType.Type)
-		p.PeriodType.Unit = intern(p.PeriodType.Unit)
-	}
-	for i, c := range p.Comment {
-		p.Comment[i] = intern(c)
-	}
-	for _, s := range p.Sample {
-		for _, l := range s.Label {
-			l.Key = intern(l.Key)
-			l.Str = intern(l.Str)
-			l.NumUnit = intern(l.NumUnit)
-		}
-	}
-	p.StringTable = newStrings
-}
-
-func dropNonStringLabels(labels []*profilev1.Label) []*profilev1.Label {
-	kept := labels[:0]
-	for _, l := range labels {
-		if l.Str != 0 {
-			kept = append(kept, l)
-		}
-	}
-	return kept
-}
-
-func hasNegativeValue(s *profilev1.Sample) bool {
-	for _, v := range s.Value {
-		if v < 0 {
-			return true
-		}
-	}
-	return false
 }
 
 // profileSizeBytes returns the size of symbols and samples in bytes from a given fullSize.

@@ -97,8 +97,8 @@ func newCRC32() hash.Hash32 {
 }
 
 type symbolCacheEntry struct {
-	index          uint32
 	lastValue      string
+	index          uint32
 	lastValueIndex uint32
 }
 
@@ -1622,25 +1622,58 @@ func (r *Reader) LabelValues(name string, matchers ...*labels.Matcher) ([]string
 // LabelNamesFor returns all the label names for the series referred to by IDs.
 // The names returned are sorted.
 func (r *Reader) LabelNamesFor(ids ...storage.SeriesRef) ([]string, error) {
+	return r.labelNamesFor(func(yield func(storage.SeriesRef) bool) error {
+		for _, id := range ids {
+			if !yield(id) {
+				break
+			}
+		}
+		return nil
+	})
+}
+
+// LabelNamesForPostings returns all label names used by the series in postings.
+func (r *Reader) LabelNamesForPostings(postings Postings) ([]string, error) {
+	return r.labelNamesFor(func(yield func(storage.SeriesRef) bool) error {
+		for postings.Next() {
+			if !yield(postings.At()) {
+				break
+			}
+		}
+		return postings.Err()
+	})
+}
+
+func (r *Reader) labelNamesFor(iterate func(func(storage.SeriesRef) bool) error) ([]string, error) {
 	// Gather offsetsMap the name offsetsMap in the symbol table first
 	offsetsMap := make(map[uint32]struct{})
-	for _, id := range ids {
+	var decodeErr error
+	err := iterate(func(id storage.SeriesRef) bool {
 		// Series IDs are 16-byte padded; the ID is the multiple of 16 of the actual position.
 		offset := id * 16
 
 		d := encoding.DecWrap(tsdb_enc.NewDecbufUvarintAt(r.b, int(offset), castagnoliTable))
 		buf := d.Get()
 		if d.Err() != nil {
-			return nil, fmt.Errorf("get buffer for series: %w", d.Err())
+			decodeErr = fmt.Errorf("get buffer for series: %w", d.Err())
+			return false
 		}
 
 		offsets, err := r.dec.LabelNamesOffsetsFor(buf)
 		if err != nil {
-			return nil, fmt.Errorf("get label name offsets: %w", err)
+			decodeErr = fmt.Errorf("get label name offsets: %w", err)
+			return false
 		}
 		for _, off := range offsets {
 			offsetsMap[off] = struct{}{}
 		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	if decodeErr != nil {
+		return nil, decodeErr
 	}
 
 	// Lookup the unique symbols.

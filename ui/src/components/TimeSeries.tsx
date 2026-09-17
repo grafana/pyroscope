@@ -35,8 +35,7 @@ export function TimeSeries({
     startFrac: number;
     currentFrac: number;
   } | null>(null);
-  const dragRef = useRef(drag);
-  dragRef.current = drag;
+  const startFracRef = useRef(0);
   const timeRef = useRef({ rangeStart: 0, durationMs: 0, onRangeSelect });
 
   const isDragging = drag !== null;
@@ -53,7 +52,7 @@ export function TimeSeries({
     };
     const onUp = (e: MouseEvent) => {
       const frac = getX(e);
-      const startFrac = dragRef.current!.startFrac;
+      const startFrac = startFracRef.current;
       const { rangeStart, durationMs, onRangeSelect } = timeRef.current;
       const lo = Math.min(startFrac, frac);
       const hi = Math.max(startFrac, frac);
@@ -73,10 +72,6 @@ export function TimeSeries({
     };
   }, [isDragging]);
 
-  if (n === 0) {
-    return <Empty />;
-  }
-
   // eslint-disable-next-line react-hooks/purity
   const rangeEnd = endMs ?? Date.now();
   const durationMs =
@@ -84,7 +79,16 @@ export function TimeSeries({
       ? endMs - startMs
       : parseRangeMs(timeRange);
   const rangeStart = rangeEnd - durationMs;
-  timeRef.current = { rangeStart, durationMs, onRangeSelect };
+
+  // Written in an effect rather than during render (react-hooks/refs); the
+  // window-level mouseup handler reads the latest committed values from it.
+  useEffect(() => {
+    timeRef.current = { rangeStart, durationMs, onRangeSelect };
+  });
+
+  if (n === 0) {
+    return <Empty />;
+  }
 
   const max = Math.max(...data.map((d) => d.value));
   const norm = max === 0 ? data.map(() => 0) : data.map((d) => d.value / max);
@@ -179,6 +183,7 @@ export function TimeSeries({
               0,
               Math.min(1, (e.clientX - rect.left) / rect.width),
             );
+            startFracRef.current = frac;
             setDrag({ startFrac: frac, currentFrac: frac });
           }}
         >

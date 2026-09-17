@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -104,7 +105,11 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			sp.LogError(err)
 			sp.SetError()
 			otelSpan.AddEvent(msg)
-			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
+			if connect.CodeOf(err) == connect.CodeResourceExhausted {
+				httputil.ErrorWithStatus(w, err, http.StatusTooManyRequests)
+			} else {
+				httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
+			}
 		}
 	}
 }

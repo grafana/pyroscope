@@ -69,7 +69,7 @@ func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 	for _, m := range matchers {
 		s, err := phlaremodel.ParseMetricSelector(m)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse label selector %q: %w", s, err)
+			return nil, fmt.Errorf("failed to parse label selector %q: %w", m, err)
 		}
 		parsed = append(parsed, s...)
 	}

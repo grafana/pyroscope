@@ -2,7 +2,6 @@ package jfr
 
 import (
 	"bytes"
-	"github.com/klauspost/compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 	jfrPprof "github.com/grafana/jfr-parser/pprof"
 	jfrPprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
+	"github.com/klauspost/compress/gzip"
 
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -130,24 +130,28 @@ func loadJFRFromForm(r []byte, contentType string, maxBytes int) ([]byte, *jfrPp
 	return jfrField, labels, nil
 }
 
+// decompress gunzips bs if it is gzip-compressed, rejecting payloads whose
+// decompressed size exceeds maxBytes. maxBytes of 0 means no limit.
 func decompress(bs []byte, maxBytes int) ([]byte, error) {
-	var err error
 	if len(bs) < 2 {
 		return nil, fmt.Errorf("failed to read magic")
 	} else if bs[0] == 0x1f && bs[1] == 0x8b {
-		var gzipr *gzip.Reader
-		gzipr, err = gzip.NewReader(bytes.NewReader(bs))
-		defer gzipr.Close()
+		gzipr, err := gzip.NewReader(bytes.NewReader(bs))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read gzip header: %w", err)
 		}
-		// Use maxBytes+1 to detect if limit is exceeded
-		limitReader := io.LimitReader(gzipr, int64(maxBytes+1))
+		defer gzipr.Close()
+
+		var r io.Reader = gzipr
+		if maxBytes > 0 {
+			// Use maxBytes+1 to detect if limit is exceeded
+			r = io.LimitReader(gzipr, int64(maxBytes)+1)
+		}
 		buf := bytes.NewBuffer(nil)
-		if _, err = io.Copy(buf, limitReader); err != nil {
+		if _, err = io.Copy(buf, r); err != nil {
 			return nil, fmt.Errorf("failed to decompress jfr: %w", err)
 		}
-		if buf.Len() > maxBytes {
+		if maxBytes > 0 && buf.Len() > maxBytes {
 			return nil, fmt.Errorf("decompressed size exceeds maximum allowed size of %d bytes", maxBytes)
 		}
 		return buf.Bytes(), nil

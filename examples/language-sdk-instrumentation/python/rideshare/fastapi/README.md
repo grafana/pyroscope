@@ -13,4 +13,12 @@ docker compose up --build
 docker compose down
 ```
 
-Navigate to [Grafana](http://localhost:3000/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-serviceName=ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds) to explore profiles.
+Navigate to Grafana to explore the generated profiles:
+
+- [CPU](http://localhost:3000/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-serviceName=ride-sharing-app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds)
+- [Allocated space](http://localhost:3000/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-serviceName=ride-sharing-app&var-profileMetricId=memory:alloc_space:bytes:space:bytes)
+- [Space in use](http://localhost:3000/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-serviceName=ride-sharing-app&var-profileMetricId=memory:inuse_space:bytes:space:bytes)
+
+The rideshare workload retains a bounded window of allocations. Filter by the
+`vehicle` label to compare memory behavior across the bike, scooter, and car
+endpoints.

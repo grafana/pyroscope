@@ -1,7 +1,8 @@
 package timeseries
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"github.com/samber/lo"
 
@@ -81,8 +82,8 @@ Outer:
 		}
 	}
 	series := lo.Values(seriesMap)
-	sort.Slice(series, func(i, j int) bool {
-		return phlaremodel.CompareLabelPairs(series[i].Labels, series[j].Labels) < 0
+	slices.SortFunc(series, func(a, b *typesv1.Series) int {
+		return phlaremodel.CompareLabelPairs(a.Labels, b.Labels)
 	})
 	return series
 }
@@ -93,8 +94,8 @@ func selectTopNExemplarsProto(exemplars []*typesv1.Exemplar, maxExemplars int) [
 		return exemplars
 	}
 
-	sort.Slice(exemplars, func(i, j int) bool {
-		return exemplars[i].Value > exemplars[j].Value
+	slices.SortFunc(exemplars, func(a, b *typesv1.Exemplar) int {
+		return cmp.Compare(b.Value, a.Value)
 	})
 	return exemplars[:maxExemplars]
 }

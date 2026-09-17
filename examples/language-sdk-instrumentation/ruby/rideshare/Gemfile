@@ -4,7 +4,7 @@ source "https://rubygems.org"
 
 git_source(:github) { |repo_name| "https://github.com/#{repo_name}" }
 
-gem 'pyroscope', '= 1.0.1'
+gem 'pyroscope', '= 1.0.7'
 gem "sinatra", "~> 4.2"
 gem "thin", "~> 2.0"
 gem 'pyroscope-otel'
@@ -12,4 +12,4 @@ gem 'opentelemetry-sdk'
 gem 'opentelemetry-exporter-otlp'
 
 gem "rackup", "~> 2.2"
-gem "puma", "~> 6.6"
+gem "puma", "~> 7.2"

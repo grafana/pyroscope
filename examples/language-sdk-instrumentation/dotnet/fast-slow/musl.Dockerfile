@@ -1,4 +1,4 @@
-ARG PROFILER_VERSION=1.0.0
+ARG PROFILER_VERSION=1.5.1
 
 # Fetch the profiler artifacts from the GitHub release.
 FROM alpine:3 AS sdk

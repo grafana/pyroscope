@@ -145,6 +145,12 @@ func main() {
 	recordingRulesDeleteId := recordingRulesDeleteCmd.Arg("rule_id", "Recording rule Id to delete").Required().String()
 	recordingRulesParams := addRecordingRulesListParams(recordingRulesCmd)
 
+	replayCmd := app.Command("replay", "Dump profile data from a source cell and replay it into a destination cell.")
+	replayDumpCmd := replayCmd.Command("dump", "Query a source cell's metastore and bucket, and write the matching profiles to a standalone dump file.")
+	replayDumpParams := addReplayDumpParams(replayDumpCmd)
+	replayPushCmd := replayCmd.Command("push", "Continuously push profiles from a dump file into a destination cell, looping over the recorded time window.")
+	replayPushParams := addReplayPushParams(replayPushCmd)
+
 	debuginfoCmd := app.Command("debuginfo", "Operations on debuginfo (experimental).")
 	debuginfoUploadCmd := debuginfoCmd.Command("upload", "Upload debuginfo.")
 	debuginfoUploadParams := addDebuginfoUploadParams(debuginfoUploadCmd)
@@ -278,6 +284,14 @@ func main() {
 		}
 	case recordingRulesDeleteCmd.FullCommand():
 		if err := deleteRecordingRule(ctx, recordingRulesDeleteId, recordingRulesParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case replayDumpCmd.FullCommand():
+		if err := replayDump(ctx, replayDumpParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case replayPushCmd.FullCommand():
+		if err := replayPush(ctx, replayPushParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case debuginfoUploadCmd.FullCommand():

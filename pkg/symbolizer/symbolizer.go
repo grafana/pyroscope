@@ -76,7 +76,9 @@ func New(logger log.Logger, cfg Config, reg prometheus.Registerer, storageBucket
 	}
 	m := newMetrics(reg)
 
-	client, err := NewDebuginfodClient(logger, cfg.DebuginfodURL, m, limits)
+	clientCfg := defaultDebuginfodClientConfig(cfg.DebuginfodURL)
+	clientCfg.MaxConcurrentFetches = cfg.MaxDebuginfodConcurrency
+	client, err := NewDebuginfodClientWithConfig(logger, clientCfg, m, limits)
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +433,18 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", statusSuccess).Inc()
 		return lidiaBytes, nil
 	}
-	s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "miss").Inc()
+	if ctx.Err() != nil {
+		// The caller is gone, not the bucket.
+		return nil, err
+	}
+	if errors.Is(err, errObjectNotFound) {
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "miss").Inc()
+	} else {
+		// The cache probe is best-effort: debuginfod can still serve the
+		// build ID during a bucket outage.
+		s.metrics.cacheOperations.WithLabelValues("object_storage", "get", "error").Inc()
+		level.Warn(s.logger).Log("msg", "lidia cache probe failed, falling back to debuginfod", "buildID", buildID, "err", err)
+	}
 
 	lidiaBytes, err = s.fetchLidiaFromDebuginfod(ctx, buildID)
 	if err != nil {
@@ -452,6 +465,9 @@ func (s *Symbolizer) getLidiaBytes(ctx context.Context, buildID string) ([]byte,
 func (s *Symbolizer) fetchLidiaFromObjectStore(ctx context.Context, tenantID, buildID string) ([]byte, error) {
 	objstoreReader, err := s.bucket.Get(ctx, lidiaObjectPath(tenantID, buildID))
 	if err != nil {
+		if objstore.IsNotExist(s.bucket, err) {
+			return nil, errObjectNotFound
+		}
 		return nil, err
 	}
 	defer objstoreReader.Close()

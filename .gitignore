@@ -41,3 +41,7 @@ tools/k6/.env
 # grafana/shared-workflows composite action dockerhub-login check itself out
 # into the working tree, which trips goreleaser's dirty-state check.
 /_shared-workflows-dockerhub-login/
+
+# Local Go workspace files — the repo builds in plain module mode
+/go.work
+/go.work.sum

@@ -37,9 +37,8 @@ GEM
     googleapis-common-protos-types (1.16.0)
       google-protobuf (>= 3.18, < 5.a)
     logger (1.7.0)
-    mustermann (3.0.3)
-      ruby2_keywords (~> 0.0.1)
-    nio4r (2.7.4)
+    mustermann (3.1.1)
+    nio4r (2.7.5)
     opentelemetry-api (1.5.0)
     opentelemetry-common (0.21.0)
       opentelemetry-api (~> 1.0)
@@ -59,7 +58,7 @@ GEM
       opentelemetry-semantic_conventions
     opentelemetry-semantic_conventions (1.10.1)
       opentelemetry-api (~> 1.0)
-    puma (6.6.0)
+    puma (7.2.1)
       nio4r (~> 2.0)
     pyroscope (0.6.4)
       ffi
@@ -75,7 +74,7 @@ GEM
       opentelemetry-api (~> 1.1)
       pyroscope (>= 0.5.1, < 1.0)
     rack (3.2.6)
-    rack-protection (4.1.1)
+    rack-protection (4.2.1)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
       rack (>= 3.0.0, < 4)
@@ -85,12 +84,11 @@ GEM
     rackup (2.2.1)
       rack (>= 3)
     rake (13.2.1)
-    ruby2_keywords (0.0.5)
-    sinatra (4.1.1)
+    sinatra (4.2.1)
       logger (>= 1.6.0)
       mustermann (~> 3.0)
       rack (>= 3.0.0, < 4)
-      rack-protection (= 4.1.1)
+      rack-protection (= 4.2.1)
       rack-session (>= 2.0.0, < 3)
       tilt (~> 2.0)
     thin (2.0.1)
@@ -98,7 +96,7 @@ GEM
       eventmachine (~> 1.0, >= 1.0.4)
       logger
       rack (>= 1, < 4)
-    tilt (2.6.0)
+    tilt (2.8.0)
 
 PLATFORMS
   aarch64-linux
@@ -119,11 +117,11 @@ PLATFORMS
 DEPENDENCIES
   opentelemetry-exporter-otlp
   opentelemetry-sdk
-  puma (~> 6.6)
+  puma (~> 7.2)
   pyroscope (= 0.6.4)
   pyroscope-otel
   rackup (~> 2.2)
-  sinatra (~> 4.1)
+  sinatra (~> 4.2)
   thin (~> 2.0)
 
 BUNDLED WITH

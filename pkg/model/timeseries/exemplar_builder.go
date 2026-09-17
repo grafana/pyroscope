@@ -1,7 +1,9 @@
 package timeseries
 
 import (
-	"sort"
+	"cmp"
+	"slices"
+	"strings"
 
 	"github.com/prometheus/common/model"
 
@@ -65,11 +67,11 @@ func (eb *exemplarBuilder) Build() []*typesv1.Exemplar {
 		return nil
 	}
 
-	sort.Slice(eb.exemplars, func(i, j int) bool {
-		if eb.exemplars[i].timestamp != eb.exemplars[j].timestamp {
-			return eb.exemplars[i].timestamp < eb.exemplars[j].timestamp
+	slices.SortFunc(eb.exemplars, func(a, b exemplar) int {
+		if c := cmp.Compare(a.timestamp, b.timestamp); c != 0 {
+			return c
 		}
-		return eb.exemplars[i].profileID < eb.exemplars[j].profileID
+		return strings.Compare(a.profileID, b.profileID)
 	})
 
 	return eb.deduplicateAndIntersect()

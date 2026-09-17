@@ -45,11 +45,17 @@ Tagging something static, like the `region`, can be done in the initialization c
 pyroscope.configure(
     application_name       = "ride-sharing-app",
     server_address         = "http://pyroscope:4040",
+    mem_enabled            = True,
     tags                   = {
         "region":   f'{os.getenv("REGION")}', # Tags the region based off the environment variable
     }
 )
 ```
+
+Memory profiling runs alongside CPU profiling and emits allocated objects,
+allocated space, objects in use, and space in use profiles. The rideshare
+workload retains a bounded rotating window of allocations so both cumulative
+and live-memory profiles contain useful data.
 
 ## Tagging dynamically within functions
 
@@ -134,4 +140,4 @@ We have been beta testing this feature with several different companies and some
 
 We would love for you to try out this example and see what ways you can adapt this to your python application. Continuous profiling has become an increasingly popular tool for the monitoring and debugging of performance issues (arguably the fourth pillar of observability).
 
-We'd love to continue to improve this pip package by adding things like integrations with popular tools, memory profiling, etc. and we would love to hear what features _you would like to see_.
+We'd love to continue to improve this pip package with integrations for popular tools, and we would love to hear what features _you would like to see_.
