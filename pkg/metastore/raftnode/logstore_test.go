@@ -118,7 +118,11 @@ func newTestLogStore(t *testing.T, store raft.LogStore, timeout time.Duration) (
 	writeLatency, timeouts := testMetrics()
 	logStore, err := newTimeoutLogStore(store, timeout, writeLatency, timeouts)
 	require.NoError(t, err)
-	return logStore.(*timeoutLogStore), timeouts
+	s := logStore.(*timeoutLogStore)
+	// Registered after openWAL's cleanup and before any gate cleanup, so
+	// gates are released and in-flight writes finish before the WAL closes.
+	t.Cleanup(func() { waitForLogStoreWrite(t, s) })
+	return s, timeouts
 }
 
 func openWAL(t *testing.T) *raftwal.WAL {
@@ -147,6 +151,19 @@ func waitForGate(t *testing.T, gate *writeGate) {
 	case <-gate.entered:
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for write to enter gate")
+	}
+}
+
+// waitForLogStoreWrite waits for an abandoned write to return, not just for
+// its entries to become visible. Callers must release any gate first and
+// must not dispatch new writes concurrently with this helper.
+func waitForLogStoreWrite(t *testing.T, store *timeoutLogStore) {
+	t.Helper()
+	select {
+	case <-store.writeToken:
+		store.writeToken <- struct{}{}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for in-flight log store write to finish")
 	}
 }
 
@@ -179,6 +196,10 @@ func TestTimeoutLogStore_AbandonedWriteRetry(t *testing.T) {
 	require.Equal(t, float64(1), testutil.ToFloat64(timeouts))
 
 	gate.unblock()
+	waitForLogStoreWrite(t, logStore)
+	// Only the deliberately blocked writes need a short deadline. Recovery
+	// performs real disk I/O, which may be slow under race instrumentation.
+	logStore.timeout = 5 * time.Second
 	waitForLastIndex(t, wal, 1)
 	require.NoError(t, logStore.StoreLogs([]*raft.Log{entry(1, 1)}))
 	require.NoError(t, logStore.StoreLogs([]*raft.Log{entry(2, 1)}))
@@ -261,6 +282,8 @@ func TestTimeoutLogStore_WaitingWriteIsNotDispatched(t *testing.T) {
 	require.Equal(t, float64(2), testutil.ToFloat64(timeouts))
 
 	gate.unblock()
+	waitForLogStoreWrite(t, logStore)
+	logStore.timeout = 5 * time.Second
 	waitForLastIndex(t, wal, 1)
 	require.Equal(t, 1, gated.writeCount())
 	require.NoError(t, logStore.StoreLogs([]*raft.Log{entry(2, 1)}))
@@ -269,9 +292,11 @@ func TestTimeoutLogStore_WaitingWriteIsNotDispatched(t *testing.T) {
 
 func TestTimeoutLogStore_DeleteRangeTimesOutWaitingForWrite(t *testing.T) {
 	wal := openWAL(t)
+	// Seed the WAL before wrapping it so setup is not subject to the short
+	// deadline used to exercise timeout handling below.
+	require.NoError(t, wal.StoreLogs(entries(1, 2, 1)))
 	gated := newGatedLogStore(wal)
 	logStore, _ := newTestLogStore(t, gated, 75*time.Millisecond)
-	require.NoError(t, logStore.StoreLogs(entries(1, 2, 1)))
 	gate := gated.arm()
 	t.Cleanup(gate.unblock)
 
@@ -283,6 +308,8 @@ func TestTimeoutLogStore_DeleteRangeTimesOutWaitingForWrite(t *testing.T) {
 	require.Equal(t, 0, gated.deleteCount())
 
 	gate.unblock()
+	waitForLogStoreWrite(t, logStore)
+	logStore.timeout = 5 * time.Second
 	waitForLastIndex(t, wal, 3)
 	require.NoError(t, logStore.DeleteRange(1, 2))
 	require.Equal(t, 1, gated.deleteCount())
