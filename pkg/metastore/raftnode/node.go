@@ -266,7 +266,10 @@ func (n *Node) openStore() (err error) {
 		n.logStore = n.config.LogStoreMiddleware(n.logStore)
 	}
 
-	n.logStore = newTimeoutLogStore(n.logStore, n.config.LogStoreTimeout, n.metrics.logStoreWrite, n.metrics.logStoreTimeout)
+	n.logStore, err = newTimeoutLogStore(n.logStore, n.config.LogStoreTimeout, n.metrics.logStoreWrite, n.metrics.logStoreTimeout)
+	if err != nil {
+		return fmt.Errorf("initialize timeout log store: %w", err)
+	}
 	n.stableStore = n.wal
 	n.snapshotStore = n.snapshots
 	return nil
