@@ -3407,6 +3407,14 @@ distributor_usage_groups:
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
 
+# (advanced) If true, the write path doesn't wait for the segment-writer to
+# durably store and index the profile before responding. This reduces ingestion
+# latency and allows a larger -segment-writer.segment-duration, but removes the
+# read-after-write consistency and synchronous durability guarantee. Writes to
+# the ingester are always synchronous.
+# CLI flag: -async-ingest
+[async_ingest: <boolean> | default = false]
+
 # Retention period for the data. 0 means data never deleted.
 # CLI flag: -retention-period
 [retention_period: <duration> | default = 31d]
