@@ -53,7 +53,7 @@ func run(m *testing.M) (code int) {
 
 	// ── 2. Helm chart dependencies ────────────────────────────────────────────
 	fmt.Println("==> Updating Helm chart dependencies")
-	_ = helm("repo", "add", "minio", "https://charts.min.io/")
+	_ = helm("repo", "add", "seaweedfs", "https://seaweedfs.github.io/seaweedfs/helm")
 	_ = helm("repo", "add", "grafana", "https://grafana.github.io/helm-charts")
 	if err := helm("dependency", "update", chartDir); err != nil {
 		fmt.Fprintf(os.Stderr, "helm dependency update: %v\n", err)

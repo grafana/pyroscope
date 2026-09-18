@@ -107,8 +107,10 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    pyroscope-ingester-0                    1/1     Running   0          5s
    pyroscope-ingester-1                    1/1     Running   0          37s
    pyroscope-ingester-2                    1/1     Running   0          69s
-   pyroscope-minio-0                       1/1     Running   0          3m23s
-   pyroscope-querier-66bf58dfcc-89gb8      1/1     Running   0          3m23s
+    pyroscope-seaweedfs-filer-0              1/1     Running   0          3m23s
+    pyroscope-seaweedfs-master-0             1/1     Running   0          3m23s
+    pyroscope-seaweedfs-volume-0             1/1     Running   0          3m23s
+    pyroscope-querier-66bf58dfcc-89gb8      1/1     Running   0          3m23s
    pyroscope-querier-66bf58dfcc-p7lnc      1/1     Running   0          3m23s
    pyroscope-querier-66bf58dfcc-zbggm      1/1     Running   0          3m23s
    ```
