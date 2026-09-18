@@ -32,6 +32,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/util/tracecontext"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -106,6 +107,7 @@ func newGrpcServer(cfg server.Config) *grpc.Server {
 		grpc.MaxSendMsgSize(cfg.GRPCServerMaxSendMsgSize),
 		grpc.MaxConcurrentStreams(uint32(cfg.GRPCServerMaxConcurrentStreams)),
 		grpc.NumStreamWorkers(uint32(cfg.GRPCServerNumWorkers)),
+		grpc.ChainUnaryInterceptor(tracecontext.UnaryServerInterceptor),
 	}
 
 	grpcOptions = append(grpcOptions, cfg.GRPCOptions...)
@@ -248,8 +250,7 @@ func toGRPCStatus(err error) error {
 }
 
 func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	_, err := tenant.TenantID(ctx)
-	if err != nil {
+	if _, err := tenant.TenantID(ctx); err != nil {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.Unauthenticated, "failed to extract tenant ID from context: %s", err.Error())
 	}
 
@@ -266,7 +267,6 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 	req := &distributormodel.PushRequest{
 		RawProfileType: distributormodel.RawProfileTypeOTEL,
 	}
-
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
 		for _, sp := range rp.ScopeProfiles {
@@ -280,6 +280,7 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
+				profileID := otlpProfileID(p.ProfileId)
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
@@ -297,10 +298,11 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					})
 
 					s := &distributormodel.ProfileSeries{
-						Labels:     labels,
-						RawProfile: nil,
-						Profile:    pprof.RawFromProto(pprofProfile.profile),
-						ID:         uuid.New().String(),
+						Labels:            labels,
+						RawProfile:        nil,
+						Profile:           pprof.RawFromProto(pprofProfile.profile),
+						ID:                profileID,
+						OriginalTimeNanos: int64(p.TimeUnixNano),
 					}
 					req.Series = append(req.Series, s)
 				}
@@ -320,6 +322,14 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 	}
 
 	return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+}
+
+func otlpProfileID(profileID []byte) string {
+	id, err := uuid.FromBytes(profileID)
+	if err != nil || id == uuid.Nil {
+		return ""
+	}
+	return id.String()
 }
 
 // getServiceNameFromAttributes extracts service name from OTLP resource attributes.

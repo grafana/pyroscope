@@ -49,6 +49,10 @@ type ParseableToPprof interface {
 }
 
 type Metadata struct {
+	// OriginalStartTimeNanos is the caller-supplied start time, before defaults
+	// are applied. Zero means no timestamp is available for profile identity.
+	OriginalStartTimeNanos int64
+
 	StartTime       time.Time
 	EndTime         time.Time
 	LabelSet        *labelset.LabelSet

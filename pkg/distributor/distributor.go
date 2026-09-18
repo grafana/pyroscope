@@ -47,6 +47,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/pprofsplit"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	"github.com/grafana/pyroscope/v2/pkg/model/relabel"
 	"github.com/grafana/pyroscope/v2/pkg/model/sampletype"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -55,6 +56,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
+	"github.com/grafana/pyroscope/v2/pkg/util/tracecontext"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -156,6 +158,7 @@ type Limits interface {
 	SampleTypeRelabelingRules(tenantID string) []*relabel.Config
 	DistributorUsageGroups(tenantID string) *validation.UsageGroupConfig
 	WritePathOverrides(tenantID string) writepath.Config
+	ProfileIDDeterministic(tenantID string) bool
 	validation.ProfileValidationLimits
 	aggregator.Limits
 }
@@ -320,7 +323,6 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
-
 	defer func() {
 		if err == nil {
 			return
@@ -369,11 +371,13 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 				return nil, validation.NewErrorf(validation.BodySizeLimit, "uncompressed batched profile payload size exceeds limit of %s", humanize.Bytes(uint64(maxRequestSizeBytes)))
 			}
 			series := &distributormodel.ProfileSeries{
-				Labels:     grpcSeries.Labels,
-				Profile:    profile,
-				RawProfile: grpcSample.RawProfile,
-				ID:         grpcSample.ID,
+				Labels:            grpcSeries.Labels,
+				Profile:           profile,
+				RawProfile:        grpcSample.RawProfile,
+				ID:                grpcSample.ID,
+				OriginalTimeNanos: profile.TimeNanos,
 			}
+
 			req.Series = append(req.Series, series)
 		}
 	}
@@ -390,6 +394,33 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		return nil, err
 	}
 	return connect.NewResponse(new(pushv1.PushResponse)), err
+}
+
+// ensureProfileIDs creates IDs before aggregation and profile normalisation. This
+// preserves the timestamp supplied by the client and ensures that every write
+// path uses the same ID-generation policy.
+func (d *Distributor) ensureProfileIDs(tenantID, traceID string, series []*distributormodel.ProfileSeries) {
+	deterministic := d.limits.ProfileIDDeterministic(tenantID)
+	for _, profile := range series {
+		if profile.ID != "" {
+			if _, err := uuid.Parse(profile.ID); err == nil {
+				if deterministic {
+					d.metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceUserSupplied)).Inc()
+				}
+				continue
+			}
+			// Accept legacy arbitrary IDs, but treat them as absent so the normal
+			// timestamp, trace, or random fallback policy applies.
+			profile.ID = ""
+		}
+		if !deterministic {
+			continue
+		}
+		profileType := phlaremodel.Labels(profile.Labels).Get(ProfileName)
+		id, source := profileid.Generate(tenantID, profileType, profile.Labels, profile.OriginalTimeNanos, traceID)
+		profile.ID = id.String()
+		d.metrics.profileIDGeneration.WithLabelValues(string(source)).Inc()
+	}
 }
 
 func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries) string {
@@ -419,6 +450,7 @@ func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushR
 	}
 
 	d.metrics.pushBatchSeries.WithLabelValues(tenantID).Observe(float64(len(req.Series)))
+	d.ensureProfileIDs(tenantID, tracecontext.UpstreamTraceID(ctx), req.Series)
 
 	d.bytesReceivedTotalStats.Inc(int64(req.ReceivedCompressedProfileSize))
 	d.bytesReceivedStats.Record(float64(req.ReceivedCompressedProfileSize))
@@ -742,6 +774,12 @@ func noNewProfilesReceivedError() *connect.Error {
 // are ephemeral in its nature, and therefore retrying is not possible
 // or desirable, as it prolongs life-time duration of the clients.
 func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.ProfileSeries) (bool, error) {
+	// Aggregating multiple profiles produces a new profile with no stable source
+	// identity. Keep identified profiles independent so their IDs remain usable.
+	if req.ID != "" {
+		return false, nil
+	}
+
 	a, ok := d.aggregator.AggregatorForTenant(req.TenantID)
 	if !ok {
 		// Aggregation is not configured for the tenant.
@@ -836,7 +874,10 @@ func (d *Distributor) sendRequestsToIngester(ctx context.Context, req *distribut
 		if _, err = p.WriteTo(bw); err != nil {
 			return nil, err
 		}
-		series.ID = uuid.NewString()
+		// Only generate ID if not already set
+		if series.ID == "" {
+			series.ID = uuid.NewString()
+		}
 		series.RawProfile = bw.Bytes()
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
@@ -919,10 +960,17 @@ func (d *Distributor) sendRequestsToSegmentWriter(ctx context.Context, req *dist
 		if err != nil {
 			panic(fmt.Sprintf("failed to marshal profile: %v", err))
 		}
-		// Ideally, the ID should identify the whole request, and be
-		// deterministic (e.g, based on the request hash). In practice,
-		// the API allows batches, which makes it difficult to handle.
-		profileID := uuid.New()
+
+		var profileID uuid.UUID
+		if s.ID == "" {
+			profileID = uuid.New()
+		} else {
+			profileID, err = uuid.Parse(s.ID)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid profile ID: %w", err))
+			}
+		}
+
 		requests = append(requests, &segmentwriterv1.PushRequest{
 			TenantId:    req.TenantID,
 			Labels:      s.Labels,
@@ -1303,6 +1351,7 @@ func (d *Distributor) visitSampleSeries(s *distributormodel.ProfileSeries, visit
 	}
 	for _, ss := range visitor.series {
 		ss.Annotations = s.Annotations
+		ss.ID = s.ID
 		ss.Language = s.Language
 		result = append(result, ss)
 	}
