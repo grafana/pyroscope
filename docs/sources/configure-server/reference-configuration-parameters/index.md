@@ -730,6 +730,12 @@ pool_config:
   # CLI flag: -distributor.health-check-timeout
   [remote_timeout: <duration> | default = 5s]
 
+# (advanced) Maximum total size, in bytes, of the uncompressed profiles the
+# distributor may hold in memory at a time. Requests exceeding it are rejected
+# with 503. 0 to disable.
+# CLI flag: -distributor.max-inflight-bytes
+[max_inflight_bytes: <int> | default = 0]
+
 ring:
   # The key-value store used to share the hash ring across multiple instances.
   kvstore:
