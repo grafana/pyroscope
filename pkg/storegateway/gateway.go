@@ -74,7 +74,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 }
 
 func (c *Config) Validate(limits validation.Limits) error {
-	if err := c.BucketStoreConfig.Validate(util.Logger); err != nil {
+	if err := c.BucketStoreConfig.Validate(log.NewNopLogger()); err != nil {
 		return fmt.Errorf("bucket store config: %w", err)
 	}
 	if limits.StoreGatewayTenantShardSize < 0 {

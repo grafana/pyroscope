@@ -16,7 +16,7 @@ import (
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
 	phlareobjstore "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -77,7 +77,7 @@ func TestAdHocProfiles_Get(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdHocProfiles{
-				logger: util.Logger,
+				logger: test.NewTestingLogger(t),
 				limits: validation.MockLimits{MaxFlameGraphNodesDefaultValue: 8192},
 				bucket: bucket,
 			}
@@ -96,7 +96,7 @@ func TestAdHocProfiles_List(t *testing.T) {
 	_ = bucket.Upload(context.Background(), "tenant/adhoc/01HMXV8BF4EH71NBYZNPPVGJ2X-cpu.pprof", bytes.NewReader([]byte{1}))
 	_ = bucket.Upload(context.Background(), "tenant/adhoc/01HMXRV02963FK36GGRE9N6MPH-heap.pprof", bytes.NewReader([]byte{1}))
 	a := &AdHocProfiles{
-		logger: util.Logger,
+		logger: test.NewTestingLogger(t),
 		bucket: bucket,
 	}
 	response, err := a.List(tenant.InjectTenantID(context.Background(), "tenant"), connect.NewRequest(&v1.AdHocProfilesListRequest{}))
@@ -131,7 +131,7 @@ func TestAdHocProfiles_Diff(t *testing.T) {
 
 	ctx := tenant.InjectTenantID(context.Background(), "tenant")
 	a := &AdHocProfiles{
-		logger: util.Logger,
+		logger: test.NewTestingLogger(t),
 		limits: validation.MockLimits{MaxFlameGraphNodesDefaultValue: 8192},
 		bucket: bucket,
 	}
@@ -294,7 +294,7 @@ func TestAdHocProfiles_Upload(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdHocProfiles{
-				logger: util.Logger,
+				logger: test.NewTestingLogger(t),
 				limits: overrides,
 				bucket: bucket,
 			}

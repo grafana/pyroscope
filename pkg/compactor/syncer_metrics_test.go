@@ -7,6 +7,7 @@ package compactor
 
 import (
 	"bytes"
+	"github.com/go-kit/log"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,7 +19,7 @@ import (
 func TestSyncerMetrics(t *testing.T) {
 	reg := prometheus.NewPedanticRegistry()
 
-	sm := newAggregatedSyncerMetrics(reg)
+	sm := newAggregatedSyncerMetrics(reg, log.NewNopLogger())
 	sm.gatherThanosSyncerMetrics(generateTestData(12345))
 	sm.gatherThanosSyncerMetrics(generateTestData(76543))
 	sm.gatherThanosSyncerMetrics(generateTestData(22222))

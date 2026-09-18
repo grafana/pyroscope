@@ -13,9 +13,6 @@ import (
 	"github.com/grafana/dskit/tracing"
 )
 
-// Logger is a nop global logger
-var Logger = log.NewNopLogger()
-
 // LoggerWithUserID returns a Logger that has information about the current user in
 // its details.
 func LoggerWithUserID(tenantID string, l log.Logger) log.Logger {

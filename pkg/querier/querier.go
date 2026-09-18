@@ -592,7 +592,7 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 	sp, ctx := tracing.StartSpanFromContext(ctx, "GetProfileStats")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*typesv1.GetProfileStatsResponse, error) {
+	responses, err := forAllIngesters(ctx, q.logger, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*typesv1.GetProfileStatsResponse, error) {
 		response, err := ic.GetProfileStats(childCtx, connect.NewRequest(&typesv1.GetProfileStatsRequest{}))
 		if err != nil {
 			return nil, err
