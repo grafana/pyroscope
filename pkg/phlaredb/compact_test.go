@@ -616,6 +616,7 @@ func TestCompactOldBlock(t *testing.T) {
 		StageSize:          0,
 		SplitBy:            SplitByFingerprint,
 		DownsamplerEnabled: true,
+		Logger:             log.NewNopLogger(),
 	})
 	require.NoError(t, err)
 }
