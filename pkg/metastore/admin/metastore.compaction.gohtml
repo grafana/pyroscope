@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <title>Metastore Admin - Compaction</title>
+    {{ template "compaction-head" . }}
+</head>
+<body>
+<main>
+    <div class="container mt-5">
+        {{ template "compaction-page-header" . }}
+
+        <div class="row my-3">
+            <h2>Compaction</h2>
+            <p class="text-body-secondary">
+                Blocks flushed by the segment writers are queued for compaction per tenant, shard, and
+                compaction level. Compaction jobs are created from these queues on demand, as compaction
+                workers report spare capacity, and are assigned to workers, prioritizing lower levels.
+                Job ownership is granted for a limited time (a lease) and is protected with fencing tokens.
+            </p>
+            <p class="text-body-secondary">
+                This page summarizes the state of the entire cluster. Per-tenant details &mdash; the
+                individual jobs and the planner queues &mdash; are on the tenant pages, reachable from
+                the tenant index below.
+            </p>
+            <details class="text-body-secondary mb-3">
+                <summary>How to read this page</summary>
+                <ul class="mt-2">
+                    <li>
+                        <strong>Unassigned</strong> jobs wait in the scheduler queue for a worker.
+                        <strong>In progress</strong> jobs are owned by a worker that renews its lease with
+                        every status update (typically every few seconds).
+                    </li>
+                    <li>
+                        If a lease expires (<strong>lease expired</strong>), the worker is assumed to have
+                        abandoned the job: the job is reassigned to the next worker that asks for one, and
+                        its reassignment (failure) counter is incremented. Workers do not report failures
+                        explicitly &mdash; an expired lease is the only failure signal.
+                    </li>
+                    <li>
+                        Jobs reassigned more than the failure threshold are <strong>failed</strong>: they are
+                        excluded from assignment and evicted from the schedule only when the queue exceeds
+                        its size limit.
+                    </li>
+                    <li>
+                        Worker attribution is observed by the raft leader when it assigns jobs and processes
+                        status updates; it is not replicated. After a leader change, the worker of a job is
+                        unknown until the worker renews the lease. Timestamps derived from lease deadlines
+                        refer to the leader clock.
+                    </li>
+                    <li>
+                        The counters on this page always cover the entire schedule. The listings are
+                        bounded: the tenant index and the attention list only show the top entries of
+                        their order.
+                    </li>
+                </ul>
+            </details>
+        </div>
+
+        <div class="row gy-4">
+            <h2>Scheduler</h2>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Jobs:</div>
+                            <div class="card-detail-value">{{ .TotalJobs }} (queue size limit {{ .MaxQueueSize }})</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Status:</div>
+                            <div class="card-detail-value">{{ template "compaction-status-badges" . }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Tenants:</div>
+                            <div class="card-detail-value">{{ .TotalTenants }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Job lease duration:</div>
+                            <div class="card-detail-value">{{ .LeaseDuration }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Job failure threshold:</div>
+                            <div class="card-detail-value">{{ .MaxFailures }}</div>
+                        </div>
+                        <div class="card-detail-row">
+                            <div class="card-detail-label">Blocks awaiting compaction:</div>
+                            <div class="card-detail-value">
+                                {{ if .QueuesTruncated }}at least {{ end }}{{ .QueuedBlocks }}
+                                in {{ if .QueuesTruncated }}at least {{ end }}{{ .TotalQueues }} planner queues
+                                {{ if .QueuesTruncated }}
+                                    {{ template "compaction-info" "The metastore stopped scanning the planner queues before reaching the end, so these are lower bounds. The number of blocks awaiting compaction is bounded by nothing but the backlog, and the scan is capped to bound the time the metastore spends serving this page." }}
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Jobs by Level
+                {{ template "compaction-info" "Jobs of lower compaction levels are prioritized: no job is assigned at a level until all eligible jobs of lower levels are assigned." }}
+            </h2>
+            {{ template "compaction-levels-table" .Levels }}
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Tenants
+                {{ template "compaction-info" "Compaction state aggregated per tenant. Follow a tenant to see its individual jobs and planner queues." }}
+            </h2>
+            <div class="col-12">
+                <form class="row row-cols-lg-auto g-2 align-items-center" method="get" action="/metastore-compaction">
+                    <input type="hidden" name="sort" value="{{ .Sort }}">
+                    <div class="col-12">
+                        <input
+                                type="search"
+                                class="form-control"
+                                name="q"
+                                value="{{ .Filter }}"
+                                placeholder="Filter tenants"
+                                aria-label="Filter tenants">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                    {{ if .Filter }}
+                        <div class="col-12">
+                            <a class="btn btn-outline-secondary" href="/metastore-compaction?sort={{ .Sort }}">Clear</a>
+                        </div>
+                    {{ end }}
+                    <div class="col-12">
+                        <span class="text-body-secondary">
+                            {{ if .Filter }}
+                                {{ .MatchedTenants }} of {{ .TotalTenants }} tenants match.
+                            {{ else }}
+                                {{ .TotalTenants }} tenants.
+                            {{ end }}
+                        </span>
+                    </div>
+                </form>
+            </div>
+            {{ if .TruncatedTenants }}
+                <div class="col-12">
+                    <div class="alert alert-info" role="alert">
+                        Showing the top {{ len .Tenants }} tenants; {{ .TruncatedTenants }} more are not
+                        displayed. Narrow the listing with the filter, or change the order. The counters
+                        above cover all tenants.
+                    </div>
+                </div>
+            {{ end }}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>
+                            <a class="link-underline-opacity-25" href="?sort=name&q={{ .Filter }}">Tenant</a>
+                            {{ if eq .Sort "name" }}<i class="bi bi-caret-down-fill"></i>{{ end }}
+                        </th>
+                        <th>
+                            <a class="link-underline-opacity-25" href="?sort=jobs&q={{ .Filter }}">Jobs</a>
+                            {{ if eq .Sort "jobs" }}<i class="bi bi-caret-down-fill"></i>{{ end }}
+                        </th>
+                        <th>Unassigned</th>
+                        <th>In Progress</th>
+                        <th>
+                            <a class="link-underline-opacity-25" href="?sort=attention&q={{ .Filter }}">Needs Attention</a>
+                            {{ if eq .Sort "attention" }}<i class="bi bi-caret-down-fill"></i>{{ end }}
+                        </th>
+                        <th>
+                            <a class="link-underline-opacity-25" href="?sort=blocks&q={{ .Filter }}">Queued Blocks</a>
+                            {{ if eq .Sort "blocks" }}<i class="bi bi-caret-down-fill"></i>{{ end }}
+                        </th>
+                        <th>Queues</th>
+                        <th>Oldest Job</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Tenants }}
+                        <tr>
+                            <td class="align-middle font-monospace small">
+                                {{ if .Known }}
+                                    <a href="{{ .Path }}">{{ .Tenant }}</a>
+                                {{ else }}
+                                    <a class="fst-italic" href="{{ .Path }}">multi-tenant segments</a>
+                                    {{ template "compaction-info" "Compaction of level 0 operates on the segments written by the segment writers. A segment holds the data of many tenants and carries no tenant of its own, so all of this work is grouped here rather than under a tenant name." }}
+                                {{ end }}
+                            </td>
+                            <td class="align-middle">{{ .Jobs }}</td>
+                            <td class="align-middle">{{ .Unassigned }}</td>
+                            <td class="align-middle">{{ .InProgress }}</td>
+                            <td class="align-middle">
+                                {{ if .Attention }}
+                                    <span class="badge text-bg-warning">{{ .LeaseExpired }} expired</span>
+                                    <span class="badge text-bg-danger ms-1">{{ .Failed }} failed</span>
+                                {{ else }}
+                                    0
+                                {{ end }}
+                            </td>
+                            <td class="align-middle">{{ .QueuedBlocks }}</td>
+                            <td class="align-middle">{{ .Queues }}</td>
+                            <td class="align-middle">{{ .OldestJobAge }}</td>
+                        </tr>
+                    {{ else }}
+                        <tr>
+                            <td colspan="8" class="text-body-secondary">
+                                {{ if .Filter }}
+                                    No tenant matches the filter.
+                                {{ else }}
+                                    No tenant has compaction work.
+                                {{ end }}
+                            </td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Jobs Requiring Attention
+                {{ template "compaction-info" "Jobs the scheduler is not making progress on: an expired lease means the job was abandoned by its worker and awaits reassignment; a failed job exceeded the reassignment threshold and is excluded from assignment. Ordered by the number of reassignments, then by how long the lease has been expired." }}
+            </h2>
+            {{ if .TruncatedAttention }}
+                <div class="col-12">
+                    <div class="alert alert-warning" role="alert">
+                        Showing the {{ len .Attention }} most affected jobs of {{ .TotalAttention }}.
+                        See the tenant pages for the full listings.
+                    </div>
+                </div>
+            {{ end }}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Tenant</th>
+                        <th>Shard</th>
+                        <th>Level</th>
+                        <th>Status</th>
+                        <th>Worker</th>
+                        <th>Reassignments</th>
+                        <th>
+                            Blocks
+                            {{ template "compaction-info" "Number of source blocks the job compacts. Follows to the block listing of the tenant, windowed around the time the job was created. Open the tenant to see the individual source blocks: the overview does not request them, as they would dominate its response." }}
+                        </th>
+                        <th>Age</th>
+                        <th>Lease</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Attention }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ .Name }}</td>
+                            <td class="align-middle font-monospace small">
+                                {{ if .Tenant }}
+                                    <a href="{{ .TenantPath }}">{{ .Tenant }}</a>
+                                {{ else }}
+                                    <a class="fst-italic" href="{{ .TenantPath }}">segments</a>
+                                {{ end }}
+                            </td>
+                            <td class="align-middle">{{ .Shard }}</td>
+                            <td class="align-middle">{{ .Level }}</td>
+                            <td class="align-middle"><span class="badge text-bg-{{ .StatusBadge }}">{{ .Status }}</span></td>
+                            <td class="align-middle font-monospace small">{{ .Worker }}</td>
+                            <td class="align-middle">{{ .Reassignments }}</td>
+                            {{ template "compaction-blocks-cell" . }}
+                            <td class="align-middle">{{ .Age }}</td>
+                            <td class="align-middle">{{ .Lease }}</td>
+                        </tr>
+                    {{ else }}
+                        <tr>
+                            <td colspan="10" class="text-body-secondary">
+                                No job has an expired lease or has exceeded the failure threshold.
+                            </td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row gy-4">
+            <h2>
+                Workers
+                {{ template "compaction-info" "Workers that own compaction jobs, as observed by the raft leader. After a leader change, a worker appears here again once it renews a job lease." }}
+            </h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Worker</th>
+                        <th>Jobs</th>
+                        <th>Expired Leases</th>
+                        <th>Failed Jobs</th>
+                        <th>Last Update</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{ range .Workers }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ .Worker }}</td>
+                            <td class="align-middle">{{ .Jobs }}</td>
+                            <td class="align-middle">{{ .LeaseExpired }}</td>
+                            <td class="align-middle">{{ .Failed }}</td>
+                            <td class="align-middle">{{ .LastUpdate }}</td>
+                        </tr>
+                    {{ else }}
+                        <tr>
+                            <td colspan="5" class="text-body-secondary">No job assignments have been observed.</td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+{{ template "compaction-scripts" . }}
+</body>
+</html>
