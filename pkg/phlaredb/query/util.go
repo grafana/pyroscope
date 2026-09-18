@@ -87,7 +87,7 @@ var parquetValuesPool = zeropool.New(func() []parquet.Value { return nil })
 
 func CloneParquetValues(values []parquet.Value) []parquet.Value {
 	p := parquetValuesPool.Get()
-	p = slices.Grow(p, len(values))
+	p = slices.Grow(p[:0], len(values))
 	p = p[:len(values)]
 	for i, v := range values {
 		p[i] = v.Clone()
