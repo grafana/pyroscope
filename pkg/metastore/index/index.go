@@ -167,6 +167,32 @@ func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBloc
 	return nil
 }
 
+// MissingBlocks returns the blocks of the list that are not in the index.
+// It reads the blocks directly from the transaction and does not use the
+// shard or block caches: the result is deterministic across replicas and
+// can be used when applying Raft commands. The order of the returned blocks
+// is the order of the input list.
+func (i *Index) MissingBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) []string {
+	found := make(map[string]struct{}, len(list.Blocks))
+	for p, partitioned := range i.partitionedList(list) {
+		s := &indexstore.Shard{
+			Partition: p,
+			Tenant:    partitioned.Tenant,
+			Shard:     partitioned.Shard,
+		}
+		for _, kv := range s.Find(tx, partitioned.Blocks...) {
+			found[string(kv.Key)] = struct{}{}
+		}
+	}
+	var missing []string
+	for _, b := range list.Blocks {
+		if _, ok := found[b]; !ok {
+			missing = append(missing, b)
+		}
+	}
+	return missing
+}
+
 func (i *Index) GetBlocks(tx *bbolt.Tx, list *metastorev1.BlockList) ([]*metastorev1.BlockMeta, error) {
 	metas := make([]*metastorev1.BlockMeta, 0, len(list.Blocks))
 	for k, partitioned := range i.partitionedList(list) {

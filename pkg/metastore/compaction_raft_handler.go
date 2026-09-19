@@ -2,6 +2,7 @@ package metastore
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -10,12 +11,14 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/tracing"
 )
 
 type IndexReplacer interface {
 	ReplaceBlocks(*bbolt.Tx, *metastorev1.CompactedBlocks) error
+	MissingBlocks(*bbolt.Tx, *metastorev1.BlockList) []string
 }
 
 type CompactionCommandHandler struct {
@@ -201,6 +204,29 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 			level.Warn(h.logger).Log("msg", "compacted blocks are missing; skipping", "job", job.State.Name)
 			continue
 		}
+		// The source blocks may have been deleted while the job was in
+		// progress, e.g., by the retention policy. If we replace them, we
+		// resurrect the deleted data. Instead, we reject the job output:
+		// the new blocks are not added to the index, and their objects are
+		// tombstoned. The source blocks that still exist stay in the index
+		// as they are. The job is completed in the schedule either way.
+		if missing := h.index.MissingBlocks(tx, compacted.SourceBlocks); len(missing) > 0 {
+			level.Warn(h.logger).Log(
+				"msg", "compaction job source blocks not found; rejecting job output",
+				"job", job.State.Name,
+				"tenant", compacted.SourceBlocks.Tenant,
+				"shard", compacted.SourceBlocks.Shard,
+				"missing_blocks", len(missing),
+				"source_blocks", len(compacted.SourceBlocks.Blocks),
+			)
+			for _, t := range tombstonesForRejectedBlocks(job.State.Name, compacted.NewBlocks) {
+				if err = h.tombstones.AddTombstones(tx, cmd, t); err != nil {
+					level.Error(h.logger).Log("msg", "failed to add tombstones", "err", err)
+					return nil, err
+				}
+			}
+			continue
+		}
 		if err = h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
 			level.Error(h.logger).Log("msg", "failed to add tombstones", "err", err)
 			return nil, err
@@ -234,4 +260,39 @@ func blockTombstonesForCompletedJob(job *raft_log.CompletedCompactionJob) *metas
 			Blocks:          source.Blocks,
 		},
 	}
+}
+
+// tombstonesForRejectedBlocks creates tombstones for the output blocks of a
+// rejected compaction job. The object path of a block depends on its tenant,
+// shard, and compaction level, therefore the blocks are grouped by these
+// fields. The groups are created in the order of the input blocks, and the
+// names are derived from the job name: the result is deterministic.
+func tombstonesForRejectedBlocks(job string, blocks []*metastorev1.BlockMeta) []*metastorev1.Tombstones {
+	type groupKey struct {
+		tenant string
+		shard  uint32
+		level  uint32
+	}
+	groups := make(map[groupKey]*metastorev1.BlockTombstones)
+	var tombstones []*metastorev1.Tombstones
+	for _, b := range blocks {
+		k := groupKey{
+			tenant: metadata.Tenant(b),
+			shard:  b.Shard,
+			level:  b.CompactionLevel,
+		}
+		g, ok := groups[k]
+		if !ok {
+			g = &metastorev1.BlockTombstones{
+				Name:            fmt.Sprintf("%s-rejected-%d", job, len(tombstones)),
+				Tenant:          k.tenant,
+				Shard:           k.shard,
+				CompactionLevel: k.level,
+			}
+			groups[k] = g
+			tombstones = append(tombstones, &metastorev1.Tombstones{Blocks: g})
+		}
+		g.Blocks = append(g.Blocks, b.Id)
+	}
+	return tombstones
 }
