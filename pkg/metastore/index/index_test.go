@@ -1,6 +1,7 @@
 package index
 
 import (
+	"github.com/go-kit/log"
 	"testing"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	indexstore "github.com/grafana/pyroscope/v2/pkg/metastore/index/store"
 	"github.com/grafana/pyroscope/v2/pkg/test"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func TestIndex_PartitionList(t *testing.T) {
@@ -19,7 +19,7 @@ func TestIndex_PartitionList(t *testing.T) {
 
 	t.Run("new shard", func(t *testing.T) {
 		db := test.BoltDB(t)
-		idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 		require.NoError(t, db.Update(idx.Init))
 
 		shardID := uint32(42)
@@ -46,7 +46,7 @@ func TestIndex_PartitionList(t *testing.T) {
 
 	t.Run("shard update", func(t *testing.T) {
 		db := test.BoltDB(t)
-		idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 
 		p := indexstore.NewPartition(test.Time("2024-09-11T06:00:00.000Z"), 6*time.Hour)
 		tenant := testTenant
@@ -67,7 +67,7 @@ func TestIndex_PartitionList(t *testing.T) {
 			return idx.InsertBlock(tx, blockMeta.CloneVT())
 		}))
 
-		idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		idx = NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 		require.NoError(t, db.View(idx.Restore))
 
 		findPartition(t, db, idx, p)
@@ -140,7 +140,7 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 	config := DefaultConfig
 	config.queryLookaroundPeriod = time.Hour
 
-	idx := NewIndex(util.Logger, NewStore(), config, nil)
+	idx := NewIndex(log.NewNopLogger(), NewStore(), config, nil)
 	require.NoError(t, db.Update(idx.Init))
 
 	now := time.Now()
@@ -184,7 +184,7 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 		}))
 	}
 
-	idx = NewIndex(util.Logger, NewStore(), config, nil)
+	idx = NewIndex(log.NewNopLogger(), NewStore(), config, nil)
 	require.NoError(t, db.Update(idx.Restore))
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
 		s, _ := idx.shards.cache.Get(shardCacheKey{indexstore.NewPartition(t1, config.partitionDuration), testTenant, 1})
@@ -201,7 +201,7 @@ func TestShardIterator_TimeFiltering(t *testing.T) {
 	db := test.BoltDB(t)
 	config := DefaultConfig
 	config.queryLookaroundPeriod = 0
-	idx := NewIndex(util.Logger, NewStore(), config, nil)
+	idx := NewIndex(log.NewNopLogger(), NewStore(), config, nil)
 	require.NoError(t, db.Update(idx.Init))
 
 	tenant := "test"
@@ -300,7 +300,7 @@ func TestIndex_DeleteShard(t *testing.T) {
 
 	t.Run("basic deletion", func(t *testing.T) {
 		db := test.BoltDB(t)
-		idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 		require.NoError(t, db.Update(idx.Init))
 
 		tenant := "test-tenant"
@@ -330,7 +330,7 @@ func TestIndex_DeleteShard(t *testing.T) {
 
 	t.Run("delete non-existent shard", func(t *testing.T) {
 		db := test.BoltDB(t)
-		idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 		require.NoError(t, db.Update(idx.Init))
 
 		p := indexstore.NewPartition(test.Time(baseTime), idx.config.partitionDuration)
@@ -342,7 +342,7 @@ func TestIndex_DeleteShard(t *testing.T) {
 
 	t.Run("multiple tenants isolation", func(t *testing.T) {
 		db := test.BoltDB(t)
-		idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 		require.NoError(t, db.Update(idx.Init))
 
 		tenant1, tenant2 := "tenant-1", "tenant-2"
@@ -376,7 +376,7 @@ func TestIndex_GetTenantStats(t *testing.T) {
 	)
 
 	db := test.BoltDB(t)
-	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	require.NoError(t, db.Update(idx.Init))
 
 	shardID := uint32(42)

@@ -3,6 +3,7 @@ package validation
 import (
 	"bytes"
 	"flag"
+	"github.com/go-kit/log"
 	"testing"
 	"time"
 
@@ -25,7 +26,7 @@ overrides:
     retention_period: 0
 `
 
-	runtimeConfig, err := LoadRuntimeConfig(bytes.NewReader([]byte(yamlConfig)))
+	runtimeConfig, err := LoadRuntimeConfig(bytes.NewReader([]byte(yamlConfig)), log.NewNopLogger())
 	require.NoError(t, err)
 
 	var testLimits Limits
@@ -73,7 +74,7 @@ overrides:
     retention_period: 0s
 `
 
-	runtimeConfig, err := LoadRuntimeConfig(bytes.NewReader([]byte(yamlConfig)))
+	runtimeConfig, err := LoadRuntimeConfig(bytes.NewReader([]byte(yamlConfig)), log.NewNopLogger())
 	require.NoError(t, err)
 
 	var testLimits Limits

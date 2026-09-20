@@ -477,7 +477,7 @@ type ValidatedRangeRequest struct {
 	IsEmpty bool
 }
 
-func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req model.Interval, now model.Time) (ValidatedRangeRequest, error) {
+func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req model.Interval, now model.Time, logger log.Logger) (ValidatedRangeRequest, error) {
 	if req.Start == 0 || req.End == 0 {
 		return ValidatedRangeRequest{}, NewErrorf(QueryMissingTimeRange, QueryMissingTimeRangeErrorMsg)
 	}
@@ -492,7 +492,7 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 		if req.End < minStartTime {
 			// The request is fully outside the allowed range, so we can return an
 			// empty response.
-			level.Debug(util.Logger).Log(
+			level.Debug(logger).Log(
 				"msg", "skipping the execution of the query because its time range is before the 'max query lookback' setting",
 				"reqStart", util.FormatTimeMillis(int64(req.Start)),
 				"redEnd", util.FormatTimeMillis(int64(req.End)),
@@ -503,7 +503,7 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 
 		if req.Start < minStartTime {
 			// Replace the start time in the request.
-			level.Debug(util.Logger).Log(
+			level.Debug(logger).Log(
 				"msg", "the start time of the query has been manipulated because of the 'max query lookback' setting",
 				"original", util.FormatTimeMillis(int64(req.Start)),
 				"updated", util.FormatTimeMillis(int64(minStartTime)))
@@ -523,7 +523,7 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 	return ValidatedRangeRequest{Interval: req}, nil
 }
 
-func SanitizeTimeRange(limits RangeRequestLimits, tenant []string, start, end *int64) (empty bool, err error) {
+func SanitizeTimeRange(limits RangeRequestLimits, tenant []string, start, end *int64, logger log.Logger) (empty bool, err error) {
 	var interval model.Interval
 	if start != nil {
 		interval.Start = model.Time(*start)
@@ -531,7 +531,7 @@ func SanitizeTimeRange(limits RangeRequestLimits, tenant []string, start, end *i
 	if end != nil {
 		interval.End = model.Time(*end)
 	}
-	validated, err := ValidateRangeRequest(limits, tenant, interval, model.Now())
+	validated, err := ValidateRangeRequest(limits, tenant, interval, model.Now(), logger)
 	if err != nil {
 		return false, err
 	}
