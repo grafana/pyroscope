@@ -1033,10 +1033,13 @@ components:
       properties:
         left:
           title: left
-          description: The format of each request is ignored; diff queries always compare trees.
+          description: |-
+            left.format and left.format_options select the response format and options
+             for both profiles. An unspecified format returns a flame graph diff.
           $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
         right:
           title: right
+          description: right.format and right.format_options are ignored.
           $ref: '#/components/schemas/querier.v1.SelectMergeStacktracesRequest'
       title: DiffRequest
       additionalProperties: false
@@ -1046,6 +1049,9 @@ components:
         flamegraph:
           title: flamegraph
           $ref: '#/components/schemas/querier.v1.FlameGraphDiff'
+        functions:
+          title: functions
+          $ref: '#/components/schemas/querier.v1.FunctionTableDiff'
       title: DiffResponse
       additionalProperties: false
     querier.v1.FlameGraph:
@@ -1114,6 +1120,34 @@ components:
           format: int64
       title: FlameGraphDiff
       additionalProperties: false
+    querier.v1.FunctionTableDiff:
+      type: object
+      properties:
+        left:
+          title: left
+          description: |-
+            Rows are aligned by function name. Limiting happens after joining both
+             complete tables, ordered by max(self), max(total), then name.
+          $ref: '#/components/schemas/types.v1.FunctionTable'
+        right:
+          title: right
+          $ref: '#/components/schemas/types.v1.FunctionTable'
+      title: FunctionTableDiff
+      additionalProperties: false
+    querier.v1.FunctionsOptions:
+      type: object
+      properties:
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+          description: |-
+            Zero or omitted returns every function. Applied only after global merging,
+             sorted by self descending, then total descending, then name.
+      title: FunctionsOptions
+      additionalProperties: false
     querier.v1.HeatmapQueryType:
       type: string
       title: HeatmapQueryType
@@ -1152,6 +1186,16 @@ components:
         - PROFILE_FORMAT_TREE
         - PROFILE_FORMAT_DOT
         - PROFILE_FORMAT_PPROF
+        - PROFILE_FORMAT_FUNCTIONS
+    querier.v1.ProfileFormatOptions:
+      type: object
+      properties:
+        functions:
+          title: functions
+          $ref: '#/components/schemas/querier.v1.FunctionsOptions'
+      title: ProfileFormatOptions
+      additionalProperties: false
+      description: Only options for the requested profile format are used; other fields are ignored.
     querier.v1.ProfileTypesRequest:
       type: object
       properties:
@@ -1592,6 +1636,9 @@ components:
                 - 5a4fe264a9c987fe
           title: span_selector
           description: List of span IDs (16 hex characters, 64-bit) to filter samples by.
+        formatOptions:
+          title: format_options
+          $ref: '#/components/schemas/querier.v1.ProfileFormatOptions'
       title: SelectMergeStacktracesRequest
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse:
@@ -1618,6 +1665,9 @@ components:
           title: pprof
           description: Profile in pprof format.
           $ref: '#/components/schemas/querier.v1.PprofProfile'
+        functions:
+          title: functions
+          $ref: '#/components/schemas/types.v1.FunctionTable'
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectSeriesRequest:
@@ -1816,6 +1866,51 @@ components:
         - EXEMPLAR_TYPE_NONE
         - EXEMPLAR_TYPE_INDIVIDUAL
         - EXEMPLAR_TYPE_SPAN
+    types.v1.FunctionStats:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: A sample contributes at most once, even if this function recurs in its stack.
+        self:
+          type:
+            - integer
+            - string
+          title: self
+          format: int64
+      title: FunctionStats
+      additionalProperties: false
+    types.v1.FunctionTable:
+      type: object
+      properties:
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.FunctionStats'
+          title: functions
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: Sum of selected sample values, not the sum of inclusive function values.
+        totalFunctions:
+          type:
+            - integer
+            - string
+          title: total_functions
+          format: int64
+          description: Number of functions before limiting. Compare with functions length for coverage.
+      title: FunctionTable
+      additionalProperties: false
     types.v1.GetProfileStatsRequest:
       type: object
       title: GetProfileStatsRequest

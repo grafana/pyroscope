@@ -23,6 +23,9 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("span_selector and trace_id_selector cannot be combined"))
 	}
 
+	if phlaremodel.IsProjectionFormat(c.Msg.Format) {
+		return q.selectMergeStacktracesProjection(ctx, c)
+	}
 	switch c.Msg.Format {
 	case querierv1.ProfileFormat_PROFILE_FORMAT_DOT:
 		return q.selectMergeStacktracesDot(ctx, c)
