@@ -98,10 +98,10 @@ func (h *Handlers) readProfilesFromDataset(ctx context.Context, blockMeta *metas
 	if err := ds.Open(ctx, block.SectionProfiles, block.SectionTSDB); err != nil {
 		return nil, 0, fmt.Errorf("failed to open dataset: %w", err)
 	}
-	defer ds.Close()
 
 	it, err := block.NewProfileRowIterator(ds)
 	if err != nil {
+		_ = ds.Close()
 		return nil, 0, fmt.Errorf("failed to create profile iterator: %w", err)
 	}
 	defer it.Close()
@@ -167,13 +167,7 @@ func (h *Handlers) CreateDatasetProfileDownloadHandler() func(http.ResponseWrite
 			return
 		}
 
-		_, _, profileMeta, err := h.buildProfileResolver(r.Context(), blockMeta, foundDataset, rowNum)
-		if err != nil {
-			httputil.Error(w, fmt.Errorf("failed to get profile metadata: %w", err))
-			return
-		}
-
-		profile, err := h.retrieveProfile(r.Context(), blockMeta, foundDataset, rowNum)
+		profile, profileMeta, err := h.retrieveProfile(r.Context(), blockMeta, foundDataset, rowNum)
 		if err != nil {
 			httputil.Error(w, fmt.Errorf("failed to download profile: %w", err))
 			return
@@ -194,23 +188,17 @@ func (h *Handlers) retrieveProfile(
 	blockMeta *metastorev1.BlockMeta,
 	dataset *metastorev1.Dataset,
 	rowNum int64,
-) (*googlev1.Profile, error) {
-	resolver, timestamp, meta, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
+) (*googlev1.Profile, *profileMetadata, error) {
+	profile, timestamp, meta, err := h.buildProfile(ctx, blockMeta, dataset, rowNum)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build profile resolver: %w", err)
-	}
-	defer resolver.Release()
-
-	profile, err := resolver.Pprof()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build pprof profile: %w", err)
+		return nil, nil, fmt.Errorf("failed to build profile: %w", err)
 	}
 
 	if t, err := phlaremodel.ParseProfileTypeSelector(meta.ProfileType); err == nil {
 		pprof.SetProfileMetadata(profile, t, timestamp, 0)
 	}
 
-	return profile, nil
+	return profile, meta, nil
 }
 
 func (h *Handlers) writeProfile(w http.ResponseWriter, profile *googlev1.Profile, filename string) {
@@ -298,15 +286,9 @@ func (h *Handlers) buildProfileTree(
 	dataset *metastorev1.Dataset,
 	rowNum int64,
 ) (*treeNode, int64, *profileMetadata, error) {
-	resolver, timestamp, profileMeta, err := h.buildProfileResolver(ctx, blockMeta, dataset, rowNum)
+	profile, timestamp, profileMeta, err := h.buildProfile(ctx, blockMeta, dataset, rowNum)
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to build profile resolver: %w", err)
-	}
-	defer resolver.Release()
-
-	profile, err := resolver.Pprof()
-	if err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to build pprof profile: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to build profile: %w", err)
 	}
 
 	tree := buildTreeFromPprof(profile, profileMeta.Unit)
@@ -314,12 +296,12 @@ func (h *Handlers) buildProfileTree(
 	return tree, timestamp, profileMeta, nil
 }
 
-func (h *Handlers) buildProfileResolver(
+func (h *Handlers) buildProfile(
 	ctx context.Context,
 	blockMeta *metastorev1.BlockMeta,
 	dataset *metastorev1.Dataset,
 	rowNum int64,
-) (*symdb.Resolver, int64, *profileMetadata, error) {
+) (*googlev1.Profile, int64, *profileMetadata, error) {
 	obj := block.NewObject(h.Bucket, blockMeta)
 	if err := obj.Open(ctx); err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to open block object: %w", err)
@@ -330,10 +312,10 @@ func (h *Handlers) buildProfileResolver(
 	if err := ds.Open(ctx, block.SectionProfiles, block.SectionTSDB, block.SectionSymbols); err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to open dataset: %w", err)
 	}
-	defer ds.Close()
 
 	it, err := block.NewProfileRowIterator(ds)
 	if err != nil {
+		_ = ds.Close()
 		return nil, 0, nil, fmt.Errorf("failed to create profile iterator: %w", err)
 	}
 	defer it.Close()
@@ -380,6 +362,7 @@ func (h *Handlers) buildProfileResolver(
 	}
 
 	resolver := symdb.NewResolver(ctx, ds.Symbols())
+	defer resolver.Release()
 
 	partitionID := targetEntry.Row.StacktracePartitionID()
 	var stacktraceIDs []uint32
@@ -402,7 +385,12 @@ func (h *Handlers) buildProfileResolver(
 	}
 	resolver.AddSamples(partitionID, samples)
 
-	return resolver, targetEntry.Timestamp, profileMeta, nil
+	profile, err := resolver.Pprof()
+	if err != nil {
+		return nil, 0, nil, fmt.Errorf("failed to build pprof profile: %w", err)
+	}
+
+	return profile, targetEntry.Timestamp, profileMeta, nil
 }
 
 // formatValue formats a value according to the pprof unit specification

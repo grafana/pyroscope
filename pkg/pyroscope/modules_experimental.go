@@ -87,6 +87,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
+		f.Cfg.Frontend,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
@@ -149,6 +150,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 	f.queryFrontend = queryfrontend.NewQueryFrontend(
 		queryFrontendLogger,
 		f.Overrides,
+		f.Cfg.Frontend,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
@@ -400,6 +402,7 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 	if err := f.Cfg.QueryBackend.Validate(); err != nil {
 		return nil, err
 	}
+	f.Cfg.QueryBackend.DisableClientRateLimitRetries(f.logger)
 	f.Cfg.QueryBackend.GRPCClientConfig.Middleware = f.grpcClientInterceptors()
 	c, err := querybackendclient.New(
 		f.Cfg.QueryBackend.Address,

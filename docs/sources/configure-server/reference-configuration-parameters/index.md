@@ -1176,6 +1176,13 @@ lifecycler:
   # CLI flag: -segment-writer.lifecycler.ID
   [id: <string> | default = "<hostname>"]
 
+# (advanced) Number of consecutive heartbeat-timeout periods after which a ring
+# member whose heartbeat has gone stale is automatically removed (forgotten)
+# from the ring. This cleans up entries of instances that have left the ring
+# without unregistering, e.g. after a scale-down. 0 disables auto-forget.
+# CLI flag: -segment-writer.auto-forget-unhealthy-periods
+[auto_forget_unhealthy_periods: <int> | default = 0]
+
 # (advanced) Timeout when flushing segments to bucket.
 # CLI flag: -segment-writer.segment-duration
 [segment_duration: <duration> | default = 500ms]
@@ -1223,8 +1230,10 @@ lifecycler:
 # CLI flag: -segment-writer.metadata-update-timeout
 [metadata_update_timeout: <duration> | default = 2s]
 
-# (advanced) Enables bucket health check on startup. This both validates
-# credentials and warms up the connection to reduce latency for the first write.
+# (advanced) Uploads a small object at startup to verify bucket write access.
+# Startup fails if the upload fails. Removal of the object is best effort: it is
+# skipped on filesystem storage, which keeps one object per startup, and a
+# failed removal is only logged.
 # CLI flag: -segment-writer.bucket-health-check-enabled
 [bucket_health_check_enabled: <boolean> | default = true]
 
@@ -1750,8 +1759,8 @@ The `query_backend` block configures the query-backend (V2 read path).
 # CLI flag: -query-backend.address
 [address: <string> | default = "localhost:9095"]
 
-# Configures the gRPC client used to communicate between the query-frontends and
-# the query-schedulers.
+# Configures the gRPC client used to communicate with query-backends.
+# backoff_on_ratelimits is ignored: its retries ignore the server's pushback.
 # The CLI flags prefix for this block configuration is:
 # query-backend.grpc-client-config
 [grpc_client_config: <grpc_client>]
@@ -2457,12 +2466,6 @@ The `symbolizer` block configures the symbolizer (V2).
 # server.
 # CLI flag: -symbolizer.max-debuginfod-concurrency
 [max_debuginfod_concurrency: <int> | default = 10]
-
-# (advanced) Maximum time the query frontend waits to resolve a single binary's
-# unresolved addresses for a symbol-ref tree query, before falling back to
-# binary!0xaddr frames for that binary.
-# CLI flag: -symbolizer.resolve-timeout
-[resolve_timeout: <duration> | default = 20s]
 ```
 
 ### overrides_exporter
@@ -2660,6 +2663,13 @@ ring:
   # start anyway.
   # CLI flag: -overrides-exporter.ring.wait-stability-max-duration
   [wait_stability_max_duration: <duration> | default = 5m]
+
+  # (advanced) Unregister from the ring upon clean shutdown. Disabling it keeps
+  # the instance in the ring in LEAVING state until it is auto-forgotten, which
+  # minimises leader changes when the instance is expected to rejoin with the
+  # same ID shortly.
+  # CLI flag: -overrides-exporter.ring.unregister-on-shutdown
+  [unregister_on_shutdown: <boolean> | default = true]
 ```
 
 ### grpc_client
@@ -3403,9 +3413,29 @@ distributor_usage_groups:
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
 
+# (advanced) If true, the write path doesn't wait for the segment-writer to
+# durably store and index the profile before responding. This reduces ingestion
+# latency and allows a larger -segment-writer.segment-duration, but removes the
+# read-after-write consistency and synchronous durability guarantee. Writes to
+# the ingester are always synchronous.
+# CLI flag: -async-ingest
+[async_ingest: <boolean> | default = false]
+
+# Retention period for the data. 0 means data never deleted.
+# CLI flag: -retention-period
+[retention_period: <duration> | default = 31d]
+
 # Maximum number of recording rules a tenant can create. 0 to disable.
 # CLI flag: -recording-rules.max-rules-per-tenant
 [max_recording_rules: <int> | default = 25]
+
+# (experimental) Generate deterministic profile IDs instead of random UUIDs. If
+# a client provides an ID, it will be used instead. When enabled, IDs use the
+# tenant ID, profile type, and ingress labels, plus the original timestamp when
+# present or the trace ID when the timestamp is absent. If neither is present, a
+# random ID is used. Experimental.
+# CLI flag: -validation.profile-id-deterministic
+[profile_id_deterministic: <boolean> | default = false]
 ```
 
 ### s3_storage_backend

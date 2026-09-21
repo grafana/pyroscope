@@ -45,6 +45,7 @@ type metrics struct {
 	inflightBytesLimit             prometheus.Gauge
 	inflightBytesHighWatermark     prometheus.Summary
 	rejectedRequests               *prometheus.CounterVec
+	profileIDGeneration            *prometheus.CounterVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -184,6 +185,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"reason"},
 		),
+		profileIDGeneration: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_profile_id_generation_total",
+				Help:      "Number of profile IDs generated, by source.",
+			},
+			[]string{"source"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(
@@ -200,6 +209,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.inflightBytesLimit,
 			m.inflightBytesHighWatermark,
 			m.rejectedRequests,
+			m.profileIDGeneration,
 		)
 	}
 	// Initialize expected rejected request labels, so the series exists before

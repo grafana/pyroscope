@@ -248,9 +248,9 @@ func TestPushBatch_MaxInflightBytes_IngesterQuorum(t *testing.T) {
 		10*time.Second, 10*time.Millisecond, "bytes are released once every replica is done")
 }
 
-// recordingSegmentWriter captures, for every push, whether the request carried
+// inflightRecordingSegmentWriter captures, for every push, whether the request carried
 // an inflight reservation and how many bytes the limiter held at that moment.
-type recordingSegmentWriter struct {
+type inflightRecordingSegmentWriter struct {
 	limiter *inflight.Limiter
 
 	mu       sync.Mutex
@@ -258,9 +258,9 @@ type recordingSegmentWriter struct {
 	bytes    []int64
 }
 
-func (s *recordingSegmentWriter) CheckReady(context.Context) error { return nil }
+func (s *inflightRecordingSegmentWriter) CheckReady(context.Context) error { return nil }
 
-func (s *recordingSegmentWriter) Push(ctx context.Context, _ *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
+func (s *inflightRecordingSegmentWriter) Push(ctx context.Context, _ *segmentwriterv1.PushRequest) (*segmentwriterv1.PushResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.reserved = append(s.reserved, inflight.FromContext(ctx) != nil)
@@ -268,14 +268,14 @@ func (s *recordingSegmentWriter) Push(ctx context.Context, _ *segmentwriterv1.Pu
 	return &segmentwriterv1.PushResponse{}, nil
 }
 
-func (s *recordingSegmentWriter) snapshot() ([]bool, []int64) {
+func (s *inflightRecordingSegmentWriter) snapshot() ([]bool, []int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]bool(nil), s.reserved...), append([]int64(nil), s.bytes...)
 }
 
 func TestPushBatch_MaxInflightBytes_Aggregation(t *testing.T) {
-	sw := new(recordingSegmentWriter)
+	sw := new(inflightRecordingSegmentWriter)
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 		l := validation.MockDefaultLimits()
 		l.WritePathOverrides.WritePath = writepath.SegmentWriterPath
@@ -322,7 +322,7 @@ func TestPushBatch_MaxInflightBytes_Aggregation(t *testing.T) {
 }
 
 func TestPushBatch_MaxInflightBytes_PendingAggregates(t *testing.T) {
-	sw := new(recordingSegmentWriter)
+	sw := new(inflightRecordingSegmentWriter)
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 		l := validation.MockDefaultLimits()
 		l.WritePathOverrides.WritePath = writepath.SegmentWriterPath
@@ -377,7 +377,7 @@ func distinctStackRequest(n int) *distributormodel.PushRequest {
 }
 
 func TestPushBatch_MaxInflightBytes_AggregateGrowth(t *testing.T) {
-	sw := new(recordingSegmentWriter)
+	sw := new(inflightRecordingSegmentWriter)
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 		l := validation.MockDefaultLimits()
 		l.WritePathOverrides.WritePath = writepath.SegmentWriterPath

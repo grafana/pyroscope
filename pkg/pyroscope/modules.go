@@ -59,6 +59,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
+	"github.com/grafana/pyroscope/v2/pkg/util/tracecontext"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
@@ -474,6 +475,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
+		tracecontext.UnaryServerInterceptor,
 		featureflags.ClientCapabilitiesGRPCMiddleware(),
 	)
 
@@ -525,6 +527,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		return nil, err
 	}
 	defaultHTTPMiddleware := []middleware.Interface{
+		tracecontext.HTTPMiddleware(),
 		middleware.Tracer{},
 		// https://github.com/grafana/dskit/pull/527
 		middleware.RouteInjector{
@@ -603,11 +606,8 @@ func (f *Pyroscope) initUsageReport() (services.Service, error) {
 	if !f.Cfg.Analytics.Enabled {
 		return nil, nil
 	}
-	f.Cfg.Analytics.Leader = false
-	// ingester is the only component that can be a leader
-	if f.isModuleActive(Ingester) {
-		f.Cfg.Analytics.Leader = true
-	}
+	// Only the write path component creates the cluster seed: ingester on v1, segment writer on v2.
+	f.Cfg.Analytics.Leader = f.isModuleActive(Ingester) || f.isModuleActive(SegmentWriter)
 
 	usagestats.Target(f.Cfg.Target.String())
 

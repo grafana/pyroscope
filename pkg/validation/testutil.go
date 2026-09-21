@@ -35,16 +35,16 @@ type MockLimits struct {
 
 	MaxQueriersPerTenantValue int
 
-	SymbolizerEnabledValue                bool
-	QueryTreeEnabledValue                 bool
-	SymbolRefTreesEnabledValue            bool
-	SymbolizerMaxUnresolvedLocationsValue int
+	SymbolizerEnabledValue bool
+	QueryTreeEnabledValue  bool
 
 	MaxAsyncQueryConcurrencyValue int
 
 	IngestionBodyLimitBytesValue int64
 
 	PushMaxConcurrencyValue int
+
+	ProfileIDDeterministicValue bool
 }
 
 func (m MockLimits) QuerySplitDuration(string) time.Duration        { return m.QuerySplitDurationValue }
@@ -111,11 +111,10 @@ func (m MockLimits) SymbolizerEnabled(s string) bool       { return m.Symbolizer
 func (m MockLimits) QueryTreeEnabled(s string) bool        { return m.QueryTreeEnabledValue }
 func (m MockLimits) MaxAsyncQueryConcurrency(s string) int { return m.MaxAsyncQueryConcurrencyValue }
 
-func (m MockLimits) SymbolRefTreesEnabled(s string) bool { return m.SymbolRefTreesEnabledValue }
-func (m MockLimits) SymbolizerMaxUnresolvedLocations(s string) int {
-	return m.SymbolizerMaxUnresolvedLocationsValue
-}
-
 func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
 	return m.IngestionBodyLimitBytesValue
+}
+
+func (m MockLimits) ProfileIDDeterministic(tenantID string) bool {
+	return m.ProfileIDDeterministicValue
 }

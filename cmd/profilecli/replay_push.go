@@ -199,6 +199,20 @@ func runReplayCycle(
 	cycleStart time.Time,
 	params *replayPushParams,
 ) (pushed, failed int, interrupted bool) {
+	return runReplayCycleWithWait(ctx, pc, records, minTs, cycleStart, params, waitUntil)
+}
+
+type replayWaitFunc func(context.Context, time.Time) bool
+
+func runReplayCycleWithWait(
+	ctx context.Context,
+	pc pushv1connect.PusherServiceClient,
+	records []replayRecord,
+	minTs int64,
+	cycleStart time.Time,
+	params *replayPushParams,
+	wait replayWaitFunc,
+) (pushed, failed int, interrupted bool) {
 	scheduledTarget := func(rec replayRecord) time.Time {
 		offset := time.Duration(float64(rec.TimestampNanos-minTs) / params.Speed)
 		return cycleStart.Add(offset)
@@ -216,7 +230,7 @@ func runReplayCycle(
 
 		first := records[i]
 		firstTarget := scheduledTarget(first)
-		if !waitUntil(ctx, firstTarget) {
+		if !wait(ctx, firstTarget) {
 			interrupted = true
 			break
 		}
@@ -231,14 +245,14 @@ func runReplayCycle(
 		}
 		i++
 
-		deadline := time.Now().Add(params.BatchWait)
+		deadline := firstTarget.Add(params.BatchWait)
 		for i < total && len(batch) < params.BatchSize {
 			next := records[i]
 			nextTarget := scheduledTarget(next)
 			if nextTarget.After(deadline) {
 				break
 			}
-			if !waitUntil(ctx, nextTarget) {
+			if !wait(ctx, nextTarget) {
 				interrupted = true
 				break
 			}

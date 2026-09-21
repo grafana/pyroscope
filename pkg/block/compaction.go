@@ -641,7 +641,7 @@ func (s *symbolsRewriter) rewriterFor(x *Dataset) *symdb.Rewriter {
 }
 
 func (s *symbolsRewriter) loadStacktraceIDs(values []parquet.Value) {
-	s.stacktraces = slices.Grow(s.stacktraces[0:], len(values))[:len(values)]
+	s.stacktraces = slices.Grow(s.stacktraces[:0], len(values))[:len(values)]
 	for i := range values {
 		s.stacktraces[i] = values[i].Uint32()
 	}

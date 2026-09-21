@@ -8,8 +8,10 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
 )
 
 type Client struct {
@@ -48,7 +50,12 @@ func (b *Client) starting(context.Context) error { return nil }
 func (b *Client) stopping(error) error           { return nil }
 
 func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
-	return b.grpcClient.Invoke(ctx, req)
+	var trailer metadata.MD
+	resp, err := b.grpcClient.Invoke(ctx, req, grpc.Trailer(&trailer))
+	if err != nil && pushback.IsNoRetry(trailer) {
+		err = pushback.Mark(err)
+	}
+	return resp, err
 }
 
 const grpcServiceConfigTemplate = `{

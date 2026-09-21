@@ -42,7 +42,7 @@ Usage of ./pyroscope:
   -architecture.storage value
     	Storage architecture layer. Use 'v1' to use legacy ingester-based storage, 'v2' for new storage, and 'v1-v2-dual' to use new storage while being able to query old data. (default "v1-v2-dual")
   -async-ingest
-    	If true, the write path will not wait for the segment-writer to finish processing the request. Writes to ingester always synchronous.
+    	If true, the write path doesn't wait for the segment-writer to durably store and index the profile before responding. This reduces ingestion latency and allows a larger -segment-writer.segment-duration, but removes the read-after-write consistency and synchronous durability guarantee. Writes to the ingester are always synchronous.
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
   -blocks-storage.bucket-store.ignore-blocks-within duration
@@ -727,6 +727,8 @@ Usage of ./pyroscope:
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -overrides-exporter.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -overrides-exporter.ring.unregister-on-shutdown
+    	Unregister from the ring upon clean shutdown. Disabling it keeps the instance in the ring in LEAVING state until it is auto-forgotten, which minimises leader changes when the instance is expected to rejoin with the same ID shortly. (default true)
   -overrides-exporter.ring.wait-stability-max-duration duration
     	Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway. (default 5m0s)
   -overrides-exporter.ring.wait-stability-min-duration duration
@@ -937,6 +939,8 @@ Usage of ./pyroscope:
     	Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).
   -query-frontend.max-async-query-concurrency int
     	Maximum number of concurrent async queries per tenant. 0 to disable async queries. (default 5)
+  -query-frontend.query-planner-strategy string
+    	Sets the query planner strategy, options: classic, balanced (default "classic")
   -query-frontend.scheduler-worker-concurrency int
     	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
   -query-scheduler.grpc-client-config.backoff-max-period duration
@@ -1079,10 +1083,12 @@ Usage of ./pyroscope:
     	HTTP client timeout when fetching runtime config from URLs. (default 30s)
   -runtime-config.reload-period duration
     	How often to check runtime config files. (default 10s)
+  -segment-writer.auto-forget-unhealthy-periods int
+    	Number of consecutive heartbeat-timeout periods after which a ring member whose heartbeat has gone stale is automatically removed (forgotten) from the ring. This cleans up entries of instances that have left the ring without unregistering, e.g. after a scale-down. 0 disables auto-forget.
   -segment-writer.availability-zone string
     	The availability zone where this instance is running.
   -segment-writer.bucket-health-check-enabled
-    	Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write. (default true)
+    	Uploads a small object at startup to verify bucket write access. Startup fails if the upload fails. Removal of the object is best effort: it is skipped on filesystem storage, which keeps one object per startup, and a failed removal is only logged. (default true)
   -segment-writer.bucket-health-check-timeout duration
     	Timeout for bucket health check operations. (default 10s)
   -segment-writer.consul.acl-token string
@@ -1625,12 +1631,6 @@ Usage of ./pyroscope:
     	[experimental] Enable symbolization for tenants by default.
   -symbolizer.max-debuginfod-concurrency int
     	Maximum number of concurrent symbolization requests to debuginfod server. (default 10)
-  -symbolizer.max-unresolved-locations int
-    	[experimental] Maximum number of distinct unresolved locations a symbol-ref tree query may carry through the read path before symbolization; a query exceeding the limit fails. 0 disables the limit. (default 1000000)
-  -symbolizer.resolve-timeout duration
-    	Maximum time the query frontend waits to resolve a single binary's unresolved addresses for a symbol-ref tree query, before falling back to binary!0xaddr frames for that binary. (default 20s)
-  -symbolizer.symbol-ref-trees-enabled
-    	[experimental] Enable symbol-aware tree references: tree queries are executed natively and symbolized by the frontend after the final merge, instead of being rewritten to pprof. Requires a symbolizer to be configured.
   -target comma-separated-list-of-strings
     	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tenant-settings.recording-rules.enabled
@@ -1665,6 +1665,8 @@ Usage of ./pyroscope:
     	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 65535)
   -validation.max-sessions-per-series int
     	Maximum number of sessions per series. 0 to disable.
+  -validation.profile-id-deterministic
+    	[experimental] Generate deterministic profile IDs instead of random UUIDs. If a client provides an ID, it will be used instead. When enabled, IDs use the tenant ID, profile type, and ingress labels, plus the original timestamp when present or the trace ID when the timestamp is absent. If neither is present, a random ID is used. Experimental.
   -validation.reject-newer-than duration
     	This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m. (default 10m)
   -validation.reject-older-than duration

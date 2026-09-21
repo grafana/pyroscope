@@ -26,6 +26,8 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
+const defaultMaxDebuginfodConcurrency = 10
+
 // DebuginfodClientConfig holds configuration for the debuginfod client.
 type DebuginfodClientConfig struct {
 	BaseURL       string
@@ -156,13 +158,6 @@ func NewDebuginfodClientWithConfig(logger log.Logger, cfg DebuginfodClientConfig
 }
 
 // FetchDebuginfo fetches the debuginfo file for a specific build ID.
-//
-// Concurrent callers for the same build ID share one fetch, detached from
-// any single caller's cancellation. The error contract follows from that:
-// a done caller gets its own context error without waiting for the shared
-// fetch to finish, and every other error comes from the shared fetch — it
-// may wrap a context error (e.g. the HTTP client's timeout) that says
-// nothing about the caller's own context.
 func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID string) (io.ReadCloser, error) {
 	start := time.Now()
 	status := statusSuccess
@@ -187,7 +182,7 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 		return nil, err
 	}
 
-	// A dead caller must not start (or join) a detached fetch
+	// A dead caller must not start or join an upstream fetch.
 	if err := ctx.Err(); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			status = statusErrorTimeout
@@ -204,38 +199,21 @@ func (c *DebuginfodHTTPClient) FetchDebuginfo(ctx context.Context, buildID strin
 	}
 	c.metrics.cacheOperations.WithLabelValues("not_found", "get", "miss").Inc()
 
-	// Detached so one caller's cancellation cannot fail the fetch for the
-	// others; context values are preserved, and the HTTP client's timeout
-	// plus bounded retries keep the detached fetch finite.
-	localCtx := context.WithoutCancel(ctx)
-	resCh := c.group.DoChan(sanitizedBuildID, func() (interface{}, error) {
-		// The slot wait stays outside the breaker so that a fetch that queued
-		// while the breaker was closed fails fast once it opens rather
-		// than dial a dead upstream, and so that queue time does not count toward
-		// the breaker's stats. Slot holders are bounded by the HTTP client
-		// timeout and the retry budget, so acquiring on the uncancellable
-		// context stays finite.
-		if err := c.fetchSlots.Acquire(localCtx, 1); err != nil {
+	v, err, _ := c.group.Do(sanitizedBuildID, func() (interface{}, error) {
+		// The slot wait stays outside the breaker so that a fetch queued while
+		// the breaker was closed fails fast if it opens before the slot is acquired.
+		if err := c.fetchSlots.Acquire(ctx, 1); err != nil {
 			return nil, err
 		}
 		defer c.fetchSlots.Release(1)
 		data, err := c.breaker.Execute(func() ([]byte, error) {
-			return c.fetchDebugInfoWithRetries(localCtx, sanitizedBuildID)
+			return c.fetchDebugInfoWithRetries(ctx, sanitizedBuildID)
 		})
 		if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
 			return nil, upstreamUnavailableError{buildID: sanitizedBuildID}
 		}
 		return data, err
 	})
-
-	// A done caller stops waiting; the fetch keeps running for the rest.
-	var v interface{}
-	select {
-	case res := <-resCh:
-		v, err = res.Val, res.Err
-	case <-ctx.Done():
-		err = ctx.Err()
-	}
 
 	if err != nil {
 		var bnfErr buildIDNotFoundError

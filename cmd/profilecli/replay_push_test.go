@@ -27,6 +27,22 @@ type fakePusherClient struct {
 	requests []*pushv1.PushRequest
 }
 
+type fakeReplayWaiter struct {
+	now   time.Time
+	waits []time.Time
+}
+
+func (w *fakeReplayWaiter) waitUntil(ctx context.Context, target time.Time) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	w.waits = append(w.waits, target)
+	if target.After(w.now) {
+		w.now = target
+	}
+	return true
+}
+
 func (f *fakePusherClient) Push(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -103,18 +119,17 @@ func TestRunReplayCycle_Batching(t *testing.T) {
 		BatchWait: 500 * time.Millisecond,
 	}
 
-	cycleStart := time.Now()
-	pushed, failed, interrupted := runReplayCycle(context.Background(), fake, records, records[0].TimestampNanos, cycleStart, params)
+	cycleStart := time.Unix(0, 0)
+	waiter := &fakeReplayWaiter{now: cycleStart}
+	pushed, failed, interrupted := runReplayCycleWithWait(context.Background(), fake, records, records[0].TimestampNanos, cycleStart, params, waiter.waitUntil)
 
 	require.False(t, interrupted)
 	assert.Equal(t, 0, failed)
 	assert.Equal(t, n, pushed)
 	assert.Equal(t, n, fake.totalSeries())
 
-	// 500 records batched at up to 50 per request should take far fewer
-	// than 500 push RPCs.
-	assert.LessOrEqual(t, fake.requestCount(), n/10)
-	assert.LessOrEqual(t, fake.maxBatchSize(), params.BatchSize)
+	assert.Equal(t, n/params.BatchSize, fake.requestCount())
+	assert.Equal(t, params.BatchSize, fake.maxBatchSize())
 }
 
 // TestRunReplayCycle_SparseRecordsAreNotOverBatched verifies that records
@@ -124,21 +139,23 @@ func TestRunReplayCycle_SparseRecordsAreNotOverBatched(t *testing.T) {
 	t.Parallel()
 
 	pprofBytes := testPprofBytes(t)
+	batchWait := 10 * time.Millisecond
 
 	records := []replayRecord{
 		{Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc"}}, TimestampNanos: 0, Pprof: pprofBytes},
-		{Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc"}}, TimestampNanos: int64(2 * time.Second), Pprof: pprofBytes},
+		{Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc"}}, TimestampNanos: int64(batchWait + time.Nanosecond), Pprof: pprofBytes},
 	}
 
 	fake := &fakePusherClient{}
 	params := &replayPushParams{
-		Speed:     50, // 2s apart in recorded time -> 40ms apart in wall time, still > batch-wait
+		Speed:     1,
 		BatchSize: 50,
-		BatchWait: 10 * time.Millisecond,
+		BatchWait: batchWait,
 	}
 
-	cycleStart := time.Now()
-	pushed, failed, interrupted := runReplayCycle(context.Background(), fake, records, records[0].TimestampNanos, cycleStart, params)
+	cycleStart := time.Unix(0, 0)
+	waiter := &fakeReplayWaiter{now: cycleStart}
+	pushed, failed, interrupted := runReplayCycleWithWait(context.Background(), fake, records, records[0].TimestampNanos, cycleStart, params, waiter.waitUntil)
 
 	require.False(t, interrupted)
 	assert.Equal(t, 0, failed)
@@ -146,6 +163,43 @@ func TestRunReplayCycle_SparseRecordsAreNotOverBatched(t *testing.T) {
 	// Each record should have been flushed in its own batch since they are
 	// scheduled further apart than --batch-wait.
 	assert.Equal(t, 2, fake.requestCount())
+}
+
+func TestRunReplayCycle_BatchWaitBoundary(t *testing.T) {
+	t.Parallel()
+
+	pprofBytes := testPprofBytes(t)
+	batchWait := 10 * time.Millisecond
+	cycleStart := time.Unix(0, 0)
+
+	tests := []struct {
+		name         string
+		gap          time.Duration
+		requestCount int
+	}{
+		{name: "before deadline", gap: batchWait - time.Nanosecond, requestCount: 1},
+		{name: "at deadline", gap: batchWait, requestCount: 1},
+		{name: "after deadline", gap: batchWait + time.Nanosecond, requestCount: 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			records := []replayRecord{
+				{Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc"}}, TimestampNanos: 0, Pprof: pprofBytes},
+				{Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc"}}, TimestampNanos: int64(tt.gap), Pprof: pprofBytes},
+			}
+			fake := &fakePusherClient{}
+			waiter := &fakeReplayWaiter{now: cycleStart}
+			params := &replayPushParams{Speed: 1, BatchSize: 50, BatchWait: batchWait}
+
+			pushed, failed, interrupted := runReplayCycleWithWait(context.Background(), fake, records, 0, cycleStart, params, waiter.waitUntil)
+
+			assert.False(t, interrupted)
+			assert.Zero(t, failed)
+			assert.Equal(t, len(records), pushed)
+			assert.Equal(t, tt.requestCount, fake.requestCount())
+		})
+	}
 }
 
 func TestRunReplayCycle_ContextCancellation(t *testing.T) {
@@ -169,6 +223,15 @@ func TestRunReplayCycle_ContextCancellation(t *testing.T) {
 
 	_, _, interrupted := runReplayCycle(ctx, fake, records, records[0].TimestampNanos, time.Now().Add(20*time.Second), params)
 	assert.True(t, interrupted)
+}
+
+func TestWaitUntil_ContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	assert.False(t, waitUntil(ctx, time.Now().Add(time.Hour)))
 }
 
 func TestBuildSeries_RewritesTimestamp(t *testing.T) {

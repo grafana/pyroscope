@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 )
@@ -24,7 +25,7 @@ func TestSelectSeries_RejectsSubMillisecondStep(t *testing.T) {
 			limits.On("MaxQueryLookback", "test-tenant").Return(time.Duration(0)).Maybe()
 			limits.On("MaxQueryLength", "test-tenant").Return(time.Duration(0)).Maybe()
 
-			qf := NewQueryFrontend(log.NewNopLogger(), limits, nil, nil, nil, nil, nil, nil)
+			qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, nil, nil, nil, nil, nil, nil)
 			ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
 
 			_, err := qf.SelectSeries(ctx, connect.NewRequest(&querierv1.SelectSeriesRequest{
@@ -46,7 +47,7 @@ func TestSelectHeatmap_RejectsSubMillisecondStep(t *testing.T) {
 	for _, step := range []float64{0, 0.0001, 0.0005, 0.0009999} {
 		t.Run("step="+formatStep(step), func(t *testing.T) {
 			limits := mockfrontend.NewMockLimits(t)
-			qf := NewQueryFrontend(log.NewNopLogger(), limits, nil, nil, nil, nil, nil, nil)
+			qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, nil, nil, nil, nil, nil, nil)
 			ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
 
 			_, err := qf.SelectHeatmap(ctx, connect.NewRequest(&querierv1.SelectHeatmapRequest{
