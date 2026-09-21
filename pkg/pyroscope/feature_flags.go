@@ -13,6 +13,7 @@ func (c *Config) getFeatureFlags() map[string]bool {
 		featureflags.PyroscopeRuler:          rulerEnabled,
 		featureflags.PyroscopeRulerFunctions: rulerEnabled,
 		featureflags.UTF8LabelNames:          false, // not supported yet
+		featureflags.FunctionProjections:     c.ArchitectureStorage == V1V2Dual || c.ArchitectureStorage == V2,
 	}
 }
 
