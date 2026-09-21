@@ -515,7 +515,7 @@ seaweedfs:
       enabled: true
       enableAuth: false
   s3:
-    enabled: false
+    enabled: true
     enableAuth: false
     credentials:
       admin:

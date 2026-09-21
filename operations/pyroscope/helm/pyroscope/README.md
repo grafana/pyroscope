@@ -15,9 +15,9 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.min.io/ | minio(minio) | 4.1.0 |
 | https://grafana.github.io/helm-charts | alloy(alloy) | 1.5.2 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.44.2 |
+| https://seaweedfs.github.io/seaweedfs/helm | seaweedfs(seaweedfs) | 4.46.0 |
 
 ## Values
 
@@ -49,7 +49,6 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | ingress.enabled | bool | `false` |  |
 | ingress.labels | object | `{}` |  |
 | ingress.pathType | string | `"ImplementationSpecific"` |  |
-| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
 | pyroscope.components | object | `{}` |  |
@@ -112,6 +111,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | pyroscope.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
 | pyroscope.tolerations | list | `[]` |  |
 | pyroscope.topologySpreadConstraints | list | `[]` | Topology Spread Constraints |
+| seaweedfs | object | `{"enabled":false,"filer":{"enablePVC":true,"replicas":1,"s3":{"enableAuth":false,"enabled":true},"storage":"5Gi"},"master":{"data":{"size":"1Gi","type":"persistentVolumeClaim"},"replicas":1},"persistence":{"enabled":true},"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"s3":{"credentials":{"admin":{"accessKey":"grafana-pyroscope","secretKey":"supersecret"}},"enableAuth":false,"enabled":true},"volume":{"dataDirs":[{"name":"data1","size":"5Gi","type":"persistentVolumeClaim"}],"replicas":1}}` | --------------------------------------- |
 | serviceMonitor.annotations | object | `{}` | ServiceMonitor annotations |
 | serviceMonitor.enabled | bool | `false` | If enabled, ServiceMonitor resources for Prometheus Operator are created |
 | serviceMonitor.interval | string | `nil` | ServiceMonitor scrape interval |
