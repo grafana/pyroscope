@@ -49,7 +49,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | ingress.enabled | bool | `false` |  |
 | ingress.labels | object | `{}` |  |
 | ingress.pathType | string | `"ImplementationSpecific"` |  |
-| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
+| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"image":{"repository":"pgsty/minio","tag":"RELEASE.2026-08-04T00-00-00Z"},"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
 | pyroscope.components | object | `{}` |  |

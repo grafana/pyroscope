@@ -2863,7 +2863,7 @@ spec:
       serviceAccountName: minio-sa
       containers:
         - name: minio
-          image: quay.io/minio/minio:RELEASE.2022-10-24T18-35-07Z
+          image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
           imagePullPolicy: IfNotPresent
 
           command: [ "/bin/sh",

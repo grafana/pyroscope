@@ -369,6 +369,10 @@
     ],
     "drivesPerNode": 2,
     "enabled": false,
+    "image": {
+      "repository": "pgsty/minio",
+      "tag": "RELEASE.2026-08-04T00-00-00Z"
+    },
     "persistence": {
       "size": "5Gi"
     },
