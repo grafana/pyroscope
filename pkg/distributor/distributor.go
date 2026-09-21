@@ -1095,26 +1095,46 @@ func profileSizeBytes(p *profilev1.Profile, fullSize int64) (symbols, samples in
 // the owner of the result releases it once the write completes.
 type pendingAggregate struct {
 	merge *pprof.ProfileMerge
+	// Aggregate callbacks are serialized by the aggregator.
+	additions int
 
 	mu          sync.Mutex
 	reservation *inflight.Reservation
+	reserved    int64
 	released    bool
 }
 
-// charge accounts for a contribution of size bytes. Merge interns its input,
-// so the accumulator grows by at most that much: the reservation is an upper
-// bound on what the aggregate holds, never an underestimate.
+// charge conservatively adds the input size between reconciliations.
+// Accounting uses serialized profile bytes, not retained Go heap.
 func (a *pendingAggregate) charge(l *inflight.Limiter, size int64) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.released {
 		return
 	}
+	a.reserved += size
 	if a.reservation == nil {
 		a.reservation, _ = l.Reserve(size)
 		return
 	}
 	a.reservation.Grow(size)
+}
+
+// aggregateReservationReconcileInterval is the number of successful merges
+// between recalculations of an aggregate's reserved serialized bytes.
+const aggregateReservationReconcileInterval = 10
+
+// reconcile replaces the estimate with the current serialized size. The
+// aggregator serializes this with merges; mu excludes concurrent release.
+func (a *pendingAggregate) reconcile() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.released {
+		return
+	}
+	size := int64(a.merge.Profile().SizeVT())
+	a.reservation.Grow(size - a.reserved)
+	a.reserved = size
 }
 
 func (a *pendingAggregate) release() {
@@ -1147,6 +1167,10 @@ func (d *Distributor) mergeProfile(profile *profilev1.Profile, size int64, out *
 		// reservation, which still has to be released.
 		if err := a.merge.Merge(profile, true); err != nil {
 			return a, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		a.additions++
+		if a.additions%aggregateReservationReconcileInterval == 0 {
+			a.reconcile()
 		}
 		return a, nil
 	}

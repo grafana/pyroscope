@@ -64,6 +64,8 @@ type Reservation struct {
 
 // Grow adds size bytes to the reservation, for a claim that keeps growing
 // after it is taken. It reports whether the reservation still fits the limit.
+// A negative size returns excess capacity during reconciliation. The caller
+// must ensure the resulting reservation size is nonnegative.
 // Growing a fully released reservation is a no-op and reports false.
 func (r *Reservation) Grow(size int64) bool {
 	if r == nil || !r.Retain() {
