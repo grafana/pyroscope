@@ -514,8 +514,12 @@ seaweedfs:
     s3:
       enabled: true
       enableAuth: false
+      # The bucket Pyroscope writes to must exist before the first write;
+      # the seaweedfs chart creates these via a post-install hook Job.
+      createBuckets:
+        - name: grafana-pyroscope-data
   s3:
-    enabled: true
+    enabled: false
     enableAuth: false
     credentials:
       admin:
