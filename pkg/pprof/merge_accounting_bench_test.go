@@ -30,7 +30,7 @@ func BenchmarkMergeAccounting(b *testing.B) {
 						templates := make([]*profilev1.Profile, count)
 						var summed int64
 						for i := range templates {
-							p := raw.Profile.CloneVT()
+							p := raw.CloneVT()
 							if growth {
 								key := int64(len(p.StringTable))
 								p.StringTable = append(p.StringTable, "benchmark_contributor", fmt.Sprintf("contributor-%d", i))
@@ -44,9 +44,10 @@ func BenchmarkMergeAccounting(b *testing.B) {
 						b.Run(fmt.Sprintf("n=%d", count), func(b *testing.B) {
 							for _, every := range []int{0, 1, 10} {
 								mode := "sum-inputs"
-								if every == 1 {
+								switch every {
+								case 1:
 									mode = "size-each-merge"
-								} else if every == 10 {
+								case 10:
 									mode = "size-every-10"
 								}
 								b.Run(mode, func(b *testing.B) {
@@ -103,7 +104,7 @@ func TestMergeAccountingIntermediateProfile(t *testing.T) {
 			var baseline, precise ProfileMerge
 			var previousSamples int
 			for i := 0; i < 10; i++ {
-				input := raw.Profile.CloneVT()
+				input := raw.CloneVT()
 				key := int64(len(input.StringTable))
 				input.StringTable = append(input.StringTable, "benchmark_contributor", fmt.Sprintf("contributor-%d", i))
 				for _, s := range input.Sample {
