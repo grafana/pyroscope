@@ -702,6 +702,44 @@ components:
           title: attribute_refs
       title: Exemplar
       additionalProperties: false
+    query.v1.FunctionTreeQuery:
+      type: object
+      properties:
+        stackTraceSelector:
+          title: stack_trace_selector
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
+        options:
+          title: options
+          $ref: '#/components/schemas/types.v1.FunctionTreeOptions'
+      title: FunctionTreeQuery
+      additionalProperties: false
+    query.v1.FunctionTreeReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.FunctionTreeQuery'
+        tree:
+          title: tree
+          $ref: '#/components/schemas/types.v1.FunctionTree'
+      title: FunctionTreeReport
+      additionalProperties: false
     query.v1.FunctionsQuery:
       type: object
       properties:
@@ -1057,6 +1095,9 @@ components:
         functions:
           title: functions
           $ref: '#/components/schemas/query.v1.FunctionsQuery'
+        functionTree:
+          title: function_tree
+          $ref: '#/components/schemas/query.v1.FunctionTreeQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1147,6 +1188,7 @@ components:
         - QUERY_HEATMAP
         - QUERY_TIME_SERIES_COMPACT
         - QUERY_FUNCTIONS
+        - QUERY_FUNCTION_TREE
     query.v1.Report:
       type: object
       properties:
@@ -1183,6 +1225,9 @@ components:
         functions:
           title: functions
           $ref: '#/components/schemas/query.v1.FunctionsReport'
+        functionTree:
+          title: function_tree
+          $ref: '#/components/schemas/query.v1.FunctionTreeReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1199,6 +1244,7 @@ components:
         - REPORT_HEATMAP
         - REPORT_TIME_SERIES_COMPACT
         - REPORT_FUNCTIONS
+        - REPORT_FUNCTION_TREE
     query.v1.Series:
       type: object
       properties:
@@ -1401,6 +1447,50 @@ components:
           title: string_hashes
       title: TreeSymbols
       additionalProperties: false
+    types.v1.CallTree:
+      type: object
+      properties:
+        root:
+          title: root
+          $ref: '#/components/schemas/types.v1.CallTreeNode'
+      title: CallTree
+      additionalProperties: false
+    types.v1.CallTreeNode:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: Empty only for the synthetic profile root. Uses stored function names.
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: FUNCTION_CHAIN counts each matching occurrence, including recursion.
+        self:
+          type:
+            - integer
+            - string
+          title: self
+          format: int64
+          description: |-
+            Actual self for callees. For callers, self is only populated at the root of
+             a single-function selection; caller ancestors have zero self.
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.CallTreeNode'
+          title: children
+        hasChildren:
+          type: boolean
+          title: has_children
+          description: |-
+            Further nodes exist in this direction, even when depth stops children.
+             Values beyond the boundary are included in total, never folded into self.
+      title: CallTreeNode
+      additionalProperties: false
     types.v1.Exemplar:
       type: object
       properties:
@@ -1507,6 +1597,50 @@ components:
           description: Number of functions before limiting. Compare with functions length for coverage.
       title: FunctionTable
       additionalProperties: false
+    types.v1.FunctionTree:
+      type: object
+      properties:
+        callers:
+          title: callers
+          $ref: '#/components/schemas/types.v1.CallTree'
+        callees:
+          title: callees
+          $ref: '#/components/schemas/types.v1.CallTree'
+      title: FunctionTree
+      additionalProperties: false
+      description: Requested directions are present even when no samples match (root is absent).
+    types.v1.FunctionTreeDirection:
+      type: string
+      title: FunctionTreeDirection
+      enum:
+        - FUNCTION_TREE_DIRECTION_UNSPECIFIED
+        - FUNCTION_TREE_DIRECTION_CALLEES
+        - FUNCTION_TREE_DIRECTION_CALLERS
+        - FUNCTION_TREE_DIRECTION_BOTH
+    types.v1.FunctionTreeOptions:
+      type: object
+      properties:
+        direction:
+          title: direction
+          $ref: '#/components/schemas/types.v1.FunctionTreeDirection'
+        selection:
+          title: selection
+          $ref: '#/components/schemas/types.v1.FunctionTreeSelection'
+        maxDepth:
+          type: integer
+          title: max_depth
+          format: int32
+          description: Edges from the reference node. Omitted defaults to 1; valid range 0..128.
+          nullable: true
+      title: FunctionTreeOptions
+      additionalProperties: false
+    types.v1.FunctionTreeSelection:
+      type: string
+      title: FunctionTreeSelection
+      enum:
+        - FUNCTION_TREE_SELECTION_UNSPECIFIED
+        - FUNCTION_TREE_SELECTION_ROOT_PATH
+        - FUNCTION_TREE_SELECTION_FUNCTION_CHAIN
     types.v1.GoPGO:
       type: object
       properties:

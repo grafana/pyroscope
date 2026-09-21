@@ -196,6 +196,7 @@ func (m *Query) CloneVT() *Query {
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	r.Functions = m.Functions.CloneVT()
+	r.FunctionTree = m.FunctionTree.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -342,6 +343,7 @@ func (m *Report) CloneVT() *Report {
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	r.Functions = m.Functions.CloneVT()
+	r.FunctionTree = m.FunctionTree.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -1015,6 +1017,55 @@ func (m *FunctionsQuery) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *FunctionTreeQuery) CloneVT() *FunctionTreeQuery {
+	if m == nil {
+		return (*FunctionTreeQuery)(nil)
+	}
+	r := new(FunctionTreeQuery)
+	if rhs := m.StackTraceSelector; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface {
+			CloneVT() *v11.StackTraceSelector
+		}); ok {
+			r.StackTraceSelector = vtpb.CloneVT()
+		} else {
+			r.StackTraceSelector = proto.Clone(rhs).(*v11.StackTraceSelector)
+		}
+	}
+	if rhs := m.ProfileIdSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ProfileIdSelector = tmpContainer
+	}
+	if rhs := m.SpanSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SpanSelector = tmpContainer
+	}
+	if rhs := m.TraceIdSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.TraceIdSelector = tmpContainer
+	}
+	if rhs := m.Options; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface {
+			CloneVT() *v11.FunctionTreeOptions
+		}); ok {
+			r.Options = vtpb.CloneVT()
+		} else {
+			r.Options = proto.Clone(rhs).(*v11.FunctionTreeOptions)
+		}
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *FunctionTreeQuery) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *FunctionsReport) CloneVT() *FunctionsReport {
 	if m == nil {
 		return (*FunctionsReport)(nil)
@@ -1036,6 +1087,30 @@ func (m *FunctionsReport) CloneVT() *FunctionsReport {
 }
 
 func (m *FunctionsReport) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *FunctionTreeReport) CloneVT() *FunctionTreeReport {
+	if m == nil {
+		return (*FunctionTreeReport)(nil)
+	}
+	r := new(FunctionTreeReport)
+	r.Query = m.Query.CloneVT()
+	if rhs := m.Tree; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v11.FunctionTree }); ok {
+			r.Tree = vtpb.CloneVT()
+		} else {
+			r.Tree = proto.Clone(rhs).(*v11.FunctionTree)
+		}
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *FunctionTreeReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -1305,6 +1380,9 @@ func (this *Query) EqualVT(that *Query) bool {
 	if !this.Functions.EqualVT(that.Functions) {
 		return false
 	}
+	if !this.FunctionTree.EqualVT(that.FunctionTree) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1537,6 +1615,9 @@ func (this *Report) EqualVT(that *Report) bool {
 		return false
 	}
 	if !this.Functions.EqualVT(that.Functions) {
+		return false
+	}
+	if !this.FunctionTree.EqualVT(that.FunctionTree) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2473,6 +2554,67 @@ func (this *FunctionsQuery) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *FunctionTreeQuery) EqualVT(that *FunctionTreeQuery) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if equal, ok := interface{}(this.StackTraceSelector).(interface {
+		EqualVT(*v11.StackTraceSelector) bool
+	}); ok {
+		if !equal.EqualVT(that.StackTraceSelector) {
+			return false
+		}
+	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
+		return false
+	}
+	if len(this.ProfileIdSelector) != len(that.ProfileIdSelector) {
+		return false
+	}
+	for i, vx := range this.ProfileIdSelector {
+		vy := that.ProfileIdSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.SpanSelector) != len(that.SpanSelector) {
+		return false
+	}
+	for i, vx := range this.SpanSelector {
+		vy := that.SpanSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.TraceIdSelector) != len(that.TraceIdSelector) {
+		return false
+	}
+	for i, vx := range this.TraceIdSelector {
+		vy := that.TraceIdSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if equal, ok := interface{}(this.Options).(interface {
+		EqualVT(*v11.FunctionTreeOptions) bool
+	}); ok {
+		if !equal.EqualVT(that.Options) {
+			return false
+		}
+	} else if !proto.Equal(this.Options, that.Options) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *FunctionTreeQuery) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FunctionTreeQuery)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *FunctionsReport) EqualVT(that *FunctionsReport) bool {
 	if this == that {
 		return true
@@ -2494,6 +2636,32 @@ func (this *FunctionsReport) EqualVT(that *FunctionsReport) bool {
 
 func (this *FunctionsReport) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*FunctionsReport)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *FunctionTreeReport) EqualVT(that *FunctionTreeReport) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
+	if equal, ok := interface{}(this.Tree).(interface{ EqualVT(*v11.FunctionTree) bool }); ok {
+		if !equal.EqualVT(that.Tree) {
+			return false
+		}
+	} else if !proto.Equal(this.Tree, that.Tree) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *FunctionTreeReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FunctionTreeReport)
 	if !ok {
 		return false
 	}
@@ -3075,6 +3243,16 @@ func (m *Query) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.FunctionTree != nil {
+		size, err := m.FunctionTree.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x5a
+	}
 	if m.Functions != nil {
 		size, err := m.Functions.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -3524,6 +3702,16 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.FunctionTree != nil {
+		size, err := m.FunctionTree.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x5a
 	}
 	if m.Functions != nil {
 		size, err := m.Functions.MarshalToSizedBufferVT(dAtA[:i])
@@ -5216,6 +5404,110 @@ func (m *FunctionsQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *FunctionTreeQuery) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FunctionTreeQuery) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *FunctionTreeQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Options != nil {
+		if vtmsg, ok := interface{}(m.Options).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Options)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.TraceIdSelector) > 0 {
+		for iNdEx := len(m.TraceIdSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.TraceIdSelector[iNdEx])
+			copy(dAtA[i:], m.TraceIdSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.TraceIdSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.SpanSelector) > 0 {
+		for iNdEx := len(m.SpanSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SpanSelector[iNdEx])
+			copy(dAtA[i:], m.SpanSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.SpanSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.ProfileIdSelector) > 0 {
+		for iNdEx := len(m.ProfileIdSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileIdSelector[iNdEx])
+			copy(dAtA[i:], m.ProfileIdSelector[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileIdSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.StackTraceSelector != nil {
+		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.StackTraceSelector)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *FunctionsReport) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -5258,6 +5550,71 @@ func (m *FunctionsReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
 		} else {
 			encoded, err := proto.Marshal(m.Table)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *FunctionTreeReport) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FunctionTreeReport) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *FunctionTreeReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Tree != nil {
+		if vtmsg, ok := interface{}(m.Tree).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Tree)
 			if err != nil {
 				return 0, err
 			}
@@ -5469,6 +5826,10 @@ func (m *Query) SizeVT() (n int) {
 		l = m.Functions.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if m.FunctionTree != nil {
+		l = m.FunctionTree.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -5648,6 +6009,10 @@ func (m *Report) SizeVT() (n int) {
 	}
 	if m.Functions != nil {
 		l = m.Functions.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.FunctionTree != nil {
+		l = m.FunctionTree.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -6291,6 +6656,54 @@ func (m *FunctionsQuery) SizeVT() (n int) {
 	return n
 }
 
+func (m *FunctionTreeQuery) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.StackTraceSelector != nil {
+		if size, ok := interface{}(m.StackTraceSelector).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.StackTraceSelector)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.ProfileIdSelector) > 0 {
+		for _, s := range m.ProfileIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.SpanSelector) > 0 {
+		for _, s := range m.SpanSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.TraceIdSelector) > 0 {
+		for _, s := range m.TraceIdSelector {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.Options != nil {
+		if size, ok := interface{}(m.Options).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Options)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *FunctionsReport) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -6308,6 +6721,30 @@ func (m *FunctionsReport) SizeVT() (n int) {
 			l = size.SizeVT()
 		} else {
 			l = proto.Size(m.Table)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *FunctionTreeReport) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Tree != nil {
+		if size, ok := interface{}(m.Tree).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Tree)
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
@@ -7507,6 +7944,42 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 				m.Functions = &FunctionsQuery{}
 			}
 			if err := m.Functions.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FunctionTree", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.FunctionTree == nil {
+				m.FunctionTree = &FunctionTreeQuery{}
+			}
+			if err := m.FunctionTree.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8726,6 +9199,42 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 				m.Functions = &FunctionsReport{}
 			}
 			if err := m.Functions.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FunctionTree", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.FunctionTree == nil {
+				m.FunctionTree = &FunctionTreeReport{}
+			}
+			if err := m.FunctionTree.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -12577,6 +13086,241 @@ func (m *FunctionsQuery) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *FunctionTreeQuery) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FunctionTreeQuery: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FunctionTreeQuery: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StackTraceSelector", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.StackTraceSelector == nil {
+				m.StackTraceSelector = &v11.StackTraceSelector{}
+			}
+			if unmarshal, ok := interface{}(m.StackTraceSelector).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.StackTraceSelector); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileIdSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileIdSelector = append(m.ProfileIdSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SpanSelector = append(m.SpanSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TraceIdSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TraceIdSelector = append(m.TraceIdSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Options", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Options == nil {
+				m.Options = &v11.FunctionTreeOptions{}
+			}
+			if unmarshal, ok := interface{}(m.Options).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Options); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *FunctionsReport) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -12682,6 +13426,137 @@ func (m *FunctionsReport) UnmarshalVT(dAtA []byte) error {
 				}
 			} else {
 				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Table); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *FunctionTreeReport) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FunctionTreeReport: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FunctionTreeReport: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &FunctionTreeQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tree", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Tree == nil {
+				m.Tree = &v11.FunctionTree{}
+			}
+			if unmarshal, ok := interface{}(m.Tree).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Tree); err != nil {
 					return err
 				}
 			}
