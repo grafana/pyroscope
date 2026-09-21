@@ -7,15 +7,20 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"golang.org/x/sync/errgroup"
 
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/profilediff"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
+
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )
 
 func (q *QueryFrontend) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],
 ) (*connect.Response[querierv1.DiffResponse], error) {
+	if phlaremodel.IsProjectionFormat(c.Msg.GetLeft().GetFormat()) {
+		return profilediff.Diff(ctx, c.Msg, q.SelectMergeStacktraces)
+	}
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
