@@ -128,6 +128,7 @@ func (h ingestHandler) parseInputMetadataFromRequest(_ context.Context, r *http.
 
 	if qt := q.Get("from"); qt != "" {
 		input.Metadata.StartTime = attime.Parse(qt)
+		input.Metadata.OriginalStartTimeNanos = input.Metadata.StartTime.UnixNano()
 	} else {
 		input.Metadata.StartTime = time.Now()
 	}

@@ -59,6 +59,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
+	"github.com/grafana/pyroscope/v2/pkg/util/tracecontext"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
@@ -474,6 +475,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
+		tracecontext.UnaryServerInterceptor,
 		featureflags.ClientCapabilitiesGRPCMiddleware(),
 	)
 
@@ -525,6 +527,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		return nil, err
 	}
 	defaultHTTPMiddleware := []middleware.Interface{
+		tracecontext.HTTPMiddleware(),
 		middleware.Tracer{},
 		// https://github.com/grafana/dskit/pull/527
 		middleware.RouteInjector{

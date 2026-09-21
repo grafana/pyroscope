@@ -561,6 +561,7 @@ func New(cfg Config) (*Pyroscope, error) {
 	runtime.SetMutexProfileFraction(cfg.SelfProfiling.MutexProfileFraction)
 	runtime.SetBlockProfileRate(cfg.SelfProfiling.BlockProfileRate)
 
+	initTracePropagation()
 	if cfg.Tracing.Enabled {
 		name := os.Getenv("OTEL_SERVICE_NAME")
 		if name == "" {
