@@ -20,7 +20,7 @@ type emptyObjectEOFBucket struct {
 }
 
 func (b *emptyObjectEOFBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
-	attrs, err := b.Bucket.Attributes(ctx, name)
+	attrs, err := b.Attributes(ctx, name)
 	if err != nil {
 		return nil, err
 	}
