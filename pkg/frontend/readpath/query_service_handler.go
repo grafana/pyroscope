@@ -267,6 +267,14 @@ func (r *Router) QueryAnomalies(
 	ctx context.Context,
 	req *connect.Request[querierv1.QueryAnomaliesRequest],
 ) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	for _, anomalyType := range req.Msg.AnomalyTypes {
+		if anomalyType == querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES {
+			if err := r.validateTimeSeriesAnomalyRange(ctx, req); err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
 	if r.newFrontend != nil {
 		return r.newFrontend.QueryAnomalies(ctx, req)
 	}

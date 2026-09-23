@@ -17,8 +17,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
-// QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
-// flagged as anomalies by the configured external anomaly source.
+// QueryAnomalies queries the requested anomaly sources for matching profiles.
 func (q *QueryFrontend) QueryAnomalies(
 	ctx context.Context,
 	c *connect.Request[querierv1.QueryAnomaliesRequest],
@@ -32,7 +31,7 @@ func (q *QueryFrontend) QueryAnomalies(
 	uniqueTypes := make([]querierv1.AnomalyType, 0, len(c.Msg.AnomalyTypes))
 	for _, t := range c.Msg.AnomalyTypes {
 		switch t {
-		case querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE:
+		case querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE, querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES:
 		default:
 			return nil, connect.NewError(connect.CodeUnimplemented,
 				fmt.Errorf("unsupported anomaly_type %q", t))
@@ -53,6 +52,12 @@ func (q *QueryFrontend) QueryAnomalies(
 				return nil, err
 			}
 			resp.StacktraceAnomalies = profiles
+		case querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES:
+			anomalies, err := q.queryTimeSeriesAnomalies(ctx, c.Msg)
+			if err != nil {
+				return nil, err
+			}
+			resp.TimeSeriesAnomalies = anomalies
 		}
 	}
 	return connect.NewResponse(resp), nil

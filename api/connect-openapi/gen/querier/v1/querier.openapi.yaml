@@ -235,10 +235,10 @@ paths:
       tags:
         - scope/internal
         - querier.v1.QuerierService
-      summary: (Experimental) QueryAnomalies returns, out of the profiles matching the request, the  profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
+      summary: (Experimental) QueryAnomalies returns stacktrace anomalies and detected  time-series changes for matching profiles, according to anomaly_types.
       description: |-
-        (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
-         profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
+        (Experimental) QueryAnomalies returns stacktrace anomalies and detected
+         time-series changes for matching profiles, according to anomaly_types.
       operationId: querier.v1.QuerierService.QueryAnomalies
       parameters:
         - name: Connect-Protocol-Version
@@ -1023,12 +1023,47 @@ components:
           $ref: '#/components/schemas/querier.v1.QueryImpact'
       title: AnalyzeQueryResponse
       additionalProperties: false
+    querier.v1.AnomalyTimeSeriesRequest:
+      type: object
+      properties:
+        groupBy:
+          type: array
+          examples:
+            - - pod
+          items:
+            type: string
+            examples:
+              - - pod
+          title: group_by
+          description: |-
+            Labels used to group matching profiles into series.
+             If empty, all matching profiles are aggregated into a single series.
+        step:
+          type: number
+          title: step
+          format: double
+          description: |-
+            Query resolution step width in seconds. Must be at least 0.001 (1 ms).
+             Unset or zero is invalid; there is no default.
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+          description: |-
+            Limit the result to anomalies from the top N series by strongest score.
+             If unset, zero, or negative, no limit is applied.
+          nullable: true
+      title: AnomalyTimeSeriesRequest
+      additionalProperties: false
     querier.v1.AnomalyType:
       type: string
       title: AnomalyType
       enum:
         - ANOMALY_TYPE_UNSPECIFIED
         - ANOMALY_TYPE_STACKTRACE
+        - ANOMALY_TYPE_TIME_SERIES
     querier.v1.AsyncQueryRequest:
       type: object
       properties:
@@ -1274,9 +1309,14 @@ components:
           items:
             $ref: '#/components/schemas/querier.v1.AnomalyType'
           title: anomaly_types
+          description: Which anomaly sources to consult.
+        timeSeries:
+          title: time_series
           description: |-
-            Which anomaly sources to consult. Only ANOMALY_TYPE_STACKTRACE is handled today; any
-             other value returns an unimplemented error.
+            Required when ANOMALY_TYPE_TIME_SERIES is requested; there is no default step.
+             Ignored when ANOMALY_TYPE_TIME_SERIES is not requested.
+          nullable: true
+          $ref: '#/components/schemas/querier.v1.AnomalyTimeSeriesRequest'
       title: QueryAnomaliesRequest
       additionalProperties: false
     querier.v1.QueryAnomaliesResponse:
@@ -1290,6 +1330,12 @@ components:
           description: |-
             Profiles flagged by the stacktrace anomaly source and confirmed present for the given
              label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
+        timeSeriesAnomalies:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.TimeSeriesAnomaly'
+          title: time_series_anomalies
+          description: Detected time-series changes, populated when ANOMALY_TYPE_TIME_SERIES is requested.
       title: QueryAnomaliesResponse
       additionalProperties: false
     querier.v1.QueryImpact:
@@ -1889,6 +1935,65 @@ components:
           description: The anomaly source's score for this profile.
       title: StacktraceAnomaly
       additionalProperties: false
+    querier.v1.TimeSeriesAnomaly:
+      type: object
+      properties:
+        type:
+          title: type
+          $ref: '#/components/schemas/querier.v1.TimeSeriesAnomalyType'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+        timestampStart:
+          type:
+            - integer
+            - string
+          title: timestamp_start
+          format: int64
+          description: Milliseconds since epoch.
+        timestampEnd:
+          type:
+            - integer
+            - string
+          title: timestamp_end
+          format: int64
+          description: Milliseconds since epoch.
+        timestampPeak:
+          type:
+            - integer
+            - string
+          title: timestamp_peak
+          format: int64
+          description: Milliseconds since epoch.
+        baseline:
+          type: number
+          title: baseline
+          format: double
+        peakValue:
+          type: number
+          title: peak_value
+          format: double
+        relativeChange:
+          type: number
+          title: relative_change
+          format: double
+        score:
+          type: number
+          title: score
+          format: double
+      title: TimeSeriesAnomaly
+      additionalProperties: false
+    querier.v1.TimeSeriesAnomalyType:
+      type: string
+      title: TimeSeriesAnomalyType
+      enum:
+        - TIME_SERIES_ANOMALY_TYPE_UNSPECIFIED
+        - TIME_SERIES_ANOMALY_TYPE_SPIKE
+        - TIME_SERIES_ANOMALY_TYPE_DROP
+        - TIME_SERIES_ANOMALY_TYPE_INCREASE
+        - TIME_SERIES_ANOMALY_TYPE_DECREASE
     types.v1.Exemplar:
       type: object
       properties:

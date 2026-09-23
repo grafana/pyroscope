@@ -261,6 +261,7 @@ func (q *QueryFrontend) doQuery(
 		Options: &queryv1.InvokeOptions{
 			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
 			CollectDiagnostics: collectDiagnostics,
+			Finalize:           true,
 		},
 		QueryPlan: p,
 		Query:     req.Query,
