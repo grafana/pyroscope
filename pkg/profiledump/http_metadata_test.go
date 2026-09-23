@@ -2,7 +2,6 @@ package profiledump
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"io"
 	"math"
@@ -17,7 +16,7 @@ func TestHTTPMetadataRoundTripAndSizing(t *testing.T) {
 		for _, decompressed := range []bool{false, true} {
 			m := testMetadata(4)
 			m.SourceProtocol = SourceOTLPHTTP
-			m.Stored.Encoding = encodingUnknown
+			m.Stored.Encoding, m.Incoming.Encoding = encodingUnknown, encodingUnknown
 			m.HTTP = &HTTPMetadata{ContentEncoding: values, GzipDecompressed: decompressed}
 			b, err := json.Marshal(m)
 			require.NoError(t, err)
@@ -25,6 +24,7 @@ func TestHTTPMetadataRoundTripAndSizing(t *testing.T) {
 			encoded := testEnvelope(t, m, []byte("body"))
 			restored, err := Decode(bytes.NewReader(encoded), io.Discard, int64(len(encoded)))
 			require.NoError(t, err)
+			require.Equal(t, uint16(1), restored.SchemaVersion)
 			require.Equal(t, m, restored)
 			require.Error(t, Encode(io.Discard, m, strings.NewReader("body"), int64(len(encoded)-1)))
 		}
@@ -58,38 +58,29 @@ func TestHTTPMetadataWireBounds(t *testing.T) {
 	}
 }
 
-func TestHTTPMetadataVersionCompatibility(t *testing.T) {
-	for _, version := range []uint16{1, 2, 3} {
-		m := testMetadata(0)
-		m.SchemaVersion, m.SourceProtocol = version, SourceOTLPHTTP
-		b := testEnvelope(t, m, nil)
-		_, err := Decode(bytes.NewReader(b), io.Discard, math.MaxInt64)
-		require.NoError(t, err)
-		for _, extra := range []string{`,"http":{}`, `,"HTTP":null`, `,"http":{"future":true}`} {
+func TestHTTPMetadataJSONValidation(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, extra string
+		wantErr     bool
+	}{
+		{"absent", "", false},
+		{"empty", `,"http":{}`, false},
+		{"null", `,"http":null`, false},
+		{"unknown nested field", `,"http":{"future":true}`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testMetadata(0)
+			m.SourceProtocol = SourceOTLPHTTP
 			raw, err := json.Marshal(m)
 			require.NoError(t, err)
-			raw = append(raw[:len(raw)-1], []byte(extra+"}")...)
-			envelope := rawEnvelope(raw, nil)
-			binary.BigEndian.PutUint16(envelope[8:], version)
-			_, err = Decode(bytes.NewReader(envelope), io.Discard, math.MaxInt64)
-			if version < 3 || strings.Contains(extra, "future") {
-				require.Error(t, err)
+			raw = append(raw[:len(raw)-1], []byte(tc.extra+"}")...)
+			_, err = Decode(bytes.NewReader(rawEnvelope(raw, nil)), io.Discard, math.MaxInt64)
+			if tc.wantErr {
+				require.ErrorContains(t, err, `unknown field "future"`)
 			} else {
 				require.NoError(t, err)
 			}
-		}
-		m.Stored.Encoding = encodingUnknown
-		if version < 3 {
-			require.Error(t, m.Validate())
-		} else {
-			require.NoError(t, m.Validate())
-		}
-		m.HTTP = &HTTPMetadata{}
-		m.Stored.Encoding = encodingIdentity
-		if version < 3 {
-			require.Error(t, m.Validate())
-		} else {
-			require.NoError(t, m.Validate())
-		}
+		})
 	}
 }

@@ -38,7 +38,7 @@ const (
 // Encoding is "unknown" when the remaining encoding cannot be determined.
 type Representation struct {
 	ContentType string `json:"content_type"`
-	Encoding    string `json:"encoding"` // identity, gzip, zstd, deflate, br, snappy, or unknown (v3)
+	Encoding    string `json:"encoding"` // identity, gzip, zstd, deflate, br, snappy, or unknown
 	Syntax      string `json:"syntax"`   // protobuf, json, multipart, binary, or text
 }
 
@@ -85,6 +85,7 @@ func (m LegacyMetadata) validate() error {
 }
 
 // Metadata describes a capture. Labels and payloads remain sensitive.
+// SchemaVersion keeps metadata self-describing outside its envelope.
 // Callers must exclude credentials and arbitrary request data.
 type Metadata struct {
 	SchemaVersion     uint16            `json:"schema_version"`
@@ -122,11 +123,11 @@ func (m Metadata) Validate() error {
 		return fmt.Errorf("invalid native format")
 	}
 	if m.Incoming != nil {
-		if err := m.Incoming.validate(m.SchemaVersion); err != nil {
+		if err := m.Incoming.validate(); err != nil {
 			return fmt.Errorf("incoming representation: %w", err)
 		}
 	}
-	if err := m.Stored.validate(m.SchemaVersion); err != nil {
+	if err := m.Stored.validate(); err != nil {
 		return fmt.Errorf("stored representation: %w", err)
 	}
 	if err := ValidateOriginalProfileID(m.OriginalProfileID); err != nil {
@@ -148,15 +149,15 @@ func (m Metadata) Validate() error {
 }
 
 func (m Metadata) validateSchema() error {
-	if m.SchemaVersion < 1 || m.SchemaVersion > Version {
+	if m.SchemaVersion != Version {
 		return fmt.Errorf("unsupported metadata schema version %d", m.SchemaVersion)
 	}
-	if m.HTTP != nil && (m.SchemaVersion < 3 || (m.SourceProtocol != SourceOTLPHTTP && m.SourceProtocol != SourceIngest)) {
-		return fmt.Errorf("HTTP metadata requires schema 3 and an HTTP source")
+	if m.HTTP != nil && (m.SourceProtocol != SourceOTLPHTTP && m.SourceProtocol != SourceIngest) {
+		return fmt.Errorf("HTTP metadata requires an HTTP source")
 	}
 	if m.Legacy != nil {
-		if m.SchemaVersion < 2 || m.SourceProtocol != SourceIngest {
-			return fmt.Errorf("legacy metadata requires schema 2 and ingest source")
+		if m.SourceProtocol != SourceIngest {
+			return fmt.Errorf("legacy metadata requires ingest source")
 		}
 		if err := m.Legacy.validate(); err != nil {
 			return err
@@ -225,7 +226,7 @@ func ValidateLabel(name, value string) error {
 	return validateText("label value", value, MaxLabelValue, false)
 }
 
-func (r Representation) validate(version uint16) error {
+func (r Representation) validate() error {
 	if err := validateText("content_type", r.ContentType, MaxTextBytes, true); err != nil {
 		return err
 	}
@@ -241,11 +242,7 @@ func (r Representation) validate(version uint16) error {
 		return fmt.Errorf("multipart syntax requires multipart content type")
 	}
 	switch r.Encoding {
-	case encodingIdentity, "gzip", "zstd", "deflate", "br", "snappy":
-	case encodingUnknown:
-		if version < 3 {
-			return fmt.Errorf("unknown encoding requires schema 3")
-		}
+	case encodingIdentity, "gzip", "zstd", "deflate", "br", "snappy", encodingUnknown:
 	default:
 		return fmt.Errorf("invalid content encoding")
 	}

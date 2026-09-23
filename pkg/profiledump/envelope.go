@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"strings"
 	"unicode/utf8"
 )
 
-// See FORMAT.md for versions 1–3 and the header layout.
+// See FORMAT.md for version 1 and the header layout.
 const (
 	Magic      = "PYRDUMP\n"
-	Version    = 3
+	Version    = 1
 	HeaderSize = len(Magic) + 2 + 4
 )
 
@@ -75,7 +74,7 @@ func Inspect(r io.Reader, maxObjectSize int64) (Inspection, error) {
 		return Inspection{}, fmt.Errorf("invalid envelope magic")
 	}
 	version := binary.BigEndian.Uint16(header[len(Magic):])
-	if version < 1 || version > Version {
+	if version != Version {
 		return Inspection{}, fmt.Errorf("unsupported envelope version %d", version)
 	}
 	metadataSize := int64(binary.BigEndian.Uint32(header[len(Magic)+2:]))
@@ -89,20 +88,6 @@ func Inspect(r io.Reader, maxObjectSize int64) (Inspection, error) {
 	}
 	if !utf8.Valid(b) {
 		return Inspection{}, fmt.Errorf("metadata is not UTF-8")
-	}
-	if version < 3 {
-		var fields map[string]json.RawMessage
-		if err := json.Unmarshal(b, &fields); err != nil {
-			return Inspection{}, fmt.Errorf("decode metadata: %w", err)
-		}
-		for field := range fields {
-			if version == 1 && strings.EqualFold(field, "legacy") {
-				return Inspection{}, fmt.Errorf("unknown field legacy in schema 1")
-			}
-			if strings.EqualFold(field, "http") {
-				return Inspection{}, fmt.Errorf("unknown field http in schema %d", version)
-			}
-		}
 	}
 	// A pointer distinguishes a missing/null payload_size from a valid zero.
 	var wire struct {

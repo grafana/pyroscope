@@ -2,7 +2,6 @@ package profiledump
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"io"
 	"math"
@@ -27,6 +26,7 @@ func TestLegacyMetadataRoundTripAndSizing(t *testing.T) {
 	var body bytes.Buffer
 	restored, err := Decode(bytes.NewReader(encoded), &body, int64(len(encoded)))
 	require.NoError(t, err)
+	require.Equal(t, uint16(1), restored.SchemaVersion)
 	require.Equal(t, m, restored)
 	require.Equal(t, "body", body.String())
 	require.Error(t, Encode(io.Discard, m, strings.NewReader("body"), int64(len(encoded)-1)))
@@ -59,46 +59,31 @@ func TestLegacyMetadataBounds(t *testing.T) {
 	require.ErrorContains(t, m.Validate(), "profile time")
 }
 
-func TestEnvelopeVersionCompatibility(t *testing.T) {
-	// Equivalent to a pre-extension capture: schema/header 1 and no legacy field.
-	m := testMetadata(3)
-	m.SchemaVersion = 1
-	v1 := testEnvelope(t, m, []byte("old"))
-	require.Equal(t, uint16(1), binary.BigEndian.Uint16(v1[8:]))
-	restored, err := Decode(bytes.NewReader(v1), io.Discard, math.MaxInt64)
-	require.NoError(t, err)
-	require.Nil(t, restored.Legacy)
-	m.SchemaVersion = 2
-	v2 := testEnvelope(t, m, []byte("old"))
-	restored, err = Decode(bytes.NewReader(v2), io.Discard, math.MaxInt64)
-	require.NoError(t, err)
-	require.Nil(t, restored.Legacy)
-	// The previous reader rejects this header before JSON decoding (its Version=1).
-	require.NotEqual(t, uint16(1), binary.BigEndian.Uint16(v2[8:]))
+func TestLegacyMetadataJSONValidation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
-		name           string
-		header, schema uint16
-		extra          string
+		name, extra string
+		wantErr     bool
 	}{
-		{"v1 legacy", 1, 1, `,"legacy":{}`}, {"v1 null legacy", 1, 1, `,"legacy":null`},
-		{"v1 case folded legacy", 1, 1, `,"Legacy":null`},
-		{"unknown v1", 1, 1, `,"future":true`}, {"unknown v2", 2, 2, `,"future":true`},
-		{"unknown nested", 2, 2, `,"legacy":{"future":true}`},
-		{"mismatch", 1, 2, ""}, {"unsupported header", 4, 2, ""}, {"unsupported schema", 2, 4, ""},
+		{"absent", "", false},
+		{"empty", `,"legacy":{}`, false},
+		{"null", `,"legacy":null`, false},
+		{"unknown nested field", `,"legacy":{"future":true}`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m.SchemaVersion = tc.schema
-			b, err := json.Marshal(m)
+			m := testMetadata(0)
+			m.SourceProtocol = SourceIngest
+			raw, err := json.Marshal(m)
 			require.NoError(t, err)
-			b = append(b[:len(b)-1], []byte(tc.extra+"}")...)
-			raw := rawEnvelope(b, []byte("old"))
-			binary.BigEndian.PutUint16(raw[8:], tc.header)
-			_, err = Decode(bytes.NewReader(raw), io.Discard, math.MaxInt64)
-			require.Error(t, err)
+			raw = append(raw[:len(raw)-1], []byte(tc.extra+"}")...)
+			_, err = Decode(bytes.NewReader(rawEnvelope(raw, nil)), io.Discard, math.MaxInt64)
+			if tc.wantErr {
+				require.ErrorContains(t, err, `unknown field "future"`)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
-	m.SourceProtocol, m.Legacy, m.SchemaVersion = SourceIngest, legacyMetadata(), 1
-	require.Error(t, Encode(io.Discard, m, strings.NewReader("old"), math.MaxInt64))
 }
 
 func TestLegacyMetadataAggregateWireBound(t *testing.T) {

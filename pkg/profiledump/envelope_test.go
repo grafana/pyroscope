@@ -77,7 +77,7 @@ func TestEnvelopeRoundTrip(t *testing.T) {
 			}
 			encoded := testEnvelope(t, m, tc.payload)
 			// Pin the wire header independently of the implementation's constants.
-			require.Equal(t, []byte{'P', 'Y', 'R', 'D', 'U', 'M', 'P', '\n', 0, 3}, encoded[:10])
+			require.Equal(t, []byte{'P', 'Y', 'R', 'D', 'U', 'M', 'P', '\n', 0, 1}, encoded[:10])
 			metadataLength := binary.BigEndian.Uint32(encoded[10:14])
 			require.Equal(t, len(encoded), 14+int(metadataLength)+len(tc.payload))
 			var restored bytes.Buffer
@@ -108,6 +108,8 @@ func TestEnvelopeHeaderValidation(t *testing.T) {
 	}{
 		{"magic", func(b []byte) { b[0] = 0 }},
 		{"version zero", func(b []byte) { binary.BigEndian.PutUint16(b[8:], 0) }},
+		{"version 2", func(b []byte) { binary.BigEndian.PutUint16(b[8:], 2) }},
+		{"version 3", func(b []byte) { binary.BigEndian.PutUint16(b[8:], 3) }},
 		{"unknown version", func(b []byte) { binary.BigEndian.PutUint16(b[8:], math.MaxUint16) }},
 		{"zero metadata", func(b []byte) { binary.BigEndian.PutUint32(b[10:], 0) }},
 		{"oversized metadata", func(b []byte) { binary.BigEndian.PutUint32(b[10:], MaxMetadataSize+1) }},
@@ -120,6 +122,24 @@ func TestEnvelopeHeaderValidation(t *testing.T) {
 			_, err := Inspect(r, math.MaxInt64)
 			require.Error(t, err)
 			require.Equal(t, len(b)-HeaderSize, r.Len(), "must reject before reading metadata")
+		})
+	}
+}
+
+func TestEnvelopeSchemaVersionValidation(t *testing.T) {
+	t.Parallel()
+	for _, version := range []uint16{0, 2, 3, math.MaxUint16} {
+		t.Run(fmt.Sprint(version), func(t *testing.T) {
+			m := testMetadata(0)
+			m.SchemaVersion = version
+			require.ErrorContains(t, m.Validate(), "unsupported metadata schema version")
+			var output bytes.Buffer
+			require.ErrorContains(t, Encode(&output, m, bytes.NewReader(nil), math.MaxInt64), "unsupported metadata schema version")
+			require.Empty(t, output.Bytes())
+			raw, err := json.Marshal(m)
+			require.NoError(t, err)
+			_, err = Inspect(bytes.NewReader(rawEnvelope(raw, nil)), math.MaxInt64)
+			require.ErrorContains(t, err, "header and schema versions differ")
 		})
 	}
 }
@@ -157,13 +177,14 @@ func TestEnvelopeInvalidJSON(t *testing.T) {
 func TestEnvelopeInvalidMetadata(t *testing.T) {
 	t.Parallel()
 	for name, mutate := range map[string]func(*Metadata){
-		"schema zero":                     func(m *Metadata) { m.SchemaVersion = 0 },
-		"schema mismatch":                 func(m *Metadata) { m.SchemaVersion = Version + 1 },
 		"missing capture time":            func(m *Metadata) { m.CapturedAt = time.Time{} },
 		"capture time mismatch":           func(m *Metadata) { m.CapturedAt = m.CapturedAt.Add(time.Millisecond) },
 		"capture ID":                      func(m *Metadata) { m.CaptureID = "invalid" },
 		"missing tenant":                  func(m *Metadata) { m.TenantID = "" },
 		"tenant size":                     func(m *Metadata) { m.TenantID = strings.Repeat("a", MaxTenantBytes+1) },
+		"legacy source":                   func(m *Metadata) { m.Legacy = legacyMetadata() },
+		"HTTP connect source":             func(m *Metadata) { m.HTTP = &HTTPMetadata{} },
+		"HTTP gRPC source":                func(m *Metadata) { m.HTTP, m.SourceProtocol = &HTTPMetadata{}, SourceOTLPGRPC },
 		"source":                          func(m *Metadata) { m.SourceProtocol = "invalid-source" },
 		"format":                          func(m *Metadata) { m.NativeFormat = "invalid-format" },
 		"missing stored":                  func(m *Metadata) { m.Stored = Representation{} },

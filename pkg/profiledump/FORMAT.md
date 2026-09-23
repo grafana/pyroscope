@@ -1,4 +1,25 @@
-# Profile dump format, versions 1–3
+# Profile dump format, version 1
+
+## Format overview
+
+Each capture is stored as one self-contained object containing bounded metadata
+followed by the native payload bytes unchanged. Keeping both in one object avoids
+the coordination and failure modes of separate metadata and payload objects.
+
+The fixed header records the format version and metadata length:
+
+```text
+magic | version | metadata length | metadata | untouched payload
+```
+
+This makes the metadata independently inspectable while leaving the payload opaque
+and preserving the original bytes. Representing binary payloads compactly in JSON
+would require a text encoding such as base64, adding encoding overhead and increasing
+the object size. A protobuf wrapper could provide a similar storage model, but the same
+access pattern would still require a way to determine the metadata boundary before reading
+the payload.
+
+## Layout
 
 Each object contains a 14-byte header, UTF-8 JSON metadata, and opaque native payload.
 
@@ -12,16 +33,18 @@ Each object contains a 14-byte header, UTF-8 JSON metadata, and opaque native pa
 
 ## Compatibility and limits
 
-The codec supports versions 1–3. The recorder uses version 3 for all sources.
-Version 2 added `legacy`. Version 3 added `http` and representation encoding `unknown`.
-Version 1 rejects `legacy`, and versions 1–2 reject `http`, even null or case-folded
-field names. Older readers reject newer versions before parsing JSON.
-Unknown versions and JSON fields, including nested fields, are rejected.
-Absent or null optional blocks mean unavailable metadata. Legacy blocks require
-an ingest source, and missing scalars decode to Go zero values.
+The envelope and metadata schema both use version 1. Version 1 includes `legacy`,
+`http`, and representation encoding `unknown`. Other envelope versions are rejected
+before parsing JSON. The header version identifies the framing before metadata is
+read, while `schema_version` keeps the metadata self-describing if tooling serializes
+or surfaces it independently. Readers require them to match.
 
-Metadata must occupy 1–65536 bytes. Required `payload_size` is a nonnegative int64.
-The complete object must fit int64 and the caller's positive `maxObjectSize`.
+Unknown JSON fields, including nested fields, are rejected. Absent or null optional
+blocks mean unavailable metadata. Legacy blocks require an ingest source, and missing
+scalars decode to Go zero values.
+
+Metadata must be between 1 and 65,536 bytes. Required `payload_size` is a nonnegative
+int64. The complete object must fit int64 and the caller's positive `maxObjectSize`.
 Empty payloads are valid. Encoding and decoding require EOF immediately after
 the declared payload, rejecting short payloads, trailing bytes, and concatenated
 objects. The EOF check may consume an extra byte. Do not hide trailing bytes with
@@ -34,7 +57,7 @@ Use `io.Discard` to validate without retaining the decoded payload.
 
 `Inspect` reads only header and metadata, returning offsets, declared sizes, and
 owned metadata for range reads. `HeaderSize` and `MaxMetadataSize` bound inspection.
-It cannot confirm payload completeness. No version has a checksum, authentication,
+It cannot confirm payload completeness. The format has no checksum, authentication,
 or native-payload validation, so even full decoding cannot detect same-length corruption.
 
 ## Metadata
@@ -92,16 +115,17 @@ The label limits apply to the whole map. Legacy strings allow 1024 bytes each an
 4096 combined. The 64 KiB wire limit includes escaping, labels, and extensions.
 Invalid metadata drops only capture. Label preflight precedes selector allocation,
 sorting, and recorder admission, so failures produce no per-candidate metrics or spans.
-Object limits and recorder reservations include encoded metadata. Encoding workspace is bounded.
+Object limits and recorder reservations include encoded metadata. Encoding workspace is
+bounded.
 
 Stored content type retains valid supplied parameters, including multipart boundary.
 Missing types use `application/octet-stream`. Unparseable types or multipart types
-without a boundary use `application/octet-stream` with binary syntax. Invalid declarations are discarded,
-while oversized content types drop capture. Stored encoding is `gzip` for a gzip
-signature, otherwise `identity`. This sniffing does not validate compression.
-Syntax follows the effective format, or `multipart` for multipart content types.
-Compression within multipart sections does not affect the outer representation.
-Invalid representation metadata drops only capture.
+without a boundary use `application/octet-stream` with binary syntax. Invalid
+declarations are discarded, while oversized content types drop capture. Stored
+encoding is `gzip` for a gzip signature, otherwise `identity`. This sniffing does
+not validate compression. Syntax follows the effective format, or `multipart` for
+multipart content types. Compression within multipart sections does not affect the
+outer representation. Invalid representation metadata drops only capture.
 
 Incoming is omitted. No HTTP Content-Encoding or unrelated headers are copied.
 The full body, including all multipart sections, is copied once into recorder-owned
@@ -110,7 +134,7 @@ or rewrites it.
 
 ## OTLP HTTP encoding metadata
 
-Version 3's optional `http` block contains `content_encoding_base64`, an ordered
+The optional `http` block contains `content_encoding_base64`, an ordered
 array of base64-encoded Content-Encoding values, and `gzip_decompressed`, recording
 one handler decompression. It preserves duplicates, comma-separated declarations,
 unfamiliar values, and non-UTF-8 bytes. Base64 protects header bytes from JSON
