@@ -85,6 +85,9 @@ func main() {
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
 	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
+
+	queryAnalyzeSeriesCmd := queryCmd.Command("analyze-series", "Detect notable changes in profile time series.")
+	queryAnalyzeSeriesParams := addQueryAnalyzeSeriesParams(queryAnalyzeSeriesCmd)
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
 	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
@@ -190,6 +193,10 @@ func main() {
 		}
 	case queryGoPGOCmd.FullCommand():
 		if err := queryGoPGO(ctx, queryGoPGOParams, *queryGoPGOOutput, *queryGoPGOForce); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryAnalyzeSeriesCmd.FullCommand():
+		if err := queryAnalyzeSeries(ctx, queryAnalyzeSeriesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case querySeriesCmd.FullCommand():

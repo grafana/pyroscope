@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anomaly scoring playground</title>
+<style>
+:root{color-scheme:dark;--bg:#11151c;--panel:#1b2230;--text:#edf2fa;--muted:#afbdd0;--line:#80baff;--accent:#ffc675}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:32px 22px}h1{margin-bottom:8px}h2{font-size:21px;margin:0}p{color:var(--muted)}.intro{max-width:850px}.controls,.formula,article{background:var(--panel);border:1px solid #354157;border-radius:12px;padding:22px}.controls{display:flex;flex-wrap:wrap;gap:25px;margin:24px 0}label{display:grid;gap:8px}input{accent-color:var(--line);width:240px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;margin-top:24px}svg{width:100%;height:auto;display:block;margin:12px 0}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.metrics small{display:block;color:var(--muted)}.metrics strong{font-size:22px}.status{display:inline-block;padding:3px 10px;border-radius:20px;background:#394354;font-size:14px;margin-top:16px}.pass{background:#234d3c;color:#b1f2cc}.fail{color:#ffd39c}code{color:var(--accent)}.detail{font-size:14px}footer{margin-top:30px;color:var(--muted)}@media(max-width:420px){.grid{grid-template-columns:1fr}.metrics strong{font-size:18px}}
+</style>
+</head>
+<body><main>
+<h1>Anomaly scoring playground</h1>
+<p class="intro">A big percentage change is not always unusual. Compare each event with its service’s normal variability. These examples use the corrected Pyroscope score: a noisy baseline reduces the score, while a stable baseline makes deviations stand out.</p>
+<section class="formula" aria-label="Scoring formula">
+<strong>How the score works</strong>
+<p>Baseline = median of the 12 preceding samples.<br>MAD = median absolute distance from that baseline.<br><code>scale = max(1.4826 × MAD, 1% × |baseline|, 1)</code><br><code>score = |peak − baseline| / scale</code><br><code>change = |peak − baseline| / max(|baseline|, 1% × |baseline|, 1)</code></p>
+<p>The 1% / 1-unit floor prevents division by zero or enormous scores for perfectly flat baselines. Scores are not probabilities or a measure of business impact. Units matter near zero.</p>
+</section>
+<section class="controls" aria-label="Detection thresholds">
+<label for="score">Minimum score: <output id="score-value">3.5</output><input id="score" type="range" min="0.5" max="15" step="0.5" value="3.5"></label>
+<label for="change">Minimum change: <output id="change-value">25%</output><input id="change" type="range" min="0" max="100" step="5" value="25"></label>
+</section>
+<p>Blue = sample values; dashed yellow = baseline; shaded region = example event. Thresholds are applied to the <strong>first event sample</strong>; the reported score uses the event’s peak and the same pre-event scale.</p>
+<div id="examples" class="grid" aria-live="polite"></div>
+<footer>This is a scoring explainer, not a full detector port. Each example has a fixed baseline and event window. Production detection also handles gaps, flatness filtering, recovery, confirmation, and event segmentation. Duration and absolute impact should be considered separately from score.</footer>
+</main>
+<script>
+'use strict';
+const stable = Array(12).fill(100);
+const noisy = [70,130,80,120,75,125,70,130,80,120,75,125];
+const examples = [
+ {name:'Stable service, 30% spike',baseline:stable,event:[130],after:[100,100,100,100],note:'A modest change is very unusual against a flat baseline. The 1% floor gives a score of 30.'},
+ {name:'Noisy service, same 30% spike',baseline:noisy,event:[130],after:[100,120,80,100],note:'The same peak is normal-looking for this service. MAD is 25, so the scale is 37.065 and the score is only 0.81.'},
+ {name:'Noisy service, 150% spike',baseline:noisy,event:[250],after:[100,120,80,100],note:'Even a noisy service can have a meaningful outlier. This peak is about 4.05 robust scale units from baseline.'},
+ {name:'Stable service, small 10% spike',baseline:stable,event:[110],after:[100,100,100,100],note:'The score is high, but the default 25% change gate rejects this candidate. Both conditions must pass.'},
+ {name:'Sustained increase, no recovery',baseline:stable,event:[150,152,149,151,150,153,151,150,152,149,151,150],after:[],note:'A lasting upward step: values stay about 50% above the original baseline through the end of the timeline. The pre-event baseline and scale remain fixed; there is no observed recovery.'},
+ {name:'Sustained decrease, no recovery',baseline:stable,event:[50,48,51,49,50,47,49,50,48,51,49,50],after:[],note:'A lasting downward step: values stay about 50% below the original baseline through the end of the timeline. Absolute deviation scores decreases just like increases; there is no observed recovery.'},
+ {name:'Sustained increase, later peak',baseline:[90,110,90,110,90,110,90,110,90,110,90,110],event:[160,180,200,190],after:[100,100,100,100],note:'Detection uses the first value (160); the reported peak score uses 200. The baseline scale stays fixed throughout the event.'},
+ {name:'Sustained drop',baseline:[90,110,90,110,90,110,90,110,90,110,90,110],event:[40,30,20,25],after:[100,100,100,100],note:'Drops use absolute deviation too. The peak is the lowest value, 20, giving an 80% change and a score of about 5.40.'},
+ {name:'Zero baseline',baseline:Array(12).fill(0),event:[10],after:[0,0,0,0],note:'The 1-unit floor keeps the score finite at 10. The displayed 1000% change is floor-normalized, not an ordinary percentage relative to zero.'},
+ {name:'Large service, same relative change',baseline:Array(12).fill(1000000),event:[1300000],after:[1000000,1000000,1000000,1000000],note:'Score and percentage match the first example, but the absolute change is 300,000 instead of 30. Score alone does not capture impact.'}
+];
+function median(values){const sorted=[...values].sort((a,b)=>a-b);const m=sorted.length/2;return sorted.length%2 ? sorted[Math.floor(m)] : (sorted[m-1]+sorted[m])/2;}
+function stats(example){const baseline=median(example.baseline);const mad=median(example.baseline.map(v=>Math.abs(v-baseline)));const scale=Math.max(1.4826*mad,Math.abs(baseline)*.01,1);const denominator=Math.max(Math.abs(baseline),Math.abs(baseline)*.01,1);const direction=example.event[0]<baseline?-1:1;const peak=direction<0?Math.min(...example.event):Math.max(...example.event);return {baseline,mad,scale,peak,score:Math.abs(peak-baseline)/scale,change:Math.abs(peak-baseline)/denominator,firstScore:Math.abs(example.event[0]-baseline)/scale,firstChange:Math.abs(example.event[0]-baseline)/denominator};}
+const fmt=n=>n.toLocaleString('en-US',{maximumFractionDigits:2});
+function graph(example,s){const values=[...example.baseline,...example.event,...example.after];const low=Math.min(0,...values),high=Math.max(1,...values)*1.15;const x=i=>48+i*430/(values.length-1),y=v=>160-(v-low)*135/(high-low);const start=x(11.5),end=x(11.5+example.event.length);return `<svg viewBox="0 0 500 200" role="img" aria-label="${example.name}: baseline ${fmt(s.baseline)}, peak ${fmt(s.peak)}"><rect x="${start}" y="20" width="${end-start}" height="140" fill="#ffc675" opacity=".1"/><path d="M48 20V160H480" fill="none" stroke="#56647b"/><path d="M48 ${y(s.baseline)}H480" stroke="#ffc675" stroke-dasharray="5 5"/><polyline points="${values.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="#80baff" stroke-width="2.5"/>${values.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${i>=12&&i<12+example.event.length?'#ffc675':'#80baff'}"/>`).join('')}<g fill="#afbdd0" font-size="11"><text x="3" y="25">${fmt(high)}</text><text x="3" y="164">${fmt(low)}</text><text x="48" y="185">12 baseline samples</text><text x="${start}" y="185">event</text></g></svg>`;}
+function render(){const threshold=Number(document.getElementById('score').value),change=Number(document.getElementById('change').value)/100;document.getElementById('score-value').value=fmt(threshold);document.getElementById('change-value').value=fmt(change*100)+'%';document.getElementById('examples').innerHTML=examples.map(example=>{const s=stats(example),scoreOK=s.firstScore>=threshold,changeOK=s.firstChange>=change;return `<article><h2>${example.name}</h2>${graph(example,s)}<div class="metrics"><div><small>Peak score</small><strong>${fmt(s.score)}</strong></div><div><small>Peak change</small><strong>${fmt(s.change*100)}%</strong></div><div><small>Absolute change</small><strong>${fmt(Math.abs(s.peak-s.baseline))}</strong></div></div><span class="status ${scoreOK&&changeOK?'pass':'fail'}">${scoreOK&&changeOK?'Candidate passes both gates':`Rejected: ${[!scoreOK?'score too low':'',!changeOK?'change too small':''].filter(Boolean).join(' and ')}`}</span><p>${example.note}</p><p class="detail">Baseline ${fmt(s.baseline)} · MAD ${fmt(s.mad)} · Scale ${fmt(s.scale)}<br>Peak score = ${fmt(Math.abs(s.peak-s.baseline))} / ${fmt(s.scale)} = ${fmt(s.score)}<br>First sample: score ${fmt(s.firstScore)}, change ${fmt(s.firstChange*100)}%</p></article>`;}).join('');}
+document.querySelectorAll('input').forEach(input=>input.addEventListener('input',render));render();
+</script>
+</body></html>

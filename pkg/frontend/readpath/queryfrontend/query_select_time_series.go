@@ -42,7 +42,7 @@ func (q *QueryFrontend) SelectSeries(
 	// Sub-millisecond step values truncate to 0 in the backend's millisecond
 	// arithmetic and would cause an unbounded loop in RangeSeries; reject
 	// anything below 1ms, and non-finite values before duration conversion.
-	if math.IsNaN(c.Msg.Step) || math.IsInf(c.Msg.Step, 0) || c.Msg.Step < 0.001 {
+	if math.IsNaN(c.Msg.Step) || math.IsInf(c.Msg.Step, 0) || c.Msg.Step < timeseries.MinimumStep.Seconds() {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be >= 1ms and finite"))
 	}
 
