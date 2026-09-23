@@ -310,7 +310,17 @@ func (s *Store) markTooManyAdoptions(ctx context.Context, tenantID, requestID st
 // already established (via meta.Status or result.pb's own existence) that
 // the query succeeded.
 func (s *Store) buildSuccessResult(ctx context.Context, tenantID, requestID string, meta Metadata) (*Result, error) {
-	data, err := s.readRaw(ctx, s.buildPath(tenantID, requestID, resultFilename))
+	resultPath := s.buildPath(tenantID, requestID, resultFilename)
+	data, err := s.readRaw(ctx, resultPath)
+	if errors.Is(err, io.EOF) {
+		// Some object storage providers return EOF when opening a zero-byte object, which is a valid response.
+		// Make defensive check to verify EOF is for zero-byte object.
+		attrs, attrsErr := s.bucket.Attributes(ctx, resultPath)
+		if attrsErr == nil && attrs.Size == 0 {
+			meta.Status = StatusSuccess
+			return &Result{Metadata: meta, Response: &querierv1.SelectMergeStacktracesResponse{}}, nil
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read result: %w", err)
 	}
