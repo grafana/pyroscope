@@ -15,7 +15,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.min.io/ | minio(minio) | 4.1.0 |
+| https://charts.min.io/ | minio(minio) | 5.4.0 |
 | https://grafana.github.io/helm-charts | alloy(alloy) | 1.5.2 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.44.2 |
 
@@ -49,7 +49,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | ingress.enabled | bool | `false` |  |
 | ingress.labels | object | `{}` |  |
 | ingress.pathType | string | `"ImplementationSpecific"` |  |
-| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"image":{"repository":"pgsty/minio","tag":"RELEASE.2026-08-04T00-00-00Z"},"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
+| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"image":{"repository":"pgsty/silo","tag":"RELEASE.2026-09-16T00-00-00Z"},"mcImage":{"repository":"pgsty/mc","tag":"RELEASE.2026-09-16T00-00-00Z"},"persistence":{"size":"5Gi"},"podAnnotations":{},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
 | pyroscope.components | object | `{}` |  |
