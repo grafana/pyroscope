@@ -2,6 +2,7 @@ package profiledump
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -92,4 +93,60 @@ func TestHTTPMetadataVersionCompatibility(t *testing.T) {
 			require.NoError(t, m.Validate())
 		}
 	}
+}
+
+func TestHTTPRecorderOwnershipAndAccounting(t *testing.T) {
+	gate := make(chan struct{})
+	stored := make(chan []byte, 1)
+	cfg := recorderTestConfig()
+	r, _, _ := recorderFixture(t, cfg, func(ctx context.Context, _, _ string, body io.Reader) error {
+		select {
+		case <-gate:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		b, err := io.ReadAll(body)
+		stored <- b
+		return err
+	}, nil)
+	defer close(gate)
+	payload := []byte("native")
+	c := candidate(payload)
+	c.Metadata.SourceProtocol = SourceOTLPHTTP
+	c.Metadata.HTTP = &HTTPMetadata{ContentEncoding: []string{"gzip", "\xff"}, GzipDecompressed: true}
+	out := r.Capture(context.Background(), "a", c)
+	require.True(t, out.Enqueued)
+	require.Equal(t, out.Size+encodingReservation+2*MaxMetadataSize, retained(r))
+	c.Metadata.HTTP.ContentEncoding[0] = "modified encoding"
+	c.Metadata.HTTP.GzipDecompressed = false
+	payload[0] = '!'
+	gate <- struct{}{}
+	var body bytes.Buffer
+	m, err := Decode(bytes.NewReader(await(t, stored)), &body, cfg.MaxObjectBytes)
+	require.NoError(t, err)
+	require.Equal(t, &HTTPMetadata{ContentEncoding: []string{"gzip", "\xff"}, GzipDecompressed: true}, m.HTTP)
+	require.Equal(t, "native", body.String())
+	require.NoError(t, r.Shutdown(context.Background()))
+	assertReleased(t, r)
+}
+
+func TestHTTPMetadataBudget(t *testing.T) {
+	for _, values := range [][]string{{strings.Repeat("x", MaxMetadataSize)}, make([]string, MaxMetadataSize)} {
+		r, _, _ := recorderFixture(t, recorderTestConfig(), func(context.Context, string, string, io.Reader) error { t.Error("unexpected upload"); return nil }, nil)
+		c := candidate([]byte("body"))
+		c.Metadata.SourceProtocol = SourceOTLPHTTP
+		c.Metadata.HTTP = &HTTPMetadata{ContentEncoding: values}
+		out := r.Capture(context.Background(), "a", c)
+		require.Equal(t, DropTooLarge, out.Reason)
+		assertReleased(t, r)
+	}
+	cfg := recorderTestConfig()
+	cfg.MaxRetainedBytes = encodingReservation + 2*MaxMetadataSize
+	cfg.MaxObjectBytes = MaxMetadataSize
+	r, _, _ := recorderFixture(t, cfg, func(context.Context, string, string, io.Reader) error { t.Error("unexpected upload"); return nil }, nil)
+	c := candidate([]byte("body"))
+	c.Metadata.SourceProtocol = SourceOTLPHTTP
+	c.Metadata.HTTP = &HTTPMetadata{}
+	require.Equal(t, DropByteBudget, r.Capture(context.Background(), "a", c).Reason)
+	assertReleased(t, r)
 }

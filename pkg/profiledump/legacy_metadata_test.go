@@ -2,6 +2,7 @@ package profiledump
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -101,6 +102,45 @@ func TestEnvelopeVersionCompatibility(t *testing.T) {
 	require.Error(t, Encode(io.Discard, m, strings.NewReader("old"), math.MaxInt64))
 }
 
+func TestLegacyRecorderOwnershipAndAccounting(t *testing.T) {
+	gate := make(chan struct{})
+	stored := make(chan []byte, 1)
+	cfg := recorderTestConfig()
+	r, _, _ := recorderFixture(t, cfg, func(ctx context.Context, _, _ string, body io.Reader) error {
+		select {
+		case <-gate:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		b, err := io.ReadAll(body)
+		stored <- b
+		return err
+	}, nil)
+	defer close(gate)
+	payload := []byte("native")
+	c := candidate(payload)
+	c.Metadata.SourceProtocol = SourceIngest
+	c.Metadata.Legacy = legacyMetadata()
+	c.Metadata.Labels = map[string]string{"__name__": "app"}
+	expected := *c.Metadata.Legacy
+	out := r.Capture(context.Background(), "a", c)
+	require.True(t, out.Enqueued)
+	require.Equal(t, out.Size+encodingReservation, retained(r))
+	payload[0] = '!'
+	c.Metadata.Legacy.Name = "changed"
+	c.Metadata.Labels["__name__"] = "changed"
+	gate <- struct{}{}
+	b := await(t, stored)
+	var restored bytes.Buffer
+	m, err := Decode(bytes.NewReader(b), &restored, cfg.MaxObjectBytes)
+	require.NoError(t, err)
+	require.Equal(t, expected, *m.Legacy)
+	require.Equal(t, "app", m.Labels["__name__"])
+	require.Equal(t, "native", restored.String())
+	require.NoError(t, r.Shutdown(context.Background()))
+	assertReleased(t, r)
+}
+
 func TestLegacyMetadataAggregateWireBound(t *testing.T) {
 	m := testMetadata(1)
 	m.SourceProtocol, m.Legacy = SourceIngest, legacyMetadata()
@@ -121,4 +161,9 @@ func TestLegacyMetadataAggregateWireBound(t *testing.T) {
 	require.Error(t, Encode(io.Discard, m, strings.NewReader("x"), math.MaxInt64))
 	_, err = Decode(bytes.NewReader(rawEnvelope(b, []byte("x"))), io.Discard, math.MaxInt64)
 	require.Error(t, err)
+	r, _, _ := recorderFixture(t, recorderTestConfig(), discardUpload, nil)
+	out := r.Capture(context.Background(), "a", Candidate{Metadata: m, Payload: BytesPayload("x")})
+	require.Equal(t, DropTooLarge, out.Reason)
+	require.False(t, out.Enqueued)
+	assertReleased(t, r)
 }
