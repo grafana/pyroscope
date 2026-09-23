@@ -811,6 +811,7 @@ func (m *TimeSeriesAnomaly) CloneVT() *TimeSeriesAnomaly {
 	r.PeakValue = m.PeakValue
 	r.RelativeChange = m.RelativeChange
 	r.Score = m.Score
+	r.PriorityScore = m.PriorityScore
 	if rhs := m.Labels; rhs != nil {
 		tmpContainer := make([]*v1.LabelPair, len(rhs))
 		for k, v := range rhs {
@@ -1960,6 +1961,9 @@ func (this *TimeSeriesAnomaly) EqualVT(that *TimeSeriesAnomaly) bool {
 		return false
 	}
 	if this.Score != that.Score {
+		return false
+	}
+	if this.PriorityScore != that.PriorityScore {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -4492,6 +4496,12 @@ func (m *TimeSeriesAnomaly) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.PriorityScore != 0 {
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.PriorityScore))))
+		i--
+		dAtA[i] = 0x51
+	}
 	if m.Score != 0 {
 		i -= 8
 		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Score))))
@@ -5401,6 +5411,9 @@ func (m *TimeSeriesAnomaly) SizeVT() (n int) {
 		n += 9
 	}
 	if m.Score != 0 {
+		n += 9
+	}
+	if m.PriorityScore != 0 {
 		n += 9
 	}
 	n += len(m.unknownFields)
@@ -10232,6 +10245,17 @@ func (m *TimeSeriesAnomaly) UnmarshalVT(dAtA []byte) error {
 			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
 			iNdEx += 8
 			m.Score = float64(math.Float64frombits(v))
+		case 10:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PriorityScore", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.PriorityScore = float64(math.Float64frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

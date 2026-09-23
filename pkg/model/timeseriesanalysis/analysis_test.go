@@ -135,14 +135,47 @@ func TestAnalyze_GapResetsBaseline(t *testing.T) {
 }
 
 func TestTopEvents(t *testing.T) {
-	low := Event{Labels: labels("service", "low"), StartTime: 1000, Score: 5}
-	high := Event{Labels: labels("service", "high"), StartTime: 2000, Score: 10}
-	moreHigh := Event{Labels: labels("service", "high"), StartTime: 3000, Score: 6}
+	// The larger consumer wins despite having a lower anomaly score.
+	low := Event{Labels: labels("service", "low"), StartTime: 1000, Score: 10, PriorityScore: 10 * 300.0 / 86400}
+	high := Event{Labels: labels("service", "high"), StartTime: 2000, Score: 5, PriorityScore: 5}
+	moreHigh := Event{Labels: labels("service", "high"), StartTime: 3000, Score: 4, PriorityScore: 4}
 
 	events := TopEvents([]Event{low, high, moreHigh}, 1)
 	require.Len(t, events, 2)
 	assert.Equal(t, "high", events[0].Labels[0].Value)
 	assert.Equal(t, "high", events[1].Labels[0].Value)
+	all := []Event{low, high, moreHigh}
+	assert.Equal(t, all, TopEvents(all, 0))
+	assert.Equal(t, all, TopEvents(all, -1))
+	assert.Equal(t, all, TopEvents(all, 2))
+	assert.Equal(t, all, TopEvents(all, 10))
+}
+
+func TestAnalyzePriority(t *testing.T) {
+	config := DefaultConfig()
+	config.BaselineWindow = 3
+	config.ConfirmationWindow = 2
+	input := series("service", 100, 100, 100, 200, 100, 100, 100)
+	// A second run contributes usage even though it cannot produce events.
+	input.Points = append(input.Points, &typesv1.Point{Timestamp: 20000, Value: 50})
+	for _, tc := range []struct {
+		name   string
+		inputs []*typesv1.Series
+		weight float64
+	}{
+		{"single", []*typesv1.Series{input}, 1},
+		{"flat largest", []*typesv1.Series{input, series("large", 1000, 1000, 1000)}, 850.0 / 3000},
+		{"non-positive usage", []*typesv1.Series{series("negative", -100, -100, -100, -200, -100, -100, -100)}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			events, err := Analyze(tc.inputs, time.Second, config)
+			require.NoError(t, err)
+			require.NotEmpty(t, events)
+			for _, event := range events {
+				assert.InDelta(t, event.Score*tc.weight, event.PriorityScore, 1e-10)
+			}
+		})
+	}
 }
 
 func TestConfigValidate(t *testing.T) {

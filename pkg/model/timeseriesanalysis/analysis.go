@@ -113,10 +113,13 @@ type Event struct {
 	PeakValue      float64
 	RelativeChange float64
 	Score          float64
+	PriorityScore  float64
 }
 
-// Analyze detects events independently for each labeled series. Missing points
-// split a series into separate runs rather than being interpreted as zeroes.
+// Analyze detects events independently for each labeled series. Each element of
+// series is expected to have a distinct label set; callers must merge series
+// with identical labels before calling Analyze. Missing points split a series
+// into separate runs rather than being interpreted as zeroes.
 func Analyze(series []*typesv1.Series, step time.Duration, config Config) ([]Event, error) {
 	config = config.WithDefaults()
 	if err := config.Validate(); err != nil {
@@ -127,7 +130,22 @@ func Analyze(series []*typesv1.Series, step time.Duration, config Config) ([]Eve
 	}
 
 	events := make([]Event, 0)
-	for _, s := range series {
+	// Include stable series in the reference usage, even if they produce no events.
+	// Missing, negative and non-finite buckets contribute nothing.
+	usages := make([]float64, len(series))
+	var maxUsage float64
+	for i, s := range series {
+		if s == nil {
+			continue
+		}
+		for _, point := range s.Points {
+			if point != nil && finiteNonNegative(point.Value) {
+				usages[i] += point.Value
+			}
+		}
+		maxUsage = math.Max(maxUsage, usages[i])
+	}
+	for i, s := range series {
 		if s == nil {
 			continue
 		}
@@ -135,8 +153,16 @@ func Analyze(series []*typesv1.Series, step time.Duration, config Config) ([]Eve
 		if len(points) == 0 || isFlat(points, config.FlatnessThreshold) {
 			continue
 		}
+		var usageWeight float64
+		if maxUsage > 0 {
+			usageWeight = usages[i] / maxUsage
+		}
 		for _, run := range contiguousRuns(points, step) {
-			events = append(events, analyzeRun(run, s.Labels, config)...)
+			runEvents := analyzeRun(run, s.Labels, config)
+			for j := range runEvents {
+				runEvents[j].PriorityScore = runEvents[j].Score * usageWeight
+			}
+			events = append(events, runEvents...)
 		}
 	}
 	sortEvents(events)
@@ -295,8 +321,9 @@ func eventPeak(points []*typesv1.Point, baseline, direction, scoreScale float64)
 	return peak, math.Abs(peak.Value-baseline) / scoreScale
 }
 
-// TopEvents retains events for the N series with the highest individual event
-// score while preserving chronological output order.
+// TopEvents retains all events for the N series with the highest individual
+// event priority (anomaly score times relative window usage), preserving input order.
+// A non-positive limit retains all series.
 func TopEvents(events []Event, limit int) []Event {
 	if limit <= 0 {
 		return events
@@ -308,7 +335,7 @@ func TopEvents(events []Event, limit int) []Event {
 	scores := make(map[string]float64)
 	for _, event := range events {
 		key := labelsKey(event.Labels)
-		scores[key] = math.Max(scores[key], event.Score)
+		scores[key] = math.Max(scores[key], event.PriorityScore)
 	}
 	ranked := make([]seriesScore, 0, len(scores))
 	for key, score := range scores {

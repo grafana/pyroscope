@@ -135,6 +135,7 @@ func analysisEvents(events []timeseriesanalysis.Event) []*querierv1.TimeSeriesAn
 			PeakValue:      event.PeakValue,
 			RelativeChange: event.RelativeChange,
 			Score:          event.Score,
+			PriorityScore:  event.PriorityScore,
 		}
 	}
 	return result

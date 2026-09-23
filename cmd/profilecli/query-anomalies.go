@@ -33,7 +33,7 @@ func addQueryAnomaliesParams(queryCmd commander) *queryAnomaliesParams {
 	queryCmd.Flag("anomaly-type", "Allowed values: stacktrace, time_series, ANOMALY_TYPE_STACKTRACE, ANOMALY_TYPE_TIME_SERIES (case-insensitive). Repeatable for multiple types.").Default("stacktrace").StringsVar(&params.AnomalyTypes)
 	queryCmd.Flag("time-series.group-by", "Time-series only: label to group by. Repeatable; ignored unless time_series is requested.").StringsVar(&params.GroupBy)
 	queryCmd.Flag("time-series.step", "Time-series only: resolution (at least 1ms). Ignored unless time_series is requested.").Default("1m").DurationVar(&params.Step)
-	queryCmd.Flag("time-series.limit", "Time-series only: top N series by strongest anomaly score (nonpositive means unlimited). Ignored unless time_series is requested.").Int64Var(&params.Limit)
+	queryCmd.Flag("time-series.limit", "Time-series only: top N series by highest event priority score (nonpositive means unlimited). Ignored unless time_series is requested.").Int64Var(&params.Limit)
 	queryCmd.Flag("output", "Output format, one of: table, json.").Default("table").StringVar(&params.Output)
 	return params
 }
