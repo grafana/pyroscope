@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -49,6 +50,108 @@ func TestQueryAnomalies_NoAnomalyTypes(t *testing.T) {
 
 	require.Nil(t, resp)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+// TestQueryAnomalies_ClampsStartToMaxQueryLookback guards against the request's raw Start
+// reaching the anomaly source unmodified: resolveServiceNames' own Series() call validates a
+// separate copy of the range and doesn't feed the clamped value back, so only the explicit
+// SanitizeTimeRange call on req itself makes the anomaly source see the clamped start.
+func TestQueryAnomalies_ClampsStartToMaxQueryLookback(t *testing.T) {
+	var gotStart string
+	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotStart = r.URL.Query().Get("start")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"anomalies":[]}`))
+	}))
+	defer apServer.Close()
+
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Hour)
+	mockLimits.On("MaxQueryLength", smpTenant).Return(2 * time.Hour)
+	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, req *queryv1.InvokeRequest) *queryv1.InvokeResponse {
+			if req.Query[0].QueryType == queryv1.QueryType_QUERY_SERIES_LABELS {
+				return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
+					SeriesLabels: &queryv1.SeriesLabelsReport{
+						SeriesLabels: []*typesv1.Labels{{
+							Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc-a"}},
+						}},
+					},
+				}}}
+			}
+			return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+				ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
+				ProfilePresence: &queryv1.ProfilePresenceReport{},
+			}}}
+		},
+		nil,
+	)
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockLimits,
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		mockMetadata,
+		nil,
+		mockBackend,
+		nil, nil, nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	now := time.Now()
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: smpProfileType,
+		LabelSelector: `{service_name="svc-a"}`,
+		Start:         now.Add(-48 * time.Hour).UnixMilli(),
+		End:           now.UnixMilli(),
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
+	}))
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	gotStartMs, err := strconv.ParseInt(gotStart, 10, 64)
+	require.NoError(t, err)
+	minAllowedStart := now.Add(-time.Hour).UnixMilli()
+	require.GreaterOrEqual(t, gotStartMs, minAllowedStart-1000,
+		"anomaly source received a start before the tenant's max_query_lookback boundary")
+}
+
+// TestQueryAnomalies_TimeRangeBeforeLookback_ReturnsEmpty: a range fully outside
+// max_query_lookback must return an empty result without reaching the anomaly source or the
+// query-backend at all (no mock expectations are set on either).
+func TestQueryAnomalies_TimeRangeBeforeLookback_ReturnsEmpty(t *testing.T) {
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Hour)
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockLimits,
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: "http://unused"}},
+		new(mockmetastorev1.MockMetadataQueryServiceClient),
+		nil,
+		new(mockqueryfrontend.MockQueryBackend),
+		nil, nil, nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	now := time.Now()
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		LabelSelector: `{service_name="svc-a"}`,
+		Start:         now.Add(-48 * time.Hour).UnixMilli(),
+		End:           now.Add(-24 * time.Hour).UnixMilli(),
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
+	}))
+
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.StacktraceAnomalies)
 }
 
 func TestQueryAnomalies_UnknownType(t *testing.T) {

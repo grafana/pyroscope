@@ -12,6 +12,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/anomalyapi"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
 // QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
@@ -58,6 +59,14 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 	if len(tenantIDs) != 1 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			fmt.Errorf("anomaly_type ANOMALY_TYPE_STACKTRACE requires a single tenant, got %d", len(tenantIDs)))
+	}
+
+	empty, err := validation.SanitizeTimeRange(q.limits, tenantIDs, &req.Start, &req.End)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if empty {
+		return nil, nil
 	}
 
 	serviceNames, err := q.resolveServiceNames(ctx, req)
