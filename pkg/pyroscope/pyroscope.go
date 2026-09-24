@@ -59,6 +59,7 @@ import (
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend"
@@ -100,6 +101,7 @@ type Config struct {
 	Tracing           tracing.Config          `yaml:"tracing"`
 	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
 	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
+	ProfileDump       profiledump.Config      `yaml:"profile_dump"`
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
@@ -261,6 +263,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.Tracing.RegisterFlags(f)
 	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
+	c.ProfileDump.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
 	c.API.RegisterFlags(f)
@@ -401,7 +404,13 @@ func (c *Config) Validate() error {
 		return err
 	}
 
-	if err := c.LimitsConfig.Validate(); err != nil {
+	if err := c.ProfileDump.Validate(); err != nil {
+		return fmt.Errorf("profile_dump: %w", err)
+	}
+	if c.LimitsConfig.ProfileDebugDump != nil {
+		return errors.New("profile_debug_dump is only supported in per-tenant runtime overrides")
+	}
+	if err := c.LimitsConfig.Validate(c.ProfileDump, time.Now()); err != nil {
 		return err
 	}
 

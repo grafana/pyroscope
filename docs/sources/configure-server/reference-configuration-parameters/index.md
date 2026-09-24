@@ -176,6 +176,24 @@ runtime_config:
   # CLI flag: -runtime-config.http-client-disable-keep-alives
   [http_client_disable_keep_alives: <boolean> | default = true]
 
+profile_dump:
+  # Maximum future activation window for a profile-debug-dump policy, measured
+  # at configuration load. Must be positive. Provisional development default.
+  # CLI flag: -profile-dump.max-activation-window
+  [max_activation_window: <duration> | default = 1h]
+
+  # Default profile capture rate per tenant per distributor when omitted from a
+  # policy. Must be positive and at most the global ceiling. This is not a
+  # fleet-wide quota. Provisional development default.
+  # CLI flag: -profile-dump.default-captures-per-second
+  [default_captures_per_second: <float> | default = 1]
+
+  # Hard ceiling for each tenant's local per-distributor profile capture rate.
+  # Must be finite and positive. This is not a fleet-wide quota. Provisional
+  # development default.
+  # CLI flag: -profile-dump.max-captures-per-second
+  [max_captures_per_second: <float> | default = 10]
+
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]
 

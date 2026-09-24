@@ -122,7 +122,7 @@ func (f *Pyroscope) initRuntimeConfig() (services.Service, error) {
 	}
 
 	f.Cfg.RuntimeConfig.Loader = func(r io.Reader) (interface{}, error) {
-		return validation.LoadRuntimeConfig(r)
+		return validation.LoadRuntimeConfigWithProfileDump(r, f.Cfg.ProfileDump, time.Now())
 	}
 
 	// make sure to set default limits before we start loading configuration into memory

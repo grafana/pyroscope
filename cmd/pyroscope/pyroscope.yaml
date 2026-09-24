@@ -614,6 +614,21 @@ runtime_config:
   # right.
   # file: ""
 
+profile_dump:
+  # Maximum future activation window for a profile-debug-dump policy, measured
+  # at configuration load. Must be positive. Provisional development default.
+  # max_activation_window: 1h
+
+  # Default profile capture rate per tenant per distributor when omitted from a
+  # policy. Must be positive and at most the global ceiling. This is not a
+  # fleet-wide quota. Provisional development default.
+  # default_captures_per_second: 1
+
+  # Hard ceiling for each tenant's local per-distributor profile capture rate.
+  # Must be finite and positive. This is not a fleet-wide quota. Provisional
+  # development default.
+  # max_captures_per_second: 10
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.

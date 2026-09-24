@@ -155,6 +155,12 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -profile-dump.default-captures-per-second float
+    	Default profile capture rate per tenant per distributor when omitted from a policy. Must be positive and at most the global ceiling. This is not a fleet-wide quota. Provisional development default. (default 1)
+  -profile-dump.max-activation-window duration
+    	Maximum future activation window for a profile-debug-dump policy, measured at configuration load. Must be positive. Provisional development default. (default 1h0m0s)
+  -profile-dump.max-captures-per-second float
+    	Hard ceiling for each tenant's local per-distributor profile capture rate. Must be finite and positive. This is not a fleet-wide quota. Provisional development default. (default 10)
   -pyroscopedb.data-path string
     	[v1 storage only] Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
