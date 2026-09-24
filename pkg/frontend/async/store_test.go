@@ -225,6 +225,215 @@ func (b *attributesErrBucket) Attributes(ctx context.Context, name string) (objs
 	return b.Bucket.Attributes(ctx, name)
 }
 
+type deleteBeforeAttributesBucket struct {
+	objstore.Bucket
+	target string
+}
+
+func (b *deleteBeforeAttributesBucket) Attributes(ctx context.Context, name string) (objstore.ObjectAttributes, error) {
+	if name == b.target {
+		if err := b.Delete(ctx, name); err != nil {
+			return objstore.ObjectAttributes{}, err
+		}
+	}
+	return b.Bucket.Attributes(ctx, name)
+}
+
+func TestStoreCleanup_DeletesExpiredObject(t *testing.T) {
+	ctx := t.Context()
+	bucket := objstore.NewInMemBucket()
+	const object = storagePrefix + "tenant-a/request-a/result.pb"
+	require.NoError(t, bucket.Upload(ctx, object, bytes.NewReader(nil)))
+
+	store := NewStore(log.NewNopLogger(), bucket, nil)
+	store.ttl = 0
+
+	deleted, err := store.cleanup(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, deleted)
+
+	exists, err := bucket.Exists(ctx, object)
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
+func TestStoreCleanup_ObjectRemovedBeforeAttributesIsIgnored(t *testing.T) {
+	ctx := t.Context()
+	inner := objstore.NewInMemBucket()
+	const object = storagePrefix + "tenant-a/request-a/result.pb"
+	require.NoError(t, inner.Upload(ctx, object, bytes.NewReader(nil)))
+
+	var logs bytes.Buffer
+	store := NewStore(log.NewLogfmtLogger(&logs), &deleteBeforeAttributesBucket{
+		Bucket: inner,
+		target: object,
+	}, nil)
+	store.ttl = 0
+
+	deleted, err := store.cleanup(ctx)
+	require.NoError(t, err)
+	require.Zero(t, deleted)
+	require.Empty(t, logs.String())
+}
+
+func TestStoreCleanup_AttributeErrorsAreLogged(t *testing.T) {
+	ctx := t.Context()
+	inner := objstore.NewInMemBucket()
+	const object = storagePrefix + "tenant-a/request-a/result.pb"
+	require.NoError(t, inner.Upload(ctx, object, bytes.NewReader(nil)))
+
+	var logs bytes.Buffer
+	store := NewStore(log.NewLogfmtLogger(&logs), &attributesErrBucket{
+		Bucket:   inner,
+		failName: object,
+		err:      errors.New("simulated storage error"),
+	}, nil)
+	store.ttl = 0
+
+	deleted, err := store.cleanup(ctx)
+	require.NoError(t, err)
+	require.Zero(t, deleted)
+	require.Contains(t, logs.String(), "simulated storage error")
+}
+
+type deleteBeforeDeleteBucket struct {
+	objstore.Bucket
+	target string
+}
+
+func (b *deleteBeforeDeleteBucket) Delete(ctx context.Context, name string) error {
+	if name == b.target {
+		if err := b.Bucket.Delete(ctx, name); err != nil {
+			return err
+		}
+	}
+	return b.Bucket.Delete(ctx, name)
+}
+
+func TestStoreCleanup_ObjectRemovedBeforeDeleteIsIgnored(t *testing.T) {
+	ctx := t.Context()
+	inner := objstore.NewInMemBucket()
+	const object = storagePrefix + "tenant-a/request-a/result.pb"
+	require.NoError(t, inner.Upload(ctx, object, bytes.NewReader(nil)))
+
+	var logs bytes.Buffer
+	store := NewStore(log.NewLogfmtLogger(&logs), &deleteBeforeDeleteBucket{
+		Bucket: inner,
+		target: object,
+	}, nil)
+	store.ttl = 0
+
+	deleted, err := store.cleanup(ctx)
+	require.NoError(t, err)
+	require.Zero(t, deleted)
+	require.Empty(t, logs.String())
+}
+
+type deleteErrBucket struct {
+	objstore.Bucket
+	target string
+	err    error
+}
+
+func (b *deleteErrBucket) Delete(ctx context.Context, name string) error {
+	if name == b.target {
+		return b.err
+	}
+	return b.Bucket.Delete(ctx, name)
+}
+
+func TestStoreCleanup_DeleteErrorsAreLogged(t *testing.T) {
+	ctx := t.Context()
+	inner := objstore.NewInMemBucket()
+	const object = storagePrefix + "tenant-a/request-a/result.pb"
+	require.NoError(t, inner.Upload(ctx, object, bytes.NewReader(nil)))
+
+	var logs bytes.Buffer
+	store := NewStore(log.NewLogfmtLogger(&logs), &deleteErrBucket{
+		Bucket: inner,
+		target: object,
+		err:    errors.New("simulated storage error"),
+	}, nil)
+	store.ttl = 0
+
+	deleted, err := store.cleanup(ctx)
+	require.NoError(t, err)
+	require.Zero(t, deleted)
+	require.Contains(t, logs.String(), "simulated storage error")
+}
+
+type deleteBeforeGetBucket struct {
+	objstore.Bucket
+	target string
+}
+
+func (b *deleteBeforeGetBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
+	if name == b.target {
+		if err := b.Delete(ctx, name); err != nil {
+			return nil, err
+		}
+	}
+	return b.Bucket.Get(ctx, name)
+}
+
+func TestStoreRunAdoption_MetadataRemovedAfterListingIsIgnored(t *testing.T) {
+	ctx := t.Context()
+	inner := objstore.NewInMemBucket()
+	seed := NewStore(log.NewNopLogger(), inner, nil)
+
+	const tenantID = "tenant-a"
+	requestID := uuid.New().String()
+	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
+	require.NoError(t, seed.create(ctx, tenantID, requestID, spec))
+	metadataPath := seed.buildPath(tenantID, requestID, metadataFilename)
+
+	var logs bytes.Buffer
+	store := NewStore(log.NewLogfmtLogger(&logs), &deleteBeforeGetBucket{
+		Bucket: inner,
+		target: metadataPath,
+	}, nil)
+
+	store.runAdoption(ctx)
+
+	require.Empty(t, logs.String())
+}
+
+type getErrOnObjectBucket struct {
+	objstore.Bucket
+	target string
+	err    error
+}
+
+func (b *getErrOnObjectBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
+	if name == b.target {
+		return nil, b.err
+	}
+	return b.Bucket.Get(ctx, name)
+}
+
+func TestStoreRunAdoption_MetadataReadErrorsAreLogged(t *testing.T) {
+	ctx := t.Context()
+	inner := objstore.NewInMemBucket()
+	seed := NewStore(log.NewNopLogger(), inner, nil)
+
+	const tenantID = "tenant-a"
+	requestID := uuid.New().String()
+	spec := &querierv1.SelectMergeStacktracesRequest{ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}
+	require.NoError(t, seed.create(ctx, tenantID, requestID, spec))
+	metadataPath := seed.buildPath(tenantID, requestID, metadataFilename)
+
+	var logs bytes.Buffer
+	store := NewStore(log.NewLogfmtLogger(&logs), &getErrOnObjectBucket{
+		Bucket: inner,
+		target: metadataPath,
+		err:    errors.New("simulated storage error"),
+	}, nil)
+
+	store.runAdoption(ctx)
+
+	require.Contains(t, logs.String(), "simulated storage error")
+}
+
 func TestStoreGet_TransientSpecCheckErrorLeavesQueryInProgress(t *testing.T) {
 	ctx := context.Background()
 	inner := objstore.NewInMemBucket()
@@ -373,6 +582,22 @@ func TestSetDispatcher(t *testing.T) {
 
 		require.Panics(t, func() { store.SetDispatcher(&fakeDispatcher{}) })
 	})
+}
+
+func TestStoreRunning_CleansUpOnStartup(t *testing.T) {
+	ctx := t.Context()
+	bucket := objstore.NewInMemBucket()
+	const object = storagePrefix + "tenant-a/request-a/result.pb"
+	require.NoError(t, bucket.Upload(ctx, object, bytes.NewReader(nil)))
+
+	store := NewStore(log.NewNopLogger(), bucket, nil)
+	store.ttl = 0
+	require.NoError(t, services.StartAndAwaitRunning(ctx, store))
+	require.NoError(t, services.StopAndAwaitTerminated(ctx, store))
+
+	exists, err := bucket.Exists(ctx, object)
+	require.NoError(t, err)
+	require.False(t, exists)
 }
 
 func TestStoreAdopt_StaleWithSpecClaimsAndDispatches(t *testing.T) {

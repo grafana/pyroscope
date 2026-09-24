@@ -430,13 +430,17 @@ func (s *Store) cleanup(ctx context.Context) (int, error) {
 
 		attrs, err := s.bucket.Attributes(ctx, name)
 		if err != nil {
-			level.Warn(s.logger).Log("msg", "failed to get attributes", "object", name, "err", err)
+			if !s.bucket.IsObjNotFoundErr(err) {
+				level.Warn(s.logger).Log("msg", "failed to get attributes", "object", name, "err", err)
+			}
 			return nil
 		}
 
 		if attrs.LastModified.Before(cutoff) {
 			if err := s.bucket.Delete(ctx, name); err != nil {
-				level.Warn(s.logger).Log("msg", "failed to delete old async query result", "object", name, "err", err)
+				if !s.bucket.IsObjNotFoundErr(err) {
+					level.Warn(s.logger).Log("msg", "failed to delete old async query result", "object", name, "err", err)
+				}
 			} else {
 				deleted++
 			}
@@ -493,8 +497,8 @@ func jitteredInterval(d time.Duration) time.Duration {
 }
 
 func (s *Store) running(ctx context.Context) error {
-	cleanupTicker := time.NewTicker(cleanupInterval)
-	defer cleanupTicker.Stop()
+	cleanupTimer := time.NewTimer(jitteredInterval(cleanupInterval))
+	defer cleanupTimer.Stop()
 
 	// Randomizing the initial delay breaks the synchronized start across
 	// frontends; re-randomizing the period each tick keeps it broken.
@@ -507,8 +511,9 @@ func (s *Store) running(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-cleanupTicker.C:
+		case <-cleanupTimer.C:
 			s.runCleanup(ctx)
+			cleanupTimer.Reset(jitteredInterval(cleanupInterval))
 		case <-adoptionTimer.C:
 			s.runAdoption(ctx)
 			adoptionTimer.Reset(jitteredInterval(s.scanInterval))
@@ -537,7 +542,9 @@ func (s *Store) runAdoption(ctx context.Context) {
 		}
 		var meta Metadata
 		if err := s.readJSON(ctx, name, &meta); err != nil {
-			level.Warn(s.logger).Log("msg", "failed to read metadata during adoption scan", "object", name, "err", err)
+			if !s.bucket.IsObjNotFoundErr(err) {
+				level.Warn(s.logger).Log("msg", "failed to read metadata during adoption scan", "object", name, "err", err)
+			}
 			return nil
 		}
 		if !s.leaseExpired(&meta) {
