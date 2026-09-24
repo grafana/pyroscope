@@ -263,9 +263,6 @@ func (r *Router) AnalyzeQuery(
 	return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
 }
 
-// QueryAnomalies only has a real implementation on the new query-frontend (it needs that
-// backend's own SelectMergeStacktraces in-process, not something meaningful to merge across
-// old and new backends).
 func (r *Router) QueryAnomalies(
 	ctx context.Context,
 	req *connect.Request[querierv1.QueryAnomaliesRequest],
