@@ -64,16 +64,18 @@ func queryAnomalies(ctx context.Context, params *queryAnomaliesParams) error {
 	switch params.Output {
 	case outputJSON:
 		type jsonAnomaly struct {
-			ProfileID  string            `json:"profile_id"`
-			ObservedAt time.Time         `json:"observed_at"`
-			Labels     map[string]string `json:"labels,omitempty"`
+			ProfileID string            `json:"profile_id"`
+			Timestamp time.Time         `json:"timestamp"`
+			Score     float64           `json:"score"`
+			Labels    map[string]string `json:"labels,omitempty"`
 		}
 		out := make([]jsonAnomaly, len(profiles))
 		for i, p := range profiles {
 			out[i] = jsonAnomaly{
-				ProfileID:  p.ProfileId,
-				ObservedAt: time.UnixMilli(p.ObservedAt).UTC(),
-				Labels:     labelsToMap(p.Labels),
+				ProfileID: p.ProfileId,
+				Timestamp: time.UnixMilli(p.Timestamp).UTC(),
+				Score:     p.Score,
+				Labels:    labelsToMap(p.Labels),
 			}
 		}
 		enc := json.NewEncoder(output(ctx))
@@ -81,11 +83,12 @@ func queryAnomalies(ctx context.Context, params *queryAnomaliesParams) error {
 		return enc.Encode(out)
 	default:
 		table := newTableWriter(output(ctx))
-		table.SetHeader([]string{"Profile ID", "Observed At", "Labels"})
+		table.SetHeader([]string{"Profile ID", "Timestamp", "Score", "Labels"})
 		for _, p := range profiles {
 			table.Append([]string{
 				p.ProfileId,
-				time.UnixMilli(p.ObservedAt).UTC().Format(time.RFC3339),
+				time.UnixMilli(p.Timestamp).UTC().Format(time.RFC3339),
+				fmt.Sprintf("%.4f", p.Score),
 				formatLabels(p.Labels),
 			})
 		}

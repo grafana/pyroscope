@@ -713,7 +713,7 @@ func (m *QueryAnomaliesResponse) CloneVT() *QueryAnomaliesResponse {
 	}
 	r := new(QueryAnomaliesResponse)
 	if rhs := m.Profiles; rhs != nil {
-		tmpContainer := make([]*AnomalyProfile, len(rhs))
+		tmpContainer := make([]*StacktraceAnomaly, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
@@ -730,13 +730,14 @@ func (m *QueryAnomaliesResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *AnomalyProfile) CloneVT() *AnomalyProfile {
+func (m *StacktraceAnomaly) CloneVT() *StacktraceAnomaly {
 	if m == nil {
-		return (*AnomalyProfile)(nil)
+		return (*StacktraceAnomaly)(nil)
 	}
-	r := new(AnomalyProfile)
+	r := new(StacktraceAnomaly)
 	r.ProfileId = m.ProfileId
-	r.ObservedAt = m.ObservedAt
+	r.Timestamp = m.Timestamp
+	r.Score = m.Score
 	if rhs := m.Labels; rhs != nil {
 		tmpContainer := make([]*v1.LabelPair, len(rhs))
 		for k, v := range rhs {
@@ -755,7 +756,7 @@ func (m *AnomalyProfile) CloneVT() *AnomalyProfile {
 	return r
 }
 
-func (m *AnomalyProfile) CloneMessageVT() proto.Message {
+func (m *StacktraceAnomaly) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -1714,10 +1715,10 @@ func (this *QueryAnomaliesResponse) EqualVT(that *QueryAnomaliesResponse) bool {
 		vy := that.Profiles[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &AnomalyProfile{}
+				p = &StacktraceAnomaly{}
 			}
 			if q == nil {
-				q = &AnomalyProfile{}
+				q = &StacktraceAnomaly{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -1734,7 +1735,7 @@ func (this *QueryAnomaliesResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *AnomalyProfile) EqualVT(that *AnomalyProfile) bool {
+func (this *StacktraceAnomaly) EqualVT(that *StacktraceAnomaly) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -1743,7 +1744,7 @@ func (this *AnomalyProfile) EqualVT(that *AnomalyProfile) bool {
 	if this.ProfileId != that.ProfileId {
 		return false
 	}
-	if this.ObservedAt != that.ObservedAt {
+	if this.Timestamp != that.Timestamp {
 		return false
 	}
 	if len(this.Labels) != len(that.Labels) {
@@ -1767,11 +1768,14 @@ func (this *AnomalyProfile) EqualVT(that *AnomalyProfile) bool {
 			}
 		}
 	}
+	if this.Score != that.Score {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *AnomalyProfile) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*AnomalyProfile)
+func (this *StacktraceAnomaly) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*StacktraceAnomaly)
 	if !ok {
 		return false
 	}
@@ -4103,7 +4107,7 @@ func (m *QueryAnomaliesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *AnomalyProfile) MarshalVT() (dAtA []byte, err error) {
+func (m *StacktraceAnomaly) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -4116,12 +4120,12 @@ func (m *AnomalyProfile) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *AnomalyProfile) MarshalToVT(dAtA []byte) (int, error) {
+func (m *StacktraceAnomaly) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *AnomalyProfile) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *StacktraceAnomaly) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -4132,6 +4136,12 @@ func (m *AnomalyProfile) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Score != 0 {
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Score))))
+		i--
+		dAtA[i] = 0x21
 	}
 	if len(m.Labels) > 0 {
 		for iNdEx := len(m.Labels) - 1; iNdEx >= 0; iNdEx-- {
@@ -4157,8 +4167,8 @@ func (m *AnomalyProfile) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			dAtA[i] = 0x1a
 		}
 	}
-	if m.ObservedAt != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ObservedAt))
+	if m.Timestamp != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Timestamp))
 		i--
 		dAtA[i] = 0x10
 	}
@@ -4903,7 +4913,7 @@ func (m *QueryAnomaliesResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *AnomalyProfile) SizeVT() (n int) {
+func (m *StacktraceAnomaly) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4913,8 +4923,8 @@ func (m *AnomalyProfile) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
-	if m.ObservedAt != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.ObservedAt))
+	if m.Timestamp != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Timestamp))
 	}
 	if len(m.Labels) > 0 {
 		for _, e := range m.Labels {
@@ -4927,6 +4937,9 @@ func (m *AnomalyProfile) SizeVT() (n int) {
 			}
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.Score != 0 {
+		n += 9
 	}
 	n += len(m.unknownFields)
 	return n
@@ -9163,7 +9176,7 @@ func (m *QueryAnomaliesResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Profiles = append(m.Profiles, &AnomalyProfile{})
+			m.Profiles = append(m.Profiles, &StacktraceAnomaly{})
 			if err := m.Profiles[len(m.Profiles)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -9190,7 +9203,7 @@ func (m *QueryAnomaliesResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *AnomalyProfile) UnmarshalVT(dAtA []byte) error {
+func (m *StacktraceAnomaly) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9213,10 +9226,10 @@ func (m *AnomalyProfile) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: AnomalyProfile: wiretype end group for non-group")
+			return fmt.Errorf("proto: StacktraceAnomaly: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AnomalyProfile: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: StacktraceAnomaly: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -9253,9 +9266,9 @@ func (m *AnomalyProfile) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ObservedAt", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
 			}
-			m.ObservedAt = 0
+			m.Timestamp = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return protohelpers.ErrIntOverflow
@@ -9265,7 +9278,7 @@ func (m *AnomalyProfile) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ObservedAt |= int64(b&0x7F) << shift
+				m.Timestamp |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -9312,6 +9325,17 @@ func (m *AnomalyProfile) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 4:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Score", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Score = float64(math.Float64frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

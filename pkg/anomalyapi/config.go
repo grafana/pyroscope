@@ -7,7 +7,7 @@ type Config struct {
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.StringVar(&cfg.URL, "anomaly-api.url", "",
+	f.StringVar(&cfg.URL, "query-frontend.anomaly-api.url", "",
 		"Base URL of an externally configured anomaly source, used for the \"stacktrace\" "+
 			"anomaly query type. Leave empty to disable.")
 }

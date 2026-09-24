@@ -61,6 +61,7 @@ func (s *testSuite) Test_QueryProfilePresence_Basic() {
 	s.Require().Len(profiles, 1)
 	s.Assert().Equal(validProfileID, profiles[0].ProfileId)
 	s.Assert().NotEmpty(profiles[0].Labels, "expected the profile's own labels to be populated")
+	s.Assert().NotZero(profiles[0].Timestamp, "expected the profile's own timestamp to be populated")
 }
 
 // Test_QueryProfilePresence_NoneOfManyPresent checks a 100-candidate list, none present,

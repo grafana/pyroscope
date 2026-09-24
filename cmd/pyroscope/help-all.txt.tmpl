@@ -37,8 +37,6 @@ Usage of ./pyroscope:
     	Port for the admin HTTP server (metrics, pprof, admin). (default 4042)
   -admin-server.mode value
     	Controls the admin server for metrics, pprof and admin endpoints. 'disabled': all routes on the main port (default). 'additional': admin server started, operational routes served on both ports. 'exclusive': admin server started, operational routes removed from main port. (default "disabled")
-  -anomaly-api.url string
-    	[experimental] Base URL of an externally configured anomaly source, used for the "stacktrace" anomaly query type. Leave empty to disable.
   -api.base-url string
     	base URL for when the server is behind a reverse proxy with a different path
   -architecture.storage value
@@ -881,6 +879,8 @@ Usage of ./pyroscope:
     	Override the expected name on the server certificate.
   -query-backend.include-stripped-profiles
     	Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.
+  -query-frontend.anomaly-api.url string
+    	[experimental] Base URL of an externally configured anomaly source, used for the "stacktrace" anomaly query type. Leave empty to disable.
   -query-frontend.async-queries-enabled
     	[experimental] Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)
   -query-frontend.grpc-client-config.backoff-max-period duration

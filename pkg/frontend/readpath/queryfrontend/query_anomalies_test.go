@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -68,6 +67,8 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	}))
 	defer apServer.Close()
 
+	backendTimestampByID := map[string]int64{"present-1": 111, "present-2": 222}
+
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
 
@@ -86,6 +87,7 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 					present = append(present, &queryv1.ProfilePresenceEntry{
 						ProfileId: id,
 						Labels:    []*typesv1.LabelPair{{Name: "pod", Value: id + "-pod"}},
+						Timestamp: backendTimestampByID[id],
 					})
 				}
 			}
@@ -121,16 +123,14 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Profiles, 2)
-	byID := make(map[string]*querierv1.AnomalyProfile, len(resp.Msg.Profiles))
+	byID := make(map[string]*querierv1.StacktraceAnomaly, len(resp.Msg.Profiles))
 	for _, p := range resp.Msg.Profiles {
 		byID[p.ProfileId] = p
 	}
-	present1, err := time.Parse(time.RFC3339, "2026-09-23T12:00:00Z")
-	require.NoError(t, err)
-	present2, err := time.Parse(time.RFC3339, "2026-09-23T12:02:00Z")
-	require.NoError(t, err)
-	require.Equal(t, present1.UnixMilli(), byID["present-1"].ObservedAt)
-	require.Equal(t, present2.UnixMilli(), byID["present-2"].ObservedAt)
+	require.Equal(t, backendTimestampByID["present-1"], byID["present-1"].Timestamp)
+	require.Equal(t, backendTimestampByID["present-2"], byID["present-2"].Timestamp)
+	require.Equal(t, -0.9, byID["present-1"].Score)
+	require.Equal(t, -0.7, byID["present-2"].Score)
 	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "present-1-pod"}}, byID["present-1"].Labels)
 	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "present-2-pod"}}, byID["present-2"].Labels)
 	require.EqualValues(t, 1, invokeCalls.Load())

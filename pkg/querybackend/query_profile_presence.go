@@ -38,18 +38,22 @@ func queryProfilePresence(q *queryContext, query *queryv1.Query) (*queryv1.Repor
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
-	seen := make(map[string]phlaremodel.Labels)
+	seen := make(map[string]profilePresenceInfo)
 	for entries.Next() {
 		e := entries.At()
-		seen[e.ID] = e.Labels
+		seen[e.ID] = profilePresenceInfo{Labels: e.Labels, Timestamp: int64(e.Timestamp)}
 	}
 	if err = entries.Err(); err != nil {
 		return nil, err
 	}
 
 	profiles := make([]*queryv1.ProfilePresenceEntry, 0, len(seen))
-	for id, lbls := range seen {
-		profiles = append(profiles, &queryv1.ProfilePresenceEntry{ProfileId: id, Labels: lbls})
+	for id, info := range seen {
+		profiles = append(profiles, &queryv1.ProfilePresenceEntry{
+			ProfileId: id,
+			Labels:    info.Labels,
+			Timestamp: info.Timestamp,
+		})
 	}
 	return &queryv1.Report{
 		ProfilePresence: &queryv1.ProfilePresenceReport{
@@ -70,10 +74,15 @@ func profilePresenceIteratorOptions(ids []string) ([]profileIteratorOption, erro
 	return []profileIteratorOption{opt, withExcludeSampled(), withAllLabels()}, nil
 }
 
+type profilePresenceInfo struct {
+	Labels    phlaremodel.Labels
+	Timestamp int64
+}
+
 type profilePresenceAggregator struct {
 	init  sync.Once
 	query *queryv1.ProfilePresenceQuery
-	seen  map[string]phlaremodel.Labels
+	seen  map[string]profilePresenceInfo
 }
 
 func newProfilePresenceAggregator(*queryv1.InvokeRequest) aggregator {
@@ -84,18 +93,22 @@ func (a *profilePresenceAggregator) aggregate(report *queryv1.Report) error {
 	r := report.ProfilePresence
 	a.init.Do(func() {
 		a.query = r.Query.CloneVT()
-		a.seen = make(map[string]phlaremodel.Labels, len(r.Profiles))
+		a.seen = make(map[string]profilePresenceInfo, len(r.Profiles))
 	})
 	for _, p := range r.Profiles {
-		a.seen[p.ProfileId] = p.Labels
+		a.seen[p.ProfileId] = profilePresenceInfo{Labels: p.Labels, Timestamp: p.Timestamp}
 	}
 	return nil
 }
 
 func (a *profilePresenceAggregator) build() *queryv1.Report {
 	profiles := make([]*queryv1.ProfilePresenceEntry, 0, len(a.seen))
-	for id, lbls := range a.seen {
-		profiles = append(profiles, &queryv1.ProfilePresenceEntry{ProfileId: id, Labels: lbls})
+	for id, info := range a.seen {
+		profiles = append(profiles, &queryv1.ProfilePresenceEntry{
+			ProfileId: id,
+			Labels:    info.Labels,
+			Timestamp: info.Timestamp,
+		})
 	}
 	return &queryv1.Report{
 		ProfilePresence: &queryv1.ProfilePresenceReport{

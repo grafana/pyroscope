@@ -1000,6 +1000,13 @@ components:
           description: |-
             The profile's own labels (e.g. pod, instance), same convention as
              types.v1.Exemplar.labels.
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: 'Milliseconds since epoch: the profile''s own timestamp.'
       title: ProfilePresenceEntry
       additionalProperties: false
     query.v1.ProfilePresenceQuery:

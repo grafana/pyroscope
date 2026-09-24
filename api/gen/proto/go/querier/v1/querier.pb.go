@@ -2099,7 +2099,7 @@ type QueryAnomaliesResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Profiles that are both flagged as anomalies by the configured anomaly source and
 	// confirmed present for the given label selector and time range.
-	Profiles      []*AnomalyProfile `protobuf:"bytes,1,rep,name=profiles,proto3" json:"profiles,omitempty"`
+	Profiles      []*StacktraceAnomaly `protobuf:"bytes,1,rep,name=profiles,proto3" json:"profiles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2134,40 +2134,42 @@ func (*QueryAnomaliesResponse) Descriptor() ([]byte, []int) {
 	return file_querier_v1_querier_proto_rawDescGZIP(), []int{26}
 }
 
-func (x *QueryAnomaliesResponse) GetProfiles() []*AnomalyProfile {
+func (x *QueryAnomaliesResponse) GetProfiles() []*StacktraceAnomaly {
 	if x != nil {
 		return x.Profiles
 	}
 	return nil
 }
 
-type AnomalyProfile struct {
+type StacktraceAnomaly struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Profile ID (UUID).
 	ProfileId string `protobuf:"bytes,1,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
-	// Milliseconds since epoch: when the anomaly source observed this anomaly.
-	ObservedAt int64 `protobuf:"varint,2,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	// Milliseconds since epoch: the profile's own timestamp.
+	Timestamp int64 `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// The profile's own labels (e.g. pod, instance), same convention as
 	// types.v1.Exemplar.labels.
-	Labels        []*v1.LabelPair `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty"`
+	Labels []*v1.LabelPair `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty"`
+	// The anomaly source's score for this profile.
+	Score         float64 `protobuf:"fixed64,4,opt,name=score,proto3" json:"score,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AnomalyProfile) Reset() {
-	*x = AnomalyProfile{}
+func (x *StacktraceAnomaly) Reset() {
+	*x = StacktraceAnomaly{}
 	mi := &file_querier_v1_querier_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AnomalyProfile) String() string {
+func (x *StacktraceAnomaly) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AnomalyProfile) ProtoMessage() {}
+func (*StacktraceAnomaly) ProtoMessage() {}
 
-func (x *AnomalyProfile) ProtoReflect() protoreflect.Message {
+func (x *StacktraceAnomaly) ProtoReflect() protoreflect.Message {
 	mi := &file_querier_v1_querier_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2179,30 +2181,37 @@ func (x *AnomalyProfile) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AnomalyProfile.ProtoReflect.Descriptor instead.
-func (*AnomalyProfile) Descriptor() ([]byte, []int) {
+// Deprecated: Use StacktraceAnomaly.ProtoReflect.Descriptor instead.
+func (*StacktraceAnomaly) Descriptor() ([]byte, []int) {
 	return file_querier_v1_querier_proto_rawDescGZIP(), []int{27}
 }
 
-func (x *AnomalyProfile) GetProfileId() string {
+func (x *StacktraceAnomaly) GetProfileId() string {
 	if x != nil {
 		return x.ProfileId
 	}
 	return ""
 }
 
-func (x *AnomalyProfile) GetObservedAt() int64 {
+func (x *StacktraceAnomaly) GetTimestamp() int64 {
 	if x != nil {
-		return x.ObservedAt
+		return x.Timestamp
 	}
 	return 0
 }
 
-func (x *AnomalyProfile) GetLabels() []*v1.LabelPair {
+func (x *StacktraceAnomaly) GetLabels() []*v1.LabelPair {
 	if x != nil {
 		return x.Labels
 	}
 	return nil
+}
+
+func (x *StacktraceAnomaly) GetScore() float64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
 }
 
 var File_querier_v1_querier_proto protoreflect.FileDescriptor
@@ -2374,15 +2383,15 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
 	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x124\n" +
 	"\fanomaly_type\x18\x05 \x01(\tB\x11\xbaG\x0e:\f\x12\n" +
-	"stacktraceR\vanomalyType\"P\n" +
-	"\x16QueryAnomaliesResponse\x126\n" +
-	"\bprofiles\x18\x01 \x03(\v2\x1a.querier.v1.AnomalyProfileR\bprofiles\"\x93\x01\n" +
-	"\x0eAnomalyProfile\x12\x1d\n" +
+	"stacktraceR\vanomalyType\"S\n" +
+	"\x16QueryAnomaliesResponse\x129\n" +
+	"\bprofiles\x18\x01 \x03(\v2\x1d.querier.v1.StacktraceAnomalyR\bprofiles\"\xa9\x01\n" +
+	"\x11StacktraceAnomaly\x12\x1d\n" +
 	"\n" +
-	"profile_id\x18\x01 \x01(\tR\tprofileId\x125\n" +
-	"\vobserved_at\x18\x02 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\n" +
-	"observedAt\x12+\n" +
-	"\x06labels\x18\x03 \x03(\v2\x13.types.v1.LabelPairR\x06labels*\x99\x01\n" +
+	"profile_id\x18\x01 \x01(\tR\tprofileId\x122\n" +
+	"\ttimestamp\x18\x02 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\ttimestamp\x12+\n" +
+	"\x06labels\x18\x03 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12\x14\n" +
+	"\x05score\x18\x04 \x01(\x01R\x05score*\x99\x01\n" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
@@ -2480,7 +2489,7 @@ var file_querier_v1_querier_proto_goTypes = []any{
 	(*QueryImpact)(nil),                    // 28: querier.v1.QueryImpact
 	(*QueryAnomaliesRequest)(nil),          // 29: querier.v1.QueryAnomaliesRequest
 	(*QueryAnomaliesResponse)(nil),         // 30: querier.v1.QueryAnomaliesResponse
-	(*AnomalyProfile)(nil),                 // 31: querier.v1.AnomalyProfile
+	(*StacktraceAnomaly)(nil),              // 31: querier.v1.StacktraceAnomaly
 	(*v1.ProfileType)(nil),                 // 32: types.v1.ProfileType
 	(*v1.Labels)(nil),                      // 33: types.v1.Labels
 	(*v1.StackTraceSelector)(nil),          // 34: types.v1.StackTraceSelector
@@ -2526,8 +2535,8 @@ var file_querier_v1_querier_proto_depIdxs = []int32{
 	39, // 25: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
 	27, // 26: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
 	28, // 27: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
-	31, // 28: querier.v1.QueryAnomaliesResponse.profiles:type_name -> querier.v1.AnomalyProfile
-	40, // 29: querier.v1.AnomalyProfile.labels:type_name -> types.v1.LabelPair
+	31, // 28: querier.v1.QueryAnomaliesResponse.profiles:type_name -> querier.v1.StacktraceAnomaly
+	40, // 29: querier.v1.StacktraceAnomaly.labels:type_name -> types.v1.LabelPair
 	4,  // 30: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
 	41, // 31: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
 	42, // 32: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest

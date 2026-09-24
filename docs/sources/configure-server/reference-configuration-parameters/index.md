@@ -1746,7 +1746,7 @@ The `query_frontend` block configures the query-frontend.
 anomaly_api:
   # (experimental) Base URL of an externally configured anomaly source, used for
   # the "stacktrace" anomaly query type. Leave empty to disable.
-  # CLI flag: -anomaly-api.url
+  # CLI flag: -query-frontend.anomaly-api.url
   [url: <string> | default = ""]
 ```
 

@@ -721,6 +721,7 @@ func (m *ProfilePresenceEntry) CloneVT() *ProfilePresenceEntry {
 	}
 	r := new(ProfilePresenceEntry)
 	r.ProfileId = m.ProfileId
+	r.Timestamp = m.Timestamp
 	if rhs := m.Labels; rhs != nil {
 		tmpContainer := make([]*v11.LabelPair, len(rhs))
 		for k, v := range rhs {
@@ -2085,6 +2086,9 @@ func (this *ProfilePresenceEntry) EqualVT(that *ProfilePresenceEntry) bool {
 				return false
 			}
 		}
+	}
+	if this.Timestamp != that.Timestamp {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -4544,6 +4548,11 @@ func (m *ProfilePresenceEntry) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Timestamp != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Timestamp))
+		i--
+		dAtA[i] = 0x18
+	}
 	if len(m.Labels) > 0 {
 		for iNdEx := len(m.Labels) - 1; iNdEx >= 0; iNdEx-- {
 			if vtmsg, ok := interface{}(m.Labels[iNdEx]).(interface {
@@ -6060,6 +6069,9 @@ func (m *ProfilePresenceEntry) SizeVT() (n int) {
 			}
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.Timestamp != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Timestamp))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -10849,6 +10861,25 @@ func (m *ProfilePresenceEntry) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
+			}
+			m.Timestamp = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Timestamp |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

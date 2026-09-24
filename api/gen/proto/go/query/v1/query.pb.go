@@ -1931,7 +1931,9 @@ type ProfilePresenceEntry struct {
 	ProfileId string                 `protobuf:"bytes,1,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
 	// The profile's own labels (e.g. pod, instance), same convention as
 	// types.v1.Exemplar.labels.
-	Labels        []*v11.LabelPair `protobuf:"bytes,2,rep,name=labels,proto3" json:"labels,omitempty"`
+	Labels []*v11.LabelPair `protobuf:"bytes,2,rep,name=labels,proto3" json:"labels,omitempty"`
+	// Milliseconds since epoch: the profile's own timestamp.
+	Timestamp     int64 `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1978,6 +1980,13 @@ func (x *ProfilePresenceEntry) GetLabels() []*v11.LabelPair {
 		return x.Labels
 	}
 	return nil
+}
+
+func (x *ProfilePresenceEntry) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
 }
 
 type PprofQuery struct {
@@ -2844,11 +2853,12 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x13profile_id_selector\x18\x01 \x03(\tR\x11profileIdSelector\"\x89\x01\n" +
 	"\x15ProfilePresenceReport\x124\n" +
 	"\x05query\x18\x01 \x01(\v2\x1e.query.v1.ProfilePresenceQueryR\x05query\x12:\n" +
-	"\bprofiles\x18\x02 \x03(\v2\x1e.query.v1.ProfilePresenceEntryR\bprofiles\"b\n" +
+	"\bprofiles\x18\x02 \x03(\v2\x1e.query.v1.ProfilePresenceEntryR\bprofiles\"\x80\x01\n" +
 	"\x14ProfilePresenceEntry\x12\x1d\n" +
 	"\n" +
 	"profile_id\x18\x01 \x01(\tR\tprofileId\x12+\n" +
-	"\x06labels\x18\x02 \x03(\v2\x13.types.v1.LabelPairR\x06labels\"\x98\x02\n" +
+	"\x06labels\x18\x02 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\"\x98\x02\n" +
 	"\n" +
 	"PprofQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12S\n" +

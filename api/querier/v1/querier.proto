@@ -393,15 +393,17 @@ message QueryAnomaliesRequest {
 message QueryAnomaliesResponse {
   // Profiles that are both flagged as anomalies by the configured anomaly source and
   // confirmed present for the given label selector and time range.
-  repeated AnomalyProfile profiles = 1;
+  repeated StacktraceAnomaly profiles = 1;
 }
 
-message AnomalyProfile {
+message StacktraceAnomaly {
   // Profile ID (UUID).
   string profile_id = 1;
-  // Milliseconds since epoch: when the anomaly source observed this anomaly.
-  int64 observed_at = 2 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
+  // Milliseconds since epoch: the profile's own timestamp.
+  int64 timestamp = 2 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
   // The profile's own labels (e.g. pod, instance), same convention as
   // types.v1.Exemplar.labels.
   repeated types.v1.LabelPair labels = 3;
+  // The anomaly source's score for this profile.
+  double score = 4;
 }

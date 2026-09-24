@@ -36,7 +36,7 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 ) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
 	if q.anomalyAPI == nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition,
-			fmt.Errorf(`anomaly_type "stacktrace" requires anomaly-api.url to be configured`))
+			fmt.Errorf(`anomaly_type "stacktrace" requires query-frontend.anomaly-api.url to be configured`))
 	}
 
 	tenantIDs, err := tenant.TenantIDs(ctx)
@@ -64,16 +64,17 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 		return nil, err
 	}
 
-	observedAt := make(map[string]int64, len(anomalies))
+	scoreByID := make(map[string]float64, len(anomalies))
 	for _, a := range anomalies {
-		observedAt[a.ProfileUUID] = a.ObservedAt.UnixMilli()
+		scoreByID[a.ProfileUUID] = a.Score
 	}
-	profiles := make([]*querierv1.AnomalyProfile, len(confirmed))
+	profiles := make([]*querierv1.StacktraceAnomaly, len(confirmed))
 	for i, p := range confirmed {
-		profiles[i] = &querierv1.AnomalyProfile{
-			ProfileId:  p.ProfileId,
-			ObservedAt: observedAt[p.ProfileId],
-			Labels:     p.Labels,
+		profiles[i] = &querierv1.StacktraceAnomaly{
+			ProfileId: p.ProfileId,
+			Timestamp: p.Timestamp,
+			Labels:    p.Labels,
+			Score:     scoreByID[p.ProfileId],
 		}
 	}
 	return connect.NewResponse(&querierv1.QueryAnomaliesResponse{Profiles: profiles}), nil
