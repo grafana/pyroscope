@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,40 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/v2/pkg/util/extprom"
 )
+
+func TestCompactorMetrics_SizeBuckets(t *testing.T) {
+	metrics := newCompactorMetrics(nil)
+	observer, err := metrics.Size.GetMetricWithLabelValues("1")
+	require.NoError(t, err)
+	metricObserver, ok := observer.(prometheus.Metric)
+	require.True(t, ok)
+
+	var metric dto.Metric
+	require.NoError(t, metricObserver.Write(&metric))
+
+	var got []float64
+	for _, bucket := range metric.GetHistogram().GetBucket() {
+		got = append(got, bucket.GetUpperBound())
+	}
+
+	assert.Equal(t, []float64{
+		1 << 20,
+		1 << 21,
+		1 << 22,
+		1 << 23,
+		1 << 24,
+		1 << 25,
+		1 << 26,
+		1 << 27,
+		1 << 28,
+		1 << 29,
+		1 << 30,
+		1 << 31,
+		1 << 32,
+		1 << 33,
+		1 << 34,
+	}, got)
+}
 
 func TestGroupKey(t *testing.T) {
 	for _, tcase := range []struct {
