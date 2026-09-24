@@ -364,6 +364,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		"server.grpc-max-recv-msg-size-bytes":                    "104857600",
 		"server.grpc-max-send-msg-size-bytes":                    "104857600",
 		"server.grpc.keepalive.min-time-between-pings":           "1s",
+		"server.grpc.keepalive.ping-without-stream-allowed":      "true",
 		"segment-writer.grpc-client-config.connect-timeout":      "1s",
 		"segment-writer.num-tokens":                              "4",
 		"segment-writer.heartbeat-timeout":                       "1m",

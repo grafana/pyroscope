@@ -369,6 +369,14 @@
     ],
     "drivesPerNode": 2,
     "enabled": false,
+    "image": {
+      "repository": "pgsty/silo",
+      "tag": "RELEASE.2026-09-16T00-00-00Z"
+    },
+    "mcImage": {
+      "repository": "pgsty/mc",
+      "tag": "RELEASE.2026-09-16T00-00-00Z"
+    },
     "persistence": {
       "size": "5Gi"
     },
