@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -216,8 +217,8 @@ func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
 		require.ElementsMatch(t, []string{"svc-a", "svc-b"}, r.URL.Query()["service_name"])
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"anomalies":[
-			{"profile_uuid":"from-svc-a","score":-0.9,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"},
-			{"profile_uuid":"from-svc-b","score":-0.7,"observed_at":"2026-09-23T12:01:00Z","model_id":"m1"}
+			{"profile_uuid":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","score":-0.9,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"},
+			{"profile_uuid":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb","score":-0.7,"observed_at":"2026-09-23T12:01:00Z","model_id":"m1"}
 		]}`))
 	}))
 	defer apServer.Close()
@@ -284,26 +285,26 @@ func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
 	for i, p := range resp.Msg.StacktraceAnomalies {
 		gotIDs[i] = p.ProfileId
 	}
-	require.ElementsMatch(t, []string{"from-svc-a", "from-svc-b"}, gotIDs)
+	require.ElementsMatch(t, []string{"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"}, gotIDs)
 }
 
 func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
-	// The anomaly source reports three anomalies; the mock backend confirms only present-1
-	// and present-2, in one call covering all three.
+	// The anomaly source reports three anomalies; the mock backend confirms only 11111111-1111-1111-1111-111111111111
+	// and 22222222-2222-2222-2222-222222222222, in one call covering all three.
 	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/api/v1/anomalydetection/anomalies", r.URL.Path)
 		require.Equal(t, smpTenant, r.Header.Get("X-Scope-OrgID"))
 		require.Equal(t, "svc-a", r.URL.Query().Get("service_name"))
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"anomalies":[
-			{"profile_uuid":"present-1","score":-0.9,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"},
-			{"profile_uuid":"absent-1","score":-0.8,"observed_at":"2026-09-23T12:01:00Z","model_id":"m1"},
-			{"profile_uuid":"present-2","score":-0.7,"observed_at":"2026-09-23T12:02:00Z","model_id":"m1"}
+			{"profile_uuid":"11111111-1111-1111-1111-111111111111","score":-0.9,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"},
+			{"profile_uuid":"00000000-0000-0000-0000-000000000001","score":-0.8,"observed_at":"2026-09-23T12:01:00Z","model_id":"m1"},
+			{"profile_uuid":"22222222-2222-2222-2222-222222222222","score":-0.7,"observed_at":"2026-09-23T12:02:00Z","model_id":"m1"}
 		]}`))
 	}))
 	defer apServer.Close()
 
-	backendTimestampByID := map[string]int64{"present-1": 111, "present-2": 222}
+	backendTimestampByID := map[string]int64{"11111111-1111-1111-1111-111111111111": 111, "22222222-2222-2222-2222-222222222222": 222}
 
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
@@ -332,7 +333,7 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 				candidates := req.Query[0].ProfilePresence.GetProfileIdSelector()
 				present := make([]*queryv1.ProfilePresenceEntry, 0, len(candidates))
 				for _, id := range candidates {
-					if id != "absent-1" {
+					if id != "00000000-0000-0000-0000-000000000001" {
 						present = append(present, &queryv1.ProfilePresenceEntry{
 							ProfileId: id,
 							Labels:    []*typesv1.LabelPair{{Name: "pod", Value: id + "-pod"}},
@@ -377,12 +378,12 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	for _, p := range resp.Msg.StacktraceAnomalies {
 		byID[p.ProfileId] = p
 	}
-	require.Equal(t, backendTimestampByID["present-1"], byID["present-1"].Timestamp)
-	require.Equal(t, backendTimestampByID["present-2"], byID["present-2"].Timestamp)
-	require.Equal(t, -0.9, byID["present-1"].Score)
-	require.Equal(t, -0.7, byID["present-2"].Score)
-	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "present-1-pod"}}, byID["present-1"].Labels)
-	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "present-2-pod"}}, byID["present-2"].Labels)
+	require.Equal(t, backendTimestampByID["11111111-1111-1111-1111-111111111111"], byID["11111111-1111-1111-1111-111111111111"].Timestamp)
+	require.Equal(t, backendTimestampByID["22222222-2222-2222-2222-222222222222"], byID["22222222-2222-2222-2222-222222222222"].Timestamp)
+	require.Equal(t, -0.9, byID["11111111-1111-1111-1111-111111111111"].Score)
+	require.Equal(t, -0.7, byID["22222222-2222-2222-2222-222222222222"].Score)
+	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "11111111-1111-1111-1111-111111111111-pod"}}, byID["11111111-1111-1111-1111-111111111111"].Labels)
+	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "22222222-2222-2222-2222-222222222222-pod"}}, byID["22222222-2222-2222-2222-222222222222"].Labels)
 	require.EqualValues(t, 2, invokeCalls.Load())
 }
 
@@ -392,9 +393,9 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"anomalies":[
-			{"profile_uuid":"absent-1","score":-0.9,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"},
-			{"profile_uuid":"absent-2","score":-0.8,"observed_at":"2026-09-23T12:01:00Z","model_id":"m1"},
-			{"profile_uuid":"absent-3","score":-0.7,"observed_at":"2026-09-23T12:02:00Z","model_id":"m1"}
+			{"profile_uuid":"00000000-0000-0000-0000-000000000001","score":-0.9,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"},
+			{"profile_uuid":"00000000-0000-0000-0000-000000000002","score":-0.8,"observed_at":"2026-09-23T12:01:00Z","model_id":"m1"},
+			{"profile_uuid":"00000000-0000-0000-0000-000000000003","score":-0.7,"observed_at":"2026-09-23T12:02:00Z","model_id":"m1"}
 		]}`))
 	}))
 	defer apServer.Close()
@@ -455,4 +456,82 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, resp.Msg.StacktraceAnomalies)
 	require.EqualValues(t, 2, invokeCalls.Load())
+}
+
+// TestQueryAnomalies_ScoreLookupToleratesUUIDSpelling: profile presence matches UUIDs by their
+// parsed byte value, so the confirmed ProfileId comes back in canonical form even when the
+// anomaly source's spelling differs. The score lookup must key off the same canonical form,
+// not the anomaly source's raw spelling, or it silently attaches a zero score.
+func TestQueryAnomalies_ScoreLookupToleratesUUIDSpelling(t *testing.T) {
+	const rawSpelling = "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"
+	const canonicalSpelling = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"anomalies":[
+			{"profile_uuid":"` + rawSpelling + `","score":-0.42,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"}
+		]}`))
+	}))
+	defer apServer.Close()
+
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, req *queryv1.InvokeRequest) *queryv1.InvokeResponse {
+			if req.Query[0].QueryType == queryv1.QueryType_QUERY_SERIES_LABELS {
+				return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
+					SeriesLabels: &queryv1.SeriesLabelsReport{
+						SeriesLabels: []*typesv1.Labels{{
+							Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc-a"}},
+						}},
+					},
+				}}}
+			}
+			candidates := req.Query[0].ProfilePresence.GetProfileIdSelector()
+			present := make([]*queryv1.ProfilePresenceEntry, len(candidates))
+			for i, id := range candidates {
+				u, err := uuid.Parse(id)
+				require.NoError(t, err)
+				present[i] = &queryv1.ProfilePresenceEntry{ProfileId: u.String()}
+			}
+			return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+				ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
+				ProfilePresence: &queryv1.ProfilePresenceReport{Profiles: present},
+			}}}
+		},
+		nil,
+	)
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockLimits,
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		mockMetadata,
+		nil,
+		mockBackend,
+		nil, nil, nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	start, end := smpValidTimeRange()
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: smpProfileType,
+		LabelSelector: `{service_name="svc-a"}`,
+		Start:         start,
+		End:           end,
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.StacktraceAnomalies, 1)
+	require.Equal(t, canonicalSpelling, resp.Msg.StacktraceAnomalies[0].ProfileId)
+	require.Equal(t, -0.42, resp.Msg.StacktraceAnomalies[0].Score)
 }

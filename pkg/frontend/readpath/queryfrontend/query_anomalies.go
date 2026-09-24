@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/tenant"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -87,7 +88,12 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 
 	scoreByID := make(map[string]float64, len(anomalies))
 	for _, a := range anomalies {
-		scoreByID[a.ProfileUUID] = a.Score
+		id, err := uuid.Parse(a.ProfileUUID)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal,
+				fmt.Errorf("anomaly source returned invalid profile_uuid %q: %w", a.ProfileUUID, err))
+		}
+		scoreByID[id.String()] = a.Score
 	}
 	profiles := make([]*querierv1.StacktraceAnomaly, len(confirmed))
 	for i, p := range confirmed {
