@@ -91,6 +91,13 @@ func (m *CompactionJobStatusUpdate) CloneVT() *CompactionJobStatusUpdate {
 	r.Name = m.Name
 	r.Token = m.Token
 	r.Status = m.Status
+	if rhs := m.CompactedBlocks; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.CompactedBlocks }); ok {
+			r.CompactedBlocks = vtpb.CloneVT()
+		} else {
+			r.CompactedBlocks = proto.Clone(rhs).(*v1.CompactedBlocks)
+		}
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -230,6 +237,7 @@ func (m *CompletedCompactionJob) CloneVT() *CompletedCompactionJob {
 	}
 	r := new(CompletedCompactionJob)
 	r.State = m.State.CloneVT()
+	r.RejectOutput = m.RejectOutput
 	if rhs := m.CompactedBlocks; rhs != nil {
 		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.CompactedBlocks }); ok {
 			r.CompactedBlocks = vtpb.CloneVT()
@@ -493,6 +501,15 @@ func (this *CompactionJobStatusUpdate) EqualVT(that *CompactionJobStatusUpdate) 
 	if this.Status != that.Status {
 		return false
 	}
+	if equal, ok := interface{}(this.CompactedBlocks).(interface {
+		EqualVT(*v1.CompactedBlocks) bool
+	}); ok {
+		if !equal.EqualVT(that.CompactedBlocks) {
+			return false
+		}
+	} else if !proto.Equal(this.CompactedBlocks, that.CompactedBlocks) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -705,6 +722,9 @@ func (this *CompletedCompactionJob) EqualVT(that *CompletedCompactionJob) bool {
 			return false
 		}
 	} else if !proto.Equal(this.CompactedBlocks, that.CompactedBlocks) {
+		return false
+	}
+	if this.RejectOutput != that.RejectOutput {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1096,6 +1116,28 @@ func (m *CompactionJobStatusUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, er
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.CompactedBlocks != nil {
+		if vtmsg, ok := interface{}(m.CompactedBlocks).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.CompactedBlocks)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
 	if m.Status != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Status))
 		i--
@@ -1435,6 +1477,16 @@ func (m *CompletedCompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.RejectOutput {
+		i--
+		if m.RejectOutput {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
 	}
 	if m.CompactedBlocks != nil {
 		if vtmsg, ok := interface{}(m.CompactedBlocks).(interface {
@@ -1925,6 +1977,16 @@ func (m *CompactionJobStatusUpdate) SizeVT() (n int) {
 	if m.Status != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Status))
 	}
+	if m.CompactedBlocks != nil {
+		if size, ok := interface{}(m.CompactedBlocks).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.CompactedBlocks)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -2055,6 +2117,9 @@ func (m *CompletedCompactionJob) SizeVT() (n int) {
 			l = proto.Size(m.CompactedBlocks)
 		}
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.RejectOutput {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2563,6 +2628,50 @@ func (m *CompactionJobStatusUpdate) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CompactedBlocks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.CompactedBlocks == nil {
+				m.CompactedBlocks = &v1.CompactedBlocks{}
+			}
+			if unmarshal, ok := interface{}(m.CompactedBlocks).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.CompactedBlocks); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -3354,6 +3463,26 @@ func (m *CompletedCompactionJob) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RejectOutput", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.RejectOutput = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
