@@ -92,10 +92,8 @@ func Test_stacktrace_tree_encoding_rand(t *testing.T) {
 	nodes := make([]node, 1<<20)
 	for i := range nodes {
 		nodes[i] = node{
-			fc: 2,
-			ns: 3,
-			p:  int32(rand.Intn(10 << 10)),
-			r:  int32(rand.Intn(10 << 10)),
+			p: int32(rand.Intn(10 << 10)),
+			r: int32(rand.Intn(10 << 10)),
 		}
 	}
 
@@ -124,6 +122,54 @@ func Test_stacktrace_tree_pprof_locations_(t *testing.T) {
 	p := newParentPointerTree(0)
 	assert.Len(t, p.resolve([]int32{0, 1, 2, 3}, 42), 0)
 	assert.Len(t, p.resolveUint64([]uint64{0, 1, 2, 3}, 42), 0)
+}
+
+func Test_stacktrace_tree_insert_collision(t *testing.T) {
+	tree := newStacktraceTree(1)
+	locations := make([]uint64, 0, 3)
+	slot := edgeHash(0, 1) & uint64(len(tree.edges.slots)-1)
+	for location := int32(1); len(locations) < cap(locations); location++ {
+		if edgeHash(0, location)&uint64(len(tree.edges.slots)-1) == slot {
+			locations = append(locations, uint64(location))
+		}
+	}
+
+	for _, location := range locations {
+		tree.insert([]uint64{location})
+	}
+
+	assert.Len(t, tree.nodes, len(locations)+1)
+	for _, location := range locations {
+		id := tree.insert([]uint64{location})
+		assert.Equal(t, []int32{int32(location)}, tree.resolve(nil, id))
+	}
+}
+
+func Test_stacktrace_tree_insert_grows_edge_table(t *testing.T) {
+	tree := newStacktraceTree(1)
+	const locations = 1024
+	for location := 1; location <= locations; location++ {
+		tree.insert([]uint64{uint64(location)})
+	}
+
+	assert.Len(t, tree.nodes, locations+1)
+	assert.Equal(t, uint32(locations), tree.edges.count)
+	assert.GreaterOrEqual(t, len(tree.edges.slots)*3/4, locations)
+	for location := 1; location <= locations; location++ {
+		id := tree.insert([]uint64{uint64(location)})
+		assert.Equal(t, []int32{int32(location)}, tree.resolve(nil, id))
+	}
+}
+
+func Test_edge_table_grow(t *testing.T) {
+	tree := newStacktraceTree(1)
+	assert.False(t, tree.edges.grow(tree.nodes))
+
+	id := tree.insert([]uint64{1})
+	assert.True(t, tree.edges.grow(tree.nodes))
+	assert.Equal(t, 4, len(tree.edges.slots))
+	child, _ := tree.edges.lookup(tree.nodes, 0, 1)
+	assert.Equal(t, id, child)
 }
 
 func Test_stacktrace_tree_pprof_locations(t *testing.T) {
