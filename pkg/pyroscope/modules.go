@@ -10,6 +10,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -43,10 +44,12 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/operations"
 	blocksv2 "github.com/grafana/pyroscope/v2/pkg/operations/v2/blocks"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
@@ -66,6 +69,8 @@ import (
 
 // The various modules that make up Pyroscope.
 const (
+	ProfileDumpRecorder string = "profile-dump-recorder"
+
 	All               string = "all"
 	API               string = "api"
 	Version           string = "version"
@@ -335,7 +340,7 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 	f.distributor = d
-	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server, f.profileDumpRecorder)
 
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
 		return nil, err
@@ -409,14 +414,53 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialise bucket: %w", err)
 		}
-		f.storageBucket = b
+		f.closeStorageBucket = sync.OnceValue(func() error { return b.Close() })
+		f.storageBucket = objstore.NewBorrowedBucket(b)
 	}
 
 	if !slices.Contains(f.Cfg.Target, All) && f.storageBucket == nil {
 		return nil, errors.New("storage bucket configuration is required when running in microservices mode")
 	}
 
-	return nil, nil
+	return services.NewIdleService(nil, func(error) error { return f.stopStorage() }), nil
+}
+
+// stopStorage also releases resources acquired during partial initialization.
+func (f *Pyroscope) stopStorage() error {
+	f.stopProfileDumpRecorder()
+	if f.closeStorageBucket != nil {
+		return f.closeStorageBucket()
+	}
+	return nil
+}
+
+func (f *Pyroscope) initProfileDumpRecorder() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	r, err := profiledump.NewRecorder(f.Cfg.ProfileDump.Recorder, profiledump.Dependencies{
+		Policies: f.Overrides, Registerer: f.reg,
+		DistributorID: f.Cfg.Distributor.DistributorRing.InstanceID,
+		Upload:        profiledump.BucketUpload(f.storageBucket, f.Overrides),
+	})
+	if err != nil {
+		return nil, err
+	}
+	f.profileDumpRecorder = r
+	return services.NewIdleService(nil, func(error) error {
+		f.stopProfileDumpRecorder()
+		return nil
+	}), nil
+}
+
+func (f *Pyroscope) stopProfileDumpRecorder() {
+	if f.profileDumpRecorder == nil {
+		return
+	}
+	// Shutdown supplies its own drain deadline, independent of service cancellation.
+	_ = f.profileDumpRecorder.Shutdown(context.Background())
+	// Providers ignoring cancellation retain the bucket until their workers return.
+	<-f.profileDumpRecorder.Done()
 }
 
 // TODO: This should be passed to all other services and could also be used to signal shutdown

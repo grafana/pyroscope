@@ -43,6 +43,8 @@ func main() {
 	app.HelpFlag.Short('h')
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
+	profileDumpCommands := addProfileDumpCommands(app)
+
 	adminCmd := app.Command("admin", "Administrative tasks for Pyroscope cluster operators.")
 
 	blocksCmd := adminCmd.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
@@ -167,6 +169,9 @@ func main() {
 		logger = level.NewFilter(logger, level.AllowInfo())
 	}
 
+	if p, ok := profileDumpCommands[parsedCmd]; ok {
+		os.Exit(checkError(profileDump(ctx, p)))
+	}
 	switch parsedCmd {
 	case blocksListCmd.FullCommand():
 		os.Exit(checkError(blocksList(ctx)))

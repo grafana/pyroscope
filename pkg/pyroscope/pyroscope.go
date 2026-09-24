@@ -404,6 +404,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := c.ProfileDump.Recorder.Validate(); err != nil {
+		return fmt.Errorf("profile_dump recorder: %w", err)
+	}
 	if err := c.ProfileDump.Validate(); err != nil {
 		return fmt.Errorf("profile_dump: %w", err)
 	}
@@ -519,7 +522,9 @@ type Pyroscope struct {
 
 	TenantLimits validation.TenantLimits
 
-	storageBucket phlareobj.Bucket
+	storageBucket       phlareobj.Bucket
+	closeStorageBucket  func() error
+	profileDumpRecorder *profiledump.Recorder
 
 	grpcGatewayMux *grpcgw.ServeMux
 
@@ -597,6 +602,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileDumpRecorder, f.initProfileDumpRecorder, modules.UserInvisibleModule)
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(IngesterRing, f.initIngesterRing, modules.UserInvisibleModule)
@@ -653,7 +659,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		API:                   {Server, AdminServer},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
-		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing},
+		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing, ProfileDumpRecorder},
 		PlacementAgent:        {Overrides, API, Storage},
 		PlacementManager:      {Overrides, API, Storage},
 		SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
@@ -663,6 +669,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
 		QueryDiagnosticsStore: {Storage},
+		ProfileDumpRecorder:   {Storage, Overrides},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
 		Symbolizer:            {Overrides, Storage},
 		UsageReport:           {Storage, MemberlistKV},
@@ -711,7 +718,7 @@ func (f *Pyroscope) setupModuleManager() error {
 			return slices.Contains(v2Modules, s)
 		})
 		deps[Admin] = []string{API, Storage}
-		deps[Distributor] = []string{Overrides, API, UsageReport, Storage, IngesterRing}
+		deps[Distributor] = []string{Overrides, API, UsageReport, Storage, IngesterRing, ProfileDumpRecorder}
 		deps[QueryFrontend] = []string{OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags}
 	}
 
@@ -740,7 +747,9 @@ var banner = `
  |___/                                 |_|    |___/                        |_|         
  `
 
-func (f *Pyroscope) Run() error {
+func (f *Pyroscope) Run() (runErr error) {
+	// Constructors can acquire storage and workers before a service manager exists.
+	defer func() { runErr = errors.Join(runErr, f.stopStorage()) }()
 	if f.Cfg.ShowBanner {
 		_ = cli.GradientBanner(banner, os.Stderr)
 	}

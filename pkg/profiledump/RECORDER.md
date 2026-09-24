@@ -43,5 +43,16 @@ return. `Done` closes after all preparations, workers and reservations are gone.
 
 A return from `Shutdown` alone does not establish that storage is no longer in use.
 Shared-storage teardown depends on `Done`. A provider that ignores cancellation
-can delay it indefinitely. Application lifecycle ordering is outside the recorder,
-which cannot prevent another bucket holder from closing shared storage early.
+can delay it indefinitely. The application owns the shared bucket and gives components borrowed views whose
+`Close` does not close storage. Its recorder service waits for `Done` before
+terminating. The storage service stops after its dependents, waits for recorder
+`Done` again, and closes the underlying bucket once. `Run` repeats this cleanup on
+partial initialization failure, including constructors that fail before services
+start. A provider ignoring cancellation can therefore delay process shutdown
+indefinitely. This preserves worker ownership of storage and retained buffers.
+
+One recorder is constructed for each distributor process with customer storage.
+The module depends on storage and runtime overrides, and the distributor depends
+on it. A legacy monolith without customer storage has no recorder. Recorder
+configuration shares `profile_dump` and the existing application registry. No
+cleaner is constructed yet.

@@ -733,10 +733,32 @@ Usage of ./pyroscope:
     	Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.
   -profile-dump.default-captures-per-second float
     	Default profile capture rate per tenant per distributor when omitted from a policy. Must be positive and at most the global ceiling. This is not a fleet-wide quota. Provisional development default. (default 1)
+  -profile-dump.limiter-prune-interval duration
+    	Interval for pruning removed or expired local tenant rate limiter entries, including without traffic. Provisional development default. (default 1m0s)
   -profile-dump.max-activation-window duration
     	Maximum future activation window for a profile-debug-dump policy, measured at configuration load. Must be positive. Provisional development default. (default 1h0m0s)
   -profile-dump.max-captures-per-second float
     	Hard ceiling for each tenant's local per-distributor profile capture rate. Must be finite and positive. This is not a fleet-wide quota. Provisional development default. (default 10)
+  -profile-dump.max-object-bytes int
+    	Maximum complete capture envelope bytes. Oversized captures are dropped. Provisional development default. (default 16777216)
+  -profile-dump.max-retained-bytes int
+    	Local recorder byte budget covering preparation, overlapping metadata and envelope buffers, queueing and uploads. Provisional development default. (default 67108864)
+  -profile-dump.max-tenant-limiters int
+    	Maximum local tenant rate limiter entries. New tenants are dropped at capacity until inactive entries are pruned. Provisional development default. (default 1024)
+  -profile-dump.process-burst int
+    	Aggregate object admission burst per distributor. Provisional development default. (default 2)
+  -profile-dump.process-captures-per-second float
+    	Aggregate object admission rate per distributor, not a fleet quota. Provisional development default. (default 10)
+  -profile-dump.queue-capacity int
+    	Maximum waiting captures per distributor. Enqueue never waits. Provisional development default. (default 16)
+  -profile-dump.shutdown-drain duration
+    	Graceful drain interval before canceling remaining capture work. Provisional development default. (default 15s)
+  -profile-dump.tenant-burst int
+    	Object admission burst per tenant per distributor. Provisional development default. (default 1)
+  -profile-dump.upload-timeout duration
+    	Timeout for each background capture upload. Provisional development default. (default 10s)
+  -profile-dump.workers int
+    	Fixed upload workers per distributor. Provisional development default. (default 2)
   -pyroscopedb.data-path string
     	[v1 storage only] Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration

@@ -15,19 +15,21 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
-// Config contains process-wide policy bounds with provisional development defaults.
+// Config contains process-wide recorder and policy bounds with provisional development defaults.
 type Config struct {
-	MaxActivationWindow      time.Duration `yaml:"max_activation_window"`
-	DefaultCapturesPerSecond float64       `yaml:"default_captures_per_second"`
-	MaxCapturesPerSecond     float64       `yaml:"max_captures_per_second"`
+	Recorder                 RecorderConfig `yaml:",inline"`
+	MaxActivationWindow      time.Duration  `yaml:"max_activation_window"`
+	DefaultCapturesPerSecond float64        `yaml:"default_captures_per_second"`
+	MaxCapturesPerSecond     float64        `yaml:"max_captures_per_second"`
 }
 
 func DefaultConfig() Config {
-	return Config{MaxActivationWindow: time.Hour, DefaultCapturesPerSecond: 1, MaxCapturesPerSecond: 10}
+	return Config{Recorder: DefaultRecorderConfig(), MaxActivationWindow: time.Hour, DefaultCapturesPerSecond: 1, MaxCapturesPerSecond: 10}
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	d := DefaultConfig()
+	c.Recorder.RegisterFlags(f)
 	f.DurationVar(&c.MaxActivationWindow, "profile-dump.max-activation-window", d.MaxActivationWindow, "Maximum future activation window for a profile-debug-dump policy, measured at configuration load. Must be positive. Provisional development default.")
 	f.Float64Var(&c.DefaultCapturesPerSecond, "profile-dump.default-captures-per-second", d.DefaultCapturesPerSecond, "Default profile capture rate per tenant per distributor when omitted from a policy. Must be positive and at most the global ceiling. This is not a fleet-wide quota. Provisional development default.")
 	f.Float64Var(&c.MaxCapturesPerSecond, "profile-dump.max-captures-per-second", d.MaxCapturesPerSecond, "Hard ceiling for each tenant's local per-distributor profile capture rate. Must be finite and positive. This is not a fleet-wide quota. Provisional development default.")

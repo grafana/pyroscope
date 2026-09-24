@@ -1,8 +1,8 @@
 # Profile capture runtime policy
 
-This checkpoint provides the configuration and immutable policy used by the
-Connect + pprof capture path. The recorder and ingestion hook are separate work.
-Configuring this policy alone does not yet capture or upload profiles.
+The external Connect pprof path uses this immutable per-tenant runtime policy.
+Distributors with a configured customer bucket capture and upload admitted samples.
+Retention is not yet implemented, so this remains a local verification workflow.
 
 Activation uses the existing per-tenant runtime overrides file:
 
@@ -55,3 +55,8 @@ A recorder must check `ActiveAt` on every new admission, even after reload failu
 Removing or expiring a policy stops new admissions after local propagation.
 Already-admitted captures may finish through the normal bounded queue. Policy
 changes neither revoke queued captures nor delete existing objects.
+
+Recorder limits are configured in the same `profile_dump` block. See the generated
+configuration reference for `max_object_bytes`, `max_retained_bytes`, queue, worker,
+rate, upload-timeout and shutdown-drain settings. The provisional defaults are
+development bounds. They are validated at process startup.

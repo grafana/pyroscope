@@ -177,6 +177,59 @@ runtime_config:
   [http_client_disable_keep_alives: <boolean> | default = true]
 
 profile_dump:
+  # Maximum complete capture envelope bytes. Oversized captures are dropped.
+  # Provisional development default.
+  # CLI flag: -profile-dump.max-object-bytes
+  [max_object_bytes: <int> | default = 16777216]
+
+  # Local recorder byte budget covering preparation, overlapping metadata and
+  # envelope buffers, queueing and uploads. Provisional development default.
+  # CLI flag: -profile-dump.max-retained-bytes
+  [max_retained_bytes: <int> | default = 67108864]
+
+  # Maximum waiting captures per distributor. Enqueue never waits. Provisional
+  # development default.
+  # CLI flag: -profile-dump.queue-capacity
+  [queue_capacity: <int> | default = 16]
+
+  # Fixed upload workers per distributor. Provisional development default.
+  # CLI flag: -profile-dump.workers
+  [workers: <int> | default = 2]
+
+  # Object admission burst per tenant per distributor. Provisional development
+  # default.
+  # CLI flag: -profile-dump.tenant-burst
+  [tenant_burst: <int> | default = 1]
+
+  # Aggregate object admission rate per distributor, not a fleet quota.
+  # Provisional development default.
+  # CLI flag: -profile-dump.process-captures-per-second
+  [process_captures_per_second: <float> | default = 10]
+
+  # Aggregate object admission burst per distributor. Provisional development
+  # default.
+  # CLI flag: -profile-dump.process-burst
+  [process_burst: <int> | default = 2]
+
+  # Timeout for each background capture upload. Provisional development default.
+  # CLI flag: -profile-dump.upload-timeout
+  [upload_timeout: <duration> | default = 10s]
+
+  # Graceful drain interval before canceling remaining capture work. Provisional
+  # development default.
+  # CLI flag: -profile-dump.shutdown-drain
+  [shutdown_drain: <duration> | default = 15s]
+
+  # Maximum local tenant rate limiter entries. New tenants are dropped at
+  # capacity until inactive entries are pruned. Provisional development default.
+  # CLI flag: -profile-dump.max-tenant-limiters
+  [max_tenant_limiters: <int> | default = 1024]
+
+  # Interval for pruning removed or expired local tenant rate limiter entries,
+  # including without traffic. Provisional development default.
+  # CLI flag: -profile-dump.limiter-prune-interval
+  [limiter_prune_interval: <duration> | default = 1m]
+
   # Maximum future activation window for a profile-debug-dump policy, measured
   # at configuration load. Must be positive. Provisional development default.
   # CLI flag: -profile-dump.max-activation-window

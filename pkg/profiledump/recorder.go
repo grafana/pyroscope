@@ -146,6 +146,8 @@ func (r *Recorder) Capture(ctx context.Context, tenant string, c Candidate) (out
 	r.preparing++
 	r.mu.Unlock()
 	defer r.finishPreparation()
+	ctx, finishSpan := startCaptureSpan(ctx)
+	defer func() { finishSpan(out) }()
 	prepared, out := r.prepareCapture(tenant, c, p, now)
 	if out.Reason != "" {
 		return out

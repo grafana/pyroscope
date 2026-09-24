@@ -615,6 +615,48 @@ runtime_config:
   # file: ""
 
 profile_dump:
+  # Maximum complete capture envelope bytes. Oversized captures are dropped.
+  # Provisional development default.
+  # max_object_bytes: 16777216
+
+  # Local recorder byte budget covering preparation, overlapping metadata and
+  # envelope buffers, queueing and uploads. Provisional development default.
+  # max_retained_bytes: 67108864
+
+  # Maximum waiting captures per distributor. Enqueue never waits. Provisional
+  # development default.
+  # queue_capacity: 16
+
+  # Fixed upload workers per distributor. Provisional development default.
+  # workers: 2
+
+  # Object admission burst per tenant per distributor. Provisional development
+  # default.
+  # tenant_burst: 1
+
+  # Aggregate object admission rate per distributor, not a fleet quota.
+  # Provisional development default.
+  # process_captures_per_second: 10
+
+  # Aggregate object admission burst per distributor. Provisional development
+  # default.
+  # process_burst: 2
+
+  # Timeout for each background capture upload. Provisional development default.
+  # upload_timeout: 10s
+
+  # Graceful drain interval before canceling remaining capture work. Provisional
+  # development default.
+  # shutdown_drain: 15s
+
+  # Maximum local tenant rate limiter entries. New tenants are dropped at
+  # capacity until inactive entries are pruned. Provisional development default.
+  # max_tenant_limiters: 1024
+
+  # Interval for pruning removed or expired local tenant rate limiter entries,
+  # including without traffic. Provisional development default.
+  # limiter_prune_interval: 1m
+
   # Maximum future activation window for a profile-debug-dump policy, measured
   # at configuration load. Must be positive. Provisional development default.
   # max_activation_window: 1h
