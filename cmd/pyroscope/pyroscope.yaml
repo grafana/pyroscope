@@ -165,7 +165,7 @@ server:
   # If true, server allows keepalive pings even when there are no active
   # streams(RPCs). If false, and client sends ping when there are no active
   # streams, server will send GOAWAY and close the connection.
-  # grpc_server_ping_without_stream_allowed: false
+  # grpc_server_ping_without_stream_allowed: true
 
   # If non-zero, configures the amount of GRPC server workers used to serve the
   # requests.
