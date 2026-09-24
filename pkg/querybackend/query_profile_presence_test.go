@@ -6,11 +6,9 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
 
-// Test_QueryProfilePresence_Basic verifies that QUERY_PROFILE_PRESENCE, run against real block
-// data (potentially spanning multiple blocks via s.plan, the same query plan every other query
-// type in this suite uses), returns exactly the subset of a candidate ID list that is actually
-// present -- a real profile ID mixed with a well-formed but non-existent one -- in a single
-// Invoke call, without resolving symbols or building a profile.
+// Test_QueryProfilePresence_Basic checks QUERY_PROFILE_PRESENCE against real block data: a real
+// profile ID mixed with a non-existent one resolves to just the real one, with its labels
+// populated.
 func (s *testSuite) Test_QueryProfilePresence_Basic() {
 	validProfileID := s.getProfileIDFromExemplars(s.T())
 	const nonExistentID = "00000000-0000-0000-0000-000000000000"
@@ -38,9 +36,8 @@ func (s *testSuite) Test_QueryProfilePresence_Basic() {
 	s.Assert().NotEmpty(profiles[0].Labels, "expected the profile's own labels to be populated")
 }
 
-// Test_QueryProfilePresence_NoneOfManyPresent checks a large candidate list, none of which
-// exist, resolves to an empty result in the one Invoke call the suite always makes -- there is
-// no per-candidate round trip to observe from the caller's side.
+// Test_QueryProfilePresence_NoneOfManyPresent checks a 100-candidate list, none present,
+// resolves to an empty result.
 func (s *testSuite) Test_QueryProfilePresence_NoneOfManyPresent() {
 	candidates := make([]string, 100)
 	for i := range candidates {

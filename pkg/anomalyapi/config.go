@@ -6,15 +6,12 @@ package anomalyapi
 
 import "flag"
 
-// Config holds the configuration for the anomaly source client.
 type Config struct {
-	// URL is the base URL of the anomaly source's API. Empty (the default) disables it -- any
-	// query for an anomaly type backed by this client will fail with a clear error rather than
-	// silently doing nothing.
+	// URL is the base URL of the anomaly source's API. Empty disables it; callers get an
+	// explicit error rather than a silent no-op.
 	URL string `yaml:"url" category:"experimental"`
 }
 
-// RegisterFlags registers the anomaly source client's flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.URL, "anomaly-api.url", "",
 		"Base URL of an externally configured anomaly source, used for the \"stacktrace\" "+

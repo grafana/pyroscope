@@ -120,10 +120,9 @@ func (q *QueryFrontend) confirmAnomalies(
 	return report.ProfilePresence.GetProfiles(), nil
 }
 
-// serviceNameFromLabelSelector extracts the service_name matcher's value from a label
-// selector. The anomaly source tracks anomalies by tenant+service only, so this is the one
-// piece of the full selector needed to look them up; the full selector is still enforced
-// afterward when confirming each anomaly against Pyroscope's own ingested data.
+// serviceNameFromLabelSelector extracts the service_name matcher's value. The anomaly source
+// is indexed by tenant+service only; the rest of the label selector is enforced later, in
+// confirmAnomalies.
 func serviceNameFromLabelSelector(labelSelector string) (string, error) {
 	matchers, err := phlaremodel.ParseMetricSelector(labelSelector)
 	if err != nil {

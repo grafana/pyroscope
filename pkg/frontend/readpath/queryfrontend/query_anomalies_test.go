@@ -53,9 +53,8 @@ func TestQueryAnomalies_UnknownType(t *testing.T) {
 }
 
 func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
-	// The anomaly source reports three anomalies; only "present-1" and "present-2" are actually present
-	// according to the mock query backend's QUERY_PROFILE_PRESENCE response -- only those two
-	// should come back, in a single backend call covering all three candidates at once.
+	// The anomaly source reports three anomalies; the mock backend confirms only present-1
+	// and present-2, in one call covering all three.
 	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/api/v1/anomalydetection/anomalies", r.URL.Path)
 		require.Equal(t, smpTenant, r.Header.Get("X-Scope-OrgID"))

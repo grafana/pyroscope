@@ -30,21 +30,16 @@ func init() {
 // profile merge.
 //
 // withExcludeSampled() matches queryTree/queryPprof/queryHeatmap: profiles labeled
-// __sampled__="true" are stripped/reduced-fidelity samples that never resolve to a real
-// flame graph (see query_time_series.go's "stripped" check). A caller of this query type wants
-// to know "would a real profile view for this ID actually show something", so a stripped
-// profile must count as absent, not present -- otherwise this would confirm anomalies whose
-// resulting Grafana link renders empty, which is the exact problem this query type exists to
-// avoid.
+// __sampled__="true" are stripped/reduced-fidelity samples with no resolvable data (see
+// query_time_series.go's "stripped" check), so they must count as absent here too.
 func queryProfilePresence(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	opt, err := withProfileIDSelector(query.ProfilePresence.ProfileIdSelector...)
 	if err != nil {
 		return nil, err
 	}
 
-	// withAllLabels() is needed to actually populate entry.Labels below -- without it, the
-	// iterator doesn't bother resolving the series' labels at all, since none of the other
-	// query types built on profileEntryIterator need them for anything but joining/matching.
+	// withAllLabels() populates entry.Labels; other profileEntryIterator callers skip it since
+	// they only need labels for joining/matching, not for returning to the caller.
 	entries, err := profileEntryIterator(q, opt, withExcludeSampled(), withAllLabels())
 	if err != nil {
 		return nil, err

@@ -61,8 +61,7 @@ type QueryFrontend struct {
 	now                 func() time.Time
 	queryPlanType       string
 
-	// anomalyAPI is the client for the externally configured anomaly source used by
-	// QueryAnomalies' "stacktrace" anomaly type. nil when unconfigured.
+	// anomalyAPI is nil when unconfigured.
 	anomalyAPI *anomalyapi.Client
 
 	metrics *queryFrontendMetrics

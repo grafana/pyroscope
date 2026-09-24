@@ -11,11 +11,9 @@ import (
 	"time"
 )
 
-// TenantHeader is the header this client sends the tenant ID on, matching the convention
-// this repo's own querier clients already use for tenant propagation.
+// TenantHeader matches this repo's own querier clients' tenant-propagation convention.
 const TenantHeader = "X-Scope-OrgID"
 
-// Anomaly is a single anomaly returned by the configured anomaly source.
 type Anomaly struct {
 	ProfileUUID string
 	Score       float64
@@ -23,14 +21,12 @@ type Anomaly struct {
 	ModelID     string
 }
 
-// Client fetches anomalies from an externally configured anomaly source.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-// New creates a new Client. Returns nil if cfg.URL is empty -- callers should check for a
-// nil Client and treat it as "this anomaly source isn't configured" rather than calling it.
+// New returns nil if cfg.URL is empty; callers must treat a nil Client as "unconfigured".
 func New(cfg Config, httpClient *http.Client) *Client {
 	if cfg.URL == "" {
 		return nil
@@ -53,8 +49,7 @@ type listAnomaliesResponse struct {
 	} `json:"anomalies"`
 }
 
-// ListAnomalies returns the anomalies the configured source has recorded for the given
-// tenant/service, observed within [start, end].
+// ListAnomalies returns anomalies recorded for tenantID/serviceName, observed within [start, end].
 func (c *Client) ListAnomalies(ctx context.Context, tenantID, serviceName string, start, end time.Time) ([]Anomaly, error) {
 	v := url.Values{
 		"service_name": {serviceName},
