@@ -135,6 +135,10 @@ func TestRegisterServerFlagsWithChangedDefaultValues_V2(t *testing.T) {
 		grpcRecv := fs.Lookup("server.grpc-max-recv-msg-size-bytes")
 		require.NotNil(t, grpcRecv)
 		assert.Equal(t, "104857600", grpcRecv.DefValue)
+
+		pingWithoutStream := fs.Lookup("server.grpc.keepalive.ping-without-stream-allowed")
+		require.NotNil(t, pingWithoutStream)
+		assert.Equal(t, "true", pingWithoutStream.DefValue)
 	})
 }
 

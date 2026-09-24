@@ -209,7 +209,6 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: "minio-sa"
-  namespace: "default"
 ---
 # Source: pyroscope/templates/serviceaccount.yaml
 apiVersion: v1
@@ -229,10 +228,9 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 type: Opaque
@@ -245,115 +243,113 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 data:
   initialize: |-
     #!/bin/sh
-    set -e ; # Have script exit in the event of a failed command.
+    set -e # Have script exit in the event of a failed command.
     MC_CONFIG_DIR="/etc/minio/mc/"
     MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
     
     # connectToMinio
     # Use a check-sleep-check loop to wait for MinIO service to be available
     connectToMinio() {
-      SCHEME=$1
-      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
-      set -e ; # fail if we can't read the keys.
-      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
-      set +e ; # The connections to minio are allowed to fail.
-      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
-      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
-      $MC_COMMAND ;
-      STATUS=$? ;
-      until [ $STATUS = 0 ]
-      do
-        ATTEMPTS=`expr $ATTEMPTS + 1` ;
-        echo \"Failed attempts: $ATTEMPTS\" ;
-        if [ $ATTEMPTS -gt $LIMIT ]; then
-          exit 1 ;
-        fi ;
-        sleep 2 ; # 1 second intervals between attempts
-        $MC_COMMAND ;
-        STATUS=$? ;
-      done ;
-      set -e ; # reset `e` as active
-      return 0
+    	SCHEME=$1
+    	ATTEMPTS=0
+    	LIMIT=29 # Allow 30 attempts
+    	set -e   # fail if we can't read the keys.
+    	ACCESS=$(cat /config/rootUser)
+    	SECRET=$(cat /config/rootPassword)
+    	set +e # The connections to minio are allowed to fail.
+    	echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT"
+    	MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET"
+    	$MC_COMMAND
+    	STATUS=$?
+    	until [ $STATUS = 0 ]; do
+    		ATTEMPTS=$(expr $ATTEMPTS + 1)
+    		echo \"Failed attempts: $ATTEMPTS\"
+    		if [ $ATTEMPTS -gt $LIMIT ]; then
+    			exit 1
+    		fi
+    		sleep 2 # 1 second intervals between attempts
+    		$MC_COMMAND
+    		STATUS=$?
+    	done
+    	set -e # reset `e` as active
+    	return 0
     }
     
     # checkBucketExists ($bucket)
     # Check if the bucket exists, by using the exit code of `mc ls`
     checkBucketExists() {
-      BUCKET=$1
-      CMD=$(${MC} ls myminio/$BUCKET > /dev/null 2>&1)
-      return $?
+    	BUCKET=$1
+    	CMD=$(${MC} stat myminio/$BUCKET >/dev/null 2>&1)
+    	return $?
     }
     
     # createBucket ($bucket, $policy, $purge)
     # Ensure bucket exists, purging if asked to
     createBucket() {
-      BUCKET=$1
-      POLICY=$2
-      PURGE=$3
-      VERSIONING=$4
-      OBJECTLOCKING=$5
+    	BUCKET=$1
+    	POLICY=$2
+    	PURGE=$3
+    	VERSIONING=$4
+    	OBJECTLOCKING=$5
     
-      # Purge the bucket, if set & exists
-      # Since PURGE is user input, check explicitly for `true`
-      if [ $PURGE = true ]; then
-        if checkBucketExists $BUCKET ; then
-          echo "Purging bucket '$BUCKET'."
-          set +e ; # don't exit if this fails
-          ${MC} rm -r --force myminio/$BUCKET
-          set -e ; # reset `e` as active
-        else
-          echo "Bucket '$BUCKET' does not exist, skipping purge."
-        fi
-      fi
+    	# Purge the bucket, if set & exists
+    	# Since PURGE is user input, check explicitly for `true`
+    	if [ $PURGE = true ]; then
+    		if checkBucketExists $BUCKET; then
+    			echo "Purging bucket '$BUCKET'."
+    			set +e # don't exit if this fails
+    			${MC} rm -r --force myminio/$BUCKET
+    			set -e # reset `e` as active
+    		else
+    			echo "Bucket '$BUCKET' does not exist, skipping purge."
+    		fi
+    	fi
     
-    # Create the bucket if it does not exist and set objectlocking if enabled (NOTE: versioning will be not changed if OBJECTLOCKING is set because it enables versioning to the Buckets created)
-    if ! checkBucketExists $BUCKET ; then
-        if [ ! -z $OBJECTLOCKING ] ; then
-          if [ $OBJECTLOCKING = true ] ; then
-              echo "Creating bucket with OBJECTLOCKING '$BUCKET'"
-              ${MC} mb --with-lock myminio/$BUCKET
-          elif [ $OBJECTLOCKING = false ] ; then
-                echo "Creating bucket '$BUCKET'"
-                ${MC} mb myminio/$BUCKET
-          fi
-      elif [ -z $OBJECTLOCKING ] ; then
-            echo "Creating bucket '$BUCKET'"
-            ${MC} mb myminio/$BUCKET
-      else
-        echo "Bucket '$BUCKET' already exists."  
-      fi
-      fi
+    	# Create the bucket if it does not exist and set objectlocking if enabled (NOTE: versioning will be not changed if OBJECTLOCKING is set because it enables versioning to the Buckets created)
+    	if ! checkBucketExists $BUCKET; then
+    		if [ ! -z $OBJECTLOCKING ]; then
+    			if [ $OBJECTLOCKING = true ]; then
+    				echo "Creating bucket with OBJECTLOCKING '$BUCKET'"
+    				${MC} mb --with-lock myminio/$BUCKET
+    			elif [ $OBJECTLOCKING = false ]; then
+    				echo "Creating bucket '$BUCKET'"
+    				${MC} mb myminio/$BUCKET
+    			fi
+    		elif [ -z $OBJECTLOCKING ]; then
+    			echo "Creating bucket '$BUCKET'"
+    			${MC} mb myminio/$BUCKET
+    		else
+    			echo "Bucket '$BUCKET' already exists."
+    		fi
+    	fi
     
+    	# set versioning for bucket if objectlocking is disabled or not set
+    	if [ $OBJECTLOCKING = false ]; then
+    		if [ ! -z $VERSIONING ]; then
+    			if [ $VERSIONING = true ]; then
+    				echo "Enabling versioning for '$BUCKET'"
+    				${MC} version enable myminio/$BUCKET
+    			elif [ $VERSIONING = false ]; then
+    				echo "Suspending versioning for '$BUCKET'"
+    				${MC} version suspend myminio/$BUCKET
+    			fi
+    		fi
+    	else
+    		echo "Bucket '$BUCKET' versioning unchanged."
+    	fi
     
-      # set versioning for bucket if objectlocking is disabled or not set
-      if [ -z $OBJECTLOCKING ] ; then
-      if [ ! -z $VERSIONING ] ; then
-        if [ $VERSIONING = true ] ; then
-            echo "Enabling versioning for '$BUCKET'"
-            ${MC} version enable myminio/$BUCKET
-        elif [ $VERSIONING = false ] ; then
-            echo "Suspending versioning for '$BUCKET'"
-            ${MC} version suspend myminio/$BUCKET
-        fi
-        fi
-      else
-          echo "Bucket '$BUCKET' versioning unchanged."
-      fi
-    
-    
-      # At this point, the bucket should exist, skip checking for existence
-      # Set policy on the bucket
-      echo "Setting policy of bucket '$BUCKET' to '$POLICY'."
-      ${MC} policy set $POLICY myminio/$BUCKET
+    	# At this point, the bucket should exist, skip checking for existence
+    	# Set policy on the bucket
+    	echo "Setting policy of bucket '$BUCKET' to '$POLICY'."
+    	${MC} anonymous set $POLICY myminio/$BUCKET
     }
     
     # Try connecting to MinIO instance
@@ -363,7 +359,8 @@ data:
     
     
     # Create the buckets
-    createBucket grafana-pyroscope-data none false  
+    createBucket grafana-pyroscope-data "none" false false false
+    
   add-user: |-
     #!/bin/sh
     set -e ; # Have script exit in the event of a failed command.
@@ -435,7 +432,9 @@ data:
       # set policy for user
       if [ ! -z $POLICY -a $POLICY != " " ] ; then
           echo "Adding policy '$POLICY' for '$USER'"
-          ${MC} admin policy set myminio $POLICY user=$USER
+          set +e ; # policy already attach errors out, allow it.
+          ${MC} admin policy attach myminio $POLICY --user=$USER
+          set -e
       else
           echo "User '$USER' has no policy attached."
       fi
@@ -505,13 +504,95 @@ data:
       else
         echo "Policy '$NAME' already exists."
       fi
-      ${MC} admin policy add myminio $NAME /config/$FILENAME.json
+      ${MC} admin policy create myminio $NAME /config/$FILENAME.json
     
     }
     
     # Try connecting to MinIO instance
     scheme=http
     connectToMinio $scheme
+    
+    
+    
+  add-svcacct: |-
+    #!/bin/sh
+    set -e ; # Have script exit in the event of a failed command.
+    MC_CONFIG_DIR="/etc/minio/mc/"
+    MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
+    
+    # AccessKey and secretkey credentials file are added to prevent shell execution errors caused by special characters.
+    # Special characters for example : ',",<,>,{,}
+    MINIO_ACCESSKEY_SECRETKEY_TMP="/tmp/accessKey_and_secretKey_svcacct_tmp"
+    
+    # connectToMinio
+    # Use a check-sleep-check loop to wait for MinIO service to be available
+    connectToMinio() {
+      SCHEME=$1
+      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
+      set -e ; # fail if we can't read the keys.
+      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
+      set +e ; # The connections to minio are allowed to fail.
+      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
+      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
+      $MC_COMMAND ;
+      STATUS=$? ;
+      until [ $STATUS = 0 ]
+      do
+        ATTEMPTS=`expr $ATTEMPTS + 1` ;
+        echo \"Failed attempts: $ATTEMPTS\" ;
+        if [ $ATTEMPTS -gt $LIMIT ]; then
+          exit 1 ;
+        fi ;
+        sleep 2 ; # 2 second intervals between attempts
+        $MC_COMMAND ;
+        STATUS=$? ;
+      done ;
+      set -e ; # reset `e` as active
+      return 0
+    }
+    
+    # checkSvcacctExists ()
+    # Check if the svcacct exists, by using the exit code of `mc admin user svcacct info`
+    checkSvcacctExists() {
+      CMD=$(${MC} admin user svcacct info myminio $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) > /dev/null 2>&1)
+      return $?
+    }
+    
+    # createSvcacct ($user)
+    createSvcacct () {
+      USER=$1
+      FILENAME=$2
+      #check accessKey_and_secretKey_tmp file
+      if [[ ! -f $MINIO_ACCESSKEY_SECRETKEY_TMP ]];then
+        echo "credentials file does not exist"
+        return 1
+      fi
+      if [[ $(cat $MINIO_ACCESSKEY_SECRETKEY_TMP|wc -l) -ne 2 ]];then
+        echo "credentials file is invalid"
+        rm -f $MINIO_ACCESSKEY_SECRETKEY_TMP
+        return 1
+      fi
+      SVCACCT=$(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP)
+      # Create the svcacct if it does not exist
+      if ! checkSvcacctExists ; then
+        echo "Creating svcacct '$SVCACCT'"
+        # Check if policy file is define
+        if [ -z $FILENAME ]; then
+          ${MC} admin user svcacct add --access-key $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) --secret-key $(tail -n1 $MINIO_ACCESSKEY_SECRETKEY_TMP) myminio $USER
+        else
+          ${MC} admin user svcacct add --access-key $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) --secret-key $(tail -n1 $MINIO_ACCESSKEY_SECRETKEY_TMP) --policy /config/$FILENAME.json myminio $USER
+        fi
+      else
+        echo "Svcacct '$SVCACCT' already exists."
+      fi
+      #clean up credentials files.
+      rm -f $MINIO_ACCESSKEY_SECRETKEY_TMP
+    }
+    
+    # Try connecting to MinIO instance
+    scheme=http
+    connectToMinio $scheme
+    
     
     
   custom-command: |-
@@ -1717,10 +1798,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pyroscope-dev-minio-console
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 spec:
@@ -1739,10 +1819,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
     monitoring: "true"
@@ -1762,12 +1841,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pyroscope-dev-minio-svc
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
-    release: "pyroscope-dev"
-    heritage: "Helm"
+    chart: minio-5.4.0
+    release: pyroscope-dev
+    heritage: Helm
 spec:
   publishNotReadyAddresses: true
   clusterIP: None
@@ -3099,10 +3177,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 spec:
@@ -3122,24 +3199,24 @@ spec:
         app: minio
         release: pyroscope-dev
       annotations:
-        checksum/secrets: 1327df257dd66b53a08dc3d9f2584d6c07cd43932cd3c3f68a7ffc636c5a0d92
-        checksum/config: 68ad5341411f10a6da13194dfbe5544a594ccedef5dfb12d34529d2be6d0f67f
+        checksum/secrets: 46785019136d8f94650c4e208eaa880799602d457c3f1c03315d6d7d17c664e1
+        checksum/config: 099e5e17331af9748f37ff86288eea635153e99fe9c1213d0346c0cb8e41ad57
     spec:
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-
+        runAsGroup: 1000
+        runAsUser: 1000
       serviceAccountName: minio-sa
       containers:
         - name: minio
-          image: quay.io/minio/minio:RELEASE.2022-10-24T18-35-07Z
+          image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
           imagePullPolicy: IfNotPresent
-
-          command: [ "/bin/sh",
+          command: [
+            "/bin/sh",
             "-ce",
-            "/usr/bin/docker-entrypoint.sh minio server  http://pyroscope-dev-minio-{0...0}.pyroscope-dev-minio-svc.default.svc.cluster.local/export-{0...1} -S /etc/minio/certs/ --address :9000 --console-address :9001" ]
+            "/usr/bin/docker-entrypoint.sh minio server http://pyroscope-dev-minio-{0...0}.pyroscope-dev-minio-svc.default.svc/export-{0...1} -S /etc/minio/certs/ --address :9000 --console-address :9001"
+          ]
           volumeMounts:
             - name: export-0
               mountPath: /export-0
@@ -3166,20 +3243,26 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi      
+              memory: 128Mi
+          securityContext: 
+            readOnlyRootFilesystem: false      
       volumes:
         - name: minio-user
           secret:
             secretName: pyroscope-dev-minio        
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: export-0
       spec:
         accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
             storage: 5Gi
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: export-1
       spec:
         accessModes: [ "ReadWriteOnce" ]
@@ -3533,15 +3616,14 @@ spec:
         - name: data
           emptyDir: {}
 ---
-# Source: pyroscope/charts/minio/templates/post-install-create-bucket-job.yaml
+# Source: pyroscope/charts/minio/templates/post-job.yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: pyroscope-dev-minio-make-bucket-job
-  namespace: "default"
+  name: pyroscope-dev-minio-post-job
   labels:
-    app: minio-make-bucket-job
-    chart: minio-4.1.0
+    app: minio-post-job
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
   annotations:
@@ -3556,77 +3638,54 @@ spec:
     spec:
       restartPolicy: OnFailure      
       volumes:
+        - name: etc-path
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
         - name: minio-configuration
           projected:
             sources:
-            - configMap:
-                name: pyroscope-dev-minio
-            - secret:
-                name: pyroscope-dev-minio
-
+              - configMap:
+                  name: pyroscope-dev-minio
+              - secret:
+                  name: pyroscope-dev-minio
       serviceAccountName: minio-sa
       containers:
-      - name: minio-mc
-        image: "quay.io/minio/mc:RELEASE.2022-10-20T23-26-33Z"
-        imagePullPolicy: IfNotPresent
-        command: ["/bin/sh", "/config/initialize"]
-        env:
-          - name: MINIO_ENDPOINT
-            value: pyroscope-dev-minio
-          - name: MINIO_PORT
-            value: "9000"
-        volumeMounts:
-          - name: minio-configuration
-            mountPath: /config
-        resources:
-          requests:
-            memory: 128Mi
----
-# Source: pyroscope/charts/minio/templates/post-install-create-user-job.yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: pyroscope-dev-minio-make-user-job
-  namespace: "default"
-  labels:
-    app: minio-make-user-job
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
-  annotations:
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
-spec:
-  template:
-    metadata:
-      labels:
-        app: minio-job
-        release: pyroscope-dev
-    spec:
-      restartPolicy: OnFailure      
-      volumes:
-        - name: minio-configuration
-          projected:
-            sources:
-            - configMap:
-                name: pyroscope-dev-minio
-            - secret:
-                name: pyroscope-dev-minio
-
-      serviceAccountName: minio-sa
-      containers:
-      - name: minio-mc
-        image: "quay.io/minio/mc:RELEASE.2022-10-20T23-26-33Z"
-        imagePullPolicy: IfNotPresent
-        command: ["/bin/sh", "/config/add-user"]
-        env:
-          - name: MINIO_ENDPOINT
-            value: pyroscope-dev-minio
-          - name: MINIO_PORT
-            value: "9000"
-        volumeMounts:
-          - name: minio-configuration
-            mountPath: /config
-        resources:
-          requests:
-            memory: 128Mi
+        - name: minio-make-bucket
+          image: "pgsty/mc:RELEASE.2026-09-16T00-00-00Z"
+          imagePullPolicy: IfNotPresent
+          command: [ "/bin/sh", "/config/initialize" ]
+          env:
+            - name: MINIO_ENDPOINT
+              value: pyroscope-dev-minio
+            - name: MINIO_PORT
+              value: "9000"
+          volumeMounts:
+            - name: etc-path
+              mountPath: /etc/minio/mc
+            - name: tmp
+              mountPath: /tmp
+            - name: minio-configuration
+              mountPath: /config
+          resources:
+            requests:
+              memory: 128Mi
+        - name: minio-make-user
+          image: "pgsty/mc:RELEASE.2026-09-16T00-00-00Z"
+          imagePullPolicy: IfNotPresent
+          command: [ "/bin/sh", "/config/add-user" ]
+          env:
+            - name: MINIO_ENDPOINT
+              value: pyroscope-dev-minio
+            - name: MINIO_PORT
+              value: "9000"
+          volumeMounts:
+            - name: etc-path
+              mountPath: /etc/minio/mc
+            - name: tmp
+              mountPath: /tmp
+            - name: minio-configuration
+              mountPath: /config
+          resources:
+            requests:
+              memory: 128Mi
