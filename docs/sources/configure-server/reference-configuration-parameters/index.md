@@ -58,6 +58,9 @@ where `default_value` is the value to use if the environment variable is undefin
 
 ## Configuration parameters
 
+For `profile_dump` activation and admin retention requirements, refer to
+[Capture inflight profiles](../profile-dumping/).
+
 ```yaml
 # Comma-separated list of Pyroscope modules to load. The alias 'all' can be used
 # in the list to load a number of core modules and will enable single-binary
@@ -175,6 +178,105 @@ runtime_config:
   # balancer, such as a Kubernetes Service.
   # CLI flag: -runtime-config.http-client-disable-keep-alives
   [http_client_disable_keep_alives: <boolean> | default = true]
+
+# Process bounds for Connect pprof capture and admin retention. These bounds do
+# not activate capture. Activation requires a per-tenant runtime policy with an
+# absolute deadline.
+profile_dump:
+  # Capture retention measured from server ULID time. Deletion is eventual. Must
+  # be positive. Provisional development default.
+  # CLI flag: -profile-dump.retention
+  [retention: <duration> | default = 168h]
+
+  # Delay between admin capture cleanup passes. Must be positive. Provisional
+  # development default.
+  # CLI flag: -profile-dump.sweep-interval
+  [sweep_interval: <duration> | default = 1h]
+
+  # Cooperative time budget per admin capture cleanup pass and wait for a
+  # listing to produce its next entry. Providers may exceed it. Paused listings
+  # resume on later passes. Must be positive. Provisional development default.
+  # CLI flag: -profile-dump.sweep-timeout
+  [sweep_timeout: <duration> | default = 1m]
+
+  # Maximum listing entries processed per cleanup pass, excluding provider
+  # prefetch and cancellation draining. Listings pause at the budget and resume
+  # without replay. Must be positive. Provisional development default.
+  # CLI flag: -profile-dump.cleanup-max-entries
+  [max_entries: <int> | default = 10000]
+
+  # Maximum complete capture envelope bytes. Oversized captures are dropped.
+  # Provisional development default.
+  # CLI flag: -profile-dump.max-object-bytes
+  [max_object_bytes: <int> | default = 16777216]
+
+  # Per-distributor budget for admitted capture buffers, including metadata
+  # overlap, item overhead, queueing and uploads. Initial bounded metadata
+  # marshaling and provider allocations are outside this budget. This is not an
+  # RSS limit. Provisional development default.
+  # CLI flag: -profile-dump.max-retained-bytes
+  [max_retained_bytes: <int> | default = 67108864]
+
+  # Maximum waiting captures per distributor. Enqueue never waits. Provisional
+  # development default.
+  # CLI flag: -profile-dump.queue-capacity
+  [queue_capacity: <int> | default = 16]
+
+  # Fixed upload workers per distributor. Provisional development default.
+  # CLI flag: -profile-dump.workers
+  [workers: <int> | default = 2]
+
+  # Object admission burst per tenant per distributor. Provisional development
+  # default.
+  # CLI flag: -profile-dump.tenant-burst
+  [tenant_burst: <int> | default = 1]
+
+  # Aggregate object admission rate per distributor, not a fleet quota.
+  # Provisional development default.
+  # CLI flag: -profile-dump.process-captures-per-second
+  [process_captures_per_second: <float> | default = 10]
+
+  # Aggregate object admission burst per distributor. Provisional development
+  # default.
+  # CLI flag: -profile-dump.process-burst
+  [process_burst: <int> | default = 2]
+
+  # Cooperative timeout for each background capture upload. Providers that
+  # ignore cancellation may exceed it. Provisional development default.
+  # CLI flag: -profile-dump.upload-timeout
+  [upload_timeout: <duration> | default = 10s]
+
+  # Graceful drain interval before canceling remaining capture work. Provisional
+  # development default.
+  # CLI flag: -profile-dump.shutdown-drain
+  [shutdown_drain: <duration> | default = 15s]
+
+  # Maximum local tenant rate limiter entries. New tenants are dropped at
+  # capacity until inactive entries are pruned. Provisional development default.
+  # CLI flag: -profile-dump.max-tenant-limiters
+  [max_tenant_limiters: <int> | default = 1024]
+
+  # Interval for pruning removed or expired local tenant rate limiter entries,
+  # including without traffic. Provisional development default.
+  # CLI flag: -profile-dump.limiter-prune-interval
+  [limiter_prune_interval: <duration> | default = 1m]
+
+  # Maximum future activation window for a profile-debug-dump policy, measured
+  # at configuration load. Must be positive. Provisional development default.
+  # CLI flag: -profile-dump.max-activation-window
+  [max_activation_window: <duration> | default = 1h]
+
+  # Default profile capture rate per tenant per distributor when omitted from a
+  # policy. Must be positive and at most the global ceiling. This is not a
+  # fleet-wide quota. Provisional development default.
+  # CLI flag: -profile-dump.default-captures-per-second
+  [default_captures_per_second: <float> | default = 1]
+
+  # Hard ceiling for each tenant's local per-distributor profile capture rate.
+  # Must be finite and positive. This is not a fleet-wide quota. Provisional
+  # development default.
+  # CLI flag: -profile-dump.max-captures-per-second
+  [max_captures_per_second: <float> | default = 10]
 
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]
