@@ -7,7 +7,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
-	"github.com/prometheus/prometheus/model/labels"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -48,12 +47,12 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 			fmt.Errorf("anomaly_type %q requires a single tenant, got %d", req.AnomalyType, len(tenantIDs)))
 	}
 
-	serviceName, err := serviceNameFromLabelSelector(req.LabelSelector)
+	serviceNames, err := q.resolveServiceNames(ctx, req)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, err
 	}
 
-	anomalies, err := q.anomalyAPI.ListAnomalies(ctx, tenantIDs[0], serviceName,
+	anomalies, err := q.anomalyAPI.ListAnomalies(ctx, tenantIDs[0], serviceNames,
 		time.UnixMilli(req.Start), time.UnixMilli(req.End))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("listing anomalies: %w", err))
@@ -120,18 +119,36 @@ func (q *QueryFrontend) confirmAnomalies(
 	return report.ProfilePresence.GetProfiles(), nil
 }
 
-// serviceNameFromLabelSelector extracts the service_name matcher's value. The anomaly source
-// is indexed by tenant+service only; the rest of the label selector is enforced later, in
-// confirmAnomalies.
-func serviceNameFromLabelSelector(labelSelector string) (string, error) {
-	matchers, err := phlaremodel.ParseMetricSelector(labelSelector)
+func (q *QueryFrontend) resolveServiceNames(
+	ctx context.Context,
+	req *querierv1.QueryAnomaliesRequest,
+) ([]string, error) {
+	resp, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
+		Start:      req.Start,
+		End:        req.End,
+		Matchers:   []string{req.LabelSelector},
+		LabelNames: []string{phlaremodel.LabelNameServiceName},
+	}))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	for _, m := range matchers {
-		if m.Name == phlaremodel.LabelNameServiceName && m.Type == labels.MatchEqual {
-			return m.Value, nil
+
+	seen := make(map[string]struct{})
+	var names []string
+	for _, lbls := range resp.Msg.LabelsSet {
+		for _, l := range lbls.Labels {
+			if l.Name == phlaremodel.LabelNameServiceName {
+				if _, ok := seen[l.Value]; !ok {
+					seen[l.Value] = struct{}{}
+					names = append(names, l.Value)
+				}
+			}
 		}
 	}
-	return "", fmt.Errorf("label selector %q does not contain a service_name matcher", labelSelector)
+
+	if len(names) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("label selector %q does not match any service_name", req.LabelSelector))
+	}
+	return names, nil
 }

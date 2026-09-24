@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -51,6 +52,125 @@ func TestQueryAnomalies_UnknownType(t *testing.T) {
 	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
 }
 
+func TestQueryAnomalies_NoMatchingServiceName(t *testing.T) {
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+		ReportType:   queryv1.ReportType_REPORT_SERIES_LABELS,
+		SeriesLabels: &queryv1.SeriesLabelsReport{},
+	}}}, nil)
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockLimits,
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: "http://unused"}},
+		mockMetadata,
+		nil,
+		mockBackend,
+		nil,
+		nil,
+		nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	start, end := smpValidTimeRange()
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: smpProfileType,
+		LabelSelector: `{namespace="empty-namespace"}`,
+		Start:         start,
+		End:           end,
+		AnomalyType:   "stacktrace",
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
+	// A namespace-wide selector resolves to two services; the anomaly source is called once
+	// with both, and anomalies confirmed present from either service come back.
+	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.ElementsMatch(t, []string{"svc-a", "svc-b"}, r.URL.Query()["service_name"])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"anomalies":[
+			{"profile_uuid":"from-svc-a","score":-0.9,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"},
+			{"profile_uuid":"from-svc-b","score":-0.7,"observed_at":"2026-09-23T12:01:00Z","model_id":"m1"}
+		]}`))
+	}))
+	defer apServer.Close()
+
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, req *queryv1.InvokeRequest) *queryv1.InvokeResponse {
+			if req.Query[0].QueryType == queryv1.QueryType_QUERY_SERIES_LABELS {
+				return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
+					SeriesLabels: &queryv1.SeriesLabelsReport{
+						SeriesLabels: []*typesv1.Labels{
+							{Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc-a"}}},
+							{Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc-b"}}},
+						},
+					},
+				}}}
+			}
+			candidates := req.Query[0].ProfilePresence.GetProfileIdSelector()
+			present := make([]*queryv1.ProfilePresenceEntry, len(candidates))
+			for i, id := range candidates {
+				present[i] = &queryv1.ProfilePresenceEntry{ProfileId: id}
+			}
+			return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+				ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
+				ProfilePresence: &queryv1.ProfilePresenceReport{Profiles: present},
+			}}}
+		},
+		nil,
+	)
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockLimits,
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		mockMetadata,
+		nil,
+		mockBackend,
+		nil,
+		nil,
+		nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	start, end := smpValidTimeRange()
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: smpProfileType,
+		LabelSelector: `{namespace="shared-namespace"}`,
+		Start:         start,
+		End:           end,
+		AnomalyType:   "stacktrace",
+	}))
+
+	require.NoError(t, err)
+	gotIDs := make([]string, len(resp.Msg.Profiles))
+	for i, p := range resp.Msg.Profiles {
+		gotIDs[i] = p.ProfileId
+	}
+	require.ElementsMatch(t, []string{"from-svc-a", "from-svc-b"}, gotIDs)
+}
+
 func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	// The anomaly source reports three anomalies; the mock backend confirms only present-1
 	// and present-2, in one call covering all three.
@@ -70,6 +190,8 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	backendTimestampByID := map[string]int64{"present-1": 111, "present-2": 222}
 
 	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
@@ -80,21 +202,33 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(
 		func(ctx context.Context, req *queryv1.InvokeRequest) *queryv1.InvokeResponse {
 			invokeCalls.Add(1)
-			candidates := req.Query[0].ProfilePresence.GetProfileIdSelector()
-			present := make([]*queryv1.ProfilePresenceEntry, 0, len(candidates))
-			for _, id := range candidates {
-				if id != "absent-1" {
-					present = append(present, &queryv1.ProfilePresenceEntry{
-						ProfileId: id,
-						Labels:    []*typesv1.LabelPair{{Name: "pod", Value: id + "-pod"}},
-						Timestamp: backendTimestampByID[id],
-					})
+			switch req.Query[0].QueryType {
+			case queryv1.QueryType_QUERY_SERIES_LABELS:
+				return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
+					SeriesLabels: &queryv1.SeriesLabelsReport{
+						SeriesLabels: []*typesv1.Labels{{
+							Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc-a"}},
+						}},
+					},
+				}}}
+			default:
+				candidates := req.Query[0].ProfilePresence.GetProfileIdSelector()
+				present := make([]*queryv1.ProfilePresenceEntry, 0, len(candidates))
+				for _, id := range candidates {
+					if id != "absent-1" {
+						present = append(present, &queryv1.ProfilePresenceEntry{
+							ProfileId: id,
+							Labels:    []*typesv1.LabelPair{{Name: "pod", Value: id + "-pod"}},
+							Timestamp: backendTimestampByID[id],
+						})
+					}
 				}
+				return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
+					ProfilePresence: &queryv1.ProfilePresenceReport{Profiles: present},
+				}}}
 			}
-			return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
-				ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
-				ProfilePresence: &queryv1.ProfilePresenceReport{Profiles: present},
-			}}}
 		},
 		nil,
 	)
@@ -133,7 +267,7 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	require.Equal(t, -0.7, byID["present-2"].Score)
 	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "present-1-pod"}}, byID["present-1"].Labels)
 	require.Equal(t, []*typesv1.LabelPair{{Name: "pod", Value: "present-2-pod"}}, byID["present-2"].Labels)
-	require.EqualValues(t, 1, invokeCalls.Load())
+	require.EqualValues(t, 2, invokeCalls.Load())
 }
 
 func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
@@ -150,6 +284,8 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 	defer apServer.Close()
 
 	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
@@ -157,12 +293,26 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 
 	var invokeCalls atomic.Int32
 	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
-	mockBackend.On("Invoke", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
-		invokeCalls.Add(1)
-	}).Return(&queryv1.InvokeResponse{Reports: []*queryv1.Report{{
-		ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
-		ProfilePresence: &queryv1.ProfilePresenceReport{},
-	}}}, nil)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, req *queryv1.InvokeRequest) *queryv1.InvokeResponse {
+			invokeCalls.Add(1)
+			if req.Query[0].QueryType == queryv1.QueryType_QUERY_SERIES_LABELS {
+				return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
+					SeriesLabels: &queryv1.SeriesLabelsReport{
+						SeriesLabels: []*typesv1.Labels{{
+							Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc-a"}},
+						}},
+					},
+				}}}
+			}
+			return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+				ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
+				ProfilePresence: &queryv1.ProfilePresenceReport{},
+			}}}
+		},
+		nil,
+	)
 
 	qf := NewQueryFrontend(
 		log.NewNopLogger(),
@@ -188,5 +338,5 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Empty(t, resp.Msg.Profiles)
-	require.EqualValues(t, 1, invokeCalls.Load())
+	require.EqualValues(t, 2, invokeCalls.Load())
 }

@@ -34,7 +34,7 @@ func TestListAnomalies(t *testing.T) {
 	start := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 9, 23, 12, 5, 0, 0, time.UTC)
 
-	anomalies, err := client.ListAnomalies(context.Background(), "tenant-1", "svc-a", start, end)
+	anomalies, err := client.ListAnomalies(context.Background(), "tenant-1", []string{"svc-a", "svc-b"}, start, end)
 	require.NoError(t, err)
 	require.Len(t, anomalies, 2)
 	require.Equal(t, "abc-1", anomalies[0].ProfileUUID)
@@ -44,6 +44,7 @@ func TestListAnomalies(t *testing.T) {
 	require.Equal(t, "tenant-1", gotTenantHeader)
 	require.Equal(t, "/api/v1/anomalydetection/anomalies", gotPath)
 	require.Contains(t, gotQuery, "service_name=svc-a")
+	require.Contains(t, gotQuery, "service_name=svc-b")
 	require.Contains(t, gotQuery, "start=1790164800000")
 	require.Contains(t, gotQuery, "end=1790165100000")
 }
@@ -55,6 +56,6 @@ func TestListAnomalies_NonOKStatus(t *testing.T) {
 	defer server.Close()
 
 	client := New(Config{URL: server.URL}, nil)
-	_, err := client.ListAnomalies(context.Background(), "tenant-1", "svc-a", time.Now(), time.Now())
+	_, err := client.ListAnomalies(context.Background(), "tenant-1", []string{"svc-a"}, time.Now(), time.Now())
 	require.Error(t, err)
 }

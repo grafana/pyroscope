@@ -48,10 +48,10 @@ type listAnomaliesResponse struct {
 	} `json:"anomalies"`
 }
 
-// ListAnomalies returns anomalies recorded for tenantID/serviceName, observed within [start, end].
-func (c *Client) ListAnomalies(ctx context.Context, tenantID, serviceName string, start, end time.Time) ([]Anomaly, error) {
+// ListAnomalies returns anomalies recorded for tenantID/serviceNames, observed within [start, end].
+func (c *Client) ListAnomalies(ctx context.Context, tenantID string, serviceNames []string, start, end time.Time) ([]Anomaly, error) {
 	v := url.Values{
-		"service_name": {serviceName},
+		"service_name": serviceNames,
 		"start":        {strconv.FormatInt(start.UnixMilli(), 10)},
 		"end":          {strconv.FormatInt(end.UnixMilli(), 10)},
 	}
