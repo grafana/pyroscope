@@ -1023,6 +1023,12 @@ components:
           $ref: '#/components/schemas/querier.v1.QueryImpact'
       title: AnalyzeQueryResponse
       additionalProperties: false
+    querier.v1.AnomalyType:
+      type: string
+      title: AnomalyType
+      enum:
+        - ANOMALY_TYPE_UNSPECIFIED
+        - ANOMALY_TYPE_STACKTRACE
     querier.v1.AsyncQueryRequest:
       type: object
       properties:
@@ -1263,27 +1269,27 @@ components:
           title: end
           format: int64
           description: Milliseconds since epoch.
-        anomalyType:
-          type: string
-          examples:
-            - stacktrace
-          title: anomaly_type
+        anomalyTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.AnomalyType'
+          title: anomaly_types
           description: |-
-            Which anomaly source to consult. Only "stacktrace" is handled today; any other value
-             returns an unimplemented error.
+            Which anomaly sources to consult. Only ANOMALY_TYPE_STACKTRACE is handled today; any
+             other value returns an unimplemented error.
       title: QueryAnomaliesRequest
       additionalProperties: false
     querier.v1.QueryAnomaliesResponse:
       type: object
       properties:
-        profiles:
+        stacktraceAnomalies:
           type: array
           items:
             $ref: '#/components/schemas/querier.v1.StacktraceAnomaly'
-          title: profiles
+          title: stacktrace_anomalies
           description: |-
-            Profiles that are both flagged as anomalies by the configured anomaly source and
-             confirmed present for the given label selector and time range.
+            Profiles flagged by the stacktrace anomaly source and confirmed present for the given
+             label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
       title: QueryAnomaliesResponse
       additionalProperties: false
     querier.v1.QueryImpact:

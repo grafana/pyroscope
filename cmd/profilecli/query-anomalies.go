@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -16,22 +17,39 @@ import (
 
 type queryAnomaliesParams struct {
 	*queryParams
-	ProfileType string
-	AnomalyType string
-	Output      string
+	ProfileType  string
+	AnomalyTypes []string
+	Output       string
 }
 
 func addQueryAnomaliesParams(queryCmd commander) *queryAnomaliesParams {
 	params := new(queryAnomaliesParams)
 	params.queryParams = addQueryParams(queryCmd)
 	queryCmd.Flag("profile-type", "Profile type to query.").Default("process_cpu:cpu:nanoseconds:cpu:nanoseconds").StringVar(&params.ProfileType)
-	queryCmd.Flag("anomaly-type", "Which anomaly source to consult. Only \"stacktrace\" is supported today.").Default("stacktrace").StringVar(&params.AnomalyType)
+	queryCmd.Flag("anomaly-type", "Which anomaly source(s) to consult. Only \"stacktrace\" is supported today. Repeatable for multiple types.").Default("stacktrace").StringsVar(&params.AnomalyTypes)
 	queryCmd.Flag("output", "Output format, one of: table, json.").Default("table").StringVar(&params.Output)
 	return params
 }
 
+func parseAnomalyTypes(names []string) ([]querierv1.AnomalyType, error) {
+	types := make([]querierv1.AnomalyType, len(names))
+	for i, name := range names {
+		v, ok := querierv1.AnomalyType_value["ANOMALY_TYPE_"+strings.ToUpper(name)]
+		if !ok {
+			return nil, fmt.Errorf("unknown anomaly type %q", name)
+		}
+		types[i] = querierv1.AnomalyType(v)
+	}
+	return types, nil
+}
+
 func queryAnomalies(ctx context.Context, params *queryAnomaliesParams) error {
 	from, to, err := params.parseFromTo()
+	if err != nil {
+		return err
+	}
+
+	anomalyTypes, err := parseAnomalyTypes(params.AnomalyTypes)
 	if err != nil {
 		return err
 	}
@@ -43,7 +61,7 @@ func queryAnomalies(ctx context.Context, params *queryAnomaliesParams) error {
 		"to", to,
 		"query", params.Query,
 		"type", params.ProfileType,
-		"anomaly_type", params.AnomalyType,
+		"anomaly_types", params.AnomalyTypes,
 	)
 
 	qc := params.queryClient()
@@ -52,14 +70,14 @@ func queryAnomalies(ctx context.Context, params *queryAnomaliesParams) error {
 		LabelSelector: params.Query,
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
-		AnomalyType:   params.AnomalyType,
+		AnomalyTypes:  anomalyTypes,
 	}))
 	if err != nil {
 		return fmt.Errorf("failed to query anomalies: %w", err)
 	}
 	logDiagnostics(params.phlareClient, resp.Header())
 
-	profiles := resp.Msg.Profiles
+	profiles := resp.Msg.StacktraceAnomalies
 
 	switch params.Output {
 	case outputJSON:

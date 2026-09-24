@@ -375,6 +375,11 @@ message QueryImpact {
   bool deduplication_needed = 4;
 }
 
+enum AnomalyType {
+  ANOMALY_TYPE_UNSPECIFIED = 0;
+  ANOMALY_TYPE_STACKTRACE = 1;
+}
+
 message QueryAnomaliesRequest {
   // Profile Type ID string in the form
   // <name>:<type>:<unit>:<period_type>:<period_unit>.
@@ -385,15 +390,15 @@ message QueryAnomaliesRequest {
   int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
   // Milliseconds since epoch.
   int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
-  // Which anomaly source to consult. Only "stacktrace" is handled today; any other value
-  // returns an unimplemented error.
-  string anomaly_type = 5 [(gnostic.openapi.v3.property).example = {yaml: "stacktrace"}];
+  // Which anomaly sources to consult. Only ANOMALY_TYPE_STACKTRACE is handled today; any
+  // other value returns an unimplemented error.
+  repeated AnomalyType anomaly_types = 5;
 }
 
 message QueryAnomaliesResponse {
-  // Profiles that are both flagged as anomalies by the configured anomaly source and
-  // confirmed present for the given label selector and time range.
-  repeated StacktraceAnomaly profiles = 1;
+  // Profiles flagged by the stacktrace anomaly source and confirmed present for the given
+  // label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
+  repeated StacktraceAnomaly stacktrace_anomalies = 1;
 }
 
 message StacktraceAnomaly {

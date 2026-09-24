@@ -20,22 +20,35 @@ func (q *QueryFrontend) QueryAnomalies(
 	ctx context.Context,
 	c *connect.Request[querierv1.QueryAnomaliesRequest],
 ) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
-	switch c.Msg.AnomalyType {
-	case "stacktrace":
-		return q.queryStacktraceAnomalies(ctx, c.Msg)
-	default:
-		return nil, connect.NewError(connect.CodeUnimplemented,
-			fmt.Errorf("unsupported anomaly_type %q", c.Msg.AnomalyType))
+	if len(c.Msg.AnomalyTypes) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("at least one anomaly_type is required"))
 	}
+
+	resp := &querierv1.QueryAnomaliesResponse{}
+	for _, t := range c.Msg.AnomalyTypes {
+		switch t {
+		case querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE:
+			profiles, err := q.queryStacktraceAnomalies(ctx, c.Msg)
+			if err != nil {
+				return nil, err
+			}
+			resp.StacktraceAnomalies = profiles
+		default:
+			return nil, connect.NewError(connect.CodeUnimplemented,
+				fmt.Errorf("unsupported anomaly_type %q", t))
+		}
+	}
+	return connect.NewResponse(resp), nil
 }
 
 func (q *QueryFrontend) queryStacktraceAnomalies(
 	ctx context.Context,
 	req *querierv1.QueryAnomaliesRequest,
-) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+) ([]*querierv1.StacktraceAnomaly, error) {
 	if q.anomalyAPI == nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition,
-			fmt.Errorf(`anomaly_type "stacktrace" requires query-frontend.anomaly-api.url to be configured`))
+			fmt.Errorf("anomaly_type ANOMALY_TYPE_STACKTRACE requires query-frontend.anomaly-api.url to be configured"))
 	}
 
 	tenantIDs, err := tenant.TenantIDs(ctx)
@@ -44,7 +57,7 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 	}
 	if len(tenantIDs) != 1 {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("anomaly_type %q requires a single tenant, got %d", req.AnomalyType, len(tenantIDs)))
+			fmt.Errorf("anomaly_type ANOMALY_TYPE_STACKTRACE requires a single tenant, got %d", len(tenantIDs)))
 	}
 
 	serviceNames, err := q.resolveServiceNames(ctx, req)
@@ -76,7 +89,7 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 			Score:     scoreByID[p.ProfileId],
 		}
 	}
-	return connect.NewResponse(&querierv1.QueryAnomaliesResponse{Profiles: profiles}), nil
+	return profiles, nil
 }
 
 // confirmAnomalies filters candidate anomalies down to the ones actually present in ingested

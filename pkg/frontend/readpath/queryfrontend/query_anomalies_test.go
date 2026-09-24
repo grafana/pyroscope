@@ -30,12 +30,25 @@ func TestQueryAnomalies_Unconfigured(t *testing.T) {
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		AnomalyType:   "stacktrace",
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
 		LabelSelector: `{service_name="svc-a"}`,
 	}))
 
 	require.Nil(t, resp)
 	require.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
+}
+
+func TestQueryAnomalies_NoAnomalyTypes(t *testing.T) {
+	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		LabelSelector: `{service_name="svc-a"}`,
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestQueryAnomalies_UnknownType(t *testing.T) {
@@ -44,7 +57,7 @@ func TestQueryAnomalies_UnknownType(t *testing.T) {
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		AnomalyType:   "some-other-type",
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType(99)},
 		LabelSelector: `{service_name="svc-a"}`,
 	}))
 
@@ -86,7 +99,7 @@ func TestQueryAnomalies_NoMatchingServiceName(t *testing.T) {
 		LabelSelector: `{namespace="empty-namespace"}`,
 		Start:         start,
 		End:           end,
-		AnomalyType:   "stacktrace",
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
 	}))
 
 	require.Nil(t, resp)
@@ -160,12 +173,12 @@ func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
 		LabelSelector: `{namespace="shared-namespace"}`,
 		Start:         start,
 		End:           end,
-		AnomalyType:   "stacktrace",
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
 	}))
 
 	require.NoError(t, err)
-	gotIDs := make([]string, len(resp.Msg.Profiles))
-	for i, p := range resp.Msg.Profiles {
+	gotIDs := make([]string, len(resp.Msg.StacktraceAnomalies))
+	for i, p := range resp.Msg.StacktraceAnomalies {
 		gotIDs[i] = p.ProfileId
 	}
 	require.ElementsMatch(t, []string{"from-svc-a", "from-svc-b"}, gotIDs)
@@ -252,13 +265,13 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         start,
 		End:           end,
-		AnomalyType:   "stacktrace",
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
 	}))
 
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Profiles, 2)
-	byID := make(map[string]*querierv1.StacktraceAnomaly, len(resp.Msg.Profiles))
-	for _, p := range resp.Msg.Profiles {
+	require.Len(t, resp.Msg.StacktraceAnomalies, 2)
+	byID := make(map[string]*querierv1.StacktraceAnomaly, len(resp.Msg.StacktraceAnomalies))
+	for _, p := range resp.Msg.StacktraceAnomalies {
 		byID[p.ProfileId] = p
 	}
 	require.Equal(t, backendTimestampByID["present-1"], byID["present-1"].Timestamp)
@@ -333,10 +346,10 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         start,
 		End:           end,
-		AnomalyType:   "stacktrace",
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
 	}))
 
 	require.NoError(t, err)
-	require.Empty(t, resp.Msg.Profiles)
+	require.Empty(t, resp.Msg.StacktraceAnomalies)
 	require.EqualValues(t, 2, invokeCalls.Load())
 }
