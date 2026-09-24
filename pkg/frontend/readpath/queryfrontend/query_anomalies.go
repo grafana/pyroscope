@@ -74,6 +74,9 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 	if err != nil {
 		return nil, err
 	}
+	if len(serviceNames) == 0 {
+		return nil, nil
+	}
 
 	anomalies, err := q.anomalyAPI.ListAnomalies(ctx, tenantIDs[0], serviceNames,
 		time.UnixMilli(req.Start), time.UnixMilli(req.End))
@@ -172,11 +175,6 @@ func (q *QueryFrontend) resolveServiceNames(
 				}
 			}
 		}
-	}
-
-	if len(names) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("label selector %q does not match any service_name", req.LabelSelector))
 	}
 	return names, nil
 }

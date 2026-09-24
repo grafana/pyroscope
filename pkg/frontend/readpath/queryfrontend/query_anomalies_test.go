@@ -169,7 +169,7 @@ func TestQueryAnomalies_UnknownType(t *testing.T) {
 	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
 }
 
-func TestQueryAnomalies_NoMatchingServiceName(t *testing.T) {
+func TestQueryAnomalies_NoMatchingServiceName_ReturnsEmpty(t *testing.T) {
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
@@ -206,8 +206,8 @@ func TestQueryAnomalies_NoMatchingServiceName(t *testing.T) {
 		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
 	}))
 
-	require.Nil(t, resp)
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.StacktraceAnomalies)
 }
 
 func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
