@@ -102,6 +102,8 @@ sequenceDiagram
     end
 ```
 
+If a worker completes a compaction job after one or more of its source blocks have already been removed from the metadata index (for example, by retention), the metastore rejects the job output instead of applying a partial replacement. In that case, the compacted output blocks are tombstoned for later deletion, `ReplaceBlocks` is skipped, and any source blocks that still exist remain indexed unchanged. The job is still marked as completed so it does not get retried.
+
 ---
 
 # Job Planner
