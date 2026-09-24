@@ -54,6 +54,19 @@ type Config struct {
 	// Where the FSM BoltDB data is located.
 	// Does not have to be a persistent volume.
 	DataDir string `yaml:"data_dir"`
+
+	// Online compaction configuration.
+	// BoltDBCompactEnabled controls whether the background compactor runs.
+	BoltDBCompactEnabled bool `yaml:"boltdb_compact_enabled" category:"advanced"`
+	// BoltDBCompactInterval is how often the compactor wakes up to check
+	// whether compaction is needed.
+	BoltDBCompactInterval time.Duration `yaml:"boltdb_compact_interval" category:"advanced"`
+	// BoltDBCompactMinFreeRatio is the minimum fraction of free/pending
+	// pages (relative to total allocated pages) that must be present
+	// before compaction is triggered. The default of 0.30 means that
+	// at least 30% of the database's pages must be free/pending before
+	// compaction fires.
+	BoltDBCompactMinFreeRatio float64 `yaml:"boltdb_compact_min_free_ratio" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
@@ -61,6 +74,15 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.IntVar(&cfg.SnapshotRateLimit, prefix+"snapshot-rate-limit", 15, "Rate limit for snapshot writer in MB/s.")
 	f.BoolVar(&cfg.SnapshotCompactOnRestore, prefix+"snapshot-compact-on-restore", false, "Compact the database on restore.")
 	f.StringVar(&cfg.DataDir, prefix+"data-dir", "./data/v2/metastore/data", "Directory to store the data.")
+
+	// Online compaction flags.
+	f.BoolVar(&cfg.BoltDBCompactEnabled, prefix+"boltdb-compact-enabled", true,
+		"Enable periodic online BoltDB compaction to reclaim disk space after retention cleanup without a process restart.")
+	f.DurationVar(&cfg.BoltDBCompactInterval, prefix+"boltdb-compact-interval", 4*time.Hour,
+		"How often the background compactor wakes up to check whether compaction is needed.")
+	f.Float64Var(&cfg.BoltDBCompactMinFreeRatio, prefix+"boltdb-compact-min-ratio", 0.30,
+		"Minimum fraction of free BoltDB pages (relative to total allocated pages) required to trigger online compaction. "+
+			"For example, 0.30 means compaction runs only when ≥30%% of pages are free.")
 }
 
 // FSM implements the raft.FSM interface.
@@ -79,6 +101,9 @@ type FSM struct {
 
 	appliedTerm  uint64
 	appliedIndex uint64
+
+	// compactor runs optional background BoltDB compaction.
+	compactor *BackgroundCompactor
 }
 
 type handler func(ctx context.Context, tx *tracingTx, cmd *raft.Log, raw []byte) (proto.Message, error)
@@ -96,6 +121,15 @@ func New(logger log.Logger, reg prometheus.Registerer, config Config, contextReg
 		return nil, err
 	}
 	fsm.db = db
+	if config.BoltDBCompactEnabled {
+		level.Info(logger).Log(
+			"msg", "online boltdb compaction enabled",
+			"interval", config.BoltDBCompactInterval,
+			"min_free_ratio", config.BoltDBCompactMinFreeRatio,
+		)
+		fsm.compactor = newBackgroundCompactor(&fsm)
+		fsm.compactor.Start()
+	}
 	return &fsm, nil
 }
 
@@ -341,6 +375,9 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (fsm *FSM) Shutdown() {
+	if fsm.compactor != nil {
+		fsm.compactor.Stop()
+	}
 	if fsm.db.boltdb != nil {
 		fsm.db.shutdown()
 	}
