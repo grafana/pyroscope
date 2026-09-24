@@ -537,6 +537,9 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 // FIXME(kolesnikovae): The method is never used and should be removed.
 func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
+	if phlaremodel.IsProjectionFormat(req.Msg.GetLeft().GetFormat()) {
+		return nil, connect.NewError(connect.CodeUnimplemented, phlaremodel.ErrProjectionRequiresV2)
+	}
 	sp, ctx := tracing.StartSpanFromContext(ctx, "Diff")
 	defer func() {
 		sp.SetTag("leftStart", model.Time(req.Msg.Left.Start).Time().String())
@@ -646,6 +649,9 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 }
 
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if phlaremodel.IsProjectionFormat(req.Msg.Format) {
+		return nil, connect.NewError(connect.CodeUnimplemented, phlaremodel.ErrProjectionRequiresV2)
+	}
 	sp, ctx := tracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
 		"start", model.Time(req.Msg.Start).Time().String(),

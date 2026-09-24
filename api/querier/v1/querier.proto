@@ -131,6 +131,7 @@ message SelectMergeStacktracesRequest {
   repeated string trace_id_selector = 10 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
   // List of span IDs (16 hex characters, 64-bit) to filter samples by.
   repeated string span_selector = 11 [(gnostic.openapi.v3.property).example = {yaml: "['9a517183f26a089d','5a4fe264a9c987fe']"}];
+  ProfileFormatOptions format_options = 12;
 }
 
 enum ProfileFormat {
@@ -152,6 +153,8 @@ enum ProfileFormat {
   // Return a pprof profile, including available mappings, locations, filenames,
   // and line numbers, in SelectMergeStacktracesResponse.pprof.
   PROFILE_FORMAT_PPROF = 4;
+  // Aggregate functions directly from samples, without tree truncation.
+  PROFILE_FORMAT_FUNCTIONS = 5;
 }
 
 message SelectMergeStacktracesResponse {
@@ -164,6 +167,18 @@ message SelectMergeStacktracesResponse {
   optional AsyncQueryResponse async = 4;
   // Profile in pprof format.
   PprofProfile pprof = 5;
+  types.v1.FunctionTable functions = 6;
+}
+
+// Only options for the requested profile format are used; other fields are ignored.
+message ProfileFormatOptions {
+  FunctionsOptions functions = 2;
+}
+
+message FunctionsOptions {
+  // Zero or omitted returns every function. Applied only after global merging,
+  // sorted by self descending, then total descending, then name.
+  int64 limit = 1;
 }
 
 // PprofProfile contains pprof output and related response metadata.
@@ -228,13 +243,23 @@ message SelectMergeSpanProfileResponse {
 }
 
 message DiffRequest {
-  // The format of each request is ignored; diff queries always compare trees.
+  // left.format and left.format_options select the response format and options
+  // for both profiles. An unspecified format returns a flame graph diff.
   SelectMergeStacktracesRequest left = 1;
+  // right.format and right.format_options are ignored.
   SelectMergeStacktracesRequest right = 2;
 }
 
 message DiffResponse {
   FlameGraphDiff flamegraph = 1;
+  FunctionTableDiff functions = 2;
+}
+
+message FunctionTableDiff {
+  // Rows are aligned by function name. Limiting happens after joining both
+  // complete tables, ordered by max(self), max(total), then name.
+  types.v1.FunctionTable left = 1;
+  types.v1.FunctionTable right = 2;
 }
 
 message FlameGraph {
