@@ -80,9 +80,9 @@ type profilePresenceInfo struct {
 }
 
 type profilePresenceAggregator struct {
-	init  sync.Once
-	query *queryv1.ProfilePresenceQuery
-	seen  map[string]profilePresenceInfo
+	init   sync.Once
+	query  *queryv1.ProfilePresenceQuery
+	merger *phlaremodel.ProfilePresenceMerger
 }
 
 func newProfilePresenceAggregator(*queryv1.InvokeRequest) aggregator {
@@ -93,27 +93,17 @@ func (a *profilePresenceAggregator) aggregate(report *queryv1.Report) error {
 	r := report.ProfilePresence
 	a.init.Do(func() {
 		a.query = r.Query.CloneVT()
-		a.seen = make(map[string]profilePresenceInfo, len(r.Profiles))
+		a.merger = phlaremodel.NewProfilePresenceMerger()
 	})
-	for _, p := range r.Profiles {
-		a.seen[p.ProfileId] = profilePresenceInfo{Labels: p.Labels, Timestamp: p.Timestamp}
-	}
+	a.merger.MergeProfilePresence(r.Profiles)
 	return nil
 }
 
 func (a *profilePresenceAggregator) build() *queryv1.Report {
-	profiles := make([]*queryv1.ProfilePresenceEntry, 0, len(a.seen))
-	for id, info := range a.seen {
-		profiles = append(profiles, &queryv1.ProfilePresenceEntry{
-			ProfileId: id,
-			Labels:    info.Labels,
-			Timestamp: info.Timestamp,
-		})
-	}
 	return &queryv1.Report{
 		ProfilePresence: &queryv1.ProfilePresenceReport{
 			Query:    a.query,
-			Profiles: profiles,
+			Profiles: a.merger.Profiles(),
 		},
 	}
 }
