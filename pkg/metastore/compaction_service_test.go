@@ -28,9 +28,9 @@ func (r *proposalRecorder) Propose(_ context.Context, _ fsm.RaftLogEntryType, m 
 	return resp, nil
 }
 
-// The test pins the content of the raft proposals: the prepare step must
-// propose the raft_log request stripped of the compacted blocks (these are
-// only replicated with the final plan update).
+// The test pins the content of the raft proposals: the prepare step now
+// includes compacted blocks so the leader can decide whether to accept
+// the output. Accepted results are still attached to the final plan update.
 func TestCompactionService_PollCompactionJobs_proposals(t *testing.T) {
 	completed := &raft_log.CompactionJobState{
 		Name:   "job-done",
@@ -77,6 +77,7 @@ func TestCompactionService_PollCompactionJobs_proposals(t *testing.T) {
 	require.Len(t, prepare.StatusUpdates, 1)
 	assert.Equal(t, "job-done", prepare.StatusUpdates[0].Name)
 	assert.Equal(t, uint64(40), prepare.StatusUpdates[0].Token)
+	assert.Equal(t, compactedBlocks, prepare.StatusUpdates[0].CompactedBlocks)
 
 	proposal, ok := raft.proposals[1].(*raft_log.UpdateCompactionPlanRequest)
 	require.True(t, ok, "the update step must propose the raft_log request, got %T", raft.proposals[1])
@@ -85,12 +86,69 @@ func TestCompactionService_PollCompactionJobs_proposals(t *testing.T) {
 	// to the completed job of the final proposal.
 	require.Len(t, proposal.PlanUpdate.CompletedJobs, 1)
 	assert.Equal(t, compactedBlocks, proposal.PlanUpdate.CompletedJobs[0].CompactedBlocks)
+	assert.False(t, proposal.PlanUpdate.CompletedJobs[0].RejectOutput)
 
 	// The worker response includes the new assignment and its plan.
 	require.Len(t, resp.CompactionJobs, 1)
 	assert.Equal(t, "job-new", resp.CompactionJobs[0].Name)
 	require.Len(t, resp.Assignments, 1)
 	assert.Equal(t, uint64(41), resp.Assignments[0].Token)
+}
+
+func TestCompactionService_PollCompactionJobs_rejectedOutput(t *testing.T) {
+	completed := &raft_log.CompactionJobState{
+		Name:   "job-done",
+		Token:  40,
+		Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
+	}
+	planUpdate := &raft_log.CompactionPlanUpdate{
+		CompletedJobs: []*raft_log.CompletedCompactionJob{{
+			State:        completed,
+			RejectOutput: true,
+		}},
+	}
+	raft := &proposalRecorder{responses: []proto.Message{
+		&raft_log.GetCompactionPlanUpdateResponse{Term: 2, PlanUpdate: planUpdate},
+		&raft_log.TruncateIndexResponse{},
+		&raft_log.UpdateCompactionPlanResponse{PlanUpdate: planUpdate},
+	}}
+
+	svc := NewCompactionService(log.NewNopLogger(), raft)
+	compactedBlocks := &metastorev1.CompactedBlocks{
+		SourceBlocks: &metastorev1.BlockList{Tenant: "tenant-a", Shard: 1, Blocks: []string{"b1", "b2"}},
+		NewBlocks: []*metastorev1.BlockMeta{{
+			Id:              "b2",
+			Tenant:          1,
+			Shard:           1,
+			CompactionLevel: 2,
+			StringTable:     []string{"", "tenant-a"},
+		}},
+	}
+	_, err := svc.PollCompactionJobs(context.Background(), &metastorev1.PollCompactionJobsRequest{
+		StatusUpdates: []*metastorev1.CompactionJobStatusUpdate{{
+			Name:            "job-done",
+			Token:           40,
+			Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
+			CompactedBlocks: compactedBlocks,
+		}},
+	})
+	require.NoError(t, err)
+	require.Len(t, raft.proposals, 3)
+
+	_, ok := raft.proposals[0].(*raft_log.GetCompactionPlanUpdateRequest)
+	require.True(t, ok, "the prepare step must run first, got %T", raft.proposals[0])
+
+	truncate, ok := raft.proposals[1].(*raft_log.TruncateIndexRequest)
+	require.True(t, ok, "rejected output must be tombstoned via TRUNCATE_INDEX, got %T", raft.proposals[1])
+	assert.Equal(t, uint64(2), truncate.Term)
+	require.Len(t, truncate.Tombstones, 1)
+	assert.Equal(t, []string{"b2"}, truncate.Tombstones[0].GetBlocks().GetBlocks())
+
+	proposal, ok := raft.proposals[2].(*raft_log.UpdateCompactionPlanRequest)
+	require.True(t, ok, "the update step must run last, got %T", raft.proposals[2])
+	require.Len(t, proposal.PlanUpdate.CompletedJobs, 1)
+	assert.True(t, proposal.PlanUpdate.CompletedJobs[0].RejectOutput)
+	assert.Nil(t, proposal.PlanUpdate.CompletedJobs[0].CompactedBlocks)
 }
 
 // Prior to https://github.com/grafana/pyroscope/pull/5465, the prepare step

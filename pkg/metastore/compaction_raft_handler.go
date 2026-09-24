@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/raft"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
@@ -85,7 +86,25 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 			revoked++
 
 		case state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS:
-			p.CompletedJobs = append(p.CompletedJobs, &raft_log.CompletedCompactionJob{State: state})
+			completed := &raft_log.CompletedCompactionJob{State: state}
+			// The reject/accept decision is made here, on the leader, and
+			// written into the replicated plan. Followers must not recompute
+			// it at apply time: mixed-version replicas would otherwise apply
+			// the same UPDATE_COMPACTION_PLAN command differently.
+			if compacted := compactedBlocksFromStatus(status); compacted != nil && compacted.SourceBlocks != nil {
+				if missing := h.index.MissingBlocks(tx, compacted.SourceBlocks); len(missing) > 0 {
+					completed.RejectOutput = true
+					level.Warn(h.logger).Log(
+						"msg", "compaction job source blocks not found; rejecting job output",
+						"job", state.Name,
+						"tenant", compacted.SourceBlocks.Tenant,
+						"shard", compacted.SourceBlocks.Shard,
+						"missing_blocks", len(missing),
+						"source_blocks", len(compacted.SourceBlocks.Blocks),
+					)
+				}
+			}
+			p.CompletedJobs = append(p.CompletedJobs, completed)
 
 		case state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
 			p.UpdatedJobs = append(p.UpdatedJobs, &raft_log.UpdatedCompactionJob{State: state})
@@ -199,32 +218,18 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	}
 
 	for _, job := range req.PlanUpdate.CompletedJobs {
+		// RejectOutput is part of the replicated plan. Do not recompute the
+		// decision from local index state: that would diverge from older
+		// replicas that do not have this check. Rejected output objects are
+		// tombstoned by a separate TRUNCATE_INDEX command proposed by the
+		// leader. The job is completed in the schedule either way.
+		if job.RejectOutput {
+			level.Warn(h.logger).Log("msg", "compaction job output rejected; skipping index replacement", "job", job.State.Name)
+			continue
+		}
 		compacted := job.GetCompactedBlocks()
 		if compacted == nil || compacted.SourceBlocks == nil || len(compacted.NewBlocks) == 0 {
 			level.Warn(h.logger).Log("msg", "compacted blocks are missing; skipping", "job", job.State.Name)
-			continue
-		}
-		// The source blocks may have been deleted while the job was in
-		// progress, e.g., by the retention policy. If we replace them, we
-		// resurrect the deleted data. Instead, we reject the job output:
-		// the new blocks are not added to the index, and their objects are
-		// tombstoned. The source blocks that still exist stay in the index
-		// as they are. The job is completed in the schedule either way.
-		if missing := h.index.MissingBlocks(tx, compacted.SourceBlocks); len(missing) > 0 {
-			level.Warn(h.logger).Log(
-				"msg", "compaction job source blocks not found; rejecting job output",
-				"job", job.State.Name,
-				"tenant", compacted.SourceBlocks.Tenant,
-				"shard", compacted.SourceBlocks.Shard,
-				"missing_blocks", len(missing),
-				"source_blocks", len(compacted.SourceBlocks.Blocks),
-			)
-			for _, t := range tombstonesForRejectedBlocks(job.State.Name, compacted.NewBlocks) {
-				if err = h.tombstones.AddTombstones(tx, cmd, t); err != nil {
-					level.Error(h.logger).Log("msg", "failed to add tombstones", "err", err)
-					return nil, err
-				}
-			}
 			continue
 		}
 		if err = h.tombstones.AddTombstones(tx, cmd, blockTombstonesForCompletedJob(job)); err != nil {
@@ -247,6 +252,29 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 	span.SetTag("completed_jobs", len(req.PlanUpdate.CompletedJobs))
 	span.SetTag("updated_jobs", len(req.PlanUpdate.UpdatedJobs))
 	return &raft_log.UpdateCompactionPlanResponse{PlanUpdate: req.PlanUpdate}, nil
+}
+
+// compactedBlocksFromStatus returns the worker-reported compaction result.
+// New prepare requests store it on field 5. Older persisted GET_COMPACTION_PLAN_UPDATE
+// entries may still carry the result on reserved field 4 (the worker-facing
+// CompactionJobStatusUpdate layout); those are recovered from unknown fields
+// so log replay keeps interpreting the original payload.
+func compactedBlocksFromStatus(status *raft_log.CompactionJobStatusUpdate) *metastorev1.CompactedBlocks {
+	if status == nil {
+		return nil
+	}
+	if compacted := status.GetCompactedBlocks(); compacted != nil {
+		return compacted
+	}
+	raw, err := proto.Marshal(status)
+	if err != nil {
+		return nil
+	}
+	var legacy metastorev1.CompactionJobStatusUpdate
+	if err = proto.Unmarshal(raw, &legacy); err != nil {
+		return nil
+	}
+	return legacy.GetCompactedBlocks()
 }
 
 func blockTombstonesForCompletedJob(job *raft_log.CompletedCompactionJob) *metastorev1.Tombstones {
