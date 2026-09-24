@@ -138,9 +138,8 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 }
 
 func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
-	// None of the anomaly source's anomalies are actually present. This must resolve with exactly one
-	// query-backend call covering all candidates at once, not one call per anomaly --
-	// otherwise a large anomaly batch would fire one query per anomaly.
+	// None of the anomaly source's anomalies are actually present. Confirms the whole
+	// candidate batch resolves via a single query-backend call, regardless of candidate count.
 	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"anomalies":[

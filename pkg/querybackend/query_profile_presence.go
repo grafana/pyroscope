@@ -26,9 +26,8 @@ func init() {
 
 // queryProfilePresence checks which of query.ProfilePresence.ProfileIdSelector are present in
 // this block (matching the label selector and time range already applied via q.req.matchers /
-// q.req.startTime|endTime). Unlike queryTree/queryPprof, it never resolves symbols or merges a
-// profile -- it only reads the ID column -- and it checks the entire candidate ID list in one
-// pass rather than needing one query per candidate.
+// q.req.startTime|endTime), in a single pass over the ID column -- no symbol resolution, no
+// profile merge.
 //
 // withExcludeSampled() matches queryTree/queryPprof/queryHeatmap: profiles labeled
 // __sampled__="true" are stripped/reduced-fidelity samples that never resolve to a real

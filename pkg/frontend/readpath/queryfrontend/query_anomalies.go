@@ -80,12 +80,9 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 }
 
 // confirmAnomalies filters candidate anomalies down to the ones actually present in ingested
-// data, matching the request's full label selector (not just service_name) and time range.
-// This is a single QUERY_PROFILE_PRESENCE query-backend call regardless of how many candidates
-// there are: that query type checks the whole profile_id_selector against each block's ID
-// column directly (see pkg/querybackend/query_profile_presence.go) and returns exactly the
-// present subset, instead of resolving symbols/merging a profile per candidate the way
-// SelectMergeStacktraces does -- so this doesn't cost one round trip per anomaly.
+// data, matching the request's full label selector (not just service_name) and time range, via
+// a single QUERY_PROFILE_PRESENCE query-backend call carrying the whole candidate list (see
+// pkg/querybackend/query_profile_presence.go).
 func (q *QueryFrontend) confirmAnomalies(
 	ctx context.Context,
 	req *querierv1.QueryAnomaliesRequest,
