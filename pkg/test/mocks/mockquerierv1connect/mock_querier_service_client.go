@@ -85,65 +85,6 @@ func (_c *MockQuerierServiceClient_AnalyzeQuery_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// AsyncQuery provides a mock function with given fields: _a0, _a1
-func (_m *MockQuerierServiceClient) AsyncQuery(_a0 context.Context, _a1 *connect.Request[querierv1.AsyncQueryRequest]) (*connect.Response[querierv1.AsyncQueryResponse], error) {
-	ret := _m.Called(_a0, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AsyncQuery")
-	}
-
-	var r0 *connect.Response[querierv1.AsyncQueryResponse]
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.AsyncQueryRequest]) (*connect.Response[querierv1.AsyncQueryResponse], error)); ok {
-		return rf(_a0, _a1)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.AsyncQueryRequest]) *connect.Response[querierv1.AsyncQueryResponse]); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*connect.Response[querierv1.AsyncQueryResponse])
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *connect.Request[querierv1.AsyncQueryRequest]) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuerierServiceClient_AsyncQuery_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AsyncQuery'
-type MockQuerierServiceClient_AsyncQuery_Call struct {
-	*mock.Call
-}
-
-// AsyncQuery is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 *connect.Request[querierv1.AsyncQueryRequest]
-func (_e *MockQuerierServiceClient_Expecter) AsyncQuery(_a0 interface{}, _a1 interface{}) *MockQuerierServiceClient_AsyncQuery_Call {
-	return &MockQuerierServiceClient_AsyncQuery_Call{Call: _e.mock.On("AsyncQuery", _a0, _a1)}
-}
-
-func (_c *MockQuerierServiceClient_AsyncQuery_Call) Run(run func(_a0 context.Context, _a1 *connect.Request[querierv1.AsyncQueryRequest])) *MockQuerierServiceClient_AsyncQuery_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*connect.Request[querierv1.AsyncQueryRequest]))
-	})
-	return _c
-}
-
-func (_c *MockQuerierServiceClient_AsyncQuery_Call) Return(_a0 *connect.Response[querierv1.AsyncQueryResponse], _a1 error) *MockQuerierServiceClient_AsyncQuery_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockQuerierServiceClient_AsyncQuery_Call) RunAndReturn(run func(context.Context, *connect.Request[querierv1.AsyncQueryRequest]) (*connect.Response[querierv1.AsyncQueryResponse], error)) *MockQuerierServiceClient_AsyncQuery_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Diff provides a mock function with given fields: _a0, _a1
 func (_m *MockQuerierServiceClient) Diff(_a0 context.Context, _a1 *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
 	ret := _m.Called(_a0, _a1)
@@ -435,6 +376,65 @@ func (_c *MockQuerierServiceClient_ProfileTypes_Call) Return(_a0 *connect.Respon
 }
 
 func (_c *MockQuerierServiceClient_ProfileTypes_Call) RunAndReturn(run func(context.Context, *connect.Request[querierv1.ProfileTypesRequest]) (*connect.Response[querierv1.ProfileTypesResponse], error)) *MockQuerierServiceClient_ProfileTypes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// QueryAnomalies provides a mock function with given fields: _a0, _a1
+func (_m *MockQuerierServiceClient) QueryAnomalies(_a0 context.Context, _a1 *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QueryAnomalies")
+	}
+
+	var r0 *connect.Response[querierv1.QueryAnomaliesResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.QueryAnomaliesRequest]) *connect.Response[querierv1.QueryAnomaliesResponse]); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[querierv1.QueryAnomaliesResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *connect.Request[querierv1.QueryAnomaliesRequest]) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerierServiceClient_QueryAnomalies_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueryAnomalies'
+type MockQuerierServiceClient_QueryAnomalies_Call struct {
+	*mock.Call
+}
+
+// QueryAnomalies is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *connect.Request[querierv1.QueryAnomaliesRequest]
+func (_e *MockQuerierServiceClient_Expecter) QueryAnomalies(_a0 interface{}, _a1 interface{}) *MockQuerierServiceClient_QueryAnomalies_Call {
+	return &MockQuerierServiceClient_QueryAnomalies_Call{Call: _e.mock.On("QueryAnomalies", _a0, _a1)}
+}
+
+func (_c *MockQuerierServiceClient_QueryAnomalies_Call) Run(run func(_a0 context.Context, _a1 *connect.Request[querierv1.QueryAnomaliesRequest])) *MockQuerierServiceClient_QueryAnomalies_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*connect.Request[querierv1.QueryAnomaliesRequest]))
+	})
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_QueryAnomalies_Call) Return(_a0 *connect.Response[querierv1.QueryAnomaliesResponse], _a1 error) *MockQuerierServiceClient_QueryAnomalies_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_QueryAnomalies_Call) RunAndReturn(run func(context.Context, *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error)) *MockQuerierServiceClient_QueryAnomalies_Call {
 	_c.Call.Return(run)
 	return _c
 }

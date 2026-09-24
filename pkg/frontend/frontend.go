@@ -32,6 +32,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/v2/pkg/anomalyapi"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/v2/pkg/querier/stats"
@@ -75,6 +76,10 @@ type Config struct {
 	// The parameter is replaced with `instance_addr`.
 	AddrOld string `yaml:"address" category:"advanced" doc:"hidden"`
 
+	// AnomalyAPI configures the anomaly source used by QueryAnomalies' "stacktrace"
+	// anomaly type. Off by default.
+	AnomalyAPI anomalyapi.Config `yaml:"anomaly_api"`
+
 	// This configuration is injected internally.
 	QuerySchedulerDiscovery schedulerdiscovery.Config `yaml:"-"`
 	MaxLoopDuration         time.Duration             `yaml:"-"`
@@ -91,6 +96,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.BoolVar(&cfg.AsyncQueriesEnabled, "query-frontend.async-queries-enabled", false, "Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)")
 	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
+	cfg.AnomalyAPI.RegisterFlags(f)
 }
 
 func (cfg *Config) Validate() error {

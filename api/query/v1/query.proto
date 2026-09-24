@@ -88,6 +88,7 @@ message Query {
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
+  ProfilePresenceQuery profile_presence = 10;
   // function_details
   // call_graph
   // top_table
@@ -104,6 +105,7 @@ enum QueryType {
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
+  QUERY_PROFILE_PRESENCE = 9;
 }
 
 message InvokeResponse {
@@ -163,6 +165,7 @@ message Report {
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
+  ProfilePresenceReport profile_presence = 10;
 }
 
 enum ReportType {
@@ -175,6 +178,7 @@ enum ReportType {
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
+  REPORT_PROFILE_PRESENCE = 9;
 }
 
 message LabelNamesQuery {}
@@ -238,6 +242,28 @@ message TreeReport {
   TreeQuery query = 1;
   bytes tree = 2;
   optional TreeSymbols symbols = 3;
+}
+
+// ProfilePresenceQuery checks which of profile_id_selector are actually present in the
+// queried data (matching the label selector and time range), without resolving symbols or
+// building a merged profile.
+message ProfilePresenceQuery {
+  repeated string profile_id_selector = 1;
+}
+
+message ProfilePresenceReport {
+  ProfilePresenceQuery query = 1;
+  // The subset of query.profile_id_selector found present, one entry per profile.
+  repeated ProfilePresenceEntry profiles = 2;
+}
+
+message ProfilePresenceEntry {
+  string profile_id = 1;
+  // The profile's own labels (e.g. pod, instance), same convention as
+  // types.v1.Exemplar.labels.
+  repeated types.v1.LabelPair labels = 2;
+  // Milliseconds since epoch: the profile's own timestamp.
+  int64 timestamp = 3;
 }
 
 message PprofQuery {

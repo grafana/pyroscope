@@ -263,6 +263,16 @@ func (r *Router) AnalyzeQuery(
 	return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
 }
 
+func (r *Router) QueryAnomalies(
+	ctx context.Context,
+	req *connect.Request[querierv1.QueryAnomaliesRequest],
+) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	if r.newFrontend != nil {
+		return r.newFrontend.QueryAnomalies(ctx, req)
+	}
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("QueryAnomalies requires the v2 query-frontend"))
+}
+
 func (r *Router) GetProfileStats(
 	ctx context.Context,
 	c *connect.Request[typesv1.GetProfileStatsRequest],
