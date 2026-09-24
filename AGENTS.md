@@ -386,3 +386,4 @@ make docker-image/pyroscope/build  # Build Docker image
 For detailed setup and contributing instructions, see:
 - `docs/internal/contributing/README.md` - Development setup and workflow
 - `docs/sources/reference-pyroscope-architecture/` - System architecture deep dive
+- Security issues should be reported via [Grafana's security issue reporting page](https://grafana.com/legal/report-a-security-issue/) and not directly in this repository.
