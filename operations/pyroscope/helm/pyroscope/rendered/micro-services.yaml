@@ -196,10 +196,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1558,10 +1558,10 @@ kind: ClusterRole
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1655,7 +1655,21 @@ rules:
     - ""
     resources:
     - nodes
-    - nodes/proxy
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/pods
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
     - nodes/metrics
     verbs:
     - get
@@ -1672,10 +1686,10 @@ kind: ClusterRoleBinding
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1695,10 +1709,10 @@ metadata:
   name: pyroscope-dev-alloy-cluster
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -1728,10 +1742,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -2929,10 +2943,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
 spec:
@@ -2954,7 +2968,7 @@ spec:
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.port_name: http-metrics
         profiles.grafana.com/memory.scrape: "true"
-        profiles.grafana.com/service_git_ref: v1.8.1
+        profiles.grafana.com/service_git_ref: v1.19.2
         profiles.grafana.com/service_repository: https://github.com/grafana/alloy
       labels:
         app.kubernetes.io/name: alloy
@@ -2963,7 +2977,7 @@ spec:
       serviceAccountName: pyroscope-dev-alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.12.2
+          image: docker.io/grafana/alloy:v1.19.2
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -2981,6 +2995,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           ports:
             - containerPort: 12345
               name: http-metrics
@@ -2995,7 +3013,8 @@ spec:
             - name: config
               mountPath: /etc/alloy
         - name: config-reloader
-          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1
+          imagePullPolicy: IfNotPresent
           args:
             - --watched-dir=/etc/alloy
             - --reload-url=http://localhost:12345/-/reload
@@ -3006,6 +3025,17 @@ spec:
             requests:
               cpu: 10m
               memory: 50Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
       dnsPolicy: ClusterFirst
       volumes:
         - name: config
