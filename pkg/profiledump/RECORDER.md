@@ -54,5 +54,6 @@ indefinitely. This preserves worker ownership of storage and retained buffers.
 One recorder is constructed for each distributor process with customer storage.
 The module depends on storage and runtime overrides, and the distributor depends
 on it. A legacy monolith without customer storage has no recorder. Recorder
-configuration shares `profile_dump` and the existing application registry. No
-cleaner is constructed yet.
+configuration shares `profile_dump` and the existing application registry. The admin target constructs a cleaner that borrows the same storage client.
+Storage teardown waits for its listing and deletion calls as well as recorder
+`Done`. See [Cleaner contracts](CLEANER.md).

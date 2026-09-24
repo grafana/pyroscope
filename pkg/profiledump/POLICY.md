@@ -2,7 +2,8 @@
 
 The external Connect pprof path uses this immutable per-tenant runtime policy.
 Distributors with a configured customer bucket capture and upload admitted samples.
-Retention is not yet implemented, so this remains a local verification workflow.
+An admin target using the same bucket and storage prefix must run retention cleanup.
+See [Cleaner contracts](CLEANER.md) for provisional settings and provider limits.
 
 Activation uses the existing per-tenant runtime overrides file:
 

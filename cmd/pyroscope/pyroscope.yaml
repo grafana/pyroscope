@@ -615,6 +615,24 @@ runtime_config:
   # file: ""
 
 profile_dump:
+  # Capture retention measured from server ULID time. Deletion is eventual. Must
+  # be positive. Provisional development default.
+  # retention: 168h
+
+  # Delay between admin capture cleanup passes. Must be positive. Provisional
+  # development default.
+  # sweep_interval: 1h
+
+  # Cooperative time budget per admin capture cleanup pass and wait for a
+  # listing to produce its next entry. Providers may exceed it. Paused listings
+  # resume on later passes. Must be positive. Provisional development default.
+  # sweep_timeout: 1m
+
+  # Maximum listing entries processed per cleanup pass, excluding provider
+  # prefetch and cancellation draining. Listings pause at the budget and resume
+  # without replay. Must be positive. Provisional development default.
+  # max_entries: 10000
+
   # Maximum complete capture envelope bytes. Oversized captures are dropped.
   # Provisional development default.
   # max_object_bytes: 16777216

@@ -121,5 +121,5 @@ during preparation. There is no manual JSON-size prediction.
 Complete object size is not peak retained memory. The recorder must separately
 account for all simultaneously owned metadata, payload, and envelope buffers,
 including overlapping copies, and release reservations on every exit path. A
-bounded metadata allocation before large-object admission is intentional. Recorder
-admission and upload behavior are implemented in the next checkpoint.
+bounded metadata allocation before large-object admission is intentional. See [Recorder contracts](RECORDER.md) for admission and upload ownership and
+[Cleaner contracts](CLEANER.md) for retention based on strict capture keys.

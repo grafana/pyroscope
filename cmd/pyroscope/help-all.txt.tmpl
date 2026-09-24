@@ -731,6 +731,8 @@ Usage of ./pyroscope:
     	Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway. (default 5m0s)
   -overrides-exporter.ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.
+  -profile-dump.cleanup-max-entries int
+    	Maximum listing entries processed per cleanup pass, excluding provider prefetch and cancellation draining. Listings pause at the budget and resume without replay. Must be positive. Provisional development default. (default 10000)
   -profile-dump.default-captures-per-second float
     	Default profile capture rate per tenant per distributor when omitted from a policy. Must be positive and at most the global ceiling. This is not a fleet-wide quota. Provisional development default. (default 1)
   -profile-dump.limiter-prune-interval duration
@@ -751,8 +753,14 @@ Usage of ./pyroscope:
     	Aggregate object admission rate per distributor, not a fleet quota. Provisional development default. (default 10)
   -profile-dump.queue-capacity int
     	Maximum waiting captures per distributor. Enqueue never waits. Provisional development default. (default 16)
+  -profile-dump.retention duration
+    	Capture retention measured from server ULID time. Deletion is eventual. Must be positive. Provisional development default. (default 168h0m0s)
   -profile-dump.shutdown-drain duration
     	Graceful drain interval before canceling remaining capture work. Provisional development default. (default 15s)
+  -profile-dump.sweep-interval duration
+    	Delay between admin capture cleanup passes. Must be positive. Provisional development default. (default 1h0m0s)
+  -profile-dump.sweep-timeout duration
+    	Cooperative time budget per admin capture cleanup pass and wait for a listing to produce its next entry. Providers may exceed it. Paused listings resume on later passes. Must be positive. Provisional development default. (default 1m0s)
   -profile-dump.tenant-burst int
     	Object admission burst per tenant per distributor. Provisional development default. (default 1)
   -profile-dump.upload-timeout duration

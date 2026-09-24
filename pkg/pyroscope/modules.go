@@ -70,6 +70,7 @@ import (
 // The various modules that make up Pyroscope.
 const (
 	ProfileDumpRecorder string = "profile-dump-recorder"
+	ProfileDumpCleaner  string = "profile-dump-cleaner"
 
 	All               string = "all"
 	API               string = "api"
@@ -428,10 +429,27 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 // stopStorage also releases resources acquired during partial initialization.
 func (f *Pyroscope) stopStorage() error {
 	f.stopProfileDumpRecorder()
+	if f.profileDumpCleaner != nil {
+		f.profileDumpCleaner.StopAsync()
+		// AwaitTerminated also waits for failed services to finish teardown.
+		_ = f.profileDumpCleaner.AwaitTerminated(context.Background())
+	}
 	if f.closeStorageBucket != nil {
 		return f.closeStorageBucket()
 	}
 	return nil
+}
+
+func (f *Pyroscope) initProfileDumpCleaner() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	c, err := profiledump.NewCleaner(f.Cfg.ProfileDump.Cleaner, f.storageBucket, f.reg, nil)
+	if err != nil {
+		return nil, err
+	}
+	f.profileDumpCleaner = c
+	return c, nil
 }
 
 func (f *Pyroscope) initProfileDumpRecorder() (services.Service, error) {

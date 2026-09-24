@@ -120,6 +120,13 @@ func TestProfileDumpModuleDependencies(t *testing.T) {
 			require.Contains(t, f.deps[Distributor], ProfileDumpRecorder)
 			require.ElementsMatch(t, []string{Storage, Overrides}, f.deps[ProfileDumpRecorder])
 			require.NotContains(t, f.deps[Admin], ProfileDumpRecorder)
+			require.Contains(t, f.deps[Admin], ProfileDumpCleaner)
+			require.ElementsMatch(t, []string{Storage}, f.deps[ProfileDumpCleaner])
+			require.False(t, f.ModuleManager.IsUserVisibleModule(ProfileDumpCleaner))
+			for _, target := range []string{Admin, All} {
+				require.Contains(t, f.ModuleManager.DependenciesForModule(target), ProfileDumpCleaner)
+			}
+			require.NotContains(t, f.ModuleManager.DependenciesForModule(Distributor), ProfileDumpCleaner)
 		})
 	}
 	f, _ := newDumpApplication(t)
@@ -157,4 +164,139 @@ func TestProfileDumpStorageOwnership(t *testing.T) {
 	require.Equal(t, int32(1), bucket.closes.Load())
 	require.NoError(t, f.stopStorage())
 	require.Equal(t, int32(1), bucket.closes.Load())
+}
+
+type dumpCleanupBucket struct {
+	objstore.Bucket
+	entered, canceled, release chan struct{}
+	active, closes             atomic.Int32
+}
+
+func (b *dumpCleanupBucket) Delete(ctx context.Context, key string) error {
+	b.active.Add(1)
+	defer b.active.Add(-1)
+	close(b.entered)
+	<-ctx.Done()
+	close(b.canceled)
+	<-b.release
+	return b.Bucket.Delete(context.Background(), key)
+}
+func (b *dumpCleanupBucket) Close() error {
+	if b.active.Load() != 0 {
+		return errors.New("storage closed while cleaner active")
+	}
+	b.closes.Add(1)
+	return nil
+}
+
+func TestProfileDumpCleanerStorageOrder(t *testing.T) {
+	for _, target := range []string{Admin, "combined"} {
+		for _, failureMode := range []string{"stop", "startup", "running"} {
+			t.Run(target+"/"+failureMode, func(t *testing.T) {
+				f, _ := newDumpApplication(t)
+				b := &dumpCleanupBucket{Bucket: objstore.NewBucket(thanos.NewInMemBucket()), entered: make(chan struct{}), canceled: make(chan struct{}), release: make(chan struct{})}
+				f.storageBucket, f.closeStorageBucket = objstore.NewBorrowedBucket(b), sync.OnceValue(b.Close)
+				key, _, err := profiledump.NewObjectKey("a", time.Now().Add(-8*24*time.Hour), profiledump.FormatPprof)
+				require.NoError(t, err)
+				require.NoError(t, b.Upload(context.Background(), key, strings.NewReader("opaque")))
+				mm := modules.NewManager(log.NewNopLogger())
+				mm.RegisterModule(Storage, func() (services.Service, error) {
+					return services.NewIdleService(nil, func(error) error { return f.stopStorage() }), nil
+				})
+				mm.RegisterModule(ProfileDumpCleaner, f.initProfileDumpCleaner)
+				mm.RegisterModule(ProfileDumpRecorder, f.initProfileDumpRecorder)
+				mm.RegisterModule(Admin, func() (services.Service, error) { return services.NewIdleService(nil, nil), nil })
+				mm.RegisterModule("combined", nil)
+				require.NoError(t, mm.AddDependency(ProfileDumpCleaner, Storage))
+				require.NoError(t, mm.AddDependency(ProfileDumpRecorder, Storage))
+				require.NoError(t, mm.AddDependency(Admin, ProfileDumpCleaner))
+				require.NoError(t, mm.AddDependency("combined", Admin, ProfileDumpRecorder))
+				failure := errors.New("synthetic service failure")
+				selectedTarget := target
+				if failureMode != "stop" {
+					mm.RegisterModule("failure", func() (services.Service, error) {
+						fail := func(context.Context) error { <-b.entered; return failure }
+						if failureMode == "startup" {
+							return services.NewIdleService(fail, nil), nil
+						}
+						return services.NewBasicService(nil, fail, nil), nil
+					})
+					require.NoError(t, mm.AddDependency("failure", target))
+					selectedTarget = "failure"
+				}
+				serviceMap, err := mm.InitModuleServices(selectedTarget)
+				require.NoError(t, err)
+				all := make([]services.Service, 0, len(serviceMap))
+				for _, svc := range serviceMap {
+					all = append(all, svc)
+				}
+				manager, err := services.NewManager(all...)
+				require.NoError(t, err)
+				manager.AddListener(services.NewManagerListener(nil, nil, func(services.Service) { manager.StopAsync() }))
+				var release sync.Once
+				t.Cleanup(func() {
+					release.Do(func() { close(b.release) })
+					manager.StopAsync()
+					require.NoError(t, manager.AwaitStopped(context.Background()))
+					require.NoError(t, f.stopStorage())
+				})
+				require.NoError(t, manager.StartAsync(context.Background()))
+				<-b.entered
+				if failureMode == "stop" {
+					manager.StopAsync()
+				}
+				<-b.canceled
+				require.Zero(t, b.closes.Load())
+				require.EqualValues(t, 1, b.active.Load())
+				// The initialization-failure fallback also waits on the same borrower.
+				stopped := make(chan error, 1)
+				go func() { stopped <- f.stopStorage() }()
+				select {
+				case <-stopped:
+					t.Fatal("storage teardown passed active cleanup")
+				default:
+				}
+				release.Do(func() { close(b.release) })
+				require.NoError(t, manager.AwaitStopped(context.Background()))
+				require.NoError(t, <-stopped)
+				require.EqualValues(t, 1, b.closes.Load())
+				require.NoError(t, f.stopStorage())
+				require.EqualValues(t, 1, b.closes.Load())
+				if f.profileDumpRecorder != nil {
+					<-f.profileDumpRecorder.Done()
+				}
+			})
+		}
+	}
+}
+
+func TestProfileDumpCleanerInitializationFailure(t *testing.T) {
+	f, bucket := newDumpApplication(t)
+	mm := modules.NewManager(log.NewNopLogger())
+	mm.RegisterModule(ProfileDumpCleaner, f.initProfileDumpCleaner)
+	mm.RegisterModule(ProfileDumpRecorder, f.initProfileDumpRecorder)
+	failure := errors.New("constructor failed")
+	mm.RegisterModule("failure", func() (services.Service, error) { return nil, failure })
+	require.NoError(t, mm.AddDependency("failure", ProfileDumpCleaner, ProfileDumpRecorder))
+	f.ModuleManager, f.Cfg.Target = mm, []string{"failure"}
+	require.ErrorIs(t, f.Run(), failure)
+	require.Equal(t, services.Terminated, f.profileDumpCleaner.State())
+	<-f.profileDumpRecorder.Done()
+	require.EqualValues(t, 1, bucket.closes.Load())
+	require.NoError(t, f.stopStorage())
+	require.EqualValues(t, 1, bucket.closes.Load())
+}
+
+func TestProfileDumpCleanerConfiguration(t *testing.T) {
+	cfg := newTestConfig(t, []string{"-profile-dump.retention=24h", "-profile-dump.cleanup-max-entries=17"})
+	require.Equal(t, 24*time.Hour, cfg.ProfileDump.Cleaner.Retention)
+	require.Equal(t, 17, cfg.ProfileDump.Cleaner.MaxEntries)
+	cfg.ProfileDump.Cleaner.Retention = 0
+	require.ErrorContains(t, cfg.Validate(), "profile_dump cleaner")
+	f, _ := newDumpApplication(t)
+	f.storageBucket = nil
+	svc, err := f.initProfileDumpCleaner()
+	require.NoError(t, err)
+	require.Nil(t, svc)
+	require.Nil(t, f.profileDumpCleaner)
 }

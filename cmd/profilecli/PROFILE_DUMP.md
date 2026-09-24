@@ -89,7 +89,7 @@ A limited list may omit matching captures. Invalid and vanished objects are
 counted separately. Other listing failures can return partial JSON with an error
 exit status. Inspect and extract distinguish missing objects, corrupt envelopes
 and storage-access failures. A missing object may still be uploading or its
-upload may have failed.
+upload may have failed, or admin retention cleanup may have deleted it.
 
 Extraction creates private mode-0600 files and cleans temporary or newly
 published files on failure. The payload and sidecar are not crash-atomic, so an

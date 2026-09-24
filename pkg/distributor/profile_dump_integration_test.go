@@ -18,6 +18,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/server"
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
@@ -28,6 +29,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 	"github.com/grafana/pyroscope/v2/pkg/distributor"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -56,8 +58,9 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 		tenants["capture-test"] = &tenantLimits
 	})
 	bucketDir := t.TempDir()
-	bucket, err := filesystem.NewBucket(bucketDir)
+	rawBucket, err := filesystem.NewBucket(bucketDir)
 	require.NoError(t, err)
+	bucket := objstore.NewPrefixedBucket(rawBucket, "customer/prefix")
 	t.Cleanup(func() { require.NoError(t, bucket.Close()) })
 	cfg := profiledump.DefaultRecorderConfig()
 	cfg.TenantBurst, cfg.ProcessBurst = 10, 10
@@ -88,6 +91,24 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 	require.Error(t, push(malformed), "normal ingestion must reject malformed pprof after capture")
 	require.NoError(t, recorder.Shutdown(ctx))
 	<-recorder.Done()
+	cleanupTime := now
+	cleanConfig := profiledump.DefaultCleanerConfig()
+	unrelated := "unrelated/keep"
+	outside, _, err := profiledump.NewObjectKey("capture-test", now.Add(-8*24*time.Hour), profiledump.FormatPprof)
+	require.NoError(t, err)
+	require.NoError(t, rawBucket.Upload(ctx, outside, strings.NewReader("outside prefix")))
+	require.NoError(t, bucket.Upload(ctx, unrelated, strings.NewReader("keep")))
+	sweep := func() {
+		registry := prometheus.NewRegistry()
+		cleaner, err := profiledump.NewCleaner(cleanConfig, bucket, registry, func() time.Time { return cleanupTime })
+		require.NoError(t, err)
+		require.NoError(t, services.StartAndAwaitRunning(ctx, cleaner))
+		require.Eventually(t, func() bool {
+			return cleanupSweepSucceeded(registry)
+		}, 5*time.Second, time.Millisecond)
+		require.NoError(t, services.StopAndAwaitTerminated(ctx, cleaner))
+	}
+	sweep()
 	cli := filepath.Join(t.TempDir(), "profilecli")
 	build := exec.CommandContext(ctx, "go", "build", "-o", cli, "./cmd/profilecli")
 	build.Dir = "../.."
@@ -95,7 +116,7 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 	require.NoError(t, err, "%s", buildOutput)
 	run := func(operation string, args ...string) []byte {
 		t.Helper()
-		args = append([]string{"profile-dump", operation, "--storage.backend=filesystem", "--storage.filesystem.dir=" + bucketDir}, args...)
+		args = append([]string{"profile-dump", operation, "--storage.backend=filesystem", "--storage.filesystem.dir=" + bucketDir, "--storage.prefix=customer/prefix"}, args...)
 		command := exec.CommandContext(ctx, cli, args...)
 		var out, diagnostic bytes.Buffer
 		command.Stdout, command.Stderr = &out, &diagnostic
@@ -138,4 +159,32 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 			t.Logf("malformed fixture: %d identical bytes extracted after ingestion rejection", len(raw))
 		}
 	}
+	cleanupTime = now.Add(cleanConfig.Retention + time.Hour)
+	sweep()
+	for _, capture := range result.Captures {
+		exists, err := bucket.Exists(ctx, capture.Key)
+		require.NoError(t, err)
+		require.False(t, exists)
+		args := []string{"profile-dump", "inspect", "--storage.backend=filesystem", "--storage.filesystem.dir=" + bucketDir, "--storage.prefix=customer/prefix", capture.Key}
+		output, err := exec.CommandContext(ctx, cli, args...).CombinedOutput()
+		require.Error(t, err)
+		require.Contains(t, string(output), "not found")
+	}
+	exists, err := bucket.Exists(ctx, unrelated)
+	require.NoError(t, err)
+	require.True(t, exists)
+
+}
+
+func cleanupSweepSucceeded(reg *prometheus.Registry) bool {
+	families, err := reg.Gather()
+	if err != nil {
+		return false
+	}
+	for _, family := range families {
+		if family.GetName() == "pyroscope_profile_dump_cleanup_last_success_timestamp_seconds" {
+			return family.Metric[0].GetGauge().GetValue() > 0
+		}
+	}
+	return false
 }

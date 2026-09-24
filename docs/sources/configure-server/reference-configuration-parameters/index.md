@@ -177,6 +177,28 @@ runtime_config:
   [http_client_disable_keep_alives: <boolean> | default = true]
 
 profile_dump:
+  # Capture retention measured from server ULID time. Deletion is eventual. Must
+  # be positive. Provisional development default.
+  # CLI flag: -profile-dump.retention
+  [retention: <duration> | default = 168h]
+
+  # Delay between admin capture cleanup passes. Must be positive. Provisional
+  # development default.
+  # CLI flag: -profile-dump.sweep-interval
+  [sweep_interval: <duration> | default = 1h]
+
+  # Cooperative time budget per admin capture cleanup pass and wait for a
+  # listing to produce its next entry. Providers may exceed it. Paused listings
+  # resume on later passes. Must be positive. Provisional development default.
+  # CLI flag: -profile-dump.sweep-timeout
+  [sweep_timeout: <duration> | default = 1m]
+
+  # Maximum listing entries processed per cleanup pass, excluding provider
+  # prefetch and cancellation draining. Listings pause at the budget and resume
+  # without replay. Must be positive. Provisional development default.
+  # CLI flag: -profile-dump.cleanup-max-entries
+  [max_entries: <int> | default = 10000]
+
   # Maximum complete capture envelope bytes. Oversized captures are dropped.
   # Provisional development default.
   # CLI flag: -profile-dump.max-object-bytes
