@@ -80,9 +80,8 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 }
 
 // confirmAnomalies filters candidate anomalies down to the ones actually present in ingested
-// data, matching the request's full label selector (not just service_name) and time range, via
-// a single QUERY_PROFILE_PRESENCE query-backend call carrying the whole candidate list (see
-// pkg/querybackend/query_profile_presence.go).
+// data, matching the request's full label selector and time range, via a QUERY_PROFILE_PRESENCE
+// query-backend call carrying the whole candidate list
 func (q *QueryFrontend) confirmAnomalies(
 	ctx context.Context,
 	req *querierv1.QueryAnomaliesRequest,

@@ -1,10 +1,37 @@
 package querybackend
 
 import (
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
+
+// TestProfilePresenceIteratorOptions guards the two options queryProfilePresence relies on:
+// excludeSampled (stripped profiles have no resolvable data, so must not be reported present)
+// and allLabels (this query type returns each profile's own labels to the caller, unlike other
+// profileEntryIterator callers that only use labels internally). Losing either compiles fine and
+// changes behavior silently, so this fails loudly instead.
+func TestProfilePresenceIteratorOptions(t *testing.T) {
+	opts, err := profilePresenceIteratorOptions([]string{"11111111-1111-1111-1111-111111111111"})
+	require.NoError(t, err)
+
+	var it iteratorOpts
+	var se seriesOpts
+	for _, o := range opts {
+		if o.iterator != nil {
+			o.iterator(&it)
+		}
+		if o.series != nil {
+			o.series(&se)
+		}
+	}
+
+	require.True(t, it.excludeSampled, "queryProfilePresence must exclude __sampled__ profiles")
+	require.True(t, se.allLabels, "queryProfilePresence must fetch each profile's own labels")
+}
 
 // Test_QueryProfilePresence_Basic checks QUERY_PROFILE_PRESENCE against real block data: a real
 // profile ID mixed with a non-existent one resolves to just the real one, with its labels

@@ -1828,9 +1828,7 @@ func (x *TreeReport) GetSymbols() *TreeSymbols {
 
 // ProfilePresenceQuery checks which of profile_id_selector are actually present in the
 // queried data (matching the label selector and time range), without resolving symbols or
-// building a merged profile -- this is cheaper than TreeQuery/PprofQuery for that purpose, and
-// unlike those, it checks the whole profile_id_selector in a single query rather than needing
-// one query per candidate ID.
+// building a merged profile.
 type ProfilePresenceQuery struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ProfileIdSelector []string               `protobuf:"bytes,1,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`

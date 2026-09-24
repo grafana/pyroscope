@@ -25,22 +25,14 @@ func init() {
 }
 
 // queryProfilePresence checks which of query.ProfilePresence.ProfileIdSelector are present in
-// this block (matching the label selector and time range already applied via q.req.matchers /
-// q.req.startTime|endTime), in a single pass over the ID column -- no symbol resolution, no
-// profile merge.
-//
-// withExcludeSampled() matches queryTree/queryPprof/queryHeatmap: profiles labeled
-// __sampled__="true" are stripped/reduced-fidelity samples with no resolvable data (see
-// query_time_series.go's "stripped" check), so they must count as absent here too.
+// this block.
 func queryProfilePresence(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
-	opt, err := withProfileIDSelector(query.ProfilePresence.ProfileIdSelector...)
+	opts, err := profilePresenceIteratorOptions(query.ProfilePresence.ProfileIdSelector)
 	if err != nil {
 		return nil, err
 	}
 
-	// withAllLabels() populates entry.Labels; other profileEntryIterator callers skip it since
-	// they only need labels for joining/matching, not for returning to the caller.
-	entries, err := profileEntryIterator(q, opt, withExcludeSampled(), withAllLabels())
+	entries, err := profileEntryIterator(q, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +57,17 @@ func queryProfilePresence(q *queryContext, query *queryv1.Query) (*queryv1.Repor
 			Profiles: profiles,
 		},
 	}, nil
+}
+
+// profilePresenceIteratorOptions is covered by TestProfilePresenceIteratorOptions: excludeSampled
+// and allLabels must stay set, or queryProfilePresence silently regresses (reports stripped
+// profiles present; drops the labels callers read from ProfilePresenceEntry).
+func profilePresenceIteratorOptions(ids []string) ([]profileIteratorOption, error) {
+	opt, err := withProfileIDSelector(ids...)
+	if err != nil {
+		return nil, err
+	}
+	return []profileIteratorOption{opt, withExcludeSampled(), withAllLabels()}, nil
 }
 
 type profilePresenceAggregator struct {

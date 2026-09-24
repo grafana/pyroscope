@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// TenantHeader matches this repo's own querier clients' tenant-propagation convention.
 const TenantHeader = "X-Scope-OrgID"
 
 type Anomaly struct {
