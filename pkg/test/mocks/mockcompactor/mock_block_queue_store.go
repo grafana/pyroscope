@@ -165,6 +165,54 @@ func (_c *MockBlockQueueStore_ListEntries_Call) RunAndReturn(run func(*bbolt.Tx)
 	return _c
 }
 
+// ListEntryStats provides a mock function with given fields: _a0
+func (_m *MockBlockQueueStore) ListEntryStats(_a0 *bbolt.Tx) iter.Iterator[compaction.BlockEntryStats] {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListEntryStats")
+	}
+
+	var r0 iter.Iterator[compaction.BlockEntryStats]
+	if rf, ok := ret.Get(0).(func(*bbolt.Tx) iter.Iterator[compaction.BlockEntryStats]); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(iter.Iterator[compaction.BlockEntryStats])
+		}
+	}
+
+	return r0
+}
+
+// MockBlockQueueStore_ListEntryStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListEntryStats'
+type MockBlockQueueStore_ListEntryStats_Call struct {
+	*mock.Call
+}
+
+// ListEntryStats is a helper method to define mock.On call
+//   - _a0 *bbolt.Tx
+func (_e *MockBlockQueueStore_Expecter) ListEntryStats(_a0 interface{}) *MockBlockQueueStore_ListEntryStats_Call {
+	return &MockBlockQueueStore_ListEntryStats_Call{Call: _e.mock.On("ListEntryStats", _a0)}
+}
+
+func (_c *MockBlockQueueStore_ListEntryStats_Call) Run(run func(_a0 *bbolt.Tx)) *MockBlockQueueStore_ListEntryStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*bbolt.Tx))
+	})
+	return _c
+}
+
+func (_c *MockBlockQueueStore_ListEntryStats_Call) Return(_a0 iter.Iterator[compaction.BlockEntryStats]) *MockBlockQueueStore_ListEntryStats_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockBlockQueueStore_ListEntryStats_Call) RunAndReturn(run func(*bbolt.Tx) iter.Iterator[compaction.BlockEntryStats]) *MockBlockQueueStore_ListEntryStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StoreEntry provides a mock function with given fields: _a0, _a1
 func (_m *MockBlockQueueStore) StoreEntry(_a0 *bbolt.Tx, _a1 compaction.BlockEntry) error {
 	ret := _m.Called(_a0, _a1)

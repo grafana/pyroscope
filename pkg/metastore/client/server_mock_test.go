@@ -58,6 +58,10 @@ func (m *mockServer) PollCompactionJobs(ctx context.Context, request *metastorev
 	return m.compactor.PollCompactionJobs(ctx, request)
 }
 
+func (m *mockServer) GetCompactionState(ctx context.Context, request *metastorev1.GetCompactionStateRequest) (*metastorev1.GetCompactionStateResponse, error) {
+	return m.compactor.GetCompactionState(ctx, request)
+}
+
 func (m *mockServer) AddBlock(ctx context.Context, request *metastorev1.AddBlockRequest) (*metastorev1.AddBlockResponse, error) {
 	return m.metastore.AddBlock(ctx, request)
 }

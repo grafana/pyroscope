@@ -32,9 +32,11 @@ func (a *API) RegisterQueryBackend(svc *querybackend.QueryBackend) {
 func (a *API) RegisterMetastoreAdmin(adm *metastoreadmin.Admin) {
 	a.registerAdminRoute("/metastore-nodes", adm.NodeListHandler(), a.registerOptionsRingPage()...)
 	a.registerAdminRoute("/metastore-client-test", adm.ClientTestHandler(), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/metastore-compaction", adm.CompactionHandler(), a.registerOptionsRingPage()...)
 	a.addOperationalLinks(defaultWeight, "Metastore", []IndexPageLink{
 		{Desc: "Nodes", Path: "/metastore-nodes"},
 		{Desc: "Client Test", Path: "/metastore-client-test"},
+		{Desc: "Compaction", Path: "/metastore-compaction"},
 	})
 }
 
