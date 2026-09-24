@@ -101,7 +101,7 @@ type Config struct {
 	Tracing           tracing.Config          `yaml:"tracing"`
 	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
 	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
-	ProfileDump       profiledump.Config      `yaml:"profile_dump"`
+	ProfileDump       profiledump.Config      `yaml:"profile_dump" doc:"description=Process bounds for Connect pprof capture and admin retention. These bounds do not activate capture. Activation requires a per-tenant runtime policy with an absolute deadline."`
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 

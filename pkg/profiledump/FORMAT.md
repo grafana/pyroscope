@@ -17,7 +17,7 @@ and preserving the original bytes. Representing binary payloads compactly in JSO
 would require a text encoding such as base64, adding encoding overhead and increasing
 the object size. A protobuf wrapper could provide a similar storage model, but the same
 access pattern would still require a way to determine the metadata boundary before reading
-the payload. The current framing is sufficient and does not need a protobuf wrapper.
+the payload.
 
 ## Layout
 
@@ -33,11 +33,10 @@ Each object contains a 14-byte header, UTF-8 JSON metadata, and opaque native pa
 
 ## Compatibility and limits
 
-The envelope and metadata schema both use version 1. This is the first persisted
-format, with no compatibility for unreleased development variants. Other versions are rejected
-before parsing JSON. The header version identifies the framing before metadata is
-read, while `schema_version` keeps the metadata self-describing if tooling serializes
-or surfaces it independently. Readers require them to match.
+The envelope and metadata schema both use version 1. Unreleased development formats
+are unsupported. Unsupported header versions are rejected before parsing JSON.
+The header version identifies the framing, while `schema_version` keeps decoded
+metadata self-describing. Metadata validation requires the schema version to match.
 
 Unknown JSON fields are rejected. Missing scalars decode to Go zero values and
 undergo validation. `payload_size` must be explicitly present and non-null. JSON
@@ -84,8 +83,10 @@ Text must be valid UTF-8 without control characters. Limits count bytes:
 | Selected labels | 32 entries, 8192 combined name/value bytes |
 
 The policy fingerprint is the policy's 64-character lowercase SHA-256 identifier.
-It does not anonymize labels or payloads. Adapters must exclude credentials and
-arbitrary request data, supplying only selected identity labels and explicit fields.
+It does not anonymize labels or payloads. The Connect adapter selects valid series
+labels in wire order within the limits above, omitting invalid, duplicate and
+over-budget entries. Values are preserved without sanitization and may contain
+credentials. The adapter does not collect transport headers.
 
 ## Object keys
 
@@ -105,7 +106,7 @@ but must match the ULID's millisecond. Date/ULID mismatches are rejected.
 Use capture time, never client profile time. IDs do not guarantee deduplication.
 These helpers perform no storage operations.
 
-## Admission and serialization
+## Encoded object size
 
 The encoder first validates field lengths and collection counts, then calls
 `json.Marshal` once. The input bounds constrain that initial allocation. It checks
@@ -113,13 +114,6 @@ the actual encoded length against the 64 KiB metadata limit and calculates
 `HeaderSize + len(metadataJSON) + payload_size` without int64 overflow. JSON
 escaping expansion is included in the complete object size.
 
-The internal `prepareEnvelope` path retains these serialized metadata bytes and
-the complete object size for recorder admission and subsequent encoding. It does
-not retain the caller's labels or metadata fields. Callers must keep inputs stable
-during preparation. There is no manual JSON-size prediction.
-
-Complete object size is not peak retained memory. The recorder must separately
-account for all simultaneously owned metadata, payload, and envelope buffers,
-including overlapping copies, and release reservations on every exit path. A
-bounded metadata allocation before large-object admission is intentional. See [Recorder contracts](RECORDER.md) for admission and upload ownership and
-[Cleaner contracts](CLEANER.md) for retention based on strict capture keys.
+JSON metadata uses standard serialization and can be read with ordinary JSON tools.
+For recorder allocation, reservation and release rules, see
+[Memory and ownership](RECORDER.md#memory-and-ownership).

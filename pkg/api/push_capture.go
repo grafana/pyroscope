@@ -32,7 +32,7 @@ func (p *capturePusher) Push(ctx context.Context, req *connect.Request[pushv1.Pu
 				continue
 			}
 			// Selector lookup borrows all labels, including values omitted from metadata.
-			selectorLabels := model.Labels(series.Labels)
+			capture := p.recorder.PrepareSeries(tenantID, model.Labels(series.Labels))
 			metadataLabels := captureLabels(series.Labels)
 			for _, sample := range series.Samples {
 				if sample == nil {
@@ -47,7 +47,7 @@ func (p *capturePusher) Push(ctx context.Context, req *connect.Request[pushv1.Pu
 				if len(sample.RawProfile) >= 2 && sample.RawProfile[0] == 0x1f && sample.RawProfile[1] == 0x8b {
 					encoding = "gzip"
 				}
-				p.recorder.Capture(ctx, tenantID, profiledump.Candidate{
+				capture.Capture(ctx, profiledump.Candidate{
 					Metadata: profiledump.Metadata{
 						SourceProtocol:    profiledump.SourceConnect,
 						NativeFormat:      profiledump.FormatPprof,
@@ -55,8 +55,7 @@ func (p *capturePusher) Push(ctx context.Context, req *connect.Request[pushv1.Pu
 						Labels:            metadataLabels,
 						OriginalProfileID: profileID,
 					},
-					SelectorLabels: selectorLabels,
-					Payload:        sample.RawProfile,
+					Payload: sample.RawProfile,
 				})
 			}
 		}

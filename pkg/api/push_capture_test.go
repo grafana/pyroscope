@@ -436,7 +436,7 @@ func TestCapturePusherQueueAndUploadFailure(t *testing.T) {
 	release <- struct{}{}
 	release <- struct{}{}
 	f.drain(t)
-	require.Equal(t, 2.0, f.counter(t, "pyroscope_profile_dump_upload_errors_total", nil))
+	require.Equal(t, 2.0, f.counter(t, "pyroscope_profile_dump_uploads_total", map[string]string{"result": "error"}))
 }
 
 func TestCapturePusherSpans(t *testing.T) {
@@ -542,6 +542,9 @@ func TestCapturePusherSelectsOversizedLabelValue(t *testing.T) {
 	f := newCaptureFixture(t, capturePolicy(t, `{oversized=~"x+",service_name="checkout"}`, 1, false), nil)
 	req := sampleRequest()
 	req.Msg.Series[0].Labels = append(req.Msg.Series[0].Labels, &typesv1.LabelPair{Name: "oversized", Value: strings.Repeat("x", 4<<20)})
+	for range 63 {
+		req.Msg.Series[0].Samples = append(req.Msg.Series[0].Samples, &pushv1.RawSample{RawProfile: []byte("malformed native pprof")})
+	}
 	want := bytes.Clone(req.Msg.Series[0].Samples[0].RawProfile)
 	nextErr := connect.NewError(connect.CodeInvalidArgument, errors.New("malformed pprof"))
 	wrapper := &capturePusher{recorder: f.recorder, next: pushFunc(func(_ context.Context, got *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -554,10 +557,12 @@ func TestCapturePusherSelectsOversizedLabelValue(t *testing.T) {
 	_, err := wrapper.Push(tenant.InjectTenantID(context.Background(), "test"), req)
 	require.Same(t, nextErr, err)
 	objects := f.captured(t)
-	require.Len(t, objects, 1)
-	require.Equal(t, want, objects[0].payload)
-	require.Equal(t, "checkout", objects[0].metadata.Labels["service_name"])
-	require.NotContains(t, objects[0].metadata.Labels, "oversized")
+	require.Len(t, objects, 64)
+	for _, object := range objects {
+		require.Equal(t, want, object.payload)
+		require.Equal(t, "checkout", object.metadata.Labels["service_name"])
+		require.NotContains(t, object.metadata.Labels, "oversized")
+	}
 }
 
 func TestCapturePusherNilRecorderAndMissingTenant(t *testing.T) {
@@ -708,4 +713,80 @@ func TestCapturePusherPolicyReload(t *testing.T) {
 	}
 	require.Equal(t, 3, calls)
 	require.Len(t, f.captured(t), 1)
+}
+
+func TestCapturePusherPolicyChangesBetweenSamples(t *testing.T) {
+	active := capturePolicy(t, `{service_name="checkout"}`, 1, false)
+	miss := capturePolicy(t, `{service_name="other"}`, 1, false)
+	expired := capturePolicy(t, `{service_name="checkout"}`, 1, true)
+	policies := []profiledump.Policy{active, active, miss, active, expired, {}, active}
+	var reads atomic.Int32
+	f := newCaptureFixture(t, active, func(_ *profiledump.RecorderConfig, d *profiledump.Dependencies) {
+		d.PruneTicks = make(chan time.Time)
+		d.Policies = capturePolicyFunc(func(string) profiledump.Policy {
+			return policies[reads.Add(1)-1]
+		})
+	})
+	req := sampleRequest()
+	req.Msg.Series[0].Samples = nil
+	for i := range 6 {
+		req.Msg.Series[0].Samples = append(req.Msg.Series[0].Samples, &pushv1.RawSample{ID: fmt.Sprint(i), RawProfile: []byte("malformed")})
+	}
+	before := proto.Clone(req.Msg)
+	calls := 0
+	nextErr := errors.New("downstream rejection")
+	wrapper := &capturePusher{recorder: f.recorder, next: pushFunc(func(_ context.Context, got *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+		calls++
+		require.Same(t, req, got)
+		require.True(t, proto.Equal(before, got.Msg))
+		return nil, nextErr
+	})}
+	_, err := wrapper.Push(tenant.InjectTenantID(context.Background(), "test"), req)
+	require.Same(t, nextErr, err)
+	require.Equal(t, 1, calls)
+	require.Equal(t, int32(len(policies)), reads.Load())
+	objects := f.captured(t)
+	require.Len(t, objects, 3)
+	for i, id := range []string{"0", "2", "5"} {
+		require.Equal(t, id, objects[i].metadata.OriginalProfileID)
+		require.Equal(t, []byte("malformed"), objects[i].payload)
+	}
+	for _, reason := range []string{"selector", "expired", "disabled"} {
+		require.Equal(t, 1., f.counter(t, "pyroscope_profile_dump_dropped_total", map[string]string{"reason": reason}))
+	}
+}
+
+func TestCapturePusherSeriesIsolationAcrossRequestsAndTenants(t *testing.T) {
+	checkout := capturePolicy(t, `{service_name="checkout"}`, 1, false)
+	other := capturePolicy(t, `{service_name="other"}`, 1, false)
+	f := newCaptureFixture(t, checkout, func(_ *profiledump.RecorderConfig, d *profiledump.Dependencies) {
+		d.Policies = capturePolicyFunc(func(id string) profiledump.Policy {
+			if id == "test" {
+				return checkout
+			}
+			return other
+		})
+	})
+	calls := 0
+	req := sampleRequest()
+	wrapper := &capturePusher{recorder: f.recorder, next: pushFunc(func(_ context.Context, got *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+		calls++
+		require.Same(t, req, got)
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	})}
+	for _, id := range []string{"test", "other", "test"} {
+		for _, value := range []string{"checkout", "other"} {
+			// Reusing the request between calls must not reuse its previous selection.
+			req.Msg.Series[0].Labels[1].Value = value
+			_, err := wrapper.Push(tenant.InjectTenantID(context.Background(), id), req)
+			require.NoError(t, err)
+		}
+	}
+	require.Equal(t, 6, calls)
+	objects := f.captured(t)
+	require.Len(t, objects, 3)
+	for i, id := range []string{"test", "other", "test"} {
+		require.Equal(t, id, objects[i].metadata.TenantID)
+	}
+	require.Equal(t, 3., f.counter(t, "pyroscope_profile_dump_dropped_total", map[string]string{"reason": "selector"}))
 }

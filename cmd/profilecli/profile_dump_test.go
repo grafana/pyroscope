@@ -159,7 +159,7 @@ func TestProfileDumpList(t *testing.T) {
 			wanted = key
 		}
 	}
-	p := parseDumpCommand(t, "list", "--tenant-id", tenant, "--from", dumpTestTime.Format(time.RFC3339Nano), "--to", dumpTestTime.Add(time.Hour).Format(time.RFC3339Nano), "--source", "connect", "--format", "pprof")
+	p := parseDumpCommand(t, "list", "--tenant-id", tenant, "--from", dumpTestTime.Format(time.RFC3339Nano), "--to", dumpTestTime.Add(time.Hour).Format(time.RFC3339Nano))
 	var out bytes.Buffer
 	require.NoError(t, runProfileDump(context.Background(), b, p, &out, io.Discard))
 	var result dumpListResult
@@ -616,7 +616,8 @@ func TestProfileDumpCommandParsing(t *testing.T) {
 	require.Equal(t, 10*time.Second, p.timeout)
 	for _, args := range [][]string{
 		{"profile-dump", "list"}, {"profile-dump", "inspect"}, {"profile-dump", dumpExtract},
-		{"profile-dump", "list", "--tenant-id=a", "--from=2026-09-18T00:00:00Z", "--to=2026-09-19T00:00:00Z", "--source=bad"},
+		{"profile-dump", "list", "--tenant-id=a", "--from=2026-09-18T00:00:00Z", "--to=2026-09-19T00:00:00Z", "--source=connect"},
+		{"profile-dump", "list", "--tenant-id=a", "--from=2026-09-18T00:00:00Z", "--to=2026-09-19T00:00:00Z", "--format=pprof"},
 	} {
 		app := kingpin.New("test", "test")
 		addProfileDumpCommands(app)

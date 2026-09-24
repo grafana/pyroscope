@@ -637,8 +637,10 @@ profile_dump:
   # Provisional development default.
   # max_object_bytes: 16777216
 
-  # Local recorder byte budget covering preparation, overlapping metadata and
-  # envelope buffers, queueing and uploads. Provisional development default.
+  # Per-distributor budget for admitted capture buffers, including metadata
+  # overlap, item overhead, queueing and uploads. Initial bounded metadata
+  # marshaling and provider allocations are outside this budget. This is not an
+  # RSS limit. Provisional development default.
   # max_retained_bytes: 67108864
 
   # Maximum waiting captures per distributor. Enqueue never waits. Provisional
@@ -660,7 +662,8 @@ profile_dump:
   # default.
   # process_burst: 2
 
-  # Timeout for each background capture upload. Provisional development default.
+  # Cooperative timeout for each background capture upload. Providers that
+  # ignore cancellation may exceed it. Provisional development default.
   # upload_timeout: 10s
 
   # Graceful drain interval before canceling remaining capture work. Provisional

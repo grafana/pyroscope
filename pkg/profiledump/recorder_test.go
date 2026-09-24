@@ -249,12 +249,18 @@ func TestRecorderOwnedUploadAndRequestIsolation(t *testing.T) {
 	assertReleased(t, r)
 }
 
-func TestRecorderUploadErrorAndTimeout(t *testing.T) {
-	for _, timeout := range []bool{false, true} {
-		t.Run(fmt.Sprint("timeout=", timeout), func(t *testing.T) {
+func TestRecorderUploadErrorAndCancellation(t *testing.T) {
+	for _, tc := range []struct {
+		result string
+		cancel bool
+	}{
+		{"error", false},
+		{"canceled", true},
+	} {
+		t.Run(tc.result, func(t *testing.T) {
 			started := make(chan context.CancelFunc, 1)
 			r, _, _ := recorderFixture(t, recorderTestConfig(), func(ctx context.Context, _, _ string, _ io.Reader) error {
-				if timeout {
+				if tc.cancel {
 					<-ctx.Done()
 					return ctx.Err()
 				}
@@ -271,12 +277,12 @@ func TestRecorderUploadErrorAndTimeout(t *testing.T) {
 			})
 			require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
 			cancel := await(t, started)
-			if timeout {
+			if tc.cancel {
 				cancel()
 			}
 			require.NoError(t, r.Shutdown(context.Background()))
 			assertReleased(t, r)
-			require.Equal(t, 1., testutil.ToFloat64(r.metrics.uploadErrors.WithLabelValues("connect")))
+			require.Equal(t, 1., testutil.ToFloat64(r.metrics.uploads.WithLabelValues("connect", tc.result)))
 			require.Zero(t, testutil.ToFloat64(r.metrics.bytes.WithLabelValues("connect", "uploaded")))
 		})
 	}
@@ -451,7 +457,8 @@ func TestRecorderConcurrentReloadAndShutdown(t *testing.T) {
 	cfg.Workers = 4
 	cfg.QueueCapacity = 4
 	r, p, clock := recorderFixture(t, cfg, discardUpload, nil)
-	policy := recorderPolicy(t, "{}", 1, 10)
+	policy := recorderPolicy(t, `{env!="dev"}`, 1, 10)
+	alternate := recorderPolicy(t, `{env="dev"}`, 1, 10)
 	var wg sync.WaitGroup
 	start := make(chan struct{})
 	for i := 0; i < 8; i++ {
@@ -459,9 +466,11 @@ func TestRecorderConcurrentReloadAndShutdown(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
+			series := r.PrepareSeries("a", nil)
 			for j := 0; j < 200; j++ {
 				_ = r.PolicyActive("a")
 				r.Capture(context.Background(), "a", candidate([]byte("native")))
+				series.Capture(context.Background(), candidate([]byte("native")))
 			}
 		}()
 	}
@@ -470,6 +479,7 @@ func TestRecorderConcurrentReloadAndShutdown(t *testing.T) {
 		defer wg.Done()
 		<-start
 		for i := 0; i < 200; i++ {
+			p.set("a", alternate)
 			p.set("a", Policy{})
 			p.set("a", policy)
 			clock.advance(time.Millisecond)

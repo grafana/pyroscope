@@ -20,7 +20,7 @@ import (
 )
 
 // Exercise the pinned Thanos/MinIO producer, including a buffered page and an
-// outstanding HTTP request. A callback error used to strand its terminal send.
+// outstanding HTTP request. Returning callback errors can strand the terminal send.
 func TestCleanerS3Cancellation(t *testing.T) {
 	for _, pending := range []bool{false, true} {
 		t.Run(fmt.Sprintf("pending=%t", pending), func(t *testing.T) {

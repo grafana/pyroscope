@@ -8,9 +8,9 @@ import (
 const unknownValue = "unknown"
 
 type recorderMetrics struct {
-	candidates, bytes, dropped, uploads, uploadErrors *prometheus.CounterVec
-	uploadDuration                                    *prometheus.HistogramVec
-	retained, queueBytes, queueItems                  prometheus.Gauge
+	candidates, bytes, dropped, uploads *prometheus.CounterVec
+	uploadDuration                      *prometheus.HistogramVec
+	retained, queueBytes, queueItems    prometheus.Gauge
 }
 
 func newRecorderMetrics(reg prometheus.Registerer) recorderMetrics {
@@ -26,7 +26,6 @@ func newRecorderMetrics(reg prometheus.Registerer) recorderMetrics {
 		bytes:          counter("bytes_total", "Complete object bytes enqueued, dropped (including queued shutdown discards), or successfully uploaded. zero when sizing was not reached. Outcomes overlap.", "source", "result"),
 		dropped:        counter("dropped_total", "Local capture drops by bounded reason, including queued shutdown discards. excludes upload failures.", "source", "reason"),
 		uploads:        counter("uploads_total", "Completed background upload attempts by result: success, error, timeout, or canceled. excludes queued shutdown discards.", "source", "result"),
-		uploadErrors:   counter("upload_errors_total", "Failed or timed out background uploads.", "source"),
 		uploadDuration: f.NewHistogramVec(prometheus.HistogramOpts{Namespace: "pyroscope", Subsystem: "profile_dump", Name: "upload_duration_seconds", Help: "Background capture upload duration.", Buckets: prometheus.DefBuckets}, []string{"source"}),
 		retained:       gauge("reserved_bytes", "Reserved bytes for preparation, queued and uploading captures, including metadata overlap and item overhead."),
 		queueBytes:     gauge("queue_bytes", "Complete object bytes waiting for an upload worker."),

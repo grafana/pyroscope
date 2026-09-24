@@ -744,7 +744,7 @@ Usage of ./pyroscope:
   -profile-dump.max-object-bytes int
     	Maximum complete capture envelope bytes. Oversized captures are dropped. Provisional development default. (default 16777216)
   -profile-dump.max-retained-bytes int
-    	Local recorder byte budget covering preparation, overlapping metadata and envelope buffers, queueing and uploads. Provisional development default. (default 67108864)
+    	Per-distributor budget for admitted capture buffers, including metadata overlap, item overhead, queueing and uploads. Initial bounded metadata marshaling and provider allocations are outside this budget. This is not an RSS limit. Provisional development default. (default 67108864)
   -profile-dump.max-tenant-limiters int
     	Maximum local tenant rate limiter entries. New tenants are dropped at capacity until inactive entries are pruned. Provisional development default. (default 1024)
   -profile-dump.process-burst int
@@ -764,7 +764,7 @@ Usage of ./pyroscope:
   -profile-dump.tenant-burst int
     	Object admission burst per tenant per distributor. Provisional development default. (default 1)
   -profile-dump.upload-timeout duration
-    	Timeout for each background capture upload. Provisional development default. (default 10s)
+    	Cooperative timeout for each background capture upload. Providers that ignore cancellation may exceed it. Provisional development default. (default 10s)
   -profile-dump.workers int
     	Fixed upload workers per distributor. Provisional development default. (default 2)
   -pyroscopedb.data-path string

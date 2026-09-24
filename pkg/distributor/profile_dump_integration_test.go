@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -173,7 +174,13 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 	exists, err := bucket.Exists(ctx, unrelated)
 	require.NoError(t, err)
 	require.True(t, exists)
-
+	outsideReader, err := rawBucket.Get(ctx, outside)
+	require.NoError(t, err)
+	outsideContents, err := io.ReadAll(outsideReader)
+	closeErr := outsideReader.Close()
+	require.NoError(t, err)
+	require.NoError(t, closeErr)
+	require.Equal(t, "outside prefix", string(outsideContents))
 }
 
 func cleanupSweepSucceeded(reg *prometheus.Registry) bool {

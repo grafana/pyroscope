@@ -2,7 +2,10 @@
 
 `Capture` returns enqueue or drop status. Upload failures are recorded separately.
 Each admission checks the current policy's deadline, selector, probability and
-local tenant/process rates. Accepted captures drain even after policy removal or
+local tenant/process rates. `PrepareSeries` reuses the selector result across samples
+with stable borrowed labels while the policy fingerprint is unchanged. Discard this
+state at the end of the series. It does not bound selection cost for arbitrary labels
+or selectors. Accepted captures drain even after policy removal or
 expiry. Rate tokens are not refunded on later rejection, and limits provide no
 fleet quota or successful-capture fairness.
 
@@ -19,7 +22,7 @@ reserved bytes = object bytes + cap(metadataJSON) + 4096 bytes of item overhead
 The reservation covers simultaneous metadata and final-object buffers, plus
 bounded key, tenant and item bookkeeping. It precedes final-object allocation and
 the direct payload copy. Successful enqueue transfers the reservation to the
-queue. Rejected enqueue releases it in the producer. Workers and shutdown drains
+queue and rejected enqueue releases it in the producer. Workers and shutdown drains
 release their reservations after the object is no longer in use.
 
 The full reservation stays charged through upload or terminal drop, including the
@@ -42,18 +45,11 @@ discards queued items. Active upload reservations remain charged until those cal
 return. `Done` closes after all preparations, workers and reservations are gone.
 
 A return from `Shutdown` alone does not establish that storage is no longer in use.
-Shared-storage teardown depends on `Done`. A provider that ignores cancellation
-can delay it indefinitely. The application owns the shared bucket and gives components borrowed views whose
-`Close` does not close storage. Its recorder service waits for `Done` before
-terminating. The storage service stops after its dependents, waits for recorder
-`Done` again, and closes the underlying bucket once. `Run` repeats this cleanup on
-partial initialization failure, including constructors that fail before services
-start. A provider ignoring cancellation can therefore delay process shutdown
-indefinitely. This preserves worker ownership of storage and retained buffers.
+The application owns the shared bucket and gives components borrowed views. It
+closes storage only after recorder `Done` and cleaner termination, including after
+partial initialization failure. A provider that ignores cancellation can therefore
+delay process shutdown indefinitely.
 
-One recorder is constructed for each distributor process with customer storage.
-The module depends on storage and runtime overrides, and the distributor depends
-on it. A legacy monolith without customer storage has no recorder. Recorder
-configuration shares `profile_dump` and the existing application registry. The admin target constructs a cleaner that borrows the same storage client.
-Storage teardown waits for its listing and deletion calls as well as recorder
-`Done`. See [Cleaner contracts](CLEANER.md).
+A recorder runs in each distributor process with customer storage. An admin target
+must run retention cleanup against the same bucket and storage prefix.
+See [Cleaner contracts](CLEANER.md).

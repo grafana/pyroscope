@@ -108,22 +108,36 @@ func (r *Recorder) PolicyActive(tenant string) bool {
 // Capture prepares an owned object and attempts a nonblocking enqueue.
 // Work uses the recorder lifecycle and carries only request trace context.
 func (r *Recorder) Capture(ctx context.Context, tenant string, c Candidate) (out Outcome) {
+	return r.capture(ctx, tenant, c, nil)
+}
+
+func (r *Recorder) capture(ctx context.Context, tenant string, c Candidate, series *SeriesCapture) (out Outcome) {
 	if r == nil {
 		return Outcome{Reason: DropDisabled}
 	}
 	source := metricSource(c.Metadata.SourceProtocol)
 	defer func() { r.metrics.admission(source, out) }()
-	now := r.deps.Now()
+	captureTime := r.deps.Now()
 	p := r.deps.Policies.ProfileDebugDump(tenant)
 	if p.Fingerprint() == "" {
 		out.Reason = DropDisabled
 		return
 	}
-	if !p.ActiveAt(now) {
+	if !p.ActiveAt(captureTime) {
 		out.Reason = DropExpired
 		return
 	}
-	if !p.Matches(c.SelectorLabels) {
+	matched := false
+	if series == nil {
+		matched = p.Matches(c.SelectorLabels)
+	} else {
+		if series.fingerprint != p.Fingerprint() {
+			series.matched = p.Matches(series.labels)
+			series.fingerprint = p.Fingerprint()
+		}
+		matched = series.matched
+	}
+	if !matched {
 		out.Reason = DropSelector
 		return
 	}
@@ -138,7 +152,9 @@ func (r *Recorder) Capture(ctx context.Context, tenant string, c Candidate) (out
 		out.Reason = DropSampled
 		return
 	}
-	out.Reason = r.admitRate(tenant, p, now)
+	// Read time under the admission lock so concurrent captures cannot reorder it.
+	admissionTime := r.deps.Now()
+	out.Reason = r.admitRate(tenant, p, admissionTime)
 	if out.Reason != "" {
 		r.mu.Unlock()
 		return
@@ -148,7 +164,7 @@ func (r *Recorder) Capture(ctx context.Context, tenant string, c Candidate) (out
 	defer r.finishPreparation()
 	ctx, finishSpan := startCaptureSpan(ctx)
 	defer func() { finishSpan(out) }()
-	prepared, out := r.prepareCapture(tenant, c, p, now)
+	prepared, out := r.prepareCapture(tenant, c, p, captureTime)
 	if out.Reason != "" {
 		return out
 	}
@@ -256,14 +272,14 @@ func (r *Recorder) reservationSize(objectSize, metadataCapacity int64) (int64, b
 }
 
 // admitRate requires mu and preserves token history across policy changes.
-func (r *Recorder) admitRate(tenant string, p Policy, now time.Time) DropReason {
+func (r *Recorder) admitRate(tenant string, p Policy, admissionTime time.Time) DropReason {
 	if validateText("tenant_id", tenant, MaxTenantBytes, true) != nil {
 		return DropInvalid
 	}
 	l := r.tenants[tenant]
 	if l == nil {
 		if len(r.tenants) >= r.cfg.MaxTenantLimiters {
-			r.pruneLocked(now)
+			r.pruneLocked(admissionTime)
 		}
 		if len(r.tenants) >= r.cfg.MaxTenantLimiters {
 			return DropLimiterCapacity
@@ -271,12 +287,12 @@ func (r *Recorder) admitRate(tenant string, p Policy, now time.Time) DropReason 
 		l = rate.NewLimiter(rate.Limit(p.MaxCapturesPerSecond()), r.cfg.TenantBurst)
 		r.tenants[strings.Clone(tenant)] = l
 	} else if l.Limit() != rate.Limit(p.MaxCapturesPerSecond()) {
-		l.SetLimitAt(now, rate.Limit(p.MaxCapturesPerSecond()))
+		l.SetLimitAt(admissionTime, rate.Limit(p.MaxCapturesPerSecond()))
 	}
-	if !l.AllowN(now, 1) {
+	if !l.AllowN(admissionTime, 1) {
 		return DropTenantRate
 	}
-	if !r.process.AllowN(now, 1) {
+	if !r.process.AllowN(admissionTime, 1) {
 		return DropProcessRate
 	}
 	return ""
@@ -373,7 +389,6 @@ func (r *Recorder) upload(item uploadItem) {
 			result = "canceled"
 		}
 		r.metrics.uploads.WithLabelValues(item.source, result).Inc()
-		r.metrics.uploadErrors.WithLabelValues(item.source).Inc()
 		return
 	}
 	r.metrics.uploads.WithLabelValues(item.source, "success").Inc()

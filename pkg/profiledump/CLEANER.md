@@ -39,7 +39,6 @@ provider reads whole directories, so these limits do not bound total process mem
 Timeouts require provider cooperation. In particular, Swift ignores cancellation
 for listing and deletion, so requests can exceed pass budgets and delay shutdown
 indefinitely. Storage stays open until cleanup and recorder uploads release it.
-Recorder teardown waits for `Done`, even after `Shutdown` returns.
 
 ## Monitoring
 

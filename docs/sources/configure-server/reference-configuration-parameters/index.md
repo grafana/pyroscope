@@ -58,6 +58,9 @@ where `default_value` is the value to use if the environment variable is undefin
 
 ## Configuration parameters
 
+For `profile_dump` activation and admin retention requirements, refer to
+[Capture inflight profiles](../profile-dumping/).
+
 ```yaml
 # Comma-separated list of Pyroscope modules to load. The alias 'all' can be used
 # in the list to load a number of core modules and will enable single-binary
@@ -176,6 +179,9 @@ runtime_config:
   # CLI flag: -runtime-config.http-client-disable-keep-alives
   [http_client_disable_keep_alives: <boolean> | default = true]
 
+# Process bounds for Connect pprof capture and admin retention. These bounds do
+# not activate capture. Activation requires a per-tenant runtime policy with an
+# absolute deadline.
 profile_dump:
   # Capture retention measured from server ULID time. Deletion is eventual. Must
   # be positive. Provisional development default.
@@ -204,8 +210,10 @@ profile_dump:
   # CLI flag: -profile-dump.max-object-bytes
   [max_object_bytes: <int> | default = 16777216]
 
-  # Local recorder byte budget covering preparation, overlapping metadata and
-  # envelope buffers, queueing and uploads. Provisional development default.
+  # Per-distributor budget for admitted capture buffers, including metadata
+  # overlap, item overhead, queueing and uploads. Initial bounded metadata
+  # marshaling and provider allocations are outside this budget. This is not an
+  # RSS limit. Provisional development default.
   # CLI flag: -profile-dump.max-retained-bytes
   [max_retained_bytes: <int> | default = 67108864]
 
@@ -233,7 +241,8 @@ profile_dump:
   # CLI flag: -profile-dump.process-burst
   [process_burst: <int> | default = 2]
 
-  # Timeout for each background capture upload. Provisional development default.
+  # Cooperative timeout for each background capture upload. Providers that
+  # ignore cancellation may exceed it. Provisional development default.
   # CLI flag: -profile-dump.upload-timeout
   [upload_timeout: <duration> | default = 10s]
 

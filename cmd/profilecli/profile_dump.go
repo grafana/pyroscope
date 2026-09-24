@@ -34,10 +34,10 @@ const dumpWarning = "WARNING: extracted files contain raw customer data, includi
 
 type profileDumpParams struct {
 	*bucketParams
-	operation, key, tenant, from, to, source, format, path string
-	limit, maxWork                                         int
-	maxSize                                                int64
-	timeout                                                time.Duration
+	operation, key, tenant, from, to, path string
+	limit, maxWork                         int
+	maxSize                                int64
+	timeout                                time.Duration
 }
 
 func addProfileDumpCommands(app *kingpin.Application) map[string]*profileDumpParams {
@@ -50,8 +50,7 @@ func addProfileDumpCommands(app *kingpin.Application) map[string]*profileDumpPar
 			dumpExtract: "Extract unchanged native bytes and a .metadata.json sidecar. Never overwrite existing files.",
 		}[operation])
 		p := &profileDumpParams{bucketParams: &bucketParams{}, operation: operation}
-		// Bind the existing storage flags directly, retaining all providers, credentials,
-		// encryption and transport options without a second configuration schema.
+		// Reuse storage flags for the same providers and credentials.
 		fs := flag.NewFlagSet("storage", flag.ContinueOnError)
 		p.objectStoreCfg.RegisterFlagsWithPrefix("storage.", fs)
 		fs.VisitAll(func(f *flag.Flag) { cmd.Flag(f.Name, f.Usage).SetValue(f.Value) })
@@ -61,8 +60,6 @@ func addProfileDumpCommands(app *kingpin.Application) map[string]*profileDumpPar
 			cmd.Flag("tenant-id", "Tenant to select. Customer-cloud permissions remain authoritative.").Required().StringVar(&p.tenant)
 			cmd.Flag("from", "Inclusive capture time, RFC3339 (not client profile time).").Required().StringVar(&p.from)
 			cmd.Flag("to", "Exclusive capture time, RFC3339.").Required().StringVar(&p.to)
-			cmd.Flag("source", "Source protocol. Requires bounded metadata reads.").EnumVar(&p.source, "connect")
-			cmd.Flag("format", "Native format in the key.").EnumVar(&p.format, "pprof")
 			cmd.Flag("limit", "Maximum results. Reaching it marks results limited.").Default("100").IntVar(&p.limit)
 			cmd.Flag("max-work", "Maximum sum of listing calls, entries visited, and metadata storage calls (3 per candidate).").Default("10000").IntVar(&p.maxWork)
 		} else {
@@ -95,7 +92,6 @@ func profileDump(ctx context.Context, p *profileDumpParams) (err error) {
 	return runProfileDump(ctx, b, p, output(ctx), consoleOutput)
 }
 
-// The retrieval implementation only receives a reader, never a writable bucket.
 func runProfileDump(ctx context.Context, b objstore.BucketReader, p *profileDumpParams, out, status io.Writer) error {
 	switch p.operation {
 	case "list":
@@ -289,7 +285,7 @@ func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDu
 			}
 			// Keys are millisecond precision: include the boundary millisecond and
 			// apply exact sub-millisecond filtering using captured_at below.
-			if k.CaptureTime.Before(from.Truncate(time.Millisecond)) || !k.CaptureTime.Before(to) || (p.format != "" && string(k.Format) != p.format) {
+			if k.CaptureTime.Before(from.Truncate(time.Millisecond)) || !k.CaptureTime.Before(to) {
 				return nil
 			}
 			if err := spend(3); err != nil {
@@ -308,7 +304,7 @@ func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDu
 				return err
 			}
 			m := info.Metadata
-			if m.CapturedAt.Before(from) || !m.CapturedAt.Before(to) || (p.source != "" && string(m.SourceProtocol) != p.source) {
+			if m.CapturedAt.Before(from) || !m.CapturedAt.Before(to) {
 				return nil
 			}
 			result.Captures = append(result.Captures, dumpListEntry{key, m.CapturedAt, m.SourceProtocol, m.NativeFormat, m.PayloadSize})

@@ -3,6 +3,10 @@
 Retrieve Connect pprof captures from the customer bucket. Supports capture format
 v1 and preserves native payload bytes, including compression and malformed pprof.
 
+See [runtime activation](../../docs/sources/configure-server/profile-dumping/index.md#activation)
+and [admin retention](../../docs/sources/configure-server/profile-dumping/index.md#admin-retention)
+for enabling capture and running cleanup against the same bucket and storage prefix.
+
 ## Synopsis
 
 ```text
@@ -46,12 +50,6 @@ profilecli profile-dump extract [OPTIONS] KEY [--output=PATH]
     Required. Exclusive server capture time in RFC3339, allowing fractional
     seconds. Must fall in year 9999 or earlier.
 
---source=connect
-    Optional source filter. Only connect is supported.
-
---format=pprof
-    Optional native-format filter. Only pprof is supported.
-
 --limit=COUNT
     Default: 100. Must be positive.
     Maximum returned captures. Reaching the limit marks results incomplete.
@@ -70,7 +68,7 @@ profilecli profile-dump extract [OPTIONS] KEY [--output=PATH]
     Optional native payload destination.
     Default: CAPTURE_ID.pprof, CAPTURE_ID.pprof.gz or CAPTURE_ID.pprof.encoded
     in the current directory, according to the declared payload encoding.
-    Original metadata is written to PATH.metadata.json.
+    Decoded metadata is written as formatted JSON to PATH.metadata.json.
     The directory must exist and support hard links.
     Existing files and symlinks are never overwritten.
 ```
@@ -91,12 +89,13 @@ exit status. Inspect and extract distinguish missing objects, corrupt envelopes
 and storage-access failures. A missing object may still be uploading or its
 upload may have failed, or admin retention cleanup may have deleted it.
 
-Extraction creates private mode-0600 files and cleans temporary or newly
-published files on failure. The payload and sidecar are not crash-atomic, so an
-abrupt process termination can leave the metadata file alone. Extracted data is
+Extraction creates private mode-0600 files and attempts to remove temporary and
+newly published files on failure, reporting cleanup errors. The payload and sidecar
+are not crash-atomic, so abrupt process termination can leave the metadata file
+alone. Extracted data is
 not sanitized. Envelope validation and filename extensions do not establish
 native-format validity, integrity or authenticity. There is no checksum, profile
-conversion or multipart part extraction.
+conversion.
 
 ## Example
 
