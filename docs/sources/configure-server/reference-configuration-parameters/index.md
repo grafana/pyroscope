@@ -571,7 +571,7 @@ grpc_tls_config:
 # streams(RPCs). If false, and client sends ping when there are no active
 # streams, server will send GOAWAY and close the connection.
 # CLI flag: -server.grpc.keepalive.ping-without-stream-allowed
-[grpc_server_ping_without_stream_allowed: <boolean> | default = false]
+[grpc_server_ping_without_stream_allowed: <boolean> | default = true]
 
 # If non-zero, configures the amount of GRPC server workers used to serve the
 # requests.

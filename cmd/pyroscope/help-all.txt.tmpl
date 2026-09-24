@@ -1310,7 +1310,7 @@ Usage of ./pyroscope:
   -server.grpc.keepalive.min-time-between-pings duration
     	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 1s)
   -server.grpc.keepalive.ping-without-stream-allowed
-    	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection.
+    	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection. (default true)
   -server.grpc.keepalive.time duration
     	Duration after which a keepalive probe is sent in case of no activity over the connection., Default: 2h (default 2h0m0s)
   -server.grpc.keepalive.timeout duration
