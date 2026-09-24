@@ -263,6 +263,19 @@ func (r *Router) AnalyzeQuery(
 	return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
 }
 
+// QueryAnomalies only has a real implementation on the new query-frontend (it needs that
+// backend's own SelectMergeStacktraces in-process, not something meaningful to merge across
+// old and new backends).
+func (r *Router) QueryAnomalies(
+	ctx context.Context,
+	req *connect.Request[querierv1.QueryAnomaliesRequest],
+) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	if r.newFrontend != nil {
+		return r.newFrontend.QueryAnomalies(ctx, req)
+	}
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("QueryAnomalies requires the v2 query-frontend"))
+}
+
 func (r *Router) GetProfileStats(
 	ctx context.Context,
 	c *connect.Request[typesv1.GetProfileStatsRequest],

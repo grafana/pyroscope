@@ -986,6 +986,52 @@ components:
           format: byte
       title: PprofReport
       additionalProperties: false
+    query.v1.ProfilePresenceEntry:
+      type: object
+      properties:
+        profileId:
+          type: string
+          title: profile_id
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: |-
+            The profile's own labels (e.g. pod, instance), same convention as
+             types.v1.Exemplar.labels.
+      title: ProfilePresenceEntry
+      additionalProperties: false
+    query.v1.ProfilePresenceQuery:
+      type: object
+      properties:
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
+      title: ProfilePresenceQuery
+      additionalProperties: false
+      description: |-
+        ProfilePresenceQuery checks which of profile_id_selector are actually present in the
+         queried data (matching the label selector and time range), without resolving symbols or
+         building a merged profile -- this is cheaper than TreeQuery/PprofQuery for that purpose, and
+         unlike those, it checks the whole profile_id_selector in a single query rather than needing
+         one query per candidate ID.
+    query.v1.ProfilePresenceReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.ProfilePresenceQuery'
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.ProfilePresenceEntry'
+          title: profiles
+          description: The subset of query.profile_id_selector found present, one entry per profile.
+      title: ProfilePresenceReport
+      additionalProperties: false
     query.v1.Query:
       type: object
       properties:
@@ -1018,12 +1064,15 @@ components:
           $ref: '#/components/schemas/query.v1.HeatmapQuery'
         timeSeriesCompact:
           title: time_series_compact
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        profilePresence:
+          title: profile_presence
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+          $ref: '#/components/schemas/query.v1.ProfilePresenceQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1113,6 +1162,7 @@ components:
         - QUERY_PPROF
         - QUERY_HEATMAP
         - QUERY_TIME_SERIES_COMPACT
+        - QUERY_PROFILE_PRESENCE
     query.v1.Report:
       type: object
       properties:
@@ -1146,6 +1196,9 @@ components:
         timeSeriesCompact:
           title: time_series_compact
           $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
+        profilePresence:
+          title: profile_presence
+          $ref: '#/components/schemas/query.v1.ProfilePresenceReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1161,6 +1214,7 @@ components:
         - REPORT_PPROF
         - REPORT_HEATMAP
         - REPORT_TIME_SERIES_COMPACT
+        - REPORT_PROFILE_PRESENCE
     query.v1.Series:
       type: object
       properties:

@@ -71,6 +71,9 @@ const (
 	// QuerierServiceAnalyzeQueryProcedure is the fully-qualified name of the QuerierService's
 	// AnalyzeQuery RPC.
 	QuerierServiceAnalyzeQueryProcedure = "/querier.v1.QuerierService/AnalyzeQuery"
+	// QuerierServiceQueryAnomaliesProcedure is the fully-qualified name of the QuerierService's
+	// QueryAnomalies RPC.
+	QuerierServiceQueryAnomaliesProcedure = "/querier.v1.QuerierService/QueryAnomalies"
 )
 
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
@@ -113,6 +116,9 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
+	// QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
+	// flagged as anomalies by an external anomaly source (see anomaly_type).
+	QueryAnomalies(context.Context, *connect.Request[v1.QueryAnomaliesRequest]) (*connect.Response[v1.QueryAnomaliesResponse], error)
 }
 
 // NewQuerierServiceClient constructs a client for the querier.v1.QuerierService service. By
@@ -198,6 +204,12 @@ func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 			connect.WithClientOptions(opts...),
 		),
+		queryAnomalies: connect.NewClient[v1.QueryAnomaliesRequest, v1.QueryAnomaliesResponse](
+			httpClient,
+			baseURL+QuerierServiceQueryAnomaliesProcedure,
+			connect.WithSchema(querierServiceMethods.ByName("QueryAnomalies")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -215,6 +227,7 @@ type querierServiceClient struct {
 	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
 	getProfileStats        *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
 	analyzeQuery           *connect.Client[v1.AnalyzeQueryRequest, v1.AnalyzeQueryResponse]
+	queryAnomalies         *connect.Client[v1.QueryAnomaliesRequest, v1.QueryAnomaliesResponse]
 }
 
 // ProfileTypes calls querier.v1.QuerierService.ProfileTypes.
@@ -277,6 +290,11 @@ func (c *querierServiceClient) AnalyzeQuery(ctx context.Context, req *connect.Re
 	return c.analyzeQuery.CallUnary(ctx, req)
 }
 
+// QueryAnomalies calls querier.v1.QuerierService.QueryAnomalies.
+func (c *querierServiceClient) QueryAnomalies(ctx context.Context, req *connect.Request[v1.QueryAnomaliesRequest]) (*connect.Response[v1.QueryAnomaliesResponse], error) {
+	return c.queryAnomalies.CallUnary(ctx, req)
+}
+
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
 	// ProfileType returns a list of the existing profile types.
@@ -317,6 +335,9 @@ type QuerierServiceHandler interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
+	// QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
+	// flagged as anomalies by an external anomaly source (see anomaly_type).
+	QueryAnomalies(context.Context, *connect.Request[v1.QueryAnomaliesRequest]) (*connect.Response[v1.QueryAnomaliesResponse], error)
 }
 
 // NewQuerierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -398,6 +419,12 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 		connect.WithSchema(querierServiceMethods.ByName("AnalyzeQuery")),
 		connect.WithHandlerOptions(opts...),
 	)
+	querierServiceQueryAnomaliesHandler := connect.NewUnaryHandler(
+		QuerierServiceQueryAnomaliesProcedure,
+		svc.QueryAnomalies,
+		connect.WithSchema(querierServiceMethods.ByName("QueryAnomalies")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case QuerierServiceProfileTypesProcedure:
@@ -424,6 +451,8 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 			querierServiceGetProfileStatsHandler.ServeHTTP(w, r)
 		case QuerierServiceAnalyzeQueryProcedure:
 			querierServiceAnalyzeQueryHandler.ServeHTTP(w, r)
+		case QuerierServiceQueryAnomaliesProcedure:
+			querierServiceQueryAnomaliesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -479,4 +508,8 @@ func (UnimplementedQuerierServiceHandler) GetProfileStats(context.Context, *conn
 
 func (UnimplementedQuerierServiceHandler) AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.AnalyzeQuery is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) QueryAnomalies(context.Context, *connect.Request[v1.QueryAnomaliesRequest]) (*connect.Response[v1.QueryAnomaliesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.QueryAnomalies is not implemented"))
 }
