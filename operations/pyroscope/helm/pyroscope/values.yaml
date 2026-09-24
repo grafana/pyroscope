@@ -496,6 +496,12 @@ agent:
 # -------------------------------------
 minio:
   enabled: false
+  image:
+    repository: pgsty/silo
+    tag: RELEASE.2026-09-16T00-00-00Z
+  mcImage:
+    repository: pgsty/mc
+    tag: RELEASE.2026-09-16T00-00-00Z
   replicas: 1
   # Minio requires 2 to 16 drives for erasure code (drivesPerNode * replicas)
   # https://docs.min.io/docs/minio-erasure-code-quickstart-guide
