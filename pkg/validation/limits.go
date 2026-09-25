@@ -54,6 +54,8 @@ type Limits struct {
 	MaxProfileStacktraceDepth        int `yaml:"max_profile_stacktrace_depth" json:"max_profile_stacktrace_depth"`
 	MaxProfileSymbolValueLength      int `yaml:"max_profile_symbol_value_length" json:"max_profile_symbol_value_length"`
 
+	InvalidUTF8Strings InvalidUTF8Mode `yaml:"invalid_utf8_strings" json:"invalid_utf8_strings" category:"advanced"`
+
 	// Distributor per-app usage breakdown.
 	DistributorUsageGroups *UsageGroupConfig `yaml:"distributor_usage_groups" json:"distributor_usage_groups"`
 
@@ -198,6 +200,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceSampleLabels, "validation.max-profile-stacktrace-sample-labels", 100, "Maximum number of labels in a profile sample. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
+	_ = l.InvalidUTF8Strings.Set(string(InvalidUTF8Disabled))
+	f.Var(&l.InvalidUTF8Strings, "validation.invalid-utf8-strings", "How to handle invalid UTF-8 strings in profiles. 'disabled' rejects the profile, 'replace_string' replaces invalid strings with 'utf8_invalid', 'replace_stacktrace' replaces stacktraces referencing invalid strings with a single 'utf8_invalid' frame and any other invalid strings with 'utf8_invalid'.")
 
 	f.IntVar(&l.MaxFlameGraphNodesDefault, "querier.max-flamegraph-nodes-default", 8<<10, "Maximum number of flame graph nodes by default. 0 to disable.")
 	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
@@ -262,6 +266,12 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (l *Limits) Validate() error {
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
+			return err
+		}
+	}
+
+	if l.InvalidUTF8Strings != "" {
+		if err := l.InvalidUTF8Strings.Set(string(l.InvalidUTF8Strings)); err != nil {
 			return err
 		}
 	}
@@ -400,6 +410,10 @@ func (o *Overrides) MaxProfileStacktraceDepth(tenantID string) int {
 // MaxProfileSymbolValueLength returns the maximum length of a profile symbol value (labels, function name and filename, etc...).
 func (o *Overrides) MaxProfileSymbolValueLength(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxProfileSymbolValueLength
+}
+
+func (o *Overrides) InvalidUTF8Strings(tenantID string) InvalidUTF8Mode {
+	return o.getOverridesForTenant(tenantID).InvalidUTF8Strings
 }
 
 // MaxSessionsPerSeries returns the maximum number of sessions per single series.

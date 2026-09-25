@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -276,9 +277,33 @@ type ProfileValidationLimits interface {
 	MaxProfileStacktraceSampleLabels(tenantID string) int
 	MaxProfileStacktraceDepth(tenantID string) int
 	MaxProfileSymbolValueLength(tenantID string) int
+	InvalidUTF8Strings(tenantID string) InvalidUTF8Mode
 	RejectNewerThan(tenantID string) time.Duration
 	RejectOlderThan(tenantID string) time.Duration
 }
+
+type InvalidUTF8Mode string
+
+const (
+	InvalidUTF8Disabled          InvalidUTF8Mode = "disabled"
+	InvalidUTF8ReplaceString     InvalidUTF8Mode = "replace_string"
+	InvalidUTF8ReplaceStacktrace InvalidUTF8Mode = "replace_stacktrace"
+)
+
+func (m *InvalidUTF8Mode) Set(s string) error {
+	switch v := InvalidUTF8Mode(s); v {
+	case InvalidUTF8Disabled, InvalidUTF8ReplaceString, InvalidUTF8ReplaceStacktrace:
+		*m = v
+		return nil
+	}
+	return fmt.Errorf("invalid invalid_utf8_strings: %s", s)
+}
+
+func (m *InvalidUTF8Mode) String() string {
+	return string(*m)
+}
+
+const invalidUTF8Placeholder = "utf8_invalid"
 
 type ingestionWindow struct {
 	from, to model.Time
@@ -392,12 +417,97 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 		// todo check if sample type is valid from the promql parser perspective
 	}
 
+	if mode := limits.InvalidUTF8Strings(tenantID); mode == InvalidUTF8ReplaceString || mode == InvalidUTF8ReplaceStacktrace {
+		repairInvalidUTF8(prof, mode)
+	}
 	for _, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
 			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
 		}
 	}
 	return ValidatedProfile{Profile: prof}, nil
+}
+
+func repairInvalidUTF8(prof *pprof.Profile, mode InvalidUTF8Mode) {
+	invalid := make(map[int64]struct{})
+	for i, s := range prof.StringTable {
+		if !utf8.ValidString(s) {
+			invalid[int64(i)] = struct{}{}
+		}
+	}
+	if len(invalid) == 0 {
+		return
+	}
+	isInvalid := func(i int64) bool {
+		_, ok := invalid[i]
+		return ok
+	}
+	if mode == InvalidUTF8ReplaceStacktrace {
+		replaceInvalidStacktraces(prof, isInvalid)
+	}
+	for i := range invalid {
+		prof.StringTable[i] = invalidUTF8Placeholder
+	}
+}
+
+func replaceInvalidStacktraces(prof *pprof.Profile, isInvalid func(int64) bool) {
+	var maxFunctionID, maxLocationID uint64
+	badFunctions := make(map[uint64]struct{})
+	for _, fn := range prof.Function {
+		maxFunctionID = max(maxFunctionID, fn.Id)
+		if isInvalid(fn.Name) || isInvalid(fn.SystemName) || isInvalid(fn.Filename) {
+			badFunctions[fn.Id] = struct{}{}
+		}
+	}
+	badMappings := make(map[uint64]struct{})
+	for _, m := range prof.Mapping {
+		if isInvalid(m.Filename) || isInvalid(m.BuildId) {
+			badMappings[m.Id] = struct{}{}
+		}
+	}
+	badLocations := make(map[uint64]struct{})
+	for _, loc := range prof.Location {
+		maxLocationID = max(maxLocationID, loc.Id)
+		if _, ok := badMappings[loc.MappingId]; ok {
+			badLocations[loc.Id] = struct{}{}
+			continue
+		}
+		for _, line := range loc.Line {
+			if _, ok := badFunctions[line.FunctionId]; ok {
+				badLocations[loc.Id] = struct{}{}
+				break
+			}
+		}
+	}
+	if len(badLocations) == 0 {
+		return
+	}
+	var replacementLocationID uint64
+	for _, s := range prof.Sample {
+		if !slices.ContainsFunc(s.LocationId, func(id uint64) bool {
+			_, ok := badLocations[id]
+			return ok
+		}) {
+			continue
+		}
+		if replacementLocationID == 0 {
+			replacementLocationID = addInvalidUTF8Location(prof, maxFunctionID+1, maxLocationID+1)
+		}
+		s.LocationId = []uint64{replacementLocationID}
+	}
+}
+
+func addInvalidUTF8Location(prof *pprof.Profile, functionID, locationID uint64) uint64 {
+	prof.StringTable = append(prof.StringTable, invalidUTF8Placeholder)
+	prof.Function = append(prof.Function, &profilev1.Function{
+		Id:   functionID,
+		Name: int64(len(prof.StringTable) - 1),
+	})
+	prof.Location = append(prof.Location, &profilev1.Location{
+		Id:   locationID,
+		Line: []*profilev1.Line{{FunctionId: functionID}},
+	})
+	return locationID
 }
 
 func validateStringTableAccess(prof *pprof.Profile) error {

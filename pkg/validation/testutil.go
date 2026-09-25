@@ -32,6 +32,7 @@ type MockLimits struct {
 	MaxProfileStacktraceDepthValue        int
 	MaxProfileStacktraceSampleLabelsValue int
 	MaxProfileSymbolValueLengthValue      int
+	InvalidUTF8StringsValue               InvalidUTF8Mode
 
 	MaxQueriersPerTenantValue int
 
@@ -93,6 +94,10 @@ func (m MockLimits) MaxProfileStacktraceSampleLabels(userID string) int {
 
 func (m MockLimits) MaxProfileSymbolValueLength(userID string) int {
 	return m.MaxProfileSymbolValueLengthValue
+}
+
+func (m MockLimits) InvalidUTF8Strings(userID string) InvalidUTF8Mode {
+	return m.InvalidUTF8StringsValue
 }
 
 func (m MockLimits) MaxQueriersPerTenant(_ string) int {

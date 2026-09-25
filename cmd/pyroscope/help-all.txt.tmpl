@@ -1645,6 +1645,8 @@ Usage of ./pyroscope:
     	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation. (default true)
   -validation.enforce-labels-order
     	Enforce labels order optimization.
+  -validation.invalid-utf8-strings value
+    	How to handle invalid UTF-8 strings in profiles. 'disabled' rejects the profile, 'replace_string' replaces invalid strings with 'utf8_invalid', 'replace_stacktrace' replaces stacktraces referencing invalid strings with a single 'utf8_invalid' frame and any other invalid strings with 'utf8_invalid'. (default "disabled")
   -validation.max-label-names-per-series int
     	Maximum number of label names per series. (default 30)
   -validation.max-length-label-name int
