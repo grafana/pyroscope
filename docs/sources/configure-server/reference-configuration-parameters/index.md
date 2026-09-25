@@ -3201,6 +3201,13 @@ The `limits` block configures default and per-tenant limits imposed by component
 # CLI flag: -validation.max-profile-symbol-value-length
 [max_profile_symbol_value_length: <int> | default = 65535]
 
+# (advanced) How to handle invalid UTF-8 strings in profiles. 'disabled' rejects
+# the profile, 'replace_string' replaces invalid strings with 'utf8_invalid',
+# 'replace_stacktrace' replaces stacktraces referencing invalid strings with a
+# single 'utf8_invalid' frame and any other invalid strings with 'utf8_invalid'.
+# CLI flag: -validation.invalid-utf8-strings
+[invalid_utf8_strings: <string> | default = "disabled"]
+
 distributor_usage_groups:
 
 # Duration of the distributor aggregation window. Requires aggregation period to
