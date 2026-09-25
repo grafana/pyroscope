@@ -357,8 +357,12 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 	}
 	if symbolLengthLimit > 0 {
 		for i := range prof.StringTable {
-			if len(prof.StringTable[i]) > symbolLengthLimit {
-				prof.StringTable[i] = prof.StringTable[i][len(prof.StringTable[i])-symbolLengthLimit:]
+			if s := prof.StringTable[i]; len(s) > symbolLengthLimit {
+				start := len(s) - symbolLengthLimit
+				for start < len(s) && !utf8.RuneStart(s[start]) {
+					start++
+				}
+				prof.StringTable[i] = s[start:]
 			}
 		}
 	}
