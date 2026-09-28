@@ -697,6 +697,12 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		groups.CountDiscardedBytes(reason, req.TotalBytesUncompressed)
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if validated.SanitizedInvalidUTF8Strings > 0 {
+		finalLog.addFields(
+			"sanitized_invalid_utf8_strings", validated.SanitizedInvalidUTF8Strings,
+			"sanitized_invalid_utf8_samples", validated.SanitizedInvalidUTF8Samples,
+		)
+	}
 
 	symbolsSize, samplesSize := profileSizeBytes(p.Profile, int64(decompressedSize))
 	d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))

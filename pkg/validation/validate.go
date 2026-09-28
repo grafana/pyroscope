@@ -117,6 +117,22 @@ var (
 		},
 		[]string{"tenant"},
 	)
+
+	sanitizedInvalidUTF8Profiles = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "sanitized_invalid_utf8_profiles_total",
+			Help:      "The total number of profiles in which invalid UTF-8 strings were replaced.",
+		},
+	)
+
+	sanitizedInvalidUTF8Samples = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Name:      "sanitized_invalid_utf8_samples_total",
+			Help:      "The total number of samples whose stacktraces were replaced due to invalid UTF-8 strings.",
+		},
+	)
 )
 
 type LabelValidationLimits interface {
@@ -340,6 +356,8 @@ func (iw *ingestionWindow) valid(t model.Time, ls phlaremodel.Labels) error {
 
 type ValidatedProfile struct {
 	*pprof.Profile
+	SanitizedInvalidUTF8Strings int
+	SanitizedInvalidUTF8Samples int
 }
 
 func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *pprof.Profile, uncompressedSize int, ls phlaremodel.Labels, now model.Time) (ValidatedProfile, error) {
@@ -416,18 +434,23 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 		// todo check if sample type is valid from the promql parser perspective
 	}
 
+	validated := ValidatedProfile{Profile: prof}
 	if limits.InvalidUTF8Strings(tenantID) == InvalidUTF8ReplaceStacktrace {
-		sanitizeInvalidUTF8(prof)
+		validated.SanitizedInvalidUTF8Strings, validated.SanitizedInvalidUTF8Samples = sanitizeInvalidUTF8(prof)
+		if validated.SanitizedInvalidUTF8Strings > 0 {
+			sanitizedInvalidUTF8Profiles.Inc()
+			sanitizedInvalidUTF8Samples.Add(float64(validated.SanitizedInvalidUTF8Samples))
+		}
 	}
 	for _, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
 			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
 		}
 	}
-	return ValidatedProfile{Profile: prof}, nil
+	return validated, nil
 }
 
-func sanitizeInvalidUTF8(prof *pprof.Profile) {
+func sanitizeInvalidUTF8(prof *pprof.Profile) (invalidStrings, replacedSamples int) {
 	invalid := make(map[int64]struct{})
 	for i, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
@@ -435,19 +458,20 @@ func sanitizeInvalidUTF8(prof *pprof.Profile) {
 		}
 	}
 	if len(invalid) == 0 {
-		return
+		return 0, 0
 	}
 	isInvalid := func(i int64) bool {
 		_, ok := invalid[i]
 		return ok
 	}
-	replaceInvalidStacktraces(prof, isInvalid)
+	replacedSamples = replaceInvalidStacktraces(prof, isInvalid)
 	for i := range invalid {
 		prof.StringTable[i] = invalidUTF8Placeholder
 	}
+	return len(invalid), replacedSamples
 }
 
-func replaceInvalidStacktraces(prof *pprof.Profile, isInvalid func(int64) bool) {
+func replaceInvalidStacktraces(prof *pprof.Profile, isInvalid func(int64) bool) (replacedSamples int) {
 	var maxFunctionID, maxLocationID uint64
 	badFunctions := make(map[uint64]struct{})
 	for _, fn := range prof.Function {
@@ -477,7 +501,7 @@ func replaceInvalidStacktraces(prof *pprof.Profile, isInvalid func(int64) bool) 
 		}
 	}
 	if len(badLocations) == 0 {
-		return
+		return 0
 	}
 	var replacementLocationID uint64
 	for _, s := range prof.Sample {
@@ -491,7 +515,9 @@ func replaceInvalidStacktraces(prof *pprof.Profile, isInvalid func(int64) bool) 
 			replacementLocationID = addInvalidUTF8Location(prof, maxFunctionID+1, maxLocationID+1)
 		}
 		s.LocationId = []uint64{replacementLocationID}
+		replacedSamples++
 	}
+	return replacedSamples
 }
 
 func addInvalidUTF8Location(prof *pprof.Profile, functionID, locationID uint64) uint64 {
