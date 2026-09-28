@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -81,6 +82,9 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 	anomalies, err := q.anomalyAPI.ListAnomalies(ctx, tenantIDs[0], serviceNames,
 		time.UnixMilli(req.Start), time.UnixMilli(req.End))
 	if err != nil {
+		if errors.Is(err, anomalyapi.ErrTooManyServices) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("listing anomalies: %w", err))
 	}
 

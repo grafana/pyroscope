@@ -3,6 +3,7 @@ package anomalyapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -50,10 +51,12 @@ type listAnomaliesResponse struct {
 
 const maxServiceNames = 200
 
+var ErrTooManyServices = errors.New("too many services for a single anomaly query")
+
 // ListAnomalies returns anomalies recorded for tenantID/serviceNames, observed within [start, end].
 func (c *Client) ListAnomalies(ctx context.Context, tenantID string, serviceNames []string, start, end time.Time) ([]Anomaly, error) {
 	if len(serviceNames) > maxServiceNames {
-		return nil, fmt.Errorf("query resolved to %d services, exceeding the %d-service limit per anomaly query", len(serviceNames), maxServiceNames)
+		return nil, fmt.Errorf("%w: query resolved to %d services, exceeding the %d-service limit", ErrTooManyServices, len(serviceNames), maxServiceNames)
 	}
 
 	v := url.Values{
