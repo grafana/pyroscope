@@ -783,6 +783,32 @@ func TestValidateProfile(t *testing.T) {
 			},
 		},
 		{
+			"reject invalid utf8 in truncated prefix",
+			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{"", "\xffabc"},
+			},
+			0,
+			MockLimits{
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			NewErrorf(MalformedProfile, "invalid utf8 string hex: ff616263"),
+			nil,
+		},
+		{
+			"reject invalid utf8 in kept suffix",
+			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{"", "abc\xff"},
+			},
+			0,
+			MockLimits{
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			NewErrorf(MalformedProfile, "invalid utf8 string hex: 616263ff"),
+			nil,
+		},
+		{
 			name: "newer than ingestion window",
 			profile: &googlev1.Profile{
 				SampleType: []*googlev1.ValueType{{}},
