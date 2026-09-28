@@ -294,7 +294,9 @@ func blockTombstonesForCompletedJob(job *raft_log.CompletedCompactionJob) *metas
 // rejected compaction job. The object path of a block depends on its tenant,
 // shard, and compaction level, therefore the blocks are grouped by these
 // fields. The groups are created in the order of the input blocks, and the
-// names are derived from the job name: the result is deterministic.
+// names are derived from the job name and the first block ID in the group:
+// the result is deterministic for a given output set and remains unique across
+// retries that produce different output ULIDs.
 func tombstonesForRejectedBlocks(job string, blocks []*metastorev1.BlockMeta) []*metastorev1.Tombstones {
 	type groupKey struct {
 		tenant string
@@ -312,7 +314,7 @@ func tombstonesForRejectedBlocks(job string, blocks []*metastorev1.BlockMeta) []
 		g, ok := groups[k]
 		if !ok {
 			g = &metastorev1.BlockTombstones{
-				Name:            fmt.Sprintf("%s-rejected-%d", job, len(tombstones)),
+				Name:            fmt.Sprintf("%s-rejected-%s", job, b.Id),
 				Tenant:          k.tenant,
 				Shard:           k.shard,
 				CompactionLevel: k.level,

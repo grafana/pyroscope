@@ -380,11 +380,11 @@ func TestTombstonesForRejectedBlocks(t *testing.T) {
 
 	expected := []*metastorev1.Tombstones{
 		{Blocks: &metastorev1.BlockTombstones{
-			Name: "job-rejected-0", Tenant: "t1", Shard: 1, CompactionLevel: 1,
+			Name: "job-rejected-a", Tenant: "t1", Shard: 1, CompactionLevel: 1,
 			Blocks: []string{"a", "c"},
 		}},
 		{Blocks: &metastorev1.BlockTombstones{
-			Name: "job-rejected-1", Tenant: "t2", Shard: 1, CompactionLevel: 1,
+			Name: "job-rejected-b", Tenant: "t2", Shard: 1, CompactionLevel: 1,
 			Blocks: []string{"b"},
 		}},
 	}
