@@ -2,6 +2,7 @@ package anomalyapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,5 +58,26 @@ func TestListAnomalies_NonOKStatus(t *testing.T) {
 
 	client := New(Config{URL: server.URL}, nil)
 	_, err := client.ListAnomalies(context.Background(), "tenant-1", []string{"svc-a"}, time.Now(), time.Now())
+	require.Error(t, err)
+}
+
+// TestListAnomalies_TooManyServices guards against a broad or empty selector resolving to
+// enough services that repeated service_name params alone could blow past a proxy's URL
+// length limit: ListAnomalies must reject it up front rather than fire an oversized request.
+func TestListAnomalies_TooManyServices(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("anomaly source should not be called when the service list exceeds the limit")
+	}))
+	defer server.Close()
+
+	client := New(Config{URL: server.URL}, nil)
+	require.NotNil(t, client)
+
+	serviceNames := make([]string, maxServiceNames+1)
+	for i := range serviceNames {
+		serviceNames[i] = fmt.Sprintf("svc-%d", i)
+	}
+
+	_, err := client.ListAnomalies(context.Background(), "tenant-1", serviceNames, time.Now(), time.Now())
 	require.Error(t, err)
 }
