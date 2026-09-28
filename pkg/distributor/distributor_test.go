@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
@@ -33,6 +34,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -45,6 +47,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/pprof"
 	pproftesthelper "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -165,6 +168,118 @@ func Test_Replication(t *testing.T) {
 	resp, err = d.Push(ctx, req)
 	require.Error(t, err)
 	require.Nil(t, resp)
+}
+
+func TestPush_DeterministicProfileIDs(t *testing.T) {
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.ProfileIDDeterministic = true
+	})
+	d, ing, err := newTestDistributor(t, log.NewNopLogger(), overrides)
+	require.NoError(t, err)
+
+	profile := collectTestProfileBytes(t)
+	parsed, err := pprof2.RawFromBytes(profile)
+	require.NoError(t, err)
+	labels := []*typesv1.LabelPair{
+		{Name: "__name__", Value: "cpu"},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service"},
+	}
+	ctx := trace.ContextWithSpanContext(
+		tenant.InjectTenantID(context.Background(), "tenant"),
+		trace.NewSpanContext(trace.SpanContextConfig{
+			TraceID: trace.TraceID{15: 1},
+			SpanID:  trace.SpanID{7: 1},
+		}),
+	)
+	_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
+		Labels:  labels,
+		Samples: []*pushv1.RawSample{{RawProfile: profile}, {RawProfile: profile}},
+	}}}))
+	require.NoError(t, err)
+
+	ids := make(map[string]struct{})
+	for _, request := range ing.requests {
+		for _, series := range request.Series {
+			for _, sample := range series.Samples {
+				ids[sample.ID] = struct{}{}
+			}
+		}
+	}
+	expectedID, source := profileid.Generate("tenant", "cpu", labels, parsed.TimeNanos, "00000000000000000000000000000001")
+	require.Equal(t, profileid.SourceTimestamp, source)
+	require.Equal(t, map[string]struct{}{expectedID.String(): {}}, ids)
+}
+
+func TestEnsureProfileIDs_Metrics(t *testing.T) {
+	metrics := newMetrics(prometheus.NewRegistry())
+	d := &Distributor{
+		limits: validation.MockOverrides(func(defaults *validation.Limits, _ map[string]*validation.Limits) {
+			defaults.ProfileIDDeterministic = true
+		}),
+		metrics: metrics,
+	}
+	labels := []*typesv1.LabelPair{{Name: ProfileName, Value: "cpu"}}
+	withTimestamp := &distributormodel.ProfileSeries{Labels: labels, OriginalTimeNanos: 1000}
+	withTraceID := &distributormodel.ProfileSeries{Labels: labels}
+	withoutTimestampOrTraceID := &distributormodel.ProfileSeries{Labels: labels}
+	userSupplied := &distributormodel.ProfileSeries{Labels: labels, ID: uuid.NewString()}
+
+	d.ensureProfileIDs("tenant", "00000000000000000000000000000001", []*distributormodel.ProfileSeries{withTimestamp, withTraceID, userSupplied})
+	d.ensureProfileIDs("tenant", "", []*distributormodel.ProfileSeries{withoutTimestampOrTraceID})
+
+	assert.NotEmpty(t, withTimestamp.ID)
+	assert.NotEmpty(t, withTraceID.ID)
+	assert.NotEmpty(t, withoutTimestampOrTraceID.ID)
+	assert.NotEmpty(t, userSupplied.ID)
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceUserSupplied))))
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceTimestamp))))
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceTraceID))))
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceRandom))))
+}
+
+func TestPushBatch_NoUpstreamTraceUsesRandomID(t *testing.T) {
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.ProfileIDDeterministic = true
+	})
+	d, _, err := newTestDistributor(t, log.NewNopLogger(), overrides)
+	require.NoError(t, err)
+
+	series := &distributormodel.ProfileSeries{Labels: []*typesv1.LabelPair{{Name: ProfileName, Value: "cpu"}}}
+	localTraceCtx := trace.ContextWithSpanContext(tenant.InjectTenantID(context.Background(), "tenant"), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: trace.TraceID{15: 1},
+		SpanID:  trace.SpanID{7: 1},
+	}))
+	err = d.PushBatch(localTraceCtx, &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeries{series}})
+	require.Error(t, err) // The profile is intentionally incomplete.
+
+	assert.NotEmpty(t, series.ID)
+	assert.Equal(t, 1.0, testutil.ToFloat64(d.metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceRandom))))
+	assert.Zero(t, testutil.ToFloat64(d.metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceTraceID))))
+}
+
+func TestPush_InvalidProfileIDIsNormalized(t *testing.T) {
+	d, ing, err := newTestDistributor(t, log.NewNopLogger(), newOverrides(t))
+	require.NoError(t, err)
+
+	_, err = d.Push(tenant.InjectTenantID(context.Background(), "tenant"), connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{{
+			Labels:  []*typesv1.LabelPair{{Name: "__name__", Value: "cpu"}},
+			Samples: []*pushv1.RawSample{{RawProfile: collectTestProfileBytes(t), ID: "not-a-uuid"}},
+		}},
+	}))
+	require.NoError(t, err)
+	require.Len(t, ing.requests, 1)
+	_, err = uuid.Parse(ing.requests[0].Series[0].Samples[0].ID)
+	assert.NoError(t, err)
+}
+
+func TestAggregate_IdentifiedProfileIsNotAggregated(t *testing.T) {
+	d, _, err := newTestDistributor(t, log.NewNopLogger(), newOverrides(t))
+	require.NoError(t, err)
+
+	aggregated, err := d.aggregate(context.Background(), &distributormodel.ProfileSeries{ID: uuid.NewString()})
+	require.NoError(t, err)
+	assert.False(t, aggregated)
 }
 
 func Test_Subservices(t *testing.T) {

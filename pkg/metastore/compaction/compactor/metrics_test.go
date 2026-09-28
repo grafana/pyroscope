@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 )
 
@@ -103,5 +104,68 @@ func TestBlockQueueAggregatedMetrics(t *testing.T) {
 	// Total = 2 batches
 	if batchesTotal != 2 {
 		t.Errorf("expected 2 total batches, got %v", batchesTotal)
+	}
+}
+
+func gatherSum(t *testing.T, reg *prometheus.Registry, name string) float64 {
+	t.Helper()
+	metrics, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("gather: %v", err)
+	}
+	var total float64
+	for _, mf := range metrics {
+		if mf.GetName() == name {
+			for _, m := range mf.GetMetric() {
+				total += m.GetGauge().GetValue()
+			}
+		}
+	}
+	return total
+}
+
+func TestResetClearsGlobalStats(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	entries := []compaction.BlockEntry{
+		{ID: "b1", Tenant: "A", Shard: 0, Level: 0},
+		{ID: "b2", Tenant: "A", Shard: 0, Level: 0},
+		{ID: "b3", Tenant: "A", Shard: 1, Level: 0},
+	}
+	c := NewCompactor(testConfig, nil, nil, reg)
+	for _, e := range entries {
+		c.enqueue(e)
+	}
+	c.queue.reset()
+	for _, e := range entries {
+		c.enqueue(e)
+	}
+
+	blocks := gatherSum(t, reg, "compaction_global_queue_blocks_current")
+	if blocks != 3 {
+		t.Errorf("expected 3 blocks after reset+re-enqueue, got %v (counter leak detected)", blocks)
+	}
+}
+
+func TestUpdatePlanUnknownKeyDoesNotLeakQueues(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	c := NewCompactor(testConfig, nil, nil, reg)
+	c.enqueue(compaction.BlockEntry{ID: "b1", Tenant: "A", Shard: 0, Level: 0})
+
+	before := gatherSum(t, reg, "compaction_global_queue_queues_current")
+
+	_ = c.UpdatePlan(nil, &raft_log.CompactionPlanUpdate{
+		NewJobs: []*raft_log.NewCompactionJob{
+			{Plan: &raft_log.CompactionJobPlan{
+				Tenant:          "Z",
+				Shard:           99,
+				CompactionLevel: 0,
+				SourceBlocks:    []string{"no-such-block"},
+			}},
+		},
+	})
+
+	after := gatherSum(t, reg, "compaction_global_queue_queues_current")
+	if after != before {
+		t.Errorf("queues_current changed: before=%v after=%v (secondary leak detected)", before, after)
 	}
 }

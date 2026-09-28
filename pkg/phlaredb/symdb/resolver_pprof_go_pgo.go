@@ -90,10 +90,32 @@ func (r *pprofGoPGO) appendSamples() {
 }
 
 func (r *pprofGoPGO) clearCalleeLineNumber() {
+	variants := make(map[uint64]uint64)
 	for _, s := range r.profile.Sample {
-		loc := r.profile.Location[s.LocationId[0]-1]
+		id := s.LocationId[0]
+		if variant, ok := variants[id]; ok {
+			s.LocationId[0] = variant
+			continue
+		}
+		loc := r.profile.Location[id-1]
 		if len(loc.Line) > 0 {
-			loc.Line[0].Line = 0
+			variant := &googlev1.Location{
+				Id:        uint64(len(r.profile.Location) + 1),
+				MappingId: loc.MappingId,
+				Address:   loc.Address,
+				Line:      make([]*googlev1.Line, len(loc.Line)),
+				IsFolded:  loc.IsFolded,
+			}
+			for i, line := range loc.Line {
+				variant.Line[i] = &googlev1.Line{
+					FunctionId: line.FunctionId,
+					Line:       line.Line,
+				}
+			}
+			variant.Line[0].Line = 0
+			r.profile.Location = append(r.profile.Location, variant)
+			variants[id] = variant.Id
+			s.LocationId[0] = variant.Id
 		}
 	}
 }

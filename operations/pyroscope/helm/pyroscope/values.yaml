@@ -459,7 +459,7 @@ alloy:
       profiles.grafana.com/goroutine.scrape: "true"
       profiles.grafana.com/goroutine.port_name: "http-metrics"
       profiles.grafana.com/service_repository: 'https://github.com/grafana/alloy'
-      profiles.grafana.com/service_git_ref: 'v1.8.1'
+      profiles.grafana.com/service_git_ref: 'v1.19.2'
 
   alloy:
     stabilityLevel: "public-preview"  # This needs to be set for some of our resources until verison v1.2 is released
@@ -496,6 +496,12 @@ agent:
 # -------------------------------------
 minio:
   enabled: false
+  image:
+    repository: pgsty/silo
+    tag: RELEASE.2026-09-16T00-00-00Z
+  mcImage:
+    repository: pgsty/mc
+    tag: RELEASE.2026-09-16T00-00-00Z
   replicas: 1
   # Minio requires 2 to 16 drives for erasure code (drivesPerNode * replicas)
   # https://docs.min.io/docs/minio-erasure-code-quickstart-guide

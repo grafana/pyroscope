@@ -91,7 +91,10 @@ func (c *Compactor) UpdatePlan(tx *bbolt.Tx, plan *raft_log.CompactionPlanUpdate
 			shard:  job.Plan.Shard,
 			level:  job.Plan.CompactionLevel,
 		}
-		staged := c.queue.blockQueue(k.level).stagedBlocks(k)
+		staged := c.queue.lookupStaged(k)
+		if staged == nil {
+			continue
+		}
 		for _, b := range job.Plan.SourceBlocks {
 			e := staged.delete(b)
 			if e == zeroBlockEntry {

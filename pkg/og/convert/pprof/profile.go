@@ -79,6 +79,10 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, li
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	originalTimeNanos := profile.TimeNanos
+	if originalTimeNanos == 0 {
+		originalTimeNanos = md.OriginalStartTimeNanos
+	}
 	fixTime(profile, md)
 	FixFunctionNamesForScriptingLanguages(profile, md)
 	if p.isDotnetspy(md) {
@@ -87,9 +91,10 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata, li
 	}
 
 	res.Series = []*distributormodel.ProfileSeries{{
-		Labels:     p.createLabels(profile, md),
-		Profile:    profile,
-		RawProfile: p.Profile,
+		Labels:            p.createLabels(profile, md),
+		Profile:           profile,
+		RawProfile:        p.Profile,
+		OriginalTimeNanos: originalTimeNanos,
 	}}
 	return
 }

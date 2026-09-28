@@ -132,7 +132,7 @@ Return the URL for querying profiles from Pyroscope.
 {{- $components := (fromYaml (include "pyroscope.components" .)) -}}
 {{- if .Values.architecture.deployUnifiedServices -}}
 http://{{ include "pyroscope.fullname" . }}-read.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}
-{{- else if hasKey $components "query-frontend" -}}A
+{{- else if hasKey $components "query-frontend" -}}
 {{- $port := ((index $components "query-frontend").service).port | default .Values.pyroscope.service.port }}
 http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ $port }}
 {{- else -}}

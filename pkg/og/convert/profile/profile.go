@@ -23,14 +23,15 @@ func (*RawProfile) ContentType() string { return "binary/octet-stream" }
 
 func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, exporter storage.MetricsExporter, md ingestion.Metadata, limits ingestion.Limits) error {
 	input := &storage.PutInput{
-		StartTime:       md.StartTime,
-		EndTime:         md.EndTime,
-		LabelSet:        md.LabelSet,
-		SpyName:         md.SpyName,
-		SampleRate:      md.SampleRate,
-		Units:           md.Units,
-		AggregationType: md.AggregationType,
-		Val:             tree.New(),
+		OriginalStartTimeNanos: md.OriginalStartTimeNanos,
+		StartTime:              md.StartTime,
+		EndTime:                md.EndTime,
+		LabelSet:               md.LabelSet,
+		SpyName:                md.SpyName,
+		SampleRate:             md.SampleRate,
+		Units:                  md.Units,
+		AggregationType:        md.AggregationType,
+		Val:                    tree.New(),
 	}
 
 	cb := createParseCallback(input, exporter)

@@ -42,6 +42,7 @@ type metrics struct {
 	profilesReceived               *prometheus.CounterVec
 	parseDuration                  *prometheus.HistogramVec
 	pushBatchSeries                *prometheus.HistogramVec
+	profileIDGeneration            *prometheus.CounterVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -161,6 +162,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"tenant"},
 		),
+		profileIDGeneration: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_profile_id_generation_total",
+				Help:      "Number of profile IDs generated, by source.",
+			},
+			[]string{"source"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(
@@ -174,6 +183,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.profilesReceived,
 			m.parseDuration,
 			m.pushBatchSeries,
+			m.profileIDGeneration,
 		)
 	}
 	return m
