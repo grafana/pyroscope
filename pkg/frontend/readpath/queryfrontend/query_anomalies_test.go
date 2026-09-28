@@ -170,6 +170,110 @@ func TestQueryAnomalies_UnknownType(t *testing.T) {
 	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
 }
 
+// TestQueryAnomalies_UnknownTypeMixedWithValid_FailsBeforeExecuting guards against paying for
+// a real anomaly query before rejecting the request: all requested anomaly_types must be
+// validated before any of them run, so an unknown type must not let a preceding valid type
+// reach the anomaly source first.
+func TestQueryAnomalies_UnknownTypeMixedWithValid_FailsBeforeExecuting(t *testing.T) {
+	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("anomaly source should not be called when the request also names an unknown anomaly_type")
+	}))
+	defer apServer.Close()
+
+	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t),
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE, querierv1.AnomalyType(99)},
+		LabelSelector: `{service_name="svc-a"}`,
+	}))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err))
+}
+
+// TestQueryAnomalies_DuplicateAnomalyType_QueriesOnce guards against a repeated anomaly_type
+// (easy to send by accident through profilecli/gcx's repeatable --anomaly-type flag) fanning
+// out into one redundant anomaly-source call and confirmation query per repetition.
+func TestQueryAnomalies_DuplicateAnomalyType_QueriesOnce(t *testing.T) {
+	var apCalls atomic.Int32
+	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"anomalies":[
+			{"profile_uuid":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","score":-0.5,"observed_at":"2026-09-23T12:00:00Z","model_id":"m1"}
+		]}`))
+	}))
+	defer apServer.Close()
+
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+	var invokeCalls atomic.Int32
+	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, req *queryv1.InvokeRequest) *queryv1.InvokeResponse {
+			invokeCalls.Add(1)
+			if req.Query[0].QueryType == queryv1.QueryType_QUERY_SERIES_LABELS {
+				return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_SERIES_LABELS,
+					SeriesLabels: &queryv1.SeriesLabelsReport{
+						SeriesLabels: []*typesv1.Labels{{
+							Labels: []*typesv1.LabelPair{{Name: "service_name", Value: "svc-a"}},
+						}},
+					},
+				}}}
+			}
+			candidates := req.Query[0].ProfilePresence.GetProfileIdSelector()
+			present := make([]*queryv1.ProfilePresenceEntry, len(candidates))
+			for i, id := range candidates {
+				present[i] = &queryv1.ProfilePresenceEntry{ProfileId: id}
+			}
+			return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+				ReportType:      queryv1.ReportType_REPORT_PROFILE_PRESENCE,
+				ProfilePresence: &queryv1.ProfilePresenceReport{Profiles: present},
+			}}}
+		},
+		nil,
+	)
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockLimits,
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		mockMetadata,
+		nil,
+		mockBackend,
+		nil, nil, nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	start, end := smpValidTimeRange()
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: smpProfileType,
+		LabelSelector: `{service_name="svc-a"}`,
+		Start:         start,
+		End:           end,
+		AnomalyTypes: []querierv1.AnomalyType{
+			querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE,
+			querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE,
+			querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE,
+		},
+	}))
+
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.StacktraceAnomalies, 1)
+	require.EqualValues(t, 1, apCalls.Load(), "anomaly source should be called once regardless of how many times the type was repeated")
+	require.EqualValues(t, 2, invokeCalls.Load(), "one Series call plus one profile-presence call, not one pair per repetition")
+}
+
 func TestQueryAnomalies_NoMatchingServiceName_ReturnsEmpty(t *testing.T) {
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))

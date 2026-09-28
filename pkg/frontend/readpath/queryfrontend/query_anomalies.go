@@ -28,8 +28,24 @@ func (q *QueryFrontend) QueryAnomalies(
 			fmt.Errorf("at least one anomaly_type is required"))
 	}
 
-	resp := &querierv1.QueryAnomaliesResponse{}
+	seen := make(map[querierv1.AnomalyType]struct{}, len(c.Msg.AnomalyTypes))
+	uniqueTypes := make([]querierv1.AnomalyType, 0, len(c.Msg.AnomalyTypes))
 	for _, t := range c.Msg.AnomalyTypes {
+		switch t {
+		case querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE:
+		default:
+			return nil, connect.NewError(connect.CodeUnimplemented,
+				fmt.Errorf("unsupported anomaly_type %q", t))
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		uniqueTypes = append(uniqueTypes, t)
+	}
+
+	resp := &querierv1.QueryAnomaliesResponse{}
+	for _, t := range uniqueTypes {
 		switch t {
 		case querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE:
 			profiles, err := q.queryStacktraceAnomalies(ctx, c.Msg)
@@ -37,9 +53,6 @@ func (q *QueryFrontend) QueryAnomalies(
 				return nil, err
 			}
 			resp.StacktraceAnomalies = profiles
-		default:
-			return nil, connect.NewError(connect.CodeUnimplemented,
-				fmt.Errorf("unsupported anomaly_type %q", t))
 		}
 	}
 	return connect.NewResponse(resp), nil
