@@ -702,6 +702,41 @@ components:
           title: attribute_refs
       title: Exemplar
       additionalProperties: false
+    query.v1.FunctionsQuery:
+      type: object
+      properties:
+        stackTraceSelector:
+          title: stack_trace_selector
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackTraceSelector'
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
+      title: FunctionsQuery
+      additionalProperties: false
+    query.v1.FunctionsReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.FunctionsQuery'
+        table:
+          title: table
+          $ref: '#/components/schemas/types.v1.FunctionTable'
+      title: FunctionsReport
+      additionalProperties: false
     query.v1.HeatmapPoint:
       type: object
       properties:
@@ -1018,12 +1053,10 @@ components:
           $ref: '#/components/schemas/query.v1.HeatmapQuery'
         timeSeriesCompact:
           title: time_series_compact
-          description: |-
-            function_details
-             call_graph
-             top_table
-             ...
           $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        functions:
+          title: functions
+          $ref: '#/components/schemas/query.v1.FunctionsQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1113,6 +1146,7 @@ components:
         - QUERY_PPROF
         - QUERY_HEATMAP
         - QUERY_TIME_SERIES_COMPACT
+        - QUERY_FUNCTIONS
     query.v1.Report:
       type: object
       properties:
@@ -1146,6 +1180,9 @@ components:
         timeSeriesCompact:
           title: time_series_compact
           $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
+        functions:
+          title: functions
+          $ref: '#/components/schemas/query.v1.FunctionsReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1161,6 +1198,7 @@ components:
         - REPORT_PPROF
         - REPORT_HEATMAP
         - REPORT_TIME_SERIES_COMPACT
+        - REPORT_FUNCTIONS
     query.v1.Series:
       type: object
       properties:
@@ -1424,6 +1462,51 @@ components:
         - EXEMPLAR_TYPE_NONE
         - EXEMPLAR_TYPE_INDIVIDUAL
         - EXEMPLAR_TYPE_SPAN
+    types.v1.FunctionStats:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: A sample contributes at most once, even if this function recurs in its stack.
+        self:
+          type:
+            - integer
+            - string
+          title: self
+          format: int64
+      title: FunctionStats
+      additionalProperties: false
+    types.v1.FunctionTable:
+      type: object
+      properties:
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.FunctionStats'
+          title: functions
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: Sum of selected sample values, not the sum of inclusive function values.
+        totalFunctions:
+          type:
+            - integer
+            - string
+          title: total_functions
+          format: int64
+          description: Number of functions before limiting. Compare with functions length for coverage.
+      title: FunctionTable
+      additionalProperties: false
     types.v1.GoPGO:
       type: object
       properties:

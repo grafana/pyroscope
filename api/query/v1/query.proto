@@ -88,10 +88,7 @@ message Query {
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
-  // function_details
-  // call_graph
-  // top_table
-  // ...
+  FunctionsQuery functions = 10;
 }
 
 enum QueryType {
@@ -104,6 +101,7 @@ enum QueryType {
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
+  QUERY_FUNCTIONS = 9;
 }
 
 message InvokeResponse {
@@ -163,6 +161,7 @@ message Report {
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
+  FunctionsReport functions = 10;
 }
 
 enum ReportType {
@@ -175,6 +174,7 @@ enum ReportType {
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
+  REPORT_FUNCTIONS = 9;
 }
 
 message LabelNamesQuery {}
@@ -318,4 +318,16 @@ message TimeSeriesCompactReport {
   TimeSeriesQuery query = 1;
   repeated Series time_series = 2;
   AttributeTable attribute_table = 3;
+}
+
+message FunctionsQuery {
+  optional types.v1.StackTraceSelector stack_trace_selector = 1;
+  repeated string profile_id_selector = 2;
+  repeated string span_selector = 3;
+  repeated string trace_id_selector = 4;
+}
+
+message FunctionsReport {
+  FunctionsQuery query = 1;
+  types.v1.FunctionTable table = 2;
 }
