@@ -72,6 +72,11 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 		return nil, nil
 	}
 
+	labelSelector, err := buildLabelSelectorWithProfileType(req.LabelSelector, req.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -106,7 +111,7 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("listing anomalies: %w", err))
 	}
 
-	confirmed, err := q.confirmAnomalies(ctx, req, anomalies)
+	confirmed, err := q.confirmAnomalies(ctx, req, labelSelector, anomalies)
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +143,7 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 func (q *QueryFrontend) confirmAnomalies(
 	ctx context.Context,
 	req *querierv1.QueryAnomaliesRequest,
+	labelSelector string,
 	anomalies []anomalyapi.Anomaly,
 ) ([]*queryv1.ProfilePresenceEntry, error) {
 	if len(anomalies) == 0 {
@@ -147,11 +153,6 @@ func (q *QueryFrontend) confirmAnomalies(
 	allIDs := make([]string, len(anomalies))
 	for i, a := range anomalies {
 		allIDs[i] = a.ProfileUUID
-	}
-
-	labelSelector, err := buildLabelSelectorWithProfileType(req.LabelSelector, req.ProfileTypeID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
