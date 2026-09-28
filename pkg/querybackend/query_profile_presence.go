@@ -27,6 +27,14 @@ func init() {
 // queryProfilePresence checks which of query.ProfilePresence.ProfileIdSelector are present in
 // this block.
 func queryProfilePresence(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
+	if len(query.ProfilePresence.ProfileIdSelector) == 0 {
+		return &queryv1.Report{
+			ProfilePresence: &queryv1.ProfilePresenceReport{
+				Query: query.ProfilePresence.CloneVT(),
+			},
+		}, nil
+	}
+
 	opts, err := profilePresenceIteratorOptions(query.ProfilePresence.ProfileIdSelector)
 	if err != nil {
 		return nil, err

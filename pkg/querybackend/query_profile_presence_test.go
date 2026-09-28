@@ -94,6 +94,28 @@ func (s *testSuite) Test_QueryProfilePresence_NoneOfManyPresent() {
 	s.Assert().Empty(resp.Reports[0].ProfilePresence.Profiles)
 }
 
+// Test_QueryProfilePresence_EmptySelector_ReturnsEmpty guards against an empty
+// ProfileIdSelector falling through to an unfiltered scan of the block: withProfileIDSelector
+// with zero ids produces an empty opts.profileIDSelector, and profileEntryIterator only filters
+// by ID when that slice is non-empty, so without an explicit early return every profile in the
+// block would come back as "present".
+func (s *testSuite) Test_QueryProfilePresence_EmptySelector_ReturnsEmpty() {
+	resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(5 * time.Minute).UnixMilli(),
+		LabelSelector: "{}",
+		QueryPlan:     s.plan,
+		Query: []*queryv1.Query{{
+			QueryType:       queryv1.QueryType_QUERY_PROFILE_PRESENCE,
+			ProfilePresence: &queryv1.ProfilePresenceQuery{ProfileIdSelector: nil},
+		}},
+		Tenant: s.tenant,
+	})
+	s.Require().NoError(err)
+	s.Require().Len(resp.Reports, 1)
+	s.Assert().Empty(resp.Reports[0].ProfilePresence.Profiles)
+}
+
 func randomZeroUUIDVariant(i int) string {
 	// Same shape as "00000000-0000-0000-0000-000000000000" but with the last segment varied,
 	// so every candidate is a distinct, well-formed, non-existent UUID.
