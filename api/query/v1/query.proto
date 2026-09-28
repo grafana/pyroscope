@@ -244,9 +244,9 @@ message TreeReport {
   optional TreeSymbols symbols = 3;
 }
 
-// ProfilePresenceQuery checks which of profile_id_selector are actually present in the
-// queried data (matching the label selector and time range), without resolving symbols or
-// building a merged profile.
+// (Experimental) ProfilePresenceQuery checks which of profile_id_selector are actually
+// present in the queried data (matching the label selector and time range), without
+// resolving symbols or building a merged profile.
 message ProfilePresenceQuery {
   repeated string profile_id_selector = 1;
 }

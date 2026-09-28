@@ -74,8 +74,8 @@ service QuerierService {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
 
-  // QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
-  // flagged as anomalies by an external anomaly source (see anomaly_type).
+  // (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
+  // profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
   rpc QueryAnomalies(QueryAnomaliesRequest) returns (QueryAnomaliesResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }

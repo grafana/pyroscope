@@ -235,10 +235,10 @@ paths:
       tags:
         - scope/internal
         - querier.v1.QuerierService
-      summary: QueryAnomalies returns, out of the profiles matching the request, the profile IDs also  flagged as anomalies by an external anomaly source (see anomaly_type).
+      summary: (Experimental) QueryAnomalies returns, out of the profiles matching the request, the  profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
       description: |-
-        QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
-         flagged as anomalies by an external anomaly source (see anomaly_type).
+        (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
+         profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
       operationId: querier.v1.QuerierService.QueryAnomalies
       parameters:
         - name: Connect-Protocol-Version

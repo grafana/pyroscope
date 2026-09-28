@@ -1839,8 +1839,8 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(ctx context.Context, in *AnalyzeQueryRequest, opts ...grpc.CallOption) (*AnalyzeQueryResponse, error)
-	// QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
-	// flagged as anomalies by an external anomaly source (see anomaly_type).
+	// (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
+	// profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
 	QueryAnomalies(ctx context.Context, in *QueryAnomaliesRequest, opts ...grpc.CallOption) (*QueryAnomaliesResponse, error)
 }
 
@@ -2011,8 +2011,8 @@ type QuerierServiceServer interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error)
-	// QueryAnomalies returns, out of the profiles matching the request, the profile IDs also
-	// flagged as anomalies by an external anomaly source (see anomaly_type).
+	// (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
+	// profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
 	QueryAnomalies(context.Context, *QueryAnomaliesRequest) (*QueryAnomaliesResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
 }
