@@ -58,6 +58,8 @@ func (q *QueryFrontend) QueryAnomalies(
 	return connect.NewResponse(resp), nil
 }
 
+const stacktraceAnomalyProfileType = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+
 func (q *QueryFrontend) queryStacktraceAnomalies(
 	ctx context.Context,
 	req *querierv1.QueryAnomaliesRequest,
@@ -65,6 +67,9 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 	if q.anomalyAPI == nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition,
 			fmt.Errorf("anomaly_type ANOMALY_TYPE_STACKTRACE requires query-frontend.anomaly-api.url to be configured"))
+	}
+	if req.ProfileTypeID != stacktraceAnomalyProfileType {
+		return nil, nil
 	}
 
 	tenantIDs, err := tenant.TenantIDs(ctx)

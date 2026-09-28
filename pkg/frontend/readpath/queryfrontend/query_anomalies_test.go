@@ -41,6 +41,33 @@ func TestQueryAnomalies_Unconfigured(t *testing.T) {
 	require.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
 }
 
+func TestQueryAnomalies_WrongProfileType_ReturnsEmpty(t *testing.T) {
+	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("anomaly source should not be called for a profile type that can't have stacktrace anomalies")
+	}))
+	defer apServer.Close()
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockfrontend.NewMockLimits(t),
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		new(mockmetastorev1.MockMetadataQueryServiceClient),
+		nil,
+		new(mockqueryfrontend.MockQueryBackend),
+		nil, nil, nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
+		LabelSelector: `{service_name="svc-a"}`,
+	}))
+
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.StacktraceAnomalies)
+}
+
 func TestQueryAnomalies_NoAnomalyTypes(t *testing.T) {
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
 		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
@@ -109,7 +136,7 @@ func TestQueryAnomalies_ClampsStartToMaxQueryLookback(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	now := time.Now()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         now.Add(-48 * time.Hour).UnixMilli(),
 		End:           now.UnixMilli(),
@@ -146,6 +173,7 @@ func TestQueryAnomalies_TimeRangeBeforeLookback_ReturnsEmpty(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	now := time.Now()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         now.Add(-48 * time.Hour).UnixMilli(),
 		End:           now.Add(-24 * time.Hour).UnixMilli(),
@@ -257,7 +285,7 @@ func TestQueryAnomalies_DuplicateAnomalyType_QueriesOnce(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         start,
 		End:           end,
@@ -304,7 +332,7 @@ func TestQueryAnomalies_NoMatchingServiceName_ReturnsEmpty(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{namespace="empty-namespace"}`,
 		Start:         start,
 		End:           end,
@@ -378,7 +406,7 @@ func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{namespace="shared-namespace"}`,
 		Start:         start,
 		End:           end,
@@ -437,7 +465,7 @@ func TestQueryAnomalies_TooManyServices_ReturnsInvalidArgument(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{namespace="huge-namespace"}`,
 		Start:         start,
 		End:           end,
@@ -525,7 +553,7 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         start,
 		End:           end,
@@ -606,7 +634,7 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         start,
 		End:           end,
@@ -683,7 +711,7 @@ func TestQueryAnomalies_ScoreLookupToleratesUUIDSpelling(t *testing.T) {
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
-		ProfileTypeID: smpProfileType,
+		ProfileTypeID: stacktraceAnomalyProfileType,
 		LabelSelector: `{service_name="svc-a"}`,
 		Start:         start,
 		End:           end,
