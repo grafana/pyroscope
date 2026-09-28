@@ -286,13 +286,12 @@ type InvalidUTF8Mode string
 
 const (
 	InvalidUTF8Disabled          InvalidUTF8Mode = "disabled"
-	InvalidUTF8ReplaceString     InvalidUTF8Mode = "replace_string"
 	InvalidUTF8ReplaceStacktrace InvalidUTF8Mode = "replace_stacktrace"
 )
 
 func (m *InvalidUTF8Mode) Set(s string) error {
 	switch v := InvalidUTF8Mode(s); v {
-	case InvalidUTF8Disabled, InvalidUTF8ReplaceString, InvalidUTF8ReplaceStacktrace:
+	case InvalidUTF8Disabled, InvalidUTF8ReplaceStacktrace:
 		*m = v
 		return nil
 	}
@@ -417,8 +416,8 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 		// todo check if sample type is valid from the promql parser perspective
 	}
 
-	if mode := limits.InvalidUTF8Strings(tenantID); mode == InvalidUTF8ReplaceString || mode == InvalidUTF8ReplaceStacktrace {
-		repairInvalidUTF8(prof, mode)
+	if limits.InvalidUTF8Strings(tenantID) == InvalidUTF8ReplaceStacktrace {
+		sanitizeInvalidUTF8(prof)
 	}
 	for _, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
@@ -428,7 +427,7 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 	return ValidatedProfile{Profile: prof}, nil
 }
 
-func repairInvalidUTF8(prof *pprof.Profile, mode InvalidUTF8Mode) {
+func sanitizeInvalidUTF8(prof *pprof.Profile) {
 	invalid := make(map[int64]struct{})
 	for i, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
@@ -442,9 +441,7 @@ func repairInvalidUTF8(prof *pprof.Profile, mode InvalidUTF8Mode) {
 		_, ok := invalid[i]
 		return ok
 	}
-	if mode == InvalidUTF8ReplaceStacktrace {
-		replaceInvalidStacktraces(prof, isInvalid)
-	}
+	replaceInvalidStacktraces(prof, isInvalid)
 	for i := range invalid {
 		prof.StringTable[i] = invalidUTF8Placeholder
 	}

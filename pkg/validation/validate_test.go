@@ -887,16 +887,6 @@ func TestValidateProfile_InvalidUTF8(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name:    "replace strings",
-			profile: newProfile("bad\xff", "libc.so", "v\xff"),
-			mode:    InvalidUTF8ReplaceString,
-			assert: func(t *testing.T, p *googlev1.Profile) {
-				require.Equal(t, []string{"utf8_invalid", "main"}, frameNames(p, p.Sample[0]))
-				require.Equal(t, []string{"main"}, frameNames(p, p.Sample[1]))
-				require.Equal(t, "utf8_invalid", p.StringTable[p.Sample[1].Label[0].Str])
-			},
-		},
-		{
 			name:    "replace stacktrace with invalid function name",
 			profile: newProfile("bad\xff", "libc.so", "v\xff"),
 			mode:    InvalidUTF8ReplaceStacktrace,

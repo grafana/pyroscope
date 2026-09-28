@@ -201,7 +201,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
 	_ = l.InvalidUTF8Strings.Set(string(InvalidUTF8Disabled))
-	f.Var(&l.InvalidUTF8Strings, "validation.invalid-utf8-strings", "How to handle invalid UTF-8 strings in profiles. 'disabled' rejects the profile, 'replace_string' replaces invalid strings with 'utf8_invalid', 'replace_stacktrace' replaces stacktraces referencing invalid strings with a single 'utf8_invalid' frame and any other invalid strings with 'utf8_invalid'.")
+	f.Var(&l.InvalidUTF8Strings, "validation.invalid-utf8-strings", "How to handle invalid UTF-8 strings in profiles. 'disabled' rejects the profile, 'replace_stacktrace' replaces stacktraces referencing invalid strings with a single 'utf8_invalid' frame and any other invalid strings with 'utf8_invalid'.")
 
 	f.IntVar(&l.MaxFlameGraphNodesDefault, "querier.max-flamegraph-nodes-default", 8<<10, "Maximum number of flame graph nodes by default. 0 to disable.")
 	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
