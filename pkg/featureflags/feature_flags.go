@@ -16,6 +16,7 @@ const (
 	PyroscopeRuler          = "pyroscopeRuler"
 	PyroscopeRulerFunctions = "pyroscopeRulerFunctions"
 	UTF8LabelNames          = "utf8LabelNames"
+	FunctionProjections     = "functionProjections"
 )
 
 func stringPtr(s string) *string {
@@ -40,6 +41,10 @@ var (
 		UTF8LabelNames: {
 			Enabled:     false,
 			Description: stringPtr("Supports UTF-8 label names for Pyroscope read/write APIs."),
+		},
+		FunctionProjections: {
+			Enabled:     false,
+			Description: stringPtr("Supports the FUNCTIONS and FUNCTION_TREE formats in SelectMergeStacktraces and Diff on the v2 read path."),
 		},
 	}
 )
