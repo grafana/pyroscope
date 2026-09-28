@@ -155,6 +155,8 @@ enum ProfileFormat {
   PROFILE_FORMAT_PPROF = 4;
   // Aggregate functions directly from samples, without tree truncation.
   PROFILE_FORMAT_FUNCTIONS = 5;
+  // Complete caller/callee levels, bounded by depth rather than node count.
+  PROFILE_FORMAT_FUNCTION_TREE = 6;
 }
 
 message SelectMergeStacktracesResponse {
@@ -168,10 +170,12 @@ message SelectMergeStacktracesResponse {
   // Profile in pprof format.
   PprofProfile pprof = 5;
   types.v1.FunctionTable functions = 6;
+  types.v1.FunctionTree function_tree = 7;
 }
 
 // Only options for the requested profile format are used; other fields are ignored.
 message ProfileFormatOptions {
+  types.v1.FunctionTreeOptions function_tree = 1;
   FunctionsOptions functions = 2;
 }
 
@@ -253,6 +257,7 @@ message DiffRequest {
 message DiffResponse {
   FlameGraphDiff flamegraph = 1;
   FunctionTableDiff functions = 2;
+  FunctionTreeDiff function_tree = 3;
 }
 
 message FunctionTableDiff {
@@ -260,6 +265,12 @@ message FunctionTableDiff {
   // complete tables, ordered by max(self), max(total), then name.
   types.v1.FunctionTable left = 1;
   types.v1.FunctionTable right = 2;
+}
+
+message FunctionTreeDiff {
+  // Preserve exact values independently; clients align nodes by path.
+  types.v1.FunctionTree left = 1;
+  types.v1.FunctionTree right = 2;
 }
 
 message FlameGraph {
