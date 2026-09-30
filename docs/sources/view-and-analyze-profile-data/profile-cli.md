@@ -713,7 +713,7 @@ Use `profilecli recording-rules` commands to list, create, get, and delete recor
 When you connect to a Grafana Cloud data source, the `recording-rules` commands require a token with the `profiles-config:read` scope (for `list` and `get`) or the `profiles-config:write` scope (for `create` and `delete`).
 {{< /admonition >}}
 
-For a conceptual overview of recording rules and the Cloud UI wizard, refer to [Use recording rules](https://grafana.com/docs/grafana-cloud/observe-and-act/send-data/profiles/recording-rules/).
+For a conceptual overview of recording rules and the Cloud UI wizard, refer to [Use recording rules](https://grafana.com/docs/grafana-cloud/send-data/profiles/recording-rules/).
 
 #### List recording rules
 
