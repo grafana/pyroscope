@@ -421,6 +421,59 @@ func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
 	require.ElementsMatch(t, []string{"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"}, gotIDs)
 }
 
+func TestQueryAnomalies_ResolveServiceNames_ScopesSeriesByProfileType(t *testing.T) {
+	apServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"anomalies":[]}`))
+	}))
+	defer apServer.Close()
+
+	mockLimits := mockfrontend.NewMockLimits(t)
+	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
+	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+
+	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
+	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
+
+	var gotLabelSelector string
+	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
+	mockBackend.On("Invoke", mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, req *queryv1.InvokeRequest) *queryv1.InvokeResponse {
+			gotLabelSelector = req.LabelSelector
+			return &queryv1.InvokeResponse{Reports: []*queryv1.Report{{
+				ReportType:   queryv1.ReportType_REPORT_SERIES_LABELS,
+				SeriesLabels: &queryv1.SeriesLabelsReport{},
+			}}}
+		},
+		nil,
+	)
+
+	qf := NewQueryFrontend(
+		log.NewNopLogger(),
+		mockLimits,
+		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		mockMetadata,
+		nil,
+		mockBackend,
+		nil, nil, nil,
+	)
+
+	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
+	start, end := smpValidTimeRange()
+	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		ProfileTypeID: stacktraceAnomalyProfileType,
+		LabelSelector: `{namespace="shared-namespace"}`,
+		Start:         start,
+		End:           end,
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_STACKTRACE},
+	}))
+
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.StacktraceAnomalies)
+	require.Contains(t, gotLabelSelector, `__profile_type__="`+stacktraceAnomalyProfileType+`"`)
+}
+
 // TestQueryAnomalies_TooManyServices_ReturnsInvalidArgument: a selector resolving to more
 // services than anomalyapi.Client will accept in one query must surface as a client error
 // (InvalidArgument), not Internal -- it's a rejected selector, not a backend failure.

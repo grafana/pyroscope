@@ -94,7 +94,7 @@ func (q *QueryFrontend) queryStacktraceAnomalies(
 		return nil, nil
 	}
 
-	serviceNames, err := q.resolveServiceNames(ctx, req)
+	serviceNames, err := q.resolveServiceNames(ctx, req, labelSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +176,12 @@ func (q *QueryFrontend) confirmAnomalies(
 func (q *QueryFrontend) resolveServiceNames(
 	ctx context.Context,
 	req *querierv1.QueryAnomaliesRequest,
+	labelSelector string,
 ) ([]string, error) {
 	resp, err := q.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
 		Start:      req.Start,
 		End:        req.End,
-		Matchers:   []string{req.LabelSelector},
+		Matchers:   []string{labelSelector},
 		LabelNames: []string{phlaremodel.LabelNameServiceName},
 	}))
 	if err != nil {
