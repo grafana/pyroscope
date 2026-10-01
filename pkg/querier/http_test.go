@@ -162,6 +162,10 @@ func (m *mockQuerierClient) SelectHeatmap(context.Context, *connect.Request[quer
 	return nil, nil
 }
 
+func (m *mockQuerierClient) QueryAnomalies(context.Context, *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	return nil, nil
+}
+
 func Test_RenderDotFormatEmptyProfile(t *testing.T) {
 	// Create a mock client that returns an empty profile
 	mockClient := &mockQuerierClient{
