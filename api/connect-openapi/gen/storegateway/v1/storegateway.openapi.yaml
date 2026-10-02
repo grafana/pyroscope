@@ -1142,6 +1142,37 @@ components:
           title: points
       title: Series
       additionalProperties: false
+    types.v1.StackFrameFilter:
+      type: object
+      properties:
+        includeFunctionNames:
+          type: array
+          items:
+            type: string
+          title: include_function_names
+          description: A stack must contain every listed function.
+        excludeFunctionNames:
+          type: array
+          items:
+            type: string
+          title: exclude_function_names
+          description: A stack must contain none of the listed functions.
+        includeFunctionNameRegexes:
+          type: array
+          items:
+            type: string
+          title: include_function_name_regexes
+          description: |-
+            A stack must contain a function matching each RE2 expression. Matches
+             may occur anywhere in the function name; use ^ and $ to anchor them.
+        excludeFunctionNameRegexes:
+          type: array
+          items:
+            type: string
+          title: exclude_function_name_regexes
+          description: A stack must contain no function matching any RE2 expression.
+      title: StackFrameFilter
+      additionalProperties: false
     types.v1.StackTraceSelector:
       type: object
       properties:
@@ -1160,9 +1191,14 @@ components:
             Stack trace selector for profiles purposed for Go PGO.
              If set, call_site is ignored.
           $ref: '#/components/schemas/types.v1.GoPGO'
+        frameFilter:
+          title: frame_filter
+          description: Select whole samples by function names anywhere in their stack.
+          nullable: true
+          $ref: '#/components/schemas/types.v1.StackFrameFilter'
       title: StackTraceSelector
       additionalProperties: false
-      description: StackTraceSelector is used for filtering stack traces by locations.
+      description: StackTraceSelector is used for filtering stack traces by call site or frames.
     types.v1.TimeSeriesAggregationType:
       type: string
       title: TimeSeriesAggregationType
