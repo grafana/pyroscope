@@ -14,6 +14,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/attributetable"
 	"github.com/grafana/pyroscope/v2/pkg/model/timeseries"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -21,6 +22,9 @@ func (q *QueryFrontend) SelectSeries(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectSeriesRequest],
 ) (*connect.Response[querierv1.SelectSeriesResponse], error) {
+	if err := symdb.ValidateFrameFilter(c.Msg.StackTraceSelector.GetFrameFilter()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -76,10 +80,11 @@ func (q *QueryFrontend) queryStandard(ctx context.Context, start, end int64, lab
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 			TimeSeries: &queryv1.TimeSeriesQuery{
-				Step:         req.GetStep(),
-				GroupBy:      req.GetGroupBy(),
-				Limit:        req.GetLimit(),
-				ExemplarType: req.GetExemplarType(),
+				Step:               req.GetStep(),
+				GroupBy:            req.GetGroupBy(),
+				Limit:              req.GetLimit(),
+				ExemplarType:       req.GetExemplarType(),
+				StackTraceSelector: req.GetStackTraceSelector(),
 			},
 		}},
 	}, nil)
@@ -104,10 +109,11 @@ func (q *QueryFrontend) queryCompact(ctx context.Context, start, end int64, labe
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES_COMPACT,
 			TimeSeriesCompact: &queryv1.TimeSeriesQuery{
-				Step:         req.GetStep(),
-				GroupBy:      req.GetGroupBy(),
-				Limit:        req.GetLimit(),
-				ExemplarType: req.GetExemplarType(),
+				Step:               req.GetStep(),
+				GroupBy:            req.GetGroupBy(),
+				Limit:              req.GetLimit(),
+				ExemplarType:       req.GetExemplarType(),
+				StackTraceSelector: req.GetStackTraceSelector(),
 			},
 		}},
 	}, nil)

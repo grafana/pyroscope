@@ -142,6 +142,27 @@ func (s *SampleAppender) setAppendMany(stacktraces []uint32, values []uint64) {
 
 func (s *SampleAppender) Len() int { return s.size + len(s.hashmap) }
 
+// Filter removes stack traces from the accumulated samples in place.
+// Call this only after all samples have been added.
+func (s *SampleAppender) Filter(keep func(uint32) bool) {
+	if s.hashmap != nil {
+		for id := range s.hashmap {
+			if !keep(id) {
+				delete(s.hashmap, id)
+			}
+		}
+		return
+	}
+	for ci, chunk := range s.chunks {
+		for vi, value := range chunk {
+			if value != 0 && !keep(uint32(ci)*s.chunkSize+uint32(vi)) {
+				chunk[vi] = 0
+				s.size--
+			}
+		}
+	}
+}
+
 func (s *SampleAppender) Samples() v1.Samples {
 	if len(s.hashmap) > 0 {
 		return v1.NewSamplesFromMap(s.hashmap)
