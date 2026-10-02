@@ -21,6 +21,7 @@ import (
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -33,6 +34,7 @@ type BucketStoreConfig struct {
 	IgnoreBlocksWithin       time.Duration `yaml:"ignore_blocks_within" category:"advanced"`
 	MetaSyncConcurrency      int           `yaml:"meta_sync_concurrency" category:"advanced"`
 	IgnoreDeletionMarksDelay time.Duration `yaml:"ignore_deletion_mark_delay" category:"advanced"`
+	SymbolCacheMaxBytes      int64         `yaml:"symbol_cache_max_bytes" category:"experimental"`
 }
 
 // RegisterFlags registers the BucketStore flags
@@ -55,6 +57,7 @@ func (cfg *BucketStoreConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) 
 	// f.IntVar(&cfg.MaxConcurrent, "blocks-storage.bucket-store.max-concurrent", 100, "Max number of concurrent queries to execute against the long-term storage. The limit is shared across all tenants.")
 	// f.IntVar(&cfg.BlockSyncConcurrency, "blocks-storage.bucket-store.block-sync-concurrency", 20, "Maximum number of concurrent blocks synching per tenant.")
 	f.IntVar(&cfg.MetaSyncConcurrency, "blocks-storage.bucket-store.meta-sync-concurrency", 20, "Number of Go routines to use when syncing block meta files from object storage per tenant.")
+	f.Int64Var(&cfg.SymbolCacheMaxBytes, "blocks-storage.bucket-store.symbol-cache-max-bytes", 0, "Max size - in bytes - of the in-process cache of decoded symbol tables, shared across all blocks and tenants. Avoids re-decoding a block's symbols on every query. 0 disables the cache.")
 	// f.DurationVar(&cfg.DeprecatedConsistencyDelay, consistencyDelayFlag, 0, "Minimum age of a block before it's being read. Set it to safe value (e.g 30m) if your object storage is eventually consistent. GCS and S3 are (roughly) strongly consistent.")
 	f.DurationVar(&cfg.IgnoreDeletionMarksDelay, "blocks-storage.bucket-store.ignore-deletion-marks-delay", 30*time.Minute, "Duration after which the blocks marked for deletion will be filtered out while fetching blocks. "+
 		"The idea of ignore-deletion-marks-delay is to ignore blocks that are marked for deletion with some delay. This ensures store can still serve blocks that are meant to be deleted but do not have a replacement yet.")
@@ -110,6 +113,9 @@ type BucketStores struct {
 	shardingStrategy  ShardingStrategy
 	limits            Limits
 	reg               prometheus.Registerer
+	// Process-level decoded-symbol cache shared across all tenants/blocks
+	// (nil when disabled via SymbolCacheMaxBytes<=0).
+	symbolCache *symdb.SymbolCache
 	// Keeps a bucket store for each tenant.
 	storesMu sync.RWMutex
 	stores   map[string]*BucketStore
@@ -136,6 +142,7 @@ func NewBucketStores(cfg BucketStoreConfig, shardingStrategy ShardingStrategy, s
 		shardingStrategy: shardingStrategy,
 		reg:              reg,
 		limits:           limits,
+		symbolCache:      symdb.NewSymbolCache(cfg.SymbolCacheMaxBytes, reg),
 	}
 	// Register metrics.
 	bs.syncTimes = promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
@@ -352,6 +359,7 @@ func (bs *BucketStores) getOrCreateStore(userID string) (*BucketStore, error) {
 		userSyncDir,
 		userLogger,
 		bs.reg,
+		bs.symbolCache,
 	)
 	if err != nil {
 		return nil, err
