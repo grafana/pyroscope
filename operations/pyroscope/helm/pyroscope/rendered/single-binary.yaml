@@ -1407,7 +1407,6 @@ spec:
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
-            - "-log.level=debug"
             - "-architecture.storage=v1"
             - "-write-path=ingester"
           env:
