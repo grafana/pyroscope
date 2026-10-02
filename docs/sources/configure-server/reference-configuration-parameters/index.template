@@ -58,5 +58,8 @@ where `default_value` is the value to use if the environment variable is undefin
 
 ## Configuration parameters
 
+For `profile_dump` activation and admin retention requirements, refer to
+[Capture inflight profiles](../profile-dumping/).
+
 {{ .ConfigFile }}
 
