@@ -72,6 +72,14 @@ func (c *shardCache) update(tx *bbolt.Tx, p indexstore.Partition, tenant string,
 	return fn(s)
 }
 
+// purge drops every cached shard. It is used when the underlying database
+// is replaced wholesale, such as when a raft snapshot is installed.
+func (c *shardCache) purge() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache.Purge()
+}
+
 func (c *shardCache) getForWrite(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32) (*indexstore.Shard, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -197,6 +205,14 @@ func newBlockCache(rcs, wcs int, m *metrics) *blockCache {
 	c.write, _ = lru.New[blockCacheKey, *metastorev1.BlockMeta](wcs)
 	c.metrics = m
 	return &c
+}
+
+// purge drops every cached block, for the same reason as shardCache.purge.
+func (c *blockCache) purge() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.read.Purge()
+	c.write.Purge()
 }
 
 func (c *blockCache) getOrCreate(shard *indexstore.Shard, block kvstore.KV) *metastorev1.BlockMeta {
