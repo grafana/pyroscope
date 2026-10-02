@@ -127,13 +127,13 @@ func (s *StoreGatewayQuerier) stopping(_ error) error {
 }
 
 // forAllStoreGateways runs f, in parallel, for all store-gateways that are part of the replication set for the given tenant.
-func forAllStoreGateways[T any](ctx context.Context, tenantID string, storegatewayQuerier *StoreGatewayQuerier, f QueryReplicaFn[T, StoreGatewayQueryClient]) ([]ResponseFromReplica[T], error) {
+func forAllStoreGateways[T any](ctx context.Context, logger log.Logger, tenantID string, storegatewayQuerier *StoreGatewayQuerier, f QueryReplicaFn[T, StoreGatewayQueryClient]) ([]ResponseFromReplica[T], error) {
 	replicationSet, err := GetShuffleShardingSubring(storegatewayQuerier.ring, tenantID, storegatewayQuerier.limits).GetReplicationSetForOperation(storegateway.BlocksRead)
 	if err != nil {
 		return nil, err
 	}
 
-	return forGivenReplicationSet(ctx, func(addr string) (StoreGatewayQueryClient, error) {
+	return forGivenReplicationSet(ctx, logger, func(addr string) (StoreGatewayQueryClient, error) {
 		client, err := storegatewayQuerier.pool.GetClientFor(addr)
 		if err != nil {
 			return nil, err
@@ -196,7 +196,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 			return ic.MergeProfilesStacktraces(ctx), nil
 		})
 	} else {
-		responses, err = forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+		responses, err = forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
 			return ic.MergeProfilesStacktraces(ctx), nil
 		})
 	}
@@ -256,7 +256,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 			return ic.MergeProfilesPprof(ctx), nil
 		})
 	} else {
-		responses, err = forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
+		responses, err = forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
 			return ic.MergeProfilesPprof(ctx), nil
 		})
 	}
@@ -306,7 +306,7 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 			return ic.MergeProfilesLabels(ctx), nil
 		})
 	} else {
-		responses, err = forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
+		responses, err = forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
 			return ic.MergeProfilesLabels(ctx), nil
 		})
 	}
@@ -343,7 +343,7 @@ func (q *Querier) labelValuesFromStoreGateway(ctx context.Context, req *typesv1.
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
+	responses, err := forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
 		res, err := ic.LabelValues(ctx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
@@ -365,7 +365,7 @@ func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.L
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
+	responses, err := forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
 		res, err := ic.LabelNames(ctx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
@@ -387,7 +387,7 @@ func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingesterv1.Se
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]*typesv1.Labels, error) {
+	responses, err := forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]*typesv1.Labels, error) {
 		res, err := ic.Series(ctx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
@@ -424,7 +424,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 			return ic.MergeSpanProfile(ctx), nil
 		})
 	} else {
-		responses, err = forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
+		responses, err = forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
 			return ic.MergeSpanProfile(ctx), nil
 		})
 	}
@@ -470,7 +470,7 @@ func (q *Querier) blockSelectFromStoreGateway(ctx context.Context, req *ingester
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]*typesv1.BlockInfo, error) {
+	responses, err := forAllStoreGateways(ctx, q.logger, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]*typesv1.BlockInfo, error) {
 		res, err := ic.BlockMetadata(ctx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err

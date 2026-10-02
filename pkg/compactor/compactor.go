@@ -316,7 +316,7 @@ func newMultitenantCompactor(
 		parentLogger:           logger,
 		logger:                 log.With(logger, "component", "compactor"),
 		registerer:             registerer,
-		syncerMetrics:          newAggregatedSyncerMetrics(registerer),
+		syncerMetrics:          newAggregatedSyncerMetrics(registerer, logger),
 		bucketClient:           bucketClient,
 		blocksGrouperFactory:   blocksGrouperFactory,
 		blocksCompactorFactory: blocksCompactorFactory,

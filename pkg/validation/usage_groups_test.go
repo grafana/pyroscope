@@ -3,6 +3,7 @@ package validation
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-kit/log"
 	"slices"
 	"testing"
 
@@ -12,7 +13,6 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
@@ -134,7 +134,7 @@ func TestUsageGroupConfig_GetUsageGroups(t *testing.T) {
 			config, err := NewUsageGroupConfig(tt.Config)
 			require.NoError(t, err)
 
-			evaluator := NewUsageGroupEvaluator(util.Logger)
+			evaluator := NewUsageGroupEvaluator(log.NewNopLogger())
 			got := evaluator.GetMatch(tt.TenantID, config, tt.Labels)
 
 			gotNames := make([]string, len(got.names))

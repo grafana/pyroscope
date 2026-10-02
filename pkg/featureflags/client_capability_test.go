@@ -1,6 +1,7 @@
 package featureflags
 
 import (
+	"github.com/go-kit/log"
 	"net/http"
 	"testing"
 
@@ -171,7 +172,7 @@ func Test_parseClientCapabilities(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseClientCapabilities(tt.Header)
+			got, err := parseClientCapabilities(tt.Header, log.NewNopLogger())
 
 			if tt.WantError {
 				require.Error(t, err)
@@ -231,7 +232,7 @@ func Test_parseClientCapabilities_MultipleCapabilities(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseClientCapabilities(tt.Header)
+			got, err := parseClientCapabilities(tt.Header, log.NewNopLogger())
 			require.NoError(t, err)
 			require.Equal(t, tt.Want, got)
 		})

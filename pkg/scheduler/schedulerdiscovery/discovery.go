@@ -20,7 +20,7 @@ func New(cfg Config, schedulerAddress string, lookupPeriod time.Duration, compon
 	case ModeRing:
 		return newRing(cfg, component, receiver, logger, reg)
 	default:
-		return servicediscovery.NewDNS(schedulerAddress, lookupPeriod, receiver)
+		return servicediscovery.NewDNS(schedulerAddress, lookupPeriod, receiver, logger)
 	}
 }
 
