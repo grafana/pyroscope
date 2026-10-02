@@ -46,6 +46,15 @@ func (s BlockQueueStore) DeleteEntry(tx *bbolt.Tx, index uint64, id string) erro
 	return tx.Bucket(s.bucketName).Delete(marshalBlockEntryKey(index, id))
 }
 
+// ListEntryStats iterates the queue without materializing the block
+// identifiers. The identifier is the bulk of an entry and the queue
+// aggregation never reads it, so at a large backlog skipping it removes most
+// of the allocations of the scan. Tenants are interned, as a queue holds far
+// more blocks than there are tenants.
+func (s BlockQueueStore) ListEntryStats(tx *bbolt.Tx) iter.Iterator[compaction.BlockEntryStats] {
+	return newBlockEntryStatsIterator(tx.Bucket(s.bucketName))
+}
+
 func (s BlockQueueStore) ListEntries(tx *bbolt.Tx) iter.Iterator[compaction.BlockEntry] {
 	return newBlockEntriesIterator(tx.Bucket(s.bucketName))
 }
@@ -94,6 +103,61 @@ func marshalBlockEntryKey(index uint64, id string) []byte {
 	binary.BigEndian.PutUint64(b, index)
 	copy(b[8:], id)
 	return b
+}
+
+type blockEntryStatsIterator struct {
+	iter *store.CursorIterator
+	cur  compaction.BlockEntryStats
+	err  error
+	// tenants interns the tenant names. The lookup does not allocate: the
+	// compiler elides the conversion of the key for a map read.
+	tenants map[string]string
+}
+
+func newBlockEntryStatsIterator(bucket *bbolt.Bucket) *blockEntryStatsIterator {
+	return &blockEntryStatsIterator{
+		iter:    store.NewCursorIter(bucket.Cursor()),
+		tenants: make(map[string]string),
+	}
+}
+
+func (x *blockEntryStatsIterator) Next() bool {
+	if x.err != nil || !x.iter.Next() {
+		return false
+	}
+	e := x.iter.At()
+	if len(e.Key) < 8 || len(e.Value) < 16 {
+		x.err = ErrInvalidBlockEntry
+		return false
+	}
+	x.cur.AppendedAt = int64(binary.BigEndian.Uint64(e.Value[0:8]))
+	x.cur.Level = binary.BigEndian.Uint32(e.Value[8:12])
+	x.cur.Shard = binary.BigEndian.Uint32(e.Value[12:16])
+	x.cur.Tenant = x.intern(e.Value[16:])
+	return true
+}
+
+func (x *blockEntryStatsIterator) intern(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	if s, ok := x.tenants[string(b)]; ok {
+		return s
+	}
+	s := string(b)
+	x.tenants[s] = s
+	return s
+}
+
+func (x *blockEntryStatsIterator) At() compaction.BlockEntryStats { return x.cur }
+
+func (x *blockEntryStatsIterator) Close() error { return x.iter.Close() }
+
+func (x *blockEntryStatsIterator) Err() error {
+	if err := x.iter.Err(); err != nil {
+		return err
+	}
+	return x.err
 }
 
 func unmarshalBlockEntry(dst *compaction.BlockEntry, e store.KV) error {

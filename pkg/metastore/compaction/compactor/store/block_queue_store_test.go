@@ -7,10 +7,46 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/bbolt"
 
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 	"github.com/grafana/pyroscope/v2/pkg/test"
 )
+
+// ListEntryStats must agree with ListEntries on everything it reports.
+func TestBlockQueueStore_ListEntryStats(t *testing.T) {
+	db := test.BoltDB(t)
+	s := NewBlockQueueStore()
+
+	entries := []compaction.BlockEntry{
+		{Index: 1, AppendedAt: 100, ID: "b1", Tenant: "tenant-a", Shard: 1, Level: 0},
+		{Index: 2, AppendedAt: 200, ID: "b2", Tenant: "", Shard: 2, Level: 0},
+		{Index: 3, AppendedAt: 300, ID: "b3", Tenant: "tenant-a", Shard: 1, Level: 1},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		require.NoError(t, s.CreateBuckets(tx))
+		for _, e := range entries {
+			require.NoError(t, s.StoreEntry(tx, e))
+		}
+		return nil
+	}))
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		it := s.ListEntryStats(tx)
+		defer func() { _ = it.Close() }()
+		var got []compaction.BlockEntryStats
+		for it.Next() {
+			got = append(got, it.At())
+		}
+		require.NoError(t, it.Err())
+		assert.Equal(t, []compaction.BlockEntryStats{
+			{AppendedAt: 100, Tenant: "tenant-a", Shard: 1, Level: 0},
+			{AppendedAt: 200, Tenant: "", Shard: 2, Level: 0},
+			{AppendedAt: 300, Tenant: "tenant-a", Shard: 1, Level: 1},
+		}, got)
+		return nil
+	}))
+}
 
 func TestBlockQueueStore_StoreEntry(t *testing.T) {
 	db := test.BoltDB(t)

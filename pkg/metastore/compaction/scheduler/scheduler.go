@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"sync"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction/scheduler/store"
+	kvstore "github.com/grafana/pyroscope/v2/pkg/metastore/store"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -33,6 +36,7 @@ var _ compaction.Scheduler = (*Scheduler)(nil)
 type JobStore interface {
 	StoreJobPlan(*bbolt.Tx, *raft_log.CompactionJobPlan) error
 	GetJobPlan(tx *bbolt.Tx, name string) (*raft_log.CompactionJobPlan, error)
+	GetJobPlanSummary(tx *bbolt.Tx, name string, withSourceBlocks bool) (*store.JobPlanSummary, error)
 	DeleteJobPlan(tx *bbolt.Tx, name string) error
 
 	StoreJobState(*bbolt.Tx, *raft_log.CompactionJobState) error
@@ -142,6 +146,94 @@ func (sc *Scheduler) UpdateSchedule(tx *bbolt.Tx, update *raft_log.CompactionPla
 	}
 
 	return nil
+}
+
+// Config returns the scheduler configuration.
+func (sc *Scheduler) Config() Config { return sc.config }
+
+// JobInfo describes a compaction job in the schedule. Only a summary of the
+// job plan is included: the tombstone list is never retained, and the source
+// block list is only retained on request, as it is by far the largest part
+// of the plan.
+type JobInfo struct {
+	State        *raft_log.CompactionJobState
+	Tenant       string
+	Shard        uint32
+	SourceBlocks uint32
+	// SourceBlockIDs is only populated if JobFilter.IncludeSourceBlocks is
+	// set. SourceBlocks reports the number of the source blocks either way.
+	SourceBlockIDs []string
+}
+
+// JobFilter narrows the job listing. The zero value lists every job in the
+// schedule and retains no source block lists.
+type JobFilter struct {
+	// Tenant restricts the listing to the jobs of the tenant. If nil, the
+	// jobs of every tenant are listed. If it points at an empty string, only
+	// the jobs that have no tenant are listed: these compact the blocks of
+	// level 0, which are the multi-tenant segments.
+	Tenant *string
+	// IncludeSourceBlocks retains the source block list of the listed jobs.
+	IncludeSourceBlocks bool
+}
+
+func (f JobFilter) matches(tenant string) bool {
+	return f.Tenant == nil || *f.Tenant == tenant
+}
+
+// jobScanCancelInterval is how often the job scan checks for cancellation.
+// The scan holds a read transaction open, which prevents the database from
+// reusing the pages freed by concurrent writes, so abandoning it promptly
+// matters beyond the CPU it saves.
+const jobScanCancelInterval = 512
+
+// ListJobs returns the state and the plan summary of the jobs in the schedule
+// that match the filter. The jobs are read from the storage snapshot of the
+// given transaction; the in-memory queue is not accessed.
+//
+// Note that the filter cannot reduce the number of storage reads: the tenant
+// of a job is part of its plan, not of its state, so every plan is read
+// regardless. The filter only limits what is retained and returned.
+//
+// The scan is bounded by the context: the caller may have gone away, and the
+// read transaction should not outlive it.
+func (sc *Scheduler) ListJobs(ctx context.Context, tx *bbolt.Tx, filter JobFilter) ([]JobInfo, error) {
+	entries := sc.store.ListEntries(tx)
+	defer func() {
+		_ = entries.Close()
+	}()
+	var jobs []JobInfo
+	var n int
+	for entries.Next() {
+		if n++; n%jobScanCancelInterval == 0 {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+		}
+		state := entries.At()
+		job := JobInfo{State: state}
+		switch plan, err := sc.store.GetJobPlanSummary(tx, state.Name, filter.IncludeSourceBlocks); {
+		case err == nil:
+			if !filter.matches(plan.Tenant) {
+				continue
+			}
+			job.Tenant = plan.Tenant
+			job.Shard = plan.Shard
+			job.SourceBlocks = plan.SourceBlocks
+			job.SourceBlockIDs = plan.SourceBlockIDs
+		case !errors.Is(err, kvstore.ErrNotFound):
+			return nil, err
+		default:
+			// The plan is missing: the tenant of the job is unknown, so it
+			// cannot be matched against the filter. Such a job is only listed
+			// if no tenant is requested.
+			if filter.Tenant != nil {
+				continue
+			}
+		}
+		jobs = append(jobs, job)
+	}
+	return jobs, entries.Err()
 }
 
 func (sc *Scheduler) Init(tx *bbolt.Tx) error {
