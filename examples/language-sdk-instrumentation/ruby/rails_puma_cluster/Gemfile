@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+ruby "3.3.9"
+
+gem "rails", "~> 7.2.3", ">= 7.2.3.1"
+
+# Puma 7 renamed the fork hooks: before_worker_boot is the current name and
+# on_worker_boot is the deprecated alias. Both run in the worker after fork.
+gem "puma", "~> 7.2"
+
+gem "pyroscope", "= 1.1.2"
