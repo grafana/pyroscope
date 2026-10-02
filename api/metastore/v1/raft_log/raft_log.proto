@@ -38,6 +38,9 @@ message CompactionJobStatusUpdate {
   // entries written by older versions may erroneously contain field data for
   // metastore.v1.CompactionJobStatusUpdate#compacted_blocks.
   reserved 4;
+  // CompactedBlocks is the worker-reported result. Present on successful
+  // completions so the prepare step can decide whether to accept the output.
+  metastore.v1.CompactedBlocks compacted_blocks = 5;
 }
 
 // GetCompactionPlanUpdateResponse includes the planned change.
@@ -72,6 +75,10 @@ message UpdatedCompactionJob {
 message CompletedCompactionJob {
   CompactionJobState state = 1;
   metastore.v1.CompactedBlocks compacted_blocks = 2;
+  // RejectOutput is set by the prepare step when the job output must not be
+  // applied (for example, source blocks were deleted by retention). Replicas
+  // complete the job without replacing source blocks or enqueueing outputs.
+  bool reject_output = 3;
 }
 
 message EvictedCompactionJob {
