@@ -11,6 +11,11 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
+// levelSpreadDelay is how long a job above level 0 is held back from workers
+// already running a job of that level, so large merges spread across workers.
+// After the delay, any worker with a free slot may take it.
+const levelSpreadDelay = 10 * time.Second
+
 // schedule should be used to prepare the compaction plan update.
 // The implementation must have no side effects or alter the
 // Scheduler in any way.
@@ -24,6 +29,8 @@ type schedule struct {
 	updates map[string]*raft_log.CompactionJobState
 	added   int
 	evicted int
+	// Jobs the worker is running or is being assigned, by compaction level.
+	workerLevels map[uint32]int
 	// Modified copy of the job queue.
 	copied []priorityJobQueue
 }
@@ -35,6 +42,7 @@ func (p *schedule) AssignJob() (*raft_log.AssignedCompactionJob, error) {
 	if state == nil {
 		return nil, nil
 	}
+	p.workerLevels[state.CompactionLevel]++
 	plan, err := p.scheduler.store.GetJobPlan(p.tx, state.Name)
 	if err != nil {
 		return nil, err
@@ -53,6 +61,9 @@ func (p *schedule) UpdateJob(status *raft_log.CompactionJobStatusUpdate) *raft_l
 	state := p.newStateForStatusReport(status)
 	if state == nil {
 		return nil
+	}
+	if state.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS {
+		p.workerLevels[state.CompactionLevel]++
 	}
 	// State changes should be taken into account when we assign jobs.
 	p.updates[status.Name] = state
@@ -170,6 +181,9 @@ func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
 
 		switch job.Status {
 		case metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED:
+			if p.reservedForOtherWorkers(job, job.AddedAt) {
+				continue
+			}
 			return p.assignJob(job)
 
 		case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
@@ -180,6 +194,9 @@ func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
 				continue
 			}
 			if p.isAbandoned(job) {
+				if p.reservedForOtherWorkers(job, job.LeaseExpiresAt) {
+					continue
+				}
 				state := p.assignJob(job)
 				state.Failures++
 				return state
@@ -188,6 +205,14 @@ func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
 	}
 
 	return nil
+}
+
+// reservedForOtherWorkers reports whether a job that became available at
+// availableSince should be left for workers not running a job of its level.
+func (p *schedule) reservedForOtherWorkers(job *jobEntry, availableSince int64) bool {
+	return job.CompactionLevel > 0 &&
+		p.workerLevels[job.CompactionLevel] > 0 &&
+		p.now.UnixNano()-availableSince < int64(levelSpreadDelay)
 }
 
 func (p *schedule) allocateLease() int64 {
