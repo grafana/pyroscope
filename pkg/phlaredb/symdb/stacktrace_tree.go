@@ -43,47 +43,33 @@ const sentinel = -1
 func (t *stacktraceTree) len() uint32 { return uint32(len(t.nodes)) }
 
 func (t *stacktraceTree) insert(refs []uint64) uint32 {
-	var (
-		n = &t.nodes[0]
-		i = n.fc
-		x int32
-	)
-
-	for j := len(refs) - 1; j >= 0; {
+	var parent int32 // The root.
+	for j := len(refs) - 1; j >= 0; j-- {
 		r := int32(refs[j])
-		if i == sentinel {
-			ni := int32(len(t.nodes))
-			n.fc = ni
+		prev, i := int32(sentinel), t.nodes[parent].fc
+		for i != sentinel && t.nodes[i].r != r {
+			prev, i = i, t.nodes[i].ns
+		}
+		switch {
+		case i == sentinel:
+			i = int32(len(t.nodes))
 			t.nodes = append(t.nodes, node{
 				r:  r,
-				p:  x,
+				p:  parent,
 				fc: sentinel,
-				ns: sentinel,
+				ns: t.nodes[parent].fc,
 			})
-			x = ni
-			n = &t.nodes[ni]
-		} else {
-			x = i
-			n = &t.nodes[i]
+			t.nodes[parent].fc = i
+		case prev != sentinel:
+			// Move the match to the front of its siblings: stacks of one profile
+			// share prefixes, so the next insert usually finds it first.
+			t.nodes[prev].ns = t.nodes[i].ns
+			t.nodes[i].ns = t.nodes[parent].fc
+			t.nodes[parent].fc = i
 		}
-		if n.r == r {
-			i = n.fc
-			j--
-			continue
-		}
-		if n.ns < 0 {
-			n.ns = int32(len(t.nodes))
-			t.nodes = append(t.nodes, node{
-				r:  r,
-				p:  n.p,
-				fc: sentinel,
-				ns: sentinel,
-			})
-		}
-		i = n.ns
+		parent = i
 	}
-
-	return uint32(x)
+	return uint32(parent)
 }
 
 func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {

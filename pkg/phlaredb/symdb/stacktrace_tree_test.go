@@ -210,7 +210,12 @@ func assertRestoredStacktraceTree(t *testing.T, x *stacktraceTree) {
 	_, err := ppt.ReadFrom(bytes.NewBuffer(b.Bytes()))
 	require.NoError(t, err)
 	restored := ppt.toStacktraceTree()
-	assert.Equal(t, x.nodes, restored.nodes)
+	// Only parents and frames are encoded; sibling links are rebuilt in index order.
+	require.Equal(t, len(x.nodes), len(restored.nodes))
+	for i := range x.nodes {
+		assert.Equal(t, x.nodes[i].p, restored.nodes[i].p)
+		assert.Equal(t, x.nodes[i].r, restored.nodes[i].r)
+	}
 }
 
 func Benchmark_stacktrace_tree_insert(b *testing.B) {
