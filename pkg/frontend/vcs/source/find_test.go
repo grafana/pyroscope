@@ -141,6 +141,17 @@ source_code:
           path: spring-webmvc/src/main/java
 `
 
+const kotlinPyroscopeYAML = `---
+source_code:
+  mappings:
+    - function_name:
+        - prefix: org/example/rideshare
+      language: java
+      source:
+        local:
+          path: src/main/kotlin
+`
+
 const goPyroscopeYAML = `---
 source_code:
   mappings:
@@ -249,6 +260,28 @@ func TestFileFinder_Find(t *testing.T) {
 			},
 			expectedContent: "# CONTENT Math.java",
 			expectedURL:     "https://github.com/openjdk/jdk/blob/jdk-17+0/src/java.base/share/classes/java/lang/Math.java",
+			expectedError:   false,
+		},
+		{
+			name: "java/mapped-local-kotlin-fallback",
+			fileSpec: config.FileSpec{
+				FunctionName: "org/example/rideshare/RideShareController.orderCar",
+			},
+			rootPath:      "examples/language-sdk-instrumentation/java/rideshare",
+			ref:           "main",
+			pyroscopeYAML: kotlinPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Repo: "pyroscope",
+						Path: "examples/language-sdk-instrumentation/java/rideshare/src/main/kotlin/org/example/rideshare/RideShareController.kt",
+						Ref:  "main",
+					},
+					content: "# CONTENT RideShareController.kt",
+				},
+			},
+			expectedContent: "# CONTENT RideShareController.kt",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/java/rideshare/src/main/kotlin/org/example/rideshare/RideShareController.kt",
 			expectedError:   false,
 		},
 		// Go tests
