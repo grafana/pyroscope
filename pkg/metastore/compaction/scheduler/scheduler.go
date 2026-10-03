@@ -83,11 +83,12 @@ func NewStore() *store.JobStore {
 
 func (sc *Scheduler) NewSchedule(tx *bbolt.Tx, cmd *raft.Log) compaction.Schedule {
 	return &schedule{
-		tx:        tx,
-		token:     cmd.Index,
-		now:       cmd.AppendedAt,
-		scheduler: sc,
-		updates:   make(map[string]*raft_log.CompactionJobState),
+		tx:           tx,
+		token:        cmd.Index,
+		now:          cmd.AppendedAt,
+		scheduler:    sc,
+		updates:      make(map[string]*raft_log.CompactionJobState),
+		workerLevels: make(map[uint32]int),
 	}
 }
 
