@@ -117,7 +117,10 @@ func (r *functionsRewriter) rewrite(stack []int32) {
 	}
 }
 
-type StacktraceTree struct{ Nodes []StacktraceNode }
+type StacktraceTree struct {
+	Nodes []StacktraceNode
+	edges stacktraceEdgeTable
+}
 
 type StacktraceNode struct {
 	FirstChild  int32
@@ -145,6 +148,8 @@ func (t *StacktraceTree) Reset() {
 		*t = *(NewStacktraceTree(0))
 		return
 	}
+	clear(t.edges.slots)
+	t.edges.count = 0
 	t.Nodes = t.Nodes[:1]
 	t.Nodes[0] = StacktraceNode{
 		FirstChild:  sentinel,
@@ -154,50 +159,116 @@ func (t *StacktraceTree) Reset() {
 
 const sentinel = -1
 
-func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
-	var (
-		n    = &t.Nodes[0]
-		next = n.FirstChild
-		cur  int32
-	)
+// Scan a small, stable prefix of siblings before hashing. Narrow branches do
+// not allocate index storage; wider branches use the index after this prefix.
+const stacktraceUnindexedChildren = 4
 
+func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
+	n := &t.Nodes[0]
+	next := n.FirstChild
+	var cur int32
+	var scanned int
 	for j := len(locations) - 1; j >= 0; {
-		r := locations[j]
+		location := locations[j]
 		if next == sentinel {
-			ni := int32(len(t.Nodes))
-			n.FirstChild = ni
+			child := int32(len(t.Nodes))
+			n.FirstChild = child
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Parent:      cur,
-				FirstChild:  sentinel,
-				NextSibling: sentinel,
-				Location:    r,
+				Parent: cur, Location: location,
+				FirstChild: sentinel, NextSibling: sentinel,
 			})
-			cur = ni
-			n = &t.Nodes[ni]
+			cur = child
+			n = &t.Nodes[child]
 		} else {
 			cur = next
 			n = &t.Nodes[next]
 		}
-		if n.Location == r {
+		if n.Location == location {
 			n.Total += value
 			next = n.FirstChild
 			j--
+			scanned = 0
 			continue
 		}
-		if n.NextSibling < 0 {
+		scanned++
+		if scanned == stacktraceUnindexedChildren {
+			next = t.indexedChild(cur, location)
+			continue
+		}
+		if n.NextSibling == sentinel {
 			n.NextSibling = int32(len(t.Nodes))
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Parent:      n.Parent,
-				FirstChild:  sentinel,
-				NextSibling: sentinel,
-				Location:    r,
+				Parent: n.Parent, Location: location,
+				FirstChild: sentinel, NextSibling: sentinel,
 			})
 		}
 		next = n.NextSibling
 	}
-
 	t.Nodes[cur].Value += value
 	return cur
+}
+
+// indexedChild looks up a child beyond the unindexed sibling prefix. New
+// children are linked just after the prefix in O(1), keeping the prefix stable.
+// This changes traversal order beyond the prefix, but not node IDs or weights.
+func (t *StacktraceTree) indexedChild(prefixEnd, location int32) int32 {
+	parent := t.Nodes[prefixEnd].Parent
+	child, slot := t.edges.lookup(t.Nodes, parent, location)
+	if child == 0 {
+		if t.edges.grow(t.Nodes) {
+			_, slot = t.edges.lookup(t.Nodes, parent, location)
+		}
+		child = uint32(len(t.Nodes))
+		next := t.Nodes[prefixEnd].NextSibling
+		t.Nodes[prefixEnd].NextSibling = int32(child)
+		t.Nodes = append(t.Nodes, StacktraceNode{
+			Parent: parent, Location: location,
+			FirstChild: sentinel, NextSibling: next,
+		})
+		t.edges.slots[slot] = child
+		t.edges.count++
+	}
+	return int32(child)
+}
+
+// stacktraceEdgeTable indexes children beyond the prefix by (parent, location). Slots
+// store only node indices; keys are reconstructed from the nodes. Parent and
+// Location must remain unchanged during insertion. Consumers may rewrite nodes
+// during finalization, after which the tree must be Reset before inserting again.
+type stacktraceEdgeTable struct {
+	slots []uint32
+	count int
+}
+
+func (t *stacktraceEdgeTable) lookup(nodes []StacktraceNode, parent, location int32) (uint32, int) {
+	if len(t.slots) == 0 {
+		return 0, 0
+	}
+	mask := uint64(len(t.slots) - 1)
+	hash := uint64(uint32(parent))*0x9e3779b185ebca87 + uint64(uint32(location))*0xc2b2ae3d27d4eb4f
+	for slot := int(hash & mask); ; slot = (slot + 1) & int(mask) {
+		child := t.slots[slot]
+		if child == 0 || (nodes[child].Parent == parent && nodes[child].Location == location) {
+			return child, slot
+		}
+	}
+}
+
+func (t *stacktraceEdgeTable) grow(nodes []StacktraceNode) bool {
+	if t.count+1 <= len(t.slots)*3/4 {
+		return false
+	}
+	old := t.slots
+	t.slots = make([]uint32, max(16, len(old)*2))
+	// Rehash only indexed children, not prefix children or finalization stubs.
+	for _, child := range old {
+		if child != 0 {
+			n := nodes[child]
+			_, slot := t.lookup(nodes, n.Parent, n.Location)
+			t.slots[slot] = child
+		}
+	}
+	return true
 }
 
 func (t *StacktraceTree) LookupLocations(dst []uint64, idx int32) []uint64 {
