@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func Test_lookupTable(t *testing.T) {
@@ -184,6 +185,67 @@ func mixedLocationsProfile() *profilev1.Profile {
 		},
 		Sample: []*profilev1.Sample{
 			{LocationId: []uint64{2, 1}, Value: []int64{77}},
+		},
+		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
+	}
+}
+
+// The rewriter reads the source symbols in place, so it must not modify them
+// while translating references to the destination.
+func Test_Rewriter_does_not_modify_source(t *testing.T) {
+	src := newMemSuite(t, nil)
+	indexed := src.db.WriteProfileSymbols(0, mixedLocationsProfile())
+	require.NotEmpty(t, indexed)
+	sp, err := src.db.Partition(context.Background(), 0)
+	require.NoError(t, err)
+	before := cloneLocations(sp.Symbols().Locations)
+
+	// Symbols already in the destination shift the IDs the source maps to.
+	dst := NewSymDB(nil)
+	dst.WriteProfileSymbols(0, otherFunctionsProfile())
+	rw := NewRewriter(dst, src.db, nil)
+	for _, p := range indexed {
+		require.NoError(t, rw.Rewrite(0, slices.Clone(p.Samples.StacktraceIDs)))
+	}
+
+	assert.Equal(t, before, sp.Symbols().Locations)
+
+	dp, err := dst.Partition(context.Background(), 0)
+	require.NoError(t, err)
+	sym := dp.Symbols()
+	var names []string
+	for _, loc := range sym.Locations {
+		for _, line := range loc.Line {
+			names = append(names, sym.Strings[sym.Functions[line.FunctionId].Name])
+		}
+	}
+	assert.Contains(t, names, "main")
+}
+
+func cloneLocations(locs []schemav1.InMemoryLocation) []schemav1.InMemoryLocation {
+	out := make([]schemav1.InMemoryLocation, len(locs))
+	for i, l := range locs {
+		out[i] = l.Clone()
+	}
+	return out
+}
+
+func otherFunctionsProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		StringTable: []string{"", "libbar.so", "foo", "bar", "bar.go"},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, MemoryLimit: 0x1000000, Filename: 1},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 2, Filename: 4},
+			{Id: 2, Name: 3, Filename: 4},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 2}}},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{1}},
 		},
 		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
 	}

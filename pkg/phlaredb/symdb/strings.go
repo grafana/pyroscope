@@ -150,14 +150,20 @@ func (d *stringsBlockDecoder) decodeStrings8(r io.Reader, dst []string) (err err
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
+	var size int
 	for i := 0; i < len(dst); i++ {
-		s := make([]byte, d.buf[i])
-		if _, err = io.ReadFull(r, s); err != nil {
-			return err
-		}
-		dst[i] = *(*string)(unsafe.Pointer(&s))
+		size += int(d.buf[i])
 	}
-	return err
+	data, err := readStringsData(r, size)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(dst); i++ {
+		n := int(d.buf[i])
+		dst[i] = unsafe.String(unsafe.SliceData(data), n)
+		data = data[n:]
+	}
+	return nil
 }
 
 func (d *stringsBlockDecoder) decodeStrings16(r io.Reader, dst []string) (err error) {
@@ -165,13 +171,29 @@ func (d *stringsBlockDecoder) decodeStrings16(r io.Reader, dst []string) (err er
 	if _, err = io.ReadFull(r, d.buf); err != nil {
 		return err
 	}
+	var size int
 	for i := 0; i < len(dst); i++ {
-		l := binary.BigEndian.Uint16(d.buf[i*2:])
-		s := make([]byte, l)
-		if _, err = io.ReadFull(r, s); err != nil {
-			return err
-		}
-		dst[i] = *(*string)(unsafe.Pointer(&s))
+		size += int(binary.BigEndian.Uint16(d.buf[i*2:]))
 	}
-	return err
+	data, err := readStringsData(r, size)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(dst); i++ {
+		n := int(binary.BigEndian.Uint16(d.buf[i*2:]))
+		dst[i] = unsafe.String(unsafe.SliceData(data), n)
+		data = data[n:]
+	}
+	return nil
+}
+
+// readStringsData reads the string bytes of a block into a single buffer that
+// the decoded strings point into, instead of allocating each string separately.
+// The buffer stays alive while any string of the block is referenced.
+func readStringsData(r io.Reader, size int) ([]byte, error) {
+	data := make([]byte, size)
+	if _, err := io.ReadFull(r, data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
