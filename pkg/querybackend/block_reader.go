@@ -57,6 +57,7 @@ type BlockReader struct {
 	storage objstore.Bucket
 
 	metrics  *metrics
+	budget   *memoryBudget
 	hostname string
 
 	Overrides Overrides
@@ -75,6 +76,7 @@ func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.R
 		log:       logger,
 		storage:   storage,
 		metrics:   newMetrics(reg),
+		budget:    newMemoryBudget(reg),
 		hostname:  hostname,
 		Overrides: overrides,
 	}
@@ -138,6 +140,7 @@ func (b *BlockReader) Invoke(
 			req:             r,
 			agg:             agg,
 			obj:             obj,
+			budget:          b.budget,
 			grp:             g,
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,

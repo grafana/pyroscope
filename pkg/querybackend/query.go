@@ -88,6 +88,7 @@ type blockContext struct {
 	req             *request
 	agg             *reportAggregator
 	obj             *block.Object
+	budget          *memoryBudget
 	grp             *errgroup.Group
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
@@ -116,13 +117,19 @@ func (b *blockContext) execute() error {
 
 	md := b.obj.Metadata()
 	for _, ds := range md.Datasets {
+		release, err := b.budget.acquire(b.ctx, ds)
+		if err != nil {
+			return err
+		}
 		q := b.newQueryContext(ds)
 		for _, query := range b.req.src.Query {
 			q.grp.Go(util.RecoverPanic(func() error {
 				return q.execute(query)
 			}))
 		}
-		if err := q.grp.Wait(); err != nil {
+		err = q.grp.Wait()
+		release()
+		if err != nil {
 			return err
 		}
 	}
