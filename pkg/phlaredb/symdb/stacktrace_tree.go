@@ -13,8 +13,17 @@ const (
 	stacktraceTreeNodeSize    = int(unsafe.Sizeof(node{}))
 )
 
+// wideNodeScan is how many siblings an insert may scan before the parent's
+// children are indexed by location instead.
+const wideNodeScan = 32
+
 type stacktraceTree struct {
 	nodes []node
+	// Children of wide nodes, keyed by parent and location; only needed for
+	// insertion. wide marks the nodes whose children are indexed.
+	children map[uint64]int32
+	wide     []uint64
+	scan     int
 }
 
 type node struct {
@@ -29,7 +38,7 @@ func newStacktraceTree(size int) *stacktraceTree {
 	if size < 1 {
 		size = 1
 	}
-	t := stacktraceTree{nodes: make([]node, 1, size)}
+	t := stacktraceTree{nodes: make([]node, 1, size), scan: wideNodeScan}
 	t.nodes[0] = node{
 		p:  sentinel,
 		fc: sentinel,
@@ -43,47 +52,68 @@ const sentinel = -1
 func (t *stacktraceTree) len() uint32 { return uint32(len(t.nodes)) }
 
 func (t *stacktraceTree) insert(refs []uint64) uint32 {
-	var (
-		n = &t.nodes[0]
-		i = n.fc
-		x int32
-	)
-
-	for j := len(refs) - 1; j >= 0; {
+	var parent int32 // The root.
+	for j := len(refs) - 1; j >= 0; j-- {
 		r := int32(refs[j])
-		if i == sentinel {
-			ni := int32(len(t.nodes))
-			n.fc = ni
-			t.nodes = append(t.nodes, node{
-				r:  r,
-				p:  x,
-				fc: sentinel,
-				ns: sentinel,
-			})
-			x = ni
-			n = &t.nodes[ni]
-		} else {
-			x = i
-			n = &t.nodes[i]
-		}
-		if n.r == r {
-			i = n.fc
-			j--
+		if t.isWide(parent) {
+			k := childKey(parent, r)
+			i, ok := t.children[k]
+			if !ok {
+				i = t.newChild(parent, r)
+				t.children[k] = i
+			}
+			parent = i
 			continue
 		}
-		if n.ns < 0 {
-			n.ns = int32(len(t.nodes))
-			t.nodes = append(t.nodes, node{
-				r:  r,
-				p:  n.p,
-				fc: sentinel,
-				ns: sentinel,
-			})
+		i, n := t.nodes[parent].fc, 0
+		for i != sentinel && t.nodes[i].r != r {
+			i = t.nodes[i].ns
+			n++
 		}
-		i = n.ns
+		if i == sentinel {
+			i = t.newChild(parent, r)
+		}
+		if n >= t.scan {
+			t.indexChildren(parent)
+		}
+		parent = i
 	}
+	return uint32(parent)
+}
 
-	return uint32(x)
+func (t *stacktraceTree) newChild(parent, r int32) int32 {
+	i := int32(len(t.nodes))
+	t.nodes = append(t.nodes, node{
+		r:  r,
+		p:  parent,
+		fc: sentinel,
+		ns: t.nodes[parent].fc,
+	})
+	t.nodes[parent].fc = i
+	return i
+}
+
+func childKey(parent, r int32) uint64 { return uint64(uint32(parent))<<32 | uint64(uint32(r)) }
+
+func (t *stacktraceTree) isWide(i int32) bool {
+	w := int(i) >> 6
+	return w < len(t.wide) && t.wide[w]&(1<<(uint(i)&63)) != 0
+}
+
+// indexChildren indexes the existing children of a wide node; later children
+// are indexed as they are created.
+func (t *stacktraceTree) indexChildren(parent int32) {
+	if t.children == nil {
+		t.children = make(map[uint64]int32)
+	}
+	for i := t.nodes[parent].fc; i != sentinel; i = t.nodes[i].ns {
+		t.children[childKey(parent, t.nodes[i].r)] = i
+	}
+	w := int(parent) >> 6
+	if w >= len(t.wide) {
+		t.wide = append(t.wide, make([]uint64, w+1-len(t.wide))...)
+	}
+	t.wide[w] |= 1 << (uint(parent) & 63)
 }
 
 func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {
