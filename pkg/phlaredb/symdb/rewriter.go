@@ -207,7 +207,9 @@ func (p *partitionRewriter) appendRewrite(stacktraces []uint32) error {
 			p.locations.values[i].Line[j].FunctionId = p.functions.lookupResolved(line.FunctionId)
 		}
 	}
-	p.dst.AppendLocations(p.locations.buf, p.locations.values)
+	// Line slices were copied from the source in populateUnresolved and are
+	// not used after this call, so the writer can keep them.
+	p.dst.appendOwnedLocations(p.locations.buf, p.locations.values)
 	p.locations.updateResolved()
 
 	for _, v := range p.stacktraces.values {

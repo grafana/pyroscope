@@ -157,6 +157,12 @@ func (p *PartitionWriter) AppendLocations(dst []uint32, locations []schemav1.InM
 	p.locations.append(dst, locations)
 }
 
+// appendOwnedLocations is like AppendLocations, but takes ownership of the
+// locations' Line slices instead of copying them.
+func (p *PartitionWriter) appendOwnedLocations(dst []uint32, locations []schemav1.InMemoryLocation) {
+	p.locations.appendOwned(dst, locations)
+}
+
 func (p *PartitionWriter) AppendMappings(dst []uint32, mappings []schemav1.InMemoryMapping) {
 	p.mappings.append(dst, mappings)
 }

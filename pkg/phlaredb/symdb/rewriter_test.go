@@ -250,3 +250,20 @@ func otherFunctionsProfile() *profilev1.Profile {
 		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
 	}
 }
+
+func Test_PartitionWriter_location_ownership(t *testing.T) {
+	newLocation := func(fn uint32) []schemav1.InMemoryLocation {
+		return []schemav1.InMemoryLocation{{MappingId: 1, Line: []schemav1.InMemoryLine{{FunctionId: fn, Line: 1}}}}
+	}
+	w := NewSymDB(nil).PartitionWriter(0)
+	dst := make([]uint32, 1)
+
+	copied := newLocation(1)
+	w.AppendLocations(dst, copied)
+	copied[0].Line[0].FunctionId = 100
+	assert.Equal(t, uint32(1), w.locations.slice[dst[0]].Line[0].FunctionId)
+
+	owned := newLocation(2)
+	w.appendOwnedLocations(dst, owned)
+	assert.Same(t, &owned[0].Line[0], &w.locations.slice[dst[0]].Line[0])
+}
