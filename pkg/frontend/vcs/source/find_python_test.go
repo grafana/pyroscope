@@ -64,6 +64,27 @@ func Test_isPythonStdlibPath(t *testing.T) {
 			expectedOk:      false,
 		},
 		{
+			name:            "Not stdlib - site-packages under the interpreter dir",
+			path:            "/usr/local/lib/python3.14/site-packages/anyio/_backends/_asyncio.py",
+			expectedPath:    "",
+			expectedVersion: "",
+			expectedOk:      false,
+		},
+		{
+			name:            "Not stdlib - venv site-packages",
+			path:            "/srv/app/.venv/lib/python3.12/site-packages/flask/app.py",
+			expectedPath:    "",
+			expectedVersion: "",
+			expectedOk:      false,
+		},
+		{
+			name:            "Not stdlib - Debian dist-packages",
+			path:            "/usr/lib/python3.11/dist-packages/requests/api.py",
+			expectedPath:    "",
+			expectedVersion: "",
+			expectedOk:      false,
+		},
+		{
 			name:            "Empty path",
 			path:            "",
 			expectedPath:    "",
