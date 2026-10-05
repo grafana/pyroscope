@@ -334,6 +334,13 @@ func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connec
 	return l.client.GetProfileStats(ctx, c)
 }
 
+func (l LogSpanParametersWrapper) QueryAnomalies(ctx context.Context, c *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	sp, ctx := tracing.StartSpanFromContext(ctx, "QueryAnomalies")
+	defer sp.Finish()
+
+	return l.client.QueryAnomalies(ctx, c)
+}
+
 func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {
 	spanName := "AnalyzeQuery"
 	sp, ctx := tracing.StartSpanFromContext(ctx, spanName)

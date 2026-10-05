@@ -879,6 +879,8 @@ Usage of ./pyroscope:
     	Override the expected name on the server certificate.
   -query-backend.include-stripped-profiles
     	Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.
+  -query-frontend.anomaly-api.url string
+    	[experimental] Base URL of an externally configured anomaly source, used for the "stacktrace" anomaly query type. Leave empty to disable.
   -query-frontend.async-queries-enabled
     	[experimental] Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)
   -query-frontend.grpc-client-config.backoff-max-period duration
