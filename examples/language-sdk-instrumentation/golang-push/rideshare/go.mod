@@ -7,7 +7,7 @@ toolchain go1.26.8
 require (
 	github.com/agoda-com/opentelemetry-logs-go v0.5.1
 	github.com/grafana/otel-profiling-go v0.5.1
-	github.com/grafana/pyroscope-go v1.4.2
+	github.com/grafana/pyroscope-go v1.4.3
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/common v0.62.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0
