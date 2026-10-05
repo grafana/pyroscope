@@ -504,6 +504,40 @@ A query returns an empty profile rather than an error when nothing matches the I
 If a query returns nothing, confirm that the ID came from an exemplar query over the same time range, and that the profiles were ingested with span-aware instrumentation.
 {{< /admonition >}}
 
+### Query profile anomalies
+
+`profilecli query anomalies` is experimental. It asks the v2 query-frontend which profiles in a time range were flagged by an external anomaly source and are still present in ingested data.
+
+Use it when you want a list of confirmed profile IDs, with scores and labels, before you inspect a single profile.
+
+The command requires the server to set `-query-frontend.anomaly-api.url`. For how to enable that and what the anomaly source must serve, refer to [Query profile anomalies](../../configure-server/query-anomalies/).
+
+{{< admonition type="note" >}}
+This command is only supported on the v2 query-frontend. The stacktrace anomaly type requires a single tenant ID. Only the `process_cpu:cpu:nanoseconds:cpu:nanoseconds` profile type returns stacktrace anomalies; other profile types return an empty table.
+{{< /admonition >}}
+
+1. Optional: Specify a selector, time range, anomaly type, and output format.
+
+   - You can provide a label selector using the `--query` flag, for example `--query='{service_name="my_application_name"}'`.
+   - You can provide a custom time range using the `--from` and `--to` flags. The defaults are `now-1h` and `now`.
+   - You can set `--profile-type`. The default is `process_cpu:cpu:nanoseconds:cpu:nanoseconds`.
+   - You can repeat `--anomaly-type`. The only supported value is `stacktrace`, which is also the default.
+   - You can set `--output=table` or `--output=json`. Table is the default.
+
+1. Run the command.
+
+   ```bash
+   export PROFILECLI_URL=http://localhost:4040
+   export PROFILECLI_TENANT_ID=<TENANT_ID>
+
+   profilecli query anomalies \
+     --query='{service_name="my_application_name"}' \
+     --from="now-1h" --to="now" \
+     --anomaly-type=stacktrace
+   ```
+
+   The table lists Profile ID, Timestamp, Score, and Labels. Pass a profile ID to `profilecli query profile --profile-id` to inspect that profile. Refer to [Drill down into a single exemplar](#drill-down-into-a-single-exemplar).
+
 ### Export a profile for Go PGO
 
 You can use the `profilecli query go-pgo` command to retrieve an aggregated profile from a Pyroscope server for use with Go PGO.

@@ -51,3 +51,9 @@ The query-frontend can scale independently of the write path:
 ## Load balancing
 
 Query-frontends can be load balanced using standard HTTP load balancers. Each instance can handle any query, making round-robin load balancing effective.
+
+## Query anomalies
+
+The query-frontend exposes an experimental `QueryAnomalies` RPC that confirms candidate profile IDs from an external anomaly source against ingested data. The lookup is off by default. Enable it by setting `-query-frontend.anomaly-api.url`.
+
+For configuration and the lookup contract, refer to [Query profile anomalies](../../../configure-server/query-anomalies/). To call the RPC from a terminal, refer to [Profile CLI](../../../view-and-analyze-profile-data/profile-cli/#query-profile-anomalies).
