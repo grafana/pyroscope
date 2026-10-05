@@ -48,12 +48,14 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 `
 	writeConfig(initial)
 	registry := prometheus.NewRegistry()
+	bounds := profiledump.DefaultConfig()
+	bounds.Recorder.ProcessCapturesPerSecond = 0.5
 	startManager := func() *runtimeconfig.Manager {
 		t.Helper()
 		cfg := runtimeconfig.Config{
 			LoadPath: []string{path}, ReloadPeriod: 5 * time.Millisecond,
 			Loader: func(r io.Reader) (interface{}, error) {
-				return validation.LoadRuntimeConfigWithProfileDump(r, profiledump.DefaultConfig(), time.Unix(0, clock.Load()))
+				return validation.LoadRuntimeConfigWithProfileDump(r, bounds, time.Unix(0, clock.Load()))
 			},
 		}
 		manager, err := runtimeconfig.New(cfg, "profile-dump-test", registry, log.NewNopLogger())
@@ -67,6 +69,7 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	require.NoError(t, err)
 	original := overrides.ProfileDebugDump("tenant-a")
 	require.True(t, original.ActiveAt(now))
+	require.Equal(t, 0.5, original.MaxCapturesPerSecond())
 	require.Equal(t, deadline, original.ActiveUntil())
 	require.False(t, overrides.ProfileDebugDump("tenant-b").ActiveAt(now))
 	require.False(t, overrides.ProfileDebugDump("unknown").ActiveAt(now))
@@ -103,7 +106,7 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	clock.Store(now.Add(30 * time.Second).UnixNano())
 	// Force a reload with identical effective policy, rather than a hash-cache hit.
 	previous := manager.GetConfig()
-	writeConfig(strings.Replace(initial, "probability: 1", "probability: 1\n      max_captures_per_second: 1", 1))
+	writeConfig(strings.Replace(initial, "probability: 1", "probability: 1\n      max_captures_per_second: 0.5", 1))
 	require.Eventually(t, func() bool { return manager.GetConfig() != previous }, 5*time.Second, time.Millisecond)
 	require.Equal(t, original.Fingerprint(), overrides.ProfileDebugDump("tenant-a").Fingerprint())
 	require.Equal(t, deadline, overrides.ProfileDebugDump("tenant-a").ActiveUntil())
@@ -113,22 +116,35 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	previous = manager.GetConfig()
 	retained := overrides.ProfileDebugDump("tenant-a")
 	require.NotEqual(t, original.Fingerprint(), retained.Fingerprint())
-	// Reject the entire reload even if another tenant was validated first.
-	writeConfig(strings.Replace(initial, "tenant-b: {}", "tenant-b:\n    profile_debug_dump: {probability: 1}", 1))
-	require.Eventually(t, func() bool {
-		families, err := registry.Gather()
-		if err != nil {
-			return false
-		}
-		for _, family := range families {
-			if family.GetName() == "runtime_config_last_reload_successful" {
-				return family.Metric[0].Gauge.GetValue() == 0
+	waitReload := func(success float64) {
+		t.Helper()
+		require.Eventually(t, func() bool {
+			families, err := registry.Gather()
+			if err != nil {
+				return false
 			}
-		}
-		return false
-	}, 5*time.Second, time.Millisecond)
-	require.Same(t, previous, manager.GetConfig())
-	require.Equal(t, retained.Fingerprint(), overrides.ProfileDebugDump("tenant-a").Fingerprint())
+			for _, family := range families {
+				if family.GetName() == "runtime_config_last_reload_successful" {
+					return family.Metric[0].Gauge.GetValue() == success
+				}
+			}
+			return false
+		}, 5*time.Second, time.Millisecond)
+	}
+	// Reject the entire reload even if another tenant was validated first.
+	for _, invalid := range []string{
+		strings.Replace(initial, "tenant-b: {}", "tenant-b:\n    profile_debug_dump: {probability: 1}", 1),
+		strings.Replace(initial, "probability: 1", "probability: 1\n      max_captures_per_second: 0.6", 1),
+	} {
+		// Restore success so the failure metric proves this candidate was read.
+		writeConfig(strings.Replace(initial, "probability: 1", "probability: 0.5", 1))
+		waitReload(1)
+		previous = manager.GetConfig()
+		writeConfig(invalid)
+		waitReload(0)
+		require.Same(t, previous, manager.GetConfig())
+		require.Equal(t, retained.Fingerprint(), overrides.ProfileDebugDump("tenant-a").Fingerprint())
+	}
 	for _, at := range []time.Time{deadline.Add(-time.Nanosecond), deadline, deadline.Add(time.Nanosecond)} {
 		clock.Store(at.UnixNano())
 		p := overrides.ProfileDebugDump("tenant-a")
@@ -166,15 +182,38 @@ func TestProfileDumpServerConfig(t *testing.T) {
 	require.Equal(t, profiledump.DefaultConfig(), cfg.ProfileDump)
 	require.NoError(t, yaml.Unmarshal([]byte(`profile_dump:
   max_activation_window: 2h
-  default_captures_per_second: 2
-  max_captures_per_second: 20
+  process_captures_per_second: 0.5
 `), &cfg))
 	require.Equal(t, 2*time.Hour, cfg.ProfileDump.MaxActivationWindow)
-	require.Equal(t, 2.0, cfg.ProfileDump.DefaultCapturesPerSecond)
-	require.Equal(t, 20.0, cfg.ProfileDump.MaxCapturesPerSecond)
+	require.Equal(t, 0.5, cfg.ProfileDump.Recorder.ProcessCapturesPerSecond)
 	cfg.ProfileDump.MaxActivationWindow = 0
 	require.ErrorContains(t, cfg.Validate(), "max_activation_window")
 	cfg.ProfileDump = profiledump.DefaultConfig()
 	cfg.LimitsConfig.ProfileDebugDump = &profiledump.TenantConfig{}
 	require.ErrorContains(t, cfg.Validate(), "only supported in per-tenant runtime overrides")
+}
+
+func TestProfileDebugDumpInvalidInitialLoad(t *testing.T) {
+	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
+	for _, block := range []string{
+		`{probability: 1}`,
+		`{active_until: "2026-09-16T12:01:00Z", probability: 1, max_captures_per_second: 0.6}`,
+	} {
+		t.Run(block, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "runtime.yaml")
+			require.NoError(t, os.WriteFile(path, []byte("overrides:\n  tenant-a:\n    profile_debug_dump: "+block+"\n"), 0600))
+			bounds := profiledump.DefaultConfig()
+			bounds.Recorder.ProcessCapturesPerSecond = 0.5
+			manager, err := runtimeconfig.New(runtimeconfig.Config{
+				LoadPath: []string{path}, ReloadPeriod: time.Hour,
+				Loader: func(r io.Reader) (interface{}, error) {
+					return validation.LoadRuntimeConfigWithProfileDump(r, bounds, now)
+				},
+			}, "profile-dump-initial-test", prometheus.NewRegistry(), log.NewNopLogger())
+			require.NoError(t, err)
+			require.Error(t, services.StartAndAwaitRunning(context.Background(), manager))
+			require.Equal(t, services.Failed, manager.State())
+			require.Nil(t, manager.GetConfig())
+		})
+	}
 }

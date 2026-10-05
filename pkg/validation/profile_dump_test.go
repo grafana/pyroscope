@@ -81,7 +81,7 @@ func TestProfileDebugDumpExplicitValidationBounds(t *testing.T) {
 	deadline, probability := now.Add(2*time.Hour), 1.0
 	bounds := profiledump.DefaultConfig()
 	bounds.MaxActivationWindow = 3 * time.Hour
-	bounds.DefaultCapturesPerSecond = 0.5
+	bounds.Recorder.ProcessCapturesPerSecond = 0.5
 	limits := Limits{ProfileDebugDump: &profiledump.TenantConfig{ActiveUntil: &deadline, Probability: &probability}}
 	require.ErrorContains(t, limits.Validate(profiledump.DefaultConfig(), now), "maximum activation window")
 	require.NoError(t, limits.Validate(bounds, now))
@@ -147,7 +147,7 @@ func TestProfileDebugDumpTenantIsolation(t *testing.T) {
 	_, err = LoadRuntimeConfigWithProfileDump(strings.NewReader("overrides:\n  tenant-a:\n    profile_dump: {max_captures_per_second: 100}\n"), profiledump.DefaultConfig(), now)
 	require.ErrorContains(t, err, "field profile_dump")
 	bounds := profiledump.DefaultConfig()
-	bounds.MaxCapturesPerSecond = 2
+	bounds.Recorder.ProcessCapturesPerSecond = 2
 	_, err = LoadRuntimeConfigWithProfileDump(strings.NewReader(input), bounds, now)
 	require.ErrorContains(t, err, "invalid override for tenant tenant-b")
 	bounds.MaxActivationWindow = 0

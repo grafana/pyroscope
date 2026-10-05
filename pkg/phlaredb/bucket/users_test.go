@@ -24,7 +24,7 @@ func TestCaptureNamespaceDiscovery(t *testing.T) {
 			ctx := context.Background()
 			raw := objstore.NewBucket(thanos.NewInMemBucket())
 			b := objstore.NewPrefixedBucket(raw, "customer/prefix")
-			capture, _, err := profiledump.NewObjectKey("tenant", time.Now(), profiledump.FormatPprof)
+			capture, _, err := profiledump.NewNativeObjectKey("tenant", time.Now())
 			require.NoError(t, err)
 			for _, name := range []string{capture, "regular/phlaredb/01DTVP434PA9VFXSW2JKB3392D/profiles.parquet", "profile-debug-dumps-other/phlaredb/block"} {
 				require.NoError(t, b.Upload(ctx, name, strings.NewReader("opaque")))

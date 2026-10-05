@@ -3,7 +3,6 @@ package profiledump
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"math"
 	"runtime"
@@ -14,38 +13,45 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRecorderExactObjectAndMemory(t *testing.T) {
 	// ULIDs and fingerprints have fixed lengths. Compute the boundary with the
-	// accepted codec, including escaped labels and every recorder-owned field.
+	// native metadata helper, including escaped labels and every recorder-owned field.
 	c := candidate([]byte{0, 0xff, 0x1f, 0x8b})
 	c.Metadata.Labels = map[string]string{"service_name": `<>&"`}
 	m := c.Metadata
-	m.SchemaVersion, m.CapturedAt, m.TenantID = Version, recorderNow, "a"
-	m.DistributorID, m.ActivationSource = "distributor-test", ActivationRuntimeOverride
+	m.SchemaVersion, m.CapturedAt, m.TenantID = NativeSchemaVersion, recorderNow, "a"
+	m.DistributorID = "distributor-test"
 	m.PolicyFingerprint = recorderPolicy(t, "{}", 1, 10).Fingerprint()
-	_, id, err := NewObjectKey("a", recorderNow, FormatPprof)
+	key, id, err := NewNativeObjectKey("a", recorderNow)
 	require.NoError(t, err)
 	m.CaptureID, m.PayloadSize = id.String(), int64(len(c.Payload))
-	metadata, err := json.Marshal(m)
+	metadata, err := MarshalNativeMetadata(key, m)
 	require.NoError(t, err)
-	objectSize := int64(HeaderSize + len(metadata) + len(c.Payload))
+	objectSize := int64(len(metadata) + len(c.Payload))
 	for _, delta := range []int64{-1, 0, 1} {
 		t.Run(string(rune('1'+delta)), func(t *testing.T) {
 			cfg := recorderTestConfig()
 			cfg.MaxObjectBytes = objectSize + delta
 			started, proceed := make(chan struct{}), make(chan struct{})
 			unblock := sync.OnceFunc(func() { close(proceed) })
-			r, _, _ := recorderFixture(t, cfg, func(_ context.Context, _, _ string, body io.Reader) error {
-				close(started)
-				<-proceed
-				var restored bytes.Buffer
-				decoded, err := Decode(body, &restored, cfg.MaxObjectBytes)
-				if err == nil && (!bytes.Equal(c.Payload, restored.Bytes()) || decoded.Labels["service_name"] != m.Labels["service_name"]) {
-					t.Error("uploaded capture differs from candidate")
+			r, _, _ := recorderFixture(t, cfg, func(_ context.Context, _, key string, body io.Reader) error {
+				if strings.HasSuffix(key, ".pprof") {
+					close(started)
+					<-proceed
+					payload, err := io.ReadAll(body)
+					if !bytes.Equal(c.Payload, payload) {
+						t.Error("uploaded payload differs from candidate")
+					}
+					return err
+				}
+				decoded, err := ReadNativeMetadata(body, key)
+				if err == nil && decoded.Labels["service_name"] != m.Labels["service_name"] {
+					t.Error("uploaded metadata differs from candidate")
 				}
 				return err
 			}, nil)
@@ -58,11 +64,11 @@ func TestRecorderExactObjectAndMemory(t *testing.T) {
 				require.True(t, out.Enqueued)
 				await(t, started)
 				require.Equal(t, objectSize, out.Size)
-				// The marshal result overlaps the complete object during construction.
-				require.Equal(t, objectSize+int64(cap(metadata))+itemReservation, retained(r))
+				// Both owned buffers remain charged until both uploads finish.
+				require.Equal(t, int64(len(c.Payload)+cap(metadata))+itemReservation, retained(r))
 			}
 			unblock()
-			require.NoError(t, r.Shutdown(context.Background()))
+			require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 			assertReleased(t, r)
 		})
 	}
@@ -113,7 +119,7 @@ func TestRecorderQueueAndByteBudget(t *testing.T) {
 				require.Less(t, allocationAfter.TotalAlloc-allocationBefore.TotalAlloc, uint64(len(body)), "rejections must not allocate a payload-sized buffer")
 			}
 			unblock()
-			require.NoError(t, r.Shutdown(context.Background()))
+			require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 			assertReleased(t, r)
 		})
 	}
@@ -146,7 +152,6 @@ func TestRecorderTimeoutAndCancellationIgnoringUpload(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		cfg := recorderTestConfig()
 		cfg.UploadTimeout = 2 * time.Second
-		cfg.ShutdownDrain = time.Second
 		started, proceed := make(chan struct{}), make(chan struct{})
 		unblock := sync.OnceFunc(func() { close(proceed) })
 		r, _, _ := recorderFixture(t, cfg, func(ctx context.Context, _, _ string, body io.Reader) error {
@@ -164,16 +169,19 @@ func TestRecorderTimeoutAndCancellationIgnoringUpload(t *testing.T) {
 		synctest.Wait()
 		require.Equal(t, before, retained(r))
 		require.True(t, r.Capture(context.Background(), "a", candidate([]byte("queued"))).Enqueued)
-		require.ErrorIs(t, r.Shutdown(context.Background()), context.DeadlineExceeded)
-		require.Equal(t, before, retained(r), "only the queued capture may be released")
-		select {
-		case <-r.Done():
-			t.Fatal("active upload still owns its buffer and borrowed storage")
-		default:
+		queuedBytes := retained(r)
+		r.StopAsync()
+		synctest.Wait()
+		time.Sleep(shutdownDrain)
+		synctest.Wait()
+		require.Equal(t, queuedBytes, retained(r), "workers retain queued buffers until the provider returns")
+		require.NotEqual(t, services.Terminated, r.State(), "active upload still owns its buffer and borrowed storage")
+		for range 3 {
+			r.StopAsync()
 		}
-		require.Equal(t, 1., testutil.ToFloat64(r.metrics.dropped.WithLabelValues("connect", string(DropShutdown))))
 		unblock()
-		await(t, r.Done())
+		require.NoError(t, r.AwaitTerminated(context.Background()))
+		require.Equal(t, 1., testutil.ToFloat64(r.metrics.dropped.WithLabelValues("connect", string(DropShutdown))))
 		require.Equal(t, 1., testutil.ToFloat64(r.metrics.uploads.WithLabelValues("connect", "timeout")))
 		assertReleased(t, r)
 	})
@@ -186,7 +194,7 @@ func TestRecorderUploadDeadline(t *testing.T) {
 			return ctx.Err()
 		}, nil)
 		require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
-		require.NoError(t, r.Shutdown(context.Background()))
+		require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 		require.Equal(t, 1., testutil.ToFloat64(r.metrics.uploads.WithLabelValues("connect", "timeout")))
 		assertReleased(t, r)
 	})
@@ -204,7 +212,9 @@ func TestRecorderFixedUploadConcurrency(t *testing.T) {
 		defer active.Add(-1)
 		for previous := peak.Load(); n > previous && !peak.CompareAndSwap(previous, n); previous = peak.Load() {
 		}
-		started <- struct{}{}
+		if strings.HasSuffix(key, ".pprof") {
+			started <- struct{}{}
+		}
 		<-proceed
 		return discardUpload(ctx, tenant, key, body)
 	}, nil)
@@ -219,7 +229,7 @@ func TestRecorderFixedUploadConcurrency(t *testing.T) {
 	require.Equal(t, DropQueueFull, r.Capture(context.Background(), "a", candidate(nil)).Reason)
 	require.Equal(t, int64(cfg.Workers), active.Load())
 	unblock()
-	require.NoError(t, r.Shutdown(context.Background()))
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	require.Equal(t, int64(cfg.Workers), peak.Load())
 	assertReleased(t, r)
 }

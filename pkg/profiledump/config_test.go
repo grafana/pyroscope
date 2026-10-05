@@ -3,7 +3,10 @@ package profiledump_test
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
+	"io"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -210,18 +213,82 @@ func TestGlobalConfig(t *testing.T) {
 	}
 	for _, v := range []float64{0, -1, math.NaN(), math.Inf(1), math.Inf(-1)} {
 		c := defaults
-		c.MaxCapturesPerSecond = v
-		require.Error(t, c.Validate())
-		c = defaults
-		c.DefaultCapturesPerSecond = v
-		require.Error(t, c.Validate())
+		c.Recorder.ProcessCapturesPerSecond = v
+		require.ErrorContains(t, c.Validate(), "process_captures_per_second")
+		require.Error(t, c.Recorder.Validate())
+		_, err := validConfig().Compile(c, now)
+		require.Error(t, err)
 	}
-	defaults.DefaultCapturesPerSecond = 11
-	require.Error(t, defaults.Validate())
-	bounds := profiledump.Config{MaxActivationWindow: 2 * time.Hour, DefaultCapturesPerSecond: 20, MaxCapturesPerSecond: 30}
+}
+
+func TestDerivedTenantRates(t *testing.T) {
+	t.Parallel()
+	for _, ceiling := range []float64{math.SmallestNonzeroFloat64, 0.5, math.Nextafter(1, 0), 1, math.Nextafter(1, 2), 10, math.MaxFloat64} {
+		t.Run(fmt.Sprint(ceiling), func(t *testing.T) {
+			bounds := profiledump.DefaultConfig()
+			bounds.Recorder.ProcessCapturesPerSecond = ceiling
+			require.NoError(t, bounds.Validate())
+			require.NoError(t, bounds.Recorder.Validate())
+			c := validConfig()
+			omitted, err := c.Compile(bounds, now)
+			require.NoError(t, err)
+			require.Equal(t, min(1, ceiling), omitted.MaxCapturesPerSecond())
+			c.MaxCapturesPerSecond = ptr(min(1, ceiling))
+			explicit, err := c.Compile(bounds, now)
+			require.NoError(t, err)
+			require.Equal(t, omitted.Fingerprint(), explicit.Fingerprint())
+			c.MaxCapturesPerSecond = ptr(ceiling)
+			explicit, err = c.Compile(bounds, now)
+			require.NoError(t, err)
+			require.Equal(t, ceiling, explicit.MaxCapturesPerSecond())
+			c.MaxCapturesPerSecond = ptr(math.Nextafter(ceiling, math.Inf(1)))
+			_, err = c.Compile(bounds, now)
+			require.ErrorContains(t, err, "max_captures_per_second")
+		})
+	}
+}
+
+func TestProfileDumpConfigurationSurface(t *testing.T) {
+	t.Parallel()
+	expected := profiledump.DefaultConfig()
+	expected.Recorder = profiledump.RecorderConfig{MaxObjectBytes: 1 << 20, MaxRetainedBytes: 2 << 20, ProcessCapturesPerSecond: 0.5, UploadTimeout: 3 * time.Second}
+	expected.MaxActivationWindow = 2 * time.Hour
+	var fromFlags profiledump.Config
+	flags := flag.NewFlagSet("test", flag.ContinueOnError)
+	fromFlags.RegisterFlags(flags)
+	require.NoError(t, flags.Parse([]string{"-profile-dump.max-object-bytes=1048576", "-profile-dump.max-retained-bytes=2097152", "-profile-dump.process-captures-per-second=0.5", "-profile-dump.upload-timeout=3s", "-profile-dump.max-activation-window=2h"}))
+	require.Equal(t, expected, fromFlags)
+	fromYAML := profiledump.DefaultConfig()
+	decoder := yaml.NewDecoder(strings.NewReader(`max_object_bytes: 1048576
+max_retained_bytes: 2097152
+process_captures_per_second: 0.5
+upload_timeout: 3s
+max_activation_window: 2h
+`))
+	decoder.KnownFields(true)
+	require.NoError(t, decoder.Decode(&fromYAML))
+	require.Equal(t, expected, fromYAML)
+	require.NoError(t, fromYAML.Validate())
+	require.NoError(t, fromYAML.Recorder.Validate())
 	c := validConfig()
 	c.ActiveUntil = ptr(now.Add(90 * time.Minute))
-	p, err := c.Compile(bounds, now)
+	p, err := c.Compile(fromYAML, now)
 	require.NoError(t, err)
-	require.Equal(t, 20.0, p.MaxCapturesPerSecond())
+	require.Equal(t, 0.5, p.MaxCapturesPerSecond())
+}
+
+func TestRemovedProfileDumpControls(t *testing.T) {
+	t.Parallel()
+	for _, field := range []string{"queue_capacity", "workers", "tenant_burst", "process_burst", "max_tenant_limiters", "default_captures_per_second", "max_captures_per_second", "shutdown_drain", "limiter_prune_interval"} {
+		t.Run(field, func(t *testing.T) {
+			var config profiledump.Config
+			flags := flag.NewFlagSet("test", flag.ContinueOnError)
+			flags.SetOutput(io.Discard)
+			config.RegisterFlags(flags)
+			require.ErrorContains(t, flags.Parse([]string{"-profile-dump." + strings.ReplaceAll(field, "_", "-") + "=1"}), "flag provided but not defined")
+			decoder := yaml.NewDecoder(strings.NewReader(field + ": 1"))
+			decoder.KnownFields(true)
+			require.ErrorContains(t, decoder.Decode(&config), "field "+field+" not found")
+		})
+	}
 }

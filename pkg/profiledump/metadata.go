@@ -3,17 +3,13 @@ package profiledump
 import (
 	"fmt"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/oklog/ulid/v2"
 )
 
-// Codec limits in UTF-8 bytes. See FORMAT.md for the wire contract.
+// Metadata limits in UTF-8 bytes. See FORMAT.md for the storage contract.
 const (
 	MaxMetadataSize = 64 * 1024
-	MaxTenantBytes  = 256
 	MaxTextBytes    = 1024
 	MaxLabels       = 32
 	MaxLabelName    = 128
@@ -25,87 +21,13 @@ type SourceProtocol string
 
 const SourceConnect SourceProtocol = "connect"
 
-const ActivationRuntimeOverride = "runtime_override"
-
-// Metadata describes a capture independently of its envelope.
-type Metadata struct {
-	SchemaVersion     uint16            `json:"schema_version"`
-	CapturedAt        time.Time         `json:"captured_at"`
-	TenantID          string            `json:"tenant_id"`
-	SourceProtocol    SourceProtocol    `json:"source_protocol"`
-	NativeFormat      Format            `json:"native_format"`
-	PayloadEncoding   string            `json:"payload_encoding"`
-	Labels            map[string]string `json:"labels,omitempty"`
-	OriginalProfileID string            `json:"original_profile_id,omitempty"`
-	DistributorID     string            `json:"distributor_id"`
-	ActivationSource  string            `json:"activation_source"`
-	PolicyFingerprint string            `json:"policy_fingerprint"`
-	CaptureID         string            `json:"capture_id"`
-	PayloadSize       int64             `json:"payload_size"`
-}
-
-// Validate checks fields. Encode also enforces serialized metadata and object limits.
-func (m Metadata) Validate() error {
-	if err := m.validateSchema(); err != nil {
-		return err
-	}
-	if err := m.validateCaptureIdentity(); err != nil {
-		return err
-	}
-	switch m.SourceProtocol {
-	case SourceConnect:
-	default:
-		return fmt.Errorf("invalid source protocol")
-	}
-	if !m.NativeFormat.valid() {
-		return fmt.Errorf("invalid native format")
-	}
-	switch m.PayloadEncoding {
+func validatePayloadEncoding(encoding string) error {
+	switch encoding {
 	case "identity", "gzip", "unknown":
+		return nil
 	default:
 		return fmt.Errorf("invalid payload encoding")
 	}
-	if err := ValidateOriginalProfileID(m.OriginalProfileID); err != nil {
-		return err
-	}
-	if err := validateText("distributor_id", m.DistributorID, MaxTextBytes, true); err != nil {
-		return err
-	}
-	if m.ActivationSource != ActivationRuntimeOverride {
-		return fmt.Errorf("invalid activation source")
-	}
-	if err := validatePolicyFingerprint(m.PolicyFingerprint); err != nil {
-		return err
-	}
-	if m.PayloadSize < 0 {
-		return fmt.Errorf("payload_size must be nonnegative")
-	}
-	return ValidateLabels(m.Labels)
-}
-
-func (m Metadata) validateSchema() error {
-	if m.SchemaVersion != Version {
-		return fmt.Errorf("unsupported metadata schema version %d", m.SchemaVersion)
-	}
-
-	return nil
-}
-
-func (m Metadata) validateCaptureIdentity() error {
-	if err := validateCaptureTime(m.CapturedAt); err != nil {
-		return err
-	}
-	id, err := parseCaptureID(m.CaptureID)
-	if err != nil {
-		return err
-	}
-	if id.Time() != ulid.Timestamp(m.CapturedAt) {
-		return fmt.Errorf("capture ID timestamp does not match captured_at")
-	}
-	if err := validateText("tenant_id", m.TenantID, MaxTenantBytes, true); err != nil {
-		return err
-	}
-	return nil
 }
 
 func validatePolicyFingerprint(fingerprint string) error {
@@ -143,7 +65,7 @@ func ValidateLabels(values map[string]string) error {
 	return nil
 }
 
-// ValidateLabel checks one label against the envelope's text limits.
+// ValidateLabel checks one label against the metadata text limits.
 func ValidateLabel(name, value string) error {
 	if err := validateText("label name", name, MaxLabelName, true); err != nil {
 		return err

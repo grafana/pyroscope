@@ -26,10 +26,11 @@ var (
 	errDumpLimit   = errors.New("work limit reached")
 )
 
+const dumpList = "list"
 const dumpExtract = "extract"
 const dumpEncodingUnknown = "unknown"
 
-const dumpValidation = "header and metadata validated with matching object size, payload not read or verified, and no envelope checksum"
+const dumpValidation = "sidecar metadata validated with matching payload size, payload not read or verified"
 const dumpWarning = "WARNING: extracted files contain raw customer data, including metadata. Pyroscope cannot technically control subsequent local handling.\n"
 
 type profileDumpParams struct {
@@ -40,13 +41,13 @@ type profileDumpParams struct {
 	timeout                                time.Duration
 }
 
-func addProfileDumpCommands(app *kingpin.Application) map[string]*profileDumpParams {
-	group := app.Command("profile-dump", "Retrieve raw captures from the customer bucket. Tenant filters are not authorization boundaries.")
+func addProfileDumpCommands(admin *kingpin.CmdClause) map[string]*profileDumpParams {
+	group := admin.Command("profile-dumps", "Retrieve raw captures from the customer bucket. Tenant filters are not authorization boundaries.")
 	commands := make(map[string]*profileDumpParams)
-	for _, operation := range []string{"list", "inspect", dumpExtract} {
+	for _, operation := range []string{dumpList, "inspect", dumpExtract} {
 		cmd := group.Command(operation, map[string]string{
-			"list":      "List captures within a tenant and capture-time window (bounded JSON output).",
-			"inspect":   "Print envelope metadata as JSON without reading the payload. Metadata may contain customer identifiers.",
+			dumpList:    "List captures within a tenant and capture-time window (bounded JSON output).",
+			"inspect":   "Print native sidecar metadata as JSON without reading the payload. Metadata may contain customer identifiers.",
 			dumpExtract: "Extract unchanged native bytes and a .metadata.json sidecar. Never overwrite existing files.",
 		}[operation])
 		p := &profileDumpParams{bucketParams: &bucketParams{}, operation: operation}
@@ -55,13 +56,13 @@ func addProfileDumpCommands(app *kingpin.Application) map[string]*profileDumpPar
 		p.objectStoreCfg.RegisterFlagsWithPrefix("storage.", fs)
 		fs.VisitAll(func(f *flag.Flag) { cmd.Flag(f.Name, f.Usage).SetValue(f.Value) })
 		cmd.Flag("timeout", "Command context deadline. Cancellation, including Ctrl-C, depends on provider support (Swift may wait for provider timeouts).").Default("2m").DurationVar(&p.timeout)
-		cmd.Flag("max-object-size", "Maximum complete envelope size in bytes.").Default("134217728").Int64Var(&p.maxSize)
-		if operation == "list" {
+		cmd.Flag("max-object-size", "Maximum native payload size in bytes. Sidecar reads are bounded to 64 KiB.").Default("134217728").Int64Var(&p.maxSize)
+		if operation == dumpList {
 			cmd.Flag("tenant-id", "Tenant to select. Customer-cloud permissions remain authoritative.").Required().StringVar(&p.tenant)
 			cmd.Flag("from", "Inclusive capture time, RFC3339 (not client profile time).").Required().StringVar(&p.from)
 			cmd.Flag("to", "Exclusive capture time, RFC3339.").Required().StringVar(&p.to)
 			cmd.Flag("limit", "Maximum results. Reaching it marks results limited.").Default("100").IntVar(&p.limit)
-			cmd.Flag("max-work", "Maximum sum of listing calls, entries visited, and metadata storage calls (3 per candidate).").Default("10000").IntVar(&p.maxWork)
+			cmd.Flag("max-work", "Maximum work: one unit per minute listing and returned entry, plus two reserved per sidecar candidate (GET and payload Attributes).").Default("10000").IntVar(&p.maxWork)
 		} else {
 			cmd.Arg("key", "Exact profile-debug-dumps/... key, relative to storage.prefix (as in capture traces).").Required().StringVar(&p.key)
 			if operation == dumpExtract {
@@ -74,8 +75,8 @@ func addProfileDumpCommands(app *kingpin.Application) map[string]*profileDumpPar
 }
 
 func profileDump(ctx context.Context, p *profileDumpParams) (err error) {
-	if p.timeout <= 0 || p.maxSize < int64(profiledump.HeaderSize) {
-		return errors.New("timeout and max-object-size must be positive (size at least header size)")
+	if p.timeout <= 0 || p.maxSize <= 0 {
+		return errors.New("timeout and max-object-size must be positive")
 	}
 	if err := p.objectStoreCfg.Validate(logger); err != nil {
 		return err
@@ -94,7 +95,7 @@ func profileDump(ctx context.Context, p *profileDumpParams) (err error) {
 
 func runProfileDump(ctx context.Context, b objstore.BucketReader, p *profileDumpParams, out, status io.Writer) error {
 	switch p.operation {
-	case "list":
+	case dumpList:
 		return listProfileDumps(ctx, b, p, out)
 	case "inspect":
 		info, err := inspectProfileDump(ctx, b, p.key, p.maxSize)
@@ -102,14 +103,14 @@ func runProfileDump(ctx context.Context, b objstore.BucketReader, p *profileDump
 			return err
 		}
 		return writeDumpJSON(out, struct {
-			Key        string               `json:"key"`
-			Validation string               `json:"validation"`
-			Metadata   profiledump.Metadata `json:"metadata"`
-		}{p.key, dumpValidation, info.Metadata})
+			Key        string                     `json:"key"`
+			Validation string                     `json:"validation"`
+			Metadata   profiledump.NativeMetadata `json:"metadata"`
+		}{p.key, dumpValidation, info})
 	case dumpExtract:
 		return extractProfileDump(ctx, b, p, out, status)
 	default:
-		return errors.New("unknown profile-dump command")
+		return errors.New("unknown profile-dumps command")
 	}
 }
 
@@ -126,86 +127,49 @@ func dumpStorageError(b objstore.BucketReader, err error) error {
 	return fmt.Errorf("capture storage failure: %w", err)
 }
 
-func validateDumpKey(key string) (profiledump.ObjectKey, error) {
-	k, err := profiledump.ParseObjectKey(key)
+func validateDumpKey(key string) (profiledump.NativeObjectKey, error) {
+	k, err := profiledump.ParseNativeObjectKey(key)
 	if err != nil {
 		return k, fmt.Errorf("%w: key: %w", errDumpInvalid, err)
 	}
 	return k, nil
 }
 
-func matchDumpMetadata(k profiledump.ObjectKey, m profiledump.Metadata) error {
-	if k.TenantID != m.TenantID || k.CaptureID.String() != m.CaptureID || k.Format != m.NativeFormat {
-		return fmt.Errorf("%w: key and metadata disagree", errDumpInvalid)
-	}
-	return nil
-}
-
-// Inspect requests exactly header and metadata, using the codec's Read sizes.
-// Range readers are closed after each request, even on short reads/cancellation.
-type dumpRangeReader struct {
-	ctx        context.Context
-	bucket     objstore.BucketReader
-	key        string
-	offset     int64
-	storageErr error
-}
-
-func (r *dumpRangeReader) Read(p []byte) (n int, err error) {
-	if err := r.ctx.Err(); err != nil {
-		r.storageErr = err
-		return 0, err
-	}
-	rd, err := r.bucket.GetRange(r.ctx, r.key, r.offset, int64(len(p)))
-	if err != nil {
-		r.storageErr = err
-		return 0, err
-	}
-	n, err = io.ReadFull(rd, p)
-	closeErr := rd.Close()
-	r.offset += int64(n)
-	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-		r.storageErr = err
-	}
-	if closeErr != nil {
-		r.storageErr = closeErr
-	}
-	return n, errors.Join(err, closeErr)
-}
-
-func inspectProfileDump(ctx context.Context, b objstore.BucketReader, key string, maxSize int64) (profiledump.Inspection, error) {
+func inspectProfileDump(ctx context.Context, b objstore.BucketReader, key string, maxSize int64) (profiledump.NativeMetadata, error) {
 	k, err := validateDumpKey(key)
 	if err != nil {
-		return profiledump.Inspection{}, err
+		return profiledump.NativeMetadata{}, err
 	}
 	if err := ctx.Err(); err != nil {
-		return profiledump.Inspection{}, err
+		return profiledump.NativeMetadata{}, err
 	}
-	attrs, err := b.Attributes(ctx, key)
+	rd, err := b.Get(ctx, k.MetadataKey)
 	if err != nil {
-		return profiledump.Inspection{}, dumpStorageError(b, err)
+		return profiledump.NativeMetadata{}, fmt.Errorf("metadata sidecar %s: %w", k.MetadataKey, dumpStorageError(b, err))
 	}
-	if attrs.Size < int64(profiledump.HeaderSize) || attrs.Size > maxSize {
-		return profiledump.Inspection{}, fmt.Errorf("%w: object size %d outside bounds", errDumpInvalid, attrs.Size)
+	r := &dumpPayloadReader{ctx: ctx, r: rd}
+	m, decodeErr := profiledump.ReadNativeMetadata(r, k.MetadataKey)
+	closeErr := rd.Close()
+	if err := errors.Join(r.readErr, closeErr); err != nil {
+		return m, dumpStorageError(b, err)
 	}
-	r := &dumpRangeReader{ctx: ctx, bucket: b, key: key}
-	// The object has already passed maxSize. Use its actual size as the codec's
-	// bound so impossible metadata lengths fail before a range request at or
-	// beyond EOF, which providers such as S3 reject as InvalidRange.
-	info, err := profiledump.Inspect(r, attrs.Size)
-	if r.storageErr != nil {
-		return info, dumpStorageError(b, r.storageErr)
+	if decodeErr != nil {
+		return m, fmt.Errorf("%w: %w", errDumpInvalid, decodeErr)
 	}
-	if err != nil {
-		return info, fmt.Errorf("%w: %w", errDumpInvalid, err)
-	}
-	if info.ObjectSize != attrs.Size {
-		return info, fmt.Errorf("%w: declared size %d differs from object size %d", errDumpInvalid, info.ObjectSize, attrs.Size)
+	if m.PayloadSize > maxSize {
+		return m, fmt.Errorf("%w: payload size %d outside bounds", errDumpInvalid, m.PayloadSize)
 	}
 	if err := ctx.Err(); err != nil {
-		return info, err
+		return m, err
 	}
-	return info, matchDumpMetadata(k, info.Metadata)
+	attrs, err := b.Attributes(ctx, k.PayloadKey)
+	if err != nil {
+		return m, fmt.Errorf("native payload %s: %w", k.PayloadKey, dumpStorageError(b, err))
+	}
+	if attrs.Size != m.PayloadSize {
+		return m, fmt.Errorf("%w: declared payload size %d differs from object size %d", errDumpInvalid, m.PayloadSize, attrs.Size)
+	}
+	return m, ctx.Err()
 }
 
 type dumpListEntry struct {
@@ -227,8 +191,7 @@ type dumpListResult struct {
 }
 
 func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDumpParams, out io.Writer) (err error) {
-	segment, err := profiledump.EncodeTenant(p.tenant)
-	if err != nil {
+	if err := profiledump.ValidateNativeTenant(p.tenant); err != nil {
 		return err
 	}
 	from, err := time.Parse(time.RFC3339Nano, p.from)
@@ -240,8 +203,8 @@ func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDu
 		return fmt.Errorf("to: %w", err)
 	}
 	from, to = from.UTC(), to.UTC()
-	if !from.Before(to) || from.Year() < 1970 || to.Year() > 9999 {
-		return errors.New("require from < to within years 1970–9999")
+	if from.After(to) || from.Year() < 1970 || to.Year() > 9999 {
+		return errors.New("require from <= to within years 1970–9999")
 	}
 	if p.limit <= 0 || p.maxWork <= 0 {
 		return errors.New("limit and max-work must be positive")
@@ -267,13 +230,17 @@ func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDu
 		result.Work += n
 		return nil
 	}
-	// Direct day prefixes avoid listing unrelated tenants/months. Both calls for
-	// empty partitions and every provider callback count toward the work bound.
-	for day := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, time.UTC); day.Before(to); day = day.AddDate(0, 0, 1) {
+	// Empty ranges have no intersecting minutes, even with fractional endpoints.
+	if from.Equal(to) {
+		return ctx.Err()
+	}
+	// Generate one UTC minute at a time. Empty directories and all returned
+	// entries consume work, regardless of provider ordering or pagination.
+	for minute := from.Truncate(time.Minute); minute.Before(to); minute = minute.Add(time.Minute) {
 		if err := spend(1); err != nil {
 			return err
 		}
-		prefix := profiledump.ObjectPrefix + segment + "/" + day.Format("2006/01/02") + "/"
+		prefix := profiledump.NativeObjectPrefix + p.tenant + "/" + minute.Format("2006-01-02/15/04") + "/"
 		err := b.Iter(ctx, prefix, func(key string) error {
 			if err := spend(1); err != nil {
 				return err
@@ -283,15 +250,18 @@ func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDu
 				result.SkippedInvalid++
 				return nil
 			}
+			if key != k.MetadataKey {
+				return nil
+			}
 			// Keys are millisecond precision: include the boundary millisecond and
 			// apply exact sub-millisecond filtering using captured_at below.
 			if k.CaptureTime.Before(from.Truncate(time.Millisecond)) || !k.CaptureTime.Before(to) {
 				return nil
 			}
-			if err := spend(3); err != nil {
+			if err := spend(2); err != nil {
 				return err
 			}
-			info, err := inspectProfileDump(ctx, b, key, p.maxSize)
+			m, err := inspectProfileDump(ctx, b, key, p.maxSize)
 			if errors.Is(err, errDumpMissing) {
 				result.SkippedMissing++
 				return nil
@@ -303,18 +273,17 @@ func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDu
 			if err != nil {
 				return err
 			}
-			m := info.Metadata
 			if m.CapturedAt.Before(from) || !m.CapturedAt.Before(to) {
 				return nil
 			}
-			result.Captures = append(result.Captures, dumpListEntry{key, m.CapturedAt, m.SourceProtocol, m.NativeFormat, m.PayloadSize})
+			result.Captures = append(result.Captures, dumpListEntry{k.PayloadKey, m.CapturedAt, m.SourceProtocol, m.NativeFormat, m.PayloadSize})
 			if len(result.Captures) >= p.limit {
 				result.Limited = true
 				result.Reason = "result limit reached. More captures may exist"
 				return errDumpResultLimit
 			}
 			return nil
-		}) // Deliberately non-recursive: only files immediately beneath this day.
+		}) // Deliberately non-recursive: only files immediately beneath this minute.
 		if errors.Is(err, errDumpResultLimit) {
 			return nil
 		}
@@ -329,8 +298,8 @@ func listProfileDumps(ctx context.Context, b objstore.BucketReader, p *profileDu
 
 var errDumpResultLimit = errors.New("result limit reached")
 
-// Track read failures separately from codec errors so permission/network failures
-// are not mislabeled as corrupt envelopes. Also check cancellation with fake/local readers.
+// Track storage read failures separately from metadata and length validation.
+// Check cancellation even when the underlying reader ignores the context.
 type dumpPayloadReader struct {
 	ctx     context.Context
 	r       io.Reader
@@ -374,7 +343,11 @@ func extractProfileDump(ctx context.Context, b objstore.BucketReader, p *profile
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	rd, err := b.Get(ctx, p.key)
+	m, err := inspectProfileDump(ctx, b, p.key, p.maxSize)
+	if err != nil {
+		return err
+	}
+	rd, err := b.Get(ctx, k.PayloadKey)
 	if err != nil {
 		return dumpStorageError(b, err)
 	}
@@ -395,7 +368,12 @@ func extractProfileDump(ctx context.Context, b objstore.BucketReader, p *profile
 	defer func() { err = errors.Join(err, os.Remove(payload.Name())) }()
 	r := &dumpPayloadReader{ctx: ctx, r: rd}
 	w := &dumpPayloadWriter{w: payload}
-	m, decodeErr := profiledump.Decode(r, w, p.maxSize)
+	n, copyErr := io.Copy(w, io.LimitReader(r, m.PayloadSize))
+	// Probe for trailing bytes without writing beyond the declared output size.
+	var extra int64
+	if copyErr == nil && n == m.PayloadSize {
+		extra, copyErr = io.Copy(io.Discard, io.LimitReader(r, 1))
+	}
 	closeErr := payload.Close()
 	readerCloseErr := rd.Close()
 	rd = nil
@@ -405,13 +383,13 @@ func extractProfileDump(ctx context.Context, b objstore.BucketReader, p *profile
 	if w.err != nil {
 		return fmt.Errorf("write native output: %w", w.err)
 	}
-	if decodeErr != nil {
-		return fmt.Errorf("%w: %w", errDumpInvalid, decodeErr)
+	if copyErr != nil {
+		return copyErr
+	}
+	if n != m.PayloadSize || extra != 0 {
+		return fmt.Errorf("%w: payload length differs from declared size %d", errDumpInvalid, m.PayloadSize)
 	}
 	if err := errors.Join(closeErr, readerCloseErr); err != nil {
-		return err
-	}
-	if err := matchDumpMetadata(k, m); err != nil {
 		return err
 	}
 	if err := ctx.Err(); err != nil {
@@ -446,14 +424,14 @@ func extractProfileDump(ctx context.Context, b objstore.BucketReader, p *profile
 		Payload    string `json:"payload"`
 		Metadata   string `json:"metadata"`
 		Validation string `json:"validation"`
-	}{path, metadataPath, "complete envelope framing and length validated. no checksum, authenticity, or native-format validation"})
+	}{path, metadataPath, "sidecar metadata and payload length validated. no checksum, authenticity, or native-format validation"})
 	if err != nil {
 		return errors.Join(err, os.Remove(path), os.Remove(metadataPath))
 	}
 	return nil
 }
 
-func dumpExtension(m profiledump.Metadata) string {
+func dumpExtension(m profiledump.NativeMetadata) string {
 	switch m.PayloadEncoding {
 	case "gzip":
 		return ".pprof.gz"

@@ -48,7 +48,7 @@ func (p *capturePusher) Push(ctx context.Context, req *connect.Request[pushv1.Pu
 					encoding = "gzip"
 				}
 				capture.Capture(ctx, profiledump.Candidate{
-					Metadata: profiledump.Metadata{
+					Metadata: profiledump.NativeMetadata{
 						SourceProtocol:    profiledump.SourceConnect,
 						NativeFormat:      profiledump.FormatPprof,
 						PayloadEncoding:   encoding,

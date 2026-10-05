@@ -1,10 +1,10 @@
 package profiledump
 
 // Candidate borrows stable metadata, labels and payload until Capture returns.
-// The recorder replaces tenant, time, ID, distributor, policy, activation and size.
-// Payload is copied directly into the final object after admission.
+// The recorder replaces tenant, time, ID, distributor, policy and size.
+// Payload is copied directly into the owned buffer after admission.
 type Candidate struct {
-	Metadata       Metadata
+	Metadata       NativeMetadata
 	SelectorLabels LabelLookup
 	Payload        []byte
 }
@@ -28,7 +28,7 @@ const (
 )
 
 // Outcome reports enqueue or drop status, without waiting for upload.
-// Size is the complete encoded object size, or zero if sizing was not reached.
+// Size is the combined payload and serialized JSON size, or zero if sizing was not reached.
 type Outcome struct {
 	Enqueued          bool
 	Reason            DropReason

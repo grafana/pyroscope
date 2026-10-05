@@ -17,35 +17,28 @@ import (
 
 // Config contains process-wide recorder and policy bounds with provisional development defaults.
 type Config struct {
-	Cleaner                  CleanerConfig  `yaml:",inline"`
-	Recorder                 RecorderConfig `yaml:",inline"`
-	MaxActivationWindow      time.Duration  `yaml:"max_activation_window"`
-	DefaultCapturesPerSecond float64        `yaml:"default_captures_per_second"`
-	MaxCapturesPerSecond     float64        `yaml:"max_captures_per_second"`
+	Cleaner             CleanerConfig  `yaml:",inline"`
+	Recorder            RecorderConfig `yaml:",inline"`
+	MaxActivationWindow time.Duration  `yaml:"max_activation_window"`
 }
 
 func DefaultConfig() Config {
-	return Config{Cleaner: DefaultCleanerConfig(), Recorder: DefaultRecorderConfig(), MaxActivationWindow: time.Hour, DefaultCapturesPerSecond: 1, MaxCapturesPerSecond: 10}
+	return Config{Cleaner: DefaultCleanerConfig(), Recorder: DefaultRecorderConfig(), MaxActivationWindow: time.Hour}
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	d := DefaultConfig()
 	c.Recorder.RegisterFlags(f)
 	c.Cleaner.RegisterFlags(f)
-	f.DurationVar(&c.MaxActivationWindow, "profile-dump.max-activation-window", d.MaxActivationWindow, "Maximum future activation window for a profile-debug-dump policy, measured at configuration load. Must be positive. Provisional development default.")
-	f.Float64Var(&c.DefaultCapturesPerSecond, "profile-dump.default-captures-per-second", d.DefaultCapturesPerSecond, "Default profile capture rate per tenant per distributor when omitted from a policy. Must be positive and at most the global ceiling. This is not a fleet-wide quota. Provisional development default.")
-	f.Float64Var(&c.MaxCapturesPerSecond, "profile-dump.max-captures-per-second", d.MaxCapturesPerSecond, "Hard ceiling for each tenant's local per-distributor profile capture rate. Must be finite and positive. This is not a fleet-wide quota. Provisional development default.")
+	f.DurationVar(&c.MaxActivationWindow, "profile-dump.max-activation-window", d.MaxActivationWindow, "Maximum future activation window for a profile-debug-dump policy, measured at configuration load. Must be positive.")
 }
 
 func (c Config) Validate() error {
 	if c.MaxActivationWindow <= 0 {
 		return fmt.Errorf("max_activation_window must be positive")
 	}
-	if !positiveFinite(c.MaxCapturesPerSecond) {
-		return fmt.Errorf("max_captures_per_second must be finite and positive")
-	}
-	if !positiveFinite(c.DefaultCapturesPerSecond) || c.DefaultCapturesPerSecond > c.MaxCapturesPerSecond {
-		return fmt.Errorf("default_captures_per_second must be finite, positive and at most %g", c.MaxCapturesPerSecond)
+	if !positiveFinite(c.Recorder.ProcessCapturesPerSecond) {
+		return fmt.Errorf("process_captures_per_second must be finite and positive")
 	}
 	return nil
 }
@@ -90,12 +83,13 @@ func (c *TenantConfig) Compile(bounds Config, now time.Time) (Policy, error) {
 	if !positiveFinite(*c.Probability) || *c.Probability > 1 {
 		return Policy{}, fmt.Errorf("probability must be finite and in (0, 1]")
 	}
-	rate := bounds.DefaultCapturesPerSecond
+	ceiling := bounds.Recorder.ProcessCapturesPerSecond
+	rate := min(1, ceiling)
 	if c.MaxCapturesPerSecond != nil {
 		rate = *c.MaxCapturesPerSecond
 	}
-	if !positiveFinite(rate) || rate > bounds.MaxCapturesPerSecond {
-		return Policy{}, fmt.Errorf("max_captures_per_second must be finite, positive and at most %g", bounds.MaxCapturesPerSecond)
+	if !positiveFinite(rate) || rate > ceiling {
+		return Policy{}, fmt.Errorf("max_captures_per_second must be finite, positive and at most %g", ceiling)
 	}
 	selector := "{}"
 	if c.Selector != nil {

@@ -1,58 +1,47 @@
 # Capture retention
 
-Run an **admin target** against the same customer bucket and `storage.prefix` as
-capturing distributors. Distributor-only deployments do not run cleanup. The
-cleaner starts with the admin service and borrows its storage client.
+Run an **admin target** against the same bucket and `storage.prefix` as capturing
+distributors. Distributor-only deployments do not run cleanup. The cleaner uses
+`NewBorrowedBucket`, leaving storage ownership with the application.
 
-Configure retention and pass limits under `profile_dump`. The provisional defaults
-are `retention: 168h`, `sweep_interval: 1h`, `sweep_timeout: 1m` and
-`max_entries: 10000`. All must be positive. See the
-[configuration reference](../../docs/sources/configure-server/reference-configuration-parameters/index.md)
-for flags and descriptions.
+Set positive `profile_dump.retention` or `-profile-dump.retention`. The default is
+seven days (`168h`), with no maximum. See the
+[configuration reference](../../docs/sources/configure-server/reference-configuration-parameters/index.md).
 
-## Deletion and progress
+## Cleanup
 
-Cleanup visits only `profile-debug-dumps/`, relative to `storage.prefix`. It deletes
-valid capture keys strictly older than the retention cutoff, using server capture
-time rather than client profile timestamps. Malformed entries and unrelated
-objects are preserved. A real V1 tenant named `profile-debug-dumps` remains
-available through its normal `phlaredb/` storage.
+A sequential sweep starts with the service, fixes its cutoff at `now - retention`,
+and visits `profile-debug-dumps/native/` under the configured storage prefix.
+Only fully expired hours are eligible. Hourly granularity adds less than an hour
+before eligibility, followed by scheduling, traversal, or outage delays.
 
-The first pass starts immediately. Partial passes resume after `sweep_interval`,
-retaining their listing position and initial cutoff. Clock rollback can lower that
-cutoff. Failed objects and subtrees wait for the next traversal, allowing later
-tenants to progress. Restarts lose the cursor, and objects uploaded behind it may
-wait for another traversal.
+The next sweep starts **one hour after completion**. This interval is independent
+of retention. Deletion has no exact deadline and continues after policy expiry.
+Each sweep starts from the namespace root, allowing later sweeps to find late arrivals.
 
-Retention makes objects eligible for deletion, without guaranteeing a deletion
-deadline. Cleanup continues after policy removal or expiry. Those policy changes
-stop new admissions while already admitted captures drain normally. Multiple admin
-replicas may safely race, with duplicate listing work.
+Payloads and sidecars are deleted independently, including orphans, without reading
+contents. Every key must match the native namespace and its ULID/minute partition.
+Unexpected keys and unrelated data remain untouched. Cleanup never deletes broad
+prefixes. Missing objects are harmless. Other storage errors are recorded while
+reachable siblings continue.
 
-## Resource limits and shutdown
+## Shutdown
 
-The cleaner retains at most five partition iterators and performs one deletion at
-a time. `max_entries` bounds processed listing entries per pass. Provider pages,
-prefetch and cancellation draining are outside that budget. The filesystem
-provider reads whole directories, so these limits do not bound total process memory.
-
-Timeouts require provider cooperation. In particular, Swift ignores cancellation
-for listing and deletion, so requests can exceed pass budgets and delay shutdown
-indefinitely. Storage stays open until cleanup and recorder uploads release it.
+Deletes run one at a time with a ten-second cooperative timeout. Cancellation stops
+new deletes and allows listing producers to drain. Service completion waits for
+provider calls, so providers that ignore cancellation can delay shutdown indefinitely.
+Shared storage stays open until recorder and cleaner termination. Provider buffers
+are outside cleaner bounds. The separate CLI listing teardown limitation remains deferred.
 
 ## Monitoring
 
-Metrics use the `pyroscope_profile_dump_cleanup_` prefix. Watch
-`last_success_timestamp_seconds`, `last_success_cutoff_timestamp_seconds` and
-`errors_total` for retention lag. Success gauges update only after a full traversal
-without storage errors. Partial passes never count as successful coverage, and
-the cutoff cannot account for uploads that appeared behind the cursor.
+Metrics use the `pyroscope_profile_dump_cleanup_` prefix:
 
-`passes_total` distinguishes complete, partial, error and canceled passes.
-`deleted_total` and `missing_total` distinguish successful deletes from recognized
-not-found results. `malformed_total` counts preserved invalid entries and may count
-them again on later traversals.
+- `deleted_total`: successful deletes, excluding recognized missing responses.
+- `errors_total{operation="list"|"delete"}`: storage failures, excluding shutdown cancellation.
+- `last_success_timestamp_seconds`: completion of a sweep without storage errors.
 
-See [recorder contracts](RECORDER.md) for admission and upload behavior, and the
-[CLI reference](../../cmd/profilecli/PROFILE_DUMP.md) for retrieval. Extracted
-profiles remain unsanitized raw customer data.
+Skipped unrecognized keys do not prevent success. Listings are not snapshots.
+
+See [recorder contracts](RECORDER.md), [native format](FORMAT.md), and the
+[CLI reference](../../cmd/profilecli/PROFILE_DUMP.md) for activation and retrieval.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ func TestRecorderMetricLabelsAreBounded(t *testing.T) {
 		c.Metadata.SourceProtocol = SourceProtocol(tenant)
 		require.Equal(t, DropInvalid, r.Capture(context.Background(), tenant, c).Reason)
 	}
-	require.NoError(t, r.Shutdown(context.Background()))
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	families, err := reg.Gather()
 	require.NoError(t, err)
 	series := 0

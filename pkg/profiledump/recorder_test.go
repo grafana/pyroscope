@@ -7,17 +7,20 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
 
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -57,10 +60,10 @@ func recorderPolicy(t *testing.T, selector string, probability, rate float64) Po
 }
 
 func candidate(body []byte) Candidate {
-	return Candidate{Metadata: Metadata{SourceProtocol: SourceConnect, NativeFormat: FormatPprof, PayloadEncoding: "identity"}, Payload: body}
+	return Candidate{Metadata: NativeMetadata{SourceProtocol: SourceConnect, NativeFormat: FormatPprof, PayloadEncoding: "identity"}, Payload: body}
 }
 
-func recorderFixture(t *testing.T, cfg RecorderConfig, upload UploadFunc, modify func(*Dependencies)) (*Recorder, *policySet, *testClock) {
+func recorderFixture(t *testing.T, cfg recorderFixtureConfig, upload UploadFunc, modify func(*Dependencies)) (*Recorder, *policySet, *testClock) {
 	t.Helper()
 	policies := &policySet{policies: map[string]Policy{"a": recorderPolicy(t, "{}", 1, 10), "b": recorderPolicy(t, "{}", 1, 10)}}
 	clock := &testClock{}
@@ -68,13 +71,24 @@ func recorderFixture(t *testing.T, cfg RecorderConfig, upload UploadFunc, modify
 	if modify != nil {
 		modify(&deps)
 	}
-	r, err := NewRecorder(cfg, deps)
+	r, err := NewRecorder(cfg.RecorderConfig, deps)
 	require.NoError(t, err)
-	t.Cleanup(func() { r.cancel(); _ = r.Shutdown(context.Background()); await(t, r.Done()) })
+	r.queue = make(chan uploadItem, cfg.QueueCapacity)
+	r.workers, r.tenantBurst, r.maxTenantLimiters = cfg.Workers, cfg.TenantBurst, cfg.MaxTenantLimiters
+	r.process = rate.NewLimiter(rate.Limit(cfg.ProcessCapturesPerSecond), cfg.ProcessBurst)
+	require.NoError(t, services.StartAndAwaitRunning(context.Background(), r))
+	t.Cleanup(func() { require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r)) })
 	return r, policies, clock
 }
-func recorderTestConfig() RecorderConfig {
-	c := DefaultRecorderConfig()
+
+// Test-only tuning keeps deterministic ownership and limiter scenarios small.
+type recorderFixtureConfig struct {
+	RecorderConfig
+	QueueCapacity, Workers, TenantBurst, ProcessBurst, MaxTenantLimiters int
+}
+
+func recorderTestConfig() recorderFixtureConfig {
+	c := recorderFixtureConfig{RecorderConfig: DefaultRecorderConfig(), MaxTenantLimiters: defaultMaxTenantLimiters}
 	c.TenantBurst = 10000
 	c.ProcessBurst = 10000
 	c.QueueCapacity = 128
@@ -154,7 +168,7 @@ func TestRecorderSelection(t *testing.T) {
 				require.Zero(t, testutil.ToFloat64(r.metrics.bytes.WithLabelValues(metricSource(c.Metadata.SourceProtocol), result)))
 			}
 			require.Equal(t, 1., testutil.ToFloat64(r.metrics.candidates.WithLabelValues(metricSource(c.Metadata.SourceProtocol), result)))
-			require.NoError(t, r.Shutdown(context.Background()))
+			require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 			assertReleased(t, r)
 		})
 	}
@@ -186,7 +200,7 @@ func TestRecorderRatesAndReload(t *testing.T) {
 	clock.advance(time.Second)
 	require.True(t, capture("a").Enqueued)
 	require.Equal(t, DropProcessRate, capture("b").Reason)
-	require.NoError(t, r.Shutdown(context.Background()))
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	assertReleased(t, r)
 }
 
@@ -199,10 +213,12 @@ func TestRecorderOwnedUploadAndRequestIsolation(t *testing.T) {
 		value       any
 		err         error
 	}
-	result := make(chan uploaded, 1)
+	result := make(chan uploaded, 2)
 	type contextKey struct{}
 	r, policies, clock := recorderFixture(t, recorderTestConfig(), func(ctx context.Context, tenant, key string, body io.Reader) error {
-		close(started)
+		if strings.HasSuffix(key, ".pprof") {
+			close(started)
+		}
 		<-proceed
 		data, err := io.ReadAll(body)
 		result <- uploaded{tenant, key, data, oteltrace.SpanContextFromContext(ctx), ctx.Value(contextKey{}), ctx.Err()}
@@ -233,94 +249,62 @@ func TestRecorderOwnedUploadAndRequestIsolation(t *testing.T) {
 	require.Equal(t, span, got.span)
 	require.Equal(t, "a", got.tenant)
 	require.Equal(t, out.ObjectKey, got.key)
-	key, err := ParseObjectKey(got.key)
+	key, err := ParseNativeObjectKey(got.key)
 	require.NoError(t, err)
 	require.Equal(t, "a", key.TenantID)
-	var restored bytes.Buffer
-	m, err := Decode(bytes.NewReader(got.data), &restored, r.cfg.MaxObjectBytes)
+	sidecar := await(t, result)
+	require.Equal(t, key.MetadataKey, sidecar.key)
+	require.Equal(t, span, sidecar.span)
+	require.NoError(t, sidecar.err)
+	require.Nil(t, sidecar.value)
+	m, err := ReadNativeMetadata(bytes.NewReader(sidecar.data), sidecar.key)
 	require.NoError(t, err)
-	require.Equal(t, "native bytes", restored.String())
+	require.Equal(t, "native bytes", string(got.data))
 	require.Equal(t, "original", m.Labels["service_name"])
 	require.Equal(t, "gzip", m.PayloadEncoding)
 	require.Equal(t, out.CaptureID, m.CaptureID)
 	require.Equal(t, out.PolicyFingerprint, m.PolicyFingerprint)
-	require.Equal(t, int64(len(got.data)), out.Size)
-	require.NoError(t, r.Shutdown(context.Background()))
+	require.Equal(t, int64(len(got.data)+len(sidecar.data)), out.Size)
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	assertReleased(t, r)
 }
 
-func TestRecorderUploadErrorAndCancellation(t *testing.T) {
-	for _, tc := range []struct {
-		result string
-		cancel bool
-	}{
-		{"error", false},
-		{"canceled", true},
-	} {
-		t.Run(tc.result, func(t *testing.T) {
-			started := make(chan context.CancelFunc, 1)
-			r, _, _ := recorderFixture(t, recorderTestConfig(), func(ctx context.Context, _, _ string, _ io.Reader) error {
-				if tc.cancel {
-					<-ctx.Done()
-					return ctx.Err()
-				}
-				return errors.New("storage error")
-			}, func(d *Dependencies) {
-				d.WithTimeout = func(ctx context.Context, duration time.Duration) (context.Context, context.CancelFunc) {
-					if duration != DefaultRecorderConfig().UploadTimeout {
-						return context.WithTimeout(ctx, duration)
-					}
-					ctx, cancel := context.WithCancel(ctx)
-					started <- cancel
-					return ctx, cancel
-				}
-			})
-			require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
-			cancel := await(t, started)
-			if tc.cancel {
-				cancel()
-			}
-			require.NoError(t, r.Shutdown(context.Background()))
-			assertReleased(t, r)
-			require.Equal(t, 1., testutil.ToFloat64(r.metrics.uploads.WithLabelValues("connect", tc.result)))
-			require.Zero(t, testutil.ToFloat64(r.metrics.bytes.WithLabelValues("connect", "uploaded")))
-		})
-	}
+func TestRecorderUploadError(t *testing.T) {
+	r, _, _ := recorderFixture(t, recorderTestConfig(), func(context.Context, string, string, io.Reader) error {
+		return errors.New("storage error")
+	}, nil)
+	require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
+	assertReleased(t, r)
+	require.Equal(t, 1., testutil.ToFloat64(r.metrics.uploads.WithLabelValues("connect", "error")))
+	require.Zero(t, testutil.ToFloat64(r.metrics.bytes.WithLabelValues("connect", "uploaded")))
 }
 
 func TestRecorderGracefulDrain(t *testing.T) {
-	started, proceed, draining := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	var calls atomic.Int64
-	r, _, _ := recorderFixture(t, recorderTestConfig(), func(ctx context.Context, _, _ string, _ io.Reader) error {
-		if calls.Add(1) == 1 {
-			close(started)
-			<-proceed
-		}
-		return ctx.Err()
-	}, func(d *Dependencies) {
-		d.WithTimeout = func(ctx context.Context, duration time.Duration) (context.Context, context.CancelFunc) {
-			if duration == DefaultRecorderConfig().ShutdownDrain {
-				select {
-				case <-draining:
-				default:
-					close(draining)
-				}
+	synctest.Test(t, func(t *testing.T) {
+		started, proceed := make(chan context.Context, 1), make(chan struct{})
+		unblock := sync.OnceFunc(func() { close(proceed) })
+		var calls atomic.Int64
+		r, _, _ := recorderFixture(t, recorderTestConfig(), func(ctx context.Context, _, _ string, _ io.Reader) error {
+			if calls.Add(1) == 1 {
+				started <- ctx
+				<-proceed
 			}
-			return context.WithTimeout(ctx, duration)
-		}
+			return ctx.Err()
+		}, nil)
+		t.Cleanup(unblock)
+		require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
+		uploadCtx := await(t, started)
+		require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
+		r.StopAsync()
+		synctest.Wait()
+		require.NoError(t, uploadCtx.Err(), "graceful draining must not cancel uploads")
+		require.Equal(t, DropShutdown, r.Capture(context.Background(), "a", candidate(nil)).Reason)
+		unblock()
+		require.NoError(t, r.AwaitTerminated(context.Background()))
+		require.Equal(t, int64(4), calls.Load())
+		assertReleased(t, r)
 	})
-	require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
-	await(t, started)
-	require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
-	stopped := make(chan error, 1)
-	go func() { stopped <- r.Shutdown(context.Background()) }()
-	await(t, draining)
-	require.NoError(t, r.ctx.Err(), "graceful draining must not cancel uploads")
-	require.Equal(t, DropShutdown, r.Capture(context.Background(), "a", candidate(nil)).Reason)
-	close(proceed)
-	require.NoError(t, await(t, stopped))
-	require.Equal(t, int64(2), calls.Load())
-	assertReleased(t, r)
 }
 
 func TestRecorderAcceptedWorkDrainsAfterDeactivation(t *testing.T) {
@@ -355,101 +339,44 @@ func TestRecorderAcceptedWorkDrainsAfterDeactivation(t *testing.T) {
 			require.False(t, r.PolicyActive("a"))
 			require.Equal(t, reason, r.Capture(context.Background(), "a", candidate(nil)).Reason)
 			unblock()
-			require.NoError(t, r.Shutdown(context.Background()))
-			require.Equal(t, int64(2), calls.Load())
+			require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
+			require.Equal(t, int64(4), calls.Load())
 			require.Equal(t, 2., testutil.ToFloat64(r.metrics.uploads.WithLabelValues("connect", "success")))
 			assertReleased(t, r)
 		})
 	}
 }
 
-func TestRecorderDoneWaitsForForcedShutdownReservation(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		uploadStarted, finishUpload := make(chan struct{}), make(chan struct{})
-		drainOwnsItem, finishDrain := make(chan struct{}), make(chan struct{})
-		releaseUpload := sync.OnceFunc(func() { close(finishUpload) })
-		releaseDrain := sync.OnceFunc(func() { close(finishDrain) })
-		r, _, _ := recorderFixture(t, recorderTestConfig(), func(ctx context.Context, _, _ string, _ io.Reader) error {
-			close(uploadStarted)
-			<-finishUpload
-			return ctx.Err()
-		}, nil)
-		// Unblock both callbacks even if an assertion fails, before fixture cleanup.
-		t.Cleanup(releaseUpload)
-		t.Cleanup(releaseDrain)
-
-		// Pause between dequeue and release without holding r.mu.
-		r.metrics.dropped = prometheus.V2.NewCounterVec(prometheus.CounterVecOpts{
-			CounterOpts: prometheus.CounterOpts{Name: "test_shutdown_dropped_total", Help: "Synchronizes forced shutdown."},
-			VariableLabels: prometheus.ConstrainedLabels{
-				{Name: "source", Constraint: func(source string) string {
-					close(drainOwnsItem)
-					<-finishDrain
-					return source
-				}},
-				{Name: "reason"},
-			},
-		})
-		require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
-		await(t, uploadStarted)
-		queued := r.Capture(context.Background(), "a", candidate(nil))
-		require.True(t, queued.Enqueued)
-
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		forcedStop := make(chan error, 1)
-		go func() { forcedStop <- r.Shutdown(ctx) }()
-		await(t, drainOwnsItem)
-		releaseUpload()
-		synctest.Wait()
-
-		// Shutdown still owns the final capture after all workers exit.
-		r.mu.Lock()
-		workers, preparing := r.workers, r.preparing
-		r.mu.Unlock()
-		require.Zero(t, workers)
-		require.Zero(t, preparing)
-		require.Greater(t, retained(r), queued.Size+itemReservation)
-		select {
-		case <-r.Done():
-			t.Fatal("Done closed while forced shutdown still owns a reservation")
-		default:
-		}
-
-		concurrentStop := make(chan error, 1)
-		go func() { concurrentStop <- r.Shutdown(context.Background()) }()
-		synctest.Wait()
-		select {
-		case err := <-concurrentStop:
-			t.Fatalf("concurrent Shutdown returned before final release: %v", err)
-		default:
-		}
-
-		releaseDrain()
-		await(t, r.Done())
-		assertReleased(t, r)
-		require.ErrorIs(t, await(t, forcedStop), context.Canceled)
-		require.NoError(t, await(t, concurrentStop))
-	})
-}
-
 func TestRecorderLimiterPruning(t *testing.T) {
 	cfg := recorderTestConfig()
 	cfg.MaxTenantLimiters = 2
+	cfg.TenantBurst = 1
 	r, p, clock := recorderFixture(t, cfg, discardUpload, nil)
-	c := candidate(nil)
-	require.True(t, r.Capture(context.Background(), "a", c).Enqueued)
-	require.True(t, r.Capture(context.Background(), "b", c).Enqueued)
+	capture := func(tenant string) Outcome { return r.Capture(context.Background(), tenant, candidate(nil)) }
+	require.True(t, capture("a").Enqueued)
+	require.True(t, capture("b").Enqueued)
 	p.set("c", recorderPolicy(t, "{}", 1, 10))
-	require.Equal(t, DropLimiterCapacity, r.Capture(context.Background(), "c", c).Reason)
+	require.Equal(t, DropLimiterCapacity, capture("c").Reason)
 	p.set("a", Policy{})
-	require.True(t, r.Capture(context.Background(), "c", c).Enqueued, "capacity pressure prunes removed policies")
-	clock.advance(time.Hour)
+	require.True(t, capture("c").Enqueued, "capacity pressure prunes removed policies")
+	require.Equal(t, DropTenantRate, capture("b").Reason, "pruning must preserve active token history")
 	r.mu.Lock()
-	r.pruneLocked(clock.now())
-	n := len(r.tenants)
+	require.Len(t, r.tenants, 2)
+	require.NotContains(t, r.tenants, "a")
 	r.mu.Unlock()
-	require.Zero(t, n)
+	clock.advance(time.Hour)
+	deadline := clock.now().Add(time.Minute)
+	probability := 1.0
+	active, err := (&TenantConfig{ActiveUntil: &deadline, Probability: &probability}).Compile(DefaultConfig(), clock.now())
+	require.NoError(t, err)
+	p.set("d", active)
+	require.True(t, capture("d").Enqueued, "capacity pressure prunes expired policies without a timer")
+	r.mu.Lock()
+	require.Len(t, r.tenants, 1)
+	require.Contains(t, r.tenants, "d")
+	r.mu.Unlock()
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
+	require.Empty(t, r.tenants)
 }
 
 func TestRecorderConcurrentReloadAndShutdown(t *testing.T) {
@@ -488,24 +415,9 @@ func TestRecorderConcurrentReloadAndShutdown(t *testing.T) {
 	close(start)
 	// A synchronized first admission ensures shutdown overlaps a running producer.
 	r.Capture(context.Background(), "b", candidate(nil))
-	require.NoError(t, r.Shutdown(context.Background()))
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	wg.Wait()
 	assertReleased(t, r)
-}
-
-func TestRecorderPrunesWithoutTraffic(t *testing.T) {
-	ticks := make(chan time.Time)
-	r, p, clock := recorderFixture(t, recorderTestConfig(), discardUpload, func(d *Dependencies) { d.PruneTicks = ticks })
-	require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
-	p.set("a", Policy{})
-	clock.advance(time.Minute)
-	ticks <- clock.now()
-	// Receiving the next tick establishes that the first sweep finished.
-	ticks <- clock.now()
-	r.mu.Lock()
-	n := len(r.tenants)
-	r.mu.Unlock()
-	require.Zero(t, n)
 }
 
 func TestRecorderConfigValidation(t *testing.T) {
@@ -513,19 +425,15 @@ func TestRecorderConfigValidation(t *testing.T) {
 		func(c *RecorderConfig) { c.MaxObjectBytes = 0 },
 		func(c *RecorderConfig) { c.MaxObjectBytes = math.MaxInt64 },
 		func(c *RecorderConfig) { c.MaxRetainedBytes = c.MaxObjectBytes },
-		func(c *RecorderConfig) { c.QueueCapacity = 0 },
-		func(c *RecorderConfig) { c.Workers = -1 },
-		func(c *RecorderConfig) { c.TenantBurst = 0 },
-		func(c *RecorderConfig) { c.ProcessBurst = 0 },
 		func(c *RecorderConfig) { c.ProcessCapturesPerSecond = math.Inf(1) },
 		func(c *RecorderConfig) { c.UploadTimeout = 0 },
-		func(c *RecorderConfig) { c.ShutdownDrain = 0 },
-		func(c *RecorderConfig) { c.LimiterPruneInterval = 0 },
-		func(c *RecorderConfig) { c.MaxTenantLimiters = 0 },
 	} {
 		c := DefaultRecorderConfig()
 		mutate(&c)
 		require.Error(t, c.Validate())
+		r, err := NewRecorder(c, Dependencies{Policies: &policySet{}, Upload: discardUpload})
+		require.Error(t, err)
+		require.Nil(t, r)
 	}
 	_, err := NewRecorder(DefaultRecorderConfig(), Dependencies{})
 	require.Error(t, err)
@@ -565,4 +473,28 @@ func TestRecorderPolicyActive(t *testing.T) {
 	clock.advance(time.Hour)
 	require.False(t, r.PolicyActive("a"))
 	require.Equal(t, DropExpired, r.Capture(context.Background(), "a", candidate(nil)).Reason)
+}
+
+func TestRecorderImplementationBounds(t *testing.T) {
+	p := recorderPolicy(t, "{}", 1, 1)
+	policies := &policySet{policies: map[string]Policy{}}
+	r, err := NewRecorder(DefaultRecorderConfig(), Dependencies{Policies: policies, Upload: discardUpload})
+	require.NoError(t, err)
+	require.Equal(t, 16, cap(r.queue))
+	require.Equal(t, 2, r.workers)
+	require.Equal(t, 2, r.process.Burst())
+	for i := range 1024 {
+		tenant := fmt.Sprint(i)
+		policies.set(tenant, p)
+		require.Empty(t, r.admitRate(tenant, p, recorderNow.Add(time.Duration(i)*time.Second)))
+		require.Equal(t, 1, r.tenants[tenant].Burst())
+	}
+	require.Len(t, r.tenants, 1024)
+	require.Equal(t, DropLimiterCapacity, r.admitRate("overflow", p, recorderNow.Add(1024*time.Second)))
+	require.Len(t, r.tenants, 1024)
+	policies.set("0", Policy{})
+	require.Empty(t, r.admitRate("overflow", p, recorderNow.Add(1024*time.Second)))
+	require.Len(t, r.tenants, 1024)
+	require.NotContains(t, r.tenants, "0")
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 }

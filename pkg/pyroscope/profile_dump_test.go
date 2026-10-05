@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-kit/log"
@@ -41,7 +42,6 @@ func (b *dumpLifecycleBucket) Close() error { b.closes.Add(1); return nil }
 func newDumpApplication(t *testing.T) (*Pyroscope, *dumpLifecycleBucket) {
 	t.Helper()
 	cfg := newTestConfig(t, nil)
-	cfg.ProfileDump.Recorder.ShutdownDrain = time.Millisecond
 	cfg.ShowBanner = false
 	bucket := &dumpLifecycleBucket{Bucket: objstore.NewBucket(thanos.NewInMemBucket()), started: make(chan struct{}), canceled: make(chan struct{}), release: make(chan struct{})}
 	until := time.Now().Add(time.Minute)
@@ -58,41 +58,39 @@ func newDumpApplication(t *testing.T) (*Pyroscope, *dumpLifecycleBucket) {
 }
 
 func TestProfileDumpLifecycle(t *testing.T) {
-	f, bucket := newDumpApplication(t)
-	svc, err := f.initProfileDumpRecorder()
-	require.NoError(t, err)
-	require.NoError(t, services.StartAndAwaitRunning(context.Background(), svc))
-	var release sync.Once
-	t.Cleanup(func() { release.Do(func() { close(bucket.release) }); require.NoError(t, f.stopStorage()) })
-	outcome := f.profileDumpRecorder.Capture(context.Background(), "a", profiledump.Candidate{Metadata: profiledump.Metadata{SourceProtocol: profiledump.SourceConnect, NativeFormat: profiledump.FormatPprof, PayloadEncoding: "identity"}, Payload: []byte("opaque")})
-	require.True(t, outcome.Enqueued)
-	<-bucket.started
-	require.NoError(t, f.storageBucket.Close())
-	require.NoError(t, objstore.NewSSEBucketClient("a", f.storageBucket, f.Overrides).Close())
-	require.Zero(t, bucket.closes.Load())
-	stopped := make(chan error, 1)
-	go func() { stopped <- services.StopAndAwaitTerminated(context.Background(), svc) }()
-	<-bucket.canceled
-	require.ErrorIs(t, f.profileDumpRecorder.Shutdown(context.Background()), context.DeadlineExceeded)
-	select {
-	case <-f.profileDumpRecorder.Done():
-		t.Fatal("worker still owns the bucket")
-	default:
-	}
-	select {
-	case <-stopped:
-		t.Fatal("service must wait for recorder Done")
-	default:
-	}
-	storageStopped := make(chan error, 1)
-	go func() { storageStopped <- f.stopStorage() }()
-	require.Zero(t, bucket.closes.Load())
-	release.Do(func() { close(bucket.release) })
-	require.NoError(t, <-stopped)
-	require.NoError(t, <-storageStopped)
-	require.Equal(t, int32(1), bucket.closes.Load())
-	require.NoError(t, f.stopStorage())
-	require.Equal(t, int32(1), bucket.closes.Load())
+	synctest.Test(t, func(t *testing.T) {
+		f, bucket := newDumpApplication(t)
+		svc, err := f.initProfileDumpRecorder()
+		require.NoError(t, err)
+		require.NoError(t, services.StartAndAwaitRunning(context.Background(), svc))
+		var release sync.Once
+		t.Cleanup(func() { release.Do(func() { close(bucket.release) }); require.NoError(t, f.stopStorage()) })
+		outcome := f.profileDumpRecorder.Capture(context.Background(), "a", profiledump.Candidate{Metadata: profiledump.NativeMetadata{SourceProtocol: profiledump.SourceConnect, NativeFormat: profiledump.FormatPprof, PayloadEncoding: "identity"}, Payload: []byte("opaque")})
+		require.True(t, outcome.Enqueued)
+		<-bucket.started
+		require.NoError(t, f.storageBucket.Close())
+		require.NoError(t, objstore.NewSSEBucketClient("a", f.storageBucket, f.Overrides).Close())
+		require.Zero(t, bucket.closes.Load())
+		stopped := make(chan error, 1)
+		go func() { stopped <- services.StopAndAwaitTerminated(context.Background(), svc) }()
+		<-bucket.canceled
+		f.profileDumpRecorder.StopAsync()
+		require.NotEqual(t, services.Terminated, f.profileDumpRecorder.State())
+		select {
+		case <-stopped:
+			t.Fatal("service must wait for upload completion")
+		default:
+		}
+		storageStopped := make(chan error, 1)
+		go func() { storageStopped <- f.stopStorage() }()
+		require.Zero(t, bucket.closes.Load())
+		release.Do(func() { close(bucket.release) })
+		require.NoError(t, <-stopped)
+		require.NoError(t, <-storageStopped)
+		require.Equal(t, int32(1), bucket.closes.Load())
+		require.NoError(t, f.stopStorage())
+		require.Equal(t, int32(1), bucket.closes.Load())
+	})
 }
 
 func TestProfileDumpInitializationFailureCleanup(t *testing.T) {
@@ -104,11 +102,7 @@ func TestProfileDumpInitializationFailureCleanup(t *testing.T) {
 	require.NoError(t, mm.AddDependency("failure", "recorder"))
 	f.ModuleManager, f.Cfg.Target = mm, []string{"failure"}
 	require.ErrorIs(t, f.Run(), failure)
-	select {
-	case <-f.profileDumpRecorder.Done():
-	default:
-		t.Fatal("recorder leaked after startup failure")
-	}
+	require.Equal(t, services.Terminated, f.profileDumpRecorder.State())
 	require.Equal(t, int32(1), bucket.closes.Load())
 }
 
@@ -138,9 +132,9 @@ func TestProfileDumpModuleDependencies(t *testing.T) {
 }
 
 func TestProfileDumpRecorderConfiguration(t *testing.T) {
-	cfg := newTestConfig(t, []string{"-profile-dump.workers=3"})
-	require.Equal(t, 3, cfg.ProfileDump.Recorder.Workers)
-	cfg.ProfileDump.Recorder.Workers = 0
+	cfg := newTestConfig(t, []string{"-profile-dump.upload-timeout=3s"})
+	require.Equal(t, 3*time.Second, cfg.ProfileDump.Recorder.UploadTimeout)
+	cfg.ProfileDump.Recorder.UploadTimeout = 0
 	require.ErrorContains(t, cfg.Validate(), "profile_dump recorder")
 	_, err := validation.LoadRuntimeConfigWithProfileDump(strings.NewReader("overrides: {}"), cfg.ProfileDump, time.Now())
 	require.NoError(t, err, "runtime policy compilation is independent of process recorder validation")
@@ -196,7 +190,7 @@ func TestProfileDumpCleanerStorageOrder(t *testing.T) {
 				f, _ := newDumpApplication(t)
 				b := &dumpCleanupBucket{Bucket: objstore.NewBucket(thanos.NewInMemBucket()), entered: make(chan struct{}), canceled: make(chan struct{}), release: make(chan struct{})}
 				f.storageBucket, f.closeStorageBucket = objstore.NewBorrowedBucket(b), sync.OnceValue(b.Close)
-				key, _, err := profiledump.NewObjectKey("a", time.Now().Add(-8*24*time.Hour), profiledump.FormatPprof)
+				key, _, err := profiledump.NewNativeObjectKey("a", time.Now().Add(-8*24*time.Hour))
 				require.NoError(t, err)
 				require.NoError(t, b.Upload(context.Background(), key, strings.NewReader("opaque")))
 				mm := modules.NewManager(log.NewNopLogger())
@@ -263,7 +257,7 @@ func TestProfileDumpCleanerStorageOrder(t *testing.T) {
 				require.NoError(t, f.stopStorage())
 				require.EqualValues(t, 1, b.closes.Load())
 				if f.profileDumpRecorder != nil {
-					<-f.profileDumpRecorder.Done()
+					require.NoError(t, f.profileDumpRecorder.AwaitTerminated(context.Background()))
 				}
 			})
 		}
@@ -281,16 +275,15 @@ func TestProfileDumpCleanerInitializationFailure(t *testing.T) {
 	f.ModuleManager, f.Cfg.Target = mm, []string{"failure"}
 	require.ErrorIs(t, f.Run(), failure)
 	require.Equal(t, services.Terminated, f.profileDumpCleaner.State())
-	<-f.profileDumpRecorder.Done()
+	require.NoError(t, f.profileDumpRecorder.AwaitTerminated(context.Background()))
 	require.EqualValues(t, 1, bucket.closes.Load())
 	require.NoError(t, f.stopStorage())
 	require.EqualValues(t, 1, bucket.closes.Load())
 }
 
 func TestProfileDumpCleanerConfiguration(t *testing.T) {
-	cfg := newTestConfig(t, []string{"-profile-dump.retention=24h", "-profile-dump.cleanup-max-entries=17"})
+	cfg := newTestConfig(t, []string{"-profile-dump.retention=24h"})
 	require.Equal(t, 24*time.Hour, cfg.ProfileDump.Cleaner.Retention)
-	require.Equal(t, 17, cfg.ProfileDump.Cleaner.MaxEntries)
 	cfg.ProfileDump.Cleaner.Retention = 0
 	require.ErrorContains(t, cfg.Validate(), "profile_dump cleaner")
 	f, _ := newDumpApplication(t)

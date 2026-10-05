@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,6 +18,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +56,7 @@ func (f pushFunc) PushBatch(context.Context, *distributormodel.PushRequest) erro
 }
 
 type capturedObject struct {
-	metadata profiledump.Metadata
+	metadata profiledump.NativeMetadata
 	payload  []byte
 	key      string
 }
@@ -80,7 +82,8 @@ func newCaptureFixture(t *testing.T, policy profiledump.Policy, configure func(*
 	t.Helper()
 	f := &captureFixture{registry: prometheus.NewRegistry()}
 	cfg := profiledump.DefaultRecorderConfig()
-	cfg.TenantBurst, cfg.ProcessBurst, cfg.QueueCapacity, cfg.Workers = 100, 100, 100, 1
+	var ticks atomic.Int64
+	payloads := make(map[string][]byte)
 	deps := profiledump.Dependencies{
 		Policies: capturePolicyFunc(func(id string) profiledump.Policy {
 			if id == "test" {
@@ -88,17 +91,28 @@ func newCaptureFixture(t *testing.T, policy profiledump.Policy, configure func(*
 			}
 			return profiledump.Policy{}
 		}),
-		DistributorID: "test-distributor", Registerer: f.registry, Now: func() time.Time { return captureNow },
+		DistributorID: "test-distributor", Registerer: f.registry, Now: func() time.Time { return captureNow.Add(time.Duration(ticks.Add(1)) * time.Second) },
 		Upload: func(_ context.Context, id, key string, body io.Reader) error {
-			var payload bytes.Buffer
-			metadata, err := profiledump.Decode(body, &payload, cfg.MaxObjectBytes)
+			keys, err := profiledump.ParseNativeObjectKey(key)
+			if err != nil {
+				return err
+			}
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			if key == keys.PayloadKey {
+				payload, err := io.ReadAll(body)
+				payloads[key] = payload
+				return err
+			}
+			metadata, err := profiledump.ReadNativeMetadata(body, key)
 			if err != nil {
 				return err
 			}
 			assert.Equal(t, id, metadata.TenantID)
-			f.mu.Lock()
-			defer f.mu.Unlock()
-			f.objects = append(f.objects, capturedObject{metadata, payload.Bytes(), key})
+			payload, ok := payloads[keys.PayloadKey]
+			assert.True(t, ok, "payload must precede sidecar")
+			f.objects = append(f.objects, capturedObject{metadata, payload, keys.PayloadKey})
+			delete(payloads, keys.PayloadKey)
 			return nil
 		},
 	}
@@ -108,6 +122,7 @@ func newCaptureFixture(t *testing.T, policy profiledump.Policy, configure func(*
 	var err error
 	f.recorder, err = profiledump.NewRecorder(cfg, deps)
 	require.NoError(t, err)
+	require.NoError(t, services.StartAndAwaitRunning(context.Background(), f.recorder))
 	t.Cleanup(func() { f.drain(t) })
 	return f
 }
@@ -115,14 +130,17 @@ func (f *captureFixture) drain(t *testing.T) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	require.NoError(t, f.recorder.Shutdown(ctx))
+	require.NoError(t, services.StopAndAwaitTerminated(ctx, f.recorder))
 }
 func (f *captureFixture) captured(t *testing.T) []capturedObject {
 	t.Helper()
 	f.drain(t)
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]capturedObject(nil), f.objects...)
+	objects := append([]capturedObject(nil), f.objects...)
+	// Uploads run concurrently, so compare captures in admission order.
+	slices.SortFunc(objects, func(a, b capturedObject) int { return a.metadata.CapturedAt.Compare(b.metadata.CapturedAt) })
+	return objects
 }
 func (f *captureFixture) counter(t *testing.T, name string, labels map[string]string) float64 {
 	t.Helper()
@@ -253,11 +271,14 @@ func TestCapturePusherOwnershipAndResponse(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		t.Run(fmt.Sprint(fail), func(t *testing.T) {
 			release := make(chan struct{})
+			unblock := sync.OnceFunc(func() { close(release) })
 			started := make(chan struct{})
 			f := newCaptureFixture(t, capturePolicy(t, "{}", 1, false), func(_ *profiledump.RecorderConfig, d *profiledump.Dependencies) {
 				upload := d.Upload
 				d.Upload = func(ctx context.Context, id, key string, r io.Reader) error {
-					close(started)
+					if strings.HasSuffix(key, ".pprof") {
+						close(started)
+					}
 					select {
 					case <-release:
 					case <-ctx.Done():
@@ -266,7 +287,7 @@ func TestCapturePusherOwnershipAndResponse(t *testing.T) {
 					return upload(ctx, id, key, r)
 				}
 			})
-			defer close(release)
+			defer unblock()
 			req := sampleRequest()
 			var compressed bytes.Buffer
 			gz := gzip.NewWriter(&compressed)
@@ -303,8 +324,8 @@ func TestCapturePusherOwnershipAndResponse(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("upload not started")
 			}
-			// Unblock without closing twice; the deferred close permits cleanup on failure.
-			release <- struct{}{}
+			// Release both sequential uploads, including cleanup on failure.
+			unblock()
 			objects := f.captured(t)
 			require.Len(t, objects, 1)
 			require.Equal(t, original, objects[0].payload)
@@ -396,13 +417,12 @@ func TestCapturePusherLegacyBypass(t *testing.T) {
 }
 
 func TestCapturePusherQueueAndUploadFailure(t *testing.T) {
-	started, release := make(chan struct{}), make(chan struct{})
+	started, release := make(chan struct{}, 2), make(chan struct{})
 	var uploads atomic.Int32
 	f := newCaptureFixture(t, capturePolicy(t, "{}", 1, false), func(c *profiledump.RecorderConfig, d *profiledump.Dependencies) {
-		c.QueueCapacity = 1
 		d.Upload = func(ctx context.Context, _, _ string, _ io.Reader) error {
-			if uploads.Add(1) == 1 {
-				close(started)
+			if uploads.Add(1) <= 2 {
+				started <- struct{}{}
 			}
 			select {
 			case <-release:
@@ -420,23 +440,27 @@ func TestCapturePusherQueueAndUploadFailure(t *testing.T) {
 	})
 	wrapper := &capturePusher{next: next, recorder: f.recorder}
 	ctx := tenant.InjectTenantID(context.Background(), "test")
-	_, err := wrapper.Push(ctx, sampleRequest())
-	require.NoError(t, err)
-	select {
-	case <-started:
-	case <-time.After(5 * time.Second):
-		t.Fatal("upload not started")
-	}
+	// Occupy both fixed workers before filling the 16 waiting slots.
 	for range 2 {
-		_, err = wrapper.Push(ctx, sampleRequest())
+		_, err := wrapper.Push(ctx, sampleRequest())
+		require.NoError(t, err)
+		select {
+		case <-started:
+		case <-time.After(5 * time.Second):
+			t.Fatal("upload not started")
+		}
+	}
+	for range 17 {
+		_, err := wrapper.Push(ctx, sampleRequest())
 		require.NoError(t, err)
 	}
-	require.Equal(t, 3, calls)
+	require.Equal(t, 19, calls)
 	require.Equal(t, 1.0, f.counter(t, "pyroscope_profile_dump_dropped_total", map[string]string{"reason": "queue_full"}))
-	release <- struct{}{}
-	release <- struct{}{}
+	for range 18 {
+		release <- struct{}{}
+	}
 	f.drain(t)
-	require.Equal(t, 2.0, f.counter(t, "pyroscope_profile_dump_uploads_total", map[string]string{"result": "error"}))
+	require.Equal(t, 18.0, f.counter(t, "pyroscope_profile_dump_uploads_total", map[string]string{"result": "error"}))
 }
 
 func TestCapturePusherSpans(t *testing.T) {
@@ -464,7 +488,7 @@ func TestCapturePusherSpans(t *testing.T) {
 			f := newCaptureFixture(t, capturePolicy(t, tc.selector, tc.probability, false), func(c *profiledump.RecorderConfig, d *profiledump.Dependencies) {
 				d.Random = func() float64 { return 0.9 }
 				if tc.burst != 0 {
-					c.TenantBurst = tc.burst
+					d.Now = func() time.Time { return captureNow }
 				}
 				if tc.objectBytes != 0 {
 					c.MaxObjectBytes = tc.objectBytes
@@ -534,7 +558,7 @@ func TestCapturePusherMetadataBounds(t *testing.T) {
 	require.True(t, proto.Equal(before, req.Msg))
 	objects := f.captured(t)
 	require.Len(t, objects, 1)
-	require.NoError(t, objects[0].metadata.Validate())
+	require.NoError(t, objects[0].metadata.Validate(objects[0].key))
 	require.LessOrEqual(t, len(objects[0].metadata.Labels), profiledump.MaxLabels)
 }
 
@@ -542,7 +566,8 @@ func TestCapturePusherSelectsOversizedLabelValue(t *testing.T) {
 	f := newCaptureFixture(t, capturePolicy(t, `{oversized=~"x+",service_name="checkout"}`, 1, false), nil)
 	req := sampleRequest()
 	req.Msg.Series[0].Labels = append(req.Msg.Series[0].Labels, &typesv1.LabelPair{Name: "oversized", Value: strings.Repeat("x", 4<<20)})
-	for range 63 {
+	// Keep this selection test within the fixed queue capacity.
+	for range 7 {
 		req.Msg.Series[0].Samples = append(req.Msg.Series[0].Samples, &pushv1.RawSample{RawProfile: []byte("malformed native pprof")})
 	}
 	want := bytes.Clone(req.Msg.Series[0].Samples[0].RawProfile)
@@ -557,7 +582,7 @@ func TestCapturePusherSelectsOversizedLabelValue(t *testing.T) {
 	_, err := wrapper.Push(tenant.InjectTenantID(context.Background(), "test"), req)
 	require.Same(t, nextErr, err)
 	objects := f.captured(t)
-	require.Len(t, objects, 64)
+	require.Len(t, objects, 8)
 	for _, object := range objects {
 		require.Equal(t, want, object.payload)
 		require.Equal(t, "checkout", object.metadata.Labels["service_name"])
@@ -640,7 +665,8 @@ func BenchmarkCapturePusherDisabled(b *testing.B) {
 					Upload: func(context.Context, string, string, io.Reader) error { return nil },
 				})
 				require.NoError(b, err)
-				defer func() { require.NoError(b, recorder.Shutdown(context.Background())) }()
+				require.NoError(b, services.StartAndAwaitRunning(context.Background(), recorder))
+				defer func() { require.NoError(b, services.StopAndAwaitTerminated(context.Background(), recorder)) }()
 			}
 			response := connect.NewResponse(&pushv1.PushResponse{})
 			next := pushFunc(func(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -685,7 +711,7 @@ func TestCapturePusherUnrepresentableMetadataLabels(t *testing.T) {
 			require.Equal(t, req.Msg.Series[0].Samples[0].RawProfile, objects[0].payload)
 			require.Equal(t, "original-id", objects[0].metadata.OriginalProfileID)
 			require.Equal(t, map[string]string{"z": "last", "service_name": "checkout", "later": "preserved"}, objects[0].metadata.Labels)
-			require.NoError(t, objects[0].metadata.Validate())
+			require.NoError(t, objects[0].metadata.Validate(objects[0].key))
 			require.Zero(t, f.counter(t, "pyroscope_profile_dump_dropped_total", nil))
 		})
 	}
@@ -722,7 +748,6 @@ func TestCapturePusherPolicyChangesBetweenSamples(t *testing.T) {
 	policies := []profiledump.Policy{active, active, miss, active, expired, {}, active}
 	var reads atomic.Int32
 	f := newCaptureFixture(t, active, func(_ *profiledump.RecorderConfig, d *profiledump.Dependencies) {
-		d.PruneTicks = make(chan time.Time)
 		d.Policies = capturePolicyFunc(func(string) profiledump.Policy {
 			return policies[reads.Add(1)-1]
 		})

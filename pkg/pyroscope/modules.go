@@ -428,7 +428,11 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 
 // stopStorage also releases resources acquired during partial initialization.
 func (f *Pyroscope) stopStorage() error {
-	f.stopProfileDumpRecorder()
+	if f.profileDumpRecorder != nil {
+		f.profileDumpRecorder.StopAsync()
+		// Service completion joins all buffer and storage owners.
+		_ = f.profileDumpRecorder.AwaitTerminated(context.Background())
+	}
 	if f.profileDumpCleaner != nil {
 		f.profileDumpCleaner.StopAsync()
 		// AwaitTerminated also waits for failed services to finish teardown.
@@ -465,20 +469,7 @@ func (f *Pyroscope) initProfileDumpRecorder() (services.Service, error) {
 		return nil, err
 	}
 	f.profileDumpRecorder = r
-	return services.NewIdleService(nil, func(error) error {
-		f.stopProfileDumpRecorder()
-		return nil
-	}), nil
-}
-
-func (f *Pyroscope) stopProfileDumpRecorder() {
-	if f.profileDumpRecorder == nil {
-		return
-	}
-	// Shutdown supplies its own drain deadline, independent of service cancellation.
-	_ = f.profileDumpRecorder.Shutdown(context.Background())
-	// Providers ignoring cancellation retain the bucket until their workers return.
-	<-f.profileDumpRecorder.Done()
+	return r, nil
 }
 
 // TODO: This should be passed to all other services and could also be used to signal shutdown

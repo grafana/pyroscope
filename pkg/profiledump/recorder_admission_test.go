@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -42,8 +43,8 @@ func TestRecorderAdmissionTimeOrdering(t *testing.T) {
 				wantDrop := DropTenantRate
 				if scope == "process" {
 					defaults := DefaultRecorderConfig()
-					cfg.TenantBurst = defaults.TenantBurst
-					cfg.ProcessBurst = defaults.ProcessBurst
+					cfg.TenantBurst = defaultTenantBurst
+					cfg.ProcessBurst = defaultProcessBurst
 					cfg.ProcessCapturesPerSecond = defaults.ProcessCapturesPerSecond
 					elapsed = 200 * time.Millisecond
 					limit = cfg.ProcessCapturesPerSecond
@@ -136,14 +137,14 @@ func TestRecorderAdmissionTimePruningPreservesCaptureTime(t *testing.T) {
 	cfg := recorderTestConfig()
 	cfg.MaxTenantLimiters = 1
 	uploaded := make(chan []byte, 2)
-	r, policies, clock := recorderFixture(t, cfg, func(_ context.Context, _, _ string, body io.Reader) error {
+	r, policies, clock := recorderFixture(t, cfg, func(_ context.Context, _, key string, body io.Reader) error {
+		if strings.HasSuffix(key, ".pprof") {
+			return discardUpload(context.Background(), "", key, body)
+		}
 		data, err := io.ReadAll(body)
 		uploaded <- data
 		return err
-	}, func(d *Dependencies) {
-		// Only admission can prune in this test.
-		d.PruneTicks = make(chan time.Time)
-	})
+	}, nil)
 	require.True(t, r.Capture(context.Background(), "a", candidate(nil)).Enqueued)
 	await(t, uploaded)
 	policies.set("b", recorderPolicy(t, `{x="yes"}`, 1, 2))
@@ -162,7 +163,7 @@ func TestRecorderAdmissionTimePruningPreservesCaptureTime(t *testing.T) {
 	out := await(t, result)
 	require.Empty(t, out.Reason, "admission must prune the tenant that expired during selection")
 	require.True(t, out.Enqueued, "the selected capture retains its original policy expiry check")
-	m, err := Decode(bytes.NewReader(await(t, uploaded)), io.Discard, cfg.MaxObjectBytes)
+	m, err := ReadNativeMetadata(bytes.NewReader(await(t, uploaded)), out.ObjectKey)
 	require.NoError(t, err)
 	require.Equal(t, recorderNow, m.CapturedAt, "attribution must use capture time, not admission time")
 	require.Equal(t, DropExpired, r.Capture(context.Background(), "b", candidate(nil)).Reason)

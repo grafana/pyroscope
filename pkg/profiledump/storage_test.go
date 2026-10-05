@@ -1,7 +1,6 @@
 package profiledump
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"io"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/require"
 	thanosobjstore "github.com/thanos-io/objstore"
 
@@ -44,15 +44,21 @@ func TestRecorderBucketUpload(t *testing.T) {
 	payload := []byte{0x1f, 0x8b, 0, 0xff, 9}
 	out := r.Capture(context.Background(), "a", candidate(payload))
 	require.True(t, out.Enqueued)
-	require.NoError(t, r.Shutdown(context.Background()))
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	require.Zero(t, bucket.closes.Load(), "recorder must not close shared storage")
 	stored, err := bucket.Get(context.Background(), out.ObjectKey)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, stored.Close()) }()
-	var restored bytes.Buffer
-	metadata, err := Decode(stored, &restored, r.cfg.MaxObjectBytes)
+	restored, err := io.ReadAll(stored)
 	require.NoError(t, err)
-	require.Equal(t, payload, restored.Bytes())
+	keys, err := ParseNativeObjectKey(out.ObjectKey)
+	require.NoError(t, err)
+	sidecar, err := bucket.Get(context.Background(), keys.MetadataKey)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, sidecar.Close()) }()
+	metadata, err := ReadNativeMetadata(sidecar, keys.MetadataKey)
+	require.NoError(t, err)
+	require.Equal(t, payload, restored)
 	require.Equal(t, "a", metadata.TenantID)
 	assertReleased(t, r)
 }
@@ -77,20 +83,25 @@ func TestRecorderTenantEncryptionReachesS3(t *testing.T) {
 		SecretAccessKey: flagext.SecretWithValue("test"), AccessKeyID: "test", Insecure: true,
 	}, "test", log.NewNopLogger())
 	require.NoError(t, err)
-	bucket := &observedBucket{Bucket: objstore.NewBucket(client)}
+	bucket := &observedBucket{Bucket: objstore.NewPrefixedBucket(objstore.NewBucket(client), "customer/prefix")}
 	t.Cleanup(func() { require.NoError(t, bucket.Close()) })
 	r, _, _ := recorderFixture(t, recorderTestConfig(), BucketUpload(bucket, tenantEncryption{}), nil)
 	for _, tenant := range []string{"a", "b"} {
 		out := r.Capture(context.Background(), tenant, candidate([]byte("native")))
 		require.True(t, out.Enqueued)
-		got := await(t, requests)
-		require.Equal(t, "/customer/"+out.ObjectKey, got.path)
-		require.Equal(t, "aws:kms", got.header.Get("x-amz-server-side-encryption"))
-		require.Equal(t, "key-"+tenant, got.header.Get("x-amz-server-side-encryption-aws-kms-key-id"))
-		wantContext := base64.StdEncoding.EncodeToString([]byte(tenantEncryption{}.S3SSEKMSEncryptionContext(tenant)))
-		require.Equal(t, wantContext, got.header.Get("x-amz-server-side-encryption-context"))
+		keys, err := ParseNativeObjectKey(out.ObjectKey)
+		require.NoError(t, err)
+		for _, key := range []string{keys.PayloadKey, keys.MetadataKey} {
+			got := await(t, requests)
+			require.Equal(t, "/customer/customer/prefix/"+key, got.path)
+			require.Equal(t, "aws:kms", got.header.Get("x-amz-server-side-encryption"))
+			require.Equal(t, "key-"+tenant, got.header.Get("x-amz-server-side-encryption-aws-kms-key-id"))
+			wantContext := base64.StdEncoding.EncodeToString([]byte(tenantEncryption{}.S3SSEKMSEncryptionContext(tenant)))
+			require.Equal(t, wantContext, got.header.Get("x-amz-server-side-encryption-context"))
+			require.Empty(t, got.header.Get("Content-Encoding"))
+		}
 	}
-	require.NoError(t, r.Shutdown(context.Background()))
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	require.Zero(t, bucket.closes.Load())
 	assertReleased(t, r)
 }

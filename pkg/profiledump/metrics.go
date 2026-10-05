@@ -23,12 +23,12 @@ func newRecorderMetrics(reg prometheus.Registerer) recorderMetrics {
 	}
 	return recorderMetrics{
 		candidates:     counter("candidates_total", "Capture admission outcomes. enqueue is not persistence.", "source", "result"),
-		bytes:          counter("bytes_total", "Complete object bytes enqueued, dropped (including queued shutdown discards), or successfully uploaded. zero when sizing was not reached. Outcomes overlap.", "source", "result"),
+		bytes:          counter("bytes_total", "Combined payload and JSON bytes enqueued, dropped (including queued shutdown discards), or uploaded as a complete pair. Partial or uncertain uploads contribute zero uploaded bytes. zero when sizing was not reached. Outcomes overlap.", "source", "result"),
 		dropped:        counter("dropped_total", "Local capture drops by bounded reason, including queued shutdown discards. excludes upload failures.", "source", "reason"),
-		uploads:        counter("uploads_total", "Completed background upload attempts by result: success, error, timeout, or canceled. excludes queued shutdown discards.", "source", "result"),
+		uploads:        counter("uploads_total", "Completed background capture upload attempts. Success requires both payload and sidecar. Results: success, error, timeout, or canceled. excludes queued shutdown discards.", "source", "result"),
 		uploadDuration: f.NewHistogramVec(prometheus.HistogramOpts{Namespace: "pyroscope", Subsystem: "profile_dump", Name: "upload_duration_seconds", Help: "Background capture upload duration.", Buckets: prometheus.DefBuckets}, []string{"source"}),
-		retained:       gauge("reserved_bytes", "Reserved bytes for preparation, queued and uploading captures, including metadata overlap and item overhead."),
-		queueBytes:     gauge("queue_bytes", "Complete object bytes waiting for an upload worker."),
+		retained:       gauge("reserved_bytes", "Reserved bytes for preparation, queued and uploading captures, including owned payload, JSON capacity and item overhead."),
+		queueBytes:     gauge("queue_bytes", "Combined payload and JSON bytes waiting for an upload worker."),
 		queueItems:     gauge("queue_items", "Captures waiting for an upload worker."),
 	}
 }

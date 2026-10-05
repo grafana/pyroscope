@@ -4,16 +4,19 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/thanos-io/objstore"
+	cosprovider "github.com/thanos-io/objstore/providers/cos"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/s3"
@@ -27,8 +30,9 @@ func TestCleanerS3Cancellation(t *testing.T) {
 			baseline := goleak.IgnoreCurrent()
 			defer goleak.VerifyNone(t, baseline)
 			entered := make(chan struct{})
+			var once sync.Once
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				close(entered)
+				once.Do(func() { close(entered) })
 				if pending {
 					<-r.Context().Done()
 					return
@@ -36,7 +40,7 @@ func TestCleanerS3Cancellation(t *testing.T) {
 				w.Header().Set("Content-Type", "application/xml")
 				_, _ = fmt.Fprint(w, `<ListBucketResult><Name>captures</Name><IsTruncated>true</IsTruncated><NextContinuationToken>next</NextContinuationToken>`)
 				for i := range 1000 {
-					_, _ = fmt.Fprintf(w, "<Contents><Key>profile-debug-dumps/unexpected-%04d</Key><Size>1</Size></Contents>", i)
+					_, _ = fmt.Fprintf(w, "<Contents><Key>profile-debug-dumps/native/unexpected-%04d</Key><Size>1</Size></Contents>", i)
 				}
 				_, _ = fmt.Fprint(w, `</ListBucketResult>`)
 			}))
@@ -53,91 +57,91 @@ func TestCleanerS3Cancellation(t *testing.T) {
 			require.NoError(t, err)
 			defer func() { require.NoError(t, bucket.Close()) }()
 			settings := DefaultCleanerConfig()
-			settings.MaxEntries = 1
-			cleaner := newTestCleaner(t, settings, bucket)
+
+			wrapped := &cleanupTestBucket{Bucket: bucket}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			callbacks := 0
+			wrapped.iter = func(ctx context.Context, prefix string, f func(string) error, opts ...objstore.IterOption) error {
+				return bucket.Iter(ctx, prefix, func(key string) error {
+					callbacks++
+					if !pending {
+						cancel()
+					}
+					return f(key)
+				}, opts...)
+			}
+			cleaner := newTestCleaner(t, settings, wrapped)
 			passDone := make(chan struct{})
 			go func() { defer close(passDone); cleaner.sweep(ctx) }()
 			<-entered
-			if !pending {
-				<-passDone
-				require.Equal(t, 1.0, testutil.ToFloat64(cleaner.passes.WithLabelValues("partial")))
-				require.Zero(t, testutil.ToFloat64(cleaner.success))
+			if pending {
+				cancel()
 			}
-			cancel()
 			<-passDone
-			cleaner.closeTraversal()
-			cleaner.closeTraversal()
+			if !pending {
+				require.Positive(t, callbacks)
+			}
+			require.Zero(t, testutil.ToFloat64(cleaner.success))
+			require.Zero(t, testutil.ToFloat64(cleaner.errors.WithLabelValues("list")))
+			require.Zero(t, testutil.ToFloat64(cleaner.deleted))
 		})
 	}
 }
 
-func TestCleanerStreamingBoundsAndProgress(t *testing.T) {
-	// This provider streams a large namespace without retaining a key collection.
-	// Every malformed entry remains present. Rescanning would never finish.
-	b := &cleanupTestBucket{}
-	const entries = 100003
-	var calls, callbacks, active atomic.Int64
-	b.iter = func(ctx context.Context, _ string, f func(string) error) error {
-		calls.Add(1)
-		active.Add(1)
-		defer active.Add(-1)
-		for i := range entries {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			callbacks.Add(1)
-			if err := f(fmt.Sprintf("%sunexpected-%d", ObjectPrefix, i)); err != nil {
-				return err
-			}
-		}
+// COS classifies every HTTP 404 as object-not-found, including NoSuchBucket.
+// Use the actual provider with an in-process transport to distinguish a failed
+// root listing from a successful empty namespace without live storage access.
+func TestCleanerCOSMissingBucket(t *testing.T) {
+	transport := &cleanupCOSTransport{missingBucket: true}
+	cfg := cosprovider.DefaultConfig
+	cfg.Endpoint = "https://cleanup-fixture.invalid"
+	cfg.SecretId = "local-fixture-id"
+	cfg.SecretKey = "local-fixture-key"
+	bucket, err := cosprovider.NewBucketWithConfig(log.NewNopLogger(), cfg, "test", func(http.RoundTripper) http.RoundTripper { return transport })
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, bucket.Close()) })
+
+	err = bucket.Iter(context.Background(), NativeObjectPrefix, func(string) error {
+		t.Fatal("unexpected object")
 		return nil
-	}
-	cfg := DefaultCleanerConfig()
-	cfg.MaxEntries = 97
-	c := newTestCleaner(t, cfg, b)
-	passes := 0
-	for {
-		before := testutil.ToFloat64(c.malformed)
-		c.sweep(context.Background())
-		passes++
-		require.LessOrEqual(t, testutil.ToFloat64(c.malformed)-before, float64(cfg.MaxEntries))
-		require.LessOrEqual(t, len(c.stack), 5)
-		require.LessOrEqual(t, active.Load(), int64(1))
-		// At most one delivered entry can be parked inside the callback.
-		require.LessOrEqual(t, callbacks.Load()-int64(testutil.ToFloat64(c.malformed)), int64(1))
-		if len(c.stack) == 0 {
-			break
-		}
-		require.LessOrEqual(t, passes, entries/cfg.MaxEntries+1)
-	}
-	require.EqualValues(t, 1, calls.Load())
-	require.EqualValues(t, entries, testutil.ToFloat64(c.malformed))
-	require.Zero(t, active.Load())
+	})
+	require.Error(t, err)
+	require.True(t, bucket.IsObjNotFoundErr(err))
+
+	c := newTestCleaner(t, DefaultCleanerConfig(), bucket)
+	c.sweep(context.Background())
+	require.Equal(t, 1.0, testutil.ToFloat64(c.errors.WithLabelValues("list")))
+	require.Zero(t, testutil.ToFloat64(c.success))
+
+	transport.missingBucket = false
+	c.sweep(context.Background())
+	require.Equal(t, float64(cleanerNow.Unix()), testutil.ToFloat64(c.success))
+
+	transport.missingBucket = true
+	c.now = func() time.Time { return cleanerNow.Add(time.Hour) }
+	c.sweep(context.Background())
+	require.Equal(t, 2.0, testutil.ToFloat64(c.errors.WithLabelValues("list")))
+	require.Equal(t, float64(cleanerNow.Unix()), testutil.ToFloat64(c.success))
+	require.Zero(t, testutil.ToFloat64(c.deleted))
+	require.Zero(t, testutil.ToFloat64(c.errors.WithLabelValues("delete")))
 }
 
-func TestCleanerPendingFetchSurvivesPartialPass(t *testing.T) {
-	entered, release := make(chan struct{}), make(chan struct{})
-	b := &cleanupTestBucket{iter: func(_ context.Context, _ string, f func(string) error) error {
-		close(entered)
-		<-release
-		return f(ObjectPrefix + "invalid")
-	}}
-	it := newCleanupIterator(context.Background(), b, ObjectPrefix, time.Minute)
-	defer it.stop()
-	ctx, cancel := context.WithCancel(context.Background())
-	result := make(chan error, 1)
-	go func() { _, _, err := it.next(ctx); result <- err }()
-	<-entered
-	cancel()
-	require.ErrorIs(t, <-result, context.Canceled)
-	close(release)
-	key, finished, err := it.next(context.Background())
-	require.NoError(t, err)
-	require.False(t, finished)
-	require.Equal(t, ObjectPrefix+"invalid", key)
-	_, finished, err = it.next(context.Background())
-	require.NoError(t, err)
-	require.True(t, finished)
+type cleanupCOSTransport struct {
+	missingBucket bool
+}
+
+func (t *cleanupCOSTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	status := http.StatusOK
+	body := `<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>`
+	if t.missingBucket {
+		status = http.StatusNotFound
+		body = `<Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist.</Message><Resource>/</Resource><RequestId>local-test</RequestId></Error>`
+	}
+	return &http.Response{
+		StatusCode: status,
+		Header:     http.Header{"Content-Type": []string{"application/xml"}},
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Request:    req,
+	}, nil
 }
