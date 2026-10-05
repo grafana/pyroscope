@@ -290,7 +290,7 @@ func (m *Metastore) CheckReady(ctx context.Context) error {
 		m.readySince = time.Now()
 	})
 	if w := m.config.MinReadyDuration - time.Since(m.readySince); w > 0 {
-		return fmt.Errorf("%v before reporting readiness", w)
+		return fmt.Errorf("%v before reporting readiness (the wait slows rolling updates so the rest of the cluster can pick up this instance; set -metastore.min-ready-duration=0 to disable it, which is safe for local or single-instance setups)", w)
 	}
 	return nil
 }
