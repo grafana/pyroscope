@@ -54,7 +54,7 @@ func (c *testClock) advance(d time.Duration) { c.nanos.Add(int64(d)) }
 func recorderPolicy(t *testing.T, selector string, probability, rate float64) Policy {
 	t.Helper()
 	deadline := recorderNow.Add(time.Hour)
-	p, err := (&TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability, MaxCapturesPerSecond: &rate}).Compile(DefaultConfig(), recorderNow)
+	p, err := (&TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability, MaxCapturesPerSecond: &rate}).Compile(DefaultRecorderConfig().ProcessCapturesPerSecond)
 	require.NoError(t, err)
 	return p
 }
@@ -192,12 +192,15 @@ func TestRecorderRatesAndReload(t *testing.T) {
 	r, policies, clock := recorderFixture(t, cfg, discardUpload, nil)
 	capture := func(tenant string) Outcome { return r.Capture(context.Background(), tenant, candidate([]byte("raw"))) }
 	require.True(t, capture("a").Enqueued)
-	policies.set("a", recorderPolicy(t, `{env!="dev"}`, 1, 5))
+	policies.set("a", recorderPolicy(t, `{env!="dev"}`, 1, 20))
+	require.Equal(t, 20.0, policies.ProfileDebugDump("a").MaxCapturesPerSecond())
 	require.Equal(t, DropTenantRate, capture("a").Reason, "reload must not replenish burst")
 	require.True(t, capture("b").Enqueued)
 	policies.set("c", recorderPolicy(t, "{}", 1, 10))
 	require.Equal(t, DropProcessRate, capture("c").Reason)
-	clock.advance(time.Second)
+	clock.advance(100 * time.Millisecond)
+	require.Equal(t, DropProcessRate, capture("a").Reason, "higher tenant rate cannot bypass the process limiter")
+	clock.advance(900 * time.Millisecond)
 	require.True(t, capture("a").Enqueued)
 	require.Equal(t, DropProcessRate, capture("b").Reason)
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
@@ -263,7 +266,6 @@ func TestRecorderOwnedUploadAndRequestIsolation(t *testing.T) {
 	require.Equal(t, "original", m.Labels["service_name"])
 	require.Equal(t, "gzip", m.PayloadEncoding)
 	require.Equal(t, out.CaptureID, m.CaptureID)
-	require.Equal(t, out.PolicyFingerprint, m.PolicyFingerprint)
 	require.Equal(t, int64(len(got.data)+len(sidecar.data)), out.Size)
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
 	assertReleased(t, r)
@@ -367,7 +369,7 @@ func TestRecorderLimiterPruning(t *testing.T) {
 	clock.advance(time.Hour)
 	deadline := clock.now().Add(time.Minute)
 	probability := 1.0
-	active, err := (&TenantConfig{ActiveUntil: &deadline, Probability: &probability}).Compile(DefaultConfig(), clock.now())
+	active, err := (&TenantConfig{ActiveUntil: &deadline, Probability: &probability}).Compile(DefaultRecorderConfig().ProcessCapturesPerSecond)
 	require.NoError(t, err)
 	p.set("d", active)
 	require.True(t, capture("d").Enqueued, "capacity pressure prunes expired policies without a timer")
@@ -393,11 +395,9 @@ func TestRecorderConcurrentReloadAndShutdown(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			series := r.PrepareSeries("a", nil)
 			for j := 0; j < 200; j++ {
 				_ = r.PolicyActive("a")
 				r.Capture(context.Background(), "a", candidate([]byte("native")))
-				series.Capture(context.Background(), candidate([]byte("native")))
 			}
 		}()
 	}

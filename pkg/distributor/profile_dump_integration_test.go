@@ -4,6 +4,7 @@ package distributor_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -51,13 +52,13 @@ func TestProfileDumpConnectCLI(t *testing.T) {
       active_until: %q
       probability: 1
       selector: '{service_name="checkout"}'
-`, now.Add(time.Minute).Format(time.RFC3339Nano))), profiledump.DefaultConfig(), now)
+`, now.Add(time.Minute).Format(time.RFC3339Nano))), profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond)
 	require.NoError(t, err)
 	limits := validation.MockOverrides(func(defaults *validation.Limits, tenants map[string]*validation.Limits) {
 		defaults.WritePathOverrides.WritePath = writepath.IngesterPath
 		tenantLimits := *defaults
 		tenantLimits.ProfileDebugDump = runtime.TenantLimits["capture-test"].ProfileDebugDump
-		require.NoError(t, tenantLimits.Validate(profiledump.DefaultConfig(), now))
+		require.NoError(t, tenantLimits.Validate(profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond))
 		tenants["capture-test"] = &tenantLimits
 	})
 	bucketDir := t.TempDir()
@@ -69,7 +70,17 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 	var captureSeconds atomic.Int64
 	recorder, err := profiledump.NewRecorder(cfg, profiledump.Dependencies{
 		Now:      func() time.Time { return now.Add(time.Duration(captureSeconds.Load()) * time.Second) },
-		Policies: limits, Upload: profiledump.BucketUpload(bucket, limits),
+		Policies: limits,
+		Upload: func(ctx context.Context, tenantID, key string, body io.Reader) error {
+			parsed, err := profiledump.ParseNativeObjectKey(key)
+			if err != nil {
+				return err
+			}
+			if key == parsed.MetadataKey && parsed.CaptureTime.Equal(now.Add(4*time.Second).Truncate(time.Millisecond)) {
+				return fmt.Errorf("injected sidecar upload failure")
+			}
+			return profiledump.BucketUpload(bucket, limits)(ctx, tenantID, key, body)
+		},
 		DistributorID: "integration", Registerer: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
@@ -84,17 +95,39 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 	client := pushv1connect.NewPusherServiceClient(srv.Client(), srv.URL, append(connectapi.DefaultClientOptions(), connect.WithInterceptors(tenant.NewAuthInterceptor(true)))...)
 	original, err := os.ReadFile("../pprof/testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
-	malformed := []byte("malformed native pprof")
-	push := func(raw []byte) error {
+	gz, err := gzip.NewReader(bytes.NewReader(original))
+	require.NoError(t, err)
+	plain, err := io.ReadAll(gz)
+	require.NoError(t, err)
+	require.NoError(t, gz.Close())
+	fixtures := []struct {
+		name  string
+		raw   []byte
+		valid bool
+	}{
+		{"compressed", original, true},
+		{"uncompressed", plain, true},
+		{"empty", []byte{}, false},
+		{"malformed", []byte("malformed native pprof"), false},
+		{"orphan", []byte("sidecar upload fails"), false},
+	}
+	push := func(name string, raw []byte) error {
 		_, err := client.Push(tenant.InjectTenantID(ctx, "capture-test"), connect.NewRequest(&pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
 			Labels:  []*typesv1.LabelPair{{Name: "__name__", Value: "cpu"}, {Name: "service_name", Value: "checkout"}},
-			Samples: []*pushv1.RawSample{{RawProfile: raw}},
+			Samples: []*pushv1.RawSample{{ID: name, RawProfile: raw}},
 		}}}))
 		return err
 	}
-	require.NoError(t, push(original))
-	captureSeconds.Add(1)
-	require.Error(t, push(malformed), "normal ingestion must reject malformed pprof after capture")
+	for i, fixture := range fixtures {
+		captureSeconds.Store(int64(i))
+		err := push(fixture.name, fixture.raw)
+		if fixture.valid {
+			require.NoError(t, err)
+		} else if fixture.name != "empty" {
+			require.Error(t, err, "normal ingestion rejects malformed pprof after capture")
+		}
+		t.Logf("Connect input %s: %d bytes, ingestion error: %v", fixture.name, len(fixture.raw), err)
+	}
 	require.NoError(t, services.StopAndAwaitTerminated(ctx, recorder))
 	var payloadKeys []string
 	require.NoError(t, bucket.Iter(ctx, profiledump.NativeObjectPrefix, func(key string) error {
@@ -103,7 +136,8 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 		}
 		return nil
 	}, thanosobjstore.WithRecursiveIter()))
-	require.Len(t, payloadKeys, 2)
+	require.Len(t, payloadKeys, len(fixtures))
+	var orphanKey string
 	t.Run("native", func(t *testing.T) {
 		for _, key := range payloadKeys {
 			keys, err := profiledump.ParseNativeObjectKey(key)
@@ -113,6 +147,18 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 			payload, err := io.ReadAll(reader)
 			require.NoError(t, err)
 			require.NoError(t, reader.Close())
+			index := int(keys.CaptureTime.Sub(now.Truncate(time.Millisecond)) / time.Second)
+			require.GreaterOrEqual(t, index, 0)
+			require.Less(t, index, len(fixtures))
+			fixture := fixtures[index]
+			require.Equal(t, fixture.raw, payload)
+			if fixture.name == "orphan" {
+				orphanKey = key
+				exists, err := bucket.Exists(ctx, keys.MetadataKey)
+				require.NoError(t, err)
+				require.False(t, exists)
+				continue
+			}
 			sidecar, err := bucket.Get(ctx, keys.MetadataKey)
 			require.NoError(t, err)
 			metadata, err := profiledump.ReadNativeMetadata(sidecar, keys.MetadataKey)
@@ -120,17 +166,19 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 			require.NoError(t, sidecar.Close())
 			require.Equal(t, int64(len(payload)), metadata.PayloadSize)
 			require.Equal(t, "capture-test", metadata.TenantID)
-			if metadata.PayloadSize == int64(len(original)) {
-				require.Equal(t, original, payload)
+			if fixture.valid {
 				path := filepath.Join(t.TempDir(), "capture.pprof")
 				require.NoError(t, os.WriteFile(path, payload, 0600))
 				output, err := exec.CommandContext(ctx, "go", "tool", "pprof", "-top", path).CombinedOutput()
 				require.NoError(t, err, "%s", output)
 				require.Contains(t, string(output), "flat")
 				t.Logf("direct bucket download: %d identical bytes, go tool pprof succeeded\n%s", len(payload), output)
-			} else {
-				require.Equal(t, malformed, payload)
 			}
+			// Exercise ordinary unknown-field decoding on recorder-produced sidecars.
+			encoded, err := profiledump.MarshalNativeMetadata(key, metadata)
+			require.NoError(t, err)
+			encoded = append(encoded[:len(encoded)-1], []byte(`,"extra":{"values":[1,null]}}`)...)
+			require.NoError(t, bucket.Upload(ctx, keys.MetadataKey, bytes.NewReader(encoded)))
 		}
 	})
 	t.Run("cli_and_cleaner", func(t *testing.T) {
@@ -175,8 +223,21 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 			}
 			listed := run("list", "--tenant-id=capture-test", "--from="+now.Add(-time.Second).Format(time.RFC3339Nano), "--to="+now.Add(time.Minute).Format(time.RFC3339Nano))
 			require.NoError(t, json.Unmarshal(listed, &result))
-			require.Len(t, result.Captures, 2)
+			require.Len(t, result.Captures, len(fixtures))
 			for _, capture := range result.Captures {
+				if capture.Key == orphanKey {
+					for _, operation := range []string{"inspect", "extract"} {
+						args := []string{"admin", "profile-dumps", operation, "--storage.backend=filesystem", "--storage.filesystem.dir=" + bucketDir, "--storage.prefix=customer/prefix", capture.Key}
+						if operation == "extract" {
+							args = append(args, "--output="+filepath.Join(t.TempDir(), "orphan.pprof"))
+						}
+						output, err := exec.CommandContext(ctx, cli, args...).CombinedOutput()
+						require.Error(t, err)
+						require.Contains(t, string(output), "metadata sidecar")
+					}
+					t.Log("payload from failed sidecar upload is listed, inspect/extract report missing sidecar")
+					continue
+				}
 				var inspected struct {
 					Metadata profiledump.NativeMetadata `json:"metadata"`
 				}
@@ -192,16 +253,31 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 				var metadata profiledump.NativeMetadata
 				require.NoError(t, json.Unmarshal(sidecar, &metadata))
 				require.Equal(t, inspected.Metadata, metadata)
-				if metadata.PayloadSize == int64(len(original)) {
-					require.Equal(t, original, raw)
+				var expected []byte
+				valid := false
+				for _, fixture := range fixtures {
+					if fixture.name == metadata.OriginalProfileID {
+						expected, valid = fixture.raw, fixture.valid
+						break
+					}
+				}
+				require.NotNil(t, expected)
+				require.Equal(t, expected, raw)
+				if valid {
 					output, err := exec.CommandContext(ctx, "go", "tool", "pprof", "-top", path).CombinedOutput()
 					require.NoError(t, err, "%s", output)
 					require.Contains(t, string(output), "flat")
 					t.Logf("valid fixture: %d identical bytes, go tool pprof -top succeeded\n%s", len(raw), output)
 				} else {
-					require.Equal(t, malformed, raw)
-					t.Logf("malformed fixture: %d identical bytes extracted after ingestion rejection", len(raw))
+					t.Logf("%s fixture: %d identical bytes extracted", metadata.OriginalProfileID, len(raw))
 				}
+				args := []string{"admin", "profile-dumps", "extract", "--storage.backend=filesystem", "--storage.filesystem.dir=" + bucketDir, "--storage.prefix=customer/prefix", capture.Key, "--output=" + path}
+				output, err := exec.CommandContext(ctx, cli, args...).CombinedOutput()
+				require.Error(t, err)
+				require.Contains(t, string(output), "existing files")
+				preserved, err := os.ReadFile(path)
+				require.NoError(t, err)
+				require.Equal(t, expected, preserved)
 			}
 		})
 		t.Run("cleaner", func(t *testing.T) {

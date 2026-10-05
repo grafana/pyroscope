@@ -7,7 +7,7 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-const ObjectPrefix = "profile-debug-dumps/"
+const ObjectPrefix = "__pyroscope_cluster/profile-debug-dumps/"
 
 // Format identifies the native format, independently of compression.
 type Format string

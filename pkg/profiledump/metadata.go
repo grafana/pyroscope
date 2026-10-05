@@ -2,7 +2,6 @@ package profiledump
 
 import (
 	"fmt"
-	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -28,18 +27,6 @@ func validatePayloadEncoding(encoding string) error {
 	default:
 		return fmt.Errorf("invalid payload encoding")
 	}
-}
-
-func validatePolicyFingerprint(fingerprint string) error {
-	if len(fingerprint) != 64 {
-		return fmt.Errorf("policy fingerprint must be 64 lowercase hexadecimal characters")
-	}
-	for _, c := range fingerprint {
-		if !strings.ContainsRune("0123456789abcdef", c) {
-			return fmt.Errorf("invalid policy fingerprint")
-		}
-	}
-	return nil
 }
 
 // ValidateOriginalProfileID checks an optional ID.

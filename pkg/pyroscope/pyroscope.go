@@ -410,13 +410,10 @@ func (c *Config) Validate() error {
 	if err := c.ProfileDump.Recorder.Validate(); err != nil {
 		return fmt.Errorf("profile_dump recorder: %w", err)
 	}
-	if err := c.ProfileDump.Validate(); err != nil {
-		return fmt.Errorf("profile_dump: %w", err)
-	}
 	if c.LimitsConfig.ProfileDebugDump != nil {
 		return errors.New("profile_debug_dump is only supported in per-tenant runtime overrides")
 	}
-	if err := c.LimitsConfig.Validate(c.ProfileDump, time.Now()); err != nil {
+	if err := c.LimitsConfig.Validate(c.ProfileDump.Recorder.ProcessCapturesPerSecond); err != nil {
 		return err
 	}
 

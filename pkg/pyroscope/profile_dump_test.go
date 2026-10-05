@@ -49,7 +49,7 @@ func newDumpApplication(t *testing.T) (*Pyroscope, *dumpLifecycleBucket) {
 	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenants map[string]*validation.Limits) {
 		l := *defaults
 		l.ProfileDebugDump = &profiledump.TenantConfig{ActiveUntil: &until, Probability: &probability}
-		require.NoError(t, l.Validate(cfg.ProfileDump, time.Now()))
+		require.NoError(t, l.Validate(cfg.ProfileDump.Recorder.ProcessCapturesPerSecond))
 		tenants["a"] = &l
 	})
 	f := &Pyroscope{Cfg: cfg, logger: &logger{Logger: log.NewNopLogger()}, reg: prometheus.NewRegistry(), Overrides: overrides,
@@ -136,7 +136,7 @@ func TestProfileDumpRecorderConfiguration(t *testing.T) {
 	require.Equal(t, 3*time.Second, cfg.ProfileDump.Recorder.UploadTimeout)
 	cfg.ProfileDump.Recorder.UploadTimeout = 0
 	require.ErrorContains(t, cfg.Validate(), "profile_dump recorder")
-	_, err := validation.LoadRuntimeConfigWithProfileDump(strings.NewReader("overrides: {}"), cfg.ProfileDump, time.Now())
+	_, err := validation.LoadRuntimeConfigWithProfileDump(strings.NewReader("overrides: {}"), cfg.ProfileDump.Recorder.ProcessCapturesPerSecond)
 	require.NoError(t, err, "runtime policy compilation is independent of process recorder validation")
 }
 

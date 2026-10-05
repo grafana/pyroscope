@@ -23,8 +23,8 @@ func nativeMetadataFixture(t *testing.T) (string, NativeMetadata) {
 		SchemaVersion: NativeSchemaVersion, CapturedAt: capturedAt,
 		TenantID: "3648", CaptureID: id.String(), SourceProtocol: SourceConnect,
 		NativeFormat: FormatPprof, PayloadEncoding: "unknown", PayloadSize: 0,
-		DistributorID: "distributor-1", PolicyFingerprint: strings.Repeat("a", 64),
-		Labels: map[string]string{"service_name": "test"}, OriginalProfileID: "original-id",
+		DistributorID: "distributor-1",
+		Labels:        map[string]string{"service_name": "test"}, OriginalProfileID: "original-id",
 	}
 }
 
@@ -39,7 +39,6 @@ func TestNativeMetadataRoundTrip(t *testing.T) {
 				metadata.PayloadEncoding, metadata.PayloadSize = encoding, size
 				b, err := MarshalNativeMetadata(key, metadata)
 				require.NoError(t, err)
-				require.NotContains(t, string(b), "activation_source")
 				decoded, err := ReadNativeMetadata(bytes.NewReader(b), parsed.MetadataKey)
 				require.NoError(t, err)
 				require.Equal(t, metadata, decoded)
@@ -81,8 +80,6 @@ func TestNativeMetadataValidation(t *testing.T) {
 		"long original ID":     func(m *NativeMetadata) { m.OriginalProfileID = strings.Repeat("p", MaxTextBytes+1) },
 		"invalid UTF-8":        func(m *NativeMetadata) { m.OriginalProfileID = "\xff" },
 		"control":              func(m *NativeMetadata) { m.DistributorID = "d\n" },
-		"fingerprint length":   func(m *NativeMetadata) { m.PolicyFingerprint = "a" },
-		"fingerprint alphabet": func(m *NativeMetadata) { m.PolicyFingerprint = strings.Repeat("A", 64) },
 		"label count": func(m *NativeMetadata) {
 			m.Labels = make(map[string]string)
 			for i := 0; i <= MaxLabels; i++ {
@@ -101,6 +98,7 @@ func TestNativeMetadataValidation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			key, metadata := nativeMetadataFixture(t)
 			mutate(&metadata)
+			require.Error(t, metadata.Validate(key))
 			_, err := MarshalNativeMetadata(key, metadata)
 			require.Error(t, err)
 			b, err := json.Marshal(metadata)
@@ -132,13 +130,23 @@ func TestNativeMetadataJSONContract(t *testing.T) {
 		"fractional size": strings.Replace(valid, `"payload_size":0`, `"payload_size":0.5`, 1),
 		"overflow size":   strings.Replace(valid, `"payload_size":0`, `"payload_size":9223372036854775808`, 1),
 		"trailing object": valid + "{}", "trailing null": valid + "null", "trailing junk": valid + "x",
-		"path redirection": strings.TrimSuffix(valid, "}") + `,"payload_key":"other/secret.pprof"}`,
-		"old field":        strings.TrimSuffix(valid, "}") + `,"activation_source":"runtime_override"}`,
-		"invalid UTF-8":    strings.Replace(valid, "distributor-1", "\xff", 1),
+		"invalid UTF-8": strings.Replace(valid, "distributor-1", "\xff", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := ReadNativeMetadata(strings.NewReader(input), key)
 			require.Error(t, err)
+		})
+	}
+	for name, extra := range map[string]string{
+		"unknown scalar": `,"extra":42`,
+		"unknown nested": `,"extra":{"items":[true,null,{"value":"ignored"}]}`,
+		"payload path":   `,"payload_key":"other/secret.pprof"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			input := strings.TrimSuffix(valid, "}") + extra + "}"
+			decoded, err := ReadNativeMetadata(strings.NewReader(input), key)
+			require.NoError(t, err)
+			require.Equal(t, metadata, decoded)
 		})
 	}
 	decoded, err := ReadNativeMetadata(strings.NewReader(" \n"+valid+"\r\n\t"), key)

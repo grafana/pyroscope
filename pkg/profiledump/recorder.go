@@ -139,10 +139,6 @@ func (r *Recorder) PolicyActive(tenant string) bool {
 // Capture prepares an owned native pair and attempts a nonblocking enqueue.
 // Work uses the recorder lifecycle and carries only request trace context.
 func (r *Recorder) Capture(ctx context.Context, tenant string, c Candidate) (out Outcome) {
-	return r.capture(ctx, tenant, c, nil)
-}
-
-func (r *Recorder) capture(ctx context.Context, tenant string, c Candidate, series *SeriesCapture) (out Outcome) {
 	if r == nil {
 		return Outcome{Reason: DropDisabled}
 	}
@@ -150,7 +146,7 @@ func (r *Recorder) capture(ctx context.Context, tenant string, c Candidate, seri
 	defer func() { r.metrics.admission(source, out) }()
 	captureTime := r.deps.Now()
 	p := r.deps.Policies.ProfileDebugDump(tenant)
-	if p.Fingerprint() == "" {
+	if p.Probability() == 0 {
 		out.Reason = DropDisabled
 		return
 	}
@@ -158,17 +154,7 @@ func (r *Recorder) capture(ctx context.Context, tenant string, c Candidate, seri
 		out.Reason = DropExpired
 		return
 	}
-	matched := false
-	if series == nil {
-		matched = p.Matches(c.SelectorLabels)
-	} else {
-		if series.fingerprint != p.Fingerprint() {
-			series.matched = p.Matches(series.labels)
-			series.fingerprint = p.Fingerprint()
-		}
-		matched = series.matched
-	}
-	if !matched {
+	if !p.Matches(c.SelectorLabels) {
 		out.Reason = DropSelector
 		return
 	}
@@ -195,7 +181,7 @@ func (r *Recorder) capture(ctx context.Context, tenant string, c Candidate, seri
 	defer r.pending.Done()
 	ctx, finishSpan := startCaptureSpan(ctx)
 	defer func() { finishSpan(out) }()
-	prepared, out := r.prepareCapture(tenant, c, p, captureTime)
+	prepared, out := r.prepareCapture(tenant, c, captureTime)
 	if out.Reason != "" {
 		return out
 	}
@@ -247,12 +233,11 @@ func (r *Recorder) capture(ctx context.Context, tenant string, c Candidate, seri
 	return
 }
 
-func (r *Recorder) prepareCapture(tenant string, c Candidate, p Policy, now time.Time) (uploadItem, Outcome) {
+func (r *Recorder) prepareCapture(tenant string, c Candidate, now time.Time) (uploadItem, Outcome) {
 	var out Outcome
 	out.Format = c.Metadata.NativeFormat
 	out.SourceProtocol = c.Metadata.SourceProtocol
 	out.DistributorID = r.deps.DistributorID
-	out.PolicyFingerprint = p.Fingerprint()
 	size := int64(len(c.Payload))
 	out.PayloadSize = size
 	key, id, err := NewNativeObjectKey(tenant, now)
@@ -263,13 +248,13 @@ func (r *Recorder) prepareCapture(tenant string, c Candidate, p Policy, now time
 	out.CaptureID, out.ObjectKey = id.String(), key
 	m := c.Metadata
 	m.SchemaVersion, m.CapturedAt, m.TenantID = NativeSchemaVersion, now.UTC(), tenant
-	m.CaptureID, m.PolicyFingerprint = out.CaptureID, p.Fingerprint()
+	m.CaptureID = out.CaptureID
 	m.DistributorID, m.PayloadSize = r.deps.DistributorID, size
 	if err = m.Validate(key); err != nil {
 		out.Reason = DropInvalid
 		return uploadItem{}, out
 	}
-	metadataJSON, err := MarshalNativeMetadata(key, m)
+	metadataJSON, err := marshalValidatedNativeMetadata(m)
 	if err != nil {
 		out.Reason = DropTooLarge
 		return uploadItem{}, out
@@ -279,12 +264,9 @@ func (r *Recorder) prepareCapture(tenant string, c Candidate, p Policy, now time
 		out.Reason = DropTooLarge
 		return uploadItem{}, out
 	}
-	keys, err := ParseNativeObjectKey(key)
-	if err != nil {
-		out.Reason = DropInvalid
-		return uploadItem{}, out
-	}
-	return uploadItem{key: keys.PayloadKey, metadataKey: keys.MetadataKey, metadataJSON: metadataJSON}, out
+	// NewNativeObjectKey constructed and validated this payload key.
+	metadataKey := strings.TrimSuffix(key, ".pprof") + ".json"
+	return uploadItem{key: key, metadataKey: metadataKey, metadataJSON: metadataJSON}, out
 }
 
 // nativeCaptureSize checks the sum without overflowing, including at int64 limits.

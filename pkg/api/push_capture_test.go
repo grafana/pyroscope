@@ -74,7 +74,7 @@ func capturePolicy(t *testing.T, selector string, probability float64, expired b
 		deadline = captureNow
 	}
 	rate := 10.0
-	p, err := (&profiledump.TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability, MaxCapturesPerSecond: &rate}).Compile(profiledump.DefaultConfig(), captureNow)
+	p, err := (&profiledump.TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability, MaxCapturesPerSecond: &rate}).Compile(profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond)
 	require.NoError(t, err)
 	return p
 }
@@ -516,7 +516,6 @@ func TestCapturePusherSpans(t *testing.T) {
 				}
 				require.NotEmpty(t, attrs["capture.id"].AsString())
 				require.NotEmpty(t, attrs["capture.object_key"].AsString())
-				require.NotEmpty(t, attrs["capture.policy_fingerprint"].AsString())
 				require.Equal(t, "pprof", attrs["capture.format"].AsString())
 				require.Equal(t, "connect", attrs["capture.source"].AsString())
 				require.NotEmpty(t, attrs["capture.distributor_id"].AsString())
@@ -655,7 +654,7 @@ func BenchmarkCapturePusherDisabled(b *testing.B) {
 					deadline := captureNow
 					probability := 1.0
 					var err error
-					policy, err = (&profiledump.TenantConfig{ActiveUntil: &deadline, Probability: &probability}).Compile(profiledump.DefaultConfig(), captureNow)
+					policy, err = (&profiledump.TenantConfig{ActiveUntil: &deadline, Probability: &probability}).Compile(profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond)
 					require.NoError(b, err)
 				}
 				var err error

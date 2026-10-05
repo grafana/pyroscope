@@ -197,9 +197,10 @@ profile_dump:
   # CLI flag: -profile-dump.max-retained-bytes
   [max_retained_bytes: <int> | default = 67108864]
 
-  # Aggregate capture admission rate per distributor and maximum tenant rate.
-  # Omitted tenant rates default to min(1, this rate). Must be finite and
-  # positive. This is not a fleet quota.
+  # Aggregate capture admission rate per distributor. Tenant rates may exceed
+  # this rate, but admissions remain constrained by it. Omitted tenant rates
+  # default to min(1, this rate). Must be finite and positive. This is not a
+  # fleet quota.
   # CLI flag: -profile-dump.process-captures-per-second
   [process_captures_per_second: <float> | default = 10]
 
@@ -207,11 +208,6 @@ profile_dump:
   # Providers that ignore cancellation may exceed it.
   # CLI flag: -profile-dump.upload-timeout
   [upload_timeout: <duration> | default = 10s]
-
-  # Maximum future activation window for a profile-debug-dump policy, measured
-  # at configuration load. Must be positive.
-  # CLI flag: -profile-dump.max-activation-window
-  [max_activation_window: <duration> | default = 1h]
 
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]

@@ -11,7 +11,8 @@ seven days (`168h`), with no maximum. See the
 ## Cleanup
 
 A sequential sweep starts with the service, fixes its cutoff at `now - retention`,
-and visits `profile-debug-dumps/native/` under the configured storage prefix.
+and visits `__pyroscope_cluster/profile-debug-dumps/native/` under the configured
+storage prefix.
 Only fully expired hours are eligible. Hourly granularity adds less than an hour
 before eligibility, followed by scheduling, traversal, or outage delays.
 
@@ -31,7 +32,8 @@ Deletes run one at a time with a ten-second cooperative timeout. Cancellation st
 new deletes and allows listing producers to drain. Service completion waits for
 provider calls, so providers that ignore cancellation can delay shutdown indefinitely.
 Shared storage stays open until recorder and cleaner termination. Provider buffers
-are outside cleaner bounds. The separate CLI listing teardown limitation remains deferred.
+are outside cleaner bounds. CLI listing can still leave a provider listing producer
+blocked when it stops early on a result limit or cancellation.
 
 ## Monitoring
 

@@ -17,7 +17,7 @@ func TestNativeObjectKeyTenants(t *testing.T) {
 		t.Run(tenantID, func(t *testing.T) {
 			key, id, err := NewNativeObjectKey(tenantID, capturedAt)
 			require.NoError(t, err)
-			require.Equal(t, NativeObjectPrefix+tenantID+"/2026-09-25/12/34/"+id.String()+".pprof", key)
+			require.Equal(t, "__pyroscope_cluster/profile-debug-dumps/native/"+tenantID+"/2026-09-25/12/34/"+id.String()+".pprof", key)
 			parsed, err := ParseNativeObjectKey(key)
 			require.NoError(t, err)
 			require.Equal(t, tenantID, parsed.TenantID)
@@ -82,7 +82,6 @@ func TestNativeObjectKeyRejectsNearMatches(t *testing.T) {
 		"empty":            "",
 		"namespace":        strings.Replace(key, "native/", "native-other/", 1),
 		"root":             strings.Replace(key, ObjectPrefix, "profile-debug-dumps-other/", 1),
-		"old namespace":    strings.Replace(key, "native/", "", 1),
 		"absolute":         "/" + key,
 		"traversal":        "../" + key,
 		"extra segment":    strings.Replace(key, "/3648/", "/3648/extra/", 1),
@@ -104,7 +103,7 @@ func TestNativeObjectKeyRejectsNearMatches(t *testing.T) {
 		"overflow":         strings.Replace(key, id.String(), "8"+strings.Repeat("0", 25), 1),
 		"unsupported date": strings.Replace(key, id.String(), "7"+strings.Repeat("Z", 25), 1),
 		"uppercase suffix": strings.TrimSuffix(key, ".pprof") + ".PPROF",
-		"wrong suffix":     strings.TrimSuffix(key, ".pprof") + ".pyrdump",
+		"wrong suffix":     strings.TrimSuffix(key, ".pprof") + ".txt",
 		"empty suffix":     strings.TrimSuffix(key, ".pprof"),
 		"extra suffix":     key + ".json",
 		"trailing slash":   key + "/",

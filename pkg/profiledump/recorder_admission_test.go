@@ -29,107 +29,97 @@ func (l pausedAdmissionLabels) Get(string) string {
 }
 
 func TestRecorderAdmissionTimeOrdering(t *testing.T) {
-	for _, seriesMode := range []bool{false, true} {
-		entry := "direct"
-		if seriesMode {
-			entry = "series"
-		}
-		for _, scope := range []string{"tenant", "tenant rate change", "process"} {
-			t.Run(entry+"/"+scope, func(t *testing.T) {
-				cfg := recorderTestConfig()
-				cfg.TenantBurst = 2
-				elapsed := time.Second
-				limit := 2.0
-				wantDrop := DropTenantRate
-				if scope == "process" {
-					defaults := DefaultRecorderConfig()
-					cfg.TenantBurst = defaultTenantBurst
-					cfg.ProcessBurst = defaultProcessBurst
-					cfg.ProcessCapturesPerSecond = defaults.ProcessCapturesPerSecond
-					elapsed = 200 * time.Millisecond
-					limit = cfg.ProcessCapturesPerSecond
-					wantDrop = DropProcessRate
+	for _, scope := range []string{"tenant", "tenant rate change", "process"} {
+		t.Run(scope, func(t *testing.T) {
+			cfg := recorderTestConfig()
+			cfg.TenantBurst = 2
+			elapsed := time.Second
+			limit := 2.0
+			wantDrop := DropTenantRate
+			if scope == "process" {
+				defaults := DefaultRecorderConfig()
+				cfg.TenantBurst = defaultTenantBurst
+				cfg.ProcessBurst = defaultProcessBurst
+				cfg.ProcessCapturesPerSecond = defaults.ProcessCapturesPerSecond
+				elapsed = 200 * time.Millisecond
+				limit = cfg.ProcessCapturesPerSecond
+				wantDrop = DropProcessRate
+			}
+			r, policies, clock := recorderFixture(t, cfg, discardUpload, nil)
+			policy := recorderPolicy(t, `{x="yes"}`, 1, 2)
+			policies.set("a", policy)
+			tenant := func(kind string, i int) string {
+				if scope != "process" {
+					return "a"
 				}
-				r, policies, clock := recorderFixture(t, cfg, discardUpload, nil)
-				policy := recorderPolicy(t, `{x="yes"}`, 1, 2)
-				policies.set("a", policy)
-				tenant := func(kind string, i int) string {
-					if scope != "process" {
-						return "a"
-					}
-					id := fmt.Sprintf("%s-%d", kind, i)
-					policies.set(id, policy)
-					return id
-				}
-				capture := func(tenant string, lookup LabelLookup) Outcome {
-					c := candidate(nil)
-					if seriesMode {
-						series := r.PrepareSeries(tenant, lookup)
-						return series.Capture(context.Background(), c)
-					}
-					c.SelectorLabels = lookup
-					return r.Capture(context.Background(), tenant, c)
-				}
-				lookup := labels.FromStrings("x", "yes")
-				const burst = 2
-				admitted := 0
-				for i := range burst {
-					out := capture(tenant("initial", i), lookup)
-					require.Empty(t, out.Reason)
-					require.True(t, out.Enqueued)
-					admitted++
-				}
+				id := fmt.Sprintf("%s-%d", kind, i)
+				policies.set(id, policy)
+				return id
+			}
+			capture := func(tenant string, lookup LabelLookup) Outcome {
+				c := candidate(nil)
+				c.SelectorLabels = lookup
+				return r.Capture(context.Background(), tenant, c)
+			}
+			lookup := labels.FromStrings("x", "yes")
+			const burst = 2
+			admitted := 0
+			for i := range burst {
+				out := capture(tenant("initial", i), lookup)
+				require.Empty(t, out.Reason)
+				require.True(t, out.Enqueued)
+				admitted++
+			}
 
-				const delayedCalls = 5
-				resumes := make([]func(), delayedCalls)
-				results := make([]chan Outcome, delayedCalls)
-				for i := range delayedCalls {
-					blocked := pausedAdmissionLabels{clock: clock, entered: make(chan time.Time, 1), resume: make(chan struct{})}
-					resumes[i] = sync.OnceFunc(func() { close(blocked.resume) })
-					t.Cleanup(resumes[i])
-					results[i] = make(chan Outcome, 1)
-					id := tenant("delayed", i)
-					go func() { results[i] <- capture(id, blocked) }()
-					require.Equal(t, recorderNow, await(t, blocked.entered), "delayed selection must start before the clock advances")
+			const delayedCalls = 5
+			resumes := make([]func(), delayedCalls)
+			results := make([]chan Outcome, delayedCalls)
+			for i := range delayedCalls {
+				blocked := pausedAdmissionLabels{clock: clock, entered: make(chan time.Time, 1), resume: make(chan struct{})}
+				resumes[i] = sync.OnceFunc(func() { close(blocked.resume) })
+				t.Cleanup(resumes[i])
+				results[i] = make(chan Outcome, 1)
+				id := tenant("delayed", i)
+				go func() { results[i] <- capture(id, blocked) }()
+				require.Equal(t, recorderNow, await(t, blocked.entered), "delayed selection must start before the clock advances")
+			}
+			clock.advance(elapsed)
+			if scope == "tenant rate change" {
+				// Delayed calls retain the old policy while fresh calls update the rate.
+				policies.set("a", recorderPolicy(t, `{x="yes"}`, 1, 1))
+			}
+			for i := range delayedCalls {
+				require.Equal(t, recorderNow.Add(elapsed), clock.now())
+				fresh := capture(tenant("fresh", i), lookup)
+				select {
+				case <-results[i]:
+					t.Fatal("delayed capture completed before selection was released")
+				default:
 				}
-				clock.advance(elapsed)
-				if scope == "tenant rate change" {
-					// Delayed calls retain the old policy while fresh calls update the rate.
-					policies.set("a", recorderPolicy(t, `{x="yes"}`, 1, 1))
-				}
-				for i := range delayedCalls {
-					require.Equal(t, recorderNow.Add(elapsed), clock.now())
-					fresh := capture(tenant("fresh", i), lookup)
-					select {
-					case <-results[i]:
-						t.Fatal("delayed capture completed before selection was released")
-					default:
+				// Fresh admission completes before the older capture can reach admission.
+				resumes[i]()
+				delayed := await(t, results[i])
+				for _, result := range []struct {
+					name string
+					out  Outcome
+				}{{"fresh", fresh}, {"delayed", delayed}} {
+					want := wantDrop
+					if i == 0 {
+						want = ""
 					}
-					// Fresh admission completes before the older capture can reach admission.
-					resumes[i]()
-					delayed := await(t, results[i])
-					for _, result := range []struct {
-						name string
-						out  Outcome
-					}{{"fresh", fresh}, {"delayed", delayed}} {
-						want := wantDrop
-						if i == 0 {
-							want = ""
-						}
-						assert.Equal(t, want, result.out.Reason, "%s capture %d", result.name, i)
-						assert.Equal(t, want == "", result.out.Enqueued, "%s capture %d", result.name, i)
-						if result.out.Enqueued {
-							admitted++
-						}
+					assert.Equal(t, want, result.out.Reason, "%s capture %d", result.name, i)
+					assert.Equal(t, want == "", result.out.Enqueued, "%s capture %d", result.name, i)
+					if result.out.Enqueued {
+						admitted++
 					}
 				}
-				// A rate decrease cannot raise the bound set by the original rate.
-				bound := burst + int(limit*elapsed.Seconds())
-				t.Logf("admitted=%d, bound=%d, elapsed=%s", admitted, bound, elapsed)
-				assert.LessOrEqual(t, admitted, bound)
-				assert.Equal(t, bound, admitted, "the initial burst and one refill should be available")
-			})
-		}
+			}
+			// A rate decrease cannot raise the bound set by the original rate.
+			bound := burst + int(limit*elapsed.Seconds())
+			t.Logf("admitted=%d, bound=%d, elapsed=%s", admitted, bound, elapsed)
+			assert.LessOrEqual(t, admitted, bound)
+			assert.Equal(t, bound, admitted, "the initial burst and one refill should be available")
+		})
 	}
 }
 

@@ -26,11 +26,11 @@ import (
 
 func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	// Exercise the actual manager, filesystem provider, production loader and
-	// tenant adapter together. Only the clock is substituted.
+	// tenant adapter together. Policy expiry is checked at explicit times.
 	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
 	var clock atomic.Int64
 	clock.Store(now.UnixNano())
-	deadline := now.Add(time.Minute)
+	deadline := now.AddDate(10, 0, 0).Add(time.Minute)
 	path := filepath.Join(t.TempDir(), "runtime.yaml")
 	writeConfig := func(contents string) {
 		t.Helper()
@@ -41,21 +41,20 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	const initial = `overrides:
   tenant-a:
     profile_debug_dump:
-      active_until: "2026-09-16T12:01:00Z"
+      active_until: "2036-09-16T12:01:00Z"
       selector: '{service_name=~"checkout.*"}'
       probability: 1
   tenant-b: {}
 `
 	writeConfig(initial)
 	registry := prometheus.NewRegistry()
-	bounds := profiledump.DefaultConfig()
-	bounds.Recorder.ProcessCapturesPerSecond = 0.5
+	processRate := 0.5
 	startManager := func() *runtimeconfig.Manager {
 		t.Helper()
 		cfg := runtimeconfig.Config{
 			LoadPath: []string{path}, ReloadPeriod: 5 * time.Millisecond,
 			Loader: func(r io.Reader) (interface{}, error) {
-				return validation.LoadRuntimeConfigWithProfileDump(r, bounds, time.Unix(0, clock.Load()))
+				return validation.LoadRuntimeConfigWithProfileDump(r, processRate)
 			},
 		}
 		manager, err := runtimeconfig.New(cfg, "profile-dump-test", registry, log.NewNopLogger())
@@ -81,7 +80,7 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 		readers.Go(func() {
 			for ctx.Err() == nil {
 				p := overrides.ProfileDebugDump("tenant-a")
-				if p.Fingerprint() != "" {
+				if p.Probability() > 0 {
 					if !p.ActiveUntil().Equal(deadline) || (p.Probability() != 1 && p.Probability() != 0.5) {
 						t.Error("reader observed a partial policy")
 						return
@@ -108,14 +107,19 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	previous := manager.GetConfig()
 	writeConfig(strings.Replace(initial, "probability: 1", "probability: 1\n      max_captures_per_second: 0.5", 1))
 	require.Eventually(t, func() bool { return manager.GetConfig() != previous }, 5*time.Second, time.Millisecond)
-	require.Equal(t, original.Fingerprint(), overrides.ProfileDebugDump("tenant-a").Fingerprint())
+	require.True(t, overrides.ProfileDebugDump("tenant-a").Matches(labels.FromStrings("service_name", "checkout-api")))
+	require.False(t, overrides.ProfileDebugDump("tenant-a").Matches(labels.FromStrings("service_name", "payments")))
+	require.Equal(t, original.Probability(), overrides.ProfileDebugDump("tenant-a").Probability())
+	require.Equal(t, original.MaxCapturesPerSecond(), overrides.ProfileDebugDump("tenant-a").MaxCapturesPerSecond())
 	require.Equal(t, deadline, overrides.ProfileDebugDump("tenant-a").ActiveUntil())
 
-	writeConfig(strings.Replace(initial, "probability: 1", "probability: 0.5", 1))
-	waitPolicy(func(p profiledump.Policy) bool { return p.Probability() == 0.5 })
+	updated := strings.Replace(initial, "probability: 1", "probability: 0.5\n      max_captures_per_second: 5", 1)
+	writeConfig(updated)
+	waitPolicy(func(p profiledump.Policy) bool { return p.Probability() == 0.5 && p.MaxCapturesPerSecond() == 5 })
+	require.Equal(t, deadline, overrides.ProfileDebugDump("tenant-a").ActiveUntil())
 	previous = manager.GetConfig()
 	retained := overrides.ProfileDebugDump("tenant-a")
-	require.NotEqual(t, original.Fingerprint(), retained.Fingerprint())
+	require.Equal(t, 0.5, retained.Probability())
 	waitReload := func(success float64) {
 		t.Helper()
 		require.Eventually(t, func() bool {
@@ -133,17 +137,23 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	}
 	// Reject the entire reload even if another tenant was validated first.
 	for _, invalid := range []string{
-		strings.Replace(initial, "tenant-b: {}", "tenant-b:\n    profile_debug_dump: {probability: 1}", 1),
-		strings.Replace(initial, "probability: 1", "probability: 1\n      max_captures_per_second: 0.6", 1),
+		strings.Replace(strings.Replace(initial, `{service_name=~"checkout.*"}`, `{service_name="payments"}`, 1), "tenant-b: {}", "tenant-b:\n    profile_debug_dump: {probability: 1}", 1),
+		strings.Replace(initial, "probability: 1", "probability: 1\n      max_captures_per_second: .nan", 1),
 	} {
 		// Restore success so the failure metric proves this candidate was read.
-		writeConfig(strings.Replace(initial, "probability: 1", "probability: 0.5", 1))
+		writeConfig(updated)
 		waitReload(1)
 		previous = manager.GetConfig()
 		writeConfig(invalid)
 		waitReload(0)
 		require.Same(t, previous, manager.GetConfig())
-		require.Equal(t, retained.Fingerprint(), overrides.ProfileDebugDump("tenant-a").Fingerprint())
+		require.Equal(t, retained.ActiveUntil(), overrides.ProfileDebugDump("tenant-a").ActiveUntil())
+		require.Equal(t, retained.Probability(), overrides.ProfileDebugDump("tenant-a").Probability())
+		p := overrides.ProfileDebugDump("tenant-a")
+		require.Equal(t, retained.MaxCapturesPerSecond(), p.MaxCapturesPerSecond())
+		require.True(t, p.ActiveAt(now))
+		require.True(t, p.Matches(labels.FromStrings("service_name", "checkout-api")))
+		require.False(t, p.Matches(labels.FromStrings("service_name", "payments")))
 	}
 	for _, at := range []time.Time{deadline.Add(-time.Nanosecond), deadline, deadline.Add(time.Nanosecond)} {
 		clock.Store(at.UnixNano())
@@ -155,9 +165,14 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	// Removal of a block and removal of a tenant both disable future admissions.
 	for _, removed := range []string{"overrides:\n  tenant-a: {}\n", "overrides:\n  tenant-a:\n    profile_debug_dump: null\n", "overrides: {}\n"} {
 		writeConfig(initial)
-		waitPolicy(func(p profiledump.Policy) bool { return p.Fingerprint() == original.Fingerprint() })
+		waitPolicy(func(p profiledump.Policy) bool {
+			return p.Probability() == original.Probability() &&
+				p.Matches(labels.FromStrings("service_name", "checkout-api")) &&
+				!p.Matches(labels.FromStrings("service_name", "payments")) &&
+				p.ActiveUntil().Equal(original.ActiveUntil()) && p.MaxCapturesPerSecond() == original.MaxCapturesPerSecond()
+		})
 		writeConfig(removed)
-		waitPolicy(func(p profiledump.Policy) bool { return p.Fingerprint() == "" })
+		waitPolicy(func(p profiledump.Policy) bool { return p.Probability() == 0 })
 	}
 	require.Equal(t, 1.0, original.Probability()) // Old snapshots remain unchanged.
 	cancel()
@@ -171,7 +186,10 @@ func TestProfileDebugDumpRuntimeReload(t *testing.T) {
 	restartedOverrides, err := validation.NewOverrides(validation.Limits{}, newTenantLimits(restarted))
 	require.NoError(t, err)
 	p := restartedOverrides.ProfileDebugDump("tenant-a")
-	require.Equal(t, original.Fingerprint(), p.Fingerprint())
+	require.True(t, p.Matches(labels.FromStrings("service_name", "checkout-api")))
+	require.False(t, p.Matches(labels.FromStrings("service_name", "payments")))
+	require.Equal(t, original.Probability(), p.Probability())
+	require.Equal(t, original.MaxCapturesPerSecond(), p.MaxCapturesPerSecond())
 	require.Equal(t, deadline, p.ActiveUntil())
 	require.False(t, p.ActiveAt(time.Unix(0, clock.Load())))
 }
@@ -181,33 +199,32 @@ func TestProfileDumpServerConfig(t *testing.T) {
 	flagext.DefaultValues(&cfg)
 	require.Equal(t, profiledump.DefaultConfig(), cfg.ProfileDump)
 	require.NoError(t, yaml.Unmarshal([]byte(`profile_dump:
-  max_activation_window: 2h
   process_captures_per_second: 0.5
 `), &cfg))
-	require.Equal(t, 2*time.Hour, cfg.ProfileDump.MaxActivationWindow)
 	require.Equal(t, 0.5, cfg.ProfileDump.Recorder.ProcessCapturesPerSecond)
-	cfg.ProfileDump.MaxActivationWindow = 0
-	require.ErrorContains(t, cfg.Validate(), "max_activation_window")
+	cfg.ProfileDump.Recorder.ProcessCapturesPerSecond = 0
+	require.ErrorContains(t, cfg.Validate(), "recorder rate and durations must be finite and positive")
 	cfg.ProfileDump = profiledump.DefaultConfig()
 	cfg.LimitsConfig.ProfileDebugDump = &profiledump.TenantConfig{}
 	require.ErrorContains(t, cfg.Validate(), "only supported in per-tenant runtime overrides")
 }
 
 func TestProfileDebugDumpInvalidInitialLoad(t *testing.T) {
-	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
 	for _, block := range []string{
 		`{probability: 1}`,
-		`{active_until: "2026-09-16T12:01:00Z", probability: 1, max_captures_per_second: 0.6}`,
+		`{active_until: "2036-09-16T12:01:00Z", probability: 0}`,
+		`{active_until: "2036-09-16T12:01:00Z", probability: .inf}`,
+		`{active_until: "2036-09-16T12:01:00Z", probability: 1, selector: "bad{"}`,
+		`{active_until: "2036-09-16T12:01:00Z", probability: 1, max_captures_per_second: .nan}`,
 	} {
 		t.Run(block, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "runtime.yaml")
 			require.NoError(t, os.WriteFile(path, []byte("overrides:\n  tenant-a:\n    profile_debug_dump: "+block+"\n"), 0600))
-			bounds := profiledump.DefaultConfig()
-			bounds.Recorder.ProcessCapturesPerSecond = 0.5
+			processRate := 0.5
 			manager, err := runtimeconfig.New(runtimeconfig.Config{
 				LoadPath: []string{path}, ReloadPeriod: time.Hour,
 				Loader: func(r io.Reader) (interface{}, error) {
-					return validation.LoadRuntimeConfigWithProfileDump(r, bounds, now)
+					return validation.LoadRuntimeConfigWithProfileDump(r, processRate)
 				},
 			}, "profile-dump-initial-test", prometheus.NewRegistry(), log.NewNopLogger())
 			require.NoError(t, err)

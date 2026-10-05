@@ -130,7 +130,7 @@ func (oe *OverridesExporter) Collect(ch chan<- prometheus.Metric) {
 	for tenant, limits := range allLimits {
 		policy := limits.ProfileDebugDumpPolicy()
 		var deadline, active float64
-		if policy.Fingerprint() != "" {
+		if policy.Probability() > 0 {
 			deadline = float64(policy.ActiveUntil().Unix()) + float64(policy.ActiveUntil().Nanosecond())/1e9
 		}
 		if policy.ActiveAt(now) {

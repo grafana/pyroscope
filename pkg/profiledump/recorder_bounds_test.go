@@ -19,14 +19,13 @@ import (
 )
 
 func TestRecorderExactObjectAndMemory(t *testing.T) {
-	// ULIDs and fingerprints have fixed lengths. Compute the boundary with the
+	// ULIDs have a fixed length. Compute the boundary with the
 	// native metadata helper, including escaped labels and every recorder-owned field.
 	c := candidate([]byte{0, 0xff, 0x1f, 0x8b})
 	c.Metadata.Labels = map[string]string{"service_name": `<>&"`}
 	m := c.Metadata
 	m.SchemaVersion, m.CapturedAt, m.TenantID = NativeSchemaVersion, recorderNow, "a"
 	m.DistributorID = "distributor-test"
-	m.PolicyFingerprint = recorderPolicy(t, "{}", 1, 10).Fingerprint()
 	key, id, err := NewNativeObjectKey("a", recorderNow)
 	require.NoError(t, err)
 	m.CaptureID, m.PayloadSize = id.String(), int64(len(c.Payload))

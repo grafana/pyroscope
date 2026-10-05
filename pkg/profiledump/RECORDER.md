@@ -2,10 +2,9 @@
 
 `Capture` returns enqueue or drop status. Upload failures are recorded separately.
 Each admission checks the current policy's deadline, selector, probability and
-local tenant/process rates. `PrepareSeries` reuses the selector result across samples
-with stable borrowed labels while the policy fingerprint is unchanged. Discard this
-state at the end of the series. It does not bound selection cost for arbitrary labels
-or selectors. Accepted captures drain even after policy removal or
+local tenant/process rates. Each sample uses ordinary `Capture` with its series
+labels, evaluating selection independently. Selection cost is not bounded for
+arbitrary labels or selectors. Accepted captures drain even after policy removal or
 expiry. Rate tokens are not refunded on later rejection, and limits provide no
 fleet quota or successful-capture fairness.
 
@@ -24,12 +23,11 @@ overrides:
       max_captures_per_second: 1
 ```
 
-Replace the illustrative timestamp with an absolute deadline within the configured
-activation window, measured at load time. An absent or null block disables capture.
-A valid expired policy is inactive. A present block requires `active_until` and a
-finite `probability` in `(0, 1]`. The selector defaults to `{}` and matches external
-Connect series labels before relabeling or profile parsing. Selectors choose whole
-captures and do not redact their contents.
+Replace the illustrative timestamp with an explicit absolute deadline. An absent or
+null block disables capture. A valid expired policy is inactive. A present block
+requires `active_until` and a finite `probability` in `(0, 1]`. The selector defaults
+to `{}` and matches external Connect series labels before relabeling or profile parsing.
+Selectors choose whole captures and do not redact their contents.
 
 Strict configuration validation is unchanged. Invalid semantic or structural
 settings reject the entire candidate runtime load. A failed reload keeps the last
@@ -46,9 +44,8 @@ The public YAML settings under `profile_dump` are:
 | --- | --- | --- |
 | `max_object_bytes` | `16777216` (16 MiB) | Combined payload and serialized JSON size |
 | `max_retained_bytes` | `67108864` (64 MiB) | Admitted capture-buffer budget |
-| `process_captures_per_second` | `10` | Aggregate rate per distributor and tenant rate ceiling |
+| `process_captures_per_second` | `10` | Aggregate admission rate per distributor |
 | `upload_timeout` | `10s` | One cooperative deadline for both uploads |
-| `max_activation_window` | `1h` | Maximum future policy deadline at configuration load |
 | `retention` | `168h` (seven days) | Configurable retention for the admin cleaner |
 
 Flags use `profile-dump.` followed by the hyphenated setting name. Byte limits must
@@ -58,9 +55,10 @@ Durations must be positive. See the ordinary generated
 [configuration reference](../../docs/sources/configure-server/reference-configuration-parameters/index.md).
 
 An omitted tenant `max_captures_per_second` defaults to
-`min(1, process_captures_per_second)`. An explicit value must be finite, positive,
-and no greater than the process rate. There are no separate process settings for
-the tenant default or ceiling. Rates are local to each distributor.
+`min(1, process_captures_per_second)`. An explicit value must be finite and positive.
+It may exceed the process rate, while actual admissions remain constrained by
+both the tenant limiter and the independent process limiter. Rates are local to
+each distributor.
 
 Internal bounds are a queue of 16, two workers, tenant burst 1, process burst 2,
 1024 tenant limiters, and a 15-second shutdown drain. Metadata has a 64 KiB bound
@@ -70,7 +68,12 @@ bounds, not additional flags or YAML fields.
 ## Memory and ownership
 
 Candidate metadata, labels and payload are borrowed until Capture returns.
-Bounded metadata is marshaled once and reused for sizing and upload:
+Capture preparation validates metadata once against its constructed payload key
+before allocating JSON, then marshals it and checks the serialized 64 KiB bound.
+Invalid metadata drops as `invalid`, while serialized or combined capture size
+failures drop as `too_large`. The sidecar name comes from the constructed payload
+key. Public metadata helpers retain validation for their callers. Bounded JSON
+is reused for sizing and upload:
 
 ```text
 capture bytes = len(payload) + len(metadataJSON)
@@ -136,7 +139,9 @@ the [CLI reference](../../cmd/profilecli/PROFILE_DUMP.md).
 The overrides exporter exposes `pyroscope_limits_overrides` with
 `limit_name="profile_debug_dump_active_until_timestamp_seconds"` and
 `limit_name="profile_debug_dump_active"` for configured tenant overrides. Active
-status is evaluated at scrape time, so expiry needs no reload. A rejected reload
+status is evaluated at scrape time, so expiry needs no reload. An expired policy
+keeps its configured deadline in the exporter. Absent or null policies export zero
+for both values. A rejected reload
 leaves the last valid deadline in effect. These values have no global-default series.
 
 Recorder metrics under `pyroscope_profile_dump_` are process aggregates without

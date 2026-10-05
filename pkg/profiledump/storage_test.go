@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/require"
 	thanosobjstore "github.com/thanos-io/objstore"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/s3"
@@ -89,6 +90,8 @@ func TestRecorderTenantEncryptionReachesS3(t *testing.T) {
 	for _, tenant := range []string{"a", "b"} {
 		out := r.Capture(context.Background(), tenant, candidate([]byte("native")))
 		require.True(t, out.Enqueued)
+		require.Contains(t, out.spanAttributes(), attribute.String("capture.object_key", out.ObjectKey))
+		require.Contains(t, out.ObjectKey, "__pyroscope_cluster/profile-debug-dumps/native/"+tenant+"/")
 		keys, err := ParseNativeObjectKey(out.ObjectKey)
 		require.NoError(t, err)
 		for _, key := range []string{keys.PayloadKey, keys.MetadataKey} {

@@ -30,7 +30,6 @@ func (o Outcome) spanAttributes() []attribute.KeyValue {
 		attribute.Int64("capture.payload_size", o.PayloadSize),
 		attribute.Int64("capture.object_size", o.Size),
 		attribute.String("capture.result", result),
-		attribute.String("capture.policy_fingerprint", o.PolicyFingerprint),
 		attribute.String("capture.drop_reason", string(o.Reason)),
 	}
 }

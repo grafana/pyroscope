@@ -258,7 +258,7 @@ func TestOverridesExporter_ProfileDebugDump(t *testing.T) {
   absent: {}
   null-policy:
     profile_debug_dump: null
-`), profiledump.DefaultConfig(), now)
+`), profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond)
 	require.NoError(t, err)
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
 	t.Cleanup(func() { require.NoError(t, closer.Close()) })
@@ -333,7 +333,7 @@ func TestOverridesExporter_ProfileDebugDump(t *testing.T) {
 	require.Equal(t, expired, gather()["active"])
 	require.Equal(t, expired, gather()["also-active"])
 
-	replacement, err := validation.LoadRuntimeConfigWithProfileDump(strings.NewReader("overrides:\n  active: {}\n"), profiledump.DefaultConfig(), now)
+	replacement, err := validation.LoadRuntimeConfigWithProfileDump(strings.NewReader("overrides:\n  active: {}\n"), profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond)
 	require.NoError(t, err)
 	cfg.TenantLimits["active"] = replacement.TenantLimits["active"]
 	require.Equal(t, disabled, gather()["active"])

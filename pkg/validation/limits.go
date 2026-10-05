@@ -267,7 +267,7 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // Validate checks limits and replaces the compiled policy in place, before publication.
-func (l *Limits) Validate(bounds profiledump.Config, now time.Time) error {
+func (l *Limits) Validate(processRate float64) error {
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
 			return err
@@ -281,7 +281,7 @@ func (l *Limits) Validate(bounds profiledump.Config, now time.Time) error {
 		}
 	}
 
-	policy, err := l.ProfileDebugDump.Compile(bounds, now)
+	policy, err := l.ProfileDebugDump.Compile(processRate)
 	if err != nil {
 		return fmt.Errorf("profile_debug_dump: %w", err)
 	}

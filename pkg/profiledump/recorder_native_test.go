@@ -168,11 +168,11 @@ func TestRecorderNativeRetainedBoundary(t *testing.T) {
 		t.Run(fmt.Sprint(delta), func(t *testing.T) {
 			cfg := recorderTestConfig()
 			cfg.MaxObjectBytes = 1024
-			// Config validation no longer requires an extra envelope metadata allowance.
+			// Allow one maximum-size capture plus its bookkeeping reservation.
 			cfg.MaxRetainedBytes = cfg.MaxObjectBytes + itemReservation
-			r, policies, _ := recorderFixture(t, cfg, discardUpload, nil)
+			r, _, _ := recorderFixture(t, cfg, discardUpload, nil)
 			c := candidate([]byte("owned"))
-			item, out := r.prepareCapture("a", c, policies.ProfileDebugDump("a"), recorderNow)
+			item, out := r.prepareCapture("a", c, recorderNow)
 			require.Empty(t, out.Reason)
 			r.cfg.MaxRetainedBytes = int64(len(c.Payload)+cap(item.metadataJSON)) + itemReservation + delta
 			out = r.Capture(context.Background(), "a", c)

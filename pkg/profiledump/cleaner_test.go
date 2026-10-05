@@ -16,7 +16,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
-	"go.yaml.in/yaml/v3"
 )
 
 var cleanerNow = time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC)
@@ -118,7 +117,10 @@ func TestCleanerNativePairsOrphansAndIsolation(t *testing.T) {
 	recent := cleanupKey(t, "tenant", cleanerNow)
 	minute := pair[:strings.LastIndex(pair, "/")+1]
 	preserved := []string{
-		recent, "unrelated/profiles.parquet", "other/" + pair, ObjectPrefix + "legacy.pyrdump",
+		"tenant/phlaredb/01DTVP434PA9VFXSW2JKB3392D/profiles.parquet",
+		"profile-debug-dumps/phlaredb/01DTVP434PA9VFXSW2JKB3392D/profiles.parquet",
+		"__pyroscope_cluster/other-diagnostics/object",
+		recent, "unrelated/profiles.parquet", "other/" + pair, ObjectPrefix + "unrelated.txt",
 		pair + ".json", strings.Replace(pair, ".pprof", ".PPROF", 1),
 		minute + "unexpected/deeper.pprof", minute + "invalid.pprof", minute + "../bad.json",
 		strings.Replace(pair, "2026-09-10", "2026-02-30", 1),
@@ -401,13 +403,5 @@ func TestCleanerConfig(t *testing.T) {
 	require.Equal(t, 30*24*time.Hour, cfg.Retention)
 	for _, retention := range []time.Duration{0, -time.Hour} {
 		require.Error(t, (CleanerConfig{Retention: retention}).Validate())
-	}
-	for _, name := range []string{"sweep-interval", "sweep-timeout", "cleanup-max-entries"} {
-		require.ErrorContains(t, flags.Parse([]string{"-profile-dump." + name + "=1"}), "flag provided but not defined")
-	}
-	for _, name := range []string{"sweep_interval", "sweep_timeout", "max_entries"} {
-		decoder := yaml.NewDecoder(strings.NewReader(name + ": 1"))
-		decoder.KnownFields(true)
-		require.ErrorContains(t, decoder.Decode(&cfg), "not found")
 	}
 }

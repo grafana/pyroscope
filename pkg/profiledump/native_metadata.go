@@ -1,7 +1,6 @@
 package profiledump
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,7 +23,6 @@ type NativeMetadata struct {
 	Labels            map[string]string `json:"labels,omitempty"`
 	OriginalProfileID string            `json:"original_profile_id,omitempty"`
 	DistributorID     string            `json:"distributor_id"`
-	PolicyFingerprint string            `json:"policy_fingerprint"`
 	CaptureID         string            `json:"capture_id"`
 	PayloadSize       int64             `json:"payload_size"`
 }
@@ -62,9 +60,6 @@ func (m NativeMetadata) Validate(key string) error {
 	if err := validateText("distributor_id", m.DistributorID, MaxTextBytes, true); err != nil {
 		return err
 	}
-	if err := validatePolicyFingerprint(m.PolicyFingerprint); err != nil {
-		return err
-	}
 	return ValidateLabels(m.Labels)
 }
 
@@ -74,6 +69,12 @@ func MarshalNativeMetadata(key string, metadata NativeMetadata) ([]byte, error) 
 	if err := metadata.Validate(key); err != nil {
 		return nil, err
 	}
+	return marshalValidatedNativeMetadata(metadata)
+}
+
+// marshalValidatedNativeMetadata requires validation before allocating JSON.
+// It retains the final size check for JSON escaping expansion.
+func marshalValidatedNativeMetadata(metadata NativeMetadata) ([]byte, error) {
 	metadata.CapturedAt = metadata.CapturedAt.UTC()
 	b, err := json.Marshal(metadata)
 	if err != nil {
@@ -103,16 +104,11 @@ func ReadNativeMetadata(r io.Reader, key string) (NativeMetadata, error) {
 		NativeMetadata
 		PayloadSize *int64 `json:"payload_size"`
 	}
-	d := json.NewDecoder(bytes.NewReader(b))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&wire); err != nil {
+	if err := json.Unmarshal(b, &wire); err != nil {
 		return NativeMetadata{}, fmt.Errorf("decode native metadata: %w", err)
 	}
 	if wire.PayloadSize == nil {
 		return NativeMetadata{}, fmt.Errorf("payload_size is required")
-	}
-	if err := d.Decode(new(any)); err != io.EOF {
-		return NativeMetadata{}, fmt.Errorf("trailing data in native metadata")
 	}
 	wire.NativeMetadata.PayloadSize = *wire.PayloadSize
 	if err := wire.Validate(key); err != nil {

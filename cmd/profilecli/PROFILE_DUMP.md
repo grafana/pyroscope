@@ -1,7 +1,12 @@
 # profilecli admin profile-dumps
 
-Retrieve Connect pprof captures from the customer bucket. Reads native payloads with schema-v1 JSON
-sidecars and preserves exact bytes, including compressed, empty and malformed pprof.
+Discover and retrieve Connect pprof captures from the customer bucket. Inspection
+validates schema-v1 JSON sidecars. Extraction preserves exact native bytes,
+including compressed, empty and malformed pprof.
+
+Storage must be configured explicitly to match the capturing deployment's backend,
+bucket and storage prefix. The CLI does not discover storage from the tenant ID.
+Filesystem storage also requires an explicit directory.
 
 See [runtime activation](../../pkg/profiledump/RECORDER.md#activation)
 and [admin retention](../../pkg/profiledump/CLEANER.md)
@@ -10,30 +15,42 @@ for enabling capture and running cleanup against the same bucket and storage pre
 ## Synopsis
 
 ```text
-profilecli admin profile-dumps list [OPTIONS] --tenant-id=TENANT --from=TIME --to=TIME
-profilecli admin profile-dumps inspect [OPTIONS] KEY
-profilecli admin profile-dumps extract [OPTIONS] KEY [--output=PATH]
+profilecli admin profile-dumps list --storage.backend=BACKEND [OPTIONS] --tenant-id=TENANT --from=TIME --to=TIME
+profilecli admin profile-dumps inspect --storage.backend=BACKEND [OPTIONS] KEY
+profilecli admin profile-dumps extract --storage.backend=BACKEND [OPTIONS] KEY [--output=PATH]
 ```
 
-`KEY` is the exact `profile-debug-dumps/native/...` object key, relative to
-`--storage.prefix`. Use the payload key returned by `list` or a capture trace.
+`KEY` is the exact `__pyroscope_cluster/profile-debug-dumps/native/...` object key,
+relative to `--storage.prefix`. Use the payload key returned by `list` or a capture trace.
 Inspect and extract also accept the corresponding JSON sidecar key.
 
 ## Common options
 
 ```text
+--storage.backend=BACKEND
+    Required. Select the backend used by the capturing deployment.
+    There is no default backend for these commands.
+
+--storage.filesystem.dir=PATH
+    Required when --storage.backend=filesystem. No default directory.
+
 --storage.*
-    Existing object-store configuration and customer-cloud credentials.
+    Configure the matching bucket, storage prefix and customer-cloud credentials.
     Run a subcommand with --help for provider-specific options.
 
 --timeout=DURATION
     Default: 2m. Must be positive.
     Command deadline. Ctrl-C also cancels the command.
     Providers that ignore cancellation may exceed the deadline.
+```
 
+## inspect and extract options
+
+```text
 --max-object-size=BYTES
     Default: 134217728 (128 MiB). Must be positive.
-    Maximum native payload size. Sidecar reads accept at most 64 KiB of JSON
+    Maximum native payload size. Available only for inspect/extract.
+    Sidecar reads accept at most 64 KiB of JSON
     and read at most one additional byte to detect excess.
 ```
 
@@ -45,24 +62,17 @@ Inspect and extract also accept the corresponding JSON sidecar key.
     This filter is not an authorization boundary.
 
 --from=TIME
-    Required. Inclusive server capture time in RFC3339, allowing fractional
-    seconds. Must not follow --to and must fall in year 1970 or later.
+    Required. Inclusive key-derived millisecond capture time in RFC3339,
+    allowing fractional seconds. Must be earlier than or equal to the
+    --to timestamp and fall in year 1970 or later.
 
 --to=TIME
-    Required. Exclusive server capture time in RFC3339, allowing fractional
+    Required. Exclusive key-derived millisecond capture time in RFC3339, allowing fractional
     seconds. Must fall in year 9999 or earlier.
 
 --limit=COUNT
     Default: 100. Must be positive.
     Maximum returned captures. Reaching the limit marks results incomplete.
-
---max-work=COUNT
-    Default: 10000. Must be positive.
-    Maximum sum of listing calls, visited entries and metadata storage calls.
-    Each minute listing and each returned entry costs one unit.
-    Each sidecar candidate reserves two additional units for its GET and
-    the sibling payload Attributes call, even if inspection fails early.
-    Counts application work, excluding provider page prefetch.
 ```
 
 ## extract options
@@ -83,23 +93,38 @@ JSON goes to stdout. Diagnostics and the raw-customer-data warning go to stderr.
 
 | Command | JSON result | Validation |
 | --- | --- | --- |
-| `list` | `captures`, `limited`, `reason`, `work`, `skipped_invalid`, `skipped_missing`, `validation` | Bounded sidecar inspection and payload Attributes within tenant/minute directories |
+| `list` | `captures` (each with `key` and `captured_at`), `limited`, optional `reason`, `skipped_invalid` | Validated native payload keys within tenant/minute directories |
 | `inspect` | `key`, `metadata`, `validation` | Sidecar metadata, key agreement and declared payload size, without reading the payload |
 | `extract` | `payload`, `metadata`, `validation` | Sidecar metadata, key agreement and exact payload length, including EOF |
 
 Listing visits only UTC minute directories intersecting `[from,to)`, generated
 sequentially without allocating a complete interval plan. Equal endpoints yield
-an empty result without storage calls. Exact capture-time filtering preserves
-fractional seconds and timezone offsets. Listing does not assume provider order
-and never downloads payload bytes. Returned keys identify the native payloads.
+an empty result without storage calls. Listing does not assume provider order and
+makes no object GET or Attributes calls. Returned keys identify native `.pprof`
+payloads, including payload-only orphans. JSON-only orphans are not results.
 
-A limited list may omit matching captures. Dense selected or boundary minutes can
-exhaust the work budget even for a narrow interval. Missing or invalid sidecar
-candidates are counted separately. Payload-only orphans are not sidecar candidates
-and are not counted as missing, but ordinary object tools can retrieve them. Other listing failures can return partial JSON with an error
-exit status. Inspect and extract distinguish missing objects, invalid metadata or mismatched payload sizes
-and storage-access failures. A missing object may still be uploading or its
-upload may have failed, or admin retention cleanup may have deleted it.
+The reported `captured_at` comes from the ULID at millisecond resolution and is
+compared directly against `[from,to)`, including fractional endpoints and timezone
+offsets. For example, a capture made at `2026-09-18T12:00:00.123456789Z` has key time
+`2026-09-18T12:00:00.123Z`. A range starting at `.1234Z` excludes that key. A range
+from `.123Z` to `.1234Z` includes it, even though the full capture time is later than
+the endpoint. Listing does not read metadata to recover sub-millisecond precision.
+
+A limited list may omit matching captures. Result limits, timeout and cancellation
+bound the command, but broad queries may perform many storage operations before
+timeout. Invalid keys are counted in `skipped_invalid`. Listing failures return
+partial JSON marked `limited` with a `reason` and an error exit status.
+
+Discovery does not certify complete payload/sidecar pairs. A listed payload may
+fail subsequent inspection. Use ordinary object tooling to retrieve a payload-only
+orphan. Inspect and extract distinguish missing objects, invalid metadata or
+mismatched payload sizes, and storage-access failures. A missing object may still
+be uploading, its upload may have failed, or retention cleanup may have deleted it.
+
+Sidecar inspection ignores unknown JSON fields. It still requires one valid UTF-8
+JSON value within 64 KiB, supported schema, an explicit non-null nonnegative
+`payload_size`, and identity/time agreement with the key. Zero-byte payloads are
+valid captures.
 
 Extraction creates private mode-0600 files and attempts to remove temporary and
 newly published files on failure, reporting cleanup errors. The payload and sidecar
@@ -113,7 +138,36 @@ Cancellation remains cooperative. Providers may exceed the deadline, and early
 listing termination can leave a provider's listing producer blocked. Minute
 directories reduce historical scanning but do not change producer teardown.
 
-## Example
+## Examples
+
+### S3
+
+```bash
+STORAGE=(
+  --storage.backend=s3
+  --storage.s3.bucket-name=my-pyroscope-bucket
+  --storage.s3.region=us-west-2
+  --storage.s3.endpoint=s3.us-west-2.amazonaws.com
+  --storage.s3.native-aws-auth-enabled=true
+  --storage.prefix=production
+)
+
+profilecli admin profile-dumps list "${STORAGE[@]}" \
+  --tenant-id=3648 \
+  --from=2026-10-05T12:00:00Z \
+  --to=2026-10-05T12:05:00Z
+```
+
+Replace the bucket, region, endpoint and prefix with the capturing deployment's
+settings, and choose the tenant and capture-time window to search. Omit
+`--storage.prefix` if the deployment has no prefix. Do not append
+`__pyroscope_cluster/profile-debug-dumps/native` to it.
+
+`--storage.s3.native-aws-auth-enabled=true` uses the AWS SDK's credential discovery
+from environment variables and AWS configuration files. Reuse `"${STORAGE[@]}"`
+for `inspect` and `extract`, as in the filesystem example below.
+
+### Filesystem
 
 ```bash
 STORAGE=(--storage.backend=filesystem --storage.filesystem.dir=/path/to/bucket)

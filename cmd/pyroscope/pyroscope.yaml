@@ -629,18 +629,15 @@ profile_dump:
   # is not an RSS limit.
   # max_retained_bytes: 67108864
 
-  # Aggregate capture admission rate per distributor and maximum tenant rate.
-  # Omitted tenant rates default to min(1, this rate). Must be finite and
-  # positive. This is not a fleet quota.
+  # Aggregate capture admission rate per distributor. Tenant rates may exceed
+  # this rate, but admissions remain constrained by it. Omitted tenant rates
+  # default to min(1, this rate). Must be finite and positive. This is not a
+  # fleet quota.
   # process_captures_per_second: 10
 
   # One cooperative timeout covering both sequential uploads of a capture.
   # Providers that ignore cancellation may exceed it.
   # upload_timeout: 10s
-
-  # Maximum future activation window for a profile-debug-dump policy, measured
-  # at configuration load. Must be positive.
-  # max_activation_window: 1h
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,

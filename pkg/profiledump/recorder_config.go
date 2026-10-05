@@ -27,7 +27,7 @@ func (c *RecorderConfig) RegisterFlags(f *flag.FlagSet) {
 	d := DefaultRecorderConfig()
 	f.Int64Var(&c.MaxObjectBytes, "profile-dump.max-object-bytes", d.MaxObjectBytes, "Maximum combined native payload and JSON sidecar bytes. Oversized captures are dropped.")
 	f.Int64Var(&c.MaxRetainedBytes, "profile-dump.max-retained-bytes", d.MaxRetainedBytes, "Per-distributor budget for admitted capture buffers, including owned payload, JSON capacity, item overhead, queueing and uploads. Initial bounded metadata marshaling and provider allocations are outside this budget. This is not an RSS limit.")
-	f.Float64Var(&c.ProcessCapturesPerSecond, "profile-dump.process-captures-per-second", d.ProcessCapturesPerSecond, "Aggregate capture admission rate per distributor and maximum tenant rate. Omitted tenant rates default to min(1, this rate). Must be finite and positive. This is not a fleet quota.")
+	f.Float64Var(&c.ProcessCapturesPerSecond, "profile-dump.process-captures-per-second", d.ProcessCapturesPerSecond, "Aggregate capture admission rate per distributor. Tenant rates may exceed this rate, but admissions remain constrained by it. Omitted tenant rates default to min(1, this rate). Must be finite and positive. This is not a fleet quota.")
 	f.DurationVar(&c.UploadTimeout, "profile-dump.upload-timeout", d.UploadTimeout, "One cooperative timeout covering both sequential uploads of a capture. Providers that ignore cancellation may exceed it.")
 }
 
