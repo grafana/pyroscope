@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func newTestBudget(size int64) *memoryBudget {
@@ -64,5 +65,22 @@ func Test_memoryBudget_unbounded_without_limit(t *testing.T) {
 	b := &memoryBudget{}
 	release, err := b.acquire(context.Background(), &metastorev1.Dataset{Size: 1 << 40})
 	require.NoError(t, err)
+	release()
+}
+
+func Test_executeDataset_releases_budget_on_panic(t *testing.T) {
+	b := newTestBudget(100)
+	// Without a block object, opening the dataset panics after the budget
+	// is acquired.
+	bc := &blockContext{ctx: context.Background(), budget: b}
+	err := util.RecoverPanic(func() error {
+		return bc.executeDataset(&metastorev1.Dataset{Size: 1 << 30})
+	})()
+	require.Error(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	release, err := b.acquire(ctx, &metastorev1.Dataset{Size: 1 << 30})
+	require.NoError(t, err, "budget still held after the panic")
 	release()
 }

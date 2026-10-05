@@ -117,19 +117,7 @@ func (b *blockContext) execute() error {
 
 	md := b.obj.Metadata()
 	for _, ds := range md.Datasets {
-		release, err := b.budget.acquire(b.ctx, ds)
-		if err != nil {
-			return err
-		}
-		q := b.newQueryContext(ds)
-		for _, query := range b.req.src.Query {
-			q.grp.Go(util.RecoverPanic(func() error {
-				return q.execute(query)
-			}))
-		}
-		err = q.grp.Wait()
-		release()
-		if err != nil {
+		if err := b.executeDataset(ds); err != nil {
 			return err
 		}
 	}
@@ -256,6 +244,24 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	oteltrace.SpanFromContext(b.ctx).AddEvent("dataset tsdb index lookup complete")
 
 	return nil
+}
+
+// executeDataset runs the queries on one dataset within the memory budget.
+// The reservation is released on every exit, including a panic recovered
+// further up the stack.
+func (b *blockContext) executeDataset(ds *metastorev1.Dataset) error {
+	release, err := b.budget.acquire(b.ctx, ds)
+	if err != nil {
+		return err
+	}
+	defer release()
+	q := b.newQueryContext(ds)
+	for _, query := range b.req.src.Query {
+		q.grp.Go(util.RecoverPanic(func() error {
+			return q.execute(query)
+		}))
+	}
+	return q.grp.Wait()
 }
 
 func (b *blockContext) newQueryContext(ds *metastorev1.Dataset) *queryContext {
