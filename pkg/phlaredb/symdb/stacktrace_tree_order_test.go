@@ -69,8 +69,8 @@ func Test_stacktrace_tree_insert_wide_nodes(t *testing.T) {
 	for _, s := range stacks {
 		require.Equal(t, scanned.insert(s), indexed.insert(s))
 	}
-	require.NotEmpty(t, indexed.wideChildren)
-	require.Empty(t, scanned.wideChildren)
+	require.NotZero(t, indexed.wideChildren.n)
+	require.Zero(t, scanned.wideChildren.n)
 	require.Equal(t, len(scanned.nodes), len(indexed.nodes))
 	for i := range scanned.nodes {
 		require.Equal(t, scanned.nodes[i].p, indexed.nodes[i].p)
