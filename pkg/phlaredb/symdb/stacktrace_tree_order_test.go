@@ -63,14 +63,14 @@ func Benchmark_stacktrace_tree_insert_skewed(b *testing.B) {
 func Test_stacktrace_tree_insert_wide_nodes(t *testing.T) {
 	stacks := skewedStacks(2, 50000, 30, 3000)
 	scanned := newStacktraceTree(0)
-	scanned.scan = int(^uint(0) >> 1)
+	scanned.wideThreshold = 0
 	indexed := newStacktraceTree(0)
-	indexed.scan = 2
+	indexed.wideThreshold = 2
 	for _, s := range stacks {
 		require.Equal(t, scanned.insert(s), indexed.insert(s))
 	}
-	require.NotEmpty(t, indexed.children)
-	require.Empty(t, scanned.children)
+	require.NotEmpty(t, indexed.wideChildren)
+	require.Empty(t, scanned.wideChildren)
 	require.Equal(t, len(scanned.nodes), len(indexed.nodes))
 	for i := range scanned.nodes {
 		require.Equal(t, scanned.nodes[i].p, indexed.nodes[i].p)

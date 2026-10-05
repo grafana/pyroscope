@@ -19,11 +19,10 @@ const wideNodeScan = 32
 
 type stacktraceTree struct {
 	nodes []node
-	// Children of wide nodes, keyed by parent and location; only needed for
-	// insertion. wide marks the nodes whose children are indexed.
-	children map[uint64]int32
-	wide     []uint64
-	scan     int
+	// Index of the children of wide nodes; only needed for insertion.
+	wideChildren  map[uint64]int32 // keyed by parent and location
+	wideParents   []uint64         // bitmap of the nodes whose children are indexed
+	wideThreshold int              // siblings scanned before a node counts as wide; 0 disables
 }
 
 type node struct {
@@ -38,7 +37,7 @@ func newStacktraceTree(size int) *stacktraceTree {
 	if size < 1 {
 		size = 1
 	}
-	t := stacktraceTree{nodes: make([]node, 1, size), scan: wideNodeScan}
+	t := stacktraceTree{nodes: make([]node, 1, size), wideThreshold: wideNodeScan}
 	t.nodes[0] = node{
 		p:  sentinel,
 		fc: sentinel,
@@ -57,10 +56,10 @@ func (t *stacktraceTree) insert(refs []uint64) uint32 {
 		r := int32(refs[j])
 		if t.isWide(parent) {
 			k := childKey(parent, r)
-			i, ok := t.children[k]
+			i, ok := t.wideChildren[k]
 			if !ok {
 				i = t.newChild(parent, r)
-				t.children[k] = i
+				t.wideChildren[k] = i
 			}
 			parent = i
 			continue
@@ -73,7 +72,7 @@ func (t *stacktraceTree) insert(refs []uint64) uint32 {
 		if i == sentinel {
 			i = t.newChild(parent, r)
 		}
-		if n >= t.scan {
+		if t.wideThreshold > 0 && n >= t.wideThreshold {
 			t.indexChildren(parent)
 		}
 		parent = i
@@ -97,23 +96,32 @@ func childKey(parent, r int32) uint64 { return uint64(uint32(parent))<<32 | uint
 
 func (t *stacktraceTree) isWide(i int32) bool {
 	w := int(i) >> 6
-	return w < len(t.wide) && t.wide[w]&(1<<(uint(i)&63)) != 0
+	return w < len(t.wideParents) && t.wideParents[w]&(1<<(uint(i)&63)) != 0
+}
+
+// wideChildEntrySize is an estimate of the memory a wideChildren entry takes:
+// the 8-byte key and 4-byte value plus the map's per-entry overhead.
+const wideChildEntrySize = 24
+
+// wideIndexSize estimates the memory held by the index of wide nodes.
+func (t *stacktraceTree) wideIndexSize() int {
+	return len(t.wideChildren)*wideChildEntrySize + 8*cap(t.wideParents)
 }
 
 // indexChildren indexes the existing children of a wide node; later children
 // are indexed as they are created.
 func (t *stacktraceTree) indexChildren(parent int32) {
-	if t.children == nil {
-		t.children = make(map[uint64]int32)
+	if t.wideChildren == nil {
+		t.wideChildren = make(map[uint64]int32)
 	}
 	for i := t.nodes[parent].fc; i != sentinel; i = t.nodes[i].ns {
-		t.children[childKey(parent, t.nodes[i].r)] = i
+		t.wideChildren[childKey(parent, t.nodes[i].r)] = i
 	}
 	w := int(parent) >> 6
-	if w >= len(t.wide) {
-		t.wide = append(t.wide, make([]uint64, w+1-len(t.wide))...)
+	if w >= len(t.wideParents) {
+		t.wideParents = append(t.wideParents, make([]uint64, w+1-len(t.wideParents))...)
 	}
-	t.wide[w] |= 1 << (uint(parent) & 63)
+	t.wideParents[w] |= 1 << (uint(parent) & 63)
 }
 
 func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {
@@ -212,37 +220,6 @@ func (t *parentPointerTree) Nodes() []Node {
 		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
 	}
 	return dst
-}
-
-func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
-	l := int32(len(t.nodes))
-	x := stacktraceTree{nodes: make([]node, l)}
-	x.nodes[0] = node{
-		p:  sentinel,
-		fc: sentinel,
-		ns: sentinel,
-	}
-	lc := make([]int32, len(t.nodes))
-	var s int32
-	for i := int32(1); i < l; i++ {
-		n := t.nodes[i]
-		x.nodes[i] = node{
-			p:  n.p,
-			r:  n.r,
-			fc: sentinel,
-			ns: sentinel,
-		}
-		// Swap the last child of the parent with self.
-		// If this is the first child, update the parent.
-		// Otherwise, update the sibling.
-		s, lc[n.p] = lc[n.p], i
-		if s == 0 {
-			x.nodes[n.p].fc = i
-		} else {
-			x.nodes[s].ns = i
-		}
-	}
-	return &x
 }
 
 // ReadFrom decodes parent pointer tree from the reader.

@@ -210,12 +210,20 @@ func assertRestoredStacktraceTree(t *testing.T, x *stacktraceTree) {
 	_, err := ppt.ReadFrom(bytes.NewBuffer(b.Bytes()))
 	require.NoError(t, err)
 	restored := ppt.toStacktraceTree()
-	// Only parents and frames are encoded; sibling links are rebuilt in index order.
-	require.Equal(t, len(x.nodes), len(restored.nodes))
-	for i := range x.nodes {
-		assert.Equal(t, x.nodes[i].p, restored.nodes[i].p)
-		assert.Equal(t, x.nodes[i].r, restored.nodes[i].r)
+	assert.Equal(t, x.nodes, restored.nodes)
+}
+
+// toStacktraceTree rebuilds the insertion links of a decoded tree. Insert puts each new
+// child first among its siblings, so prepending children in index order matches it.
+func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
+	x := stacktraceTree{nodes: make([]node, len(t.nodes)), wideThreshold: wideNodeScan}
+	x.nodes[0] = node{p: sentinel, fc: sentinel, ns: sentinel}
+	for i := 1; i < len(t.nodes); i++ {
+		n := t.nodes[i]
+		x.nodes[i] = node{p: n.p, r: n.r, fc: sentinel, ns: x.nodes[n.p].fc}
+		x.nodes[n.p].fc = int32(i)
 	}
+	return &x
 }
 
 func Benchmark_stacktrace_tree_insert(b *testing.B) {

@@ -81,13 +81,12 @@ func Benchmark_stacktrace_tree_insert_variants(b *testing.B) {
 		{"uniform", uniformStacks(1, 200000, 30, 3000)},
 		{"merge", mergeStacks(1, 10, 20000, 30)},
 	}
-	off := int(^uint(0) >> 1)
 	variants := []struct {
-		name   string
-		scan   int
-		insert func(*stacktraceTree, []uint64) uint32
+		name      string
+		threshold int
+		insert    func(*stacktraceTree, []uint64) uint32
 	}{
-		{"scan", off, (*stacktraceTree).insertScanOnly},
+		{"scan", 0, (*stacktraceTree).insertScanOnly},
 		{"index", wideNodeScan, (*stacktraceTree).insert},
 	}
 	for _, w := range workloads {
@@ -97,7 +96,7 @@ func Benchmark_stacktrace_tree_insert_variants(b *testing.B) {
 				var nodes int
 				for i := 0; i < b.N; i++ {
 					x := newStacktraceTree(0)
-					x.scan = v.scan
+					x.wideThreshold = v.threshold
 					for _, s := range w.stacks {
 						v.insert(x, s)
 					}
