@@ -21,6 +21,7 @@ type stacktraceTree struct {
 	nodes []node
 	// Index of the children of wide nodes; only needed for insertion.
 	wideChildren  map[uint64]int32 // keyed by parent and location
+	wideTails     map[int32]int32  // last child of each wide node, where new children are appended
 	wideParents   []uint64         // bitmap of the nodes whose children are indexed
 	wideThreshold int              // siblings scanned before a node counts as wide; 0 disables
 }
@@ -58,19 +59,20 @@ func (t *stacktraceTree) insert(refs []uint64) uint32 {
 			k := childKey(parent, r)
 			i, ok := t.wideChildren[k]
 			if !ok {
-				i = t.newChild(parent, r)
+				i = t.newChild(parent, r, t.wideTails[parent])
 				t.wideChildren[k] = i
+				t.wideTails[parent] = i
 			}
 			parent = i
 			continue
 		}
-		i, n := t.nodes[parent].fc, 0
+		i, last, n := t.nodes[parent].fc, int32(sentinel), 0
 		for i != sentinel && t.nodes[i].r != r {
-			i = t.nodes[i].ns
+			last, i = i, t.nodes[i].ns
 			n++
 		}
 		if i == sentinel {
-			i = t.newChild(parent, r)
+			i = t.newChild(parent, r, last)
 		}
 		if t.wideThreshold > 0 && n >= t.wideThreshold {
 			t.indexChildren(parent)
@@ -80,15 +82,21 @@ func (t *stacktraceTree) insert(refs []uint64) uint32 {
 	return uint32(parent)
 }
 
-func (t *stacktraceTree) newChild(parent, r int32) int32 {
+// newChild appends a child after last (sentinel: no children yet). Appending keeps the
+// children created first, usually the most visited, at the front of sibling scans.
+func (t *stacktraceTree) newChild(parent, r, last int32) int32 {
 	i := int32(len(t.nodes))
 	t.nodes = append(t.nodes, node{
 		r:  r,
 		p:  parent,
 		fc: sentinel,
-		ns: t.nodes[parent].fc,
+		ns: sentinel,
 	})
-	t.nodes[parent].fc = i
+	if last == sentinel {
+		t.nodes[parent].fc = i
+	} else {
+		t.nodes[last].ns = i
+	}
 	return i
 }
 
@@ -105,7 +113,7 @@ const wideChildEntrySize = 24
 
 // wideIndexSize estimates the memory held by the index of wide nodes.
 func (t *stacktraceTree) wideIndexSize() int {
-	return len(t.wideChildren)*wideChildEntrySize + 8*cap(t.wideParents)
+	return (len(t.wideChildren)+len(t.wideTails))*wideChildEntrySize + 8*cap(t.wideParents)
 }
 
 // indexChildren indexes the existing children of a wide node; later children
@@ -113,9 +121,11 @@ func (t *stacktraceTree) wideIndexSize() int {
 func (t *stacktraceTree) indexChildren(parent int32) {
 	if t.wideChildren == nil {
 		t.wideChildren = make(map[uint64]int32)
+		t.wideTails = make(map[int32]int32)
 	}
 	for i := t.nodes[parent].fc; i != sentinel; i = t.nodes[i].ns {
 		t.wideChildren[childKey(parent, t.nodes[i].r)] = i
+		t.wideTails[parent] = i
 	}
 	w := int(parent) >> 6
 	if w >= len(t.wideParents) {

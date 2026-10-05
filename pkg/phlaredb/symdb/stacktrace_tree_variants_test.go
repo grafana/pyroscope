@@ -11,12 +11,12 @@ func (t *stacktraceTree) insertScanOnly(refs []uint64) uint32 {
 	var parent int32
 	for j := len(refs) - 1; j >= 0; j-- {
 		r := int32(refs[j])
-		i := t.nodes[parent].fc
+		i, last := t.nodes[parent].fc, int32(sentinel)
 		for i != sentinel && t.nodes[i].r != r {
-			i = t.nodes[i].ns
+			last, i = i, t.nodes[i].ns
 		}
 		if i == sentinel {
-			i = t.newChild(parent, r)
+			i = t.newChild(parent, r, last)
 		}
 		parent = i
 	}
