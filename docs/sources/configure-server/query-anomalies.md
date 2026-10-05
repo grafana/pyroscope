@@ -12,7 +12,7 @@ keywords:
 
 # Query profile anomalies
 
-Pyroscope can confirm profile IDs that an external anomaly source flagged against data that was actually ingested. Use this when a detector points at profiles that sampling or ingestion might have dropped, so a follow-up flame graph query does not come back empty.
+Grafana Pyroscope can confirm profile IDs that an external anomaly source flagged against data that was actually ingested. Use this when a detector points at profiles that sampling or ingestion might have dropped, so a follow-up flame graph query doesn't come back empty.
 
 The `QueryAnomalies` RPC is experimental. It runs only on the v2 query-frontend. The default is to leave `-query-frontend.anomaly-api.url` empty, which disables the lookup.
 
@@ -66,15 +66,15 @@ A successful response is HTTP 200 with JSON of this shape:
 }
 ```
 
-`profile_uuid` must parse as a UUID. The query-frontend copies `score` onto the matching RPC result. If the label selector resolves to more than 200 distinct `service_name` values, the query-frontend rejects the request.
+`profile_uuid` must parse as a UUID. The query-frontend copies `score` onto the matching RPC result. The RPC and CLI call the identifier a profile ID. If the label selector resolves to more than 200 distinct `service_name` values, the query-frontend rejects the request.
 
-## How Pyroscope confirms candidates
+## Confirm candidates against ingested data
 
 After the anomaly source returns candidate profile IDs, the query-frontend checks which of those IDs exist in ingested data for the full label selector and time range.
 
 Only `process_cpu:cpu:nanoseconds:cpu:nanoseconds` is queried for the stacktrace type. Other profile types return an empty result.
 
-Sampled-out profiles do not count as present. For how sampled-out profiles are stored, refer to [Write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/).
+Sampled-out profiles don't count as present. For how sampled-out profiles are stored, refer to [Write-path sampling](/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/).
 
 Each returned anomaly includes the ingested profile ID, the profile timestamp, the profile labels, and the score from the anomaly source.
 

@@ -518,7 +518,7 @@ This command is only supported on the v2 query-frontend. The stacktrace anomaly 
 
 1. Optional: Specify a selector, time range, anomaly type, and output format.
 
-   - You can provide a label selector using the `--query` flag, for example `--query='{service_name="my_application_name"}'`.
+   - You can provide a label selector using the `--query` flag, for example, `--query='{service_name="my_application_name"}'`.
    - You can provide a custom time range using the `--from` and `--to` flags. The defaults are `now-1h` and `now`.
    - You can set `--profile-type`. The default is `process_cpu:cpu:nanoseconds:cpu:nanoseconds`.
    - You can repeat `--anomaly-type`. The only supported value is `stacktrace`, which is also the default.
