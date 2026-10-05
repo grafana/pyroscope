@@ -752,16 +752,13 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		resp.Flamegraph = phlaremodel.NewFlameGraph(t, nameToMapping, req.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = t.Bytes(req.Msg.GetMaxNodes(), nil)
-<<<<<<< HEAD
 		resp.Mapping = nameToMapping
-=======
 	case querierv1.ProfileFormat_PROFILE_FORMAT_PPROF:
 		profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		resp.Pprof = &querierv1.PprofProfile{Profile: pprof.FromTree(t, profileType, req.Msg.End*1e6)}
->>>>>>> main
 	}
 	return connect.NewResponse(&resp), nil
 }
