@@ -32,6 +32,6 @@ func (q *QueryFrontend) SelectMergeSpanProfile(
 	return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{
 		Flamegraph: resp.Msg.Flamegraph,
 		Tree:       resp.Msg.Tree,
-		Mapping:    resp.Masg.Mapping,
+		Mapping:    resp.Msg.Mapping,
 	}), nil
 }

@@ -68,7 +68,11 @@ func (f *Frontend) selectMergeStacktracesTree(
 		if err != nil {
 			return nil, nil, err
 		}
-		return phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree), resp.Msg.Mapping
+		tree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree)
+		if err != nil {
+			return nil, nil, err
+		}
+		return tree, resp.Msg.Mapping, nil
 	}
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
@@ -161,7 +165,7 @@ func (f *Frontend) selectMergeStacktracesPprof(
 		}), nil
 	}
 
-	tree, err := f.selectMergeStacktracesTree(ctx, c)
+	tree, _, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
 	}
