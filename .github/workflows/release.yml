@@ -26,11 +26,11 @@ jobs:
         run: echo "GIT_LAST_COMMIT_DATE=$(git log -1 --date=iso-strict --format=%cd)" >> $GITHUB_ENV
       - name: Set IMAGE_TAG from git tag
         run: echo "IMAGE_TAG=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-      - name: Set IMAGE_PUBLISH_LATEST=true, so we overwrite the latest docker image tag and update Homebrew
-        run: echo "IMAGE_PUBLISH_LATEST=true" >> $GITHUB_ENV
+      - name: Keep latest and Homebrew unchanged for the 2.2 release line
+        run: echo "IMAGE_PUBLISH_LATEST=false" >> $GITHUB_ENV
       # Forces goreleaser to use the correct previous tag for the changelog
       - name: Set GORELEASER_PREVIOUS_TAG
-        run: echo "GORELEASER_PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -E '^v.*' | head -n 2 | tail -1)" >> $GITHUB_ENV
+        run: echo "GORELEASER_PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -E '^v2\.2\.[0-9]+$' | head -n 2 | tail -1)" >> $GITHUB_ENV
       - run: git fetch --force --tags
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
