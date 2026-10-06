@@ -355,6 +355,11 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 			return ValidatedProfile{}, NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
 		}
 	}
+	for _, s := range prof.StringTable {
+		if !utf8.ValidString(s) {
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
+		}
+	}
 	if symbolLengthLimit > 0 {
 		for i := range prof.StringTable {
 			if s := prof.StringTable[i]; len(s) > symbolLengthLimit {
@@ -396,11 +401,6 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 		// todo check if sample type is valid from the promql parser perspective
 	}
 
-	for _, s := range prof.StringTable {
-		if !utf8.ValidString(s) {
-			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
-		}
-	}
 	return ValidatedProfile{Profile: prof}, nil
 }
 
