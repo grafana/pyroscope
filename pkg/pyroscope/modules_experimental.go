@@ -30,6 +30,7 @@ import (
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/v2/pkg/metrics"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend"
 	querybackendclient "github.com/grafana/pyroscope/v2/pkg/querybackend/client"
@@ -104,7 +105,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 	)
 
 	querierHandler := querierv1connect.QuerierServiceHandler(handler)
-	if f.Cfg.Frontend.AsyncQueriesEnabled && f.asyncQueryStore != nil {
+	if f.Cfg.Frontend.AsyncQueries.Enabled && f.asyncQueryStore != nil {
 		coordinator := asyncquery.NewCoordinator(
 			log.With(f.logger, "component", "async-query-coordinator"),
 			f.asyncQueryStore,
@@ -198,16 +199,27 @@ func (f *Pyroscope) getFrontendAddress() (addr string, err error) {
 }
 
 func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
-	if !f.Cfg.Frontend.AsyncQueriesEnabled {
+	if !f.Cfg.Frontend.AsyncQueries.Enabled {
 		return nil, nil
 	}
-	if f.storageBucket == nil {
+	bucket := f.storageBucket
+	var options []asyncquery.StoreOption
+	if cfg := f.Cfg.Frontend.AsyncQueries.Storage; cfg.Backend != objstoreclient.None {
+		var err error
+		bucket, err = objstoreclient.NewBucket(f.context(), cfg, "async-query-store")
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialise async query storage bucket: %w", err)
+		}
+		options = append(options, asyncquery.WithOwnedBucket())
+	}
+	if bucket == nil {
 		return nil, nil
 	}
 	f.asyncQueryStore = asyncquery.NewStore(
 		log.With(f.logger, "component", "async-query-store"),
-		f.storageBucket,
+		bucket,
 		f.reg,
+		options...,
 	)
 	return f.asyncQueryStore, nil
 }

@@ -436,6 +436,10 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := c.Frontend.AsyncQueries.Storage.Validate(util.Logger); err != nil {
+		return fmt.Errorf("invalid async query storage configuration: %w", err)
+	}
+
 	if err := c.TenantSettings.Validate(); err != nil {
 		return err
 	}

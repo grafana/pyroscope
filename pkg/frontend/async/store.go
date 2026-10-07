@@ -109,16 +109,26 @@ type Store struct {
 	scanInterval      time.Duration
 	ownerID           string
 	dispatcher        Dispatcher
+	closeBucketOnStop bool
 
 	adoptionAttempts  *prometheus.CounterVec
 	adoptionSuccesses *prometheus.CounterVec
+}
+
+// StoreOption configures an async query store.
+type StoreOption func(*Store)
+
+// WithOwnedBucket makes the store close its dedicated bucket when stopped.
+// Do not use this option with a bucket shared by other services.
+func WithOwnedBucket() StoreOption {
+	return func(s *Store) { s.closeBucketOnStop = true }
 }
 
 // NewStore returns a Store backed by the given bucket. The returned Store is a
 // dskit service that, once started, periodically deletes entries older than the
 // configured TTL and scans for adoptable queries; callers are responsible for
 // starting and stopping it via its embedded Service.
-func NewStore(logger log.Logger, bucket objstore.Bucket, reg prometheus.Registerer) *Store {
+func NewStore(logger log.Logger, bucket objstore.Bucket, reg prometheus.Registerer, options ...StoreOption) *Store {
 	hostname, _ := os.Hostname()
 	s := &Store{
 		logger:            logger,
@@ -136,6 +146,9 @@ func NewStore(logger log.Logger, bucket objstore.Bucket, reg prometheus.Register
 			Name: "pyroscope_async_queries_adoption_successes_total",
 			Help: "Total number of async queries successfully claimed by a new owner after adoption.",
 		}, []string{"tenant"}),
+	}
+	for _, option := range options {
+		option(s)
 	}
 	s.Service = services.NewBasicService(s.starting, s.running, s.stopping)
 	return s
@@ -488,7 +501,12 @@ func (s *Store) readRaw(ctx context.Context, path string) ([]byte, error) {
 }
 
 func (s *Store) starting(context.Context) error { return nil }
-func (s *Store) stopping(error) error           { return nil }
+func (s *Store) stopping(error) error {
+	if s.closeBucketOnStop {
+		return s.bucket.Close()
+	}
+	return nil
+}
 
 // jitteredInterval returns a duration uniformly distributed in
 // [0.8*d, 1.2*d), i.e. d plus or minus 20%.
