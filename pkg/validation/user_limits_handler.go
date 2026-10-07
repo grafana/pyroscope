@@ -7,7 +7,6 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 
-	"github.com/grafana/pyroscope/v2/pkg/util"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
@@ -41,6 +40,6 @@ func TenantLimitsHandler(defaultLimits Limits, tenantLimits TenantLimits) http.H
 			MaxGlobalSeriesPerTenant: userLimits.MaxGlobalSeriesPerTenant,
 		}
 
-		util.WriteJSONResponse(w, limits)
+		httputil.WriteJSONResponse(w, limits)
 	}
 }

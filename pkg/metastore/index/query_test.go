@@ -297,7 +297,7 @@ func TestIndex_Query(t *testing.T) {
 		})
 	}
 
-	idx := NewIndex(util.Logger, NewStore(), DefaultConfig)
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
 	tx, err := db.Begin(true)
 	require.NoError(t, err)
 	require.NoError(t, idx.Init(tx))
@@ -314,7 +314,7 @@ func TestIndex_Query(t *testing.T) {
 	})
 
 	t.Run("Restored", func(t *testing.T) {
-		idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
+		idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
 		tx, err = db.Begin(false)
 		defer func() {
 			require.NoError(t, tx.Rollback())
@@ -322,6 +322,84 @@ func TestIndex_Query(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, idx.Restore(tx))
 		query(t, tx, idx)
+	})
+}
+
+func TestIndex_QueryMetadata_StaleReadCacheReloadsShard(t *testing.T) {
+	db := test.BoltDB(t)
+	idxWriter := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(idxWriter.Init))
+
+	const tenant = "tenant-a"
+	const shard = uint32(1)
+	minT := test.UnixMilli("2024-09-23T08:00:00.000Z")
+	maxT := test.UnixMilli("2024-09-23T09:00:00.000Z")
+
+	base := &metastorev1.BlockMeta{
+		Id:      test.ULID("2024-09-23T08:00:00.001Z"),
+		Tenant:  1,
+		Shard:   shard,
+		MinTime: minT,
+		MaxTime: maxT,
+		Datasets: []*metastorev1.Dataset{{
+			Tenant:  1,
+			MinTime: minT,
+			MaxTime: maxT,
+			Labels:  []int32{1, 2, 3},
+		}},
+		StringTable: []string{"", tenant, "service_name", "old"},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idxWriter.InsertBlock(tx, base.CloneVT())
+	}))
+
+	staleTx, err := db.Begin(false)
+	require.NoError(t, err)
+	defer func() { _ = staleTx.Rollback() }()
+
+	newer := &metastorev1.BlockMeta{
+		Id:      test.ULID("2024-09-23T08:30:00.002Z"),
+		Tenant:  1,
+		Shard:   shard,
+		MinTime: minT,
+		MaxTime: maxT,
+		Datasets: []*metastorev1.Dataset{{
+			Tenant:  1,
+			MinTime: minT,
+			MaxTime: maxT,
+			Labels:  []int32{1, 2, 4},
+		}},
+		StringTable: []string{"", tenant, "service_name", "old", "new"},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idxWriter.InsertBlock(tx, newer.CloneVT())
+	}))
+
+	idxReader := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	_, err = idxReader.GetBlocks(staleTx, &metastorev1.BlockList{
+		Tenant: tenant,
+		Shard:  shard,
+		Blocks: []string{base.Id},
+	})
+	require.NoError(t, err)
+
+	var found []*metastorev1.BlockMeta
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		found, err = idxReader.QueryMetadata(tx, context.Background(), MetadataQuery{
+			Expr:      `{service_name=~".+"}`,
+			StartTime: time.UnixMilli(minT),
+			EndTime:   time.UnixMilli(maxT),
+			Tenant:    []string{tenant},
+			Labels:    []string{"service_name"},
+		})
+		return err
+	}))
+	require.NoError(t, err)
+	require.Len(t, found, 2)
+	assert.Equal(t, []string{base.Id, newer.Id}, []string{found[0].Id, found[1].Id})
+	assert.Equal(t, []string{"old", "new"}, []string{
+		found[0].StringTable[found[0].Datasets[0].Labels[2]],
+		found[1].StringTable[found[1].Datasets[0].Labels[2]],
 	})
 }
 
@@ -378,7 +456,7 @@ func (s *queryTestSuite) setup(t *testing.T) {
 	s.blocks.Store(&metastorev1.BlockList{})
 
 	s.db = test.BoltDB(t)
-	s.idx = NewIndex(util.Logger, NewStore(), DefaultConfig)
+	s.idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
 	// Enforce aggressive cache evictions:
 	s.idx.config.partitionDuration = time.Minute * 30
 	s.idx.config.ShardCacheSize = 3

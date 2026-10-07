@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -15,7 +16,6 @@ import (
 	"github.com/grafana/dskit/server"
 	"github.com/oklog/ulid/v2"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
 

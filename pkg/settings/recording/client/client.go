@@ -13,7 +13,7 @@ import (
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 type Client struct {
@@ -23,7 +23,7 @@ type Client struct {
 }
 
 func NewClient(address string, logger log.Logger, auth connect.Option) (*Client, error) {
-	httpClient := util.InstrumentedDefaultHTTPClient()
+	httpClient := httputil.InstrumentedDefaultHTTPClient()
 	opts := connectapi.DefaultClientOptions()
 	opts = append(opts, auth)
 	c := Client{

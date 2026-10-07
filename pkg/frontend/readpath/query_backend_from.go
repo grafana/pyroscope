@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/flagext"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // QueryBackendFrom is a flag/config type that accepts either an RFC3339

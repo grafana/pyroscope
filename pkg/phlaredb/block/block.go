@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -16,7 +17,6 @@ import (
 	"github.com/grafana/dskit/runutil"
 	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 
@@ -35,7 +35,7 @@ const (
 func DownloadMeta(ctx context.Context, logger log.Logger, bkt objstore.Bucket, id ulid.ULID) (Meta, error) {
 	rc, err := bkt.Get(ctx, path.Join(id.String(), MetaFilename))
 	if err != nil {
-		return Meta{}, errors.Wrapf(err, "meta.json bkt get for %s", id.String())
+		return Meta{}, fmt.Errorf("meta.json bkt get for %s: %w", id.String(), err)
 	}
 	defer runutil.CloseWithLogOnErr(logger, rc, "download meta bucket client")
 
@@ -43,11 +43,11 @@ func DownloadMeta(ctx context.Context, logger log.Logger, bkt objstore.Bucket, i
 
 	obj, err := io.ReadAll(rc)
 	if err != nil {
-		return Meta{}, errors.Wrapf(err, "read meta.json for block %s", id.String())
+		return Meta{}, fmt.Errorf("read meta.json for block %s: %w", id.String(), err)
 	}
 
 	if err = json.Unmarshal(obj, &m); err != nil {
-		return Meta{}, errors.Wrapf(err, "unmarshal meta.json for block %s", id.String())
+		return Meta{}, fmt.Errorf("unmarshal meta.json for block %s: %w", id.String(), err)
 	}
 
 	return m, nil
@@ -60,7 +60,7 @@ func Download(ctx context.Context, logger log.Logger, bucket objstore.Bucket, id
 	defer sp.Finish()
 
 	if err := os.MkdirAll(dst, 0o750); err != nil {
-		return errors.Wrap(err, "create dir")
+		return fmt.Errorf("create dir: %w", err)
 	}
 
 	if err := objstore.DownloadFile(ctx, logger, bucket, path.Join(id.String(), MetaFilename), filepath.Join(dst, MetaFilename)); err != nil {
@@ -90,19 +90,19 @@ func upload(ctx context.Context, logger log.Logger, bkt objstore.Bucket, bdir st
 		return err
 	}
 	if !df.IsDir() {
-		return errors.Errorf("%s is not a directory", bdir)
+		return fmt.Errorf("%s is not a directory", bdir)
 	}
 
 	// Verify dir.
 	id, err := ulid.Parse(df.Name())
 	if err != nil {
-		return errors.Wrap(err, "not a block dir")
+		return fmt.Errorf("not a block dir: %w", err)
 	}
 
 	meta, err := ReadMetaFromDir(bdir)
 	if err != nil {
 		// No meta or broken meta file.
-		return errors.Wrap(err, "read meta")
+		return fmt.Errorf("read meta: %w", err)
 	}
 
 	// ensure labels are initialized
@@ -117,17 +117,17 @@ func upload(ctx context.Context, logger log.Logger, bkt objstore.Bucket, bdir st
 
 	metaEncoded := strings.Builder{}
 	if err != nil {
-		return errors.Wrap(err, "gather meta file stats")
+		return fmt.Errorf("gather meta file stats: %w", err)
 	}
 
 	if _, err := meta.WriteTo(&metaEncoded); err != nil {
-		return errors.Wrap(err, "encode meta file")
+		return fmt.Errorf("encode meta file: %w", err)
 	}
 
 	// loop through files
 	for _, file := range meta.Files {
 		if err := objstore.UploadFile(ctx, logger, bkt, path.Join(bdir, file.RelPath), path.Join(id.String(), file.RelPath)); err != nil {
-			return cleanUp(logger, bkt, id, errors.Wrapf(err, "uploading file '%s'", file.RelPath))
+			return cleanUp(logger, bkt, id, fmt.Errorf("uploading file '%s': %w", file.RelPath, err))
 		}
 	}
 
@@ -137,7 +137,7 @@ func upload(ctx context.Context, logger log.Logger, bkt objstore.Bucket, bdir st
 		// and even though cleanUp will not see it yet, meta.json may appear in the bucket later.
 		// (Eg. S3 is known to behave this way when it returns 503 "SlowDown" error).
 		// If meta.json is not uploaded, this will produce partial blocks, but such blocks will be cleaned later.
-		return errors.Wrap(err, "upload meta file")
+		return fmt.Errorf("upload meta file: %w", err)
 	}
 
 	return nil
@@ -161,7 +161,7 @@ func cleanUp(logger log.Logger, bkt objstore.Bucket, id ulid.ULID, err error) er
 	// Cleanup the dir with an uncancelable context.
 	cleanErr := Delete(context.Background(), logger, bkt, id)
 	if cleanErr != nil {
-		return errors.Wrapf(err, "failed to clean block after upload issue. Partial block in system. Err: %s", err.Error())
+		return fmt.Errorf("failed to clean block after upload issue. Partial block in system. Err: %s: %w", err.Error(), err)
 	}
 	return err
 }
@@ -171,11 +171,11 @@ func MarkForDeletion(ctx context.Context, logger log.Logger, bkt objstore.Bucket
 	deletionMarkFile := path.Join(id.String(), DeletionMarkFilename)
 	deletionMarkExists, err := bkt.Exists(ctx, deletionMarkFile)
 	if err != nil {
-		return errors.Wrapf(err, "check exists %s in bucket", deletionMarkFile)
+		return fmt.Errorf("check exists %s in bucket: %w", deletionMarkFile, err)
 	}
 	if deletionMarkExists {
 		if warnExist {
-			level.Warn(logger).Log("msg", "requested to mark for deletion, but file already exists; this should not happen; investigate", "err", errors.Errorf("file %s already exists in bucket", deletionMarkFile))
+			level.Warn(logger).Log("msg", "requested to mark for deletion, but file already exists; this should not happen; investigate", "err", fmt.Errorf("file %s already exists in bucket", deletionMarkFile))
 		}
 		return nil
 	}
@@ -187,11 +187,11 @@ func MarkForDeletion(ctx context.Context, logger log.Logger, bkt objstore.Bucket
 		Details:      details,
 	})
 	if err != nil {
-		return errors.Wrap(err, "json encode deletion mark")
+		return fmt.Errorf("json encode deletion mark: %w", err)
 	}
 
 	if err := bkt.Upload(ctx, deletionMarkFile, bytes.NewBuffer(deletionMark)); err != nil {
-		return errors.Wrapf(err, "upload file %s to bucket", deletionMarkFile)
+		return fmt.Errorf("upload file %s to bucket: %w", deletionMarkFile, err)
 	}
 	markedForDeletion.Inc()
 	level.Info(logger).Log("msg", "block has been marked for deletion", "block", id)
@@ -211,12 +211,12 @@ func Delete(ctx context.Context, logger log.Logger, bkt objstore.Bucket, id ulid
 	// Delete block meta file.
 	ok, err := bkt.Exists(ctx, metaFile)
 	if err != nil {
-		return errors.Wrapf(err, "stat %s", metaFile)
+		return fmt.Errorf("stat %s: %w", metaFile, err)
 	}
 
 	if ok {
 		if err := bkt.Delete(ctx, metaFile); err != nil {
-			return errors.Wrapf(err, "delete %s", metaFile)
+			return fmt.Errorf("delete %s: %w", metaFile, err)
 		}
 		level.Debug(logger).Log("msg", "deleted file", "file", metaFile, "bucket", bkt.Name())
 	}
@@ -234,12 +234,12 @@ func Delete(ctx context.Context, logger log.Logger, bkt objstore.Bucket, id ulid
 	// Delete block deletion mark.
 	ok, err = bkt.Exists(ctx, deletionMarkFile)
 	if err != nil {
-		return errors.Wrapf(err, "stat %s", deletionMarkFile)
+		return fmt.Errorf("stat %s: %w", deletionMarkFile, err)
 	}
 
 	if ok {
 		if err := bkt.Delete(ctx, deletionMarkFile); err != nil {
-			return errors.Wrapf(err, "delete %s", deletionMarkFile)
+			return fmt.Errorf("delete %s: %w", deletionMarkFile, err)
 		}
 		level.Debug(logger).Log("msg", "deleted file", "file", deletionMarkFile, "bucket", bkt.Name())
 	}
@@ -271,10 +271,10 @@ func MarkForNoCompact(ctx context.Context, logger log.Logger, bkt objstore.Bucke
 	m := path.Join(id.String(), NoCompactMarkFilename)
 	noCompactMarkExists, err := bkt.Exists(ctx, m)
 	if err != nil {
-		return errors.Wrapf(err, "check exists %s in bucket", m)
+		return fmt.Errorf("check exists %s in bucket: %w", m, err)
 	}
 	if noCompactMarkExists {
-		level.Warn(logger).Log("msg", "requested to mark for no compaction, but file already exists; this should not happen; investigate", "err", errors.Errorf("file %s already exists in bucket", m))
+		level.Warn(logger).Log("msg", "requested to mark for no compaction, but file already exists; this should not happen; investigate", "err", fmt.Errorf("file %s already exists in bucket", m))
 		return nil
 	}
 
@@ -287,11 +287,11 @@ func MarkForNoCompact(ctx context.Context, logger log.Logger, bkt objstore.Bucke
 		Details:       details,
 	})
 	if err != nil {
-		return errors.Wrap(err, "json encode no compact mark")
+		return fmt.Errorf("json encode no compact mark: %w", err)
 	}
 
 	if err := bkt.Upload(ctx, m, bytes.NewBuffer(noCompactMark)); err != nil {
-		return errors.Wrapf(err, "upload file %s to bucket", m)
+		return fmt.Errorf("upload file %s to bucket: %w", m, err)
 	}
 	markedForNoCompact.Inc()
 	level.Info(logger).Log("msg", "block has been marked for no compaction", "block", id)

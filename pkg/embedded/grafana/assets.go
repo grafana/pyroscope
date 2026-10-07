@@ -77,10 +77,10 @@ func (release *releaseArtifact) download(ctx context.Context, logger log.Logger,
 
 	level.Info(logger).Log("msg", "download new release", "url", release.URL)
 	req, err := http.NewRequestWithContext(ctx, "GET", release.URL, nil)
-	req.Header.Set("User-Agent", "pyroscope/embedded-grafana")
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("User-Agent", "pyroscope/embedded-grafana")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -151,7 +151,7 @@ func (release *releaseArtifact) download(ctx context.Context, logger log.Logger,
 	return targetPath, nil
 }
 
-func clearPath(name string, destPath string, stripComponents int) string {
+func clearPath(name string, destPath string, stripComponents int) (string, error) {
 	isSeparator := func(r rune) bool {
 		return r == os.PathSeparator
 	}
@@ -159,7 +159,20 @@ func clearPath(name string, destPath string, stripComponents int) string {
 	if len(list) > stripComponents {
 		list = list[stripComponents:]
 	}
-	return filepath.Join(append([]string{destPath}, list...)...)
+	cleaned := filepath.Join(append([]string{destPath}, list...)...)
+	// Ensure the resolved path is confined to destPath (zip-slip / tar-slip prevention).
+	absDestPath, err := filepath.Abs(destPath)
+	if err != nil {
+		return "", fmt.Errorf("clearPath: abs destPath: %w", err)
+	}
+	absCleaned, err := filepath.Abs(cleaned)
+	if err != nil {
+		return "", fmt.Errorf("clearPath: abs cleaned: %w", err)
+	}
+	if !strings.HasPrefix(absCleaned, absDestPath+string(os.PathSeparator)) && absCleaned != absDestPath {
+		return "", fmt.Errorf("clearPath: path %q escapes destination directory", name)
+	}
+	return cleaned, nil
 }
 
 func extractZip(zipStream io.ReaderAt, size int64, destPath string, stripComponents int) error {
@@ -169,7 +182,10 @@ func extractZip(zipStream io.ReaderAt, size int64, destPath string, stripCompone
 	}
 
 	for _, f := range zipReader.File {
-		p := clearPath(f.Name, destPath, stripComponents)
+		p, err := clearPath(f.Name, destPath, stripComponents)
+		if err != nil {
+			return fmt.Errorf("ExtractZip: %w", err)
+		}
 		if f.FileInfo().IsDir() {
 			err := os.MkdirAll(p, modeDir)
 			if err != nil {
@@ -185,22 +201,44 @@ func extractZip(zipStream io.ReaderAt, size int64, destPath string, stripCompone
 			}
 		}
 
-		fileInArchive, err := f.Open()
-		if err != nil {
-			return fmt.Errorf("ExtractZip: Open() failed: %s", err.Error())
-		}
-
-		outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, f.FileInfo().Mode())
-		if err != nil {
-			return fmt.Errorf("ExtractZip: OpenFile() failed: %s", err.Error())
-		}
-		if _, err := io.Copy(outFile, fileInArchive); err != nil {
-			return fmt.Errorf("ExtractZip: Copy() failed: %s", err.Error())
+		if err := extractZipFile(f, p); err != nil {
+			return fmt.Errorf("ExtractZip: %w", err)
 		}
 	}
 
 	return nil
 
+}
+
+func extractTarGzFile(p string, src io.Reader, mode fs.FileMode) error {
+	outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return fmt.Errorf("OpenFile() failed: %s", err.Error())
+	}
+	defer outFile.Close()
+	if _, err := io.Copy(outFile, src); err != nil {
+		return fmt.Errorf("Copy() failed: %s", err.Error())
+	}
+	return nil
+}
+
+func extractZipFile(f *zip.File, p string) error {
+	fileInArchive, err := f.Open()
+	if err != nil {
+		return fmt.Errorf("Open() failed: %s", err.Error())
+	}
+	defer fileInArchive.Close()
+
+	outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, f.FileInfo().Mode())
+	if err != nil {
+		return fmt.Errorf("OpenFile() failed: %s", err.Error())
+	}
+	defer outFile.Close()
+
+	if _, err := io.Copy(outFile, fileInArchive); err != nil {
+		return fmt.Errorf("Copy() failed: %s", err.Error())
+	}
+	return nil
 }
 
 func extractTarGz(gzipStream io.Reader, destPath string, stripComponents int) error {
@@ -222,7 +260,10 @@ func extractTarGz(gzipStream io.Reader, destPath string, stripComponents int) er
 			return fmt.Errorf("ExtractTarGz: Next() failed: %s", err.Error())
 		}
 
-		p := clearPath(header.Name, destPath, stripComponents)
+		p, err := clearPath(header.Name, destPath, stripComponents)
+		if err != nil {
+			return fmt.Errorf("ExtractTarGz: %w", err)
+		}
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(p, modeDir); err != nil {
@@ -235,14 +276,9 @@ func extractTarGz(gzipStream io.Reader, destPath string, stripComponents int) er
 					return fmt.Errorf("ExtractTarGz: MkdirAll() failed: %s", err.Error())
 				}
 			}
-			outFile, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fs.FileMode(header.Mode))
-			if err != nil {
-				return fmt.Errorf("ExtractTarGz: OpenFile() failed: %s", err.Error())
+			if err := extractTarGzFile(p, tarReader, fs.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("ExtractTarGz: %w", err)
 			}
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				return fmt.Errorf("ExtractTarGz: Copy() failed: %s", err.Error())
-			}
-			outFile.Close()
 
 		default:
 			return fmt.Errorf(

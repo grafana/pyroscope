@@ -13,10 +13,12 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 //go:embed blocks.gohtml
@@ -60,12 +62,16 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	tenantID := vars["tenant"]
 	if tenantID == "" {
-		util.WriteTextResponse(w, "Tenant ID can't be empty")
+		httputil.WriteTextResponse(w, "Tenant ID can't be empty")
+		return
+	}
+	if err := tenant.ValidTenantID(tenantID); err != nil {
+		http.Error(w, "Invalid tenant ID", http.StatusBadRequest)
 		return
 	}
 
 	if err := req.ParseForm(); err != nil {
-		util.WriteTextResponse(w, fmt.Sprintf("Can't parse form: %s", err))
+		httputil.WriteTextResponse(w, fmt.Sprintf("Can't parse form: %s", err))
 		return
 	}
 
@@ -82,7 +88,7 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 
 	metasMap, err := block.ListBlocks(filepath.Join(s.gatewayCfg.BucketStoreConfig.SyncDir, tenantID), time.Time{})
 	if err != nil {
-		util.WriteTextResponse(w, fmt.Sprintf("Failed to read block metadata: %s", err))
+		httputil.WriteTextResponse(w, fmt.Sprintf("Failed to read block metadata: %s", err))
 		return
 	}
 	metas := block.SortBlocks(metasMap)
@@ -134,7 +140,7 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 		})
 	}
 
-	util.RenderHTTPResponse(w, blocksPageContents{
+	httputil.RenderHTTPResponse(w, blocksPageContents{
 		Now:             time.Now(),
 		Tenant:          tenantID,
 		RichMetas:       richMetas,

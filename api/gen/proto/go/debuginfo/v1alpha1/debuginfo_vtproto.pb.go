@@ -114,6 +114,78 @@ func (m *UploadFinishedResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *ListDebuginfoRequest) CloneVT() *ListDebuginfoRequest {
+	if m == nil {
+		return (*ListDebuginfoRequest)(nil)
+	}
+	r := new(ListDebuginfoRequest)
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ListDebuginfoRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ListDebuginfoResponse) CloneVT() *ListDebuginfoResponse {
+	if m == nil {
+		return (*ListDebuginfoResponse)(nil)
+	}
+	r := new(ListDebuginfoResponse)
+	if rhs := m.Object; rhs != nil {
+		tmpContainer := make([]*ObjectMetadata, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Object = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ListDebuginfoResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *DeleteDebuginfoRequest) CloneVT() *DeleteDebuginfoRequest {
+	if m == nil {
+		return (*DeleteDebuginfoRequest)(nil)
+	}
+	r := new(DeleteDebuginfoRequest)
+	r.GnuBuildId = m.GnuBuildId
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *DeleteDebuginfoRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *DeleteDebuginfoResponse) CloneVT() *DeleteDebuginfoResponse {
+	if m == nil {
+		return (*DeleteDebuginfoResponse)(nil)
+	}
+	r := new(DeleteDebuginfoResponse)
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *DeleteDebuginfoResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *ObjectMetadata) CloneVT() *ObjectMetadata {
 	if m == nil {
 		return (*ObjectMetadata)(nil)
@@ -123,6 +195,7 @@ func (m *ObjectMetadata) CloneVT() *ObjectMetadata {
 	r.State = m.State
 	r.StartedAt = (*timestamppb.Timestamp)((*timestamppb1.Timestamp)(m.StartedAt).CloneVT())
 	r.FinishedAt = (*timestamppb.Timestamp)((*timestamppb1.Timestamp)(m.FinishedAt).CloneVT())
+	r.SizeBytes = m.SizeBytes
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -241,6 +314,90 @@ func (this *UploadFinishedResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *ListDebuginfoRequest) EqualVT(that *ListDebuginfoRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ListDebuginfoRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ListDebuginfoRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ListDebuginfoResponse) EqualVT(that *ListDebuginfoResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Object) != len(that.Object) {
+		return false
+	}
+	for i, vx := range this.Object {
+		vy := that.Object[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &ObjectMetadata{}
+			}
+			if q == nil {
+				q = &ObjectMetadata{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ListDebuginfoResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ListDebuginfoResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *DeleteDebuginfoRequest) EqualVT(that *DeleteDebuginfoRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.GnuBuildId != that.GnuBuildId {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *DeleteDebuginfoRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*DeleteDebuginfoRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *DeleteDebuginfoResponse) EqualVT(that *DeleteDebuginfoResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *DeleteDebuginfoResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*DeleteDebuginfoResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *ObjectMetadata) EqualVT(that *ObjectMetadata) bool {
 	if this == that {
 		return true
@@ -257,6 +414,9 @@ func (this *ObjectMetadata) EqualVT(that *ObjectMetadata) bool {
 		return false
 	}
 	if !(*timestamppb1.Timestamp)(this.FinishedAt).EqualVT((*timestamppb1.Timestamp)(that.FinishedAt)) {
+		return false
+	}
+	if this.SizeBytes != that.SizeBytes {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -281,6 +441,8 @@ const _ = grpc.SupportPackageIsVersion7
 type DebuginfoServiceClient interface {
 	ShouldInitiateUpload(ctx context.Context, in *ShouldInitiateUploadRequest, opts ...grpc.CallOption) (*ShouldInitiateUploadResponse, error)
 	UploadFinished(ctx context.Context, in *UploadFinishedRequest, opts ...grpc.CallOption) (*UploadFinishedResponse, error)
+	ListDebuginfo(ctx context.Context, in *ListDebuginfoRequest, opts ...grpc.CallOption) (*ListDebuginfoResponse, error)
+	DeleteDebuginfo(ctx context.Context, in *DeleteDebuginfoRequest, opts ...grpc.CallOption) (*DeleteDebuginfoResponse, error)
 }
 
 type debuginfoServiceClient struct {
@@ -309,12 +471,32 @@ func (c *debuginfoServiceClient) UploadFinished(ctx context.Context, in *UploadF
 	return out, nil
 }
 
+func (c *debuginfoServiceClient) ListDebuginfo(ctx context.Context, in *ListDebuginfoRequest, opts ...grpc.CallOption) (*ListDebuginfoResponse, error) {
+	out := new(ListDebuginfoResponse)
+	err := c.cc.Invoke(ctx, "/debuginfo.v1alpha1.DebuginfoService/ListDebuginfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *debuginfoServiceClient) DeleteDebuginfo(ctx context.Context, in *DeleteDebuginfoRequest, opts ...grpc.CallOption) (*DeleteDebuginfoResponse, error) {
+	out := new(DeleteDebuginfoResponse)
+	err := c.cc.Invoke(ctx, "/debuginfo.v1alpha1.DebuginfoService/DeleteDebuginfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DebuginfoServiceServer is the server API for DebuginfoService service.
 // All implementations must embed UnimplementedDebuginfoServiceServer
 // for forward compatibility
 type DebuginfoServiceServer interface {
 	ShouldInitiateUpload(context.Context, *ShouldInitiateUploadRequest) (*ShouldInitiateUploadResponse, error)
 	UploadFinished(context.Context, *UploadFinishedRequest) (*UploadFinishedResponse, error)
+	ListDebuginfo(context.Context, *ListDebuginfoRequest) (*ListDebuginfoResponse, error)
+	DeleteDebuginfo(context.Context, *DeleteDebuginfoRequest) (*DeleteDebuginfoResponse, error)
 	mustEmbedUnimplementedDebuginfoServiceServer()
 }
 
@@ -327,6 +509,12 @@ func (UnimplementedDebuginfoServiceServer) ShouldInitiateUpload(context.Context,
 }
 func (UnimplementedDebuginfoServiceServer) UploadFinished(context.Context, *UploadFinishedRequest) (*UploadFinishedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadFinished not implemented")
+}
+func (UnimplementedDebuginfoServiceServer) ListDebuginfo(context.Context, *ListDebuginfoRequest) (*ListDebuginfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDebuginfo not implemented")
+}
+func (UnimplementedDebuginfoServiceServer) DeleteDebuginfo(context.Context, *DeleteDebuginfoRequest) (*DeleteDebuginfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDebuginfo not implemented")
 }
 func (UnimplementedDebuginfoServiceServer) mustEmbedUnimplementedDebuginfoServiceServer() {}
 
@@ -377,6 +565,42 @@ func _DebuginfoService_UploadFinished_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DebuginfoService_ListDebuginfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDebuginfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DebuginfoServiceServer).ListDebuginfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/debuginfo.v1alpha1.DebuginfoService/ListDebuginfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DebuginfoServiceServer).ListDebuginfo(ctx, req.(*ListDebuginfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DebuginfoService_DeleteDebuginfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDebuginfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DebuginfoServiceServer).DeleteDebuginfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/debuginfo.v1alpha1.DebuginfoService/DeleteDebuginfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DebuginfoServiceServer).DeleteDebuginfo(ctx, req.(*DeleteDebuginfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DebuginfoService_ServiceDesc is the grpc.ServiceDesc for DebuginfoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -391,6 +615,14 @@ var DebuginfoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UploadFinished",
 			Handler:    _DebuginfoService_UploadFinished_Handler,
+		},
+		{
+			MethodName: "ListDebuginfo",
+			Handler:    _DebuginfoService_ListDebuginfo_Handler,
+		},
+		{
+			MethodName: "DeleteDebuginfo",
+			Handler:    _DebuginfoService_DeleteDebuginfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -629,6 +861,157 @@ func (m *UploadFinishedResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
+func (m *ListDebuginfoRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListDebuginfoRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ListDebuginfoRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ListDebuginfoResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListDebuginfoResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ListDebuginfoResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Object) > 0 {
+		for iNdEx := len(m.Object) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Object[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *DeleteDebuginfoRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DeleteDebuginfoRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DeleteDebuginfoRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.GnuBuildId) > 0 {
+		i -= len(m.GnuBuildId)
+		copy(dAtA[i:], m.GnuBuildId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GnuBuildId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *DeleteDebuginfoResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DeleteDebuginfoResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DeleteDebuginfoResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *ObjectMetadata) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -658,6 +1041,11 @@ func (m *ObjectMetadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.SizeBytes != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.SizeBytes))
+		i--
+		dAtA[i] = 0x28
 	}
 	if m.FinishedAt != nil {
 		size, err := (*timestamppb1.Timestamp)(m.FinishedAt).MarshalToSizedBufferVT(dAtA[:i])
@@ -781,6 +1169,56 @@ func (m *UploadFinishedResponse) SizeVT() (n int) {
 	return n
 }
 
+func (m *ListDebuginfoRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ListDebuginfoResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Object) > 0 {
+		for _, e := range m.Object {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *DeleteDebuginfoRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.GnuBuildId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *DeleteDebuginfoResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *ObjectMetadata) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -801,6 +1239,9 @@ func (m *ObjectMetadata) SizeVT() (n int) {
 	if m.FinishedAt != nil {
 		l = (*timestamppb1.Timestamp)(m.FinishedAt).SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.SizeBytes != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.SizeBytes))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1328,6 +1769,276 @@ func (m *UploadFinishedResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *ListDebuginfoRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListDebuginfoRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListDebuginfoRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListDebuginfoResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListDebuginfoResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListDebuginfoResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Object", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Object = append(m.Object, &ObjectMetadata{})
+			if err := m.Object[len(m.Object)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DeleteDebuginfoRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteDebuginfoRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteDebuginfoRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field GnuBuildId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.GnuBuildId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DeleteDebuginfoResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteDebuginfoResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteDebuginfoResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *ObjectMetadata) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1484,6 +2195,25 @@ func (m *ObjectMetadata) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SizeBytes", wireType)
+			}
+			m.SizeBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SizeBytes |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

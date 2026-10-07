@@ -7,10 +7,8 @@ import (
 	"iter"
 	"time"
 
-	"gopkg.in/yaml.v3"
-
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/grafana/pyroscope/v2/pkg/distributor/ingestlimits"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
@@ -41,12 +39,14 @@ type Limits struct {
 	IngestionLimit           *ingestlimits.Config `yaml:"ingestion_limit" json:"ingestion_limit" category:"advanced" doc:"hidden"`
 	IngestionBodyLimitMB     float64              `yaml:"ingestion_body_limit_mb" json:"ingestion_body_limit_mb" category:"advanced" doc:"hidden"`
 	DistributorSampling      *sampling.Config     `yaml:"distributor_sampling" json:"distributor_sampling" category:"advanced" doc:"hidden"`
+	KeepStrippedProfiles     bool                 `yaml:"keep_stripped_profiles" json:"keep_stripped_profiles"`
 	MaxLabelNameLength       int                  `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength      int                  `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries   int                  `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
 	MaxSessionsPerSeries     int                  `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
 	EnforceLabelsOrder       bool                 `yaml:"enforce_labels_order" json:"enforce_labels_order"`
 	DisableLabelSanitization bool                 `yaml:"disable_label_sanitization" json:"disable_label_sanitization"`
+	PushMaxConcurrency       int                  `yaml:"push_max_concurrency" json:"push_max_concurrency"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -86,6 +86,7 @@ type Limits struct {
 	MaxQueryParallelism        int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
 	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
+	IncludeStrippedProfiles    bool           `yaml:"include_stripped_profiles" json:"include_stripped_profiles"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
@@ -95,8 +96,9 @@ type Limits struct {
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
 	// Query frontend.
-	QuerySplitDuration   model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
-	QuerySanitizeOnMerge bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
+	QuerySplitDuration       model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+	QuerySanitizeOnMerge     bool           `yaml:"query_sanitize_on_merge" json:"query_sanitize_on_merge"`
+	MaxAsyncQueryConcurrency int            `yaml:"max_async_query_concurrency" json:"max_async_query_concurrency"`
 
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
@@ -135,8 +137,17 @@ type Limits struct {
 	// coming from a RecordingRulesClient, that will replace any static rules defined.
 	RecordingRules RecordingRules `yaml:"recording_rules" json:"recording_rules" category:"experimental" doc:"hidden"`
 
+	// MaxRecordingRules is the maximum number of recording rules a tenant can create and store.
+	MaxRecordingRules int `yaml:"max_recording_rules" json:"max_recording_rules"`
+
 	// Symbolizer.
 	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
+
+	// ProfileIDDeterministic enables deterministic profile ID generation.
+	// When enabled, IDs use the tenant ID, profile type, and ingress labels, plus the original timestamp
+	// when present or the trace ID when the timestamp is absent. If neither is present, a random ID is used.
+	// If the client provides a profile ID, it will be used instead.
+	ProfileIDDeterministic bool `yaml:"profile_id_deterministic" json:"profile_id_deterministic" category:"experimental"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -152,6 +163,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
 	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 256, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
 	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
+	f.IntVar(&l.PushMaxConcurrency, "distributor.push.max-concurrency", 256, "Maximum number of series within a single batched push that are processed concurrently. 0 = unbounded (legacy behavior); 1 = serialize pushes (kill switch).")
 
 	f.IntVar(&l.MaxLabelNameLength, "validation.max-length-label-name", 1024, "Maximum length accepted for label names.")
 	f.IntVar(&l.MaxLabelValueLength, "validation.max-length-label-value", 2048, "Maximum length accepted for label value. This setting also applies to the metric name.")
@@ -174,6 +186,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	_ = l.QuerySplitDuration.Set("0s")
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 	f.BoolVar(&l.QuerySanitizeOnMerge, "querier.sanitize-on-merge", true, "Whether profiles should be sanitized when merging.")
+	f.IntVar(&l.MaxAsyncQueryConcurrency, "query-frontend.max-async-query-concurrency", 5, "Maximum number of concurrent async queries per tenant. 0 to disable async queries.")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
 
@@ -190,6 +203,8 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 1<<20, "Maximum number of flame graph nodes allowed. 0 to disable.")
 	f.BoolVar(&l.MaxFlameGraphNodesOnSelectMergeProfile, "querier.max-flamegraph-nodes-on-select-merge-profile", false, "Enforce the max nodes limits and defaults on SelectMergeProfile API. Historically this limit was not enforced to enable to gather full pprof profiles without truncation.")
 
+	f.BoolVar(&l.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals as a single sample with stacktraces and sample labels stripped (marked __sampled__) instead of dropping it.")
+	f.BoolVar(&l.IncludeStrippedProfiles, "query-backend.include-stripped-profiles", false, "Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.")
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
 
@@ -218,6 +233,9 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.Var(&l.IngestionArtificialDelay, "distributor.ingestion-artificial-delay", "Target ingestion delay to apply to all tenants. If set to a non-zero value, the distributor will artificially delay ingestion time-frame by the specified duration by computing the difference between actual ingestion and the target. There is no delay on actual ingestion of samples, it is only the response back to the client.")
 
+	f.IntVar(&l.MaxRecordingRules, "recording-rules.max-rules-per-tenant", 25, "Maximum number of recording rules a tenant can create. 0 to disable.")
+
+	f.BoolVar(&l.ProfileIDDeterministic, "validation.profile-id-deterministic", false, "Generate deterministic profile IDs instead of random UUIDs. If a client provides an ID, it will be used instead. When enabled, IDs use the tenant ID, profile type, and ingress labels, plus the original timestamp when present or the trace ID when the timestamp is absent. If neither is present, a random ID is used. Experimental.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -231,10 +249,10 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if defaultLimits != nil {
 		b, err := yaml.Marshal(defaultLimits)
 		if err != nil {
-			return errors.Wrap(err, "cloning limits (marshaling)")
+			return fmt.Errorf("cloning limits (marshaling): %w", err)
 		}
 		if err := yaml.Unmarshal(b, (*plain)(l)); err != nil {
-			return errors.Wrap(err, "cloning limits (unmarshaling)")
+			return fmt.Errorf("cloning limits (unmarshaling): %w", err)
 		}
 	}
 	return unmarshal((*plain)(l))
@@ -323,6 +341,14 @@ func (o *Overrides) IngestionLimit(tenantID string) *ingestlimits.Config {
 
 func (o *Overrides) DistributorSampling(tenantID string) *sampling.Config {
 	return o.getOverridesForTenant(tenantID).DistributorSampling
+}
+
+func (o *Overrides) KeepStrippedProfiles(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).KeepStrippedProfiles
+}
+
+func (o *Overrides) IncludeStrippedProfiles(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).IncludeStrippedProfiles
 }
 
 // IngestionArtificialDelay returns the artificial ingestion latency for a given user.
@@ -420,6 +446,13 @@ func (o *Overrides) MaxQueryParallelism(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxQueryParallelism
 }
 
+// PushMaxConcurrency returns the maximum number of series within a single
+// batched push that the distributor processes concurrently. 0 means unbounded
+// (legacy behavior); 1 serializes pushes (kill switch).
+func (o *Overrides) PushMaxConcurrency(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).PushMaxConcurrency
+}
+
 // MaxQueryLookback returns the max lookback period of queries.
 func (o *Overrides) MaxQueryLookback(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).MaxQueryLookback)
@@ -440,6 +473,11 @@ func (o *Overrides) MaxFlameGraphNodesOnSelectMergeProfile(tenantID string) bool
 	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesOnSelectMergeProfile
 }
 
+// ProfileIDDeterministic returns whether deterministic profile ID generation is enabled for a tenant.
+func (o *Overrides) ProfileIDDeterministic(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ProfileIDDeterministic
+}
+
 // StoreGatewayTenantShardSize returns the store-gateway shard size for a given user.
 func (o *Overrides) StoreGatewayTenantShardSize(userID string) int {
 	return o.getOverridesForTenant(userID).StoreGatewayTenantShardSize
@@ -453,6 +491,11 @@ func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 // QuerySanitizeOnMerge returns whether profiles should be sanitized in the read path.
 func (o *Overrides) QuerySanitizeOnMerge(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).QuerySanitizeOnMerge
+}
+
+// MaxAsyncQueryConcurrency returns the maximum number of concurrent async queries per tenant.
+func (o *Overrides) MaxAsyncQueryConcurrency(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxAsyncQueryConcurrency
 }
 
 // CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.

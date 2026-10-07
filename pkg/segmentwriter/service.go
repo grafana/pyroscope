@@ -1,6 +1,7 @@
 package segmentwriter
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -15,10 +16,13 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/thanos-io/objstore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/v2/pkg/block"
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/model/relabel"
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
@@ -39,24 +43,29 @@ const (
 	defaultSegmentDuration      = 500 * time.Millisecond
 	defaultHedgedRequestMaxRate = 2  // 2 hedged requests per second
 	defaultHedgedRequestBurst   = 10 // allow bursts of 10 hedged requests
+
+	// The probe has to exercise the prefix the write path itself uses: a policy that grants
+	// another prefix while denying this one would pass the check and fail every real write.
+	bucketHealthCheckPrefix = block.DirNameSegment + "/_health/"
 )
 
 type Config struct {
-	GRPCClientConfig         grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
-	LifecyclerConfig         ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
-	SegmentDuration          time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
-	FlushConcurrency         uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
-	UploadTimeout            time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
-	UploadMaxRetries         int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
-	UploadMinBackoff         time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
-	UploadMaxBackoff         time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
-	UploadHedgeAfter         time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
-	UploadHedgeRateMax       float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
-	UploadHedgeRateBurst     uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
-	MetadataDLQEnabled       bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
-	MetadataUpdateTimeout    time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
-	BucketHealthCheckEnabled bool                  `yaml:"bucket_health_check_enabled,omitempty" category:"advanced"`
-	BucketHealthCheckTimeout time.Duration         `yaml:"bucket_health_check_timeout,omitempty" category:"advanced"`
+	GRPCClientConfig           grpcclient.Config     `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with the segment writer."`
+	LifecyclerConfig           ring.LifecyclerConfig `yaml:"lifecycler,omitempty"`
+	AutoForgetUnhealthyPeriods int                   `yaml:"auto_forget_unhealthy_periods,omitempty" category:"advanced"`
+	SegmentDuration            time.Duration         `yaml:"segment_duration,omitempty" category:"advanced"`
+	FlushConcurrency           uint                  `yaml:"flush_concurrency,omitempty" category:"advanced"`
+	UploadTimeout              time.Duration         `yaml:"upload-timeout,omitempty" category:"advanced"`
+	UploadMaxRetries           int                   `yaml:"upload-retry_max_retries,omitempty" category:"advanced"`
+	UploadMinBackoff           time.Duration         `yaml:"upload-retry_min_period,omitempty" category:"advanced"`
+	UploadMaxBackoff           time.Duration         `yaml:"upload-retry_max_period,omitempty" category:"advanced"`
+	UploadHedgeAfter           time.Duration         `yaml:"upload-hedge_upload_after,omitempty" category:"advanced"`
+	UploadHedgeRateMax         float64               `yaml:"upload-hedge_rate_max,omitempty" category:"advanced"`
+	UploadHedgeRateBurst       uint                  `yaml:"upload-hedge_rate_burst,omitempty" category:"advanced"`
+	MetadataDLQEnabled         bool                  `yaml:"metadata_dlq_enabled,omitempty" category:"advanced"`
+	MetadataUpdateTimeout      time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
+	BucketHealthCheckEnabled   bool                  `yaml:"bucket_health_check_enabled,omitempty" category:"advanced"`
+	BucketHealthCheckTimeout   time.Duration         `yaml:"bucket_health_check_timeout,omitempty" category:"advanced"`
 }
 
 func (cfg *Config) Validate() error {
@@ -83,6 +92,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 		prefix + ".tokens-file-path":                   fieldcategory.Advanced,
 	})
 	cfg.LifecyclerConfig.RegisterFlagsWithPrefix(prefix+".", f, util.Logger)
+	f.IntVar(&cfg.AutoForgetUnhealthyPeriods, prefix+".auto-forget-unhealthy-periods", 0, "Number of consecutive heartbeat-timeout periods after which a ring member whose heartbeat has gone stale is automatically removed (forgotten) from the ring. This cleans up entries of instances that have left the ring without unregistering, e.g. after a scale-down. 0 disables auto-forget.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix(prefix+".grpc-client-config", f)
 	f.DurationVar(&cfg.SegmentDuration, prefix+".segment-duration", defaultSegmentDuration, "Timeout when flushing segments to bucket.")
 	f.UintVar(&cfg.FlushConcurrency, prefix+".flush-concurrency", 0, "Number of concurrent flushes. Defaults to the number of CPUs, but not less than 8.")
@@ -95,7 +105,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.UintVar(&cfg.UploadHedgeRateBurst, prefix+".upload-hedge-rate-burst", defaultHedgedRequestBurst, "Maximum number of hedged requests in a burst.")
 	f.BoolVar(&cfg.MetadataDLQEnabled, prefix+".metadata-dlq-enabled", true, "Enables dead letter queue (DLQ) for metadata. If the metadata update fails, it will be stored and updated asynchronously.")
 	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", 2*time.Second, "Timeout for metadata update requests.")
-	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Enables bucket health check on startup. This both validates credentials and warms up the connection to reduce latency for the first write.")
+	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Uploads a small object at startup to verify bucket write access. Startup fails if the upload fails. Removal of the object is best effort: it is skipped on filesystem storage, which keeps one object per startup, and a failed removal is only logged.")
 	f.DurationVar(&cfg.BucketHealthCheckTimeout, prefix+".bucket-health-check-timeout", 10*time.Second, "Timeout for bucket health check operations.")
 }
 
@@ -120,6 +130,8 @@ type SegmentWriterService struct {
 
 	storageBucket phlareobj.Bucket
 	segmentWriter *segmentsWriter
+
+	bucketHealthCheckCleanupFailures prometheus.Counter
 }
 
 func New(
@@ -154,7 +166,23 @@ func New(
 		return nil, err
 	}
 
-	i.subservices, err = services.NewManager(i.lifecycler)
+	subservices := []services.Service{i.lifecycler}
+	if config.AutoForgetUnhealthyPeriods > 0 &&
+		config.LifecyclerConfig.HeartbeatPeriod > 0 &&
+		config.LifecyclerConfig.RingConfig.HeartbeatTimeout > 0 {
+		forgetPeriod := time.Duration(config.AutoForgetUnhealthyPeriods) * config.LifecyclerConfig.RingConfig.HeartbeatTimeout
+		subservices = append(subservices, newAutoForget(
+			i.lifecycler.KVStore,
+			i.lifecycler.ID,
+			forgetPeriod,
+			config.LifecyclerConfig.HeartbeatPeriod,
+			log.With(logger, "component", "segment-writer-auto-forget"),
+		))
+	} else {
+		level.Info(logger).Log("msg", "the segment-writer ring auto-forget is disabled")
+	}
+
+	i.subservices, err = services.NewManager(subservices...)
 	if err != nil {
 		return nil, fmt.Errorf("services manager: %w", err)
 	}
@@ -164,6 +192,13 @@ func New(
 	if metastoreClient == nil {
 		return nil, errors.New("metastore client is required for segment writer")
 	}
+	i.bucketHealthCheckCleanupFailures = promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Namespace: "pyroscope",
+		Subsystem: "segment_writer",
+		Name:      "bucket_health_check_cleanup_failures_total",
+		Help:      "Times the startup bucket health check could not remove its probe object.",
+	})
+
 	metrics := newSegmentMetrics(i.reg)
 	headMetrics := memdb.NewHeadMetricsWithPrefix(reg, "pyroscope_segment_writer")
 	i.segmentWriter = newSegmentWriter(i.logger, metrics, headMetrics, config, limits, storageBucket, metastoreClient)
@@ -173,41 +208,72 @@ func New(
 	return i, nil
 }
 
-// performBucketHealthCheck performs a lightweight bucket operation to warm up the connection
-// and detect any object storage issues early. This serves the dual purpose of validating
-// bucket accessibility and reducing latency for the first actual write operation.
+// performBucketHealthCheck verifies the segment writer can write to object storage before it
+// joins the ring. Failure is fatal: a definitive upload error surfaces as codes.Unknown, which
+// the client does not retry, so writes to a write-broken instance are lost, not failed over.
+// One attempt is enough, as the restart is the retry and the supervisor backs it off.
 func (i *SegmentWriterService) performBucketHealthCheck(ctx context.Context) error {
 	if !i.config.BucketHealthCheckEnabled {
 		return nil
 	}
 
-	level.Debug(i.logger).Log("msg", "starting bucket health check", "timeout", i.config.BucketHealthCheckTimeout.String())
+	name := bucketHealthCheckKey(i.config.LifecyclerConfig.ID)
+	payload := bucketHealthCheckPayload(i.config.LifecyclerConfig.ID)
+	level.Debug(i.logger).Log("msg", "starting bucket health check", "object", name)
 
-	healthCheckCtx, cancel := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
+	uploadCtx, cancel := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
 	defer cancel()
-
-	err := i.storageBucket.Iter(healthCheckCtx, "", func(string) error {
-		// We only care about connectivity, not the actual contents
-		// Return an error to stop iteration after first item (if any)
-		return errors.New("stop iteration")
-	})
-
-	// Ignore the "stop iteration" error we intentionally return
-	// and any "object not found" type errors as they indicate the bucket is accessible
-	if err == nil || i.storageBucket.IsObjNotFoundErr(err) || err.Error() == "stop iteration" {
-		level.Debug(i.logger).Log("msg", "bucket health check succeeded")
-		return nil
+	if err := i.storageBucket.Upload(uploadCtx, name, bytes.NewReader(payload)); err != nil {
+		level.Error(i.logger).Log("msg", "bucket health check failed", "object", name, "err", err)
+		return fmt.Errorf("bucket health check failed: %w", err)
 	}
 
-	level.Warn(i.logger).Log("msg", "bucket health check failed", "err", err)
-	return nil // Don't fail startup, just warn
+	i.removeBucketHealthCheckObject(ctx, name)
+	level.Debug(i.logger).Log("msg", "bucket health check succeeded")
+	return nil
+}
+
+// removeBucketHealthCheckObject clears the probe away again, best effort: a bucket that grants
+// writes but not deletes is still serviceable, and keeping one small object per start is the
+// price of a probe the bucket cannot refuse to create. Those leftovers can be expired with a
+// lifecycle rule scoped to the probe prefix, never to segments/ itself.
+func (i *SegmentWriterService) removeBucketHealthCheckObject(ctx context.Context, name string) {
+	// The filesystem bucket deletes by walking up and removing parents it has just found empty.
+	// A writer creating the first real segment inside that window would lose it, so the probe
+	// stays: on this backend it is a stray file, not lost data.
+	if i.storageBucket.Provider() == objstore.FILESYSTEM {
+		level.Debug(i.logger).Log("msg", "keeping bucket health check object", "object", name,
+			"reason", "deleting it on the filesystem backend can remove concurrently written segments")
+		return
+	}
+
+	deleteCtx, cancel := context.WithTimeout(ctx, i.config.BucketHealthCheckTimeout)
+	defer cancel()
+	if err := i.storageBucket.Delete(deleteCtx, name); err != nil {
+		i.bucketHealthCheckCleanupFailures.Inc()
+		level.Warn(i.logger).Log("msg", "failed to remove bucket health check object", "object", name, "err", err)
+	}
+}
+
+// bucketHealthCheckKey is unique per start, which keeps the probe a create rather than an
+// overwrite. The distinction matters: GCS grants such as roles/storage.objectCreator allow
+// creating an object and deny replacing one, and the write path only ever creates.
+func bucketHealthCheckKey(instanceID string) string {
+	return bucketHealthCheckPrefix + instanceID + "/" + uuid.New().String()
+}
+
+func bucketHealthCheckPayload(instanceID string) []byte {
+	return []byte(fmt.Sprintf(
+		"pyroscope segment-writer bucket health check\ninstance: %s\nwritten: %s\n"+
+			"Written at startup to verify write access to the bucket. Safe to delete.\n",
+		instanceID, time.Now().UTC().Format(time.RFC3339),
+	))
 }
 
 func (i *SegmentWriterService) starting(ctx context.Context) error {
-	// Perform bucket health check before ring registration to warm up the connection
-	// and avoid slow first requests affecting p99 latency
-	// On error, will emit a warning but continue startup
-	_ = i.performBucketHealthCheck(ctx)
+	if err := i.performBucketHealthCheck(ctx); err != nil {
+		return err
+	}
 
 	if err := services.StartManagerAndAwaitHealthy(ctx, i.subservices); err != nil {
 		return err
@@ -261,8 +327,12 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	shard := shardKey(req.Shard)
+	i.segmentWriter.metrics.receivedBytes.
+		WithLabelValues(shard.String(), req.TenantId).
+		Observe(float64(p.RawSize()))
 
-	wait := i.segmentWriter.ingest(shardKey(req.Shard), func(segment segmentIngest) {
+	wait := i.segmentWriter.ingest(shard, func(segment segmentIngest) {
 		segment.ingest(req.TenantId, p.Profile, id, req.Labels, req.Annotations)
 	})
 

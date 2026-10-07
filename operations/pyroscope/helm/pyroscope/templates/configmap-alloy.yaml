@@ -65,6 +65,21 @@ data:
     		target_label  = "container"
     	}
 
+    	// Set service_name by choosing the first non-empty value from the following ordered list:
+    	// - pod.annotation[profiles.grafana.com/service_name]
+    	// - pod.annotation[resource.opentelemetry.io/service.name]
+    	rule {
+    		action        = "replace"
+    		source_labels = [
+    			"__meta_kubernetes_pod_annotation_profiles_grafana_com_service_name",
+    			"__meta_kubernetes_pod_annotation_resource_opentelemetry_io_service_name",
+    		]
+    		separator    = ";"
+    		regex        = "^(?:;*)?([^;]+).*$"
+    		replacement  = "$1"
+    		target_label = "service_name"
+    	}
+
     	rule {
     		action        = "replace"
     		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_service_repository"]

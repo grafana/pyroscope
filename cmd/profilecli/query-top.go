@@ -11,9 +11,9 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log/level"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
@@ -64,22 +64,20 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 		GroupBy:       params.LabelNames,
 	}))
 	if err != nil {
-		return errors.Wrap(err, "failed to query series")
+		return fmt.Errorf("failed to query series: %w", err)
 	}
-
 	logDiagnostics(params.phlareClient, resp.Header())
+	series := resp.Msg.Series
 
 	type seriesTotal struct {
 		labelValues []string
 		total       float64
 	}
 
-	totals := make([]seriesTotal, 0, len(resp.Msg.Series))
-	for _, s := range resp.Msg.Series {
-		var total float64
-		for _, p := range s.Points {
-			total += p.Value
-		}
+	totals := make([]seriesTotal, 0, len(series))
+	startMs := from.UnixMilli()
+	for _, s := range series {
+		total := sumPointsAfter(s.Points, startMs)
 		lbls := model.Labels(s.Labels)
 		vals := make([]string, len(params.LabelNames))
 		for i, name := range params.LabelNames {
@@ -102,7 +100,7 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 
 	profileType, err := model.ParseProfileTypeSelector(params.ProfileType)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile type")
+		return fmt.Errorf("failed to parse profile type: %w", err)
 	}
 
 	switch params.Output {
@@ -158,6 +156,22 @@ func queryTop(ctx context.Context, params *queryTopParams) error {
 	}
 
 	return nil
+}
+
+// sumPointsAfter sums point values with timestamps strictly after startMs.
+// SelectSeries fetches one extra step before the window so that the boundary
+// point at `start` renders as a complete bucket in charts; that point
+// aggregates (start-step, start], which lies entirely before the requested
+// window. With step = window size, counting it roughly doubles the total.
+func sumPointsAfter(points []*typesv1.Point, startMs int64) float64 {
+	var total float64
+	for _, p := range points {
+		if p.Timestamp <= startMs {
+			continue
+		}
+		total += p.Value
+	}
+	return total
 }
 
 func formatUnit(v float64, unit string) string {

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 )
 
 var (

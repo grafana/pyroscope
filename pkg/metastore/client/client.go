@@ -2,6 +2,7 @@ package metastoreclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -10,7 +11,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
 
@@ -77,16 +77,17 @@ func (c *Client) stopping(error) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.stopped = true
-	var multiErr error
+
+	var errs []error
 	for _, srv := range c.servers {
 		err := srv.conn.Close()
 		level.Debug(c.logger).Log("msg", "connection closed", "resolved_address", srv.srv.ResolvedAddress, "raft_address", srv.srv.Raft.Address)
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			errs = append(errs, err)
 		}
 	}
 	c.servers = nil
-	return multiErr
+	return errors.Join(errs...)
 }
 
 func (c *Client) updateServers(servers []discovery.Server) {

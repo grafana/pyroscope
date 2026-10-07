@@ -46,3 +46,19 @@ Ingest selector: This is the selector to be added to get the most outside metric
 {{- define "pyroscope-monitoring.dashboards-ingest-selector" -}}
 {{- if .Values.dashboards.cloudBackendGateway }}{{ .Values.dashboards.cloudBackendGatewaySelector }}{{ else }}{{ .Values.dashboards.ingestSelector }}{{ end -}}
 {{- end }}
+
+{{/*
+Optional namespace matcher appended to the ingest selector.
+*/}}
+{{- define "pyroscope-monitoring.dashboards-ingest-namespace-selector" -}}
+{{- with .Values.dashboards.ingestNamespaceSelector }}, {{ . }}{{- end -}}
+{{- end }}
+
+{{/*
+Namespace regex, optionally overridden per dashboard.
+*/}}
+{{- define "pyroscope-monitoring.dashboards-namespace-regex" -}}
+{{- $root := index . 0 -}}
+{{- $dashboard := index . 1 -}}
+{{- default $root.Values.dashboards.namespaceRegex (dig $dashboard nil $root.Values.dashboards.namespaceRegexPerDashboard) -}}
+{{- end }}

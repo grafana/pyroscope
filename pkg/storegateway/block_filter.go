@@ -2,13 +2,13 @@ package storegateway
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/timestamp"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"

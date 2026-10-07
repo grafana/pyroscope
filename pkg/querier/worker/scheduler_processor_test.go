@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/gogo/status"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"

@@ -105,7 +105,7 @@ spec:
           {{-  if (not (hasKey $extraArgs "metastore.raft.snapshots-dir"))  }}
             - "-metastore.raft.snapshots-dir=./data-metastore/raft"
           {{- end }}
-          {{-  if (not (hasKey $extraArgs "metastore.raft.server-id"))  }}
+          {{-  if (not (hasKey $extraArgs "metastore.raft.bind-address"))  }}
             - "-metastore.raft.bind-address=:{{ .Values.pyroscope.metastore.port }}"
           {{- end }}
           {{-  if (not (hasKey $extraArgs "metastore.raft.server-id"))  }}
@@ -114,7 +114,7 @@ spec:
           {{-  if (not (hasKey $extraArgs "metastore.raft.advertise-address"))  }}
             - "-metastore.raft.advertise-address=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
           {{- end }}
-          {{-  if (not (hasKey $extraArgs "metastore.raft.server-id"))  }}
+          {{-  if (not (hasKey $extraArgs "metastore.raft.bootstrap-peers"))  }}
             - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.$(PYROSCOPE_METASTORE_SERVICE)"
           {{- end }}
           {{- end }}
@@ -279,7 +279,9 @@ spec:
             claimName: {{ $cfg.name }}-data
   {{- else }}
   volumeClaimTemplates:
-  - metadata:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
       name: data
       annotations:
         {{- toYaml $persistence.annotations | nindent 8 }}

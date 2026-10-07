@@ -8,13 +8,13 @@ package bucketindex
 import (
 	"bytes"
 	"context"
+	"errors"
 	"path"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

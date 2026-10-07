@@ -30,6 +30,10 @@ type SampleObserver interface {
 }
 
 type PutInput struct {
+	// OriginalStartTimeNanos excludes server-generated defaults, so conversion
+	// to pprof can preserve the absence of a caller-supplied timestamp.
+	OriginalStartTimeNanos int64
+
 	StartTime       time.Time
 	EndTime         time.Time
 	LabelSet        *labelset.LabelSet

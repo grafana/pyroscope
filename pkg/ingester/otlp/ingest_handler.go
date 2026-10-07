@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -31,6 +32,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
+	"github.com/grafana/pyroscope/v2/pkg/util/tracecontext"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -105,6 +107,7 @@ func newGrpcServer(cfg server.Config) *grpc.Server {
 		grpc.MaxSendMsgSize(cfg.GRPCServerMaxSendMsgSize),
 		grpc.MaxConcurrentStreams(uint32(cfg.GRPCServerMaxConcurrentStreams)),
 		grpc.NumStreamWorkers(uint32(cfg.GRPCServerNumWorkers)),
+		grpc.ChainUnaryInterceptor(tracecontext.UnaryServerInterceptor),
 	}
 
 	grpcOptions = append(grpcOptions, cfg.GRPCOptions...)
@@ -200,10 +203,15 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 
 	resp, err := h.export(r.Context(), req)
 	if err != nil {
-		level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
-		if isKnownValidationError(err) {
+		switch {
+		case isKnownValidationError(err):
+			level.Warn(h.log).Log("msg", "rejecting invalid profiles", "err", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
-		} else {
+		case connect.CodeOf(err) == connect.CodeResourceExhausted:
+			level.Warn(h.log).Log("msg", "rejecting profiles over ingestion limit", "err", err)
+			http.Error(w, err.Error(), http.StatusTooManyRequests)
+		default:
+			level.Error(h.log).Log("msg", "failed to process profiles", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
@@ -224,12 +232,25 @@ func (h *ingestHandler) handleHTTPRequest(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ingestHandler) Export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	return h.export(ctx, er)
+	resp, err := h.export(ctx, er)
+	if err != nil {
+		return resp, toGRPCStatus(err)
+	}
+	return resp, nil
+}
+
+// toGRPCStatus maps push errors that carry a Connect code (e.g. ResourceExhausted
+// when a tenant exceeds its ingestion limit) to the matching gRPC status; errors
+// that already carry a gRPC status pass through unchanged.
+func toGRPCStatus(err error) error {
+	if _, ok := status.FromError(err); ok {
+		return err
+	}
+	return status.Error(codes.Code(connect.CodeOf(err)), err.Error())
 }
 
 func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	_, err := tenant.TenantID(ctx)
-	if err != nil {
+	if _, err := tenant.TenantID(ctx); err != nil {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.Unauthenticated, "failed to extract tenant ID from context: %s", err.Error())
 	}
 
@@ -243,21 +264,24 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "missing resource profiles")
 	}
 
+	req := &distributormodel.PushRequest{
+		RawProfileType: distributormodel.RawProfileTypeOTEL,
+	}
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
+		language := getLanguageFromAttributes(rp.Resource.GetAttributes())
 		for _, sp := range rp.ScopeProfiles {
 			for _, p := range sp.Profiles {
+				sz := proto.Size(p)
+				req.ReceivedCompressedProfileSize += sz
+				req.ReceivedDecompressedProfileSize += sz
+
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
 					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
 					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
 				}
-
-				req := &distributormodel.PushRequest{
-					ReceivedCompressedProfileSize:   proto.Size(p),
-					ReceivedDecompressedProfileSize: proto.Size(p),
-					RawProfileType:                  distributormodel.RawProfileTypeOTEL,
-				}
+				profileID := otlpProfileID(p.ProfileId)
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
 					labels := getDefaultLabels()
@@ -275,28 +299,39 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					})
 
 					s := &distributormodel.ProfileSeries{
-						Labels:     labels,
-						RawProfile: nil,
-						Profile:    pprof.RawFromProto(pprofProfile.profile),
-						ID:         uuid.New().String(),
+						Labels:            labels,
+						RawProfile:        nil,
+						Profile:           pprof.RawFromProto(pprofProfile.profile),
+						ID:                profileID,
+						OriginalTimeNanos: int64(p.TimeUnixNano),
+						Language:          language,
 					}
 					req.Series = append(req.Series, s)
-				}
-				if len(req.Series) == 0 {
-					continue
-				}
-				err = h.svc.PushBatch(ctx, req)
-				if err != nil {
-					h.log.Log("msg", "failed to push profile", "err", err)
-					// Note: Validation metrics are already tracked by the distributor for errors
-					// returned from PushBatch, so we don't track them here to avoid double-counting.
-					return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
 				}
 			}
 		}
 	}
 
+	if len(req.Series) == 0 {
+		return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+	}
+
+	if err := h.svc.PushBatch(ctx, req); err != nil {
+		h.log.Log("msg", "failed to push profile", "err", err)
+		// Note: Validation metrics are already tracked by the distributor for errors
+		// returned from PushBatch, so we don't track them here to avoid double-counting.
+		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
+	}
+
 	return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+}
+
+func otlpProfileID(profileID []byte) string {
+	id, err := uuid.FromBytes(profileID)
+	if err != nil || id == uuid.Nil {
+		return ""
+	}
+	return id.String()
 }
 
 // getServiceNameFromAttributes extracts service name from OTLP resource attributes.
@@ -319,6 +354,18 @@ func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 
 	}
 	return fallback
+}
+
+// getLanguageFromAttributes extracts the profile language from the OTLP
+// resource attribute "telemetry.sdk.language", as defined by the semantic
+// conventions: https://opentelemetry.io/docs/specs/semconv/resource/#telemetry-sdk
+func getLanguageFromAttributes(attrs []*v1.KeyValue) string {
+	for _, attr := range attrs {
+		if attr.Key == string(model.AttrTelemetrySDKLanguage) {
+			return stringValueFromAnyValue(attr.GetValue())
+		}
+	}
+	return ""
 }
 
 // getDefaultLabels returns the required base labels for Pyroscope profiles

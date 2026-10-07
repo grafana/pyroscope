@@ -11,6 +11,7 @@ import (
 )
 
 func Test_loadBalancingStrategy(t *testing.T) {
+	const randSeed = 752383033
 	rnd := rand.New(rand.NewSource(randSeed))
 	const unitSize = 512 << 10
 

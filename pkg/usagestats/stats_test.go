@@ -1,13 +1,14 @@
 package usagestats
 
 import (
+	"encoding/json"
+	"fmt"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
@@ -61,7 +62,7 @@ func Test_BuildReport(t *testing.T) {
 	require.Equal(t, r.Metrics["query_throughput"].(map[string]interface{})["avg"], float64(25+300+5)/3)
 	require.Equal(t, r.Metrics["active_tenants"], int64(3))
 
-	out, _ := jsoniter.MarshalIndent(r, "", " ")
+	out, _ := json.MarshalIndent(r, "", " ")
 	t.Log(string(out))
 }
 
@@ -220,4 +221,23 @@ func TestPanics(t *testing.T) {
 		NewFloat(editionKey)
 		Edition("new edition")
 	})
+}
+
+func TestMultiCounter_ConcurrentInc(t *testing.T) {
+	// Concurrent Inc with distinct keys overlaps map inserts with the
+	// "__total__" access; run with -race to guard the counter's thread-safety.
+	mc := NewMultiCounter("test_multi_counter_concurrent", "key_name")
+
+	const goroutines = 8
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := 0; g < goroutines; g++ {
+		go func(g int) {
+			defer wg.Done()
+			mc.Inc(1, fmt.Sprintf("key_%d", g))
+		}(g)
+	}
+	wg.Wait()
+
+	require.Equal(t, int64(goroutines), mc.Value()["total"])
 }

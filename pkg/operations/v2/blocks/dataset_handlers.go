@@ -2,13 +2,13 @@ package blocks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
@@ -25,17 +25,17 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 		vars := mux.Vars(r)
 		tenantId := vars["tenant"]
 		if tenantId == "" {
-			httputil.Error(w, errors.New("No tenant id provided"))
+			httputil.Error(w, errors.New("no tenant id provided"))
 			return
 		}
 		blockId := vars["block"]
 		if blockId == "" {
-			httputil.Error(w, errors.New("No block id provided"))
+			httputil.Error(w, errors.New("no block id provided"))
 			return
 		}
 		datasetName := r.URL.Query().Get("dataset")
 		if datasetName == "" {
-			httputil.Error(w, errors.New("No dataset name provided"))
+			httputil.Error(w, errors.New("no dataset name provided"))
 			return
 		}
 		// Handle special case for empty dataset name
@@ -44,12 +44,12 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 		}
 		shardStr := r.URL.Query().Get("shard")
 		if shardStr == "" {
-			httputil.Error(w, errors.New("No shard provided"))
+			httputil.Error(w, errors.New("no shard provided"))
 			return
 		}
 		var shard uint32
 		if _, err := fmt.Sscanf(shardStr, "%d", &shard); err != nil {
-			httputil.Error(w, errors.Wrap(err, "invalid shard parameter"))
+			httputil.Error(w, fmt.Errorf("invalid shard parameter: %w", err))
 			return
 		}
 
@@ -63,12 +63,12 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 			},
 		})
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to get block metadata"))
+			httputil.Error(w, fmt.Errorf("failed to get block metadata: %w", err))
 			return
 		}
 
 		if len(metadataResp.Blocks) == 0 {
-			httputil.Error(w, errors.New("Block not found"))
+			httputil.Error(w, errors.New("block not found"))
 			return
 		}
 
@@ -84,7 +84,7 @@ func (h *Handlers) CreateDatasetDetailsHandler() func(http.ResponseWriter, *http
 		}
 
 		if foundDataset == nil {
-			httputil.Error(w, errors.New("Dataset not found"))
+			httputil.Error(w, errors.New("dataset not found"))
 			return
 		}
 
@@ -177,7 +177,7 @@ func (h *Handlers) CreateDatasetTSDBIndexHandler() func(http.ResponseWriter, *ht
 
 		TSDBIndex, err := h.readTSDBIndex(r.Context(), blockMeta, foundDataset)
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to read TSDB index"))
+			httputil.Error(w, fmt.Errorf("failed to read TSDB index: %w", err))
 			return
 		}
 
@@ -339,7 +339,7 @@ func (h *Handlers) CreateDatasetSymbolsHandler() func(http.ResponseWriter, *http
 
 		symbols, err := h.readSymbols(r.Context(), blockMeta, foundDataset, page, pageSize)
 		if err != nil {
-			httputil.Error(w, errors.Wrap(err, "failed to read symbols"))
+			httputil.Error(w, fmt.Errorf("failed to read symbols: %w", err))
 			return
 		}
 

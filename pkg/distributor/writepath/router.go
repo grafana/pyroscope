@@ -2,17 +2,16 @@ package writepath
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"net/http"
 	"sync"
 	"time"
 
 	"connectrpc.com/connect"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"

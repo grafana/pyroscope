@@ -9,8 +9,7 @@ import (
 	"strconv"
 
 	"github.com/drone/envsubst"
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // JSON returns a Source that opens the supplied `.json` file and loads it.
@@ -26,7 +25,10 @@ func JSON(f *string) Source {
 		}
 
 		err = dJSON(j)(dst)
-		return errors.Wrap(err, *f)
+		if err != nil {
+			return fmt.Errorf("%s: %w", *f, err)
+		}
+		return nil
 	}
 }
 
@@ -63,7 +65,10 @@ func yamlWithKnowFields(f string, expandEnvVars bool, knownFields bool) Source {
 			y = []byte(s)
 		}
 		err = dYAML(y, knownFields)(dst)
-		return errors.Wrap(err, f)
+		if err != nil {
+			return fmt.Errorf("%s: %w", f, err)
+		}
+		return nil
 	}
 }
 

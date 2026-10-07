@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-// Provides the ablility to query the Pyroscope database. Most of the calls in
+// Provides the ability to query the Pyroscope database. Most of the calls in
 // this group are considered public.
 package querier.v1;
 
@@ -32,12 +32,18 @@ service QuerierService {
   rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
+  // Deprecated: Use SelectMergeStacktraces with span_selector instead.
+  // This RPC will remain supported in querier.v1 for backward compatibility;
+  // future breaking API changes may be introduced in querier.v2.
   // SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph
   // format. It will combine samples from within the same callstack, with each
   // element being grouped by its function name.
   rpc SelectMergeSpanProfile(SelectMergeSpanProfileRequest) returns (SelectMergeSpanProfileResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
+  // Deprecated: Use SelectMergeStacktraces with PROFILE_FORMAT_PPROF instead.
+  // This RPC will remain supported in querier.v1 for backward compatibility;
+  // future breaking API changes may be introduced in querier.v2.
   // SelectMergeProfile returns matching profiles aggregated in pprof format. It
   // will contain all information stored (so including filenames and line
   // number, if ingested).
@@ -65,6 +71,12 @@ service QuerierService {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
   rpc AnalyzeQuery(AnalyzeQueryRequest) returns (AnalyzeQueryResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/internal";
+  }
+
+  // (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
+  // profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
+  rpc QueryAnomalies(QueryAnomaliesRequest) returns (QueryAnomaliesResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
 }
@@ -119,13 +131,33 @@ message SelectMergeStacktracesRequest {
   optional types.v1.StackTraceSelector stack_trace_selector = 7;
   // List of Profile UUIDs to query
   repeated string profile_id_selector = 8 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
+  // (experimental) Used for making and polling async queries.
+  optional AsyncQueryRequest async = 9;
+  // List of trace IDs (32 hex characters, 128-bit) to filter samples by.
+  repeated string trace_id_selector = 10 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
+  // List of span IDs (16 hex characters, 64-bit) to filter samples by.
+  repeated string span_selector = 11 [(gnostic.openapi.v3.property).example = {yaml: "['9a517183f26a089d','5a4fe264a9c987fe']"}];
 }
 
 enum ProfileFormat {
+  // Equivalent to PROFILE_FORMAT_FLAMEGRAPH. Preserved for backward
+  // compatibility.
   PROFILE_FORMAT_UNSPECIFIED = 0;
+  // Return a Flamebearer-compatible, single-profile flame graph. Samples
+  // sharing the same function-name call stack are aggregated into the names
+  // and levels representation used by the Pyroscope flame graph renderer.
+  // Format: https://github.com/grafana/pyroscope/blob/main/pkg/og/structs/flamebearer/flamebearer.go
   PROFILE_FORMAT_FLAMEGRAPH = 1;
+  // Return a compact, function-name-only Pyroscope tree serialization in
+  // SelectMergeStacktracesResponse.tree.
   PROFILE_FORMAT_TREE = 2;
+  // Return a Graphviz DOT directed graph. Nodes represent functions and edges
+  // represent caller-callee relationships, annotated with aggregated sample
+  // values. The resulting text can be rendered by Graphviz-compatible tools.
   PROFILE_FORMAT_DOT = 3;
+  // Return a pprof profile, including available mappings, locations, filenames,
+  // and line numbers, in SelectMergeStacktracesResponse.pprof.
+  PROFILE_FORMAT_PPROF = 4;
 }
 
 message SelectMergeStacktracesResponse {
@@ -135,6 +167,45 @@ message SelectMergeStacktracesResponse {
   map<string, string> mapping = 3;
   // DOT graph representation.
   string dot = 4;
+  // (experimental) Used for responding to async queries.
+  optional AsyncQueryResponse async = 5;
+  // Profile in pprof format.
+  PprofProfile pprof = 6;
+}
+
+// PprofProfile contains pprof output and related response metadata.
+message PprofProfile {
+  google.v1.Profile profile = 1;
+}
+
+message AsyncQueryRequest {
+  // If set, this is a polling request.
+  string request_id = 1;
+  // Sets the kind of async query.
+  AsyncQueryType type = 2;
+}
+
+message AsyncQueryResponse {
+  // Id of the async query.
+  string request_id = 1;
+  // Status of the query: unknown, in_progress, success, failed
+  AsyncQueryStatus status = 2;
+  // Populated on FAILURE.
+  string error_message = 3;
+}
+
+enum AsyncQueryType {
+  // The query should not be async.
+  ASYNC_QUERY_TYPE_DISABLED = 0;
+  // The query must be async.
+  ASYNC_QUERY_TYPE_FORCE = 1;
+}
+
+enum AsyncQueryStatus {
+  ASYNC_QUERY_STATUS_UNKNOWN = 0;
+  ASYNC_QUERY_STATUS_IN_PROGRESS = 1;
+  ASYNC_QUERY_STATUS_SUCCESS = 2;
+  ASYNC_QUERY_STATUS_FAILURE = 3;
 }
 
 message SelectMergeSpanProfileRequest {
@@ -165,6 +236,7 @@ message SelectMergeSpanProfileResponse {
 }
 
 message DiffRequest {
+  // The format of each request is ignored; diff queries always compare trees.
   SelectMergeStacktracesRequest left = 1;
   SelectMergeStacktracesRequest right = 2;
 }
@@ -212,6 +284,8 @@ message SelectMergeProfileRequest {
   optional types.v1.StackTraceSelector stack_trace_selector = 6;
   // List of Profile UUIDs to query
   repeated string profile_id_selector = 7 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e6679-7425-40de-944b-e07fc1f90ae7']"}];
+  // List of trace IDs (32 hex characters, 128-bit) to filter samples by.
+  repeated string trace_id_selector = 8 [(gnostic.openapi.v3.property).example = {yaml: "['7c9e66797425440de944be07fc1f90ae']"}];
 }
 
 message SelectSeriesRequest {
@@ -302,4 +376,42 @@ message QueryImpact {
   uint64 total_bytes_in_time_range = 2;
   uint64 total_queried_series = 3;
   bool deduplication_needed = 4;
+}
+
+enum AnomalyType {
+  ANOMALY_TYPE_UNSPECIFIED = 0;
+  ANOMALY_TYPE_STACKTRACE = 1;
+}
+
+message QueryAnomaliesRequest {
+  // Profile Type ID string in the form
+  // <name>:<type>:<unit>:<period_type>:<period_unit>.
+  string profile_typeID = 1 [(gnostic.openapi.v3.property).example = {yaml: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"}];
+  // Label selector string
+  string label_selector = 2 [(gnostic.openapi.v3.property).example = {yaml: "'{namespace=\"my-namespace\"}'"}];
+  // Milliseconds since epoch.
+  int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
+  // Milliseconds since epoch.
+  int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
+  // Which anomaly sources to consult. Only ANOMALY_TYPE_STACKTRACE is handled today; any
+  // other value returns an unimplemented error.
+  repeated AnomalyType anomaly_types = 5;
+}
+
+message QueryAnomaliesResponse {
+  // Profiles flagged by the stacktrace anomaly source and confirmed present for the given
+  // label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
+  repeated StacktraceAnomaly stacktrace_anomalies = 1;
+}
+
+message StacktraceAnomaly {
+  // Profile ID (UUID).
+  string profile_id = 1;
+  // Milliseconds since epoch: the profile's own timestamp.
+  int64 timestamp = 2 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
+  // The profile's own labels (e.g. pod, instance), same convention as
+  // types.v1.Exemplar.labels.
+  repeated types.v1.LabelPair labels = 3;
+  // The anomaly source's score for this profile.
+  double score = 4;
 }

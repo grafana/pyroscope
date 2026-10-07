@@ -16,7 +16,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/go-kit/log"
-	"github.com/google/uuid"
 	prommodel "github.com/prometheus/common/model"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -34,6 +33,8 @@ type PushService interface {
 
 type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
 }
 
 func NewPyroscopeIngestHandler(svc PushService, limits Limits, logger log.Logger) http.Handler {
@@ -53,9 +54,8 @@ func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.Ing
 	pprofable, ok := in.Profile.(ingestion.ParseableToPprof)
 	if ok {
 		return p.parseToPprof(ctx, in, pprofable)
-	} else {
-		return in.Profile.Parse(ctx, p, p, in.Metadata)
 	}
+	return in.Profile.Parse(ctx, p, p, in.Metadata, p.limits)
 }
 
 const (
@@ -86,9 +86,11 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		)
 	}
 	mdata := &tree.PprofMetadata{
-		Type:      stType,
-		Unit:      stUnit,
-		StartTime: pi.StartTime,
+		Type: stType,
+		Unit: stUnit,
+		// Leave missing timestamps unset through Push. The distributor applies
+		// a default after assigning the profile ID.
+		StartTime: time.Unix(0, pi.OriginalStartTimeNanos),
 	}
 	if pi.SampleRate != 0 && (metric == metricWall || metric == metricProcessCPU) {
 		period := time.Second.Nanoseconds() / int64(pi.SampleRate)
@@ -164,10 +166,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 			})
 		}
 	}
-	series.Samples = []*pushv1.RawSample{{
-		RawProfile: b,
-		ID:         uuid.New().String(),
-	}}
+	series.Samples = []*pushv1.RawSample{{RawProfile: b}}
 	req.Series = append(req.Series, series)
 	_, err = p.svc.Push(ctx, connect.NewRequest(req))
 	if err != nil {
@@ -191,13 +190,14 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}
 	plainReq.ParseDuration = time.Since(parseStart)
+	tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 	if len(plainReq.Series) == 0 {
-		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 		_ = level.Debug(p.log).Log("msg", "empty profile",
 			"application", in.Metadata.LabelSet.ServiceName(),
 			"orgID", tenantID)
 		return nil
 	}
+
 	err = p.svc.PushBatch(ctx, plainReq)
 	if err != nil {
 		return fmt.Errorf("pushing IngestInput-pprof failed %w", err)

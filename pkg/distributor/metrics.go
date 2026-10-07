@@ -39,7 +39,10 @@ type metrics struct {
 	receivedSymbolsBytes           *prometheus.HistogramVec
 	replicationFactor              prometheus.Gauge
 	receivedDecompressedBytesTotal *prometheus.HistogramVec
+	profilesReceived               *prometheus.CounterVec
 	parseDuration                  *prometheus.HistogramVec
+	pushBatchSeries                *prometheus.HistogramVec
+	profileIDGeneration            *prometheus.CounterVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -127,6 +130,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				"stage",
 			},
 		),
+		profilesReceived: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_profiles_received_total",
+				Help:      "The total number of profiles received by the distributor, broken down by OpenTelemetry instrumentation scope.",
+			},
+			[]string{"tenant", "scope_name", "scope_version"},
+		),
 		parseDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace:                       "pyroscope",
@@ -139,6 +150,26 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"type", "tenant"},
 		),
+		pushBatchSeries: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace:                       "pyroscope",
+				Name:                            "distributor_push_batch_series",
+				Help:                            "Number of series per batched push request (PushBatch call).",
+				Buckets:                         prometheus.ExponentialBuckets(1, 2, 13),
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  50,
+				NativeHistogramMinResetDuration: time.Hour,
+			},
+			[]string{"tenant"},
+		),
+		profileIDGeneration: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_profile_id_generation_total",
+				Help:      "Number of profile IDs generated, by source.",
+			},
+			[]string{"source"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(
@@ -149,7 +180,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.receivedSymbolsBytes,
 			m.replicationFactor,
 			m.receivedDecompressedBytesTotal,
+			m.profilesReceived,
 			m.parseDuration,
+			m.pushBatchSeries,
+			m.profileIDGeneration,
 		)
 	}
 	return m

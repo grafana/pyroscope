@@ -2,11 +2,11 @@ package phlaredb
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tracing"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"

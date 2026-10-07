@@ -37,9 +37,10 @@ import (
 // however, if the write transaction uses the cached shard state, loaded
 // by read transaction.
 type shardCache struct {
-	mu    sync.RWMutex
-	cache *lru.TwoQueueCache[shardCacheKey, *indexShardCached]
-	store Store
+	mu      sync.RWMutex
+	cache   *lru.TwoQueueCache[shardCacheKey, *indexShardCached]
+	store   Store
+	metrics *metrics
 }
 
 type shardCacheKey struct {
@@ -53,12 +54,12 @@ type indexShardCached struct {
 	readOnly bool
 }
 
-func newShardCache(size int, s Store) *shardCache {
+func newShardCache(size int, s Store, m *metrics) *shardCache {
 	if size <= 0 {
 		size = 1
 	}
 	c, _ := lru.New2Q[shardCacheKey, *indexShardCached](size)
-	return &shardCache{cache: c, store: s}
+	return &shardCache{cache: c, store: s, metrics: m}
 }
 
 func (c *shardCache) update(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32, fn func(*indexstore.Shard) error) error {
@@ -85,8 +86,10 @@ func (c *shardCache) getForWriteUnsafe(tx *bbolt.Tx, p indexstore.Partition, ten
 	}
 	x, found := c.cache.Get(k)
 	if found && x != nil && !x.readOnly {
+		c.metrics.recordShardWriteHit()
 		return x.Shard, nil
 	}
+	c.metrics.recordShardWriteMiss()
 	// If the shard is not found, or it is loaded for reads,
 	// reload it and invalidate the cached version.
 	s, err := c.store.LoadShard(tx, p, tenant, shard)
@@ -103,7 +106,7 @@ func (c *shardCache) getForWriteUnsafe(tx *bbolt.Tx, p indexstore.Partition, ten
 	return s, nil
 }
 
-func (c *shardCache) getForRead(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32) (*indexstore.Shard, error) {
+func (c *shardCache) getForReadAtVersion(tx *bbolt.Tx, p indexstore.Partition, tenant string, shard uint32, version uint64) (*indexstore.Shard, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	k := shardCacheKey{
@@ -113,8 +116,19 @@ func (c *shardCache) getForRead(tx *bbolt.Tx, p indexstore.Partition, tenant str
 	}
 	x, found := c.cache.Get(k)
 	if found && x != nil {
-		return x.ShallowCopy(), nil
+		// Write-cached shards are always safe to reuse because writes are
+		// serialized and observe the latest shard state. Read-cached shards are
+		// only safe when the caller has no version information (`version == 0`,
+		// for old on-disk shard indexes) or when the cached version is at least
+		// as new as the caller's transaction snapshot. Otherwise, reload from the
+		// current transaction to avoid mixing new block metadata with a stale
+		// string table loaded by an older read transaction.
+		if !x.readOnly || version == 0 || x.ShardIndex.Version >= version {
+			c.metrics.recordShardReadHit()
+			return x.ShallowCopy(), nil
+		}
 	}
+	c.metrics.recordShardReadMiss()
 	s, err := c.store.LoadShard(tx, p, tenant, shard)
 	if err != nil {
 		return nil, err
@@ -159,9 +173,10 @@ func (c *shardCache) delete(p indexstore.Partition, tenant string, shard uint32)
 // compaction. The write cache is accessed for reads if the read cache does not
 // contain the block queried.
 type blockCache struct {
-	mu    sync.RWMutex
-	read  *lru.TwoQueueCache[blockCacheKey, *metastorev1.BlockMeta]
-	write *lru.Cache[blockCacheKey, *metastorev1.BlockMeta]
+	mu      sync.RWMutex
+	read    *lru.TwoQueueCache[blockCacheKey, *metastorev1.BlockMeta]
+	write   *lru.Cache[blockCacheKey, *metastorev1.BlockMeta]
+	metrics *metrics
 }
 
 type blockCacheKey struct {
@@ -170,7 +185,7 @@ type blockCacheKey struct {
 	block  string
 }
 
-func newBlockCache(rcs, wcs int) *blockCache {
+func newBlockCache(rcs, wcs int, m *metrics) *blockCache {
 	var c blockCache
 	if rcs <= 0 {
 		rcs = 1
@@ -180,6 +195,7 @@ func newBlockCache(rcs, wcs int) *blockCache {
 	}
 	c.read, _ = lru.New2Q[blockCacheKey, *metastorev1.BlockMeta](rcs)
 	c.write, _ = lru.New[blockCacheKey, *metastorev1.BlockMeta](wcs)
+	c.metrics = m
 	return &c
 }
 
@@ -193,11 +209,13 @@ func (c *blockCache) getOrCreate(shard *indexstore.Shard, block kvstore.KV) *met
 	v, ok := c.read.Get(k)
 	if ok {
 		c.mu.RUnlock()
+		c.metrics.recordBlockReadHit()
 		return v
 	}
 	v, ok = c.write.Get(k)
 	if ok {
 		c.mu.RUnlock()
+		c.metrics.recordBlockWriteHit()
 		return v
 	}
 	c.mu.RUnlock()
@@ -205,12 +223,15 @@ func (c *blockCache) getOrCreate(shard *indexstore.Shard, block kvstore.KV) *met
 	defer c.mu.Unlock()
 	v, ok = c.read.Get(k)
 	if ok {
+		c.metrics.recordBlockReadHit()
 		return v
 	}
 	v, ok = c.write.Get(k)
 	if ok {
+		c.metrics.recordBlockWriteHit()
 		return v
 	}
+	c.metrics.recordBlockMiss()
 	var md metastorev1.BlockMeta
 	if err := md.UnmarshalVT(block.Value); err != nil {
 		return &md

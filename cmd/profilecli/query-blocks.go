@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -119,7 +119,7 @@ func blocksQueryProfile(ctx context.Context, params *blocksQueryProfileParams) e
 		stackTraceSelectors,
 	)
 	if err != nil {
-		return errors.Wrap(err, "failed to query")
+		return fmt.Errorf("failed to query: %w", err)
 	}
 
 	return outputMergeProfile(ctx, params.Output, params.Force, resp)

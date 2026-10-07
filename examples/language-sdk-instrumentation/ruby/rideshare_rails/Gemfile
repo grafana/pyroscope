@@ -18,9 +18,9 @@ gem "sprockets-rails"
 gem "sqlite3", "~> 1.4"
 
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", "~> 6.0"
+gem "puma", "~> 7.2"
 
-gem 'pyroscope', '= 1.0.1'
+gem 'pyroscope', '= 1.0.7'
 
 gem "pyroscope-otel", "~> 0.2.0"
 gem 'opentelemetry-sdk', "~> 1.2.0"

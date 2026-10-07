@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"slices"
@@ -183,6 +185,49 @@ func createJFRRequestBody(t *testing.T, jfr, labels []byte) ([]byte, string) {
 	return b.Bytes(), w.FormDataContentType()
 }
 
+type errorPushService struct{ err error }
+
+func (s *errorPushService) PushBatch(context.Context, *model.PushRequest) error { return s.err }
+
+func (s *errorPushService) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+	return nil, s.err
+}
+
+func TestIngestPropagatesLimitStatus(t *testing.T) {
+	profile, err := os.ReadFile(repoRoot + "pkg/pprof/testdata/heap")
+	require.NoError(t, err)
+	reqBody, ct := createPProfRequest(t, profile, nil, nil)
+
+	for _, tc := range []struct {
+		name       string
+		pushErr    error
+		wantStatus int
+	}{
+		{
+			name:       "tenant over ingestion limit (429)",
+			pushErr:    connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("limit of 0 B/month reached")),
+			wantStatus: http.StatusTooManyRequests,
+		},
+		{
+			name:       "other ingest failure keeps 422",
+			pushErr:    fmt.Errorf("boom"),
+			wantStatus: http.StatusUnprocessableEntity,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := NewPyroscopeIngestHandler(&errorPushService{err: tc.pushErr}, validation.MockLimits{}, log.NewNopLogger())
+
+			ctx := tenant.InjectTenantID(context.Background(), "tenant-a")
+			req := httptest.NewRequestWithContext(ctx, "POST", "/ingest?name=pprof.test{qwe=asd}&spyName=foo239", bytes.NewReader(reqBody))
+			req.Header.Set("Content-Type", ct)
+			res := httptest.NewRecorder()
+
+			h.ServeHTTP(res, req)
+			assert.Equal(t, tc.wantStatus, res.Code)
+		})
+	}
+}
+
 func BenchmarkIngestJFR(b *testing.B) {
 	jfrs := []string{
 		"cortex-dev-01__kafka-0__cpu__0.jfr.gz",
@@ -210,6 +255,45 @@ func BenchmarkIngestJFR(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestParseInputMetadataFromRequest_InvalidSampleRateDefaults(t *testing.T) {
+	t.Parallel()
+
+	h := ingestHandler{log: log.NewNopLogger()}
+
+	tests := []struct {
+		name       string
+		sampleRate string
+		expect     uint32
+	}{
+		{name: "negative", sampleRate: "-1", expect: 100},
+		{name: "zero", sampleRate: "0", expect: 0},
+		{name: "non numeric", sampleRate: "abc", expect: 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodPost, "/ingest?name=test-app&sampleRate="+tt.sampleRate, nil)
+
+			input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.Equal(t, tt.expect, input.Metadata.SampleRate)
+		})
+	}
+}
+
+func TestParseInputMetadataFromRequest_ValidSampleRatePreserved(t *testing.T) {
+	t.Parallel()
+
+	h := ingestHandler{log: log.NewNopLogger()}
+	req := httptest.NewRequest(http.MethodPost, "/ingest?name=test-app&sampleRate=97", nil)
+
+	input, err := h.parseInputMetadataFromRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.EqualValues(t, 97, input.Metadata.SampleRate)
 }
 
 func TestIngestPPROFFixtures(t *testing.T) {

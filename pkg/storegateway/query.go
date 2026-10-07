@@ -2,11 +2,11 @@ package storegateway
 
 import (
 	"context"
+	"errors"
 	"io"
 	"slices"
 
 	"connectrpc.com/connect"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"

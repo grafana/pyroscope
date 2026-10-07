@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 
 	"github.com/cespare/xxhash/v2"
-	jsoniter "github.com/json-iterator/go"
 	prom "github.com/prometheus/prometheus/web/api/v1"
 	"go.uber.org/atomic"
 )
@@ -49,7 +48,7 @@ type Report struct {
 // sendReport sends the report to the stats server
 func sendReport(ctx context.Context, seed ClusterSeed, interval time.Time) error {
 	report := buildReport(seed, interval)
-	out, err := jsoniter.MarshalIndent(report, "", " ")
+	out, err := json.MarshalIndent(report, "", " ")
 	if err != nil {
 		return err
 	}
@@ -419,9 +418,8 @@ func (s *MultiStatistics) Value() map[string]interface{} {
 }
 
 func (s *MultiStatistics) Record(v float64, key string) {
-	keyStats := s.getOrCreateStatistics(key)
-	keyStats.Record(v)
-	s.values["__total__"].Record(v)
+	s.getOrCreateStatistics(key).Record(v)
+	s.getOrCreateStatistics("__total__").Record(v)
 }
 
 func (s *MultiStatistics) getOrCreateStatistics(key string) *Statistics {
@@ -589,9 +587,8 @@ func (c *MultiCounter) reset() {
 }
 
 func (c *MultiCounter) Inc(i int64, keyValue string) {
-	v := c.getOrCreateCounter(keyValue)
-	v.Inc(i)
-	c.values["__total__"].Inc(i)
+	c.getOrCreateCounter(keyValue).Inc(i)
+	c.getOrCreateCounter("__total__").Inc(i)
 }
 
 func (c *MultiCounter) getOrCreateCounter(keyValue string) *Counter {

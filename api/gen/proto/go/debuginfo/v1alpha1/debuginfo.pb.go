@@ -115,7 +115,7 @@ func (x ObjectMetadata_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ObjectMetadata_State.Descriptor instead.
 func (ObjectMetadata_State) EnumDescriptor() ([]byte, []int) {
-	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{5, 0}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{9, 0}
 }
 
 type FileMetadata struct {
@@ -375,21 +375,183 @@ func (*UploadFinishedResponse) Descriptor() ([]byte, []int) {
 	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{4}
 }
 
+type ListDebuginfoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDebuginfoRequest) Reset() {
+	*x = ListDebuginfoRequest{}
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDebuginfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDebuginfoRequest) ProtoMessage() {}
+
+func (x *ListDebuginfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDebuginfoRequest.ProtoReflect.Descriptor instead.
+func (*ListDebuginfoRequest) Descriptor() ([]byte, []int) {
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{5}
+}
+
+type ListDebuginfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Object        []*ObjectMetadata      `protobuf:"bytes,1,rep,name=object,proto3" json:"object,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDebuginfoResponse) Reset() {
+	*x = ListDebuginfoResponse{}
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDebuginfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDebuginfoResponse) ProtoMessage() {}
+
+func (x *ListDebuginfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDebuginfoResponse.ProtoReflect.Descriptor instead.
+func (*ListDebuginfoResponse) Descriptor() ([]byte, []int) {
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListDebuginfoResponse) GetObject() []*ObjectMetadata {
+	if x != nil {
+		return x.Object
+	}
+	return nil
+}
+
+type DeleteDebuginfoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GnuBuildId    string                 `protobuf:"bytes,1,opt,name=gnu_build_id,json=gnuBuildId,proto3" json:"gnu_build_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDebuginfoRequest) Reset() {
+	*x = DeleteDebuginfoRequest{}
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDebuginfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDebuginfoRequest) ProtoMessage() {}
+
+func (x *DeleteDebuginfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDebuginfoRequest.ProtoReflect.Descriptor instead.
+func (*DeleteDebuginfoRequest) Descriptor() ([]byte, []int) {
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DeleteDebuginfoRequest) GetGnuBuildId() string {
+	if x != nil {
+		return x.GnuBuildId
+	}
+	return ""
+}
+
+type DeleteDebuginfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDebuginfoResponse) Reset() {
+	*x = DeleteDebuginfoResponse{}
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDebuginfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDebuginfoResponse) ProtoMessage() {}
+
+func (x *DeleteDebuginfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDebuginfoResponse.ProtoReflect.Descriptor instead.
+func (*DeleteDebuginfoResponse) Descriptor() ([]byte, []int) {
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{8}
+}
+
 // This is stored in buckets at "debug-info/$tenant/$gnu_build_id/metadata"
 // Along with the actual uploaded file at "debug-info/$tenant/$gnu_build_id/exe"
 type ObjectMetadata struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	File          *FileMetadata          `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
-	State         ObjectMetadata_State   `protobuf:"varint,2,opt,name=state,proto3,enum=debuginfo.v1alpha1.ObjectMetadata_State" json:"state,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	File       *FileMetadata          `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
+	State      ObjectMetadata_State   `protobuf:"varint,2,opt,name=state,proto3,enum=debuginfo.v1alpha1.ObjectMetadata_State" json:"state,omitempty"`
+	StartedAt  *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	// Size of the uploaded ELF file in bytes.
+	SizeBytes     int64 `protobuf:"varint,5,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ObjectMetadata) Reset() {
 	*x = ObjectMetadata{}
-	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[5]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -401,7 +563,7 @@ func (x *ObjectMetadata) String() string {
 func (*ObjectMetadata) ProtoMessage() {}
 
 func (x *ObjectMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[5]
+	mi := &file_debuginfo_v1alpha1_debuginfo_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -414,7 +576,7 @@ func (x *ObjectMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObjectMetadata.ProtoReflect.Descriptor instead.
 func (*ObjectMetadata) Descriptor() ([]byte, []int) {
-	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{5}
+	return file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ObjectMetadata) GetFile() *FileMetadata {
@@ -445,6 +607,13 @@ func (x *ObjectMetadata) GetFinishedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ObjectMetadata) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
 var File_debuginfo_v1alpha1_debuginfo_proto protoreflect.FileDescriptor
 
 const file_debuginfo_v1alpha1_debuginfo_proto_rawDesc = "" +
@@ -470,20 +639,31 @@ const file_debuginfo_v1alpha1_debuginfo_proto_rawDesc = "" +
 	"\x15UploadFinishedRequest\x12 \n" +
 	"\fgnu_build_id\x18\x01 \x01(\tR\n" +
 	"gnuBuildId\"\x18\n" +
-	"\x16UploadFinishedResponse\"\xb0\x02\n" +
+	"\x16UploadFinishedResponse\"\x16\n" +
+	"\x14ListDebuginfoRequest\"S\n" +
+	"\x15ListDebuginfoResponse\x12:\n" +
+	"\x06object\x18\x01 \x03(\v2\".debuginfo.v1alpha1.ObjectMetadataR\x06object\":\n" +
+	"\x16DeleteDebuginfoRequest\x12 \n" +
+	"\fgnu_build_id\x18\x01 \x01(\tR\n" +
+	"gnuBuildId\"\x19\n" +
+	"\x17DeleteDebuginfoResponse\"\xcf\x02\n" +
 	"\x0eObjectMetadata\x124\n" +
 	"\x04file\x18\x01 \x01(\v2 .debuginfo.v1alpha1.FileMetadataR\x04file\x12>\n" +
 	"\x05state\x18\x02 \x01(\x0e2(.debuginfo.v1alpha1.ObjectMetadata.StateR\x05state\x129\n" +
 	"\n" +
 	"started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
 	"\vfinished_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"finishedAt\"0\n" +
+	"finishedAt\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x05 \x01(\x03R\tsizeBytes\"0\n" +
 	"\x05State\x12\x13\n" +
 	"\x0fSTATE_UPLOADING\x10\x00\x12\x12\n" +
-	"\x0eSTATE_UPLOADED\x10\x012\xfa\x01\n" +
+	"\x0eSTATE_UPLOADED\x10\x012\xd0\x03\n" +
 	"\x10DebuginfoService\x12{\n" +
 	"\x14ShouldInitiateUpload\x12/.debuginfo.v1alpha1.ShouldInitiateUploadRequest\x1a0.debuginfo.v1alpha1.ShouldInitiateUploadResponse\"\x00\x12i\n" +
-	"\x0eUploadFinished\x12).debuginfo.v1alpha1.UploadFinishedRequest\x1a*.debuginfo.v1alpha1.UploadFinishedResponse\"\x00B\xe5\x01\n" +
+	"\x0eUploadFinished\x12).debuginfo.v1alpha1.UploadFinishedRequest\x1a*.debuginfo.v1alpha1.UploadFinishedResponse\"\x00\x12f\n" +
+	"\rListDebuginfo\x12(.debuginfo.v1alpha1.ListDebuginfoRequest\x1a).debuginfo.v1alpha1.ListDebuginfoResponse\"\x00\x12l\n" +
+	"\x0fDeleteDebuginfo\x12*.debuginfo.v1alpha1.DeleteDebuginfoRequest\x1a+.debuginfo.v1alpha1.DeleteDebuginfoResponse\"\x00B\xe5\x01\n" +
 	"\x16com.debuginfo.v1alpha1B\x0eDebuginfoProtoP\x01ZRgithub.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1;debuginfov1alpha1\xa2\x02\x03DXX\xaa\x02\x12Debuginfo.V1alpha1\xca\x02\x12Debuginfo\\V1alpha1\xe2\x02\x1eDebuginfo\\V1alpha1\\GPBMetadata\xea\x02\x13Debuginfo::V1alpha1b\x06proto3"
 
 var (
@@ -499,7 +679,7 @@ func file_debuginfo_v1alpha1_debuginfo_proto_rawDescGZIP() []byte {
 }
 
 var file_debuginfo_v1alpha1_debuginfo_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_debuginfo_v1alpha1_debuginfo_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_debuginfo_v1alpha1_debuginfo_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_debuginfo_v1alpha1_debuginfo_proto_goTypes = []any{
 	(FileMetadata_Type)(0),               // 0: debuginfo.v1alpha1.FileMetadata.Type
 	(ObjectMetadata_State)(0),            // 1: debuginfo.v1alpha1.ObjectMetadata.State
@@ -508,25 +688,34 @@ var file_debuginfo_v1alpha1_debuginfo_proto_goTypes = []any{
 	(*ShouldInitiateUploadResponse)(nil), // 4: debuginfo.v1alpha1.ShouldInitiateUploadResponse
 	(*UploadFinishedRequest)(nil),        // 5: debuginfo.v1alpha1.UploadFinishedRequest
 	(*UploadFinishedResponse)(nil),       // 6: debuginfo.v1alpha1.UploadFinishedResponse
-	(*ObjectMetadata)(nil),               // 7: debuginfo.v1alpha1.ObjectMetadata
-	(*timestamppb.Timestamp)(nil),        // 8: google.protobuf.Timestamp
+	(*ListDebuginfoRequest)(nil),         // 7: debuginfo.v1alpha1.ListDebuginfoRequest
+	(*ListDebuginfoResponse)(nil),        // 8: debuginfo.v1alpha1.ListDebuginfoResponse
+	(*DeleteDebuginfoRequest)(nil),       // 9: debuginfo.v1alpha1.DeleteDebuginfoRequest
+	(*DeleteDebuginfoResponse)(nil),      // 10: debuginfo.v1alpha1.DeleteDebuginfoResponse
+	(*ObjectMetadata)(nil),               // 11: debuginfo.v1alpha1.ObjectMetadata
+	(*timestamppb.Timestamp)(nil),        // 12: google.protobuf.Timestamp
 }
 var file_debuginfo_v1alpha1_debuginfo_proto_depIdxs = []int32{
-	0, // 0: debuginfo.v1alpha1.FileMetadata.type:type_name -> debuginfo.v1alpha1.FileMetadata.Type
-	2, // 1: debuginfo.v1alpha1.ShouldInitiateUploadRequest.file:type_name -> debuginfo.v1alpha1.FileMetadata
-	2, // 2: debuginfo.v1alpha1.ObjectMetadata.file:type_name -> debuginfo.v1alpha1.FileMetadata
-	1, // 3: debuginfo.v1alpha1.ObjectMetadata.state:type_name -> debuginfo.v1alpha1.ObjectMetadata.State
-	8, // 4: debuginfo.v1alpha1.ObjectMetadata.started_at:type_name -> google.protobuf.Timestamp
-	8, // 5: debuginfo.v1alpha1.ObjectMetadata.finished_at:type_name -> google.protobuf.Timestamp
-	3, // 6: debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload:input_type -> debuginfo.v1alpha1.ShouldInitiateUploadRequest
-	5, // 7: debuginfo.v1alpha1.DebuginfoService.UploadFinished:input_type -> debuginfo.v1alpha1.UploadFinishedRequest
-	4, // 8: debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload:output_type -> debuginfo.v1alpha1.ShouldInitiateUploadResponse
-	6, // 9: debuginfo.v1alpha1.DebuginfoService.UploadFinished:output_type -> debuginfo.v1alpha1.UploadFinishedResponse
-	8, // [8:10] is the sub-list for method output_type
-	6, // [6:8] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	0,  // 0: debuginfo.v1alpha1.FileMetadata.type:type_name -> debuginfo.v1alpha1.FileMetadata.Type
+	2,  // 1: debuginfo.v1alpha1.ShouldInitiateUploadRequest.file:type_name -> debuginfo.v1alpha1.FileMetadata
+	11, // 2: debuginfo.v1alpha1.ListDebuginfoResponse.object:type_name -> debuginfo.v1alpha1.ObjectMetadata
+	2,  // 3: debuginfo.v1alpha1.ObjectMetadata.file:type_name -> debuginfo.v1alpha1.FileMetadata
+	1,  // 4: debuginfo.v1alpha1.ObjectMetadata.state:type_name -> debuginfo.v1alpha1.ObjectMetadata.State
+	12, // 5: debuginfo.v1alpha1.ObjectMetadata.started_at:type_name -> google.protobuf.Timestamp
+	12, // 6: debuginfo.v1alpha1.ObjectMetadata.finished_at:type_name -> google.protobuf.Timestamp
+	3,  // 7: debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload:input_type -> debuginfo.v1alpha1.ShouldInitiateUploadRequest
+	5,  // 8: debuginfo.v1alpha1.DebuginfoService.UploadFinished:input_type -> debuginfo.v1alpha1.UploadFinishedRequest
+	7,  // 9: debuginfo.v1alpha1.DebuginfoService.ListDebuginfo:input_type -> debuginfo.v1alpha1.ListDebuginfoRequest
+	9,  // 10: debuginfo.v1alpha1.DebuginfoService.DeleteDebuginfo:input_type -> debuginfo.v1alpha1.DeleteDebuginfoRequest
+	4,  // 11: debuginfo.v1alpha1.DebuginfoService.ShouldInitiateUpload:output_type -> debuginfo.v1alpha1.ShouldInitiateUploadResponse
+	6,  // 12: debuginfo.v1alpha1.DebuginfoService.UploadFinished:output_type -> debuginfo.v1alpha1.UploadFinishedResponse
+	8,  // 13: debuginfo.v1alpha1.DebuginfoService.ListDebuginfo:output_type -> debuginfo.v1alpha1.ListDebuginfoResponse
+	10, // 14: debuginfo.v1alpha1.DebuginfoService.DeleteDebuginfo:output_type -> debuginfo.v1alpha1.DeleteDebuginfoResponse
+	11, // [11:15] is the sub-list for method output_type
+	7,  // [7:11] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_debuginfo_v1alpha1_debuginfo_proto_init() }
@@ -540,7 +729,7 @@ func file_debuginfo_v1alpha1_debuginfo_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_debuginfo_v1alpha1_debuginfo_proto_rawDesc), len(file_debuginfo_v1alpha1_debuginfo_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   6,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

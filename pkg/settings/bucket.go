@@ -4,18 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/thanos-io/objstore"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
 
 var (
-	oldSettingErr    = errors.New("newer update already written")
+	errOldSetting    = errors.New("newer update already written")
 	settingsFilename = "tenant_settings.json"
 )
 
@@ -80,7 +81,7 @@ func (s *bucketStore) Set(ctx context.Context, tenantID string, setting *setting
 
 	oldSetting, ok := s.store[tenantID][setting.Name]
 	if ok && oldSetting.ModifiedAt > setting.ModifiedAt {
-		return nil, errors.Wrapf(oldSettingErr, "failed to update %s", setting.Name)
+		return nil, fmt.Errorf("failed to update %s: %w", setting.Name, errOldSetting)
 	}
 	s.store[tenantID][setting.Name] = setting
 
@@ -112,7 +113,7 @@ func (s *bucketStore) Delete(ctx context.Context, tenantID string, name string, 
 	}
 
 	if setting.ModifiedAt > modifiedAtMs {
-		return errors.Wrapf(oldSettingErr, "failed to delete %s", name)
+		return fmt.Errorf("failed to delete %s: %w", name, errOldSetting)
 	}
 
 	delete(tenantSettings, name)

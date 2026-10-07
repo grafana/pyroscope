@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

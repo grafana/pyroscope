@@ -167,6 +167,7 @@ func (c *Cluster) commonFlags(comp *Component) []string {
 		"-overrides-exporter.ring.instance-id=" + nodeName,
 		"-overrides-exporter.ring.heartbeat-period=1s",
 		"-query-frontend.instance-addr=" + listenAddr,
+		"-query-frontend.async-queries-enabled=true",
 	}
 }
 

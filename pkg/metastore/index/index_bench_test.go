@@ -32,7 +32,7 @@ func BenchmarkIndex_GetTenantStats(b *testing.B) {
 	config.BlockReadCacheSize = 1000
 	config.BlockWriteCacheSize = 1000
 
-	idx := NewIndex(util.Logger, NewStore(), config)
+	idx := NewIndex(util.Logger, NewStore(), config, nil)
 	require.NoError(b, db.Update(idx.Init))
 
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

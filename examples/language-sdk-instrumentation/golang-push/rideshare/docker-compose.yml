@@ -35,6 +35,8 @@ services:
     build:
       context: .
   pyroscope:
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/pyroscope:latest
     ports:
     - 4040:4040
@@ -47,20 +49,25 @@ services:
     - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
     - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://prometheus:9090/api/v1/otlp/v1/metrics
   grafana:
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
     - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
     - GF_AUTH_ANONYMOUS_ENABLED=true
     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
     volumes:
     - ./grafana-provisioning:/etc/grafana/provisioning
     ports:
     - 3000:3000
   prometheus:
+    # This service is generated from examples/_templates/prometheus/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: prom/prometheus:v3.1.0
     ports:
-      - '9099:9090'
+    - '9099:9090'
     command: >
       --enable-feature=remote-write-receiver
       --enable-feature=exemplar-storage
@@ -69,4 +76,4 @@ services:
       --storage.tsdb.path=/prometheus
       --web.enable-otlp-receiver
     volumes:
-      - ./prometheus-provisioning/prometheus.yaml:/etc/prometheus/prometheus.yml
+    - ./prometheus-provisioning/prometheus.yaml:/etc/prometheus/prometheus.yml

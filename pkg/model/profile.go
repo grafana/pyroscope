@@ -68,6 +68,21 @@ func (t TraceID) String() string {
 	return hex.EncodeToString(t[:])
 }
 
+// TraceSelector keys on the raw 128-bit TraceID, unlike SpanSelector's uint64.
+type TraceSelector map[TraceID]struct{}
+
+func NewTraceSelector(traces []string) (TraceSelector, error) {
+	m := make(TraceSelector, len(traces))
+	for _, s := range traces {
+		t, err := DecodeTraceID(s)
+		if err != nil {
+			return nil, err
+		}
+		m[t] = struct{}{}
+	}
+	return m, nil
+}
+
 type SpanSelector map[uint64]struct{}
 
 func NewSpanSelector(spans []string) (SpanSelector, error) {

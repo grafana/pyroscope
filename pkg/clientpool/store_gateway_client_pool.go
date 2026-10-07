@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 func NewStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
@@ -45,7 +45,7 @@ func (f *storeGatewayPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_cli
 		return nil, err
 	}
 
-	httpClient := util.InstrumentedDefaultHTTPClient(util.WithTracingTransport(), util.WithBaggageTransport())
+	httpClient := httputil.InstrumentedDefaultHTTPClient(httputil.WithTracingTransport(), httputil.WithBaggageTransport())
 	return &storeGatewayPoolClient{
 		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(httpClient, "http://"+inst.Addr, f.options...),
 		HealthClient:              grpc_health_v1.NewHealthClient(conn),

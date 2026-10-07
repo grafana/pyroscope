@@ -118,7 +118,7 @@ docker ps -a
 
 ## Accessing Profiles Drilldown in Grafana
 
-Grafana includes the [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) app that you can use to view profile data. To access Profiles Drilldown, open a browser and navigate to [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+Grafana includes the [Profiles Drilldown](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/explore/simplified-exploration/profiles/) app that you can use to view profile data. To access Profiles Drilldown, open a browser and navigate to [http://localhost:3000/a/grafana-pyroscope-app/explore](http://localhost:3000/a/grafana-pyroscope-app/explore).
 
 ### How tagging works
 
@@ -142,7 +142,7 @@ To start, let's take a look at a static tag use case. Within the `lib/server.py`
 This tag is considered static because the tag is set at the start of the application and doesn't change.
 In this case, it's useful for grouping profiles on a per region basis, which lets you see the performance of the application per region.
 
-1. Open Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+1. Open Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/explore](http://localhost:3000/a/grafana-pyroscope-app/explore).
 1. In the main menu, select **Drilldown** > **Profiles**.
 1. Select  **Labels** in the **Exploration** path.
 1. Select  **ride-sharing-app** in the **Service** drop-down menu.
@@ -170,7 +170,7 @@ Notice that the tag is dynamic as it changes based on the vehicle type.
 This is useful for grouping profiles on a per vehicle basis, allowing us to see the performance of the application per vehicle type being requested.
 
 Use Profiles Drilldown to see how this tag is used:
-1. Open Profiles Drilldown using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+1. Open Profiles Drilldown using the following url: [http://localhost:3000/a/grafana-pyroscope-app/explore](http://localhost:3000/a/grafana-pyroscope-app/explore).
 1. Select on **Labels** in the **Exploration** path.
 1. In the **Group by labels** section, select the **vehicle** tab.
 
@@ -185,7 +185,7 @@ You should now see a list of vehicle types that the application is using. You ca
 The first step when analyzing a profile outputted from your application, is to take note of the largest node which is where your application is spending the most resources.
 To discover this, you can use the **Flame graph** view:
 
-1. Open Profiles Drilldown using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+1. Open Profiles Drilldown using the following url: [http://localhost:3000/a/grafana-pyroscope-app/explore](http://localhost:3000/a/grafana-pyroscope-app/explore).
 1. Select **Flame graph** from the **Exploration** path.
 1. Verify that  `ride-sharing-app` is selected in the **Service** drop-down menu and `process_cpu/cpu` in the **Profile type** drop-down menu.
 
@@ -212,7 +212,7 @@ The **Diff flame graph** view lets you compare two time periods side by side.
 This is useful for identifying changes in performance over time.
 This example compares the performance of the `eu-north` region within a given time period against the other regions.
 
-1. Open Profiles Drilldown in Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer).
+1. Open Profiles Drilldown in Grafana using the following url: [http://localhost:3000/a/grafana-pyroscope-app/explore](http://localhost:3000/a/grafana-pyroscope-app/explore).
 1. Select **Diff flame graph** in the **Exploration** path.
 1. Verify that  `ride-sharing-app` is selected in the **Service** drop-down menu and `process_cpu/cpu` in the **Profile type** drop-down menu.
 1. In **Baseline**, filter by `region` and select `!= eu-north`.

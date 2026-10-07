@@ -1,0 +1,26 @@
+.fg-graph {
+  overflow: auto;
+  flex-grow: 1;
+  flex-basis: 50%;
+}
+
+.fg-sandwich-canvas-wrapper {
+  display: flex;
+  /* margin-bottom is set inline per-render because it depends on
+     devicePixelRatio + PIXELS_PER_LEVEL constant. */
+}
+
+.fg-sandwich-marker {
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.fg-sandwich-marker-callees {
+  text-align: right;
+}
+
+.fg-sandwich-marker-icon {
+  vertical-align: baseline;
+}

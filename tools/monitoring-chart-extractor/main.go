@@ -16,9 +16,10 @@ import (
 
 func main() {
 	outputPath := flag.CommandLine.String("output.path", "./operations/monitoring/", "Provide the output path for the code generation. Warning: All existing files will be overwritten.")
+	dashboardsPath := flag.CommandLine.String("output.dashboards.path", "", "Override dashboard output directory (defaults to <output.path>/dashboards/).")
 	flag.Parse()
 
-	if err := run(*outputPath); err != nil {
+	if err := run(*outputPath, *dashboardsPath); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -36,8 +37,8 @@ func outputRules(outputPath string, fileName string, body []byte) error {
 	return os.WriteFile(path, body, 0644)
 }
 
-func outputDashboards(outputPath string, fileName string, body []byte) error {
-	path := filepath.Join(outputPath, "dashboards", fileName)
+func outputDashboards(dashboardsDir string, fileName string, body []byte) error {
+	path := filepath.Join(dashboardsDir, fileName)
 
 	if !strings.HasSuffix(path, ".json") {
 		return nil
@@ -60,7 +61,11 @@ func outputDashboards(outputPath string, fileName string, body []byte) error {
 	return os.WriteFile(path, bodyFormatted, 0644)
 }
 
-func run(outputPath string) error {
+func run(outputPath, dashboardsPath string) error {
+	if dashboardsPath == "" {
+		dashboardsPath = filepath.Join(outputPath, "dashboards")
+	}
+
 	d := yaml.NewDecoder(os.Stdin)
 	obj := map[string]any{}
 
@@ -97,7 +102,9 @@ func run(outputPath string) error {
 
 		switch name {
 		case "pyroscope-monitoring-dashboards":
-			handle = outputDashboards
+			handle = func(_, file string, body []byte) error {
+				return outputDashboards(dashboardsPath, file, body)
+			}
 		case "pyroscope-monitoring-rules":
 			handle = outputRules
 		default:

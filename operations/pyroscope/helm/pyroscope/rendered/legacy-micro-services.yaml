@@ -6,10 +6,10 @@ metadata:
   name: pyroscope-dev-ad-hoc-profiles
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ad-hoc-profiles"
 spec:
@@ -27,10 +27,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -48,10 +48,10 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -69,10 +69,10 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -90,10 +90,10 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -111,10 +111,10 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -132,10 +132,10 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -153,10 +153,10 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -174,10 +174,10 @@ metadata:
   name: pyroscope-dev-tenant-settings
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "tenant-settings"
 spec:
@@ -196,10 +196,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -209,7 +209,6 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: "minio-sa"
-  namespace: "default"
 ---
 # Source: pyroscope/templates/serviceaccount.yaml
 apiVersion: v1
@@ -218,10 +217,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/charts/minio/templates/secrets.yaml
@@ -229,10 +228,9 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 type: Opaque
@@ -245,115 +243,113 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 data:
   initialize: |-
     #!/bin/sh
-    set -e ; # Have script exit in the event of a failed command.
+    set -e # Have script exit in the event of a failed command.
     MC_CONFIG_DIR="/etc/minio/mc/"
     MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
     
     # connectToMinio
     # Use a check-sleep-check loop to wait for MinIO service to be available
     connectToMinio() {
-      SCHEME=$1
-      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
-      set -e ; # fail if we can't read the keys.
-      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
-      set +e ; # The connections to minio are allowed to fail.
-      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
-      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
-      $MC_COMMAND ;
-      STATUS=$? ;
-      until [ $STATUS = 0 ]
-      do
-        ATTEMPTS=`expr $ATTEMPTS + 1` ;
-        echo \"Failed attempts: $ATTEMPTS\" ;
-        if [ $ATTEMPTS -gt $LIMIT ]; then
-          exit 1 ;
-        fi ;
-        sleep 2 ; # 1 second intervals between attempts
-        $MC_COMMAND ;
-        STATUS=$? ;
-      done ;
-      set -e ; # reset `e` as active
-      return 0
+    	SCHEME=$1
+    	ATTEMPTS=0
+    	LIMIT=29 # Allow 30 attempts
+    	set -e   # fail if we can't read the keys.
+    	ACCESS=$(cat /config/rootUser)
+    	SECRET=$(cat /config/rootPassword)
+    	set +e # The connections to minio are allowed to fail.
+    	echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT"
+    	MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET"
+    	$MC_COMMAND
+    	STATUS=$?
+    	until [ $STATUS = 0 ]; do
+    		ATTEMPTS=$(expr $ATTEMPTS + 1)
+    		echo \"Failed attempts: $ATTEMPTS\"
+    		if [ $ATTEMPTS -gt $LIMIT ]; then
+    			exit 1
+    		fi
+    		sleep 2 # 1 second intervals between attempts
+    		$MC_COMMAND
+    		STATUS=$?
+    	done
+    	set -e # reset `e` as active
+    	return 0
     }
     
     # checkBucketExists ($bucket)
     # Check if the bucket exists, by using the exit code of `mc ls`
     checkBucketExists() {
-      BUCKET=$1
-      CMD=$(${MC} ls myminio/$BUCKET > /dev/null 2>&1)
-      return $?
+    	BUCKET=$1
+    	CMD=$(${MC} stat myminio/$BUCKET >/dev/null 2>&1)
+    	return $?
     }
     
     # createBucket ($bucket, $policy, $purge)
     # Ensure bucket exists, purging if asked to
     createBucket() {
-      BUCKET=$1
-      POLICY=$2
-      PURGE=$3
-      VERSIONING=$4
-      OBJECTLOCKING=$5
+    	BUCKET=$1
+    	POLICY=$2
+    	PURGE=$3
+    	VERSIONING=$4
+    	OBJECTLOCKING=$5
     
-      # Purge the bucket, if set & exists
-      # Since PURGE is user input, check explicitly for `true`
-      if [ $PURGE = true ]; then
-        if checkBucketExists $BUCKET ; then
-          echo "Purging bucket '$BUCKET'."
-          set +e ; # don't exit if this fails
-          ${MC} rm -r --force myminio/$BUCKET
-          set -e ; # reset `e` as active
-        else
-          echo "Bucket '$BUCKET' does not exist, skipping purge."
-        fi
-      fi
+    	# Purge the bucket, if set & exists
+    	# Since PURGE is user input, check explicitly for `true`
+    	if [ $PURGE = true ]; then
+    		if checkBucketExists $BUCKET; then
+    			echo "Purging bucket '$BUCKET'."
+    			set +e # don't exit if this fails
+    			${MC} rm -r --force myminio/$BUCKET
+    			set -e # reset `e` as active
+    		else
+    			echo "Bucket '$BUCKET' does not exist, skipping purge."
+    		fi
+    	fi
     
-    # Create the bucket if it does not exist and set objectlocking if enabled (NOTE: versioning will be not changed if OBJECTLOCKING is set because it enables versioning to the Buckets created)
-    if ! checkBucketExists $BUCKET ; then
-        if [ ! -z $OBJECTLOCKING ] ; then
-          if [ $OBJECTLOCKING = true ] ; then
-              echo "Creating bucket with OBJECTLOCKING '$BUCKET'"
-              ${MC} mb --with-lock myminio/$BUCKET
-          elif [ $OBJECTLOCKING = false ] ; then
-                echo "Creating bucket '$BUCKET'"
-                ${MC} mb myminio/$BUCKET
-          fi
-      elif [ -z $OBJECTLOCKING ] ; then
-            echo "Creating bucket '$BUCKET'"
-            ${MC} mb myminio/$BUCKET
-      else
-        echo "Bucket '$BUCKET' already exists."  
-      fi
-      fi
+    	# Create the bucket if it does not exist and set objectlocking if enabled (NOTE: versioning will be not changed if OBJECTLOCKING is set because it enables versioning to the Buckets created)
+    	if ! checkBucketExists $BUCKET; then
+    		if [ ! -z $OBJECTLOCKING ]; then
+    			if [ $OBJECTLOCKING = true ]; then
+    				echo "Creating bucket with OBJECTLOCKING '$BUCKET'"
+    				${MC} mb --with-lock myminio/$BUCKET
+    			elif [ $OBJECTLOCKING = false ]; then
+    				echo "Creating bucket '$BUCKET'"
+    				${MC} mb myminio/$BUCKET
+    			fi
+    		elif [ -z $OBJECTLOCKING ]; then
+    			echo "Creating bucket '$BUCKET'"
+    			${MC} mb myminio/$BUCKET
+    		else
+    			echo "Bucket '$BUCKET' already exists."
+    		fi
+    	fi
     
+    	# set versioning for bucket if objectlocking is disabled or not set
+    	if [ $OBJECTLOCKING = false ]; then
+    		if [ ! -z $VERSIONING ]; then
+    			if [ $VERSIONING = true ]; then
+    				echo "Enabling versioning for '$BUCKET'"
+    				${MC} version enable myminio/$BUCKET
+    			elif [ $VERSIONING = false ]; then
+    				echo "Suspending versioning for '$BUCKET'"
+    				${MC} version suspend myminio/$BUCKET
+    			fi
+    		fi
+    	else
+    		echo "Bucket '$BUCKET' versioning unchanged."
+    	fi
     
-      # set versioning for bucket if objectlocking is disabled or not set
-      if [ -z $OBJECTLOCKING ] ; then
-      if [ ! -z $VERSIONING ] ; then
-        if [ $VERSIONING = true ] ; then
-            echo "Enabling versioning for '$BUCKET'"
-            ${MC} version enable myminio/$BUCKET
-        elif [ $VERSIONING = false ] ; then
-            echo "Suspending versioning for '$BUCKET'"
-            ${MC} version suspend myminio/$BUCKET
-        fi
-        fi
-      else
-          echo "Bucket '$BUCKET' versioning unchanged."
-      fi
-    
-    
-      # At this point, the bucket should exist, skip checking for existence
-      # Set policy on the bucket
-      echo "Setting policy of bucket '$BUCKET' to '$POLICY'."
-      ${MC} policy set $POLICY myminio/$BUCKET
+    	# At this point, the bucket should exist, skip checking for existence
+    	# Set policy on the bucket
+    	echo "Setting policy of bucket '$BUCKET' to '$POLICY'."
+    	${MC} anonymous set $POLICY myminio/$BUCKET
     }
     
     # Try connecting to MinIO instance
@@ -363,7 +359,8 @@ data:
     
     
     # Create the buckets
-    createBucket grafana-pyroscope-data none false  
+    createBucket grafana-pyroscope-data "none" false false false
+    
   add-user: |-
     #!/bin/sh
     set -e ; # Have script exit in the event of a failed command.
@@ -435,7 +432,9 @@ data:
       # set policy for user
       if [ ! -z $POLICY -a $POLICY != " " ] ; then
           echo "Adding policy '$POLICY' for '$USER'"
-          ${MC} admin policy set myminio $POLICY user=$USER
+          set +e ; # policy already attach errors out, allow it.
+          ${MC} admin policy attach myminio $POLICY --user=$USER
+          set -e
       else
           echo "User '$USER' has no policy attached."
       fi
@@ -505,13 +504,95 @@ data:
       else
         echo "Policy '$NAME' already exists."
       fi
-      ${MC} admin policy add myminio $NAME /config/$FILENAME.json
+      ${MC} admin policy create myminio $NAME /config/$FILENAME.json
     
     }
     
     # Try connecting to MinIO instance
     scheme=http
     connectToMinio $scheme
+    
+    
+    
+  add-svcacct: |-
+    #!/bin/sh
+    set -e ; # Have script exit in the event of a failed command.
+    MC_CONFIG_DIR="/etc/minio/mc/"
+    MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
+    
+    # AccessKey and secretkey credentials file are added to prevent shell execution errors caused by special characters.
+    # Special characters for example : ',",<,>,{,}
+    MINIO_ACCESSKEY_SECRETKEY_TMP="/tmp/accessKey_and_secretKey_svcacct_tmp"
+    
+    # connectToMinio
+    # Use a check-sleep-check loop to wait for MinIO service to be available
+    connectToMinio() {
+      SCHEME=$1
+      ATTEMPTS=0 ; LIMIT=29 ; # Allow 30 attempts
+      set -e ; # fail if we can't read the keys.
+      ACCESS=$(cat /config/rootUser) ; SECRET=$(cat /config/rootPassword) ;
+      set +e ; # The connections to minio are allowed to fail.
+      echo "Connecting to MinIO server: $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT" ;
+      MC_COMMAND="${MC} alias set myminio $SCHEME://$MINIO_ENDPOINT:$MINIO_PORT $ACCESS $SECRET" ;
+      $MC_COMMAND ;
+      STATUS=$? ;
+      until [ $STATUS = 0 ]
+      do
+        ATTEMPTS=`expr $ATTEMPTS + 1` ;
+        echo \"Failed attempts: $ATTEMPTS\" ;
+        if [ $ATTEMPTS -gt $LIMIT ]; then
+          exit 1 ;
+        fi ;
+        sleep 2 ; # 2 second intervals between attempts
+        $MC_COMMAND ;
+        STATUS=$? ;
+      done ;
+      set -e ; # reset `e` as active
+      return 0
+    }
+    
+    # checkSvcacctExists ()
+    # Check if the svcacct exists, by using the exit code of `mc admin user svcacct info`
+    checkSvcacctExists() {
+      CMD=$(${MC} admin user svcacct info myminio $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) > /dev/null 2>&1)
+      return $?
+    }
+    
+    # createSvcacct ($user)
+    createSvcacct () {
+      USER=$1
+      FILENAME=$2
+      #check accessKey_and_secretKey_tmp file
+      if [[ ! -f $MINIO_ACCESSKEY_SECRETKEY_TMP ]];then
+        echo "credentials file does not exist"
+        return 1
+      fi
+      if [[ $(cat $MINIO_ACCESSKEY_SECRETKEY_TMP|wc -l) -ne 2 ]];then
+        echo "credentials file is invalid"
+        rm -f $MINIO_ACCESSKEY_SECRETKEY_TMP
+        return 1
+      fi
+      SVCACCT=$(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP)
+      # Create the svcacct if it does not exist
+      if ! checkSvcacctExists ; then
+        echo "Creating svcacct '$SVCACCT'"
+        # Check if policy file is define
+        if [ -z $FILENAME ]; then
+          ${MC} admin user svcacct add --access-key $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) --secret-key $(tail -n1 $MINIO_ACCESSKEY_SECRETKEY_TMP) myminio $USER
+        else
+          ${MC} admin user svcacct add --access-key $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) --secret-key $(tail -n1 $MINIO_ACCESSKEY_SECRETKEY_TMP) --policy /config/$FILENAME.json myminio $USER
+        fi
+      else
+        echo "Svcacct '$SVCACCT' already exists."
+      fi
+      #clean up credentials files.
+      rm -f $MINIO_ACCESSKEY_SECRETKEY_TMP
+    }
+    
+    # Try connecting to MinIO instance
+    scheme=http
+    connectToMinio $scheme
+    
     
     
   custom-command: |-
@@ -565,10 +646,10 @@ metadata:
   name: alloy-config-pyroscope
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 data:
   config.alloy: |
@@ -627,6 +708,21 @@ data:
     		action        = "replace"
     		source_labels = ["__meta_kubernetes_pod_container_name"]
     		target_label  = "container"
+    	}
+
+    	// Set service_name by choosing the first non-empty value from the following ordered list:
+    	// - pod.annotation[profiles.grafana.com/service_name]
+    	// - pod.annotation[resource.opentelemetry.io/service.name]
+    	rule {
+    		action        = "replace"
+    		source_labels = [
+    			"__meta_kubernetes_pod_annotation_profiles_grafana_com_service_name",
+    			"__meta_kubernetes_pod_annotation_resource_opentelemetry_io_service_name",
+    		]
+    		separator    = ";"
+    		regex        = "^(?:;*)?([^;]+).*$"
+    		replacement  = "$1"
+    		target_label = "service_name"
     	}
 
     	rule {
@@ -1423,10 +1519,10 @@ metadata:
   name: pyroscope-dev-overrides-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -1440,10 +1536,10 @@ metadata:
   name: pyroscope-dev-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -1462,10 +1558,10 @@ kind: ClusterRole
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1559,7 +1655,21 @@ rules:
     - ""
     resources:
     - nodes
-    - nodes/proxy
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/pods
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
     - nodes/metrics
     verbs:
     - get
@@ -1576,10 +1686,10 @@ kind: ClusterRoleBinding
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1597,11 +1707,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: pyroscope-dev-discovery
+  namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -1622,11 +1733,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: pyroscope-dev-discovery
+  namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -1644,10 +1756,10 @@ metadata:
   name: pyroscope-dev-alloy-cluster
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -1677,10 +1789,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -1700,10 +1812,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pyroscope-dev-minio-console
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 spec:
@@ -1722,10 +1833,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
     monitoring: "true"
@@ -1745,12 +1855,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pyroscope-dev-minio-svc
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
-    release: "pyroscope-dev"
-    heritage: "Helm"
+    chart: minio-5.4.0
+    release: pyroscope-dev
+    heritage: Helm
 spec:
   publishNotReadyAddresses: true
   clusterIP: None
@@ -1770,10 +1879,10 @@ metadata:
   name: pyroscope-dev-memberlist
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1797,10 +1906,10 @@ metadata:
   name: pyroscope-dev-ad-hoc-profiles
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ad-hoc-profiles"
 spec:
@@ -1826,10 +1935,10 @@ metadata:
   name: pyroscope-dev-ad-hoc-profiles-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ad-hoc-profiles"
 spec:
@@ -1856,10 +1965,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -1885,10 +1994,10 @@ metadata:
   name: pyroscope-dev-compactor-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -1915,10 +2024,10 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -1944,10 +2053,10 @@ metadata:
   name: pyroscope-dev-distributor-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -1974,10 +2083,10 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -2003,10 +2112,10 @@ metadata:
   name: pyroscope-dev-ingester-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -2033,10 +2142,10 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -2062,10 +2171,10 @@ metadata:
   name: pyroscope-dev-querier-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -2092,10 +2201,10 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -2121,10 +2230,10 @@ metadata:
   name: pyroscope-dev-query-frontend-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -2151,10 +2260,10 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -2180,10 +2289,10 @@ metadata:
   name: pyroscope-dev-query-scheduler-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -2210,10 +2319,10 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -2239,10 +2348,10 @@ metadata:
   name: pyroscope-dev-store-gateway-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -2269,10 +2378,10 @@ metadata:
   name: pyroscope-dev-tenant-settings
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "tenant-settings"
 spec:
@@ -2298,10 +2407,10 @@ metadata:
   name: pyroscope-dev-tenant-settings-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "tenant-settings"
 spec:
@@ -2328,10 +2437,10 @@ metadata:
   name: pyroscope-dev-ad-hoc-profiles
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ad-hoc-profiles"
 spec:
@@ -2344,9 +2453,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2369,7 +2478,7 @@ spec:
         - name: "ad-hoc-profiles"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ad-hoc-profiles"
@@ -2439,10 +2548,10 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -2455,9 +2564,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2480,7 +2589,7 @@ spec:
         - name: "distributor"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
@@ -2550,10 +2659,10 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -2566,9 +2675,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2591,7 +2700,7 @@ spec:
         - name: "querier"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
@@ -2661,10 +2770,10 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -2677,9 +2786,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2702,7 +2811,7 @@ spec:
         - name: "query-frontend"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
@@ -2772,10 +2881,10 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -2788,9 +2897,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2813,7 +2922,7 @@ spec:
         - name: "query-scheduler"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-scheduler"
@@ -2883,10 +2992,10 @@ metadata:
   name: pyroscope-dev-tenant-settings
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "tenant-settings"
 spec:
@@ -2899,9 +3008,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2924,7 +3033,7 @@ spec:
         - name: "tenant-settings"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=tenant-settings"
@@ -2994,10 +3103,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
 spec:
@@ -3019,7 +3128,7 @@ spec:
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.port_name: http-metrics
         profiles.grafana.com/memory.scrape: "true"
-        profiles.grafana.com/service_git_ref: v1.8.1
+        profiles.grafana.com/service_git_ref: v1.19.2
         profiles.grafana.com/service_repository: https://github.com/grafana/alloy
       labels:
         app.kubernetes.io/name: alloy
@@ -3028,7 +3137,7 @@ spec:
       serviceAccountName: pyroscope-dev-alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.12.2
+          image: docker.io/grafana/alloy:v1.19.2
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -3046,6 +3155,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           ports:
             - containerPort: 12345
               name: http-metrics
@@ -3060,7 +3173,8 @@ spec:
             - name: config
               mountPath: /etc/alloy
         - name: config-reloader
-          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1
+          imagePullPolicy: IfNotPresent
           args:
             - --watched-dir=/etc/alloy
             - --reload-url=http://localhost:12345/-/reload
@@ -3071,6 +3185,17 @@ spec:
             requests:
               cpu: 10m
               memory: 50Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
       dnsPolicy: ClusterFirst
       volumes:
         - name: config
@@ -3082,10 +3207,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: pyroscope-dev-minio
-  namespace: "default"
   labels:
     app: minio
-    chart: minio-4.1.0
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
 spec:
@@ -3105,24 +3229,24 @@ spec:
         app: minio
         release: pyroscope-dev
       annotations:
-        checksum/secrets: 1327df257dd66b53a08dc3d9f2584d6c07cd43932cd3c3f68a7ffc636c5a0d92
-        checksum/config: 68ad5341411f10a6da13194dfbe5544a594ccedef5dfb12d34529d2be6d0f67f
+        checksum/secrets: 46785019136d8f94650c4e208eaa880799602d457c3f1c03315d6d7d17c664e1
+        checksum/config: 099e5e17331af9748f37ff86288eea635153e99fe9c1213d0346c0cb8e41ad57
     spec:
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-
+        runAsGroup: 1000
+        runAsUser: 1000
       serviceAccountName: minio-sa
       containers:
         - name: minio
-          image: quay.io/minio/minio:RELEASE.2022-10-24T18-35-07Z
+          image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
           imagePullPolicy: IfNotPresent
-
-          command: [ "/bin/sh",
+          command: [
+            "/bin/sh",
             "-ce",
-            "/usr/bin/docker-entrypoint.sh minio server  http://pyroscope-dev-minio-{0...0}.pyroscope-dev-minio-svc.default.svc.cluster.local/export-{0...1} -S /etc/minio/certs/ --address :9000 --console-address :9001" ]
+            "/usr/bin/docker-entrypoint.sh minio server http://pyroscope-dev-minio-{0...0}.pyroscope-dev-minio-svc.default.svc/export-{0...1} -S /etc/minio/certs/ --address :9000 --console-address :9001"
+          ]
           volumeMounts:
             - name: export-0
               mountPath: /export-0
@@ -3149,20 +3273,26 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi      
+              memory: 128Mi
+          securityContext: 
+            readOnlyRootFilesystem: false      
       volumes:
         - name: minio-user
           secret:
             secretName: pyroscope-dev-minio        
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: export-0
       spec:
         accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
             storage: 5Gi
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: export-1
       spec:
         accessModes: [ "ReadWriteOnce" ]
@@ -3177,10 +3307,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -3195,9 +3325,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -3220,7 +3350,7 @@ spec:
         - name: "compactor"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=compactor"
@@ -3295,10 +3425,10 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -3313,9 +3443,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -3338,7 +3468,7 @@ spec:
         - name: "ingester"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
@@ -3409,10 +3539,10 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
@@ -3427,9 +3557,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4c02c3b7e8305a59c75c320388fb407300053f09f0d5a9067b8943bdc32049ce
+        checksum/config: f9b47e6f8c6ff9049169427d1303853b02bced2a8060828be8f37f537d038ebd
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -3452,7 +3582,7 @@ spec:
         - name: "store-gateway"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=store-gateway"
@@ -3516,15 +3646,14 @@ spec:
         - name: data
           emptyDir: {}
 ---
-# Source: pyroscope/charts/minio/templates/post-install-create-bucket-job.yaml
+# Source: pyroscope/charts/minio/templates/post-job.yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: pyroscope-dev-minio-make-bucket-job
-  namespace: "default"
+  name: pyroscope-dev-minio-post-job
   labels:
-    app: minio-make-bucket-job
-    chart: minio-4.1.0
+    app: minio-post-job
+    chart: minio-5.4.0
     release: pyroscope-dev
     heritage: Helm
   annotations:
@@ -3539,77 +3668,54 @@ spec:
     spec:
       restartPolicy: OnFailure      
       volumes:
+        - name: etc-path
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
         - name: minio-configuration
           projected:
             sources:
-            - configMap:
-                name: pyroscope-dev-minio
-            - secret:
-                name: pyroscope-dev-minio
-
+              - configMap:
+                  name: pyroscope-dev-minio
+              - secret:
+                  name: pyroscope-dev-minio
       serviceAccountName: minio-sa
       containers:
-      - name: minio-mc
-        image: "quay.io/minio/mc:RELEASE.2022-10-20T23-26-33Z"
-        imagePullPolicy: IfNotPresent
-        command: ["/bin/sh", "/config/initialize"]
-        env:
-          - name: MINIO_ENDPOINT
-            value: pyroscope-dev-minio
-          - name: MINIO_PORT
-            value: "9000"
-        volumeMounts:
-          - name: minio-configuration
-            mountPath: /config
-        resources:
-          requests:
-            memory: 128Mi
----
-# Source: pyroscope/charts/minio/templates/post-install-create-user-job.yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: pyroscope-dev-minio-make-user-job
-  namespace: "default"
-  labels:
-    app: minio-make-user-job
-    chart: minio-4.1.0
-    release: pyroscope-dev
-    heritage: Helm
-  annotations:
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
-spec:
-  template:
-    metadata:
-      labels:
-        app: minio-job
-        release: pyroscope-dev
-    spec:
-      restartPolicy: OnFailure      
-      volumes:
-        - name: minio-configuration
-          projected:
-            sources:
-            - configMap:
-                name: pyroscope-dev-minio
-            - secret:
-                name: pyroscope-dev-minio
-
-      serviceAccountName: minio-sa
-      containers:
-      - name: minio-mc
-        image: "quay.io/minio/mc:RELEASE.2022-10-20T23-26-33Z"
-        imagePullPolicy: IfNotPresent
-        command: ["/bin/sh", "/config/add-user"]
-        env:
-          - name: MINIO_ENDPOINT
-            value: pyroscope-dev-minio
-          - name: MINIO_PORT
-            value: "9000"
-        volumeMounts:
-          - name: minio-configuration
-            mountPath: /config
-        resources:
-          requests:
-            memory: 128Mi
+        - name: minio-make-bucket
+          image: "pgsty/mc:RELEASE.2026-09-16T00-00-00Z"
+          imagePullPolicy: IfNotPresent
+          command: [ "/bin/sh", "/config/initialize" ]
+          env:
+            - name: MINIO_ENDPOINT
+              value: pyroscope-dev-minio
+            - name: MINIO_PORT
+              value: "9000"
+          volumeMounts:
+            - name: etc-path
+              mountPath: /etc/minio/mc
+            - name: tmp
+              mountPath: /tmp
+            - name: minio-configuration
+              mountPath: /config
+          resources:
+            requests:
+              memory: 128Mi
+        - name: minio-make-user
+          image: "pgsty/mc:RELEASE.2026-09-16T00-00-00Z"
+          imagePullPolicy: IfNotPresent
+          command: [ "/bin/sh", "/config/add-user" ]
+          env:
+            - name: MINIO_ENDPOINT
+              value: pyroscope-dev-minio
+            - name: MINIO_PORT
+              value: "9000"
+          volumeMounts:
+            - name: etc-path
+              mountPath: /etc/minio/mc
+            - name: tmp
+              mountPath: /tmp
+            - name: minio-configuration
+              mountPath: /config
+          resources:
+            requests:
+              memory: 128Mi

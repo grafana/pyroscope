@@ -1,11 +1,11 @@
 package cfg
 
 import (
+	"errors"
 	"flag"
 	"reflect"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/pkg/errors"
 )
 
 // Source is a generic configuration source. This function may do whatever is
@@ -19,6 +19,10 @@ type Source func(Cloneable) error
 // Contract: the cloned value must not mutate the original.
 type Cloneable interface {
 	Clone() flagext.Registerer
+}
+
+type SetFlagRecorder interface {
+	RecordSetFlag(name string)
 }
 
 var (

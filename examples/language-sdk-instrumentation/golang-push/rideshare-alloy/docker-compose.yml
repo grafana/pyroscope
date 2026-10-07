@@ -39,10 +39,11 @@ services:
       - "12345:12345"
 
   pyroscope:
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/pyroscope:latest
     ports:
     - 4040:4040
-
   load-generator:
     build:
       context: .
@@ -51,12 +52,15 @@ services:
     - PYROSCOPE_SERVER_ADDRESS=http://alloy:9999
 
   grafana:
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
     - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
     - GF_AUTH_ANONYMOUS_ENABLED=true
     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
     volumes:
     - ./grafana-provisioning:/etc/grafana/provisioning
     ports:

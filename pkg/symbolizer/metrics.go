@@ -24,11 +24,12 @@ const (
 	statusErrorHTTPOther    = statusErrorPrefix + "http_other"
 
 	// General error statuses
-	statusErrorCanceled   = statusErrorPrefix + "canceled"
-	statusErrorTimeout    = statusErrorPrefix + "timeout"
-	statusErrorInvalidID  = statusErrorPrefix + "invalid_id"
-	statusErrorOther      = statusErrorPrefix + "other"
-	statusErrorDebuginfod = statusErrorPrefix + "debuginfod_error"
+	statusErrorCanceled    = statusErrorPrefix + "canceled"
+	statusErrorTimeout     = statusErrorPrefix + "timeout"
+	statusErrorInvalidID   = statusErrorPrefix + "invalid_id"
+	statusErrorOther       = statusErrorPrefix + "other"
+	statusErrorDebuginfod  = statusErrorPrefix + "debuginfod_error"
+	statusErrorUnavailable = statusErrorPrefix + "unavailable"
 )
 
 type metrics struct {
@@ -37,6 +38,7 @@ type metrics struct {
 	// Debuginfod metrics
 	debuginfodRequestDuration *prometheus.HistogramVec
 	debuginfodFileSize        prometheus.Histogram
+	debuginfodBreakerTrips    prometheus.Counter
 
 	// Cache metrics
 	cacheOperations *prometheus.CounterVec
@@ -72,6 +74,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				NativeHistogramMinResetDuration: time.Hour,
 			},
 		),
+		debuginfodBreakerTrips: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_symbolizer_debuginfod_circuit_breaker_trips_total",
+			Help: "Times the debuginfod circuit breaker opened after consecutive network-level failures",
+		}),
 		// cache metrics
 		cacheOperations: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -126,6 +132,7 @@ func (m *metrics) register() {
 	collectors := []prometheus.Collector{
 		m.debuginfodRequestDuration,
 		m.debuginfodFileSize,
+		m.debuginfodBreakerTrips,
 		m.cacheOperations,
 		m.cacheSizeBytes,
 		m.profileSymbolization,

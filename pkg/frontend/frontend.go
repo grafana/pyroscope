@@ -7,6 +7,7 @@ package frontend
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -23,7 +24,6 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/otel"
@@ -32,6 +32,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/v2/pkg/anomalyapi"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs"
 	"github.com/grafana/pyroscope/v2/pkg/querier/stats"
@@ -49,6 +50,21 @@ type Config struct {
 	WorkerConcurrency int               `yaml:"scheduler_worker_concurrency" category:"advanced"`
 	GRPCClientConfig  grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
 
+	// AsyncQueriesEnabled toggles the experimental async query path on
+	// SelectMergeStacktraces. Off by default; when false, the Async field
+	// on the request is rejected with Unimplemented.
+	AsyncQueriesEnabled bool `yaml:"async_queries_enabled" category:"experimental"`
+
+	// QueryPlannerStrategy sets the query planner strategy. By default this is
+	// "classic" which provides the legacy query planner behavior.
+	//
+	// Optionally this can be "balanced" which uses the balanced query planner
+	// algorithm.
+	//
+	// TODO(bryanhuhta): Once "balanced" has been validated in production, make
+	// it the only strategy and remove both the classic planner and this option.
+	QueryPlannerStrategy string `yaml:"query_planner_strategy" category:"advanced" doc:"hidden"`
+
 	// Used to find local IP address, that is sent to scheduler and querier-worker.
 	InfNames   []string `yaml:"instance_interface_names" category:"advanced" doc:"default=[<private network interfaces>]"`
 	Addr       string   `yaml:"instance_addr" category:"advanced"`
@@ -59,6 +75,10 @@ type Config struct {
 	// inconsistent with the way address is specified in other places.
 	// The parameter is replaced with `instance_addr`.
 	AddrOld string `yaml:"address" category:"advanced" doc:"hidden"`
+
+	// AnomalyAPI configures the anomaly source used by QueryAnomalies' "stacktrace"
+	// anomaly type. Off by default.
+	AnomalyAPI anomalyapi.Config `yaml:"anomaly_api"`
 
 	// This configuration is injected internally.
 	QuerySchedulerDiscovery schedulerdiscovery.Config `yaml:"-"`
@@ -73,12 +93,23 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.StringVar(&cfg.Addr, "query-frontend.instance-addr", "", "IP address to advertise to the querier (via scheduler) (default is auto-detected from network interfaces).")
 	f.BoolVar(&cfg.EnableIPv6, "query-frontend.instance-enable-ipv6", false, "Enable using a IPv6 instance address. (default false)")
 	f.IntVar(&cfg.Port, "query-frontend.instance-port", 0, "Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).")
+	f.BoolVar(&cfg.AsyncQueriesEnabled, "query-frontend.async-queries-enabled", false, "Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)")
+	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
+	cfg.AnomalyAPI.RegisterFlags(f)
 }
 
 func (cfg *Config) Validate() error {
 	if cfg.QuerySchedulerDiscovery.Mode == schedulerdiscovery.ModeRing && cfg.SchedulerAddress != "" {
 		return fmt.Errorf("scheduler address cannot be specified when query-scheduler service discovery mode is set to '%s'", cfg.QuerySchedulerDiscovery.Mode)
+	}
+
+	switch cfg.QueryPlannerStrategy {
+	case "":
+		cfg.QueryPlannerStrategy = "classic"
+	case "classic", "balanced":
+	default:
+		return fmt.Errorf("unknown query planner strategy: %q", cfg.QueryPlannerStrategy)
 	}
 
 	return cfg.GRPCClientConfig.Validate()
@@ -192,7 +223,11 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 func (f *Frontend) starting(ctx context.Context) error {
 	f.schedulerWorkersWatcher.WatchService(f.schedulerWorkers)
 
-	return errors.Wrap(services.StartAndAwaitRunning(ctx, f.schedulerWorkers), "failed to start frontend scheduler workers")
+	err := services.StartAndAwaitRunning(ctx, f.schedulerWorkers)
+	if err != nil {
+		return fmt.Errorf("failed to start frontend scheduler workers: %w", err)
+	}
+	return nil
 }
 
 func (f *Frontend) running(ctx context.Context) error {
@@ -200,12 +235,16 @@ func (f *Frontend) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-f.schedulerWorkersWatcher.Chan():
-		return errors.Wrap(err, "query-frontend subservice failed")
+		return fmt.Errorf("query-frontend subservice failed: %w", err)
 	}
 }
 
 func (f *Frontend) stopping(_ error) error {
-	return errors.Wrap(services.StopAndAwaitTerminated(context.Background(), f.schedulerWorkers), "failed to stop frontend scheduler workers")
+	err := services.StopAndAwaitTerminated(context.Background(), f.schedulerWorkers)
+	if err != nil {
+		return fmt.Errorf("failed to stop frontend scheduler workers: %w", err)
+	}
+	return nil
 }
 
 // allow to test the frontend without the need of a real roundertripper

@@ -1,158 +1,132 @@
 package tree
 
 import (
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2/dsl/core"
-	. "github.com/onsi/gomega"
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
-var _ = Describe("tree", func() {
-	var tree *Tree
-	var profile *googlev1.Profile
-	var fnNames []string
+func setupPprofTree(t *testing.T) (*Tree, *googlev1.Profile, []string) {
+	t.Helper()
 
-	Describe("pprof", func() {
-		BeforeEach(func() {
-			tree = New()
-			tree.Insert([]byte("main;foo;1;2;3;4;5"), uint64(15))
-			tree.Insert([]byte("main;baz;1;2;3;4;5;6"), uint64(55))
-			tree.Insert([]byte("main;baz;1;2;3;4;5;6;8"), uint64(25))
-			tree.Insert([]byte("main;bar;1;2;3;4;5;6;8"), uint64(35))
-			tree.Insert([]byte("main;foo;1;2;3;4;5;6"), uint64(20))
-			tree.Insert([]byte("main;bar;1;2;3;4;5;6;9"), uint64(35))
-			tree.Insert([]byte("main;baz;1;2;3;4;5;6;7"), uint64(30))
-			tree.Insert([]byte("main;qux;1;2;3;4;5;6;7;8;9"), uint64(65))
+	tr := New()
+	tr.Insert([]byte("main;foo;1;2;3;4;5"), uint64(15))
+	tr.Insert([]byte("main;baz;1;2;3;4;5;6"), uint64(55))
+	tr.Insert([]byte("main;baz;1;2;3;4;5;6;8"), uint64(25))
+	tr.Insert([]byte("main;bar;1;2;3;4;5;6;8"), uint64(35))
+	tr.Insert([]byte("main;foo;1;2;3;4;5;6"), uint64(20))
+	tr.Insert([]byte("main;bar;1;2;3;4;5;6;9"), uint64(35))
+	tr.Insert([]byte("main;baz;1;2;3;4;5;6;7"), uint64(30))
+	tr.Insert([]byte("main;qux;1;2;3;4;5;6;7;8;9"), uint64(65))
 
-			profile = tree.Pprof(&PprofMetadata{
-				Type:      "cpu",
-				Unit:      "samples",
-				StartTime: time.Date(2021, 1, 1, 10, 0, 1, 0, time.UTC),
-				Duration:  time.Minute,
-			})
-			fnNames = []string{
-				"main",
-				"foo",
-				"bar",
-				"baz",
-				"qux",
-				"1",
-				"2",
-				"3",
-				"4",
-				"5",
-				"6",
-				"7",
-				"8",
-				"9",
-			}
-		})
-		It("Should serialize correctly", func() {
-			_, err := proto.Marshal(profile)
-			Expect(err).ToNot(HaveOccurred())
-		})
-		Describe("StringTable", func() {
-			It("Should build correctly", func() {
-				Expect(len(profile.StringTable)).To(Equal(17))
-				Expect(profile.StringTable).To(ConsistOf(
-					append(
-						fnNames,
-						"",
-						"cpu",
-						"samples",
-					),
-				))
-			})
-			It("Should have empty first element", func() {
-				profile = tree.Pprof(&PprofMetadata{})
-				Expect(profile.StringTable[0]).To(Equal(""))
-			})
-		})
-		Describe("Metadata", func() {
-			It("Should build correctly", func() {
-				Expect(profile.TimeNanos).To(Equal(int64(1609495201000000000)))
-				Expect(profile.DurationNanos).To(Equal(int64(60000000000)))
-				Expect(len(profile.SampleType)).To(Equal(1))
-				_type := profile.StringTable[profile.SampleType[0].Type]
-				unit := profile.StringTable[profile.SampleType[0].Unit]
-
-				Expect(_type).To(Equal("cpu"))
-				Expect(unit).To(Equal("samples"))
-			})
-		})
-		Describe("Function", func() {
-			It("Should build correctly", func() {
-				Expect(len(profile.Function)).To(Equal(14))
-				for _, fn := range profile.Function {
-					Expect(fn.Id).NotTo(BeZero())
-					Expect(fn.Name).NotTo(BeZero())
-					Expect(fn.SystemName).NotTo(BeZero())
-				}
-			})
-			Context("Name", func() {
-				It("Should have corresponding StringTable entries", func() {
-					var names []string
-					for _, fn := range profile.Function {
-						fnName := profile.StringTable[fn.Name]
-						names = append(names, fnName)
-					}
-					Expect(names).To(ConsistOf(fnNames))
-				})
-			})
-			Context("SystemName", func() {
-				It("Should have corresponding StringTable entries", func() {
-					var names []string
-					for _, fn := range profile.Function {
-						fnName := profile.StringTable[fn.SystemName]
-						names = append(names, fnName)
-					}
-					Expect(names).To(ConsistOf(fnNames))
-				})
-			})
-		})
-		Describe("Location", func() {
-			It("Should build correctly", func() {
-				Expect(len(profile.Location)).To(Equal(14))
-				for _, l := range profile.Location {
-					Expect(l.Id).NotTo(BeZero())
-					Expect(l.Line).NotTo(BeZero())
-					Expect(l.Line[0].FunctionId).NotTo(BeZero())
-				}
-			})
-			It("Should have corresponding functions", func() {
-				fnMap := make(map[uint64]*googlev1.Function)
-				for _, fn := range profile.Function {
-					fnMap[fn.Id] = fn
-				}
-				for _, l := range profile.Location {
-					fnID := l.Line[0].FunctionId
-					_, ok := fnMap[fnID]
-					Expect(ok).To(BeTrue())
-				}
-			})
-		})
-		Describe("Sample", func() {
-			It("Should build correctly", func() {
-				Expect(len(profile.Sample)).To(Equal(8))
-				for _, s := range profile.Sample {
-					Expect(s.LocationId).NotTo(BeZero())
-					Expect(s.Value).NotTo(BeZero())
-				}
-			})
-			It("Should have corresponding locations", func() {
-				lMap := make(map[uint64]*googlev1.Location)
-				for _, l := range profile.Location {
-					lMap[l.Id] = l
-				}
-				for _, s := range profile.Sample {
-					for _, l := range s.LocationId {
-						_, ok := lMap[l]
-						Expect(ok).To(BeTrue())
-					}
-				}
-			})
-		})
+	profile := tr.Pprof(&PprofMetadata{
+		Type:      "cpu",
+		Unit:      "samples",
+		StartTime: time.Date(2021, 1, 1, 10, 0, 1, 0, time.UTC),
+		Duration:  time.Minute,
 	})
-})
+	fnNames := []string{
+		"main", "foo", "bar", "baz", "qux",
+		"1", "2", "3", "4", "5", "6", "7", "8", "9",
+	}
+	return tr, profile, fnNames
+}
+
+func TestPprof(t *testing.T) {
+	tree, profile, fnNames := setupPprofTree(t)
+
+	t.Run("Should serialize correctly", func(t *testing.T) {
+		_, err := proto.Marshal(profile)
+		require.NoError(t, err)
+	})
+
+	t.Run("StringTable Should build correctly", func(t *testing.T) {
+		require.Len(t, profile.StringTable, 17)
+		assert.ElementsMatch(t, append(fnNames, "", "cpu", "samples"), profile.StringTable)
+	})
+
+	t.Run("StringTable Should have empty first element", func(t *testing.T) {
+		profile := tree.Pprof(&PprofMetadata{})
+		require.Equal(t, "", profile.StringTable[0])
+	})
+
+	t.Run("Metadata Should build correctly", func(t *testing.T) {
+		require.Equal(t, int64(1609495201000000000), profile.TimeNanos)
+		require.Equal(t, int64(60000000000), profile.DurationNanos)
+		require.Len(t, profile.SampleType, 1)
+		_type := profile.StringTable[profile.SampleType[0].Type]
+		unit := profile.StringTable[profile.SampleType[0].Unit]
+		require.Equal(t, "cpu", _type)
+		require.Equal(t, "samples", unit)
+	})
+
+	t.Run("Function Should build correctly", func(t *testing.T) {
+		require.Len(t, profile.Function, 14)
+		for _, fn := range profile.Function {
+			require.NotZero(t, fn.Id)
+			require.NotZero(t, fn.Name)
+			require.NotZero(t, fn.SystemName)
+		}
+	})
+
+	t.Run("Function Name Should have corresponding StringTable entries", func(t *testing.T) {
+		var names []string
+		for _, fn := range profile.Function {
+			names = append(names, profile.StringTable[fn.Name])
+		}
+		assert.ElementsMatch(t, fnNames, names)
+	})
+
+	t.Run("Function SystemName Should have corresponding StringTable entries", func(t *testing.T) {
+		var names []string
+		for _, fn := range profile.Function {
+			names = append(names, profile.StringTable[fn.SystemName])
+		}
+		assert.ElementsMatch(t, fnNames, names)
+	})
+
+	t.Run("Location Should build correctly", func(t *testing.T) {
+		require.Len(t, profile.Location, 14)
+		for _, l := range profile.Location {
+			require.NotZero(t, l.Id)
+			require.NotEmpty(t, l.Line)
+			require.NotZero(t, l.Line[0].FunctionId)
+		}
+	})
+
+	t.Run("Location Should have corresponding functions", func(t *testing.T) {
+		fnMap := make(map[uint64]*googlev1.Function)
+		for _, fn := range profile.Function {
+			fnMap[fn.Id] = fn
+		}
+		for _, l := range profile.Location {
+			_, ok := fnMap[l.Line[0].FunctionId]
+			require.True(t, ok)
+		}
+	})
+
+	t.Run("Sample Should build correctly", func(t *testing.T) {
+		require.Len(t, profile.Sample, 8)
+		for _, s := range profile.Sample {
+			require.NotEmpty(t, s.LocationId)
+			require.NotEmpty(t, s.Value)
+		}
+	})
+
+	t.Run("Sample Should have corresponding locations", func(t *testing.T) {
+		lMap := make(map[uint64]*googlev1.Location)
+		for _, l := range profile.Location {
+			lMap[l.Id] = l
+		}
+		for _, s := range profile.Sample {
+			for _, l := range s.LocationId {
+				_, ok := lMap[l]
+				require.True(t, ok)
+			}
+		}
+	})
+}

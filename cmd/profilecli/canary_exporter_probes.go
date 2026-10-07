@@ -17,7 +17,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	gprofile "github.com/google/pprof/profile"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 
 	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
@@ -310,7 +309,7 @@ func (ce *canaryExporter) testIngestOTLPHttpProtobuf(ctx context.Context, now ti
 	return nil
 }
 func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, now time.Time) error {
-	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{ //nolint:staticcheck // Legacy querier.v1 compatibility probe.
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
@@ -322,12 +321,12 @@ func (ce *canaryExporter) testSelectMergeProfile(ctx context.Context, now time.T
 
 	buf, err := respQuery.Msg.MarshalVT()
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal protobuf")
+		return fmt.Errorf("failed to marshal protobuf: %w", err)
 	}
 
 	gp, err := gprofile.Parse(bytes.NewReader(buf))
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile")
+		return fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	expected := map[string]int64{
@@ -367,7 +366,7 @@ func (ce *canaryExporter) testSelectMergeOTLPProfile(ctx context.Context, now ti
 	// Query specifically for OTLP gRPC ingested profiles using the custom profile type
 	//labelSelector := fmt.Sprintf(`{service_name="%s", job="canary-exporter", instance="%s"}`, canaryExporterServiceName, ce.hostname)
 
-	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	respQuery, err := ce.params.queryClient().SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{ //nolint:staticcheck // Legacy querier.v1 compatibility probe.
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),
@@ -379,12 +378,12 @@ func (ce *canaryExporter) testSelectMergeOTLPProfile(ctx context.Context, now ti
 
 	buf, err := respQuery.Msg.MarshalVT()
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal protobuf")
+		return fmt.Errorf("failed to marshal protobuf: %w", err)
 	}
 
 	gp, err := gprofile.Parse(bytes.NewReader(buf))
 	if err != nil {
-		return errors.Wrap(err, "failed to parse profile")
+		return fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	// Verify the expected stacktraces from the OTLP profile
@@ -618,7 +617,7 @@ func (ce *canaryExporter) testSelectMergeStacktraces(ctx context.Context, now ti
 }
 
 func (ce *canaryExporter) testSelectMergeSpanProfile(ctx context.Context, now time.Time) error {
-	respQuery, err := ce.params.queryClient().SelectMergeSpanProfile(ctx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{
+	respQuery, err := ce.params.queryClient().SelectMergeSpanProfile(ctx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{ //nolint:staticcheck // Legacy querier.v1 compatibility probe.
 		Start:         now.UnixMilli(),
 		End:           now.Add(5 * time.Second).UnixMilli(),
 		LabelSelector: ce.createLabelSelector(),

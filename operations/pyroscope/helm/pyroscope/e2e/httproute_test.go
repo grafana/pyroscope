@@ -1,3 +1,5 @@
+//go:build helm_integration
+
 package e2e
 
 import (

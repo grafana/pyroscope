@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -17,6 +19,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/thanos-io/objstore"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -70,11 +73,14 @@ func NewStore(
 }
 
 const (
+	listDebuginfoFetchConcurrency = 32
+
 	ReasonFirstTimeSeen          = "First time we see this Build ID, therefore please upload!"
 	ReasonUploadStale            = "A previous upload was started but not finished and is now stale, so it can be retried."
 	ReasonUploadInProgress       = "A previous upload is still in-progress and not stale yet (only stale uploads can be retried)."
 	ReasonDebuginfoAlreadyExists = "Debuginfo already exists and is not marked as invalid, therefore no new upload is needed."
 	ReasonDisabled               = "DebugInfo upload disabled"
+	ReasonEmptyBuildID           = "Empty GNU build ID, therefore no upload is needed."
 )
 
 func (s *Store) checkShouldInitiateUpload(
@@ -113,6 +119,91 @@ func (s *Store) checkShouldInitiateUpload(
 	}
 }
 
+func (s *Store) ListDebuginfo(ctx context.Context, req *connect.Request[debuginfov1alpha1.ListDebuginfoRequest]) (*connect.Response[debuginfov1alpha1.ListDebuginfoResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	dir := "debug-info/" + tenantID + "/"
+
+	var buildIDs []*ValidGnuBuildID
+
+	err = s.bucket.Iter(ctx, dir, func(name string) error {
+		if !strings.HasSuffix(name, objstore.DirDelim) {
+			return nil
+		}
+
+		id, err := ValidateGnuBuildID(path.Base(name))
+		if err != nil {
+			level.Warn(s.logger).Log("msg", "skipping debuginfo entry with invalid build ID", "name", name, "err", err)
+			return nil
+		}
+		buildIDs = append(buildIDs, id)
+		return nil
+	})
+
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	debugInfos := &debuginfov1alpha1.ListDebuginfoResponse{}
+
+	var mu sync.Mutex
+	debugInfos.Object = make([]*debuginfov1alpha1.ObjectMetadata, 0, len(buildIDs))
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(listDebuginfoFetchConcurrency)
+
+	for _, buildID := range buildIDs {
+		g.Go(func() error {
+			objectMetadata, err := s.fetchMetadata(gctx, tenantID, buildID)
+			if err != nil {
+				return err
+			}
+			if objectMetadata != nil {
+				mu.Lock()
+				debugInfos.Object = append(debugInfos.Object, objectMetadata)
+				mu.Unlock()
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(debugInfos), nil
+}
+
+func (s *Store) DeleteDebuginfo(
+	ctx context.Context,
+	req *connect.Request[debuginfov1alpha1.DeleteDebuginfoRequest],
+) (*connect.Response[debuginfov1alpha1.DeleteDebuginfoResponse], error) {
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	id, err := ValidateGnuBuildID(req.Msg.GetGnuBuildId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid gnu_build_id: %w", err))
+	}
+
+	for _, objectPath := range []string{MetadataObjectPath(tenantID, id), ObjectPath(tenantID, id)} {
+		err = s.bucket.Delete(ctx, objectPath)
+		switch {
+		case err == nil:
+		case s.bucket.IsObjNotFoundErr(err):
+			continue
+		default:
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to delete debuginfo object %q: %w", objectPath, err))
+		}
+	}
+
+	return connect.NewResponse(&debuginfov1alpha1.DeleteDebuginfoResponse{}), nil
+}
+
 func (s *Store) ShouldInitiateUpload(
 	ctx context.Context,
 	req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest],
@@ -126,6 +217,13 @@ func (s *Store) ShouldInitiateUpload(
 		return connect.NewResponse(&debuginfov1alpha1.ShouldInitiateUploadResponse{
 			ShouldInitiateUpload: false,
 			Reason:               ReasonDisabled,
+		}), nil
+	}
+
+	if req.Msg != nil && req.Msg.File != nil && req.Msg.File.GnuBuildId == "" {
+		return connect.NewResponse(&debuginfov1alpha1.ShouldInitiateUploadResponse{
+			ShouldInitiateUpload: false,
+			Reason:               ReasonEmptyBuildID,
 		}), nil
 	}
 
@@ -243,16 +341,17 @@ func (s *Store) UploadFinished(
 		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("upload is not in uploading state"))
 	}
 
-	exists, err := s.bucket.Exists(ctx, ObjectPath(tenantID, id))
+	attrs, err := s.bucket.Attributes(ctx, ObjectPath(tenantID, id))
 	if err != nil {
+		if s.bucket.IsObjNotFoundErr(err) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("no uploaded file found for build ID %s", req.Msg.GnuBuildId))
+		}
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to check uploaded file: %w", err))
-	}
-	if !exists {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("no uploaded file found for build ID %s", req.Msg.GnuBuildId))
 	}
 
 	md.State = debuginfov1alpha1.ObjectMetadata_STATE_UPLOADED
 	md.FinishedAt = timestamppb.New(time.Now())
+	md.SizeBytes = attrs.Size
 	if err := s.writeMetadata(ctx, tenantID, id, md); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to write uploaded metadata: %w", err))
 	}

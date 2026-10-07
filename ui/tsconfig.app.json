@@ -27,8 +27,10 @@
       "@components/*": ["./src/components/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@api/*": ["./src/api/*"],
+      "@lib/*": ["./src/lib/*"],
       "@public/*": ["./public/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

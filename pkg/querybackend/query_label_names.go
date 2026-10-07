@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 )
 
 func init() {
@@ -48,6 +49,12 @@ func labelNamesForMatchers(reader phlaredb.IndexReader, matchers []*labels.Match
 	if err != nil {
 		return nil, err
 	}
+	if reader, ok := reader.(interface {
+		LabelNamesForPostings(index.Postings) ([]string, error)
+	}); ok {
+		return reader.LabelNamesForPostings(postings)
+	}
+
 	l := make(map[string]struct{})
 	for postings.Next() {
 		var n []string

@@ -15,16 +15,16 @@ The Grafana Pyroscope source code integration offers seamless integration betwee
 Using this app, you can map your code directly within Grafana and visualize resource performance line by line.
 With these powerful capabilities, you can gain deep insights into your code's execution and identify performance bottlenecks.
 
-Every profile type works with the integration for code written in Go, Java, and Python.
+Every profile type works with the integration for code written in Go, Java, Python, and Node.js (JavaScript and TypeScript).
 
-For information on profile types and the profiles available with Go, Java, and Python, refer to [Profiling types and their uses](../../introduction/profiling-types/).
+For information on profile types and the profiles available with these languages, refer to [Profiling types and their uses](../../introduction/profiling-types/).
 
 ![Example of a flame graph with the function details populated](/media/docs/grafana-cloud/profiles/screenshot-profiles-github-integration.png)
 
 ## How it works
 
 The Pyroscope source code integration uses labels configured in the application being profiled to associate profiles with source code.
-The integration is available for Go, Java, and Python applications.
+The integration is available for Go, Java, Python, and Node.js applications.
 
 The Pyroscope source code integration uses three labels, `service_repository`, `service_git_ref`, and `service_root_path`, to add commit information, repository link, and an enhanced source code preview to the **Function Details** screen.
 
@@ -45,6 +45,7 @@ To use the Pyroscope source code integration with GitHub, you need an applicatio
 - A Go application which is profiled by Grafana Alloy's `pyroscope.scrape`, `pyroscope.ebpf` (Alloy v1.11.0+), or using the [Go Push SDK](../../configure-client/language-sdks/go_push/).
 - A Java application which is profiled by Grafana Alloy's `pyroscope.java`, `pyroscope.ebpf` (Alloy v1.11.0+), or using the [Java SDK](../../configure-client/language-sdks/java). For Java applications, a committed `.pyroscope.yaml` file is required to map package names to source code locations (see [Advanced source code mapping with `.pyroscope.yaml`](#advanced-source-code-mapping-with-pyroscopeyaml)).
 - A Python application which is profiled by Grafana Alloy's `pyroscope.ebpf` (Alloy v1.11.0+) or using the [Python SDK](../../configure-client/language-sdks/python).
+- A Node.js application which is profiled using the [Node.js SDK](../../configure-client/language-sdks/nodejs).
 
 Your application provides the following labels (tags):
 
@@ -210,6 +211,7 @@ Pyroscope's source code integration supports the following languages:
 - **Go**: Full support including standard library, Go modules, and vendor directories. Works automatically without configuration, but can be customized with `.pyroscope.yaml`.
 - **Python**: Full support including standard library and installed packages. Works automatically without configuration, but can be customized with `.pyroscope.yaml`.
 - **Java**: Requires a `.pyroscope.yaml` file with explicit mappings for application code and dependencies.
+- **JavaScript and TypeScript**: Requires a `.pyroscope.yaml` file with explicit mappings for application code and dependencies, because Node.js reports absolute runtime paths, such as `/usr/src/app/index.js`. Paths that are relative to the repository resolve without configuration.
 
 {{< admonition type="note" >}}
 While Go and Python work automatically, you can use a `.pyroscope.yaml` file to customize source mappings for any language.
@@ -228,7 +230,7 @@ source_code:
         - prefix: another/path
       function_name:           # Match by function name prefix (optional if path is specified)
         - prefix: function/prefix
-      language: go             # Required: "go", "java", or "python"
+      language: go             # Required: "go", "java", "python", or "javascript"
       source:                  # Define where to fetch the source code
         local:
           path: src/main/java  # Path relative to the location of the .pyroscope.yaml file
@@ -245,7 +247,7 @@ source_code:
 - Each mapping must specify either a `local` or `github` source (not both)
 - Multiple `path` or `function_name` prefixes can be specified per mapping (they are OR'd together)
 - Mappings are evaluated using longest-prefix-match (more specific mappings take precedence)
-- If no mapping matches, Pyroscope falls back to language-specific default behavior (automatic resolution for Go; Java requires explicit mappings)
+- If no mapping matches, Pyroscope falls back to language-specific default behavior (automatic resolution for Go and Python; JavaScript and TypeScript fall back to the repository-relative path; Java requires explicit mappings)
 
 ### Example: Go standard library mapping
 
@@ -399,6 +401,38 @@ This configuration demonstrates:
 - **Standard library**: Maps Python standard library paths to the CPython repository
 - **External packages**: Maps third-party packages to their GitHub repositories
 
+### Example: Node.js application
+
+Map the runtime paths of a Node.js service to the source code in your repository:
+
+```yaml
+version: v1
+source_code:
+  mappings:
+    # Application code that runs from /usr/src/app in the container
+    - path:
+        - prefix: /usr/src/app
+      language: javascript
+      source:
+        local:
+          path: services/api
+
+    # Shared library from another repository
+    - path:
+        - prefix: /usr/src/app/node_modules/@example/shared/src
+      language: javascript
+      source:
+        github:
+          owner: example
+          repo: shared
+          ref: v2.1.0
+          path: src
+```
+
+Pyroscope removes the matched prefix from the runtime path and looks for the remainder in the mapped source location.
+For example, `/usr/src/app/routes/user.ts` resolves to `services/api/routes/user.ts` in your repository.
+Because Pyroscope uses longest-prefix matching, files under `node_modules/@example/shared/src` resolve to the `example/shared` repository instead.
+
 ### Language-specific behavior
 
 #### Go
@@ -430,6 +464,13 @@ For Python applications, Pyroscope provides intelligent fallback behavior simila
 
 The system extracts Python version information from paths to map to the correct CPython repository version.
 
+#### JavaScript and TypeScript
+
+For Node.js applications, Pyroscope resolves these file extensions: `.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, and `.tsx`.
+
+- **Path mappings**: Use `path` prefixes instead of `function_name` prefixes. Pyroscope removes the matched path prefix before it looks up the file.
+- **Fallback**: If no mapping matches, Pyroscope looks for the file path relative to the repository root, or relative to `service_root_path` when that label is set.
+
 ### Troubleshooting
 
 **No source code displayed**
@@ -437,6 +478,7 @@ The system extracts Python version information from paths to map to the correct 
 - Verify the `.pyroscope.yaml` file is in your service's configured root path and that the root path is configured as expected
 - Check that the `path` or `function_name` prefixes match your profiling data
 - For Java applications, ensure all dependencies have mappings configured
+- For Node.js applications, compare the file paths in the **Function Details** panel with your repository layout. Absolute runtime paths, such as `/usr/src/app`, need a path mapping
 - Confirm GitHub OAuth authorization is active and hasn't expired
 
 **Wrong version displayed**

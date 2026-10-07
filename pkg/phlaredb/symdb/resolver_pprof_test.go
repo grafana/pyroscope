@@ -327,7 +327,7 @@ func Test_Resolver_pprof_options(t *testing.T) {
 		},
 		{
 			name:     "GoPGO AggregateCallees",
-			expected: 442,
+			expected: 443,
 			options: []ResolverOption{
 				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
 					GoPgo: &typesv1.GoPGO{
@@ -338,7 +338,7 @@ func Test_Resolver_pprof_options(t *testing.T) {
 		},
 		{
 			name:     "GoPGO AggregateCallees KeepLocations 5",
-			expected: 316,
+			expected: 317,
 			options: []ResolverOption{
 				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
 					GoPgo: &typesv1.GoPGO{
@@ -366,6 +366,71 @@ func Test_Resolver_pprof_options(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_Resolver_pprof_GoPGOAggregateCallees_lineLessCallee(t *testing.T) {
+	db := NewSymDB(DefaultConfig().WithDirectory(t.TempDir()))
+	indexed := db.WriteProfileSymbols(0, mixedLocationsProfile())
+
+	r := NewResolver(context.Background(), db,
+		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+			GoPgo: &typesv1.GoPGO{AggregateCallees: true},
+		}))
+	defer r.Release()
+	r.AddSamples(0, indexed[0].Samples)
+
+	p, err := r.Pprof()
+	require.NoError(t, err)
+	require.Len(t, p.Sample, 1)
+	assert.Equal(t, []int64{77}, p.Sample[0].Value)
+	require.Len(t, p.Location, 2)
+	assert.Equal(t, uint64(0x3c5a), p.Location[p.Sample[0].LocationId[0]-1].Address)
+	assert.Empty(t, p.Location[p.Sample[0].LocationId[0]-1].Line)
+	assert.Equal(t, int64(5), p.Location[p.Sample[0].LocationId[1]-1].Line[0].Line)
+}
+
+func Test_Resolver_pprof_GoPGOAggregateCallees_preservesCallerLines(t *testing.T) {
+	db := NewSymDB(DefaultConfig().WithDirectory(t.TempDir()))
+	indexed := db.WriteProfileSymbols(0, &googlev1.Profile{
+		StringTable: []string{"", "main"},
+		Mapping:     []*googlev1.Mapping{{Id: 1}},
+		Function:    []*googlev1.Function{{Id: 1, Name: 1}},
+		Location: []*googlev1.Location{
+			{Id: 1, MappingId: 1, Address: 0x1000, Line: []*googlev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Address: 0x1000, Line: []*googlev1.Line{{FunctionId: 1, Line: 2}}},
+			{Id: 3, MappingId: 1, Address: 0x2000, Line: []*googlev1.Line{{FunctionId: 1, Line: 3}}},
+			{Id: 4, MappingId: 1, Address: 0x3000, Line: []*googlev1.Line{{FunctionId: 1, Line: 4}}},
+		},
+		Sample: []*googlev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{1}},
+			{LocationId: []uint64{2}, Value: []int64{2}},
+			{LocationId: []uint64{3, 1, 4}, Value: []int64{10}},
+			{LocationId: []uint64{3, 2, 4}, Value: []int64{20}},
+		},
+		SampleType: []*googlev1.ValueType{{Type: 0, Unit: 0}},
+	})
+
+	r := NewResolver(context.Background(), db,
+		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+			GoPgo: &typesv1.GoPGO{AggregateCallees: true},
+		}))
+	defer r.Release()
+	r.AddSamples(0, indexed[0].Samples)
+
+	p, err := r.Pprof()
+	require.NoError(t, err)
+	require.Len(t, p.Sample, 3)
+
+	valuesByCallerLine := make(map[int64]int64)
+	for _, sample := range p.Sample {
+		if len(sample.LocationId) == 1 {
+			assert.Equal(t, []int64{3}, sample.Value)
+			continue
+		}
+		caller := p.Location[sample.LocationId[1]-1]
+		valuesByCallerLine[caller.Line[0].Line] = sample.Value[0]
+	}
+	assert.Equal(t, map[int64]int64{1: 10, 2: 20}, valuesByCallerLine)
 }
 
 // The test examines how strings are copied from the Symbols

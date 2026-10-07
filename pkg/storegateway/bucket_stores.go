@@ -2,7 +2,9 @@ package storegateway
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,7 +14,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/multierror"
-	"github.com/pkg/errors"
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -232,7 +234,7 @@ func (bs *BucketStores) syncUsersBlocks(ctx context.Context, f func(context.Cont
 
 	ownedUserIDs, err := bs.shardingStrategy.FilterUsers(ctx, userIDs)
 	if err != nil {
-		return errors.Wrap(err, "unable to check tenants owned by this store-gateway instance")
+		return fmt.Errorf("unable to check tenants owned by this store-gateway instance: %w", err)
 	}
 
 	includeUserIDs := make(map[string]struct{}, len(ownedUserIDs))
@@ -254,7 +256,7 @@ func (bs *BucketStores) syncUsersBlocks(ctx context.Context, f func(context.Cont
 			for job := range jobs {
 				if err := f(ctx, job.store); err != nil {
 					errsMx.Lock()
-					errs.Add(errors.Wrapf(err, "failed to synchronize Pyroscope blocks for user %s", job.userID))
+					errs.Add(fmt.Errorf("failed to synchronize Pyroscope blocks for user %s: %w", job.userID, err))
 					errsMx.Unlock()
 				}
 			}
@@ -339,11 +341,15 @@ func (bs *BucketStores) getOrCreateStore(userID string) (*BucketStore, error) {
 		filters,
 	)
 
-	s, err := NewBucketStore(
+	userSyncDir, err := bs.syncDirForUser(userID)
+	if err != nil {
+		return nil, err
+	}
+	s, err = NewBucketStore(
 		bs.storageBucket,
 		fetcher,
 		userID,
-		bs.syncDirForUser(userID),
+		userSyncDir,
 		userLogger,
 		bs.reg,
 	)
@@ -385,7 +391,11 @@ func (bs *BucketStores) closeBucketStoreAndDeleteLocalFilesForExcludedTenants(in
 			level.Warn(bs.logger).Log("msg", "failed to close bucket store for user", "tenant", userID, "err", err)
 		}
 
-		userSyncDir := bs.syncDirForUser(userID)
+		userSyncDir, err := bs.syncDirForUser(userID)
+		if err != nil {
+			level.Warn(bs.logger).Log("msg", "skipping delete of user sync directory", "tenant", userID, "err", err)
+			continue
+		}
 		err = os.RemoveAll(userSyncDir)
 		if err == nil {
 			level.Info(bs.logger).Log("msg", "deleted user sync directory", "dir", userSyncDir)
@@ -395,8 +405,11 @@ func (bs *BucketStores) closeBucketStoreAndDeleteLocalFilesForExcludedTenants(in
 	}
 }
 
-func (u *BucketStores) syncDirForUser(userID string) string {
-	return filepath.Join(u.cfg.SyncDir, userID)
+func (u *BucketStores) syncDirForUser(userID string) (string, error) {
+	if err := tenant.ValidTenantID(userID); err != nil {
+		return "", fmt.Errorf("syncDirForUser: invalid userID: %w", err)
+	}
+	return filepath.Join(u.cfg.SyncDir, userID), nil
 }
 
 // closeBucketStore closes bucket store for given user

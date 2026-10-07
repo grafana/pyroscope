@@ -44,7 +44,7 @@ func runtimeConfigHandler(runtimeCfgManager *runtimeconfig.Manager, defaultLimit
 	return func(w http.ResponseWriter, r *http.Request) {
 		cfg, ok := runtimeCfgManager.GetConfig().(*validation.RuntimeConfigValues)
 		if !ok || cfg == nil {
-			util.WriteTextResponse(w, "runtime config file doesn't exist")
+			httputil.WriteTextResponse(w, "runtime config file doesn't exist")
 			return
 		}
 
@@ -82,7 +82,7 @@ func runtimeConfigHandler(runtimeCfgManager *runtimeconfig.Manager, defaultLimit
 		default:
 			output = cfg
 		}
-		util.WriteYAMLResponse(w, output)
+		httputil.WriteYAMLResponse(w, output)
 	}
 }
 

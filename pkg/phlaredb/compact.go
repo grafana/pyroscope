@@ -3,6 +3,7 @@ package phlaredb
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -18,7 +19,6 @@ import (
 	"github.com/grafana/dskit/tracing"
 	"github.com/oklog/ulid/v2"
 	"github.com/parquet-go/parquet-go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 

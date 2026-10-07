@@ -4,15 +4,12 @@ package main
 
 import (
 	"bytes"
-	"context"
+	"go/format"
 	"html/template"
-	"io"
 	"log"
 	"os"
 
-	"github.com/github/go-pipe/pipe"
-
-	"github.com/grafana/pyroscope/v2/pkg/querier/golang"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs/source/golang"
 )
 
 func main() {
@@ -24,23 +21,14 @@ func main() {
 	}
 	t := template.Must(template.New("packages").Parse(packagesTemplate))
 	var buff bytes.Buffer
-	p := pipe.New(pipe.WithStdout(&buff))
-	p.Add(
-		pipe.Function("", func(ctx context.Context, env pipe.Env, stdin io.Reader, stdout io.Writer) error {
-			err = t.Execute(stdout, packages)
-			if err != nil {
-				log.Fatal(err)
-			}
-			return nil
-		}),
-		// This might be a bit overkill, but it's nice to have a consistent format.
-		// todo: We could use "go/format" package only that will simplify the code but also remove the needs
-		// for expected installed binaries.
-		pipe.Command("gofmt"),
-		pipe.Command("goimports"),
-	)
-	p.Run(context.Background())
-	err = os.WriteFile("packages_gen.go", buff.Bytes(), 0666)
+	if err = t.Execute(&buff, packages); err != nil {
+		log.Fatal(err)
+	}
+	formatted, err := format.Source(buff.Bytes())
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.WriteFile("packages_gen.go", formatted, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}

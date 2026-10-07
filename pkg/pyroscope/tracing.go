@@ -18,6 +18,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// initTracePropagation enables extraction of caller trace IDs even when server
+// tracing is disabled or no trace exporter is configured.
+func initTracePropagation() {
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(wwtracing.OTelPropagatorsFromEnv()...))
+}
+
 // initTracing initializes the OTel TracerProvider.
 //
 // It delegates to dskit's NewOTelOrJaegerFromEnv, which also handles
@@ -71,7 +77,7 @@ func initTracingDirect(serviceName string, logger log.Logger, profilingEnabled b
 	}
 
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(wwtracing.OTelPropagatorsFromEnv()...))
+	initTracePropagation()
 	otel.SetErrorHandler(otelErrorHandler{logger: logger})
 
 	return &tracerProviderCloser{tp: tpsdk}, nil

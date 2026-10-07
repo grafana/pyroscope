@@ -4,7 +4,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/aybabtme/rgbterm"
 	"github.com/fatih/color"
 )
 
@@ -29,7 +28,7 @@ func GradientBanner(banner string, w io.Writer) error {
 		r := gradient(startColor, endColor, 16, progress)
 		g := gradient(startColor, endColor, 8, progress)
 		b := gradient(startColor, endColor, 0, progress)
-		_, err := w.Write([]byte(rgbterm.FgString(line, r, g, b) + "\n"))
+		_, err := color.RGB(r, g, b).Fprintln(w, line)
 		if err != nil {
 			return nil
 		}
@@ -37,8 +36,8 @@ func GradientBanner(banner string, w io.Writer) error {
 	return nil
 }
 
-func gradient(start, end, offset int, progress float64) uint8 {
+func gradient(start, end, offset int, progress float64) int {
 	start = (start >> offset) & 0xff
 	end = (end >> offset) & 0xff
-	return uint8(start + int(float64(end-start)*progress))
+	return start + int(float64(end-start)*progress)
 }

@@ -685,6 +685,34 @@ func TestEmptyMappingJava(t *testing.T) {
 	}
 }
 
+func TestClearAddresses_InvalidMappingIDsDoNotPanic(t *testing.T) {
+	p := &Profile{Profile: &profilev1.Profile{
+		Mapping: []*profilev1.Mapping{{
+			Id:           1,
+			HasFunctions: true,
+			MemoryStart:  0x1000,
+			MemoryLimit:  0x2000,
+			FileOffset:   0x3000,
+		}},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Address: 0x10},
+			{Id: 2, MappingId: 0, Address: 0x20},
+			{Id: 3, MappingId: 5, Address: 0x30},
+		},
+	}}
+
+	require.NotPanics(t, func() {
+		p.clearAddresses()
+	})
+
+	require.Equal(t, uint64(0), p.Mapping[0].MemoryStart)
+	require.Equal(t, uint64(0), p.Mapping[0].MemoryLimit)
+	require.Equal(t, uint64(0), p.Mapping[0].FileOffset)
+	require.Equal(t, uint64(0), p.Location[0].Address)
+	require.Equal(t, uint64(0x20), p.Location[1].Address)
+	require.Equal(t, uint64(0x30), p.Location[2].Address)
+}
+
 func countSampleDuplicates(p *Profile) int {
 	hashes := p.hasher.Hashes(p.Sample)
 	uniq := map[uint64][]*profilev1.Sample{}

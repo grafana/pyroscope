@@ -530,6 +530,39 @@ func Test_VisitSampleSeries(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "trace_id and span_id stay at the sample level and are not promoted to series labels",
+			labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "profile"},
+			},
+			profile: &profilev1.Profile{
+				StringTable: []string{
+					"",                                 // 0
+					"__name__",                         // 1
+					"trace_id",                         // 2
+					"span_id",                          // 3
+					"aaaabbbbccccdddd11112222ffffeeee", // 4 trace A
+					"11112222333344445555666677778888", // 5 trace B
+					"aaaabbbbccccdddd",                 // 6 span X
+					"1111222233334444",                 // 7 span Y
+				},
+				Sample: []*profilev1.Sample{
+					{LocationId: []uint64{1, 2}, Value: []int64{1}, Label: []*profilev1.Label{{Key: 2, Str: 4}, {Key: 3, Str: 6}}},
+					{LocationId: []uint64{1, 2}, Value: []int64{2}, Label: []*profilev1.Label{{Key: 2, Str: 5}, {Key: 3, Str: 7}}},
+				},
+			},
+			expected: []sampleSeries{
+				{
+					labels: []*typesv1.LabelPair{
+						{Name: "__name__", Value: "profile"},
+					},
+					samples: []*profilev1.Sample{
+						{LocationId: []uint64{1, 2}, Value: []int64{1}, Label: []*profilev1.Label{{Key: 2, Str: 4}, {Key: 3, Str: 6}}},
+						{LocationId: []uint64{1, 2}, Value: []int64{2}, Label: []*profilev1.Label{{Key: 2, Str: 5}, {Key: 3, Str: 7}}},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

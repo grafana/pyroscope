@@ -2,8 +2,8 @@ package httpgrpc
 
 import (
 	"fmt"
+	"log/slog"
 
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -44,7 +44,7 @@ func HTTPResponseFromError(err error) (*HTTPResponse, bool) {
 
 	var resp HTTPResponse
 	if err := anypb.UnmarshalTo(status.Details[0], &resp, proto.UnmarshalOptions{}); err != nil {
-		log.Errorf("Got error containing non-response: %v", err)
+		slog.Error("got error containing non-response", "err", err)
 		return nil, false
 	}
 

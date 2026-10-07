@@ -7,12 +7,13 @@ package storegateway
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
@@ -107,7 +108,7 @@ func (f *BucketIndexMetadataFetcher) Fetch(ctx context.Context) (metas map[ulid.
 		f.metrics.Synced.WithLabelValues(block.FailedMeta).Set(1)
 		f.metrics.Submit()
 
-		return nil, nil, errors.Wrapf(err, "read bucket index")
+		return nil, nil, fmt.Errorf("read bucket index: %w", err)
 	}
 
 	// check if index is older than 1 hour, fallback to metafetcher
@@ -146,7 +147,7 @@ func (f *BucketIndexMetadataFetcher) Fetch(ctx context.Context) (metas map[ulid.
 		}
 
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "filter metas")
+			return nil, nil, fmt.Errorf("filter metas: %w", err)
 		}
 	}
 

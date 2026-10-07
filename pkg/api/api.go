@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
+	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
@@ -63,10 +64,30 @@ type API struct {
 	httpAuthMiddleware middleware.Interface
 	grpcGatewayMux     *grpcgw.ServeMux
 
-	cfg       Config
-	logger    log.Logger
+	// adminRouter and adminMode together control where operational routes
+	// (metrics, debug, admin, rings, config) are registered.
+	adminRouter *mux.Router
+	adminMode   AdminServerMode
+
+	cfg    Config
+	logger log.Logger
+
+	// indexPage is the main server's /admin index (UI, swagger, build info).
 	indexPage *IndexPageContent
+	// adminIndexPage is the admin server's /admin index (rings, metrics, ops, config).
+	// When the admin server is disabled, operational links fall back to indexPage.
+	adminIndexPage *IndexPageContent
 }
+
+// AdminServerMode mirrors the type defined in the pyroscope package; redeclared
+// here so the api package has no import cycle back to the parent package.
+type AdminServerMode = string
+
+const (
+	AdminServerDisabled   AdminServerMode = "disabled"
+	AdminServerAdditional AdminServerMode = "additional"
+	AdminServerExclusive  AdminServerMode = "exclusive"
+)
 
 func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger log.Logger) (*API, error) {
 	api := &API{
@@ -75,6 +96,7 @@ func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger l
 		server:             s,
 		logger:             logger,
 		indexPage:          NewIndexPageContent(),
+		adminIndexPage:     NewIndexPageContent(),
 		grpcGatewayMux:     grpcGatewayMux,
 	}
 
@@ -86,6 +108,46 @@ func New(cfg Config, s *server.Server, grpcGatewayMux *grpcgw.ServeMux, logger l
 	return api, nil
 }
 
+// SetAdminRouter configures the admin router and mode for operational
+// (metrics, debug, admin, ring, config) routes.
+func (a *API) SetAdminRouter(r *mux.Router, mode AdminServerMode) {
+	a.adminRouter = r
+	a.adminMode = mode
+}
+
+// addOperationalLinks adds index-page links to the correct page(s) based on mode:
+//   - disabled:   main server indexPage only.
+//   - additional: both indexPage and adminIndexPage (links visible on both ports).
+//   - exclusive:  adminIndexPage only (links removed from main port).
+func (a *API) addOperationalLinks(weight int, groupDesc string, links []IndexPageLink) {
+	switch a.adminMode {
+	case AdminServerExclusive:
+		a.adminIndexPage.AddLinks(weight, groupDesc, links)
+	case AdminServerAdditional:
+		a.indexPage.AddLinks(weight, groupDesc, links)
+		a.adminIndexPage.AddLinks(weight, groupDesc, links)
+	default:
+		a.indexPage.AddLinks(weight, groupDesc, links)
+	}
+}
+
+// registerAdminRoute registers a handler according to the current admin
+// server mode:
+//   - disabled:   register only on the main server (default behaviour).
+//   - additional: register on both the admin router and the main server.
+//   - exclusive:  register only on the admin router.
+func (a *API) registerAdminRoute(path string, handler http.Handler, registerOpts ...RegisterOption) {
+	switch a.adminMode {
+	case AdminServerExclusive:
+		registerRoute(a.logger, a.adminRouter, path, handler, registerOpts...)
+	case AdminServerAdditional:
+		registerRoute(a.logger, a.adminRouter, path, handler, registerOpts...)
+		registerRoute(a.logger, a.server.HTTP, path, handler, registerOpts...)
+	default:
+		registerRoute(a.logger, a.server.HTTP, path, handler, registerOpts...)
+	}
+}
+
 // registerRoute registers an HTTP handler with the main HTTP server.
 //
 // Register Options allow to filter the HTTP methods and apply middlewares.
@@ -95,9 +157,13 @@ func (a *API) RegisterRoute(path string, handler http.Handler, registerOpts ...R
 
 // RegisterAPI registers the standard endpoints associated with a running Pyroscope.
 func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
-	// register admin page
-	a.RegisterRoute("/admin", indexHandler("", a.indexPage), a.registerOptionsPublicAccess()...)
-	// expose openapiv2 definition
+	// /admin on the main server always shows the main index (UI, swagger, build info).
+	registerRoute(a.logger, a.server.HTTP, "/admin", indexHandler("", a.indexPage), a.registerOptionsPublicAccess()...)
+	// /admin on the admin server (when enabled) shows the operational index.
+	if a.adminRouter != nil && a.adminMode != AdminServerDisabled {
+		registerRoute(a.logger, a.adminRouter, "/admin", indexHandler("", a.adminIndexPage), a.registerOptionsPublicAccess()...)
+	}
+	// expose openapiv2 definition — main server only (linked from the main /admin page)
 	openapiv2Handler, err := openapiv2.Handler()
 	if err != nil {
 		return fmt.Errorf("unable to initialize openapiv2 handler: %w", err)
@@ -106,24 +172,30 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	a.indexPage.AddLinks(openAPIDefinitionWeight, "OpenAPI definition", []IndexPageLink{
 		{Desc: "Swagger JSON", Path: "/api/swagger.json"},
 	})
-	// register grpc-gateway api
+	// grpc-gateway (status/config) — on admin server when available
 	publicAccessPrefixAllMethods := []RegisterOption{WithGzipMiddleware(), WithPrefix()}
-	a.RegisterRoute("/api", a.grpcGatewayMux, publicAccessPrefixAllMethods...)
-	// register fgprof
-	a.RegisterRoute("/debug/fgprof", fgprof.Handler(), a.registerOptionsPublicAccess()...)
-	// register static assets
-	a.RegisterRoute("/static/", http.FileServer(http.FS(staticFiles)), a.registerOptionsPrefixPublicAccess()...)
-	// register ui
+	a.registerAdminRoute("/api", a.grpcGatewayMux, publicAccessPrefixAllMethods...)
+	// register fgprof — on internal server when available
+	a.registerAdminRoute("/debug/fgprof", fgprof.Handler(), a.registerOptionsPublicAccess()...)
+	// register ui assets
 	uiAssets, err := ui.Assets()
 	if err != nil {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
+	uiFileServer := http.FileServer(uiAssets)
+
+	// Static assets and /assets are needed on the admin server too —
+	// query-diagnostics pages reference /static/ CSS and /assets/admin.{css,js}.
+	a.RegisterRoute("/static/", http.FileServer(http.FS(staticFiles)), a.registerOptionsPrefixPublicAccess()...)
+	a.RegisterRoute("/assets/", uiFileServer, a.registerOptionsPrefixPublicAccess()...)
+	if a.adminRouter != nil && a.adminMode != AdminServerDisabled {
+		registerRoute(a.logger, a.adminRouter, "/static/", http.FileServer(http.FS(staticFiles)), a.registerOptionsPrefixPublicAccess()...)
+		registerRoute(a.logger, a.adminRouter, "/assets/", uiFileServer, a.registerOptionsPrefixPublicAccess()...)
+	}
 
 	// The UI used to be at /ui, but now it's at /.
 	a.RegisterRoute("/ui", http.RedirectHandler("/", http.StatusFound), a.registerOptionsPrefixPublicAccess()...)
-	// All assets are served as static files
-	uiFileServer := http.FileServer(uiAssets)
-	a.RegisterRoute("/assets/", uiFileServer, a.registerOptionsPrefixPublicAccess()...)
+	// Remaining UI asset prefixes — main server only
 	a.RegisterRoute("/icons/", uiFileServer, a.registerOptionsPrefixPublicAccess()...)
 	// @grafana/flamegraph hardcodes /public/ prefix; strip it to resolve to build/
 	a.RegisterRoute("/public/", http.StripPrefix("/public", uiFileServer), a.registerOptionsPrefixPublicAccess()...)
@@ -132,10 +204,10 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	if err := statusv1.RegisterStatusServiceHandlerServer(context.Background(), a.grpcGatewayMux, statusService); err != nil {
 		return err
 	}
-	a.indexPage.AddLinks(buildInfoWeight, "Build information", []IndexPageLink{
+	a.addOperationalLinks(buildInfoWeight, "Build information", []IndexPageLink{
 		{Desc: "Build information", Path: "/api/v1/status/buildinfo"},
 	})
-	a.indexPage.AddLinks(configWeight, "Current config", []IndexPageLink{
+	a.addOperationalLinks(configWeight, "Current config", []IndexPageLink{
 		{Desc: "Including the default values", Path: "/api/v1/status/config"},
 		{Desc: "Only values that differ from the defaults", Path: "/api/v1/status/config/diff"},
 		{Desc: "Default values", Path: "/api/v1/status/config/default"},
@@ -144,7 +216,7 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 }
 
 func (a *API) RegisterRedirectToAdmin() {
-	a.RegisterRoute("/", http.RedirectHandler("/admin", http.StatusFound), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/", http.RedirectHandler("/admin", http.StatusFound), a.registerOptionsPublicAccess()...)
 }
 
 func (a *API) RegisterCatchAll() error {
@@ -168,9 +240,9 @@ func (a *API) RegisterCatchAll() error {
 
 // RegisterRuntimeConfig registers the endpoints associates with the runtime configuration
 func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userLimitsHandler http.HandlerFunc) {
-	a.RegisterRoute("/runtime_config", runtimeConfigHandler, a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/api/v1/tenant_limits", userLimitsHandler, a.registerOptionsTenantPath()...)
-	a.indexPage.AddLinks(runtimeConfigWeight, "Current runtime config", []IndexPageLink{
+	a.registerAdminRoute("/runtime_config", runtimeConfigHandler, a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/api/v1/tenant_limits", userLimitsHandler, a.registerOptionsTenantPath()...)
+	a.addOperationalLinks(runtimeConfigWeight, "Current runtime config", []IndexPageLink{
 		{Desc: "Entire runtime config (including overrides)", Path: "/runtime_config"},
 		{Desc: "Only values that differ from the defaults", Path: "/runtime_config?mode=diff"},
 	})
@@ -188,8 +260,8 @@ func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.
 func (a *API) RegisterOverridesExporter(oe *exporter.OverridesExporter) {
-	a.RegisterRoute("/overrides-exporter/ring", http.HandlerFunc(oe.RingHandler), a.registerOptionsRingPage()...)
-	a.indexPage.AddLinks(defaultWeight, "Overrides-exporter", []IndexPageLink{
+	a.registerAdminRoute("/overrides-exporter/ring", http.HandlerFunc(oe.RingHandler), a.registerOptionsRingPage()...)
+	a.addOperationalLinks(defaultWeight, "Overrides-exporter", []IndexPageLink{
 		{Desc: "Ring status", Path: "/overrides-exporter/ring"},
 	})
 }
@@ -209,8 +281,8 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
 	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthDelayRecovery(limits)...)
-	a.RegisterRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
-	a.indexPage.AddLinks(defaultWeight, "Distributor", []IndexPageLink{
+	a.registerAdminRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
+	a.addOperationalLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},
 	})
 
@@ -221,16 +293,16 @@ func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation
 
 // RegisterMemberlistKV registers the endpoints associated with the memberlist KV store.
 func (a *API) RegisterMemberlistKV(pathPrefix string, kvs *memberlist.KVInitService) {
-	a.RegisterRoute("/memberlist", MemberlistStatusHandler(pathPrefix, kvs), a.registerOptionsPublicAccess()...)
-	a.indexPage.AddLinks(memberlistWeight, "Memberlist", []IndexPageLink{
+	a.registerAdminRoute("/memberlist", MemberlistStatusHandler(pathPrefix, kvs), a.registerOptionsPublicAccess()...)
+	a.addOperationalLinks(memberlistWeight, "Memberlist", []IndexPageLink{
 		{Desc: "Status", Path: "/memberlist"},
 	})
 }
 
 // RegisterIngesterRing registers the ring UI page associated with the distributor for writes.
 func (a *API) RegisterIngesterRing(r http.Handler) {
-	a.RegisterRoute("/ring", r, a.registerOptionsRingPage()...)
-	a.indexPage.AddLinks(defaultWeight, "Ingester", []IndexPageLink{
+	a.registerAdminRoute("/ring", r, a.registerOptionsRingPage()...)
+	a.addOperationalLinks(defaultWeight, "Ingester", []IndexPageLink{
 		{Desc: "Ring status", Path: "/ring"},
 	})
 }
@@ -260,27 +332,27 @@ func (a *API) RegisterIngester(svc *ingester.Ingester) {
 }
 
 func (a *API) RegisterReadyHandler(handler http.Handler) {
-	a.RegisterRoute("/ready", handler, WithMethod("GET"))
+	a.registerAdminRoute("/ready", handler, WithMethod("GET"))
 }
 
 func (a *API) RegisterStoreGateway(svc *storegateway.StoreGateway) {
 	storegatewayv1connect.RegisterStoreGatewayServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthRecovery()...)
 
-	a.indexPage.AddLinks(defaultWeight, "Store-gateway", []IndexPageLink{
+	a.addOperationalLinks(defaultWeight, "Store-gateway", []IndexPageLink{
 		{Desc: "Ring status", Path: "/store-gateway/ring"},
 		{Desc: "Tenants & Blocks", Path: "/store-gateway/tenants"},
 	})
-	a.RegisterRoute("/store-gateway/ring", http.HandlerFunc(svc.RingHandler), a.registerOptionsRingPage()...)
-	a.RegisterRoute("/store-gateway/tenants", http.HandlerFunc(svc.TenantsHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/store-gateway/tenant/{tenant}/blocks", http.HandlerFunc(svc.BlocksHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/store-gateway/ring", http.HandlerFunc(svc.RingHandler), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/store-gateway/tenants", http.HandlerFunc(svc.TenantsHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/store-gateway/tenant/{tenant}/blocks", http.HandlerFunc(svc.BlocksHandler), a.registerOptionsPublicAccess()...)
 }
 
 // RegisterCompactor registers routes associated with the compactor.
 func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
-	a.indexPage.AddLinks(defaultWeight, "Compactor", []IndexPageLink{
+	a.addOperationalLinks(defaultWeight, "Compactor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/compactor/ring"},
 	})
-	a.RegisterRoute("/compactor/ring", http.HandlerFunc(c.RingHandler), a.registerOptionsRingPage()...)
+	a.registerAdminRoute("/compactor/ring", http.HandlerFunc(c.RingHandler), a.registerOptionsRingPage()...)
 }
 
 // RegisterFrontendForQuerierHandler registers the endpoints associated with the query frontend.
@@ -323,17 +395,18 @@ type AdminService interface {
 }
 
 func (a *API) RegisterAdmin(ad AdminService) {
-	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles", http.HandlerFunc(ad.DatasetProfilesHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/download", http.HandlerFunc(ad.ProfileDownloadHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/call-tree", http.HandlerFunc(ad.ProfileCallTreeHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/index", http.HandlerFunc(ad.DatasetTSDBIndexHandler), a.registerOptionsPublicAccess()...)
-	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/symbols", http.HandlerFunc(ad.DatasetSymbolsHandler), a.registerOptionsPublicAccess()...)
+	// Admin/ops routes are served on the internal server when available.
+	a.registerAdminRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets", http.HandlerFunc(ad.DatasetHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles", http.HandlerFunc(ad.DatasetProfilesHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/download", http.HandlerFunc(ad.ProfileDownloadHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/profiles/call-tree", http.HandlerFunc(ad.ProfileCallTreeHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/index", http.HandlerFunc(ad.DatasetTSDBIndexHandler), a.registerOptionsPublicAccess()...)
+	a.registerAdminRoute("/ops/object-store/tenants/{tenant}/blocks/{block}/datasets/symbols", http.HandlerFunc(ad.DatasetSymbolsHandler), a.registerOptionsPublicAccess()...)
 
-	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
+	a.addOperationalLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},
 	})
 }

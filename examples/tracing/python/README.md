@@ -27,6 +27,15 @@ The load generator will automatically start sending requests to all regional ins
 
 ### Viewing Traces and Profiles
 
+The application emits CPU and memory profiles while preserving CPU span
+profiles. Open the following views to inspect the memory workload:
+
+- [Allocated space](http://localhost:3000/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-serviceName=rideshare.python.push.app&var-profileMetricId=memory:alloc_space:bytes:space:bytes)
+- [Space in use](http://localhost:3000/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-serviceName=rideshare.python.push.app&var-profileMetricId=memory:inuse_space:bytes:space:bytes)
+
+The workload retains a bounded window of allocations. Filter by the `vehicle`
+label to compare the bike, scooter, and car endpoints.
+
 Navigate to the [Explore page](http://localhost:3000/explore?schemaVersion=1&panes=%7B%22yM9%22:%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22datasource%22:%7B%22type%22:%22tempo%22,%22uid%22:%22tempo%22%7D,%22queryType%22:%22traceqlSearch%22,%22limit%22:20,%22tableType%22:%22traces%22,%22filters%22:%5B%7B%22id%22:%22e73a615e%22,%22operator%22:%22%3D%22,%22scope%22:%22span%22%7D,%7B%22id%22:%22service-name%22,%22tag%22:%22service.name%22,%22operator%22:%22%3D%22,%22scope%22:%22resource%22,%22value%22:%5B%22rideshare.python.push.app%22%5D,%22valueType%22:%22string%22%7D%5D%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D%7D&orgId=1), select a trace and click on a span that has a linked profile:
 
 ![image](https://github.com/grafana/otel-profiling-go/assets/12090599/31e33cd1-818b-4116-b952-c9ec7b1fb593)

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -19,7 +20,6 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
@@ -127,7 +127,7 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		if errors.As(err, &dsErr) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.ProfileSizeLimit, "uncompressed profile payload size exceeds limit of %s", humanize.Bytes(uint64(dsErr.Limit))))
 		}
-		return nil, errors.Wrapf(err, "failed to parse profile")
+		return nil, fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	bucket := a.getBucket(tenantID)
@@ -137,17 +137,17 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 
 	dataToStore, err := json.Marshal(adHocProfile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to upload profile")
+		return nil, fmt.Errorf("failed to upload profile: %w", err)
 	}
 
 	err = bucket.Upload(ctx, id, bytes.NewReader(dataToStore))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to upload profile")
+		return nil, fmt.Errorf("failed to upload profile: %w", err)
 	}
 
 	jsonProfile, err := json.Marshal(profile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse profile")
+		return nil, fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
@@ -163,7 +163,7 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 func (a *AdHocProfiles) newConvertLimits(tenantID string, msgMaxNodes int64) (convert.Limits, error) {
 	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, msgMaxNodes)
 	if err != nil {
-		return convert.Limits{}, errors.Wrapf(err, "could not determine max nodes")
+		return convert.Limits{}, fmt.Errorf("could not determine max nodes: %w", err)
 	}
 
 	return convert.Limits{
@@ -190,7 +190,7 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		if objstore.IsNotExist(bucket, err) {
 			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("profile %s not found", id))
 		}
-		return nil, connect.NewError(connect.CodeInternal, errors.Wrapf(err, "failed to get profile"))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to get profile: %w", err))
 	}
 
 	limits, err := a.newConvertLimits(tenantID, c.Msg.GetMaxNodes())
@@ -200,12 +200,12 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 
 	profile, profileTypes, err := parse(adHocProfile, c.Msg.ProfileType, limits)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse profile")
+		return nil, fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	jsonProfile, err := json.Marshal(profile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse profile")
+		return nil, fmt.Errorf("failed to parse profile: %w", err)
 	}
 
 	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
@@ -320,24 +320,24 @@ func (a *AdHocProfiles) Diff(ctx context.Context, c *connect.Request[v1.AdHocPro
 			if objstore.IsNotExist(bucket, leftFetchErr) {
 				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("left profile %s not found", leftID))
 			}
-			return nil, connect.NewError(connect.CodeInternal, errors.Wrap(leftFetchErr, "failed to fetch left profile"))
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch left profile: %w", leftFetchErr))
 		}
 		if rightFetchErr != nil {
 			if objstore.IsNotExist(bucket, rightFetchErr) {
 				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("right profile %s not found", rightID))
 			}
-			return nil, connect.NewError(connect.CodeInternal, errors.Wrap(rightFetchErr, "failed to fetch right profile"))
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch right profile: %w", rightFetchErr))
 		}
-		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to fetch profiles"))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch profiles: %w", err))
 	}
 
 	leftFB, leftTypes, err := parse(&leftProfile, c.Msg.ProfileType, limits)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(err, "failed to parse left profile"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("failed to parse left profile: %w", err))
 	}
 	rightFB, rightTypes, err := parse(&rightProfile, c.Msg.ProfileType, limits)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(err, "failed to parse right profile"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("failed to parse right profile: %w", err))
 	}
 
 	// Compute intersection of profile types.
@@ -362,16 +362,16 @@ func (a *AdHocProfiles) Diff(ctx context.Context, c *connect.Request[v1.AdHocPro
 
 	leftTree, err := flamebearerToModelTree(leftFB)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to convert left profile to tree"))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to convert left profile to tree: %w", err))
 	}
 	rightTree, err := flamebearerToModelTree(rightFB)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to convert right profile to tree"))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to convert right profile to tree: %w", err))
 	}
 
 	diff, err := model.NewFlamegraphDiff(leftTree, rightTree, int64(limits.MaxNodes))
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to compute diff"))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to compute diff: %w", err))
 	}
 
 	profileType := &typesv1.ProfileType{
@@ -383,7 +383,7 @@ func (a *AdHocProfiles) Diff(ctx context.Context, c *connect.Request[v1.AdHocPro
 	diffFB := model.ExportDiffToFlamebearer(diff, profileType)
 	jsonProfile, err := json.Marshal(diffFB)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Wrap(err, "failed to marshal diff profile"))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to marshal diff profile: %w", err))
 	}
 
 	return connect.NewResponse(&v1.AdHocProfilesDiffResponse{
@@ -395,7 +395,7 @@ func (a *AdHocProfiles) Diff(ctx context.Context, c *connect.Request[v1.AdHocPro
 func fetchProfile(ctx context.Context, bucket objstore.Bucket, id string) (*AdHocProfile, error) {
 	reader, err := bucket.Get(ctx, id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get profile %s", id)
+		return nil, fmt.Errorf("failed to get profile %s: %w", id, err)
 	}
 	defer func() {
 		_ = reader.Close()
@@ -438,7 +438,7 @@ func flamebearerToModelTree(fb *flamebearer.FlamebearerProfile) (*model.Function
 func parse(p *AdHocProfile, profileType *string, limits convert.Limits) (fg *flamebearer.FlamebearerProfile, profileTypes []string, err error) {
 	base64decoded, err := base64.StdEncoding.DecodeString(p.Data)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to upload profile")
+		return nil, nil, fmt.Errorf("failed to upload profile: %w", err)
 	}
 
 	f := convert.ProfileFile{
@@ -452,7 +452,7 @@ func parse(p *AdHocProfile, profileType *string, limits convert.Limits) (fg *fla
 		return nil, nil, err
 	}
 	if len(profiles) == 0 {
-		return nil, nil, errors.Wrapf(err, "no profiles found after parsing")
+		return nil, nil, fmt.Errorf("no profiles found after parsing")
 	}
 
 	profileTypes = make([]string, 0)

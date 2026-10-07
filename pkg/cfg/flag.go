@@ -1,13 +1,13 @@
 package cfg
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -37,7 +37,17 @@ func Flags(args []string, fs *flag.FlagSet) Source {
 func dFlags(fs *flag.FlagSet, args []string) Source {
 	return func(dst Cloneable) error {
 		// parse the final flagset
-		return fs.Parse(args)
+		if err := fs.Parse(args); err != nil {
+			return err
+		}
+
+		if recorder, ok := dst.(SetFlagRecorder); ok {
+			fs.Visit(func(f *flag.Flag) {
+				recorder.RecordSetFlag(f.Name)
+			})
+		}
+
+		return nil
 	}
 }
 

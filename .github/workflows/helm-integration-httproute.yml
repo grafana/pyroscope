@@ -42,4 +42,4 @@ jobs:
         run: kubectl version --client
 
       - name: Run HTTPRoute integration tests
-        run: go test ./operations/pyroscope/helm/pyroscope/e2e/... -v -timeout 60m
+        run: go test -tags=helm_integration ./operations/pyroscope/helm/pyroscope/e2e/... -v -timeout 60m

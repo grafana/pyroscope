@@ -1,0 +1,43 @@
+.fg-ctx-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 4px 0;
+  min-width: 200px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.fg-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  color: inherit;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fg-ctx-item:hover {
+  background: var(--action-hover);
+}
+
+.fg-ctx-group {
+  border-top: 1px solid var(--border-weak);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.fg-ctx-group-label {
+  padding: 4px 12px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

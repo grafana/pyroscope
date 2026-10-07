@@ -7,10 +7,10 @@ package objstore
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/minio/minio-go/v7/pkg/encrypt"
-	"github.com/pkg/errors"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/s3"
 
@@ -97,7 +97,7 @@ func (b *SSEBucketClient) getCustomS3SSEConfig() (encrypt.ServerSide, error) {
 
 	sse, err := cfg.BuildMinioConfig()
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to customise S3 SSE config for tenant %s", b.userID)
+		return nil, fmt.Errorf("unable to customise S3 SSE config for tenant %s: %w", b.userID, err)
 	}
 
 	return sse, nil

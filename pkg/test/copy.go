@@ -6,13 +6,13 @@
 package test
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/grafana/dskit/runutil"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +36,7 @@ func copyRecursive(src, dst string) error {
 		}
 
 		if !info.Mode().IsRegular() {
-			return errors.Errorf("%s is not a regular file", path)
+			return fmt.Errorf("%s is not a regular file", path)
 		}
 
 		source, err := os.Open(filepath.Clean(path))

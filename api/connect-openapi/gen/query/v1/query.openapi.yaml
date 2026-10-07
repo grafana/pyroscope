@@ -656,6 +656,17 @@ components:
           items:
             $ref: '#/components/schemas/query.v1.BlockExecution'
           title: block_executions
+        bytesFetched:
+          type:
+            - integer
+            - string
+          title: bytes_fetched
+          format: int64
+          description: |-
+            bytes_fetched is the total number of bytes requested from object storage
+             during this invocation. It counts only the bytes from this single,
+             successful Invoke call: retried or hedged calls that did not produce a
+             response are not included, so the value is deterministic across retries.
       title: ExecutionStats
       additionalProperties: false
       description: ExecutionStats captures statistics for READ node execution.
@@ -731,6 +742,11 @@ components:
             format: int64
           title: attribute_refs
           description: labels as references into AttributeTable
+        traceId:
+          type: string
+          title: trace_id
+          format: byte
+          description: Trace ID associated with the span, if present.
       title: HeatmapPoint
       additionalProperties: false
     query.v1.HeatmapQuery:
@@ -945,6 +961,16 @@ components:
           items:
             type: string
           title: profile_id_selector
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
           description: 'TODO(kolesnikovae): Go PGO options.'
       title: PprofQuery
       additionalProperties: false
@@ -959,6 +985,57 @@ components:
           title: pprof
           format: byte
       title: PprofReport
+      additionalProperties: false
+    query.v1.ProfilePresenceEntry:
+      type: object
+      properties:
+        profileId:
+          type: string
+          title: profile_id
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/types.v1.LabelPair'
+          title: labels
+          description: |-
+            The profile's own labels (e.g. pod, instance), same convention as
+             types.v1.Exemplar.labels.
+        timestamp:
+          type:
+            - integer
+            - string
+          title: timestamp
+          format: int64
+          description: 'Milliseconds since epoch: the profile''s own timestamp.'
+      title: ProfilePresenceEntry
+      additionalProperties: false
+    query.v1.ProfilePresenceQuery:
+      type: object
+      properties:
+        profileIdSelector:
+          type: array
+          items:
+            type: string
+          title: profile_id_selector
+      title: ProfilePresenceQuery
+      additionalProperties: false
+      description: |-
+        (Experimental) ProfilePresenceQuery checks which of profile_id_selector are actually
+         present in the queried data (matching the label selector and time range), without
+         resolving symbols or building a merged profile.
+    query.v1.ProfilePresenceReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.ProfilePresenceQuery'
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.ProfilePresenceEntry'
+          title: profiles
+          description: The subset of query.profile_id_selector found present, one entry per profile.
+      title: ProfilePresenceReport
       additionalProperties: false
     query.v1.Query:
       type: object
@@ -992,12 +1069,15 @@ components:
           $ref: '#/components/schemas/query.v1.HeatmapQuery'
         timeSeriesCompact:
           title: time_series_compact
+          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+        profilePresence:
+          title: profile_presence
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.TimeSeriesQuery'
+          $ref: '#/components/schemas/query.v1.ProfilePresenceQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1087,6 +1167,7 @@ components:
         - QUERY_PPROF
         - QUERY_HEATMAP
         - QUERY_TIME_SERIES_COMPACT
+        - QUERY_PROFILE_PRESENCE
     query.v1.Report:
       type: object
       properties:
@@ -1120,6 +1201,9 @@ components:
         timeSeriesCompact:
           title: time_series_compact
           $ref: '#/components/schemas/query.v1.TimeSeriesCompactReport'
+        profilePresence:
+          title: profile_presence
+          $ref: '#/components/schemas/query.v1.ProfilePresenceReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1135,6 +1219,7 @@ components:
         - REPORT_PPROF
         - REPORT_HEATMAP
         - REPORT_TIME_SERIES_COMPACT
+        - REPORT_PROFILE_PRESENCE
     query.v1.Series:
       type: object
       properties:
@@ -1257,6 +1342,11 @@ components:
         fullSymbols:
           type: boolean
           title: full_symbols
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:
@@ -1390,6 +1480,12 @@ components:
           description: |-
             Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
              label overlaps with the series label, it is not included here.
+        traceId:
+          type: string
+          examples:
+            - 4bf92f3577b34da6a3ce929d0e0e4736
+          title: trace_id
+          description: Trace ID associated with the span, encoded as 32 lowercase hexadecimal characters.
       title: Exemplar
       additionalProperties: false
       description: |-

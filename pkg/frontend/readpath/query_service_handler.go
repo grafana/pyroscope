@@ -2,6 +2,7 @@ package readpath
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -64,6 +65,31 @@ func (r *Router) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
+		return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
+			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
+			func(a, b *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
+				var m pprof.ProfileMerge
+				left := a.GetPprof().GetProfile()
+				if left == nil {
+					return nil, connect.NewError(connect.CodeInternal, errors.New("old read path returned no pprof profile"))
+				}
+				right := b.GetPprof().GetProfile()
+				if right == nil {
+					return nil, connect.NewError(connect.CodeInternal, errors.New("new read path returned no pprof profile"))
+				}
+				if err := m.Merge(left, false); err != nil {
+					return nil, err
+				}
+				if err := m.Merge(right, false); err != nil {
+					return nil, err
+				}
+				return &querierv1.SelectMergeStacktracesResponse{
+					Pprof: &querierv1.PprofProfile{Profile: m.Profile()},
+				}, nil
+			})
+	}
+
 	// We always query data in the tree format and
 	// return it in the format requested by the client.
 	f := c.Msg.Format
@@ -213,6 +239,12 @@ func (r *Router) Diff(
 	g, ctx := errgroup.WithContext(ctx)
 	getTree := func(dst *phlaremodel.FunctionNameTree, req *querierv1.SelectMergeStacktracesRequest) func() error {
 		return func() error {
+			if req == nil {
+				req = &querierv1.SelectMergeStacktracesRequest{}
+			} else {
+				req = req.CloneVT()
+			}
+			req.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
 			resp, err := r.SelectMergeStacktraces(ctx, connect.NewRequest(req))
 			if err != nil {
 				return err
@@ -252,6 +284,16 @@ func (r *Router) AnalyzeQuery(
 		return r.oldFrontend.AnalyzeQuery(ctx, req)
 	}
 	return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
+}
+
+func (r *Router) QueryAnomalies(
+	ctx context.Context,
+	req *connect.Request[querierv1.QueryAnomaliesRequest],
+) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	if r.newFrontend != nil {
+		return r.newFrontend.QueryAnomalies(ctx, req)
+	}
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("QueryAnomalies requires the v2 query-frontend"))
 }
 
 func (r *Router) GetProfileStats(

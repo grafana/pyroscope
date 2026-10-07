@@ -18,7 +18,6 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	versionv1 "github.com/grafana/pyroscope/api/gen/proto/go/version/v1"
@@ -177,7 +176,7 @@ type Service struct {
 func New(cfg util.CommonRingConfig, logger log.Logger, reg prometheus.Registerer) (*Service, error) {
 	client, err := kv.NewClient(cfg.KVStore, GetCodec(), kv.RegistererWithKVName(reg, "versions"), logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize versions' KV store")
+		return nil, fmt.Errorf("failed to initialize versions' KV store: %w", err)
 	}
 
 	instanceAddr, err := ring.GetInstanceAddr(cfg.InstanceAddr, cfg.InstanceInterfaceNames, logger, cfg.EnableIPv6)

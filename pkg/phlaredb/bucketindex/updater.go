@@ -8,6 +8,8 @@ package bucketindex
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"path"
 	"time"
@@ -16,7 +18,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
@@ -84,7 +85,7 @@ func (w *Updater) updateBlocks(ctx context.Context, old []*Block) (blocks []*Blo
 		return nil
 	})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "list blocks")
+		return nil, nil, fmt.Errorf("list blocks: %w", err)
 	}
 
 	// Since blocks are immutable, all blocks already existing in the index can just be copied.
@@ -138,23 +139,23 @@ func (w *Updater) updateBlockIndexEntry(ctx context.Context, id ulid.ULID) (*Blo
 		return nil, ErrBlockMetaNotFound
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "get block meta file: %v", metaFile)
+		return nil, fmt.Errorf("get block meta file: %v: %w", metaFile, err)
 	}
 	defer runutil.CloseWithLogOnErr(w.logger, r, "close get block meta file")
 
 	metaContent, err := io.ReadAll(r)
 	if err != nil {
-		return nil, errors.Wrapf(err, "read block meta file: %v", metaFile)
+		return nil, fmt.Errorf("read block meta file: %v: %w", metaFile, err)
 	}
 
 	// Unmarshal it.
 	m := block.Meta{}
 	if err := json.Unmarshal(metaContent, &m); err != nil {
-		return nil, errors.Wrapf(ErrBlockMetaCorrupted, "unmarshal block meta file %s: %v", metaFile, err)
+		return nil, fmt.Errorf("unmarshal block meta file %s: %v: %w", metaFile, err, ErrBlockMetaCorrupted)
 	}
 
 	if !m.Version.IsValid() {
-		return nil, errors.Errorf("unexpected block meta version: %s version: %d", metaFile, m.Version)
+		return nil, fmt.Errorf("unexpected block meta version: %s version: %d", metaFile, m.Version)
 	}
 
 	block := BlockFromMeta(m)
@@ -162,7 +163,7 @@ func (w *Updater) updateBlockIndexEntry(ctx context.Context, id ulid.ULID) (*Blo
 	// Get the meta.json attributes.
 	attrs, err := w.bkt.Attributes(ctx, metaFile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "read meta file attributes: %v", metaFile)
+		return nil, fmt.Errorf("read meta file attributes: %v: %w", metaFile, err)
 	}
 
 	// Since the meta.json file is the last file of a block being uploaded and it's immutable
@@ -221,10 +222,10 @@ func (w *Updater) updateBlockDeletionMarkIndexEntry(ctx context.Context, id ulid
 
 	if err := block.ReadMarker(ctx, w.logger, w.bkt, id.String(), &m); err != nil {
 		if errors.Is(err, block.ErrorMarkerNotFound) {
-			return nil, errors.Wrap(ErrBlockDeletionMarkNotFound, err.Error())
+			return nil, fmt.Errorf("%s: %w", err.Error(), ErrBlockDeletionMarkNotFound)
 		}
 		if errors.Is(err, block.ErrorUnmarshalMarker) {
-			return nil, errors.Wrap(ErrBlockDeletionMarkCorrupted, err.Error())
+			return nil, fmt.Errorf("%s: %w", err.Error(), ErrBlockDeletionMarkCorrupted)
 		}
 		return nil, err
 	}

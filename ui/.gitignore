@@ -13,6 +13,11 @@ dist
 dist-ssr
 *.local
 
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
 .yarn/*
 !.yarn/patches
 

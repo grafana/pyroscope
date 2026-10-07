@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/gogo/status"
 	"github.com/grafana/dskit/httpgrpc"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 )

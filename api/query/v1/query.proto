@@ -88,6 +88,7 @@ message Query {
   PprofQuery pprof = 7;
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
+  ProfilePresenceQuery profile_presence = 10;
   // function_details
   // call_graph
   // top_table
@@ -104,6 +105,7 @@ enum QueryType {
   QUERY_PPROF = 6;
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
+  QUERY_PROFILE_PRESENCE = 9;
 }
 
 message InvokeResponse {
@@ -133,6 +135,11 @@ message ExecutionStats {
   int64 blocks_read = 1;
   int64 datasets_processed = 2;
   repeated BlockExecution block_executions = 3;
+  // bytes_fetched is the total number of bytes requested from object storage
+  // during this invocation. It counts only the bytes from this single,
+  // successful Invoke call: retried or hedged calls that did not produce a
+  // response are not included, so the value is deterministic across retries.
+  uint64 bytes_fetched = 4;
 }
 
 // BlockExecution captures execution details for a single block.
@@ -158,6 +165,7 @@ message Report {
   PprofReport pprof = 7;
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
+  ProfilePresenceReport profile_presence = 10;
 }
 
 enum ReportType {
@@ -170,6 +178,7 @@ enum ReportType {
   REPORT_PPROF = 6;
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
+  REPORT_PROFILE_PRESENCE = 9;
 }
 
 message LabelNamesQuery {}
@@ -215,6 +224,7 @@ message TreeQuery {
   optional types.v1.StackTraceSelector stack_trace_selector = 3;
   repeated string profile_id_selector = 4;
   bool full_symbols = 5;
+  repeated string trace_id_selector = 6;
 }
 
 message TreeSymbols {
@@ -235,10 +245,34 @@ message TreeReport {
   map<string, string> mapping_names = 4;
 }
 
+// (Experimental) ProfilePresenceQuery checks which of profile_id_selector are actually
+// present in the queried data (matching the label selector and time range), without
+// resolving symbols or building a merged profile.
+message ProfilePresenceQuery {
+  repeated string profile_id_selector = 1;
+}
+
+message ProfilePresenceReport {
+  ProfilePresenceQuery query = 1;
+  // The subset of query.profile_id_selector found present, one entry per profile.
+  repeated ProfilePresenceEntry profiles = 2;
+}
+
+message ProfilePresenceEntry {
+  string profile_id = 1;
+  // The profile's own labels (e.g. pod, instance), same convention as
+  // types.v1.Exemplar.labels.
+  repeated types.v1.LabelPair labels = 2;
+  // Milliseconds since epoch: the profile's own timestamp.
+  int64 timestamp = 3;
+}
+
 message PprofQuery {
   int64 max_nodes = 1;
   optional types.v1.StackTraceSelector stack_trace_selector = 2;
   repeated string profile_id_selector = 3;
+  repeated string span_selector = 4;
+  repeated string trace_id_selector = 5;
   // TODO(kolesnikovae): Go PGO options.
 }
 
@@ -266,6 +300,7 @@ message HeatmapPoint {
   uint64 span_id = 3; // Span ID if this profile was split by span during ingestion
   int64 value = 4; // Total sample value for this profile (e.g., CPU nanoseconds, bytes allocated).
   repeated int64 attribute_refs = 5; // labels as references into AttributeTable
+  bytes trace_id = 6; // Trace ID associated with the span, if present.
 }
 
 message HeatmapSeries {

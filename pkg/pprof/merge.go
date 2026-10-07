@@ -220,6 +220,10 @@ func compatible(a, b *profilev1.Profile) error {
 // equalValueType returns true if the two value types are semantically
 // equal. It ignores the internal fields used during encode/decode.
 func equalValueType(st1, st2 *profilev1.ValueType) bool {
+	if st1 == nil && st2 == nil {
+		// Two absent value types agree — there is nothing to disagree about.
+		return true
+	}
 	if st1 == nil || st2 == nil {
 		return false
 	}

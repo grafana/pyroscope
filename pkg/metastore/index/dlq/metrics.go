@@ -12,10 +12,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		recoveryAttempts: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "pyroscope",
-				Subsystem: "metastore",
-				Name:      "dlq_recovery_attempts_total",
-				Help:      "Total number of DLQ block recovery attempts by status.",
+				Name: "dlq_recovery_attempts_total",
+				Help: "Total number of DLQ block recovery attempts by status.",
 			},
 			[]string{"status"},
 		),

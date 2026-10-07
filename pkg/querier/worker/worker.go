@@ -7,6 +7,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 
@@ -99,7 +99,7 @@ func NewQuerierWorker(cfg Config, handler RequestHandler, log log.Logger, reg pr
 	if cfg.QuerierID == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get hostname for configuring querier ID")
+			return nil, fmt.Errorf("failed to get hostname for configuring querier ID: %w", err)
 		}
 		cfg.QuerierID = hostname
 	}
@@ -147,7 +147,7 @@ func newQuerierWorkerWithProcessor(cfg Config, log log.Logger, processor process
 	if len(servs) > 0 {
 		subservices, err := services.NewManager(servs...)
 		if err != nil {
-			return nil, errors.Wrap(err, "querier worker subservices")
+			return nil, fmt.Errorf("querier worker subservices: %w", err)
 		}
 
 		f.subservices = subservices
@@ -172,7 +172,7 @@ func (w *querierWorker) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-w.subservicesWatcher.Chan(): // The channel will be nil if w.subservicesWatcher is not set.
-		return errors.Wrap(err, "querier worker subservice failed")
+		return fmt.Errorf("querier worker subservice failed: %w", err)
 	}
 }
 

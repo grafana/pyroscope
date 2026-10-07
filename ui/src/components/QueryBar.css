@@ -9,8 +9,14 @@
   flex-shrink: 0;
 }
 
-.querybar-input {
+.querybar-input-wrap {
+  position: relative;
   flex: 1;
+  min-width: 0;
+}
+
+.querybar-input {
+  width: 100%;
   height: 28px;
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -20,7 +26,6 @@
   font-size: var(--text-sm);
   font-family: var(--font-mono);
   outline: none;
-  min-width: 0;
   transition:
     border-color var(--duration-base) var(--ease-out),
     box-shadow var(--duration-base) var(--ease-out);

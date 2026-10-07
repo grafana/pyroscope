@@ -13,7 +13,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
@@ -64,7 +63,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 	for _, job := range planCompaction(g.userID, flatBlocks, g.ranges, g.shardCount, g.splitGroupsCount) {
 		// Sanity check: if splitting is disabled, we don't expect any job for the split stage.
 		if g.shardCount <= 0 && job.stage == stageSplit {
-			return nil, errors.Errorf("unexpected split stage job because splitting is disabled: %s", job.String())
+			return nil, fmt.Errorf("unexpected split stage job because splitting is disabled: %s", job.String())
 		}
 
 		// The group key is used by the compactor as a unique identifier of the compaction job.
@@ -94,7 +93,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 
 		for _, m := range job.blocks {
 			if err := compactionJob.AppendMeta(m); err != nil {
-				return nil, errors.Wrap(err, "add block to compaction group")
+				return nil, fmt.Errorf("add block to compaction group: %w", err)
 			}
 		}
 

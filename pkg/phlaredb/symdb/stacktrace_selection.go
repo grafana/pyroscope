@@ -166,8 +166,8 @@ func (x *SelectedStackTraces) appendStackTrace(locations []uint64) stackTraceLoc
 		return 0
 	}
 	var isLeaf uint32
-	leaf := x.symbols.Locations[locations[0]].Line[0]
-	if x.location == x.funcNames[leaf.FunctionId] {
+	leaves := x.symbols.Locations[locations[0]].Line
+	if len(leaves) > 0 && x.location == x.funcNames[leaves[0].FunctionId] {
 		isLeaf = 1
 	}
 	var inSubtree uint32

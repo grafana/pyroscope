@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +38,8 @@ import (
 )
 
 type shardKey uint32
+
+func (sk shardKey) String() string { return strconv.FormatUint(uint64(sk), 10) }
 
 type segmentsWriter struct {
 	config    Config
@@ -184,7 +187,7 @@ func (sw *segmentsWriter) stop() {
 }
 
 func (sw *segmentsWriter) newShard(sk shardKey) *shard {
-	sl := log.With(sw.logger, "shard", fmt.Sprintf("%d", sk))
+	sl := log.With(sw.logger, "shard", sk.String())
 	sh := &shard{
 		sw:        sw,
 		logger:    sl,
@@ -201,7 +204,7 @@ func (sw *segmentsWriter) newShard(sk shardKey) *shard {
 
 func (sw *segmentsWriter) newSegment(sh *shard, sk shardKey, sl log.Logger) *segment {
 	id := ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
-	sshard := fmt.Sprintf("%d", sk)
+	sshard := sk.String()
 	s := &segment{
 		logger:   log.With(sl, "segment-id", id.String()),
 		ulid:     id,
@@ -626,7 +629,6 @@ func (s *segment) ingest(tenantID string, p *profilev1.Profile, id uuid.UUID, la
 	// profile target dataset.
 	// TODO: Replace with pprof.GroupSamples
 	_ = pprofsplit.VisitSampleSeries(p, labels, nil, appender)
-	s.sw.metrics.segmentIngestBytes.WithLabelValues(s.sshard, tenantID).Observe(float64(p.SizeVT()))
 }
 
 type sampleAppender struct {

@@ -36,20 +36,20 @@
    not directly in components.
 ----------------------------------------------------------------------------- */
 :root {
-  /* ── Neutral (blue-tinted cool slate) ──────────────────────────────────── */
+  /* ── Neutral (true grey, no tint) ──────────────────────────────────────── */
   --neutral-0: #ffffff;
-  --neutral-50: #f3f5fb;
-  --neutral-100: #e4e8f4;
-  --neutral-200: #c5ccde;
-  --neutral-300: #9aa3c0;
-  --neutral-400: #6e7899;
-  --neutral-500: #515a7a;
-  --neutral-600: #3b4468;
-  --neutral-700: #2d3557;
-  --neutral-800: #242c4a;
-  --neutral-850: #1e263f;
-  --neutral-900: #1a2236;
-  --neutral-950: #141a2c;
+  --neutral-50: #f4f4f4;
+  --neutral-100: #e6e6e6;
+  --neutral-200: #c9c9c9;
+  --neutral-300: #9c9c9c;
+  --neutral-400: #6f6f6f;
+  --neutral-500: #525252;
+  --neutral-600: #3d3d3d;
+  --neutral-700: #2f2f2f;
+  --neutral-800: #262626;
+  --neutral-850: #1f1f1f;
+  --neutral-900: #1a1a1a;
+  --neutral-950: #141414;
   --neutral-1000: #000000;
 
   /* ── Blue ───────────────────────────────────────────────────────────────── */
@@ -188,26 +188,26 @@
   color-scheme: dark;
 
   /* ── Backgrounds ────────────────────────────────────────────────────────── */
-  --bg-canvas: #1a2236; /* page fill, outermost backdrop                 */
-  --bg-primary: #212a44; /* panels, cards, main content surfaces          */
-  --bg-secondary: #28324f; /* sidebars, nested surfaces, form inputs        */
-  --bg-elevated: #303c5e; /* dropdowns, popovers, tooltips, dialogs        */
+  --bg-canvas: #1a1a1a; /* page fill, outermost backdrop                 */
+  --bg-primary: #1f1f1f; /* panels, cards, main content surfaces          */
+  --bg-secondary: #262626; /* sidebars, nested surfaces, form inputs        */
+  --bg-elevated: #2f2f2f; /* dropdowns, popovers, tooltips, dialogs        */
 
   /* ── Borders ────────────────────────────────────────────────────────────── */
-  --border-weak: rgba(170, 185, 230, 0.08); /* hairlines, dividers       */
-  --border-medium: rgba(170, 185, 230, 0.16); /* standard element borders  */
-  --border-strong: rgba(170, 185, 230, 0.28); /* focused / prominent rings */
+  --border-weak: rgba(255, 255, 255, 0.06); /* hairlines, dividers       */
+  --border-medium: rgba(255, 255, 255, 0.12); /* standard element borders  */
+  --border-strong: rgba(255, 255, 255, 0.22); /* focused / prominent rings */
 
   /* ── Text ───────────────────────────────────────────────────────────────── */
-  --text-primary: #d0d4e8; /* main body text                     */
-  --text-secondary: #8892b2; /* labels, hints, descriptions        */
-  --text-disabled: #515b7c; /* non-interactive / disabled text    */
-  --text-link: var(--blue-300); /* #6e9fff                            */
-  --text-link-hover: var(--blue-200); /* #adc8ff                            */
-  --text-max-contrast: #eef0ff; /* text on colored / inverted bg      */
+  --text-primary: #d6d6d6; /* main body text                     */
+  --text-secondary: #8d8d8d; /* labels, hints, descriptions        */
+  --text-disabled: #585858; /* non-interactive / disabled text    */
+  --text-link: var(--blue-300); /* #6e9fff — kept blue for link affordance */
+  --text-link-hover: var(--blue-200); /* #adc8ff                          */
+  --text-max-contrast: #f0f0f2; /* text on colored / inverted bg     */
 
   /* ── Action states ──────────────────────────────────────────────────────── */
-  --action-hover: rgba(170, 185, 230, 0.07); /* hover overlay on items  */
+  --action-hover: rgba(255, 255, 255, 0.06); /* hover overlay on items  */
   --action-selected: rgba(61, 113, 217, 0.2); /* selected item overlay   */
   --action-focus: rgba(61, 113, 217, 0.5); /* focus ring color        */
 

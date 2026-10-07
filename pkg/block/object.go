@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -75,6 +75,7 @@ func NewObjectFromPath(ctx context.Context, storage objstore.Bucket, path string
 	size := attrs.Size - offset
 
 	buf := bufferpool.GetBuffer(int(size))
+	defer func() { bufferpool.Put(buf) }()
 	if err := objstore.ReadRange(ctx, buf, path, storage, offset, size); err != nil {
 		return nil, err
 	}
@@ -88,11 +89,12 @@ func NewObjectFromPath(ctx context.Context, storage objstore.Bucket, path string
 
 		bufNew := bufferpool.GetBuffer(int(metaSize))
 		if err := objstore.ReadRange(ctx, bufNew, path, storage, offset, metaSize-size); err != nil {
+			bufferpool.Put(bufNew)
 			return nil, err
 		}
 		bufNew.B = append(bufNew.B, buf.B...)
+		bufferpool.Put(buf)
 		buf = bufNew
-
 	}
 
 	var meta metastorev1.BlockMeta

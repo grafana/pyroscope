@@ -7,7 +7,6 @@ import (
 	bbolt "go.etcd.io/bbolt"
 
 	iter "github.com/grafana/pyroscope/v2/pkg/iter"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

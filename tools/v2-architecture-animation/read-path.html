@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pyroscope v2 — read path</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #f7f7f7; }
+  #stage { display: block; }
+  text { font-family: "DejaVu Sans Mono", "Menlo", "Consolas", "Courier New", monospace; }
+</style>
+</head>
+<body>
+<svg id="stage" width="1320" height="560" viewBox="0 0 1320 560" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="1320" height="560" fill="#f7f7f7"/>
+  <g id="static"></g>
+  <g id="dynamic"></g>
+  <g id="markers"></g>
+</svg>
+<script src="lib.js"></script>
+<script>
+const sroot = document.getElementById("static");
+const droot = document.getElementById("dynamic");
+const mroot = document.getElementById("markers");
+
+const boxes = {
+  drilldown: { x: 30,  y: 210, w: 160, h: 120, fill: "#ffe8cc" },
+  frontend:  { x: 232, y: 210, w: 150, h: 120, fill: "#e5dbff" },
+  metastore: { x: 232, y: 96,  w: 150, h: 82,  fill: "#ffe3e3" },
+  node1:     { x: 432, y: 210, w: 172, h: 120, fill: "#d0ebff" },
+  node2:     { x: 652, y: 126,  w: 178, h: 118, fill: "#d0ebff" },
+  nodeN:     { x: 652, y: 328, w: 178, h: 118, fill: "#d0ebff" },
+  objstore:  { x: 905, y: 66,  w: 395, h: 452, fill: "#ebfbee" },
+};
+const A = {}; for (const k in boxes) A[k] = anchors(boxes[k]);
+
+// ---- object storage: L0..L3 columns of blocks ----
+const LV = {
+  0: { h: 12, pitch: 16, n: 6, cx: 975,  w: 58 },
+  1: { h: 16, pitch: 22, n: 4, cx: 1070, w: 58 },
+  2: { h: 24, pitch: 32, n: 2, cx: 1165, w: 58 },
+  3: { h: 34, pitch: 0,  n: 1, cx: 1260, w: 58 },
+};
+const OTOP = 150;
+const slotY = (l, i) => OTOP + i * (LV[l].pitch || 0) + LV[l].h / 2;
+const blockFill = (l, i) => FLAME[(i * 2 + Number(l) * 3) % FLAME.length];
+const blockCenter = (l, i) => [LV[l].cx, slotY(l, i)];
+
+// which blocks each leaf node scans (the query's plan)
+const N2READ = [[0, 4], [1, 2]];
+const NNREAD = [[0, 5], [2, 0]];
+const selected = new Set([...N2READ, ...NNREAD].map(b => b[0] + "-" + b[1]));
+
+// ---- static scene ----
+el("text", { x: 40, y: 54, "font-size": 30, "font-weight": 700, fill: INK }, sroot).textContent = "Read path";
+el("text", { x: 40, y: 82, "font-size": 16, "font-weight": 500, fill: MUT }, sroot)
+  .textContent = "queries fan out across object storage and merge into one flame graph";
+
+conn(sroot, [[307, 210], [307, 178]], { dash: "5 5" });            // frontend <-> metastore
+el("text", { x: 316, y: 200, "font-size": 12, fill: MUT }, sroot).textContent = "plan";
+conn(sroot, [[382, 270], [432, 270]]);                              // frontend -> node1
+conn(sroot, [[604, 264], [652, 180]]);                              // node1 -> node2
+conn(sroot, [[604, 276], [652, 384]]);                              // node1 -> nodeN
+conn(sroot, [[830, 180], [905, 180]]);                              // node2 -> objstore
+conn(sroot, [[830, 384], [905, 360]]);                              // nodeN -> objstore
+
+drawBox(sroot, boxes.drilldown, [
+  { t: "Profiles", bold: true, size: 16 },
+  { t: "Drilldown", bold: true, size: 16, gap: 18 },
+], { accent: "#e8590c" });
+drawBox(sroot, boxes.frontend, [
+  { t: "Query-Frontend", bold: true, size: 15 },
+  { t: "plan & route", size: 13, fill: SUB },
+], { accent: "#7048e8" });
+drawBox(sroot, boxes.metastore, [
+  { t: "Metastore", bold: true, size: 17 },
+  { t: "block index", size: 13, fill: SUB },
+], { accent: "#e64980" });
+drawBox(sroot, boxes.node1, [
+  { t: "Query-Backend", bold: true, size: 15 },
+  { t: "Node 1 · merge", size: 13, fill: SUB },
+], { accent: "#1c7ed6" });
+drawBox(sroot, boxes.node2, [
+  { t: "Query-Backend", bold: true, size: 15 },
+  { t: "Node 2 · read", size: 13, fill: SUB },
+], { accent: "#1c7ed6" });
+drawBox(sroot, boxes.nodeN, [
+  { t: "Query-Backend", bold: true, size: 15 },
+  { t: "Node N · read", size: 13, fill: SUB },
+], { accent: "#1c7ed6" });
+drawBox(sroot, boxes.objstore, [
+  { t: "Object Storage", bold: true, size: 20 },
+], { accent: "#37b24d", titleOffset: 30 });
+for (const l in LV)
+  el("text", { x: LV[l].cx, y: 134, "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: "#2b8a3e" }, sroot)
+    .textContent = "L" + l;
+
+// ---- object storage blocks (opacity/stroke change with the plan) ----
+const blockEl = {};
+for (const l in LV)
+  for (let i = 0; i < LV[l].n; i++) {
+    const [cx, cy] = blockCenter(l, i);
+    blockEl[l + "-" + i] = el("rect", { x: cx - LV[l].w / 2, y: cy - LV[l].h / 2, width: LV[l].w, height: LV[l].h,
+      rx: 2, fill: blockFill(l, i), stroke: "#00000022", "stroke-width": 0.6 }, droot);
+  }
+
+// ---- flame graphs built inside the nodes & shown in drilldown ----
+const SEED_A = 3, SEED_B = 7, SEED_C = 11;
+const ic2 = staticIcicle(droot, boxes.node2.x + 22, boxes.node2.y + 60, 134, 4, SEED_A, 6);
+const icN = staticIcicle(droot, boxes.nodeN.x + 22, boxes.nodeN.y + 60, 134, 4, SEED_B, 6);
+const ic1 = staticIcicle(droot, boxes.node1.x + 18, boxes.node1.y + 64, 136, 5, SEED_C, 6);
+const icD = staticIcicle(droot, boxes.drilldown.x + 20, boxes.drilldown.y + 66, 120, 5, SEED_C, 6);
+[ic2, icN, ic1, icD].forEach(s => s.setReveal(0));
+
+// ---- markers & travelling glyphs ----
+const mPlan = marker(mroot, "#e64980", 13);   // plan request/response
+const mRoute = marker(mroot, "#7048e8", 13);  // frontend -> node1
+const mDist2 = marker(mroot, "#7048e8", 12);  // node1 -> node2
+const mDistN = marker(mroot, "#7048e8", 12);  // node1 -> nodeN
+const fRead = Array.from({ length: 4 }, () => marker(mroot, "#0ca678", 11)); // block scans
+const gN2 = makeIcicle(mroot, 26, 4, SEED_A, 4);   // node2 result -> node1
+const gNN = makeIcicle(mroot, 26, 4, SEED_B, 4);   // nodeN result -> node1
+const gAgg = makeIcicle(mroot, 34, 5, SEED_C, 4);  // aggregated -> frontend -> drilldown
+
+const READS = [
+  { blk: N2READ[0], to: [830, 150], set: 0 },
+  { blk: N2READ[1], to: [830, 150], set: 1 },
+  { blk: NNREAD[0], to: [830, 414], set: 2 },
+  { blk: NNREAD[1], to: [830, 414], set: 3 },
+];
+const RETURN = [[A.node1.l[0], 270], [307, 290], [A.drilldown.cx, 300]];
+
+function seek(t) {
+  t = clamp(t, 0, 1);
+  const fade = t < 0.04 ? seg(t, 0, 0.04, false) : (t > 0.95 ? 1 - seg(t, 0.95, 1, false) : 1);
+  [mPlan, mRoute, mDist2, mDistN, ...fRead].forEach(m => m.hide());
+  [gN2, gNN, gAgg].forEach(g => g.hide());
+
+  // ---- plan round-trip: frontend -> metastore -> frontend ----
+  if (t >= 0.05 && t < 0.13) mPlan.at(...pointAt([[307, 210], [307, 178]], seg(t, 0.05, 0.13, false)));
+  else if (t >= 0.13 && t < 0.21) mPlan.at(...pointAt([[307, 178], [307, 210]], seg(t, 0.13, 0.21, false)));
+
+  // ---- block selection: once the plan is back, dim everything except the query's blocks ----
+  const dim = t < 0.21 ? 1 : (t < 0.27 ? 1 - 0.78 * seg(t, 0.21, 0.27, false) : 0.22);
+  for (const key in blockEl) {
+    const sel = selected.has(key);
+    blockEl[key].setAttribute("opacity", sel ? 1 : dim);
+    blockEl[key].setAttribute("stroke", sel && t >= 0.21 ? INK : "#00000022");
+    blockEl[key].setAttribute("stroke-width", sel && t >= 0.21 ? 2 : 0.6);
+  }
+
+  // ---- frontend contacts Node 1 only after the plan has returned ----
+  if (t >= 0.24 && t < 0.32) mRoute.at(...pointAt([[382, 270], [432, 270]], seg(t, 0.24, 0.32, false)));
+
+  // ---- Node 1 distributes subtrees to Node 2 and Node N ----
+  if (t >= 0.32 && t < 0.40) {
+    mDist2.at(...pointAt([[604, 264], [652, 150]], seg(t, 0.32, 0.40, false)));
+    mDistN.at(...pointAt([[604, 276], [652, 414]], seg(t, 0.32, 0.40, false)));
+  }
+
+  // ---- leaf nodes scan their blocks ----
+  READS.forEach(r => {
+    const a = 0.40 + r.set * 0.015, b = 0.53;
+    if (t >= a && t < b) fRead[r.set].at(...pointAt([blockCenter(...r.blk), r.to], seg(t, a, b, false)));
+  });
+  // ... and turn them into flame graphs
+  ic2.setReveal(seg(t, 0.47, 0.59)); ic2.setOpacity(1);
+  icN.setReveal(seg(t, 0.47, 0.59)); icN.setOpacity(1);
+
+  // ---- leaves send their flame graphs to Node 1, which aggregates ----
+  if (t >= 0.59 && t < 0.70) gN2.at(...pointAt([[671, 150], [604, 266]], seg(t, 0.59, 0.70, false)));
+  if (t >= 0.61 && t < 0.72) gNN.at(...pointAt([[671, 414], [604, 274]], seg(t, 0.61, 0.72, false)));
+  ic1.setReveal(seg(t, 0.66, 0.76)); ic1.setOpacity(1);
+
+  // ---- aggregated flame graph returns through the frontend to Drilldown (pass-through) ----
+  if (t >= 0.77 && t < 0.89) gAgg.at(...pointAt(RETURN, seg(t, 0.77, 0.89, false)));
+  icD.setReveal(seg(t, 0.83, 0.91)); icD.setOpacity(1);
+
+  droot.setAttribute("opacity", fade);
+  mroot.setAttribute("opacity", fade);
+}
+
+mount(seek, 13500);
+</script>
+</body>
+</html>

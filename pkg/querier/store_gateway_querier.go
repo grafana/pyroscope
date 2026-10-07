@@ -2,6 +2,7 @@ package querier
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -10,7 +11,6 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tracing"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/sync/errgroup"
@@ -70,11 +70,11 @@ func newStoreGatewayQuerier(
 		logger,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create store-gateway ring backend")
+		return nil, fmt.Errorf("failed to create store-gateway ring backend: %w", err)
 	}
 	storesRing, err := ring.NewWithStoreClientAndStrategy(storesRingCfg, storegateway.RingNameForClient, storegateway.RingKey, storesRingBackend, ring.NewIgnoreUnhealthyInstancesReplicationStrategy(), prometheus.WrapRegistererWithPrefix("pyroscope_", reg), logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create store-gateway ring client")
+		return nil, fmt.Errorf("failed to create store-gateway ring client: %w", err)
 	}
 	// Disable compression for querier -> store-gateway connections
 	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
@@ -105,7 +105,7 @@ func (s *StoreGatewayQuerier) starting(ctx context.Context) error {
 	s.subservicesWatcher.WatchManager(s.subservices)
 
 	if err := services.StartManagerAndAwaitHealthy(ctx, s.subservices); err != nil {
-		return errors.Wrap(err, "unable to start store gateway querier set subservices")
+		return fmt.Errorf("unable to start store gateway querier set subservices: %w", err)
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func (s *StoreGatewayQuerier) running(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-s.subservicesWatcher.Chan():
-			return errors.Wrap(err, "store gateway querier set subservice failed")
+			return fmt.Errorf("store gateway querier set subservice failed: %w", err)
 		}
 	}
 }

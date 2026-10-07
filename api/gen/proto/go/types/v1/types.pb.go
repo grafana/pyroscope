@@ -1117,7 +1117,9 @@ type Exemplar struct {
 	Value int64 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
 	// Labels specific to this exemplar (e.g., pod name, node name). When an exemplar
 	// label overlaps with the series label, it is not included here.
-	Labels        []*LabelPair `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
+	Labels []*LabelPair `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
+	// Trace ID associated with the span, encoded as 32 lowercase hexadecimal characters.
+	TraceId       string `protobuf:"bytes,6,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1185,6 +1187,13 @@ func (x *Exemplar) GetLabels() []*LabelPair {
 		return x.Labels
 	}
 	return nil
+}
+
+func (x *Exemplar) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
 }
 
 type HeatmapSeries struct {
@@ -1382,7 +1391,7 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x17GetProfileStatsResponse\x12#\n" +
 	"\rdata_ingested\x18\x01 \x01(\bR\fdataIngested\x12.\n" +
 	"\x13oldest_profile_time\x18\x02 \x01(\x03R\x11oldestProfileTime\x12.\n" +
-	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\x92\x02\n" +
+	"\x13newest_profile_time\x18\x03 \x01(\x03R\x11newestProfileTime\"\xd6\x02\n" +
 	"\bExemplar\x122\n" +
 	"\ttimestamp\x18\x01 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1730000023000R\ttimestamp\x12J\n" +
 	"\n" +
@@ -1390,7 +1399,8 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\aspan_id\x18\x03 \x01(\tB\x17\xbaG\x14:\x12\x12\x1000f067aa0ba902b7R\x06spanId\x12'\n" +
 	"\x05value\x18\x04 \x01(\x03B\x11\xbaG\x0e:\f\x12\n" +
 	"2450000000R\x05value\x12+\n" +
-	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels\"i\n" +
+	"\x06labels\x18\x05 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12B\n" +
+	"\btrace_id\x18\x06 \x01(\tB'\xbaG$:\"\x12 4bf92f3577b34da6a3ce929d0e0e4736R\atraceId\"i\n" +
 	"\rHeatmapSeries\x12+\n" +
 	"\x06labels\x18\x01 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12+\n" +
 	"\x05slots\x18\x02 \x03(\v2\x15.types.v1.HeatmapSlotR\x05slots\"\x8a\x01\n" +

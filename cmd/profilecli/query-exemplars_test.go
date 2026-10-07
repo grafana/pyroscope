@@ -128,6 +128,30 @@ func TestOutputExemplarsJSON(t *testing.T) {
 	assert.NotContains(t, result.Exemplars[0].Labels, "__profile_type__")
 }
 
+func TestOutputSpanExemplarsIncludesTraceID(t *testing.T) {
+	t.Parallel()
+
+	entries := []exemplarEntry{{
+		SpanID:    "00f067aa0ba902b7",
+		TraceID:   "4bf92f3577b34da6a3ce929d0e0e4736",
+		Timestamp: time.Date(2024, 3, 20, 9, 30, 0, 0, time.UTC),
+		Value:     42000,
+	}}
+	from := time.Date(2024, 3, 20, 9, 0, 0, 0, time.UTC)
+	to := time.Date(2024, 3, 20, 10, 0, 0, 0, time.UTC)
+
+	var jsonBuf bytes.Buffer
+	err := outputSpanExemplarsJSON(withOutput(context.Background(), &jsonBuf), entries, from, to, "process_cpu:cpu:nanoseconds:cpu:nanoseconds")
+	require.NoError(t, err)
+	assert.Contains(t, jsonBuf.String(), `"trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"`)
+
+	var tableBuf bytes.Buffer
+	err = outputSpanExemplarsTable(withOutput(context.Background(), &tableBuf), entries, "nanoseconds", nil)
+	require.NoError(t, err)
+	assert.Contains(t, tableBuf.String(), "Trace ID")
+	assert.Contains(t, tableBuf.String(), "4bf92f3577b34da6a3ce929d0e0e4736")
+}
+
 func TestOutputExemplarsTable_Empty(t *testing.T) {
 	t.Parallel()
 
@@ -210,6 +234,7 @@ func TestExemplarEntry_FromProtoExemplar(t *testing.T) {
 		Timestamp: 1710928800000, // 2024-03-20T10:00:00Z in millis
 		ProfileId: "550e8400-e29b-41d4-a716-446655440000",
 		SpanId:    "deadbeef",
+		TraceId:   "4bf92f3577b34da6a3ce929d0e0e4736",
 		Value:     99999,
 		Labels: []*typesv1.LabelPair{
 			{Name: "pod", Value: "frontend-abc"},
@@ -221,6 +246,7 @@ func TestExemplarEntry_FromProtoExemplar(t *testing.T) {
 		Timestamp: time.UnixMilli(ex.Timestamp),
 		Value:     ex.Value,
 		SpanID:    ex.SpanId,
+		TraceID:   ex.TraceId,
 		Labels:    map[string]string{"pod": "frontend-abc"},
 	}
 
@@ -228,5 +254,6 @@ func TestExemplarEntry_FromProtoExemplar(t *testing.T) {
 	assert.Equal(t, time.UnixMilli(1710928800000), entry.Timestamp)
 	assert.Equal(t, int64(99999), entry.Value)
 	assert.Equal(t, "deadbeef", entry.SpanID)
+	assert.Equal(t, "4bf92f3577b34da6a3ce929d0e0e4736", entry.TraceID)
 	assert.Equal(t, "frontend-abc", entry.Labels["pod"])
 }

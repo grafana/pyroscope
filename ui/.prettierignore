@@ -8,3 +8,7 @@ index.html
 
 package.json
 tsconfig*.json
+
+# Captured API fixtures — kept verbatim from the server response so the e2e
+# mocks match real wire bytes; reformatting would diverge from production.
+e2e/fixtures/

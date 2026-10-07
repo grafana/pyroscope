@@ -10,11 +10,12 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/runutil"
-	"github.com/pkg/errors"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
@@ -39,7 +40,7 @@ func ReadIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProvi
 		if userBkt.IsObjNotFoundErr(err) {
 			return nil, ErrIndexNotFound
 		}
-		return nil, errors.Wrap(err, "read bucket index")
+		return nil, fmt.Errorf("read bucket index: %w", err)
 	}
 	defer runutil.CloseWithLogOnErr(logger, reader, "close bucket index reader")
 
@@ -67,7 +68,7 @@ func WriteIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProv
 	// Marshal the index.
 	content, err := json.Marshal(idx)
 	if err != nil {
-		return errors.Wrap(err, "marshal bucket index")
+		return fmt.Errorf("marshal bucket index: %w", err)
 	}
 
 	// Compress it.
@@ -76,15 +77,15 @@ func WriteIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProv
 	gzip.Name = IndexFilename
 
 	if _, err := gzip.Write(content); err != nil {
-		return errors.Wrap(err, "gzip bucket index")
+		return fmt.Errorf("gzip bucket index: %w", err)
 	}
 	if err := gzip.Close(); err != nil {
-		return errors.Wrap(err, "close gzip bucket index")
+		return fmt.Errorf("close gzip bucket index: %w", err)
 	}
 
 	// Upload the index to the storage.
 	if err := bkt.Upload(ctx, IndexCompressedFilename, &gzipContent); err != nil {
-		return errors.Wrap(err, "upload bucket index")
+		return fmt.Errorf("upload bucket index: %w", err)
 	}
 
 	return nil
@@ -97,7 +98,7 @@ func DeleteIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgPro
 
 	err := bkt.Delete(ctx, IndexCompressedFilename)
 	if err != nil && !bkt.IsObjNotFoundErr(err) {
-		return errors.Wrap(err, "delete bucket index")
+		return fmt.Errorf("delete bucket index: %w", err)
 	}
 	return nil
 }

@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 )
@@ -84,6 +83,8 @@ func ListBlockDeletionMarks(ctx context.Context, bkt objstore.BucketReader) (map
 
 		return nil
 	})
-
-	return discovered, errors.Wrap(err, "list block deletion marks")
+	if err != nil {
+		return nil, fmt.Errorf("list block deletion marks: %w", err)
+	}
+	return discovered, nil
 }

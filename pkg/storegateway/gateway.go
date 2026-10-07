@@ -2,7 +2,9 @@ package storegateway
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/log"
@@ -10,7 +12,6 @@ import (
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
@@ -74,7 +75,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 
 func (c *Config) Validate(limits validation.Limits) error {
 	if err := c.BucketStoreConfig.Validate(util.Logger); err != nil {
-		return errors.Wrap(err, "bucket store config")
+		return fmt.Errorf("bucket store config: %w", err)
 	}
 	if limits.StoreGatewayTenantShardSize < 0 {
 		return errInvalidTenantShardSize
@@ -91,7 +92,7 @@ func NewStoreGateway(gatewayCfg Config, storageBucket phlareobj.Bucket, limits L
 		logger,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "create KV store client")
+		return nil, fmt.Errorf("create KV store client: %w", err)
 	}
 
 	return newStoreGateway(gatewayCfg, storageBucket, ringStore, limits, logger, reg)
@@ -119,7 +120,7 @@ func newStoreGateway(gatewayCfg Config, storageBucket phlareobj.Bucket, ringStor
 
 	lifecyclerCfg, err := gatewayCfg.ShardingRing.ToLifecyclerConfig(logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid ring lifecycler config")
+		return nil, fmt.Errorf("invalid ring lifecycler config: %w", err)
 	}
 
 	// Define lifecycler delegates in reverse order (last to be called defined first because they're
@@ -131,20 +132,20 @@ func newStoreGateway(gatewayCfg Config, storageBucket phlareobj.Bucket, ringStor
 
 	g.ringLifecycler, err = ring.NewBasicLifecycler(lifecyclerCfg, RingNameForServer, RingKey, ringStore, delegate, logger, prometheus.WrapRegistererWithPrefix("pyroscope_", reg))
 	if err != nil {
-		return nil, errors.Wrap(err, "create ring lifecycler")
+		return nil, fmt.Errorf("create ring lifecycler: %w", err)
 	}
 
 	ringCfg := gatewayCfg.ShardingRing.ToRingConfig()
 	g.ring, err = ring.NewWithStoreClientAndStrategy(ringCfg, RingNameForServer, RingKey, ringStore, ring.NewIgnoreUnhealthyInstancesReplicationStrategy(), prometheus.WrapRegistererWithPrefix("pyroscope_", reg), logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "create ring client")
+		return nil, fmt.Errorf("create ring client: %w", err)
 	}
 
 	shardingStrategy = NewShuffleShardingStrategy(g.ring, lifecyclerCfg.ID, lifecyclerCfg.Addr, limits, logger)
 
 	g.stores, err = NewBucketStores(gatewayCfg.BucketStoreConfig, shardingStrategy, storageBucket, limits, logger, prometheus.WrapRegistererWith(prometheus.Labels{"component": "store-gateway"}, reg))
 	if err != nil {
-		return nil, errors.Wrap(err, "create bucket stores")
+		return nil, fmt.Errorf("create bucket stores: %w", err)
 	}
 
 	g.Service = services.NewBasicService(g.starting, g.running, g.stopping)
@@ -169,14 +170,14 @@ func (g *StoreGateway) starting(ctx context.Context) (err error) {
 	// First of all we register the instance in the ring and wait
 	// until the lifecycler successfully started.
 	if g.subservices, err = services.NewManager(g.ringLifecycler, g.ring); err != nil {
-		return errors.Wrap(err, "unable to start store-gateway dependencies")
+		return fmt.Errorf("unable to start store-gateway dependencies: %w", err)
 	}
 
 	g.subservicesWatcher = services.NewFailureWatcher()
 	g.subservicesWatcher.WatchManager(g.subservices)
 
 	if err = services.StartManagerAndAwaitHealthy(ctx, g.subservices); err != nil {
-		return errors.Wrap(err, "unable to start store-gateway dependencies")
+		return fmt.Errorf("unable to start store-gateway dependencies: %w", err)
 	}
 
 	// Wait until the ring client detected this instance in the JOINING state to
@@ -208,14 +209,14 @@ func (g *StoreGateway) starting(ctx context.Context) (err error) {
 	// and we can run the initial synchronization.
 	g.bucketSync.WithLabelValues(syncReasonInitial).Inc()
 	if err = g.stores.InitialSync(ctx); err != nil {
-		return errors.Wrap(err, "initial blocks synchronization")
+		return fmt.Errorf("initial blocks synchronization: %w", err)
 	}
 
 	// Now that the initial sync is done, we should have loaded all blocks
 	// assigned to our shard, so we can switch to ACTIVE and start serving
 	// requests.
 	if err = g.ringLifecycler.ChangeState(ctx, ring.ACTIVE); err != nil {
-		return errors.Wrapf(err, "switch instance to %s in the ring", ring.ACTIVE)
+		return fmt.Errorf("switch instance to %s in the ring: %w", ring.ACTIVE, err)
 	}
 
 	// Wait until the ring client detected this instance in the ACTIVE state to
@@ -256,7 +257,7 @@ func (g *StoreGateway) running(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-g.subservicesWatcher.Chan():
-			return errors.Wrap(err, "store gateway subservice failed")
+			return fmt.Errorf("store gateway subservice failed: %w", err)
 		}
 	}
 }

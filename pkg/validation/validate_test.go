@@ -767,6 +767,22 @@ func TestValidateProfile(t *testing.T) {
 			},
 		},
 		{
+			"truncate symbols on rune boundaries",
+			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{"", "éxx", "x€x", "€€", "😀", "a😀", "abcd"},
+			},
+			0,
+			MockLimits{
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			nil,
+			func(t *testing.T, profile *googlev1.Profile) {
+				t.Helper()
+				require.Equal(t, []string{"", "xx", "x", "€", "", "", "bcd"}, profile.StringTable)
+			},
+		},
+		{
 			name: "newer than ingestion window",
 			profile: &googlev1.Profile{
 				SampleType: []*googlev1.ValueType{{}},

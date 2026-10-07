@@ -13,7 +13,7 @@ import (
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/exthttp"
 	"github.com/thanos-io/objstore/providers/gcs"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // NewBucketClient creates a new GCS bucket client

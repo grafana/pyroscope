@@ -14,12 +14,11 @@ import (
 
 func NewDiscovery(l log.Logger, address string, reg prometheus.Registerer) (Discovery, error) {
 	if strings.HasPrefix(address, "dnssrvnoa+") {
-		p := dns.NewProvider(l,
+		p := dns.NewProvider(dns.MiekgdnsResolverType, 2, l,
 			prometheus.WrapRegistererWithPrefix(
 				"pyroscope_metastore_client_",
 				reg,
-			),
-			dns.MiekgdnsResolverType)
+			))
 		return NewDNSDiscovery(l, address, p), nil
 	}
 	if strings.HasPrefix(address, "kubernetes:///") {

@@ -17,6 +17,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
@@ -77,12 +78,12 @@ func TestSelectMergeSpanProfile_Symbolization(t *testing.T) {
 					}).
 					Return(nil).Once()
 			},
-			// backendTreeSymbolizer converts QUERY_TREE to QUERY_PPROF.
-			// TODO: SpanSelector is not forwarded to PprofQuery (no span_selector field).
+			// backendTreeSymbolizer converts QUERY_TREE to QUERY_PPROF, preserving SpanSelector.
 			checkInvokeReq: func(t *testing.T, req *queryv1.InvokeRequest) {
 				require.Len(t, req.Query, 1)
 				assert.Equal(t, queryv1.QueryType_QUERY_PPROF, req.Query[0].QueryType)
-				assert.NotNil(t, req.Query[0].Pprof)
+				require.NotNil(t, req.Query[0].Pprof)
+				assert.Equal(t, spanSelector, req.Query[0].Pprof.GetSpanSelector())
 			},
 		},
 		{
@@ -169,10 +170,12 @@ func TestSelectMergeSpanProfile_Symbolization(t *testing.T) {
 			qf := NewQueryFrontend(
 				log.NewNopLogger(),
 				mockLimits,
+				frontend.Config{},
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
 				mockSymbolizer,
+				nil,
 				nil,
 			)
 

@@ -6,10 +6,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -28,10 +28,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -43,10 +43,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/templates/configmap-alloy.yaml
@@ -56,10 +56,10 @@ metadata:
   name: alloy-config-pyroscope
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 data:
   config.alloy: |
@@ -118,6 +118,21 @@ data:
     		action        = "replace"
     		source_labels = ["__meta_kubernetes_pod_container_name"]
     		target_label  = "container"
+    	}
+
+    	// Set service_name by choosing the first non-empty value from the following ordered list:
+    	// - pod.annotation[profiles.grafana.com/service_name]
+    	// - pod.annotation[resource.opentelemetry.io/service.name]
+    	rule {
+    		action        = "replace"
+    		source_labels = [
+    			"__meta_kubernetes_pod_annotation_profiles_grafana_com_service_name",
+    			"__meta_kubernetes_pod_annotation_resource_opentelemetry_io_service_name",
+    		]
+    		separator    = ";"
+    		regex        = "^(?:;*)?([^;]+).*$"
+    		replacement  = "$1"
+    		target_label = "service_name"
     	}
 
     	rule {
@@ -914,10 +929,10 @@ metadata:
   name: pyroscope-dev-overrides-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -931,10 +946,10 @@ metadata:
   name: pyroscope-dev-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -946,10 +961,10 @@ kind: ClusterRole
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1043,7 +1058,21 @@ rules:
     - ""
     resources:
     - nodes
-    - nodes/proxy
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - nodes/pods
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
     - nodes/metrics
     verbs:
     - get
@@ -1060,10 +1089,10 @@ kind: ClusterRoleBinding
 metadata:
   name: pyroscope-dev-alloy
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: rbac
@@ -1076,51 +1105,6 @@ subjects:
     name: pyroscope-dev-alloy
     namespace: default
 ---
-# Source: pyroscope/templates/rbac-discovery.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: pyroscope-dev-discovery
-  labels:
-    helm.sh/chart: pyroscope-2.0.2
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
-    app.kubernetes.io/managed-by: Helm
-rules:
-- apiGroups:
-  - ""
-  - discovery.k8s.io
-  resources:
-  - endpointslices
-  - endpoints
-  - services
-  - pods
-  verbs:
-  - get
-  - watch
-  - list
----
-# Source: pyroscope/templates/rbac-discovery.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: pyroscope-dev-discovery
-  labels:
-    helm.sh/chart: pyroscope-2.0.2
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: pyroscope-dev-discovery
-subjects:
-- kind: ServiceAccount
-  name: pyroscope-dev
-  namespace: default
----
 # Source: pyroscope/charts/alloy/templates/cluster_service.yaml
 apiVersion: v1
 kind: Service
@@ -1128,10 +1112,10 @@ metadata:
   name: pyroscope-dev-alloy-cluster
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -1161,10 +1145,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
     app.kubernetes.io/component: networking
@@ -1186,10 +1170,10 @@ metadata:
   name: pyroscope-dev-memberlist
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1213,10 +1197,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1226,14 +1210,6 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
-    - port: 9095
-      targetPort: grpc
-      protocol: TCP
-      name: grpc
-    - port: 9099
-      targetPort: raft
-      protocol: TCP
-      name: raft
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1246,10 +1222,10 @@ metadata:
   name: pyroscope-dev-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1260,15 +1236,6 @@ spec:
       targetPort: http2
       protocol: TCP
       name: http2
-    - port: 9095
-      targetPort: grpc
-      protocol: TCP
-      name: grpc
-    - port: 9099
-      targetPort: raft
-      protocol: TCP
-      name: raft
-  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
@@ -1281,10 +1248,10 @@ metadata:
   name: pyroscope-dev-alloy
   namespace: default
   labels:
-    helm.sh/chart: alloy-1.5.2
+    helm.sh/chart: alloy-1.12.1
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v1.12.2"
+    app.kubernetes.io/version: "v1.19.2"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alloy
 spec:
@@ -1306,7 +1273,7 @@ spec:
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.port_name: http-metrics
         profiles.grafana.com/memory.scrape: "true"
-        profiles.grafana.com/service_git_ref: v1.8.1
+        profiles.grafana.com/service_git_ref: v1.19.2
         profiles.grafana.com/service_repository: https://github.com/grafana/alloy
       labels:
         app.kubernetes.io/name: alloy
@@ -1315,7 +1282,7 @@ spec:
       serviceAccountName: pyroscope-dev-alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.12.2
+          image: docker.io/grafana/alloy:v1.19.2
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -1333,6 +1300,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           ports:
             - containerPort: 12345
               name: http-metrics
@@ -1347,7 +1318,8 @@ spec:
             - name: config
               mountPath: /etc/alloy
         - name: config-reloader
-          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1
+          imagePullPolicy: IfNotPresent
           args:
             - --watched-dir=/etc/alloy
             - --reload-url=http://localhost:12345/-/reload
@@ -1358,6 +1330,17 @@ spec:
             requests:
               cpu: 10m
               memory: 50Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
       dnsPolicy: ClusterFirst
       volumes:
         - name: config
@@ -1371,10 +1354,10 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-2.0.2
+    helm.sh/chart: pyroscope-2.3.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "2.0.2"
+    app.kubernetes.io/version: "2.3.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1389,9 +1372,9 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 753348e68675509482b48ba79580501d9190bec211b691085df540c1bd087139
+        checksum/config: e159a0b65b2a3c15538904c64ef052c5785c5d252ab06830146fd6e15fd1e346
         profiles.grafana.com/service_repository: "https://github.com/grafana/pyroscope"
-        profiles.grafana.com/service_git_ref: "v2.0.2"
+        profiles.grafana.com/service_git_ref: "v2.3.1"
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1414,7 +1397,7 @@ spec:
         - name: "pyroscope"
           securityContext:
             {}
-          image: "grafana/pyroscope:2.0.2"
+          image: "grafana/pyroscope:2.3.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"
@@ -1425,16 +1408,8 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
-            - "-metastore.address=kubernetes:///pyroscope-dev-headless.$(NAMESPACE_FQDN):9095"
-            - "-metastore.data-dir=./data-metastore/data"
-            - "-metastore.raft.dir=./data-metastore/raft"
-            - "-metastore.raft.snapshots-dir=./data-metastore/raft"
-            - "-metastore.raft.bind-address=:9099"
-            - "-metastore.raft.server-id=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
-            - "-metastore.raft.advertise-address=$(POD_NAME).$(PYROSCOPE_METASTORE_SERVICE)"
-            - "-metastore.raft.bootstrap-peers=dnssrvnoa+_raft._tcp.$(PYROSCOPE_METASTORE_SERVICE)"
-            - "-architecture.storage=v2"
+            - "-architecture.storage=v1"
+            - "-write-path=ingester"
           env:
             - name: POD_NAME
               valueFrom:
@@ -1442,20 +1417,12 @@ spec:
                   fieldPath: metadata.name
             - name: NAMESPACE_FQDN
               value: "default.svc.cluster.local."
-            - name: PYROSCOPE_METASTORE_SERVICE
-              value: "pyroscope-dev-headless.default.svc.cluster.local.:9099"
           ports:
             - name: http2
               containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
-              protocol: TCP
-            - name: grpc
-              containerPort: 9095
-              protocol: TCP
-            - name: raft
-              containerPort: 9099
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -1470,9 +1437,6 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
-            - name: data
-              mountPath: /data-metastore
-              subPath: .metastore
           resources:
             {}
       volumes:

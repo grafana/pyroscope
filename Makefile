@@ -19,7 +19,7 @@ GOPRIVATE=github.com/grafana/frostdb
 
 # Boiler plate for building Docker containers.
 # All this must go at top of file I'm afraid.
-IMAGE_PREFIX ?= docker.io/grafana/
+IMAGE_PREFIX ?= us-docker.pkg.dev/grafanalabs-global/dockerhub-pyroscope-prod-mirror/
 
 IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
@@ -45,10 +45,12 @@ GO_MOD_PATHS := api/ lidia/ examples/language-sdk-instrumentation/golang-push/ri
 # Add extra arguments to helm commands
 HELM_ARGS =
 
-HELM_FLAGS_V1 :=
-HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
-HELM_FLAGS_V2 := --set architecture.storage.v1=false --set architecture.storage.v2=true
-HELM_FLAGS_V2_MICROSERVICES := $(HELM_FLAGS_V1_MICROSERVICES) $(HELM_FLAGS_V2)
+HELM_FLAGS_V1 := --set architecture.storage.v1=true --set architecture.storage.v2=false
+HELM_FLAGS_V1_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true $(HELM_FLAGS_V1)
+HELM_FLAGS_V1_DEPLOY := $(HELM_FLAGS_V1) --set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
+HELM_FLAGS_V1_MICROSERVICES_DEPLOY := $(HELM_FLAGS_V1_MICROSERVICES) --set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
+HELM_FLAGS_V2 :=
+HELM_FLAGS_V2_MICROSERVICES := --set architecture.microservices.enabled=true --set minio.enabled=true
 
 
 # Local deployment params
@@ -83,21 +85,35 @@ buf/lint: $(BIN)/buf
 	cd api/ && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 	cd pkg && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
+# api and lidia are separate modules: `./...` does not cross module
+# boundaries, so each needs its own invocation.
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --rerun-fails=2 --packages "$$(go list ./... ./lidia/... | grep -v /test/integration)" -- $(GO_TEST_FLAGS)
+	$(BIN)/gotestsum --rerun-fails=2 --packages "$$(go list ./... | grep -v /test/integration)" -- $(GO_TEST_FLAGS)
+	cd api && $(BIN)/gotestsum --rerun-fails=2 --packages ./... -- $(GO_TEST_FLAGS)
+	cd lidia && $(BIN)/gotestsum --rerun-fails=2 --packages ./... -- $(GO_TEST_FLAGS)
 
 .PHONY: go/test-integration
 go/test-integration: $(BIN)/gotestsum
 	$(BIN)/gotestsum --rerun-fails=2 --packages './pkg/test/integration/...' -- $(GO_TEST_FLAGS)
 
-# Run test on examples
-# This can also be used to run it on a subset of tests
-# $ make examples/test RUN=TestDockerComposeBuildRun/tracing/java
+# Run tests on examples. These build and run each example via docker-compose,
+# verify the containers stay up, and query the ingested profiling data back
+# (profiles for every example; the trace-to-profile link for tracing examples).
+#
+# Scope to specific examples with PYROSCOPE_TEST_EXAMPLES (comma-separated,
+# repository-relative dirs), and/or to specific tests with RUN. For example:
+# $ make examples/test PYROSCOPE_TEST_EXAMPLES=examples/tracing/java
+# $ make examples/test RUN=TestExamples/examples/language-sdk-instrumentation/rust/basic
+#
+# The default verbose format surfaces what each check verified (discovered
+# services, profile types, point/sample counts). Override with
+# GOTESTSUM_FORMAT=testname for terse one-line-per-test output.
+GOTESTSUM_FORMAT ?= standard-verbose
 .PHONY: examples/test
 examples/test: RUN := .*
 examples/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum --format testname --rerun-fails=2 --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
+	$(BIN)/gotestsum --format $(GOTESTSUM_FORMAT) --packages ./examples -- --count 1 --parallel 2 --timeout 1h --tags examples -run "$(RUN)"
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
@@ -185,8 +201,10 @@ go/bin-profilecli:
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
-	$(BIN)/golangci-lint run ./... ./lidia/...
-	$(GO) vet ./... ./lidia/...
+	$(BIN)/golangci-lint run ./...
+	$(GO) vet ./...
+	cd api && $(BIN)/golangci-lint run ./... && $(GO) vet ./...
+	cd lidia && $(BIN)/golangci-lint run ./... && $(GO) vet ./...
 
 .PHONY: update-contributors
 update-contributors: ## Update the contributors in README.md
@@ -198,9 +216,7 @@ go/mod: $(foreach P,$(GO_MOD_PATHS),go/mod_tidy/$P)
 .PHONY: go/mod_tidy_root
 go/mod_tidy_root:
 	GO111MODULE=on go mod download
-	# doesn't work for go workspace
-	# GO111MODULE=on go mod verify
-	go work sync
+	GO111MODULE=on go mod verify
 	GO111MODULE=on go mod tidy
 
 .PHONY: go/mod_tidy/%
@@ -249,8 +265,7 @@ define deploy
 		--set-string pyroscope.podAnnotations."k8s\.grafana\.com/metrics\.scrapeInterval"=15s \
 		--set-string pyroscope.extraEnvVars.JAEGER_AGENT_HOST=pyroscope-monitoring-alloy-receiver \
 		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_TYPE=const \
-		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_PARAM=1 \
-		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
+		--set pyroscope.extraEnvVars.JAEGER_SAMPLER_PARAM=1
 endef
 
 # Function to handle multiarch image build. Depending on the
@@ -460,9 +475,12 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	cat operations/pyroscope/helm/pyroscope/values.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values.json
-	# Generate dashboards and rules
+	# Generate dashboards and rules (native histograms, default)
 	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml --show-only templates/rules.yaml operations/monitoring/helm/pyroscope-monitoring \
 		| go run ./tools/monitoring-chart-extractor
+	# Generate dashboards for classic histograms (--set dashboards.nativeHistograms=false)
+	$(BIN)/helm template pyroscope-monitoring --show-only templates/dashboards.yaml operations/monitoring/helm/pyroscope-monitoring --set dashboards.nativeHistograms=false \
+		| go run ./tools/monitoring-chart-extractor --output.dashboards.path ./operations/monitoring/dashboards-classic-histogram/
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
@@ -470,7 +488,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 
 .PHONY: deploy-v1
 deploy-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1))
+	$(call deploy,pyroscope-dev,$(HELM_FLAGS_V1_DEPLOY))
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
@@ -478,7 +496,7 @@ deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 
 .PHONY: deploy-micro-services-v1
 deploy-micro-services-v1: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES))
+	$(call deploy,pyroscope-micro-services,$(HELM_FLAGS_V1_MICROSERVICES_DEPLOY))
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/kind $(BIN)/helm

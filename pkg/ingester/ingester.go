@@ -2,6 +2,7 @@ package ingester
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -18,7 +19,6 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -143,7 +143,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		i.subservices, err = services.NewManager(i.lifecycler, dc)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "services manager")
+		return nil, fmt.Errorf("services manager: %w", err)
 	}
 	i.subservicesWatcher = services.NewFailureWatcher()
 	i.subservicesWatcher.WatchManager(i.subservices)

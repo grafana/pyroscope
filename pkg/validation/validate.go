@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -9,17 +10,15 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/grafana/pyroscope/v2/pkg/pprof"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
@@ -151,13 +150,15 @@ func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1
 		lastLabelName            = ""
 		idx                      = 0
 		disableLabelSanitization = limits.DisableLabelSanitization(tenantID)
+		maxLabelNameLength       = limits.MaxLabelNameLength(tenantID)
+		maxLabelValueLength      = limits.MaxLabelValueLength(tenantID)
 	)
 	for idx < len(ls) {
 		l := ls[idx]
-		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
+		if len(l.Name) > maxLabelNameLength {
 			return nil, NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
 		}
-		if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
+		if len(l.Value) > maxLabelValueLength {
 			return nil, NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		}
 		if disableLabelSanitization {
@@ -356,8 +357,12 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 	}
 	if symbolLengthLimit > 0 {
 		for i := range prof.StringTable {
-			if len(prof.StringTable[i]) > symbolLengthLimit {
-				prof.StringTable[i] = prof.StringTable[i][len(prof.StringTable[i])-symbolLengthLimit:]
+			if s := prof.StringTable[i]; len(s) > symbolLengthLimit {
+				start := len(s) - symbolLengthLimit
+				for start < len(s) && !utf8.RuneStart(s[start]) {
+					start++
+				}
+				prof.StringTable[i] = s[start:]
 			}
 		}
 	}

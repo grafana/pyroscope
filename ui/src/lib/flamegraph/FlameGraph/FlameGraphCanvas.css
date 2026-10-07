@@ -1,0 +1,11 @@
+.fg-canvas-graph {
+  overflow: auto;
+  flex-grow: 1;
+  flex-basis: 50%;
+}
+
+.fg-canvas-wrapper {
+  cursor: pointer;
+  flex: 1;
+  overflow: hidden;
+}

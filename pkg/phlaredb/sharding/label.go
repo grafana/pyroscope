@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
 )
 
@@ -86,20 +85,20 @@ func ParseShardIDLabelValue(val string) (index, shardCount uint64, _ error) {
 	// If we fail to parse shardID, we better not consider this block fully included in successors.
 	matches := strings.Split(val, "_")
 	if len(matches) != 3 || matches[1] != "of" {
-		return 0, 0, errors.Errorf("invalid shard ID: %q", val)
+		return 0, 0, fmt.Errorf("invalid shard ID: %q", val)
 	}
 
 	index, err := strconv.ParseUint(matches[0], 10, 64)
 	if err != nil {
-		return 0, 0, errors.Errorf("invalid shard ID: %q: %v", val, err)
+		return 0, 0, fmt.Errorf("invalid shard ID: %q: %v", val, err)
 	}
 	count, err := strconv.ParseUint(matches[2], 10, 64)
 	if err != nil {
-		return 0, 0, errors.Errorf("invalid shard ID: %q: %v", val, err)
+		return 0, 0, fmt.Errorf("invalid shard ID: %q: %v", val, err)
 	}
 
 	if index == 0 || count == 0 || index > count {
-		return 0, 0, errors.Errorf("invalid shard ID: %q", val)
+		return 0, 0, fmt.Errorf("invalid shard ID: %q", val)
 	}
 
 	return index - 1, count, nil

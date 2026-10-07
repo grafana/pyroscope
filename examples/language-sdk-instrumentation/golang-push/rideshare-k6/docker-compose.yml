@@ -38,15 +38,11 @@ services:
     - ap-south
 
   pyroscope:
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/pyroscope:latest
     ports:
     - 4040:4040
-    volumes:
-    - ./grafana-provisioning/pyroscope:/etc/pyroscope
-    command:
-    - -config.file
-    - /etc/pyroscope/config.yml
-
   load-generator:
     build:
       context: .
@@ -58,12 +54,15 @@ services:
     - SLEEP=500ms
 
   grafana:
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
     image: grafana/grafana:latest
     environment:
     - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
     - GF_AUTH_ANONYMOUS_ENABLED=true
     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
     volumes:
     - ./grafana-provisioning:/etc/grafana/provisioning
     ports:

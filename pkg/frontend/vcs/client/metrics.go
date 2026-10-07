@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 )
 
 var (
@@ -47,15 +48,15 @@ func InstrumentedHTTPClient(logger log.Logger, reg prometheus.Registerer) *http.
 		Timeout:   10 * time.Second,
 		Transport: http.DefaultTransport,
 	}
-	client := util.InstrumentedHTTPClient(defaultClient, withGitHubMetricsTransport(logger, apiDuration))
+	client := httputil.InstrumentedHTTPClient(defaultClient, withGitHubMetricsTransport(logger, apiDuration))
 	return client
 }
 
 // withGitHubMetricsTransport wraps a transport with a client to track GitHub
 // API usage.
-func withGitHubMetricsTransport(logger log.Logger, hv *prometheus.HistogramVec) util.RoundTripperInstrumentFunc {
+func withGitHubMetricsTransport(logger log.Logger, hv *prometheus.HistogramVec) httputil.RoundTripperInstrumentFunc {
 	return func(next http.RoundTripper) http.RoundTripper {
-		return util.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		return httputil.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 			route := matchGitHubAPIRoute(req.URL.Path)
 			statusCode := ""
 			start := time.Now()

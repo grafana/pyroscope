@@ -3,31 +3,29 @@ package convert
 import (
 	"bytes"
 	"fmt"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 )
 
-var _ = Describe("convert", func() {
-	Describe("ParseGroups", func() {
-		It("parses data correctly", func() {
-			r := bytes.NewReader([]byte("foo;bar 10\nfoo;baz 20\n"))
-			result := []string{}
-			ParseGroups(r, func(name []byte, val int) {
-				result = append(result, fmt.Sprintf("%s %d", name, val))
-			})
-			Expect(result).To(ConsistOf("foo;bar 10", "foo;baz 20"))
+func TestParseGroups(t *testing.T) {
+	t.Run("parses data correctly", func(t *testing.T) {
+		r := bytes.NewReader([]byte("foo;bar 10\nfoo;baz 20\n"))
+		result := []string{}
+		ParseGroups(r, func(name []byte, val int) {
+			result = append(result, fmt.Sprintf("%s %d", name, val))
 		})
+		assert.ElementsMatch(t, []string{"foo;bar 10", "foo;baz 20"}, result)
 	})
+}
 
-	Describe("ParseIndividualLines", func() {
-		It("parses data correctly", func() {
-			r := bytes.NewReader([]byte("foo;bar\nfoo;baz\n"))
-			result := []string{}
-			ParseIndividualLines(r, func(name []byte, val int) {
-				result = append(result, fmt.Sprintf("%s %d", name, val))
-			})
-			Expect(result).To(ConsistOf("foo;bar 1", "foo;baz 1"))
+func TestParseIndividualLines(t *testing.T) {
+	t.Run("parses data correctly", func(t *testing.T) {
+		r := bytes.NewReader([]byte("foo;bar\nfoo;baz\n"))
+		result := []string{}
+		ParseIndividualLines(r, func(name []byte, val int) {
+			result = append(result, fmt.Sprintf("%s %d", name, val))
 		})
+		assert.ElementsMatch(t, []string{"foo;bar 1", "foo;baz 1"}, result)
 	})
-})
+}

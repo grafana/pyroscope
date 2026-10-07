@@ -8,6 +8,7 @@ import (
 type ShardIndex struct {
 	MinTime int64
 	MaxTime int64
+	Version uint64
 }
 
 func (i *ShardIndex) UnmarshalBinary(data []byte) error {
@@ -16,13 +17,17 @@ func (i *ShardIndex) UnmarshalBinary(data []byte) error {
 	}
 	i.MinTime = int64(binary.BigEndian.Uint64(data[0:8]))
 	i.MaxTime = int64(binary.BigEndian.Uint64(data[8:16]))
+	if len(data) >= 24 {
+		i.Version = binary.BigEndian.Uint64(data[16:24])
+	}
 	return nil
 }
 
 func (i *ShardIndex) MarshalBinary() []byte {
-	b := make([]byte, 16)
+	b := make([]byte, 24)
 	binary.BigEndian.PutUint64(b[0:8], uint64(i.MinTime))
 	binary.BigEndian.PutUint64(b[8:16], uint64(i.MaxTime))
+	binary.BigEndian.PutUint64(b[16:24], i.Version)
 	return b
 }
 

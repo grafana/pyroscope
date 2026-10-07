@@ -12,7 +12,6 @@ import (
 
 	"github.com/grafana/dskit/grpcutil"
 	"github.com/grafana/dskit/services"
-	"github.com/pkg/errors"
 
 	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
@@ -89,7 +88,7 @@ func (w *dnsServiceDiscovery) watchDNSLoop(servCtx context.Context) error {
 			if servCtx.Err() != nil {
 				return nil
 			}
-			return errors.Wrapf(err, "error from DNS service discovery")
+			return fmt.Errorf("error from DNS service discovery: %w", err)
 		}
 
 		for _, update := range updates {

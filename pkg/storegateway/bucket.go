@@ -2,6 +2,7 @@ package storegateway
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid/v2"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
@@ -61,7 +61,7 @@ func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tena
 	}
 
 	if err := os.MkdirAll(syncDir, 0o750); err != nil {
-		return nil, errors.Wrap(err, "create dir")
+		return nil, fmt.Errorf("create dir: %w", err)
 	}
 
 	return s, nil
@@ -69,12 +69,12 @@ func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tena
 
 func (b *BucketStore) InitialSync(ctx context.Context) error {
 	if err := b.SyncBlocks(ctx); err != nil {
-		return errors.Wrap(err, "sync block")
+		return fmt.Errorf("sync block: %w", err)
 	}
 
 	fis, err := os.ReadDir(b.syncDir)
 	if err != nil {
-		return errors.Wrap(err, "read dir")
+		return fmt.Errorf("read dir: %w", err)
 	}
 	names := make([]string, 0, len(fis))
 	for _, fi := range fis {
@@ -183,7 +183,7 @@ func (bs *BucketStore) addBlock(ctx context.Context, meta *block.Meta) (err erro
 		ctx = phlaredb.ContextWithBlockMetrics(ctx, bs.metrics.blockMetrics)
 		b, err := bs.createBlock(ctx, meta)
 		if err != nil {
-			return nil, errors.Wrap(err, "load block from disk")
+			return nil, fmt.Errorf("load block from disk: %w", err)
 		}
 		bs.blockSet.add(b)
 		bs.blocks[meta.ULID] = b
@@ -240,10 +240,10 @@ func (s *BucketStore) removeBlock(id ulid.ULID) (returnErr error) {
 	s.metrics.blockDrops.Inc()
 
 	if err := b.Close(); err != nil {
-		return errors.Wrap(err, "close block")
+		return fmt.Errorf("close block: %w", err)
 	}
 	if err := os.RemoveAll(s.localPath(id.String())); err != nil {
-		return errors.Wrap(err, "delete block")
+		return fmt.Errorf("delete block: %w", err)
 	}
 	return nil
 }
@@ -255,7 +255,7 @@ func (s *BucketStore) localPath(id string) string {
 // RemoveBlocksAndClose remove all blocks from local disk and releases all resources associated with the BucketStore.
 func (s *BucketStore) RemoveBlocksAndClose() error {
 	if err := os.RemoveAll(s.syncDir); err != nil {
-		return errors.Wrap(err, "delete block")
+		return fmt.Errorf("delete block: %w", err)
 	}
 	return nil
 }

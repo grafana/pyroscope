@@ -20,7 +20,7 @@ type RawProfile struct {
 }
 
 // Parse parses a profile
-func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata, _ ingestion.Limits) error {
 	profiles, err := parseAll(p.RawData, md)
 	if err != nil {
 		return err
@@ -48,11 +48,12 @@ func parseAll(rawData []byte, md ingestion.Metadata) ([]*storage.PutInput, error
 	results := make([]*storage.PutInput, 0, len(file.Profiles))
 	// Not a pointer, we _want_ to copy on call
 	input := storage.PutInput{
-		StartTime:  md.StartTime,
-		EndTime:    md.EndTime,
-		SpyName:    md.SpyName,
-		SampleRate: md.SampleRate,
-		LabelSet:   md.LabelSet,
+		OriginalStartTimeNanos: md.OriginalStartTimeNanos,
+		StartTime:              md.StartTime,
+		EndTime:                md.EndTime,
+		SpyName:                md.SpyName,
+		SampleRate:             md.SampleRate,
+		LabelSet:               md.LabelSet,
 	}
 
 	file.Profiles = mergeProfiles(file.Profiles)
