@@ -78,9 +78,9 @@ func (r *Rewriter) newRewriter(p uint64) (*partitionRewriter, error) {
 	}
 	n.reader = reader
 	n.dst = r.symdb.PartitionWriter(p)
-	// We clone locations, functions, and mappings,
-	// because these object will be modified.
-	n.src = cloneSymbolsPartially(reader.Symbols())
+	// The source symbols are only read: values are copied before they are
+	// rewritten, see populateUnresolved.
+	n.src = reader.Symbols()
 	var stats PartitionStats
 	reader.WriteStats(&stats)
 	n.stacktraces = newLookupTable[[]int32](stats.MaxStacktraceID)
@@ -146,6 +146,9 @@ func (p *partitionRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 			// native partitions consist entirely of line-less locations.
 			location.Line = nil
 		} else {
+			// Line is shared with the source location; copy it before
+			// rewriting the function references.
+			location.Line = append(make([]schemav1.InMemoryLine, 0, len(location.Line)), location.Line...)
 			for j, line := range location.Line {
 				location.Line[j].FunctionId = p.functions.tryLookup(line.FunctionId)
 			}
@@ -204,7 +207,9 @@ func (p *partitionRewriter) appendRewrite(stacktraces []uint32) error {
 			p.locations.values[i].Line[j].FunctionId = p.functions.lookupResolved(line.FunctionId)
 		}
 	}
-	p.dst.AppendLocations(p.locations.buf, p.locations.values)
+	// Line slices were copied from the source in populateUnresolved and are
+	// not used after this call, so the writer can keep them.
+	p.dst.appendOwnedLocations(p.locations.buf, p.locations.values)
 	p.locations.updateResolved()
 
 	for _, v := range p.stacktraces.values {
@@ -267,26 +272,6 @@ func (p *partitionRewriter) InsertStacktrace(stacktrace uint32, locations []int3
 	copy(n, locations)
 	// Preserve allocated capacity.
 	p.stacktraces.values[idx] = n
-}
-
-func cloneSymbolsPartially(x *Symbols) *Symbols {
-	n := Symbols{
-		Stacktraces: x.Stacktraces,
-		Locations:   make([]schemav1.InMemoryLocation, len(x.Locations)),
-		Mappings:    make([]schemav1.InMemoryMapping, len(x.Mappings)),
-		Functions:   make([]schemav1.InMemoryFunction, len(x.Functions)),
-		Strings:     x.Strings,
-	}
-	for i, l := range x.Locations {
-		n.Locations[i] = l.Clone()
-	}
-	for i, m := range x.Mappings {
-		n.Mappings[i] = m.Clone()
-	}
-	for i, f := range x.Functions {
-		n.Functions[i] = f.Clone()
-	}
-	return &n
 }
 
 const (
