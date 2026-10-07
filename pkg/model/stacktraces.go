@@ -117,7 +117,11 @@ func (r *functionsRewriter) rewrite(stack []int32) {
 	}
 }
 
-type StacktraceTree struct{ Nodes []StacktraceNode }
+type StacktraceTree struct {
+	Nodes []StacktraceNode
+	// Children of wide nodes, indexed by location; only needed for insertion.
+	wide childIndex
+}
 
 type StacktraceNode struct {
 	FirstChild  int32
@@ -127,6 +131,10 @@ type StacktraceNode struct {
 	Value       int64
 	Total       int64
 }
+
+// wideNodeScan is how many siblings an insert scans before it looks the child
+// up in the index; nodes with more children than that get indexed.
+const wideNodeScan = 64
 
 func NewStacktraceTree(size int) *StacktraceTree {
 	if size < 1 {
@@ -150,54 +158,139 @@ func (t *StacktraceTree) Reset() {
 		FirstChild:  sentinel,
 		NextSibling: sentinel,
 	}
+	t.wide.reset()
 }
 
 const sentinel = -1
 
 func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
-	var (
-		n    = &t.Nodes[0]
-		next = n.FirstChild
-		cur  int32
-	)
-
-	for j := len(locations) - 1; j >= 0; {
+	var parent int32 // The root.
+	for j := len(locations) - 1; j >= 0; j-- {
 		r := locations[j]
-		if next == sentinel {
-			ni := int32(len(t.Nodes))
-			n.FirstChild = ni
-			t.Nodes = append(t.Nodes, StacktraceNode{
-				Parent:      cur,
-				FirstChild:  sentinel,
-				NextSibling: sentinel,
-				Location:    r,
-			})
-			cur = ni
-			n = &t.Nodes[ni]
-		} else {
-			cur = next
-			n = &t.Nodes[next]
+		i, last, n := t.Nodes[parent].FirstChild, int32(sentinel), 0
+		for i != sentinel && n < wideNodeScan {
+			if t.Nodes[i].Location == r {
+				break
+			}
+			last, i = i, t.Nodes[i].NextSibling
+			n++
 		}
-		if n.Location == r {
-			n.Total += value
-			next = n.FirstChild
-			j--
-			continue
+		if i != sentinel && t.Nodes[i].Location != r {
+			i = t.lookupWideChild(parent, r, i)
+		} else if i == sentinel {
+			i = t.newChild(parent, r, last)
 		}
-		if n.NextSibling < 0 {
-			n.NextSibling = int32(len(t.Nodes))
-			t.Nodes = append(t.Nodes, StacktraceNode{
-				Parent:      n.Parent,
-				FirstChild:  sentinel,
-				NextSibling: sentinel,
-				Location:    r,
-			})
-		}
-		next = n.NextSibling
+		t.Nodes[i].Total += value
+		parent = i
 	}
+	t.Nodes[parent].Value += value
+	return parent
+}
 
-	t.Nodes[cur].Value += value
-	return cur
+// lookupWideChild finds or creates the child of a parent that has more than
+// wideNodeScan children; next is the first child the scan has not visited.
+func (t *StacktraceTree) lookupWideChild(parent, location, next int32) int32 {
+	if i, ok := t.wide.get(childKey(parent, location)); ok {
+		return i
+	}
+	tail := childKey(parent, sentinel)
+	if last, ok := t.wide.get(tail); ok {
+		i := t.newChild(parent, location, last)
+		t.wide.set(childKey(parent, location), i)
+		t.wide.set(tail, i)
+		return i
+	}
+	// First time the node is seen wide: finish the scan, then index all children.
+	last := int32(sentinel)
+	for i := next; i != sentinel; i = t.Nodes[i].NextSibling {
+		if t.Nodes[i].Location == location {
+			return i
+		}
+		last = i
+	}
+	i := t.newChild(parent, location, last)
+	for c := t.Nodes[parent].FirstChild; c != sentinel; c = t.Nodes[c].NextSibling {
+		t.wide.set(childKey(parent, t.Nodes[c].Location), c)
+	}
+	t.wide.set(tail, i)
+	return i
+}
+
+// newChild appends a child after last (sentinel: no children yet), so children
+// stay in insertion order.
+func (t *StacktraceTree) newChild(parent, location, last int32) int32 {
+	i := int32(len(t.Nodes))
+	t.Nodes = append(t.Nodes, StacktraceNode{
+		Parent:      parent,
+		FirstChild:  sentinel,
+		NextSibling: sentinel,
+		Location:    location,
+	})
+	if last == sentinel {
+		t.Nodes[parent].FirstChild = i
+	} else {
+		t.Nodes[last].NextSibling = i
+	}
+	return i
+}
+
+func childKey(parent, location int32) uint64 {
+	return uint64(uint32(parent))<<32 | uint64(uint32(location))
+}
+
+// childIndex is an open-addressing hash table from child keys to node indexes.
+// It grows by doubling two flat slices, so it allocates a few times per tree.
+// The sentinel location of a parent keys its last child.
+type childIndex struct {
+	keys []uint64 // key+1; 0 marks an empty slot
+	vals []int32
+	n    int
+}
+
+func (x *childIndex) slot(k uint64) int {
+	return int((k * 0x9e3779b97f4a7c15) >> 32 & uint64(len(x.keys)-1))
+}
+
+func (x *childIndex) get(k uint64) (int32, bool) {
+	if x.n == 0 {
+		return sentinel, false
+	}
+	for i := x.slot(k); x.keys[i] != 0; i = (i + 1) & (len(x.keys) - 1) {
+		if x.keys[i] == k+1 {
+			return x.vals[i], true
+		}
+	}
+	return sentinel, false
+}
+
+func (x *childIndex) set(k uint64, v int32) {
+	if 4*(x.n+1) > 3*len(x.keys) {
+		x.grow()
+	}
+	i := x.slot(k)
+	for x.keys[i] != 0 && x.keys[i] != k+1 {
+		i = (i + 1) & (len(x.keys) - 1)
+	}
+	if x.keys[i] == 0 {
+		x.n++
+	}
+	x.keys[i], x.vals[i] = k+1, v
+}
+
+func (x *childIndex) grow() {
+	keys, vals := x.keys, x.vals
+	size := max(2*len(keys), 1024)
+	x.keys, x.vals, x.n = make([]uint64, size), make([]int32, size), 0
+	for i, k := range keys {
+		if k != 0 {
+			x.set(k-1, vals[i])
+		}
+	}
+}
+
+func (x *childIndex) reset() {
+	clear(x.keys)
+	x.n = 0
 }
 
 func (t *StacktraceTree) LookupLocations(dst []uint64, idx int32) []uint64 {
