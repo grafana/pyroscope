@@ -479,6 +479,42 @@ func Test_Distributor_Distribute_LargeRing(t *testing.T) {
 	})
 }
 
+func Test_distribution_iterator_one_shard_left_in_parent(t *testing.T) {
+	// When a parent ring has exactly one shard outside its subring, the
+	// iterator must still visit it: otherwise, with two shards in total,
+	// there is no fallback instance when the shard owner is unavailable.
+
+	t.Run("two shards", func(t *testing.T) {
+		d := &distribution{
+			shards: []uint32{0, 1},
+			desc:   []ring.InstanceDesc{{Id: "a"}, {Id: "b"}},
+		}
+
+		//   0 1   all shards
+		//   a b   no shuffling (!)
+		//   * *   tenant (size 2, offset 0)
+		//   >     dataset (size 1, offset 0)
+		assert.Equal(t, []string{"a", "b"}, collectN(d.instances(subring{n: 2, b: 2, d: 1}, 0), 10))
+
+		//   * *   tenant (size 2, offset 0)
+		//     >   dataset (size 1, offset 1)
+		assert.Equal(t, []string{"b", "a"}, collectN(d.instances(subring{n: 2, b: 2, c: 1, d: 2}, 0), 10))
+	})
+
+	t.Run("one shard left at each level", func(t *testing.T) {
+		d := &distribution{
+			shards: []uint32{0, 1, 2},
+			desc:   []ring.InstanceDesc{{Id: "a"}, {Id: "b"}, {Id: "c"}},
+		}
+
+		//   0 1 2   all shards
+		//   a b c   no shuffling (!)
+		//   * *     tenant (size 2, offset 0)
+		//     >     dataset (size 1, offset 1)
+		assert.Equal(t, []string{"b", "a", "c"}, collectN(d.instances(subring{n: 3, b: 2, c: 1, d: 2}, 0), 10))
+	})
+}
+
 func collectN(i iter.Iterator[ring.InstanceDesc], n int) []string {
 	s := make([]string, 0, n)
 	for n > 0 && i.Next() {
