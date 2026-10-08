@@ -203,14 +203,12 @@ func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
 		return nil, nil
 	}
 	bucket := f.storageBucket
-	var options []asyncquery.StoreOption
 	if cfg := f.Cfg.Frontend.AsyncQueries.Storage; cfg.Backend != objstoreclient.None {
 		var err error
 		bucket, err = objstoreclient.NewBucket(f.context(), cfg, "async-query-store")
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize async query storage bucket: %w", err)
 		}
-		options = append(options, asyncquery.WithOwnedBucket())
 	}
 	if bucket == nil {
 		return nil, nil
@@ -219,7 +217,6 @@ func (f *Pyroscope) initAsyncQueryStore() (services.Service, error) {
 		log.With(f.logger, "component", "async-query-store"),
 		bucket,
 		f.reg,
-		options...,
 	)
 	return f.asyncQueryStore, nil
 }
