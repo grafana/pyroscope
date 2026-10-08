@@ -1718,11 +1718,6 @@ The `query_frontend` block configures the query-frontend.
 # query-frontend.grpc-client-config
 [grpc_client_config: <grpc_client>]
 
-# (experimental) Enable the experimental asynchronous query path on
-# SelectMergeStacktraces (default false)
-# CLI flag: -query-frontend.async-queries-enabled
-[async_queries_enabled: <boolean> | default = false]
-
 # (advanced) List of network interface names to look up when finding the
 # instance IP address. This address is sent to query-scheduler and querier,
 # which uses it to send the query response back to query-frontend.
