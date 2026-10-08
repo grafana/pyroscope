@@ -49,7 +49,7 @@ func (f *Frontend) SelectMergeSpanProfile(
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
-    mapping := map[string]string{}
+	mapping := map[string]string{}
 	var mappingMu sync.Mutex
 	for intervals.Next() {
 		r := intervals.At()
@@ -70,11 +70,11 @@ func (f *Frontend) SelectMergeSpanProfile(
 				return err
 			}
 			mappingMu.Lock()
-            if resp.Msg.Mapping != nil {
-                for k, v := range resp.Msg.Mapping {
-                    mapping[k] = v
-                }
-            }
+			if resp.Msg.Mapping != nil {
+				for k, v := range resp.Msg.Mapping {
+					mapping[k] = v
+				}
+			}
 			mappingMu.Unlock()
 			if len(resp.Msg.Tree) > 0 {
 				err = m.MergeTreeBytes(resp.Msg.Tree)

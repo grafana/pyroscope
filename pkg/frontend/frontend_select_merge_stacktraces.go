@@ -103,7 +103,7 @@ func (f *Frontend) selectMergeStacktracesTree(
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
-    mapping := map[string]string{}
+	mapping := map[string]string{}
 	var mappingMu sync.Mutex
 	for intervals.Next() {
 		r := intervals.At()
@@ -123,11 +123,11 @@ func (f *Frontend) selectMergeStacktracesTree(
 				return err
 			}
 			mappingMu.Lock()
-            if resp.Msg.Mapping != nil {
-                for k, v := range resp.Msg.Mapping {
-                    mapping[k] = v
-                }
-            }
+			if resp.Msg.Mapping != nil {
+				for k, v := range resp.Msg.Mapping {
+					mapping[k] = v
+				}
+			}
 			mappingMu.Unlock()
 			if len(resp.Msg.Tree) > 0 {
 				err = m.MergeTreeBytes(resp.Msg.Tree)
@@ -142,7 +142,7 @@ func (f *Frontend) selectMergeStacktracesTree(
 	if err = g.Wait(); err != nil {
 		return nil, nil, err
 	}
-    m.MergeMapping(mapping)
+	m.MergeMapping(mapping)
 	return m.Tree(), m.Mapping(), nil
 }
 

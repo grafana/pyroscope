@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/protobuf/proto"
-	
+
 	otelProfile "go.opentelemetry.io/proto/otlp/profiles/v1development"
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -277,7 +277,7 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 		return 0, fmt.Errorf("mapping not found in mappingMap")
 	}
 
-    frameType, _ := getAttributeValueByKeyOrEmpty(ol.AttributeIndices, dictionary, "profile.frame.type")
+	frameType, _ := getAttributeValueByKeyOrEmpty(ol.AttributeIndices, dictionary, "profile.frame.type")
 	if frameType == "kernel" {
 		mappingId = p.kernelMapping(mappingId)
 	}
