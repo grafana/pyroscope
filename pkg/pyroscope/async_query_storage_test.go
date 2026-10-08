@@ -62,6 +62,12 @@ frontend:
 func TestAsyncQueryStorageDefaults(t *testing.T) {
 	cfg := newDefaultConfig()
 	require.Equal(t, objstoreclient.None, cfg.Frontend.AsyncQueries.Storage.Backend)
+	for _, storage := range []objstoreclient.Config{cfg.Storage.Bucket, cfg.Frontend.AsyncQueries.Storage} {
+		require.Equal(t, 10*time.Minute, storage.S3.HTTP.IdleConnTimeout)
+		require.Equal(t, 1000, storage.S3.HTTP.MaxIdleConnsPerHost)
+		require.Equal(t, 10*time.Minute, storage.GCS.HTTP.IdleConnTimeout)
+		require.Equal(t, 1000, storage.GCS.HTTP.MaxIdleConnsPerHost)
+	}
 }
 
 type asyncQueryTrackingBucket struct {
