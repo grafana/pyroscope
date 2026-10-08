@@ -237,9 +237,8 @@ func (p *profileBuilder) convertValueTypeBack(ovt *otelProfile.ValueType, dictio
 	return &googleProfile.ValueType{Type: p.addstr(typeLabel), Unit: p.addstr(unitLabel)}, nil
 }
 
-// kernelMapping returns the id of a copy of the given mapping whose filename
-// is prefixed with "[kernel]". The original mapping is left untouched, as it may
-// be shared with user-space locations
+// kernelMapping returns the id of a copy of the mapping with a "[kernel]" filename prefix.
+// The original is left untouched since non-kernel locations may share it.
 func (p *profileBuilder) kernelMapping(mappingId uint64) uint64 {
 	if id, ok := p.kernelMappingMap[mappingId]; ok {
 		return id
