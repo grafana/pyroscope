@@ -3,12 +3,14 @@ package querybackendclient
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/resolver"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
@@ -17,6 +19,7 @@ import (
 type Client struct {
 	service    services.Service
 	grpcClient queryv1.QueryBackendServiceClient
+	conn       *grpc.ClientConn
 }
 
 func New(address string, grpcClientConfig grpcclient.Config, timeout time.Duration, dialOpts ...grpc.DialOption) (*Client, error) {
@@ -25,6 +28,7 @@ func New(address string, grpcClientConfig grpcclient.Config, timeout time.Durati
 		return nil, err
 	}
 	var c Client
+	c.conn = conn
 	c.grpcClient = queryv1.NewQueryBackendServiceClient(conn)
 	c.service = services.NewIdleService(c.starting, c.stopping)
 	return &c, nil
@@ -41,6 +45,9 @@ func dial(address string, grpcClientConfig grpcclient.Config, timeout time.Durat
 		grpc.WithDefaultServiceConfig(serviceConfig),
 		grpc.WithMaxCallAttempts(500),
 	)
+	if strings.HasPrefix(address, "dns:") {
+		options = append(options, grpc.WithResolvers(refreshingDNSBuilder{delegate: resolver.Get("dns")}))
+	}
 	options = append(options, dialOpts...)
 	return grpc.NewClient(address, options...)
 }
@@ -48,6 +55,7 @@ func dial(address string, grpcClientConfig grpcclient.Config, timeout time.Durat
 func (b *Client) Service() services.Service      { return b.service }
 func (b *Client) starting(context.Context) error { return nil }
 func (b *Client) stopping(error) error           { return nil }
+func (b *Client) Close() error                   { return b.conn.Close() }
 
 func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 	var trailer metadata.MD
