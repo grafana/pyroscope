@@ -164,7 +164,6 @@ message SelectMergeStacktracesResponse {
   FlameGraph flamegraph = 1;
   // Pyroscope tree bytes.
   bytes tree = 2;
-  map<string, string> mapping = 3;
   // DOT graph representation.
   string dot = 3;
   // (experimental) Used for responding to async queries.
