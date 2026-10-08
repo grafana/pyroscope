@@ -329,6 +329,7 @@ func (r *Resolver) TreeWithMappings() (*model.FunctionNameTree, map[string]strin
     nameToMapping := map[string]string{}
 
     err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		localMapping := map[string]string{}
         for _, loc := range symbols.Locations {
             if loc.MappingId >= uint32(len(symbols.Mappings)) {
                 continue
@@ -336,7 +337,7 @@ func (r *Resolver) TreeWithMappings() (*model.FunctionNameTree, map[string]strin
             mappingFilename := symbols.Strings[symbols.Mappings[loc.MappingId].Filename]
             for _, line := range loc.Line {
                 funcName := symbols.Strings[symbols.Functions[line.FunctionId].Name]
-                nameToMapping[funcName] = mappingFilename
+                localMapping[funcName] = mappingFilename
             }
         }
 
@@ -349,6 +350,9 @@ func (r *Resolver) TreeWithMappings() (*model.FunctionNameTree, map[string]strin
         }
         lock.Lock()
         tree.Merge(resolved)
+		for k, v := range localMapping {
+			nameToMapping[k] = v
+		}
         lock.Unlock()
         return nil
     })

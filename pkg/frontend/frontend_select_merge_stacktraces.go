@@ -3,6 +3,7 @@ package frontend
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -103,6 +104,7 @@ func (f *Frontend) selectMergeStacktracesTree(
 	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
     mapping := map[string]string{}
+	var mappingMu sync.Mutex
 	for intervals.Next() {
 		r := intervals.At()
 		g.Go(func() error {
@@ -120,11 +122,13 @@ func (f *Frontend) selectMergeStacktracesTree(
 			if err != nil {
 				return err
 			}
+			mappingMu.Lock()
             if resp.Msg.Mapping != nil {
                 for k, v := range resp.Msg.Mapping {
                     mapping[k] = v
                 }
             }
+			mappingMu.Unlock()
 			if len(resp.Msg.Tree) > 0 {
 				err = m.MergeTreeBytes(resp.Msg.Tree)
 			} else if resp.Msg.Flamegraph != nil {
