@@ -36,6 +36,7 @@ type replayDumpParams struct {
 	To               string
 	Output           string
 	Force            bool
+	AnonymizeSalt    string
 }
 
 func addReplayDumpParams(cmd commander) *replayDumpParams {
@@ -54,6 +55,7 @@ func addReplayDumpParams(cmd commander) *replayDumpParams {
 	cmd.Flag("to", "End of the dump window.").Default("now").StringVar(&params.To)
 	cmd.Flag("output", "Path to write the replay dump file to.").Short('o').Required().StringVar(&params.Output)
 	cmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").BoolVar(&params.Force)
+	cmd.Flag("anonymize-salt", "Anonymize labels and symbols with this salt (64-character SHA-256 hex hashes); preserve profile-type labels. An empty salt disables anonymization.").StringVar(&params.AnonymizeSalt)
 	return params
 }
 
@@ -104,6 +106,7 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 		return fmt.Errorf("failed to parse query: %w", err)
 	}
 
+	anonymizer := replayAnonymizer(params.AnonymizeSalt)
 	header := replayHeader{
 		SourceQuery: params.Query,
 		Tenants:     []string{params.Tenant},
@@ -173,7 +176,7 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	startNanos := from.UnixNano()
 	endNanos := to.UnixNano()
 
-	totalProfiles, err := dumpBlocks(ctx, bucket, resp.Blocks, matchers, startNanos, endNanos, rw, filepath.Dir(params.Output))
+	totalProfiles, err := dumpBlocks(ctx, bucket, resp.Blocks, matchers, startNanos, endNanos, rw, filepath.Dir(params.Output), anonymizer)
 	if err != nil {
 		return err
 	}
@@ -201,6 +204,7 @@ func dumpBlock(
 	matchers []*labels.Matcher,
 	startNanos, endNanos int64,
 	rw replayRecordWriter,
+	anonymizer replayAnonymizer,
 ) (int, error) {
 	obj := block.NewObject(bucket, md)
 
@@ -211,7 +215,7 @@ func dumpBlock(
 			// profile/tsdb/symbol sections of their own.
 			continue
 		}
-		n, err := dumpDataset(ctx, obj, dsMeta, matchers, startNanos, endNanos, rw)
+		n, err := dumpDataset(ctx, obj, dsMeta, matchers, startNanos, endNanos, rw, anonymizer)
 		if err != nil {
 			return count, err
 		}
@@ -227,6 +231,7 @@ func dumpDataset(
 	matchers []*labels.Matcher,
 	startNanos, endNanos int64,
 	rw replayRecordWriter,
+	anonymizer replayAnonymizer,
 ) (int, error) {
 	ds := block.NewDataset(dsMeta, obj)
 	if err := ds.Open(ctx, block.SectionTSDB, block.SectionProfiles, block.SectionSymbols); err != nil {
@@ -242,7 +247,7 @@ func dumpDataset(
 
 	// Keep each full symbol partition (including its stacktrace trees) loaded
 	// until all rows have been processed. Rows are series-, not partition-ordered.
-	symbols := &replaySymbols{source: ds.Symbols(), partitions: make(map[uint64]symdb.PartitionReader)}
+	symbols := &replaySymbols{source: ds.Symbols(), partitions: make(map[uint64]symdb.PartitionReader), anonymizer: anonymizer}
 	defer symbols.Close()
 
 	var count int
@@ -265,12 +270,12 @@ func dumpDataset(
 			// than aborting the whole dump: a best-effort dump of the
 			// remaining profiles is more useful than none.
 			level.Warn(logger).Log("msg", "skipping profile that failed to reconstruct",
-				"timestamp", entry.Timestamp, "labels", entry.Labels.ToPrometheusLabels().String(), "err", err)
+				"timestamp", entry.Timestamp, "labels", anonymizer.labels(entry.Labels).ToPrometheusLabels().String(), "err", err)
 			continue
 		}
 
 		if err := rw.WriteRecord(replayRecord{
-			Labels:         entry.Labels,
+			Labels:         anonymizer.labels(entry.Labels),
 			TimestampNanos: entry.Timestamp,
 			Pprof:          pprofBytes,
 		}); err != nil {

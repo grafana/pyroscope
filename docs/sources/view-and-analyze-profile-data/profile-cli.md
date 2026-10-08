@@ -562,6 +562,10 @@ The `profilecli replay dump` command queries the source deployment's metastore f
 
 The dump processes up to four blocks in parallel and reuses loaded stacktrace trees and symbols across profiles in each dataset. Profiles are written to per-block temporary files alongside the output, then assembled in timestamp order without loading all profile payloads into memory. Allow disk space for both the temporary profiles and the final dump (approximately twice the final dump size). Temporary files are removed on completion or failure.
 
+To anonymize the dump, add `--anonymize-salt='<secret salt>'`. Non-profile-type label names and values and symbol strings (including function names, filenames, and build IDs) are replaced with the 64-character hexadecimal SHA-256 hash of `salt + string`. Hashed label names additionally receive an `_` prefix so they remain valid label names. The `service_name` label name is preserved, but its value is still hashed. The same salt gives consistent replacements across blocks and dumps; use a different salt to avoid linking separate dumps. The salt is not stored in the dump. An empty salt disables anonymization. The source query and tenant remain unchanged in both the dump header and logs, so these can still expose original values.
+
+The profile-type labels (`__profile_type__`, `__name__`, `__type__`, `__unit__`, `__period_type__`, and `__period_unit__`) and pprof sample/period types and units remain unchanged so profiles can still be replayed. Empty symbol strings remain empty to preserve pprof's required sentinel. Anonymization happens before temporary files are written. Timestamps, sample values, and stack structure are not anonymized.
+
 Configure the source with these flags:
 
 - Set the object storage backend and bucket with the storage flags, for example `--storage.backend`, `--storage.s3.bucket-name`, and `--storage.s3.endpoint`. Run `profilecli help replay dump` for the full list.

@@ -29,6 +29,7 @@ type replayRecordWriter interface {
 // releasing (and consequently evicting) the entire partition for every row.
 // Only a single block worker accesses this cache.
 type replaySymbols struct {
+	anonymizer replayAnonymizer
 	source     symdb.SymbolsReader
 	partitions map[uint64]symdb.PartitionReader
 }
@@ -45,6 +46,7 @@ func (s *replaySymbols) Partition(ctx context.Context, id uint64) (symdb.Partiti
 		if err != nil {
 			return nil, err
 		}
+		p = s.anonymizer.partition(p)
 		s.partitions[id] = p
 	}
 	return borrowedReplayPartition{p}, nil
@@ -100,7 +102,7 @@ func (s *replaySpool) WriteRecord(rec replayRecord) error {
 // dumpBlocks spools payloads to disk in parallel. Only fixed-size record
 // offsets are retained in memory; assembly never decodes or recompresses pprof.
 func dumpBlocks(ctx context.Context, bucket phlareobj.Bucket, blocks []*metastorev1.BlockMeta,
-	matchers []*labels.Matcher, startNanos, endNanos int64, dst *replayWriter, tempDir string,
+	matchers []*labels.Matcher, startNanos, endNanos int64, dst *replayWriter, tempDir string, anonymizer replayAnonymizer,
 ) (int, error) {
 	dir, err := os.MkdirTemp(tempDir, ".replay-blocks-*")
 	if err != nil {
@@ -118,7 +120,7 @@ func dumpBlocks(ctx context.Context, bucket phlareobj.Bucket, blocks []*metastor
 				return err
 			}
 			paths[i] = filepath.Join(dir, fmt.Sprintf("%d.replay", i))
-			index, err := spoolReplayBlock(workerCtx, bucket, md, matchers, startNanos, endNanos, paths[i], i)
+			index, err := spoolReplayBlock(workerCtx, bucket, md, matchers, startNanos, endNanos, paths[i], i, anonymizer)
 			if err != nil {
 				return fmt.Errorf("failed to dump block %s: %w", md.Id, err)
 			}
@@ -152,7 +154,7 @@ func dumpBlocks(ctx context.Context, bucket phlareobj.Bucket, blocks []*metastor
 }
 
 func spoolReplayBlock(ctx context.Context, bucket phlareobj.Bucket, md *metastorev1.BlockMeta,
-	matchers []*labels.Matcher, startNanos, endNanos int64, path string, blockIndex int,
+	matchers []*labels.Matcher, startNanos, endNanos int64, path string, blockIndex int, anonymizer replayAnonymizer,
 ) ([]replayRecordOffset, error) {
 	f, err := os.Create(path)
 	if err != nil {
@@ -165,7 +167,7 @@ func spoolReplayBlock(ctx context.Context, bucket phlareobj.Bucket, md *metastor
 		return nil, err
 	}
 	spool := &replaySpool{writer: writer, counter: counter, block: blockIndex}
-	if _, err := dumpBlock(ctx, bucket, md, matchers, startNanos, endNanos, spool); err != nil {
+	if _, err := dumpBlock(ctx, bucket, md, matchers, startNanos, endNanos, spool, anonymizer); err != nil {
 		return nil, err
 	}
 	if err := writer.Flush(); err != nil {
