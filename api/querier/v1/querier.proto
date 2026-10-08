@@ -166,11 +166,13 @@ message SelectMergeStacktracesResponse {
   bytes tree = 2;
   map<string, string> mapping = 3;
   // DOT graph representation.
-  string dot = 4;
+  string dot = 3;
   // (experimental) Used for responding to async queries.
-  optional AsyncQueryResponse async = 5;
+  optional AsyncQueryResponse async = 4;
   // Profile in pprof format.
-  PprofProfile pprof = 6;
+  PprofProfile pprof = 5;
+  // Function name to file/binary mapping.
+  map<string, string> mapping = 6;
 }
 
 // PprofProfile contains pprof output and related response metadata.
