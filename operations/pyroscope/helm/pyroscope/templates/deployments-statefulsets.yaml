@@ -46,7 +46,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "pyroscope.templateLabels" . | nindent 8 }}
+        {{- include "pyroscope.templateLabels" (dict "ctx" . "extraLabels" $values.extraLabels) | nindent 8 }}
         app.kubernetes.io/component: {{ $component | quote }}
         name: {{ if eq $component "all" }}"pyroscope"{{ else }}"{{ $component }}"{{ end }}
     spec:
