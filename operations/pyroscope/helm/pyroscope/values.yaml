@@ -30,6 +30,8 @@ pyroscope:
   extraArgs:
     log.level: debug
 
+  # -- Labels added to every pyroscope pod. A component can set its own
+  # `extraLabels` under `pyroscope.components.<name>` to add or override labels.
   extraLabels: {}
 
   extraEnvVars:

@@ -447,6 +447,7 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency update ./operations/monitoring/helm/pyroscope-monitoring/
 	$(BIN)/helm dependency build ./operations/monitoring/helm/pyroscope-monitoring/
+	PATH="$(BIN):$(PATH)" $(GO) test -tags=helm_unit ./operations/pyroscope/helm/pyroscope/unit -count=1
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \

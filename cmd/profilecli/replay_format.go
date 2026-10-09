@@ -13,7 +13,9 @@ import (
 
 // The replay dump file is a simple, self-contained, streamable archive of
 // individually reconstructed pprof profiles, together with their original
-// series labels and timestamps. It is produced by `profilecli replay dump`
+// series labels and timestamps. Records are written in ascending timestamp
+// order (guaranteed from v2 onwards), allowing replay to stream them with
+// bounded memory. It is produced by `profilecli replay dump`
 // and consumed by `profilecli replay push`.
 //
 // File layout:
@@ -49,8 +51,6 @@ type replayHeader struct {
 	To          int64    `json:"to_unix_milli"`
 	CreatedAt   int64    `json:"created_at_unix_milli"`
 }
-
-const replayFormatVersion = 1
 
 // replayRecord is a single reconstructed profile: its original series
 // labels, the timestamp it was recorded at (nanoseconds since epoch), and
@@ -162,8 +162,8 @@ func newReplayReader(r io.Reader) (*replayReader, error) {
 	if err := json.Unmarshal(headerBytes, &header); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal replay header: %w", err)
 	}
-	if header.Version != replayFormatVersion {
-		return nil, fmt.Errorf("unsupported replay dump file version %d (expected %d)", header.Version, replayFormatVersion)
+	if header.Version < replayMinSupportedVersion || header.Version > replayFormatVersion {
+		return nil, fmt.Errorf("unsupported replay dump file version %d (supported %d–%d)", header.Version, replayMinSupportedVersion, replayFormatVersion)
 	}
 	return &replayReader{r: br, Header: header}, nil
 }

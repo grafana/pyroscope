@@ -558,7 +558,9 @@ These commands work with Pyroscope v2 deployments. `replay dump` reads directly 
 
 ### Dump profiles to a file
 
-The `profilecli replay dump` command queries the source deployment's metastore for blocks that match your query and time range, reads those blocks from object storage, reconstructs individual pprof profiles with their original labels and timestamps, and writes them to a dump file.
+The `profilecli replay dump` command queries the source deployment's metastore for blocks that match your query and time range, reads those blocks from object storage, reconstructs individual pprof profiles with their original labels and timestamps, and writes them to a time-ordered dump file.
+
+The dump processes up to four blocks in parallel and reuses loaded stacktrace trees and symbols across profiles in each dataset. Profiles are written to per-block temporary files alongside the output, then assembled in timestamp order without loading all profile payloads into memory. Allow disk space for both the temporary profiles and the final dump (approximately twice the final dump size). Temporary files are removed on completion or failure.
 
 Configure the source with these flags:
 
@@ -590,7 +592,7 @@ Configure the command with these flags:
 
 - Set the dump file with `--input` (or `-i`). This flag is required. You can pass a local path or an `http(s)` URL, such as a signed object storage URL.
 - Set the destination and credentials with the same connection flags as other commands, for example `--url`, `--username`, `--password`, and `--tenant-id`. Refer to [Common flags and environment variables](#common-flags-and-environment-variables).
-- Control replay behavior with `--loop` (default `true`), `--speed` (default `1`), `--batch-size` (default `100`), and `--batch-wait` (default `500ms`). A `--speed` of `2` replays twice as fast, and `0.5` replays half as fast. Set `--loop=false` to replay the window once and exit.
+- Control replay behavior with `--loop` (default `true`), `--speed` (default `1`), `--batch-size` (default `100`), and `--batch-wait` (default `500ms`). A `--speed` of `2` replays twice as fast, and `0.5` replays half as fast. Use `--no-loop` to replay the window once and exit.
 
 The dump file must contain a single tenant. The command sends all profiles to one destination tenant, so multi-tenant dumps aren't supported.
 
@@ -608,7 +610,7 @@ Example command replaying once at double speed:
 ```bash
 profilecli replay push \
     --input=./checkout.replay \
-    --loop=false \
+    --no-loop \
     --speed=2
 ```
 

@@ -407,7 +407,7 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 			"storage",
 		)
 		if err != nil {
-			return nil, fmt.Errorf("unable to initialise bucket: %w", err)
+			return nil, fmt.Errorf("unable to initialize bucket: %w", err)
 		}
 		f.storageBucket = b
 	}
