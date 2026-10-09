@@ -664,7 +664,7 @@ func TestFlushMeta(t *testing.T) {
 	require.Equal(t, "symbols/strings.parquet", b.Meta().Files[7].RelPath)
 }
 
-func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *singleBlockQuerier {
+func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder, opts ...SingleBlockQuerierOption) *singleBlockQuerier {
 	t.Helper()
 	dir := t.TempDir()
 	ctx := phlarecontext.WithLogger(context.Background(), log.NewNopLogger())
@@ -702,7 +702,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 	for _, m := range metaMap {
 		meta = m
 	}
-	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
+	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, meta, opts...)
 	require.NoError(t, blk.Open(ctx))
 	return blk
 }
