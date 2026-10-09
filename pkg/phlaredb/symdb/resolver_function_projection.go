@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"slices"
+	"sync"
 
 	"github.com/grafana/dskit/tracing"
 
@@ -60,6 +61,62 @@ func (r *Resolver) Functions() (*typesv1.FunctionTable, error) {
 		return nil, err
 	}
 	return functions.Table(), nil
+}
+
+// FunctionStackTree resolves the untruncated function-name stacks that
+// Functions and FunctionTree project. The stack trace selector is ignored.
+func (r *Resolver) FunctionStackTree() (*model.FunctionStackTree, error) {
+	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.FunctionStackTree")
+	defer span.Finish()
+
+	var mu sync.Mutex
+	tree := model.NewFunctionStackTree()
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		stacks := newStackTreeSymbols(symbols, appender.Samples())
+		if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, stacks, stacks.samples.StacktraceIDs); err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		mu.Lock()
+		tree.MergeStacktraceTree(stacks.tree, stacks.names)
+		mu.Unlock()
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	span.SetTag("nodes", tree.Len())
+	return tree, nil
+}
+
+type stackTreeSymbols struct {
+	*projectionSymbols
+	stack []int32
+	tree  *model.StacktraceTree
+}
+
+func newStackTreeSymbols(symbols *Symbols, samples schemav1.Samples) *stackTreeSymbols {
+	return &stackTreeSymbols{
+		projectionSymbols: newProjectionSymbols(symbols, samples, nil),
+		tree:              model.NewStacktraceTree(samples.Len() * 2),
+	}
+}
+
+func (r *stackTreeSymbols) InsertStacktrace(_ uint32, locations []int32) {
+	value, _ := r.nextValue()
+	if value <= 0 {
+		return
+	}
+	// Leaf-first, the reverse of the root-first stacks built by callTreeSymbols.
+	r.stack = r.stack[:0]
+	for _, location := range locations {
+		for _, line := range r.symbols.Locations[location].Line {
+			r.stack = append(r.stack, r.functionIndex[line.FunctionId])
+		}
+	}
+	r.tree.Insert(r.stack, value)
 }
 
 type functionValue struct {

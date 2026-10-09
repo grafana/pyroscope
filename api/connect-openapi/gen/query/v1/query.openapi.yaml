@@ -801,6 +801,42 @@ components:
           title: attribute_refs
       title: Exemplar
       additionalProperties: false
+    query.v1.FunctionStackTree:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+          description: names[0] is reserved for the synthetic root.
+        nodeName:
+          type: array
+          items:
+            type: integer
+          title: node_name
+          description: |-
+            Nodes in depth-first pre-order. Node 0 is the synthetic root: its self
+             value is the value of samples without function names.
+        nodeChildren:
+          type: array
+          items:
+            type: integer
+          title: node_children
+        nodeSelf:
+          type: array
+          items:
+            type:
+              - integer
+              - string
+            format: int64
+          title: node_self
+      title: FunctionStackTree
+      additionalProperties: false
+      description: |-
+        FunctionStackTree is an untruncated call tree of function names. Each
+         root-first stack of the selected samples is a path from the root; node
+         self values are the summed sample values of the stacks ending there.
     query.v1.FunctionTreeQuery:
       type: object
       properties:
@@ -1001,6 +1037,10 @@ components:
           description: |-
             Run final report processing after this invocation completes. Set only for
              the root invocation; child invocations must clear this flag.
+        partialResultCache:
+          title: partial_result_cache
+          description: Set by the plan root on the requests it sends to its children.
+          $ref: '#/components/schemas/query.v1.PartialResultCacheMode'
       title: InvokeOptions
       additionalProperties: false
     query.v1.InvokeRequest:
@@ -1050,6 +1090,9 @@ components:
         diagnostics:
           title: diagnostics
           $ref: '#/components/schemas/query.v1.Diagnostics'
+        partialResult:
+          title: partial_result
+          $ref: '#/components/schemas/query.v1.PartialResult'
       title: InvokeResponse
       additionalProperties: false
     query.v1.LabelNamesQuery:
@@ -1090,6 +1133,29 @@ components:
           title: label_values
       title: LabelValuesReport
       additionalProperties: false
+    query.v1.PartialResult:
+      type: object
+      properties:
+        trees:
+          type: array
+          items:
+            $ref: '#/components/schemas/query.v1.FunctionStackTree'
+          title: trees
+        incomplete:
+          type: string
+          title: incomplete
+          description: |-
+            Non-empty if any part of the plan did not contribute its trees.
+             Such results must not be cached.
+      title: PartialResult
+      additionalProperties: false
+    query.v1.PartialResultCacheMode:
+      type: string
+      title: PartialResultCacheMode
+      enum:
+        - PARTIAL_RESULT_CACHE_MODE_UNSPECIFIED
+        - PARTIAL_RESULT_CACHE_MODE_SKIP
+        - PARTIAL_RESULT_CACHE_MODE_COLLECT
     query.v1.Point:
       type: object
       properties:

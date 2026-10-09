@@ -46,6 +46,17 @@ message InvokeOptions {
   // Run final report processing after this invocation completes. Set only for
   // the root invocation; child invocations must clear this flag.
   bool finalize = 3;
+  // Set by the plan root on the requests it sends to its children.
+  PartialResultCacheMode partial_result_cache = 4;
+}
+
+enum PartialResultCacheMode {
+  // The receiving query-backend is the root of the query plan.
+  PARTIAL_RESULT_CACHE_MODE_UNSPECIFIED = 0;
+  // The plan root has already handled the partial result cache.
+  PARTIAL_RESULT_CACHE_MODE_SKIP = 1;
+  // Return untruncated function stack trees in InvokeResponse.partial_result.
+  PARTIAL_RESULT_CACHE_MODE_COLLECT = 2;
 }
 
 message InvokeRequest {
@@ -116,6 +127,47 @@ enum QueryType {
 message InvokeResponse {
   repeated Report reports = 1;
   Diagnostics diagnostics = 2;
+  PartialResult partial_result = 3;
+}
+
+message PartialResult {
+  repeated FunctionStackTree trees = 1;
+  // Non-empty if any part of the plan did not contribute its trees.
+  // Such results must not be cached.
+  string incomplete = 2;
+}
+
+// FunctionStackTree is an untruncated call tree of function names. Each
+// root-first stack of the selected samples is a path from the root; node
+// self values are the summed sample values of the stacks ending there.
+message FunctionStackTree {
+  // names[0] is reserved for the synthetic root.
+  repeated string names = 1;
+  // Nodes in depth-first pre-order. Node 0 is the synthetic root: its self
+  // value is the value of samples without function names.
+  repeated uint32 node_name = 2;
+  repeated uint32 node_children = 3;
+  repeated uint64 node_self = 4;
+}
+
+message PartialResultCacheKey {
+  uint32 version = 1;
+  string tenant = 2;
+  int64 start_time = 3;
+  int64 end_time = 4;
+  string label_selector = 5;
+  repeated string profile_id_selector = 6;
+  repeated string span_selector = 7;
+  repeated string trace_id_selector = 8;
+  repeated string block_ids = 9;
+  // Digest of the block metadata, including the selected datasets.
+  bytes blocks_digest = 10;
+}
+
+message PartialResultCacheEntry {
+  PartialResultCacheKey key = 1;
+  // zstd-compressed FunctionStackTree.
+  bytes function_stack_tree = 2;
 }
 
 message ResultCacheKey {
