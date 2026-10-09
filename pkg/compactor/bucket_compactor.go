@@ -589,7 +589,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 			}
 
 			// Ensure the compacted block is valid.
-			if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
+			if err := phlaredb.ValidateLocalBlock(ctx, bdir, jobLogger); err != nil {
 				return fmt.Errorf("invalid result block %s: %w", bdir, err)
 			}
 

@@ -2,6 +2,7 @@ package phlaredb_test
 
 import (
 	"context"
+	"github.com/go-kit/log"
 	"os"
 	"path"
 	"testing"
@@ -25,11 +26,11 @@ func Test_ValidateBlock(t *testing.T) {
 		}
 	})
 
-	err := phlaredb.ValidateLocalBlock(context.Background(), path.Join(dir, meta.ULID.String()))
+	err := phlaredb.ValidateLocalBlock(context.Background(), path.Join(dir, meta.ULID.String()), log.NewNopLogger())
 	require.NoError(t, err)
 	t.Run("should error when a file is missing", func(t *testing.T) {
 		os.Remove(path.Join(dir, meta.ULID.String(), block.IndexFilename))
-		err = phlaredb.ValidateLocalBlock(context.Background(), path.Join(dir, meta.ULID.String()))
+		err = phlaredb.ValidateLocalBlock(context.Background(), path.Join(dir, meta.ULID.String()), log.NewNopLogger())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "no such file")
 	})

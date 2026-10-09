@@ -10,10 +10,9 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-
-	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 var (
@@ -26,11 +25,11 @@ type statusPageContents struct {
 	Message string
 }
 
-func writeMessage(w http.ResponseWriter, message string) {
+func writeMessage(w http.ResponseWriter, message string, logger log.Logger) {
 	w.WriteHeader(http.StatusOK)
 	err := statusPageTemplate.Execute(w, statusPageContents{Message: message})
 	if err != nil {
-		level.Error(util_log.Logger).Log("msg", "unable to serve compactor ring page", "err", err)
+		level.Error(logger).Log("msg", "unable to serve compactor ring page", "err", err)
 	}
 }
 
@@ -38,7 +37,7 @@ func (c *MultitenantCompactor) RingHandler(w http.ResponseWriter, req *http.Requ
 	if c.State() != services.Running {
 		// we cannot read the ring before MultitenantCompactor is in Running state,
 		// because that would lead to race condition.
-		writeMessage(w, "Compactor is not running yet.")
+		writeMessage(w, "Compactor is not running yet.", c.logger)
 		return
 	}
 

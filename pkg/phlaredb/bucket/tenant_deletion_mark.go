@@ -13,10 +13,10 @@ import (
 	"path"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
-	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // Relative to user-specific prefix.
@@ -58,7 +58,7 @@ func WriteTenantDeletionMark(ctx context.Context, bkt objstore.Bucket, userID st
 }
 
 // Returns tenant deletion mark for given user, if it exists. If it doesn't exist, returns nil mark, and no error.
-func ReadTenantDeletionMark(ctx context.Context, bkt objstore.BucketReader, userID string) (*TenantDeletionMark, error) {
+func ReadTenantDeletionMark(ctx context.Context, bkt objstore.BucketReader, userID string, logger log.Logger) (*TenantDeletionMark, error) {
 	markerFile := path.Join(userID, "phlaredb/", TenantDeletionMarkPath)
 
 	r, err := bkt.Get(ctx, markerFile)
@@ -75,7 +75,7 @@ func ReadTenantDeletionMark(ctx context.Context, bkt objstore.BucketReader, user
 
 	// Close reader before dealing with decode error.
 	if closeErr := r.Close(); closeErr != nil {
-		level.Warn(util_log.Logger).Log("msg", "failed to close bucket reader", "err", closeErr)
+		level.Warn(logger).Log("msg", "failed to close bucket reader", "err", closeErr)
 	}
 
 	if err != nil {
