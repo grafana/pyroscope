@@ -92,6 +92,7 @@ type blockContext struct {
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
 	includeStripped bool
+	treeResults     *treeResultCache
 }
 
 func (b *blockContext) execute() error {
@@ -272,6 +273,16 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 	if err != nil {
 		return err
 	}
+	var cacheKey treeResultKey
+	var cacheable bool
+	if q.treeResults != nil {
+		cacheKey, cacheable = treeResultCacheKey(q, query)
+		if cacheable {
+			if r, hit := q.treeResults.get(cacheKey); hit {
+				return q.agg.aggregateReport(r)
+			}
+		}
+	}
 
 	if err = q.ds.Open(q.ctx, q.sections()...); err != nil {
 		if q.obj.IsNotExists(err) {
@@ -290,6 +301,9 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 	}
 	if r != nil {
 		r.ReportType = QueryReportType(query.QueryType)
+		if cacheable {
+			q.treeResults.add(cacheKey, r)
+		}
 		return q.agg.aggregateReport(r)
 	}
 

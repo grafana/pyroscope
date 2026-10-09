@@ -1769,6 +1769,11 @@ The `query_backend` block configures the query-backend (V2 read path).
 # (advanced) Timeout for query-backend client requests.
 # CLI flag: -query-backend.client-timeout
 [client_timeout: <duration> | default = 30s]
+
+# (advanced) Maximum serialized bytes retained in the per-dataset tree-result
+# cache. 0 disables the cache.
+# CLI flag: -query-backend.tree-result-cache-max-bytes
+[tree_result_cache_max_bytes: <int> | default = 0]
 ```
 
 ### frontend_worker
