@@ -21,8 +21,11 @@ Pyroscope integrates with distributed tracing systems supporting the [**OpenTele
 This integration lets you link traces with the profiling data and find resource usage for specific lines of code for your trace spans.
 
 {{< admonition type="note" >}}
-* Only CPU profiling is supported at the moment.
 * Because of how sampling profilers work, spans shorter than the sample interval may not be captured.
+{{< /admonition >}}
+
+{{< admonition type="warning" >}}
+Walltime profiling must be enabled for the tracing integration to work. The thread sampling logic that attaches trace context to profiles only runs when walltime profiling is active. Set `PYROSCOPE_PROFILING_WALLTIME_ENABLED=1` in your environment in addition to the standard profiling configuration.
 {{< /admonition >}}
 
 For a more detailed list of supported profile types, refer to [Profile types](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION/configure-client/profile-types/>).
@@ -46,6 +49,30 @@ Your applications must be instrumented for profiling and tracing before you can 
 Span profiles in .NET are only supported using [OpenTelemetry manual instrumentation](https://opentelemetry.io/docs/languages/net/instrumentation/)
 because Pyroscope's .NET profiler and OpenTelemetry's auto instrumentation are based on separate .NET CLR profilers.
 {{< /admonition >}}
+
+## Required configuration for tracing integration
+
+For the tracing integration to capture profiles linked to trace spans, walltime profiling must be enabled. The profiler only samples threads that carry a trace context when walltime profiling is active.
+
+Set the following environment variable alongside your standard Pyroscope configuration:
+
+```shell
+PYROSCOPE_PROFILING_WALLTIME_ENABLED=1
+```
+
+A minimal working configuration looks like this:
+
+```shell
+PYROSCOPE_APPLICATION_NAME=rideshare.dotnet.app
+PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
+PYROSCOPE_PROFILING_ENABLED=1
+PYROSCOPE_PROFILING_WALLTIME_ENABLED=1
+CORECLR_ENABLE_PROFILING=1
+CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
+CORECLR_PROFILER_PATH=/dotnet/Pyroscope.Profiler.Native.so
+LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
+LD_LIBRARY_PATH=/dotnet
+```
 
 ## Configure the `Pyroscope.OpenTelemetry` package
 
