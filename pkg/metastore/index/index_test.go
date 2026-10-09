@@ -1,6 +1,7 @@
 package index
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -138,7 +139,7 @@ func findShard(t *testing.T, db *bbolt.DB, partition indexstore.Partition, tenan
 func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 	db := test.BoltDB(t)
 	config := DefaultConfig
-	config.queryLookaroundPeriod = time.Hour
+	config.restoreLookaroundPeriod = time.Hour
 
 	idx := NewIndex(util.Logger, NewStore(), config, nil)
 	require.NoError(t, db.Update(idx.Init))
@@ -200,7 +201,6 @@ func TestIndex_RestoreTimeBasedLoading(t *testing.T) {
 func TestShardIterator_TimeFiltering(t *testing.T) {
 	db := test.BoltDB(t)
 	config := DefaultConfig
-	config.queryLookaroundPeriod = 0
 	idx := NewIndex(util.Logger, NewStore(), config, nil)
 	require.NoError(t, db.Update(idx.Init))
 
@@ -243,7 +243,7 @@ func TestShardIterator_TimeFiltering(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var loaded []uint32
 			require.NoError(t, db.View(func(tx *bbolt.Tx) error {
-				iter := newShardIterator(tx, idx, test.Time(tc.startTime), test.Time(tc.endTime), tenant)
+				iter := newShardIterator(context.Background(), tx, idx, test.Time(tc.startTime), test.Time(tc.endTime), tenant)
 				for iter.Next() {
 					loaded = append(loaded, iter.At().Shard)
 				}
@@ -252,6 +252,94 @@ func TestShardIterator_TimeFiltering(t *testing.T) {
 			assert.ElementsMatch(t, tc.expected, loaded)
 		})
 	}
+}
+
+func TestShardIterator_StaleSnapshotAfterShardDeletion(t *testing.T) {
+	db := test.BoltDB(t)
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(idx.Init))
+
+	const tenant = "tenant"
+	block := &metastorev1.BlockMeta{
+		Id:          test.ULID("2024-01-01T10:00:00.000Z"),
+		Tenant:      1,
+		Shard:       1,
+		MinTime:     test.UnixMilli("2024-01-01T10:00:00.000Z"),
+		MaxTime:     test.UnixMilli("2024-01-01T11:00:00.000Z"),
+		StringTable: []string{"", tenant},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idx.InsertBlock(tx, block)
+	}))
+	require.NoError(t, db.View(idx.Restore))
+
+	stale, err := db.Begin(false)
+	require.NoError(t, err)
+	defer func() { _ = stale.Rollback() }()
+
+	partition := idx.partitionKeyForBlock(block.Id)
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idx.DeleteShard(tx, partition, tenant, block.Shard)
+	}))
+
+	iter := newShardIterator(context.Background(), stale, idx, time.UnixMilli(block.MinTime), time.UnixMilli(block.MaxTime), tenant)
+	require.True(t, iter.Next())
+	assert.Equal(t, block.Shard, iter.At().Shard)
+	assert.False(t, iter.Next())
+	require.NoError(t, iter.Err())
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		iter := newShardIterator(context.Background(), tx, idx, time.UnixMilli(block.MinTime), time.UnixMilli(block.MaxTime), tenant)
+		assert.False(t, iter.Next())
+		return iter.Err()
+	}))
+}
+
+func TestShardIterator_RestoresRolledBackShardDeletion(t *testing.T) {
+	db := test.BoltDB(t)
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(idx.Init))
+
+	const tenant = "tenant"
+	block := &metastorev1.BlockMeta{
+		Id:          test.ULID("2024-01-01T10:00:00.000Z"),
+		Tenant:      1,
+		Shard:       1,
+		MinTime:     test.UnixMilli("2024-01-01T10:00:00.000Z"),
+		MaxTime:     test.UnixMilli("2024-01-01T11:00:00.000Z"),
+		StringTable: []string{"", tenant},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idx.InsertBlock(tx, block)
+	}))
+	require.NoError(t, db.View(idx.Restore))
+
+	tx, err := db.Begin(true)
+	require.NoError(t, err)
+	require.NoError(t, idx.DeleteShard(tx, idx.partitionKeyForBlock(block.Id), tenant, block.Shard))
+	require.NoError(t, tx.Rollback())
+
+	// Bolt reuses the rolled-back transaction ID. Commit an unrelated write to
+	// verify that the pending deletion is reconciled instead of becoming a miss.
+	unrelated := &metastorev1.BlockMeta{
+		Id:          test.ULID("2024-01-01T12:00:00.000Z"),
+		Tenant:      1,
+		Shard:       2,
+		MinTime:     test.UnixMilli("2024-01-01T12:00:00.000Z"),
+		MaxTime:     test.UnixMilli("2024-01-01T13:00:00.000Z"),
+		StringTable: []string{"", tenant},
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return idx.InsertBlock(tx, unrelated)
+	}))
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		iter := newShardIterator(context.Background(), tx, idx, time.UnixMilli(block.MinTime), time.UnixMilli(block.MaxTime), tenant)
+		require.True(t, iter.Next())
+		assert.Equal(t, block.Shard, iter.At().Shard)
+		assert.False(t, iter.Next())
+		return iter.Err()
+	}))
 }
 
 func TestIndex_DeleteShard(t *testing.T) {
