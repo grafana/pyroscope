@@ -57,9 +57,8 @@ func NewStore() *store.BlockQueueStore {
 }
 
 func (c *Compactor) Compact(tx *bbolt.Tx, entry compaction.BlockEntry) error {
-	if int(entry.Level) >= len(c.config.Levels) {
-		return nil
-	}
+	// Admission is already decided by the replicated command. A follower
+	// must retain candidates even when its local planning limit is lower.
 	if err := c.store.StoreEntry(tx, entry); err != nil {
 		return err
 	}

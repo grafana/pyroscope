@@ -920,3 +920,31 @@ func (s *testSuite) Test_TraceSelector() {
 		})
 	}
 }
+
+func TestBlockReader_HigherLevels(t *testing.T) {
+	s := &testSuite{dir: "testdata/samples"}
+	s.SetT(t)
+	s.SetupSuite()
+	// Recompact the real fixtures through L6, then exercise query planning,
+	// the tenant dataset index, and profile/symbol reads on those objects.
+	for level := uint32(1); level <= 6; level++ {
+		var next []*metastorev1.BlockMeta
+		for _, md := range s.blocks {
+			if md.CompactionLevel >= level {
+				next = append(next, md)
+				continue
+			}
+			compacted, err := block.Compact(t.Context(), []*metastorev1.BlockMeta{md}, &objstore.ReaderAtBucket{Bucket: s.bucket},
+				block.WithCompactionTempDir(t.TempDir()))
+			s.Require().NoError(err)
+			next = append(next, compacted...)
+		}
+		s.blocks = next
+	}
+	for _, md := range s.blocks {
+		s.Require().Equal(uint32(6), md.CompactionLevel)
+	}
+	s.SetupTest()
+	s.Test_QueryTree_All()
+	s.Test_QueryTree_Filter()
+}

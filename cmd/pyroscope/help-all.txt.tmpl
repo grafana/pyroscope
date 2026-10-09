@@ -609,6 +609,8 @@ Usage of ./pyroscope:
     	Dead Letter Queue check interval. 0 to disable. (default 15s)
   -metastore.index.shard-cache-size int
     	Maximum number of shards to keep in memory (default 2000)
+  -metastore.max-compaction-level uint
+    	[experimental] Maximum output compaction level (minimum 3). Higher levels reuse the final batching policy. Values above 3 take effect after the configurable-compaction-levels FSM version activates on all metastore replicas. (default 3)
   -metastore.min-ready-duration duration
     	Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive some (DNS?) updates. (default 15s)
   -metastore.raft.advertise-address string

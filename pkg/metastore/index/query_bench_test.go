@@ -125,3 +125,39 @@ func requireNoError(b *testing.B, err error) {
 		b.Fatal(err)
 	}
 }
+
+func BenchmarkQueryMetadataPartitions(b *testing.B) {
+	for _, days := range []int{1, 30, 90} {
+		b.Run(fmt.Sprintf("days=%d", days), func(b *testing.B) {
+			db := test.BoltDB(b)
+			idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+			requireNoError(b, db.Update(idx.Init))
+			start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			var latest time.Time
+			requireNoError(b, db.Update(func(tx *bbolt.Tx) error {
+				for n := range days * 4 {
+					latest = start.Add(time.Duration(n) * 6 * time.Hour)
+					if err := idx.InsertBlock(tx, benchmarkBlock(latest)); err != nil {
+						return err
+					}
+				}
+				return nil
+			}))
+			query := MetadataQuery{Expr: `{}`, StartTime: latest, EndTime: latest.Add(time.Minute), Tenant: []string{"tenant-a"}}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				requireNoError(b, db.View(func(tx *bbolt.Tx) error {
+					blocks, err := idx.QueryMetadata(tx, b.Context(), query)
+					if err != nil {
+						return err
+					}
+					if len(blocks) != 1 {
+						return fmt.Errorf("got %d blocks, want 1", len(blocks))
+					}
+					return nil
+				}))
+			}
+		})
+	}
+}

@@ -49,14 +49,8 @@ var DefaultConfig = Config{
 	// Partition key MUST be an input parameter.
 	partitionDuration: 6 * time.Hour,
 
-	// FIXME(kolesnikovae): Remove: build an interval tree.
-	//
-	// Currently, we do not use information about the time range of data each
-	// partition refers to. For example, it's possible – though very unlikely
-	// – for data from the past hour to be stored in a partition created a day
-	// ago. We need to be cautious: when querying, we must identify all
-	// partitions that may include the query time range. To ensure we catch
-	// such "misplaced" data, we extend the query time range using this period.
+	// Cache warmup window only. Queries select shards using their persisted
+	// data time bounds independently of partition timestamps.
 	queryLookaroundPeriod: 24 * time.Hour,
 }
 

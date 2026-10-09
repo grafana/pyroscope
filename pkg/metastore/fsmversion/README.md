@@ -41,3 +41,15 @@ The FSM version is a replicated integer that tells every metastore replica how t
 - Before activation, rolling back is safe.
 - After activation, a binary that does not support the active version refuses to start with `unsupported FSM version`. Roll forward instead. To keep a rollback window, set `-metastore.fsm-version.activation-delay`, or pin the version with `-metastore.fsm-version.max-version`.
 - Binaries that predate FSM versioning report no version, so the leader does not activate anything while one of them is a raft member. They also ignore `SET_FSM_VERSION`, so they must not rejoin the cluster after a version was activated.
+
+## Versioned changes
+
+- `Baseline` (1): the versioning mechanism without changes to compaction admission.
+- `ConfigurableCompactionLevels` (2): leaders may include the configured maximum
+  output compaction level in plan updates, and replicas use it for admission of
+  newly completed blocks. Before activation, admission remains below L3 and the
+  new field is not proposed. After activation, a missing field still means 3,
+  preserving the policy of old log entries. Higher-level queues and block reads
+  are supported independently of the local maximum. Operators can set
+  `metastore.max-compaction-level` above 3 during the binary rollout; the
+  activator supplies the synchronization point before it takes effect.

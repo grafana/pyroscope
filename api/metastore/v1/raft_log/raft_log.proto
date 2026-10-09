@@ -54,6 +54,11 @@ message CompactionPlanUpdate {
   repeated UpdatedCompactionJob updated_jobs = 3;
   repeated CompletedCompactionJob completed_jobs = 4;
   repeated EvictedCompactionJob evicted_jobs = 5;
+  // Replicate the maximum output level so admission of completed blocks
+  // is independent of local configuration, including during log replay.
+  // Proposed and applied only after ConfigurableCompactionLevels activates.
+  // Zero (absent in old logs) means the historical maximum of 3.
+  uint32 max_compaction_level = 6;
 }
 
 message NewCompactionJob {

@@ -10,9 +10,10 @@ type Version uint32
 const (
 	Unversioned Version = iota
 	Baseline
+	ConfigurableCompactionLevels
 )
 
-const Latest = Baseline
+const Latest = ConfigurableCompactionLevels
 
 type Config struct {
 	CheckInterval   time.Duration `yaml:"check_interval" category:"advanced"`

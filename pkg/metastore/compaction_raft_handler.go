@@ -11,6 +11,7 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/fsmversion"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/tracing"
 )
 
@@ -19,12 +20,13 @@ type IndexReplacer interface {
 }
 
 type CompactionCommandHandler struct {
-	logger     log.Logger
-	index      IndexReplacer
-	compactor  compaction.Compactor
-	planner    compaction.Planner
-	scheduler  compaction.Scheduler
-	tombstones Tombstones
+	maxCompactionLevel uint32
+	logger             log.Logger
+	index              IndexReplacer
+	compactor          compaction.Compactor
+	planner            compaction.Planner
+	scheduler          compaction.Scheduler
+	tombstones         Tombstones
 }
 
 func NewCompactionCommandHandler(
@@ -34,14 +36,16 @@ func NewCompactionCommandHandler(
 	planner compaction.Planner,
 	scheduler compaction.Scheduler,
 	tombstones Tombstones,
+	maxCompactionLevel uint32,
 ) *CompactionCommandHandler {
 	return &CompactionCommandHandler{
-		logger:     logger,
-		index:      index,
-		compactor:  compactor,
-		planner:    planner,
-		scheduler:  scheduler,
-		tombstones: tombstones,
+		maxCompactionLevel: maxCompactionLevel,
+		logger:             logger,
+		index:              index,
+		compactor:          compactor,
+		planner:            planner,
+		scheduler:          scheduler,
+		tombstones:         tombstones,
 	}
 }
 
@@ -67,6 +71,11 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	planner := h.planner.NewPlan(cmd)
 	schedule := h.scheduler.NewSchedule(tx, cmd)
 	p := new(raft_log.CompactionPlanUpdate)
+	// Older binaries ignore this field. Propose it only after every Raft
+	// member supports the new admission policy and higher-level blocks.
+	if fsmversion.IsActive(tx, fsmversion.ConfigurableCompactionLevels) {
+		p.MaxCompactionLevel = h.maxCompactionLevel
+	}
 
 	// Any status update may translate to either a job lease refresh, or a
 	// completed job. Status update might be rejected, if the worker has
@@ -195,6 +204,13 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 		}
 	}
 
+	// Preserve historical apply behavior before the replicated activation
+	// point, even if a proposal carries a higher limit. Missing fields in
+	// older log entries continue to mean L3 is terminal after activation.
+	maxCompactionLevel := uint32(3)
+	if fsmversion.IsActive(tx, fsmversion.ConfigurableCompactionLevels) {
+		maxCompactionLevel = max(3, req.PlanUpdate.MaxCompactionLevel)
+	}
 	for _, job := range req.PlanUpdate.CompletedJobs {
 		compacted := job.GetCompactedBlocks()
 		if compacted == nil || compacted.SourceBlocks == nil || len(compacted.NewBlocks) == 0 {
@@ -206,6 +222,10 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 			return nil, err
 		}
 		for _, block := range compacted.NewBlocks {
+			// Admission is replicated, never inferred from local configuration.
+			if block.CompactionLevel >= maxCompactionLevel {
+				continue
+			}
 			if err = h.compactor.Compact(tx, compaction.NewBlockEntry(cmd, block)); err != nil {
 				level.Error(h.logger).Log("msg", "failed to compact block", "err", err)
 				return nil, err

@@ -61,7 +61,7 @@ type jobPlan struct {
 //     compaction key in this case.
 func (p *plan) nextJob() *jobPlan {
 	job := p.newJob()
-	for p.level < uint32(len(p.compactor.queue.levels)) {
+	for p.level < uint32(len(p.compactor.queue.levels)) && p.compactor.config.acceptsLevel(p.level) {
 		if p.batches == nil {
 			level := p.compactor.queue.levels[p.level]
 			if level == nil {
@@ -201,7 +201,10 @@ func (job *jobPlan) tryAdd(block string) bool {
 }
 
 func (job *jobPlan) isInAllowedTimeRange(t int64) bool {
-	if age := job.config.maxAge(job.config.maxLevel()); age > 0 {
+	// Preserve the existing three-hour source-ID span at levels 0–2.
+	// Higher levels may group sources over a longer time range.
+	level := max(job.level, 2)
+	if age := job.config.maxAge(level); age > 0 {
 		//          minT        maxT
 		// --t------|===========|------t--
 		//   |      |---------a--------|

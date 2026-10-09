@@ -66,6 +66,9 @@ func (cfg *Config) Validate() error {
 	if err := cfg.GRPCClientConfig.Validate(); err != nil {
 		return err
 	}
+	if err := cfg.Compactor.Validate(); err != nil {
+		return err
+	}
 	return cfg.Raft.Validate()
 }
 
@@ -161,7 +164,7 @@ func New(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX),
 		m.indexHandler.TruncateIndex)
 
-	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.index, m.compactor, m.compactor, m.scheduler, m.tombstones)
+	m.compactionHandler = NewCompactionCommandHandler(m.logger, m.index, m.compactor, m.compactor, m.scheduler, m.tombstones, uint32(m.config.Compactor.MaxCompactionLevel))
 	fsm.RegisterRaftCommandHandler(m.fsm,
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE),
 		m.compactionHandler.GetCompactionPlanUpdate)

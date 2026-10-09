@@ -157,6 +157,7 @@ func (q *compactionQueue) push(e compaction.BlockEntry) bool {
 }
 
 func (q *compactionQueue) blockQueue(l uint32) *blockQueue {
+	q.globalStats.ensureLevel(l)
 	s := l + 1 // Levels are 0-based.
 	if s > uint32(len(q.levels)) {
 		q.levels = slices.Grow(q.levels, int(s))[:s]

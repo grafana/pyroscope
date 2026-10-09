@@ -1,9 +1,11 @@
 package compactor
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
@@ -168,4 +170,50 @@ func TestUpdatePlanUnknownKeyDoesNotLeakQueues(t *testing.T) {
 	if after != before {
 		t.Errorf("queues_current changed: before=%v after=%v (secondary leak detected)", before, after)
 	}
+}
+
+// A follower can receive higher-level candidates while its own maximum is 3.
+// Growth must be safe while Prometheus is scraping, including after restoration.
+func TestGlobalQueueStats_GrowthDuringScrape(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	c := NewCompactor(DefaultConfig(), nil, nil, reg)
+	stop := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		for {
+			select {
+			case <-stop:
+				done <- nil
+				return
+			default:
+				if _, err := reg.Gather(); err != nil {
+					done <- err
+					return
+				}
+			}
+		}
+	}()
+	t.Cleanup(func() {
+		close(stop)
+		require.NoError(t, <-done)
+	})
+	for level := uint32(0); level < 32; level++ {
+		c.enqueue(compaction.BlockEntry{ID: strconv.Itoa(int(level)), Tenant: "A", Level: level})
+	}
+	metrics, err := reg.Gather()
+	require.NoError(t, err)
+	var found bool
+	for _, family := range metrics {
+		if family.GetName() != "compaction_global_queue_blocks_current" {
+			continue
+		}
+		for _, metric := range family.Metric {
+			if metric.Label[0].GetValue() == "31" {
+				require.Equal(t, float64(1), metric.GetGauge().GetValue())
+				found = true
+			}
+		}
+	}
+	require.True(t, found)
+	c.queue.reset()
 }

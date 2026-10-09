@@ -95,7 +95,12 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 
 	compactSpan, _ := tracing.StartSpanFromContext(ctx, "compactor.Compact")
 	defer compactSpan.Finish()
-	if err = m.compactor.Compact(tx, e); err != nil {
+	// AddBlock historically admits only levels 0–2. L3 admission is decided
+	// by the leader in a replicated compaction plan update.
+	if e.Level < 3 {
+		err = m.compactor.Compact(tx, e)
+	}
+	if err != nil {
 		level.Error(m.logger).Log("msg", "failed to add block to compaction", "block", e.ID, "err", err)
 		compactSpan.LogError(err)
 		compactSpan.SetError()

@@ -338,8 +338,13 @@ type CompactionPlanUpdate struct {
 	UpdatedJobs   []*UpdatedCompactionJob   `protobuf:"bytes,3,rep,name=updated_jobs,json=updatedJobs,proto3" json:"updated_jobs,omitempty"`
 	CompletedJobs []*CompletedCompactionJob `protobuf:"bytes,4,rep,name=completed_jobs,json=completedJobs,proto3" json:"completed_jobs,omitempty"`
 	EvictedJobs   []*EvictedCompactionJob   `protobuf:"bytes,5,rep,name=evicted_jobs,json=evictedJobs,proto3" json:"evicted_jobs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Replicate the maximum output level so admission of completed blocks
+	// is independent of local configuration, including during log replay.
+	// Proposed and applied only after ConfigurableCompactionLevels activates.
+	// Zero (absent in old logs) means the historical maximum of 3.
+	MaxCompactionLevel uint32 `protobuf:"varint,6,opt,name=max_compaction_level,json=maxCompactionLevel,proto3" json:"max_compaction_level,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *CompactionPlanUpdate) Reset() {
@@ -405,6 +410,13 @@ func (x *CompactionPlanUpdate) GetEvictedJobs() []*EvictedCompactionJob {
 		return x.EvictedJobs
 	}
 	return nil
+}
+
+func (x *CompactionPlanUpdate) GetMaxCompactionLevel() uint32 {
+	if x != nil {
+		return x.MaxCompactionLevel
+	}
+	return 0
 }
 
 type NewCompactionJob struct {
@@ -1134,13 +1146,14 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\x1fGetCompactionPlanUpdateResponse\x12\x12\n" +
 	"\x04term\x18\x01 \x01(\x04R\x04term\x12?\n" +
 	"\vplan_update\x18\x02 \x01(\v2\x1e.raft_log.CompactionPlanUpdateR\n" +
-	"planUpdate\"\xe2\x02\n" +
+	"planUpdate\"\x94\x03\n" +
 	"\x14CompactionPlanUpdate\x125\n" +
 	"\bnew_jobs\x18\x01 \x03(\v2\x1a.raft_log.NewCompactionJobR\anewJobs\x12D\n" +
 	"\rassigned_jobs\x18\x02 \x03(\v2\x1f.raft_log.AssignedCompactionJobR\fassignedJobs\x12A\n" +
 	"\fupdated_jobs\x18\x03 \x03(\v2\x1e.raft_log.UpdatedCompactionJobR\vupdatedJobs\x12G\n" +
 	"\x0ecompleted_jobs\x18\x04 \x03(\v2 .raft_log.CompletedCompactionJobR\rcompletedJobs\x12A\n" +
-	"\fevicted_jobs\x18\x05 \x03(\v2\x1e.raft_log.EvictedCompactionJobR\vevictedJobs\"w\n" +
+	"\fevicted_jobs\x18\x05 \x03(\v2\x1e.raft_log.EvictedCompactionJobR\vevictedJobs\x120\n" +
+	"\x14max_compaction_level\x18\x06 \x01(\rR\x12maxCompactionLevel\"w\n" +
 	"\x10NewCompactionJob\x122\n" +
 	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\x12/\n" +
 	"\x04plan\x18\x02 \x01(\v2\x1b.raft_log.CompactionJobPlanR\x04plan\"|\n" +

@@ -68,41 +68,58 @@ func (b *queueStatsCollector) Collect(m chan<- prometheus.Metric) {
 	m <- prometheus.MustNewConstMetric(b.missed, prometheus.CounterValue, float64(b.stats.missed.Load()))
 }
 
+type levelQueueStats struct {
+	blocks  atomic.Int32
+	queues  atomic.Int32
+	batches atomic.Int32
+}
+
 type globalQueueStats struct {
-	blocksPerLevel  []atomic.Int32
-	queuesPerLevel  []atomic.Int32
-	batchesPerLevel []atomic.Int32
+	// Immutable slice of stable counters, published atomically for scrapes.
+	// Queue mutations (including growth) have a single writer: the Raft FSM.
+	levels atomic.Pointer[[]*levelQueueStats]
 }
 
 func newGlobalQueueStats(numLevels int) *globalQueueStats {
-	return &globalQueueStats{
-		blocksPerLevel:  make([]atomic.Int32, numLevels),
-		queuesPerLevel:  make([]atomic.Int32, numLevels),
-		batchesPerLevel: make([]atomic.Int32, numLevels),
+	g := new(globalQueueStats)
+	levels := make([]*levelQueueStats, numLevels)
+	for i := range levels {
+		levels[i] = new(levelQueueStats)
 	}
+	g.levels.Store(&levels)
+	return g
+}
+
+func (g *globalQueueStats) ensureLevel(level uint32) {
+	current := *g.levels.Load()
+	if uint64(level) < uint64(len(current)) {
+		return
+	}
+	levels := make([]*levelQueueStats, int(level)+1)
+	copy(levels, current)
+	for i := len(current); i < len(levels); i++ {
+		levels[i] = new(levelQueueStats)
+	}
+	g.levels.Store(&levels)
 }
 
 func (g *globalQueueStats) AddBlocks(key compactionKey, delta int32) {
-	g.blocksPerLevel[key.level].Add(delta)
+	(*g.levels.Load())[key.level].blocks.Add(delta)
 }
 
 func (g *globalQueueStats) AddQueues(key compactionKey, delta int32) {
-	g.queuesPerLevel[key.level].Add(delta)
+	(*g.levels.Load())[key.level].queues.Add(delta)
 }
 
 func (g *globalQueueStats) AddBatches(key compactionKey, delta int32) {
-	g.batchesPerLevel[key.level].Add(delta)
+	(*g.levels.Load())[key.level].batches.Add(delta)
 }
 
 func (g *globalQueueStats) reset() {
-	resetAtomicSlice(g.blocksPerLevel)
-	resetAtomicSlice(g.queuesPerLevel)
-	resetAtomicSlice(g.batchesPerLevel)
-}
-
-func resetAtomicSlice(s []atomic.Int32) {
-	for i := range s {
-		s[i].Store(0)
+	for _, level := range *g.levels.Load() {
+		level.blocks.Store(0)
+		level.queues.Store(0)
+		level.batches.Store(0)
 	}
 }
 
@@ -149,10 +166,10 @@ func (c *globalQueueStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *globalQueueStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	for levelIdx := range c.compactionQueue.config.Levels {
-		blocksAtLevel := c.compactionQueue.globalStats.blocksPerLevel[levelIdx].Load()
-		queuesAtLevel := c.compactionQueue.globalStats.queuesPerLevel[levelIdx].Load()
-		batchesAtLevel := c.compactionQueue.globalStats.batchesPerLevel[levelIdx].Load()
+	for levelIdx, stats := range *c.compactionQueue.globalStats.levels.Load() {
+		blocksAtLevel := stats.blocks.Load()
+		queuesAtLevel := stats.queues.Load()
+		batchesAtLevel := stats.batches.Load()
 
 		levelLabel := strconv.Itoa(levelIdx)
 

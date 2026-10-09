@@ -80,6 +80,71 @@ Profiling data from each service is stored as a separate dataset within a block.
 - Symbols and profile tables are merged and rewritten
 - Output block contains optimized, non-overlapping datasets
 
+### Maximum compaction level
+
+By default, compaction produces blocks through level 3 (L3). Set
+`-metastore.max-compaction-level=4`, or configure:
+
+```yaml
+metastore:
+  max_compaction_level: 4
+```
+
+The setting is the maximum **output** level and must be at least 3. A value of
+4 enables L3 to L4; 5 also enables L4 to L5, and higher values add further
+steps without another binary change. Blocks at the configured maximum are
+terminal for new compaction jobs.
+
+Each additional step groups up to 10 blocks from the same tenant, shard, and
+source level. The oldest batch becomes eligible for an incomplete job after
+24 hours as the queue advances. Source block IDs may span at most 24 hours;
+the data inside those blocks can cover a longer period. All additional levels
+reuse this final batching policy; the original levels retain their limits.
+
+Only newly completed blocks below the leader's configured maximum are admitted
+to the compaction queue. Raising the maximum does not backfill existing terminal
+blocks. Larger jobs need more worker memory, temporary disk, and I/O; monitor
+job duration, failures, and queue depth when raising the maximum.
+
+#### Rollout and rollback
+
+Set the desired maximum in the same rollout that installs this feature. No
+second configuration rollout, worker pause, or simultaneous restart is needed.
+Until the replicated FSM version `ConfigurableCompactionLevels` (version 2)
+activates, newly completed L3 blocks remain terminal, even when the local
+configuration specifies a higher maximum.
+
+The FSM version activator waits for every Raft member, including non-voters, to
+report support before committing the activation through Raft. This ensures all
+replicas have higher-level queue restoration and read support before new blocks
+are admitted above L2. After activation, the leader includes its configured
+maximum in compaction plans. Replicas apply that numeric limit independently of
+local settings, so subsequent increases and decreases use ordinary rolling
+configuration updates. During a rollout, leadership changes can temporarily
+change the effective maximum until settings agree.
+
+Use `-metastore.fsm-version.activation-delay` for a rollback window, or pin
+`-metastore.fsm-version.max-version=1` on all replicas to hold activation at the
+baseline. While version 2 is inactive, disabling automatic activation or capping
+it below 2 keeps the effective compaction maximum at 3. The active FSM version is persisted in snapshots
+and reproduced at the same point during log replay; entries prepared before
+activation retain the historical admission policy when replayed later.
+
+After activation, lowering `max_compaction_level` to 3 stops planning new
+higher-level jobs. Existing jobs can still finish above the new maximum, queued
+candidates at or above it remain available for a future increase, and existing
+higher-level blocks remain readable. The FSM version itself never decreases:
+a version-aware binary that does not support version 2 refuses to restore the
+activated state. Binaries predating FSM versioning must not rejoin after
+activation. Refer to [metastore FSM versioning](../components/metastore/#upgrades-and-rollbacks)
+for the activation controls.
+
+Metadata and label queries select shards by their persisted data time bounds
+across all partitions, independently of the configured maximum. They no longer
+assume that a block's data lies within 24 hours of its inherited ID timestamp.
+This adds a scan of shard summaries across retained partitions, while full
+metadata is loaded only for shards whose data overlaps the query.
+
 ## Job scheduler
 
 The scheduler uses a **Small Job First** strategy:

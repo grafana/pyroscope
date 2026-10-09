@@ -1349,6 +1349,13 @@ index:
 
 [levels: <list of LevelConfigs> | default = ]
 
+# (experimental) Maximum output compaction level (minimum 3). Higher levels
+# reuse the final batching policy. Values above 3 take effect after the
+# configurable-compaction-levels FSM version activates on all metastore
+# replicas.
+# CLI flag: -metastore.max-compaction-level
+[max_compaction_level: <int> | default = 3]
+
 [cleanupbatchsize: <int> | default = ]
 
 [cleanupdelay: <duration> | default = ]

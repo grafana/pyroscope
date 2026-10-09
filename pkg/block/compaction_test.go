@@ -58,18 +58,22 @@ func Test_CompactBlocks(t *testing.T) {
 	assert.Equal(t, string(expectedJson), string(compactedJson))
 
 	t.Run("Compact compacted blocks", func(t *testing.T) {
-		compactedBlocks, err = block.Compact(ctx, compactedBlocks, dst,
-			block.WithCompactionDestination(dst),
-			block.WithCompactionTempDir(tempdir),
-			block.WithCompactionObjectOptions(
-				block.WithObjectDownload(filepath.Join(tempdir, "source")),
-				block.WithObjectMaxSizeLoadInMemory(0)), // Force download.
-		)
+		for level := uint32(2); level <= 4; level++ {
+			compactedBlocks, err = block.Compact(ctx, compactedBlocks, dst,
+				block.WithCompactionDestination(dst),
+				block.WithCompactionTempDir(tempdir),
+				block.WithCompactionObjectOptions(
+					block.WithObjectDownload(filepath.Join(tempdir, "source")),
+					block.WithObjectMaxSizeLoadInMemory(0)), // Force download.
+			)
 
-		require.NoError(t, err)
-		require.Len(t, compactedBlocks, 1)
-		require.NotZero(t, compactedBlocks[0].Size)
-		require.Len(t, compactedBlocks[0].Datasets, 4)
+			require.NoError(t, err)
+			require.Len(t, compactedBlocks, 1)
+			require.NotZero(t, compactedBlocks[0].Size)
+			require.Len(t, compactedBlocks[0].Datasets, 4)
+			require.Equal(t, level, compactedBlocks[0].CompactionLevel)
+		}
+
 	})
 }
 

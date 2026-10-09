@@ -290,9 +290,9 @@ type shardIterator struct {
 }
 
 func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, tenants ...string) *shardIterator {
-	// See comment in DefaultConfig.queryLookaroundPeriod.
-	startTime = startTime.Add(-index.config.queryLookaroundPeriod)
-	endTime = endTime.Add(index.config.queryLookaroundPeriod)
+	// Compacted blocks inherit a source ULID, so the partition timestamp
+	// does not bound the data it contains. Inspect the persisted shard time
+	// bounds in every partition before loading matching shards.
 	si := shardIterator{
 		tx:        tx,
 		tenants:   tenants,
@@ -301,9 +301,6 @@ func newShardIterator(tx *bbolt.Tx, index *Index, startTime, endTime time.Time, 
 		endTime:   endTime,
 	}
 	for p := range index.store.Partitions(tx) {
-		if !p.Overlaps(startTime, endTime) {
-			continue
-		}
 		q := p.Query(tx)
 		if q == nil {
 			continue

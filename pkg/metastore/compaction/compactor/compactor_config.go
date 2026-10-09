@@ -2,11 +2,15 @@ package compactor
 
 import (
 	"flag"
+	"fmt"
+	"math"
 	"time"
 )
 
 type Config struct {
 	Levels []LevelConfig
+
+	MaxCompactionLevel uint `yaml:"max_compaction_level" category:"experimental"`
 
 	CleanupBatchSize   int32
 	CleanupDelay       time.Duration
@@ -21,10 +25,12 @@ type LevelConfig struct {
 
 func DefaultConfig() Config {
 	return Config{
+		MaxCompactionLevel: 3,
 		Levels: []LevelConfig{
 			{MaxBlocks: 20, MaxAge: int64(1 * 36 * time.Second)},
 			{MaxBlocks: 10, MaxAge: int64(2 * 360 * time.Second)},
 			{MaxBlocks: 10, MaxAge: int64(3 * 3600 * time.Second)},
+			{MaxBlocks: 10, MaxAge: int64(24 * time.Hour)},
 		},
 
 		CleanupBatchSize:   2,
@@ -34,11 +40,15 @@ func DefaultConfig() Config {
 	}
 }
 
-func (c *Config) RegisterFlagsWithPrefix(string, *flag.FlagSet) {
-	// NOTE(kolesnikovae): I'm not sure if making this configurable
-	// is a good idea; however, we might want to add a flag to tune
-	// the parameters based on e.g., segment size or max duration.
+func (c *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	*c = DefaultConfig()
+	f.UintVar(&c.MaxCompactionLevel, prefix+"max-compaction-level", 3, "Maximum output compaction level (minimum 3). Higher levels reuse the final batching policy. Values above 3 take effect after the configurable-compaction-levels FSM version activates on all metastore replicas.")
+}
+
+// acceptsLevel controls planning only. Admission is decided by the leader
+// and replicated in the Raft log, independently of local configuration.
+func (c *Config) acceptsLevel(l uint32) bool {
+	return l < c.maxLevel()
 }
 
 // exceedsSize is called after the block has been added to the batch.
@@ -61,21 +71,30 @@ func (c *Config) exceedsMaxAge(b *batch, now int64) bool {
 	return false
 }
 
+// Levels describes batching policies by source level. Higher source levels
+// reuse the final policy without allocating configuration per level.
 func (c *Config) maxBlocks(l uint32) uint {
-	if l < uint32(len(c.Levels)) {
-		return c.Levels[l].MaxBlocks
+	if len(c.Levels) == 0 {
+		return 0
 	}
-	return 0
+	return c.Levels[min(l, uint32(len(c.Levels)-1))].MaxBlocks
 }
 
 func (c *Config) maxAge(l uint32) int64 {
-	if l < uint32(len(c.Levels)) {
-		return c.Levels[l].MaxAge
+	if len(c.Levels) == 0 {
+		return 0
 	}
-	return 0
+	return c.Levels[min(l, uint32(len(c.Levels)-1))].MaxAge
 }
 
 func (c *Config) maxLevel() uint32 {
-	// Assuming that there is at least one level.
-	return uint32(len(c.Levels) - 1)
+	// Keep zero-valued internal configurations compatible with the default.
+	return max(3, uint32(c.MaxCompactionLevel))
+}
+
+func (c *Config) Validate() error {
+	if c.MaxCompactionLevel < 3 || c.MaxCompactionLevel > math.MaxUint32 {
+		return fmt.Errorf("metastore.max-compaction-level must be between 3 and %d", uint64(math.MaxUint32))
+	}
+	return nil
 }
