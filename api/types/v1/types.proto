@@ -109,7 +109,7 @@ enum ExemplarType {
   EXEMPLAR_TYPE_SPAN = 3;
 }
 
-// StackTraceSelector is used for filtering stack traces by locations.
+// StackTraceSelector is used for filtering stack traces by call site or frames.
 message StackTraceSelector {
   // Stack trace of the call site. Root at call_site[0].
   // Only stack traces having the prefix provided will be selected.
@@ -118,6 +118,20 @@ message StackTraceSelector {
   // Stack trace selector for profiles purposed for Go PGO.
   // If set, call_site is ignored.
   GoPGO go_pgo = 2;
+  // Select whole samples by function names anywhere in their stack.
+  optional StackFrameFilter frame_filter = 3;
+}
+
+message StackFrameFilter {
+  // A stack must contain every listed function.
+  repeated string include_function_names = 1;
+  // A stack must contain none of the listed functions.
+  repeated string exclude_function_names = 2;
+  // A stack must contain a function matching each RE2 expression. Matches
+  // may occur anywhere in the function name; use ^ and $ to anchor them.
+  repeated string include_function_name_regexes = 3;
+  // A stack must contain no function matching any RE2 expression.
+  repeated string exclude_function_name_regexes = 4;
 }
 
 message Location {

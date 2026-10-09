@@ -81,11 +81,12 @@ type lazyPartition struct {
 	m       sync.Mutex
 	samples *SampleAppender
 
-	fetchOnce sync.Once
-	resolver  *Resolver
-	reader    PartitionReader
-	selection *SelectedStackTraces
-	err       error
+	fetchOnce    sync.Once
+	resolver     *Resolver
+	reader       PartitionReader
+	selection    *SelectedStackTraces
+	frameMatcher *FrameMatcher
+	err          error
 }
 
 func (p *lazyPartition) fetch(ctx context.Context) error {
@@ -93,6 +94,7 @@ func (p *lazyPartition) fetch(ctx context.Context) error {
 		p.reader, p.err = p.resolver.s.Partition(ctx, p.id)
 		if p.err == nil && p.resolver.sts != nil {
 			p.selection = SelectStackTraces(p.reader.Symbols(), p.resolver.sts)
+			p.frameMatcher, p.err = NewFrameMatcher(p.reader.Symbols(), p.resolver.sts.GetFrameFilter())
 		}
 	})
 	return p.err
@@ -226,6 +228,26 @@ func (r *Resolver) CallSiteValuesParquet(values *CallSiteValues, partition uint6
 	defer p.m.Unlock()
 	p.selection.CallSiteValuesParquet(values, stacktraceID, value)
 	return nil
+}
+
+// SelectedValuesParquet sums samples matching the call site and frame filters.
+func (r *Resolver) SelectedValuesParquet(partition uint64, stacktraceID, values []parquet.Value) (uint64, error) {
+	p := r.partition(partition)
+	if err := p.fetch(r.ctx); err != nil {
+		return 0, err
+	}
+	p.m.Lock()
+	defer p.m.Unlock()
+	var total uint64
+	for i, id := range stacktraceID {
+		sid := id.Uint32()
+		if sid == 0 || (p.frameMatcher != nil && !p.frameMatcher.Matches(sid)) ||
+			(p.selection != nil && !p.selection.MatchesCallSite(sid)) {
+			continue
+		}
+		total += values[i].Uint64()
+	}
+	return total, nil
 }
 
 func (r *Resolver) partition(partition uint64) *lazyPartition {
@@ -370,6 +392,9 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, *SampleApp
 		g.Go(util.RecoverPanic(func() error {
 			if err := p.fetch(ctx); err != nil {
 				return err
+			}
+			if p.frameMatcher != nil {
+				p.samples.Filter(p.frameMatcher.Matches)
 			}
 			return fn(p.reader.Symbols(), p.samples)
 		}))

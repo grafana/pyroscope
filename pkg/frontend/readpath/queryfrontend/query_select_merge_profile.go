@@ -14,6 +14,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
@@ -42,6 +43,9 @@ func (q *QueryFrontend) selectMergeStacktracesPprof(
 	ctx context.Context,
 	req *querierv1.SelectMergeStacktracesRequest,
 ) (*profilev1.Profile, error) {
+	if err := symdb.ValidateFrameFilter(req.StackTraceSelector.GetFrameFilter()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

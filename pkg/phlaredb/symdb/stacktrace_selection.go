@@ -81,6 +81,23 @@ func (x *SelectedStackTraces) HasValidCallSite() bool {
 	return len(x.callSiteSelector) == 0 || len(x.callSiteSelector) != 0 && len(x.callSite) != 0
 }
 
+// MatchesCallSite reports whether the full stack has the selected root prefix.
+func (x *SelectedStackTraces) MatchesCallSite(stacktraceID uint32) bool {
+	if x.depth == 0 || x.gopgo != nil {
+		return true
+	}
+	if x.relations == nil {
+		x.relations = make(map[uint32]stackTraceLocationRelation)
+	}
+	r, ok := x.relations[stacktraceID]
+	if !ok {
+		x.buf = x.symbols.Stacktraces.LookupLocations(x.buf, stacktraceID)
+		r = x.appendStackTrace(x.buf)
+		x.relations[stacktraceID] = r
+	}
+	return r&relationSubtree != 0
+}
+
 // CallSiteValues writes the call site statistics for
 // the selected stack traces and the given set of samples.
 func (x *SelectedStackTraces) CallSiteValues(values *CallSiteValues, samples schemav1.Samples) {
