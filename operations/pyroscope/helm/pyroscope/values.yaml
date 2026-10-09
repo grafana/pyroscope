@@ -22,6 +22,11 @@ pyroscope:
     # Allows to override the image tag, which defaults to the appVersion in the chart metadata
     tag: ""
 
+  # For v1 storage, reduce the maximum block duration with:
+  # extraArgs:
+  #   pyroscopedb.max-block-duration: 30m
+
+  # -- Additional command-line arguments. Set these under pyroscope.extraArgs, not pyroscope.resources.
   extraArgs:
     log.level: debug
 
@@ -117,14 +122,6 @@ pyroscope:
     # choice for the user. This also increases chances charts run on environments with little
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources'.
-    #
-    # Note that if memory consumption is higher than you would like, you can decrease the interval
-    # that profiles are written into blocks by setting `pyroscopedb.max-block-duration` in the `extraArgs`
-    # stanza. By default, it is set to 3h - override it, for example, as below:
-    # ```
-    # extraArgs:
-    #   pyroscopedb.max-block-duration: 30m
-    # ```
     #
     # limits:
     #   cpu: 100m

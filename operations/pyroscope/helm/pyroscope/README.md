@@ -56,7 +56,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Pyroscope's configuration as a string. |
 | pyroscope.disableSelfProfile | bool | `true` | Enable or disable Self profile push, useful to test |
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
-| pyroscope.extraArgs."log.level" | string | `"debug"` |  |
+| pyroscope.extraArgs | object | `{"log.level":"debug"}` | Additional command-line arguments. Set these under pyroscope.extraArgs, not pyroscope.resources. |
 | pyroscope.extraContainers | list | `[]` |  |
 | pyroscope.extraCustomEnvVars | object | `{}` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |

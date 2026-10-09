@@ -115,6 +115,39 @@ Use a custom namespace so that you don't have to overwrite the default namespace
 
 1. Wait until all the pods have a status of `Running` or `Completed`, which might take a few minutes.
 
+## Configure command-line arguments
+
+Set additional Pyroscope command-line arguments in `pyroscope.extraArgs` in your values file.
+Keep `extraArgs` and `resources` at the same indentation level under `pyroscope`.
+The `resources` field only configures container resource requests and limits; arguments nested inside it are not added to the container command.
+
+For example, for a deployment using v1 storage, save the following as `values.yaml` to set the maximum block duration to 30 minutes:
+
+```yaml
+architecture:
+  storage:
+    v1: true
+    v2: false
+
+pyroscope:
+  extraArgs:
+    pyroscopedb.max-block-duration: 30m
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 3
+      memory: 6Gi
+```
+
+The `pyroscopedb.max-block-duration` option applies to the v1 ingester, not v2 segment writers.
+Before deploying, render the chart and verify that the Pyroscope container's `args` include `-pyroscopedb.max-block-duration=30m`:
+
+```bash
+helm template pyroscope grafana/pyroscope --values values.yaml
+```
+
 ## Query profiles in Grafana
 
 1. Install Grafana in the same Kubernetes cluster where you installed Pyroscope.
