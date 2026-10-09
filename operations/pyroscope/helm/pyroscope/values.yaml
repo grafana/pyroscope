@@ -22,8 +22,8 @@ pyroscope:
     # Allows to override the image tag, which defaults to the appVersion in the chart metadata
     tag: ""
 
-  extraArgs:
-    log.level: debug
+  # -- Additional command-line arguments. Log level defaults to the server configuration; set log.level here to override it explicitly.
+  extraArgs: {}
 
   # -- Labels added to every pyroscope pod. A component can set its own
   # `extraLabels` under `pyroscope.components.<name>` to add or override labels.
