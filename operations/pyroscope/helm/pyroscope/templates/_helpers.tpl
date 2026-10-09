@@ -55,11 +55,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Template labels
+Pod template labels. extraLabels is pyroscope.extraLabels merged with the
+component's own extraLabels, so a component can add or override labels.
 */}}
 {{- define "pyroscope.templateLabels" -}}
-{{ include "pyroscope.selectorLabels" . }}
-{{- range $k, $v := .Values.pyroscope.extraLabels }}
+{{ include "pyroscope.selectorLabels" .ctx }}
+{{- range $k, $v := .extraLabels }}
 {{$k}}: {{ $v | quote }}
 {{- end }}
 {{- end }}

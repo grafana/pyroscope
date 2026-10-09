@@ -397,13 +397,6 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 			return ValidatedProfile{}, NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
 		}
 	}
-	if symbolLengthLimit > 0 {
-		for i := range prof.StringTable {
-			if len(prof.StringTable[i]) > symbolLengthLimit {
-				prof.StringTable[i] = prof.StringTable[i][len(prof.StringTable[i])-symbolLengthLimit:]
-			}
-		}
-	}
 	for _, location := range prof.Location {
 		if location.Id == 0 {
 			return ValidatedProfile{}, NewErrorf(MalformedProfile, "location id is 0")
@@ -426,14 +419,6 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 	if err := validateStringTableAccess(prof); err != nil {
 		return ValidatedProfile{}, err
 	}
-	for _, valueType := range prof.SampleType {
-		stt := prof.StringTable[valueType.Type]
-		if strings.Contains(stt, "-") {
-			return ValidatedProfile{}, NewErrorf(MalformedProfile, "sample type contains -")
-		}
-		// todo check if sample type is valid from the promql parser perspective
-	}
-
 	validated := ValidatedProfile{Profile: prof}
 	if limits.InvalidUTF8Strings(tenantID) == InvalidUTF8ReplaceStacktrace {
 		validated.SanitizedInvalidUTF8Strings, validated.SanitizedInvalidUTF8Samples = sanitizeInvalidUTF8(prof)
@@ -447,6 +432,25 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
 		}
 	}
+	if symbolLengthLimit > 0 {
+		for i := range prof.StringTable {
+			if s := prof.StringTable[i]; len(s) > symbolLengthLimit {
+				start := len(s) - symbolLengthLimit
+				for start < len(s) && !utf8.RuneStart(s[start]) {
+					start++
+				}
+				prof.StringTable[i] = s[start:]
+			}
+		}
+	}
+	for _, valueType := range prof.SampleType {
+		stt := prof.StringTable[valueType.Type]
+		if strings.Contains(stt, "-") {
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "sample type contains -")
+		}
+		// todo check if sample type is valid from the promql parser perspective
+	}
+
 	return validated, nil
 }
 

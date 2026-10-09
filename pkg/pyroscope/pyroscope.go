@@ -370,14 +370,22 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		"segment-writer.heartbeat-timeout":                       "1m",
 		"segment-writer.unregister-on-shutdown":                  "false",
 		"segment-writer.min-ready-duration":                      "30s",
-		"storage.s3.http.idle-conn-timeout":                      "10m",
-		"storage.s3.max-idle-connections-per-host":               "1000",
-		"storage.gcs.http.idle-conn-timeout":                     "10m",
-		"storage.gcs.max-idle-connections-per-host":              "1000",
 		"compaction-worker.metrics-exporter.rules-source.static": "[]",
 		// Legacy overrides
 		"distributor.replication-factor":         "1",
 		"query-scheduler.service-discovery-mode": schedulerdiscovery.ModeRing,
+	}
+
+	// Keep primary and dedicated async-query storage HTTP defaults consistent.
+	for _, prefix := range []string{"storage.", "query-frontend.async-queries.storage."} {
+		for name, value := range map[string]string{
+			"s3.http.idle-conn-timeout":         "10m",
+			"s3.max-idle-connections-per-host":  "1000",
+			"gcs.http.idle-conn-timeout":        "10m",
+			"gcs.max-idle-connections-per-host": "1000",
+		} {
+			overrides[prefix+name] = value
+		}
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -434,6 +442,10 @@ func (c *Config) Validate() error {
 
 	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
 		return err
+	}
+
+	if err := c.Frontend.AsyncQueries.Storage.Validate(util.Logger); err != nil {
+		return fmt.Errorf("invalid async query storage configuration: %w", err)
 	}
 
 	if err := c.TenantSettings.Validate(); err != nil {

@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,19 +25,21 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/netutil"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/dskit/tenant"
-
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/v2/pkg/anomalyapi"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/querier/stats"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/v2/pkg/util/fieldcategory"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/v2/pkg/util/httpgrpcutil"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
@@ -49,10 +52,8 @@ type Config struct {
 	WorkerConcurrency int               `yaml:"scheduler_worker_concurrency" category:"advanced"`
 	GRPCClientConfig  grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the query-frontends and the query-schedulers."`
 
-	// AsyncQueriesEnabled toggles the experimental async query path on
-	// SelectMergeStacktraces. Off by default; when false, the Async field
-	// on the request is rejected with Unimplemented.
-	AsyncQueriesEnabled bool `yaml:"async_queries_enabled" category:"experimental"`
+	// AsyncQueries configures the experimental asynchronous query path.
+	AsyncQueries AsyncQueriesConfig `yaml:"async_queries" category:"experimental" doc:"hidden"`
 
 	// QueryPlannerStrategy sets the query planner strategy. By default this is
 	// "classic" which provides the legacy query planner behavior.
@@ -75,9 +76,36 @@ type Config struct {
 	// The parameter is replaced with `instance_addr`.
 	AddrOld string `yaml:"address" category:"advanced" doc:"hidden"`
 
+	// AnomalyAPI configures the anomaly source used by QueryAnomalies' "stacktrace"
+	// anomaly type. Off by default.
+	AnomalyAPI anomalyapi.Config `yaml:"anomaly_api"`
+
 	// This configuration is injected internally.
 	QuerySchedulerDiscovery schedulerdiscovery.Config `yaml:"-"`
 	MaxLoopDuration         time.Duration             `yaml:"-"`
+}
+
+type AsyncQueriesConfig struct {
+	// When disabled, the Async field on SelectMergeStacktraces is rejected with Unimplemented.
+	Enabled bool `yaml:"enabled" category:"experimental" doc:"hidden"`
+	// Storage optionally overrides the primary bucket for async queries.
+	Storage objstoreclient.Config `yaml:"storage" category:"experimental" doc:"hidden"`
+}
+
+func (cfg *AsyncQueriesConfig) RegisterFlags(f *flag.FlagSet) {
+	f.BoolVar(&cfg.Enabled, "query-frontend.async-queries.enabled", false, "Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)")
+	const prefix = "query-frontend.async-queries.storage."
+	cfg.Storage.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data/async-queries", f)
+	// Categories on enclosing structs do not propagate to nested storage fields.
+	overrides := map[string]fieldcategory.Category{}
+	f.VisitAll(func(fl *flag.Flag) {
+		if strings.HasPrefix(fl.Name, prefix) {
+			overrides[fl.Name] = fieldcategory.Experimental
+		}
+	})
+	fieldcategory.AddOverrides(overrides)
+	// No dedicated backend means async queries use the primary storage bucket.
+	cfg.Storage.Backend = objstoreclient.None
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
@@ -88,9 +116,19 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.StringVar(&cfg.Addr, "query-frontend.instance-addr", "", "IP address to advertise to the querier (via scheduler) (default is auto-detected from network interfaces).")
 	f.BoolVar(&cfg.EnableIPv6, "query-frontend.instance-enable-ipv6", false, "Enable using a IPv6 instance address. (default false)")
 	f.IntVar(&cfg.Port, "query-frontend.instance-port", 0, "Port to advertise to query-scheduler and querier (defaults to -server.http-listen-port).")
-	f.BoolVar(&cfg.AsyncQueriesEnabled, "query-frontend.async-queries-enabled", false, "Enable the experimental asynchronous query path on SelectMergeStacktraces (default false)")
+	cfg.AsyncQueries.RegisterFlags(f)
+	f.BoolFunc("query-frontend.async-queries-enabled", "Deprecated: Use -query-frontend.async-queries.enabled instead.", func(value string) error {
+		enabled, err := strconv.ParseBool(value)
+		if err != nil {
+			return err
+		}
+		cfg.AsyncQueries.Enabled = enabled
+		level.Warn(logger).Log("msg", "-query-frontend.async-queries-enabled is deprecated; use -query-frontend.async-queries.enabled instead")
+		return nil
+	})
 	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
+	cfg.AnomalyAPI.RegisterFlags(f)
 }
 
 func (cfg *Config) Validate() error {

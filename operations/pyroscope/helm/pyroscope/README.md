@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 2.3.1](https://img.shields.io/badge/Version-2.3.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.3.1](https://img.shields.io/badge/AppVersion-2.3.1-informational?style=flat-square)
+![Version: 2.3.2](https://img.shields.io/badge/Version-2.3.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.3.2](https://img.shields.io/badge/AppVersion-2.3.2-informational?style=flat-square)
 
 A horizontally scalable, highly available, multi-tenant continuous profiling database.
 
@@ -61,7 +61,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | pyroscope.extraCustomEnvVars | object | `{}` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | pyroscope.extraEnvVars | object | `{}` |  |
-| pyroscope.extraLabels | object | `{}` |  |
+| pyroscope.extraLabels | object | `{}` | Labels added to every pyroscope pod. A component can set its own `extraLabels` under `pyroscope.components.<name>` to add or override labels. |
 | pyroscope.extraVolumeMounts | list | `[]` |  |
 | pyroscope.extraVolumes | list | `[]` |  |
 | pyroscope.fullnameOverride | string | `""` |  |
