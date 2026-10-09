@@ -2,6 +2,7 @@ package queryfrontend
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -15,12 +16,22 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 )
 
-// Sub-millisecond step values truncate to 0 in the backend's millisecond
-// arithmetic and would cause an unbounded loop in RangeSeries; the frontend
-// must reject them with InvalidArgument before they reach the backend.
-func TestSelectSeries_RejectsSubMillisecondStep(t *testing.T) {
-	for _, step := range []float64{0, 0.0001, 0.0005, 0.0009999} {
-		t.Run("step="+formatStep(step), func(t *testing.T) {
+// Invalid steps must be rejected before duration conversion or backend dispatch.
+func TestSelectSeries_RejectsInvalidStep(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		step float64
+	}{
+		{"zero", 0},
+		{"negative", -1},
+		{"0.1ms", 0.0001},
+		{"0.5ms", 0.0005},
+		{"just below 1ms", 0.0009999},
+		{"NaN", math.NaN()},
+		{"positive infinity", math.Inf(1)},
+		{"negative infinity", math.Inf(-1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			limits := mockfrontend.NewMockLimits(t)
 			limits.On("MaxQueryLookback", "test-tenant").Return(time.Duration(0)).Maybe()
 			limits.On("MaxQueryLength", "test-tenant").Return(time.Duration(0)).Maybe()
@@ -33,12 +44,12 @@ func TestSelectSeries_RejectsSubMillisecondStep(t *testing.T) {
 				LabelSelector: "{}",
 				Start:         1000,
 				End:           2000,
-				Step:          step,
+				Step:          tc.step,
 			}))
 
 			require.Error(t, err)
 			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-			require.Contains(t, err.Error(), "step must be >= 1ms")
+			require.Contains(t, err.Error(), "step must be >= 1ms and finite")
 		})
 	}
 }
