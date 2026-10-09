@@ -8,5 +8,5 @@ source_code:
        github:
         owner: golang
         repo: go
-        ref: go1.26.8
+        ref: go1.26.9
         path: src
