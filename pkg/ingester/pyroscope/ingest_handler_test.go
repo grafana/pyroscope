@@ -209,6 +209,11 @@ func TestIngestPropagatesLimitStatus(t *testing.T) {
 			wantStatus: http.StatusTooManyRequests,
 		},
 		{
+			name:       "distributor over inflight bytes limit (503)",
+			pushErr:    connect.NewError(connect.CodeUnavailable, fmt.Errorf("too many inflight bytes")),
+			wantStatus: http.StatusServiceUnavailable,
+		},
+		{
 			name:       "other ingest failure keeps 422",
 			pushErr:    fmt.Errorf("boom"),
 			wantStatus: http.StatusUnprocessableEntity,
