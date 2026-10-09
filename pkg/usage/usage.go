@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/grafana/dskit/flagext"
+	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/v2/pkg/util/fieldcategory"
 )
@@ -217,6 +218,9 @@ func getFlagName(fl *flag.Flag) string {
 		case "*model.Duration":
 			return "duration"
 		case "*tsdb.DurationList":
+			return "comma-separated list of durations"
+		}
+		if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Slice && v.Elem().Type().Elem() == reflect.TypeOf(model.Duration(0)) {
 			return "comma-separated list of durations"
 		}
 	}

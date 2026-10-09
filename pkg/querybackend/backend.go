@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,27 +19,55 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/fieldcategory"
 )
 
 type Config struct {
 	Address          string            `yaml:"address" category:"advanced"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
 	ClientTimeout    time.Duration     `yaml:"client_timeout" category:"advanced"`
+	ResultCache      ResultCacheConfig `yaml:"result_cache" category:"experimental"`
+}
+
+type ResultCacheConfig struct {
+	ExecutionDelay time.Duration         `yaml:"execution_delay" category:"experimental"`
+	Storage        objstoreclient.Config `yaml:"storage" category:"experimental"`
+}
+
+func (cfg *ResultCacheConfig) RegisterFlags(f *flag.FlagSet) {
+	const prefix = "query-backend.result-cache.storage."
+	cfg.Storage.RegisterFlagsWithPrefix(prefix, f)
+	// Categories on enclosing structs do not propagate to nested storage fields.
+	overrides := map[string]fieldcategory.Category{}
+	f.VisitAll(func(fl *flag.Flag) {
+		if strings.HasPrefix(fl.Name, prefix) {
+			overrides[fl.Name] = fieldcategory.Experimental
+		}
+	})
+	fieldcategory.AddOverrides(overrides)
+	// Cache storage is opt-in; do not default to primary filesystem storage.
+	cfg.Storage.Backend = objstoreclient.None
+	f.DurationVar(&cfg.ExecutionDelay, "query-backend.result-cache.execution-delay", 15*time.Millisecond, "Delay before starting block execution while a result-cache lookup is pending. Set to 0 to start immediately.")
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
 	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for query-backend client requests.")
+	cfg.ResultCache.RegisterFlags(f)
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
 }
 
 func (cfg *Config) Validate() error {
 	if cfg.Address == "" {
 		return fmt.Errorf("query-backend.address is required")
+	}
+	if cfg.ResultCache.ExecutionDelay < 0 {
+		return fmt.Errorf("query-backend.result-cache.execution-delay must not be negative")
 	}
 	return cfg.GRPCClientConfig.Validate()
 }
@@ -67,6 +96,10 @@ type QueryBackend struct {
 	backendClient QueryHandler
 	blockReader   QueryHandler
 	hostname      string
+
+	*resultCache
+	resultCacheStop      context.CancelFunc
+	resultCacheWriteStop context.CancelFunc
 }
 
 func New(
@@ -75,6 +108,8 @@ func New(
 	reg prometheus.Registerer,
 	backendClient QueryHandler,
 	blockReader QueryHandler,
+	resultCacheBucket objstore.Bucket,
+	resultCacheOverrides ResultCacheOverrides,
 ) (*QueryBackend, error) {
 	hostname, _ := os.Hostname()
 	q := QueryBackend{
@@ -84,14 +119,59 @@ func New(
 		backendClient: backendClient,
 		blockReader:   blockReader,
 		hostname:      hostname,
+		resultCache: &resultCache{
+			resultCacheExecutionDelay: config.ResultCache.ExecutionDelay,
+			resultCacheBucket:         resultCacheBucket,
+			resultCacheOverrides:      resultCacheOverrides,
+			resultCacheMetrics:        newResultCacheMetrics(reg),
+		},
 	}
-	q.service = services.NewIdleService(q.starting, q.stopping)
+	if resultCacheBucket != nil {
+		q.resultCacheWrites = make(chan resultCacheWriteJob, resultCacheQueueSize)
+	}
+	if reader, ok := blockReader.(*BlockReader); ok {
+		reader.resultCache = q.resultCache
+	}
+	q.service = services.NewBasicService(q.starting, q.running, q.stopping)
 	return &q, nil
 }
 
-func (q *QueryBackend) Service() services.Service      { return q.service }
-func (q *QueryBackend) starting(context.Context) error { return nil }
-func (q *QueryBackend) stopping(error) error           { return nil }
+func (q *QueryBackend) Service() services.Service { return q.service }
+func (q *QueryBackend) starting(context.Context) error {
+	if q.resultCacheBucket != nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		writeCtx, cancelWrites := context.WithCancel(context.Background())
+		q.resultCacheStop = cancel
+		q.resultCacheWriteStop = cancelWrites
+		q.resultCacheWorkers.Add(resultCacheWorkers)
+		for range resultCacheWorkers {
+			go q.runResultCacheWriter(ctx, writeCtx)
+		}
+	}
+	return nil
+}
+
+func (q *QueryBackend) running(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (q *QueryBackend) stopping(error) error {
+	if q.resultCacheStop != nil {
+		// Share one shutdown budget across all workers, including uploads
+		// already in progress when shutdown begins.
+		timer := time.AfterFunc(resultCacheShutdownTimeout, q.resultCacheWriteStop)
+		q.resultCacheStop()
+		q.resultCacheWorkers.Wait()
+		timer.Stop()
+		q.resultCacheWriteStop()
+		q.dropResultCacheWrites()
+	}
+	if q.resultCacheBucket != nil {
+		return q.resultCacheBucket.Close()
+	}
+	return nil
+}
 
 func (q *QueryBackend) Invoke(
 	ctx context.Context,
@@ -99,6 +179,18 @@ func (q *QueryBackend) Invoke(
 ) (*queryv1.InvokeResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "QueryBackend.Invoke")
 	defer span.Finish()
+	if req.GetQueryPlan().GetRoot() == nil {
+		// A nil root means that no blocks matched the query (queryplan.Build
+		// returns an empty plan for an empty block set). Metadata queries are
+		// answered with an empty response, which the frontend forwards as an
+		// empty result. Any other request without a plan is invalid.
+		if _, ok := resultCacheQueryType(req.Query); ok {
+			return &queryv1.InvokeResponse{
+				Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{Stats: &queryv1.ExecutionStats{}}},
+			}, nil
+		}
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("query plan is empty"))
+	}
 
 	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
 	startTime := time.Now()
@@ -116,7 +208,7 @@ func (q *QueryBackend) Invoke(
 	case queryv1.QueryNode_MERGE:
 		resp, childNodes, mergeBytes, err = q.merge(ctx, req, root.Children, collectDiag)
 	case queryv1.QueryNode_READ:
-		resp, err = q.read(ctx, req, root.Blocks)
+		resp, err = q.blockReader.Invoke(ctx, req)
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("query plan: unknown node type %v", nodeType))
 	}
@@ -200,7 +292,7 @@ func (q *QueryBackend) merge(
 				childExecNodes[idx] = resp.Diagnostics.ExecutionNode
 				mu.Unlock()
 			}
-			return m.aggregateResponse(resp, nil)
+			return m.aggregateResponse(resp)
 		}))
 	}
 	if err := g.Wait(); err != nil {
@@ -220,17 +312,4 @@ func (q *QueryBackend) merge(
 
 	resp := m.response()
 	return resp, executionNodes, totalBytesFetched.Load(), nil
-}
-
-func (q *QueryBackend) read(
-	ctx context.Context,
-	request *queryv1.InvokeRequest,
-	blocks []*metastorev1.BlockMeta,
-) (*queryv1.InvokeResponse, error) {
-	request.QueryPlan = &queryv1.QueryPlan{
-		Root: &queryv1.QueryNode{
-			Blocks: blocks,
-		},
-	}
-	return q.blockReader.Invoke(ctx, request)
 }
