@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/http2"
 )
 
-var defaultTransport http.RoundTripper = &http2.Transport{
+var defaultTransport http.RoundTripper = &http2.Transport{ //nolint:staticcheck // SA1019: still the x/net h2c client with Go < 1.27; migrate to http.Transport.Protocols separately.
 	AllowHTTP:        true,
 	ReadIdleTimeout:  30 * time.Second,
 	WriteByteTimeout: 30 * time.Second,
