@@ -614,6 +614,31 @@ runtime_config:
   # right.
   # file: ""
 
+profile_dump:
+  # Capture retention measured from server ULID time. Cleanup runs hourly and
+  # deletes only fully expired hours. Deletion is eventual. Must be positive.
+  # retention: 168h
+
+  # Maximum combined native payload and JSON sidecar bytes. Oversized captures
+  # are dropped.
+  # max_object_bytes: 16777216
+
+  # Per-distributor budget for admitted capture buffers, including owned
+  # payload, JSON capacity, item overhead, queueing and uploads. Initial bounded
+  # metadata marshaling and provider allocations are outside this budget. This
+  # is not an RSS limit.
+  # max_retained_bytes: 67108864
+
+  # Aggregate capture admission rate per distributor. Tenant rates may exceed
+  # this rate, but admissions remain constrained by it. Omitted tenant rates
+  # default to min(1, this rate). Must be finite and positive. This is not a
+  # fleet quota.
+  # process_captures_per_second: 10
+
+  # One cooperative timeout covering both sequential uploads of a capture.
+  # Providers that ignore cancellation may exceed it.
+  # upload_timeout: 10s
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
