@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,6 +14,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,6 +24,46 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
+
+func TestReplayHTTPResume(t *testing.T) {
+	data := []byte("0123456789abcdef")
+	requests := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("X-Goog-Generation", "123")
+		if requests == 1 {
+			w.Header().Set("Content-Length", fmt.Sprint(len(data)))
+			_, _ = w.Write(data[:5])
+			return
+		}
+		if r.Header.Get("Range") != "bytes=5-" {
+			t.Errorf("unexpected range %q", r.Header.Get("Range"))
+		}
+		w.Header().Set("Content-Range", "bytes 5-15/16")
+		w.Header().Set("Content-Length", "11")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(data[5:])
+	}))
+	defer srv.Close()
+	r, err := openReplayInput(context.Background(), srv.URL)
+	require.NoError(t, err)
+	got, err := io.ReadAll(r)
+	require.NoError(t, err)
+	require.Equal(t, data, got)
+	require.NoError(t, r.Close())
+	require.Equal(t, 2, requests)
+}
+
+func TestReplayPushCLIFlags(t *testing.T) {
+	app := kingpin.New("profilecli", "test replay arguments")
+	push := app.Command("replay", "replay").Command("push", "push")
+	params := addReplayPushParams(push)
+	command, err := app.Parse([]string{"replay", "push", "--input=fixture.replay", "--no-loop", "--url=http://127.0.0.1:4040", "--tenant-id=benchmark"})
+	require.NoError(t, err)
+	require.Equal(t, "replay push", command)
+	require.False(t, params.Loop)
+	require.Equal(t, "fixture.replay", params.Input)
+}
 
 // fakePusherClient records every push request it receives.
 type fakePusherClient struct {
@@ -296,17 +340,40 @@ func buildTestDump(t *testing.T) (path string, data []byte) {
 	return path, buf.Bytes()
 }
 
-func TestLoadReplayRecords_LocalFile(t *testing.T) {
+func TestOpenReplayReader_LocalFile(t *testing.T) {
 	t.Parallel()
 
 	path, _ := buildTestDump(t)
-	header, records, err := loadReplayRecords(context.Background(), path)
+	rr, input, err := openReplayReader(context.Background(), path)
 	require.NoError(t, err)
-	assert.Equal(t, `{service_name="svc"}`, header.SourceQuery)
-	require.Len(t, records, 1)
+	t.Cleanup(func() { require.NoError(t, input.Close()) })
+	assert.Equal(t, `{service_name="svc"}`, rr.Header.SourceQuery)
+	_, err = rr.ReadRecord()
+	require.NoError(t, err)
 }
 
-func TestLoadReplayRecords_HTTPURL(t *testing.T) {
+func TestOpenReplayReader_Zstd(t *testing.T) {
+	t.Parallel()
+
+	_, data := buildTestDump(t)
+	var compressed bytes.Buffer
+	encoder, err := zstd.NewWriter(&compressed)
+	require.NoError(t, err)
+	_, err = encoder.Write(data)
+	require.NoError(t, err)
+	require.NoError(t, encoder.Close())
+	path := filepath.Join(t.TempDir(), "dump.replay.zst")
+	require.NoError(t, os.WriteFile(path, compressed.Bytes(), 0o644))
+
+	rr, input, err := openReplayReader(context.Background(), path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, input.Close()) })
+	assert.Equal(t, `{service_name="svc"}`, rr.Header.SourceQuery)
+	_, err = rr.ReadRecord()
+	require.NoError(t, err)
+}
+
+func TestOpenReplayReader_HTTPURL(t *testing.T) {
 	t.Parallel()
 
 	_, data := buildTestDump(t)
@@ -315,28 +382,17 @@ func TestLoadReplayRecords_HTTPURL(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	header, records, err := loadReplayRecords(context.Background(), srv.URL+"/dump.replay")
+	rr, input, err := openReplayReader(context.Background(), srv.URL+"/dump.replay")
 	require.NoError(t, err)
-	assert.Equal(t, `{service_name="svc"}`, header.SourceQuery)
-	require.Len(t, records, 1)
+	t.Cleanup(func() { require.NoError(t, input.Close()) })
+	assert.Equal(t, `{service_name="svc"}`, rr.Header.SourceQuery)
+	_, err = rr.ReadRecord()
+	require.NoError(t, err)
 }
 
-func TestLoadReplayRecords_HTTPURL_NotFound(t *testing.T) {
+func TestOpenReplayReader_NotFound(t *testing.T) {
 	t.Parallel()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "not found", http.StatusNotFound)
-	}))
-	t.Cleanup(srv.Close)
-
-	_, _, err := loadReplayRecords(context.Background(), srv.URL+"/missing.replay")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "404")
-}
-
-func TestLoadReplayRecords_LocalFile_NotFound(t *testing.T) {
-	t.Parallel()
-
-	_, _, err := loadReplayRecords(context.Background(), filepath.Join(t.TempDir(), "does-not-exist.replay"))
+	_, _, err := openReplayReader(context.Background(), filepath.Join(t.TempDir(), "does-not-exist.replay"))
 	require.Error(t, err)
 }
