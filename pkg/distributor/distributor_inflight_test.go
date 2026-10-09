@@ -185,6 +185,7 @@ func TestInflightBytes(t *testing.T) {
 		size, profiles := inflightBytes(req)
 		assert.Equal(t, int64(decoded.RawSize()), size)
 		assert.Equal(t, int64(1), profiles)
+		assert.Zero(t, req.Series[0].EncodedSize, "the raw size needs no encoding")
 	})
 
 	t.Run("profiles built in-process fall back to the encoded size", func(t *testing.T) {
@@ -197,6 +198,43 @@ func TestInflightBytes(t *testing.T) {
 		assert.Equal(t, int64(2*p.SizeVT()), size)
 		assert.Equal(t, int64(2), profiles)
 	})
+
+	t.Run("the encoded size is measured once", func(t *testing.T) {
+		p := newProbeProfile()
+		received := p.SizeVT()
+		req := &distributormodel.PushRequest{
+			Series: []*distributormodel.ProfileSeries{{Profile: p}},
+		}
+		size, _ := inflightBytes(req)
+		require.Equal(t, int64(received), size)
+		require.Equal(t, received, req.Series[0].EncodedSize)
+
+		// Later processing modifies the profile; the size as received holds.
+		p.Sample = append(p.Sample, &profilev1.Sample{LocationId: []uint64{1}, Value: []int64{1}})
+		require.NotEqual(t, received, p.SizeVT())
+		size, _ = inflightBytes(req)
+		assert.Equal(t, int64(received), size)
+	})
+}
+
+// The size the inflight accounting measured is the size pushSeries would
+// otherwise measure again, as the profile has not been modified in between.
+func TestPushSeries_ReusesEncodedSize(t *testing.T) {
+	d := newInflightDistributor(t, nil, 0, false, &probeSegmentWriter{})
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+	req := newInflightRequest(1)
+	req.RawProfileType = distributormodel.RawProfileTypeOTEL
+	series := req.Series[0]
+
+	// Tamper with the measured size, so that its reuse can be told apart from
+	// a fresh measurement.
+	inflightBytes(req)
+	const offset = 1000
+	series.EncodedSize += offset
+	measured := series.Profile.SizeVT()
+
+	require.NoError(t, d.pushSeries(ctx, series, req.RawProfileType, "user-1", 0))
+	assert.Equal(t, labelsSize(series.Labels)+int64(measured+offset), series.TotalBytesUncompressed)
 }
 
 // blockingIngester holds every Push until release is closed.

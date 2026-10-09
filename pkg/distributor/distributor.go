@@ -611,7 +611,8 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 	}
 
 	req.TotalProfiles = 1
-	decompressedSize := req.Profile.SizeVT()
+	// The profile has not been modified yet, so its size as received is current.
+	decompressedSize := encodedSize(req)
 	req.TotalBytesUncompressed = labelsSize(req.Labels) + int64(decompressedSize)
 	d.metrics.observeProfileSize(tenantID, StageReceived, req.TotalBytesUncompressed)
 
@@ -786,26 +787,36 @@ var errMaxInflightBytesReached = connect.NewError(connect.CodeUnavailable,
 	fmt.Errorf("the request has been rejected because the distributor exceeded the allowed total size of inflight requests; see -distributor.max-inflight-bytes"))
 
 // inflightBytes estimates how much memory the request occupies, and counts the
-// profiles it carries. The raw size is the uncompressed pprof payload the
-// profile was decoded from; it is not known for profiles built in-process,
-// such as those converted from JFR or OTLP, in which case the encoded size is
-// computed instead.
+// profiles it carries.
 func inflightBytes(req *distributormodel.PushRequest) (size, profiles int64) {
 	for _, series := range req.Series {
 		if series.Profile == nil {
 			continue
 		}
 		profiles++
-		size += profileInflightBytes(series.Profile)
+		size += profileInflightBytes(series)
 	}
 	return size, profiles
 }
 
-func profileInflightBytes(p *pprof.Profile) int64 {
-	if raw := p.RawSize(); raw > 0 {
+// profileInflightBytes returns the size of the profile as received. The raw
+// size is the uncompressed pprof payload the profile was decoded from; it is
+// not known for profiles built in-process, such as those converted from JFR or
+// OTLP, in which case the encoded size is used instead.
+func profileInflightBytes(s *distributormodel.ProfileSeries) int64 {
+	if raw := s.Profile.RawSize(); raw > 0 {
 		return int64(raw)
 	}
-	return int64(p.SizeVT())
+	return int64(encodedSize(s))
+}
+
+// encodedSize returns the encoded size of the profile as received, computing
+// it on first use. The first call must happen before the profile is modified.
+func encodedSize(s *distributormodel.ProfileSeries) int {
+	if s.EncodedSize == 0 {
+		s.EncodedSize = s.Profile.SizeVT()
+	}
+	return s.EncodedSize
 }
 
 // If aggregation is configured for the tenant, we try to determine
@@ -845,7 +856,9 @@ func (d *Distributor) aggregate(ctx context.Context, req *distributormodel.Profi
 	// pending is assigned by the merge below, which the aggregator runs on this
 	// goroutine, and stays nil if the aggregate was never touched by us.
 	var pending *pendingAggregate
-	merge := d.mergeProfile(profile, profileInflightBytes(series.Profile), &pending)
+	// The profile has been modified by now: it is charged at its size as
+	// received, which is an estimate the aggregate reconciles periodically.
+	merge := d.mergeProfile(profile, profileInflightBytes(series), &pending)
 	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, merge)
 	if err != nil {
 		// A failed aggregate is never handed to an owner, so the contributor
