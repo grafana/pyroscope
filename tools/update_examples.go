@@ -227,13 +227,15 @@ func updateRuby() {
 
 	re := regexp.MustCompile(`gem ['"]pyroscope['"].*`)
 	repl := fmt.Sprintf("gem 'pyroscope', '= %s'", last.version())
+	replaceInplace(re, "examples/language-sdk-instrumentation/ruby/rails_puma_cluster/Gemfile", repl)
 	replaceInplace(re, "examples/language-sdk-instrumentation/ruby/rideshare/Gemfile", repl)
 	replaceInplace(re, "examples/language-sdk-instrumentation/ruby/rideshare_rails/Gemfile", repl)
 	replaceInplace(re, "examples/language-sdk-instrumentation/ruby/simple/Gemfile", repl)
 
-	s.sh("cd examples/language-sdk-instrumentation/ruby/rideshare       && bundle update pyroscope")
-	s.sh("cd examples/language-sdk-instrumentation/ruby/rideshare_rails && bundle update pyroscope")
-	s.sh("cd examples/language-sdk-instrumentation/ruby/simple          && bundle update pyroscope")
+	s.sh("cd examples/language-sdk-instrumentation/ruby/rails_puma_cluster && bundle update pyroscope")
+	s.sh("cd examples/language-sdk-instrumentation/ruby/rideshare          && bundle update pyroscope")
+	s.sh("cd examples/language-sdk-instrumentation/ruby/rideshare_rails    && bundle update pyroscope")
+	s.sh("cd examples/language-sdk-instrumentation/ruby/simple             && bundle update pyroscope")
 }
 
 func updateJava() {
