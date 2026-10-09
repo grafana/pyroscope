@@ -2,15 +2,19 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/user"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -362,4 +366,90 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 				"Expected label names sent to backend to be %v, but got %v", tc.expectedQueryRequest, capturedLabelNames)
 		})
 	}
+}
+
+func TestQueryFrontend_BackendInflightWork(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	blocks := []*metastorev1.BlockMeta{
+		{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+		{Id: "b", Datasets: []*metastorev1.Dataset{{Size: 250, TableOfContents: []uint64{0, 50, 100}}}},
+	}
+	backend := mockqueryfrontend.NewMockQueryBackend(t)
+	backend.On("Invoke", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+		require.Equal(t, float64(2), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+		require.Equal(t, float64(350), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+	}).Return(&queryv1.InvokeResponse{}, nil).Once()
+	qf := backendWorkFrontend(t, reg, blocks, backend)
+
+	ctx := tenant.InjectTenantID(t.Context(), "test-tenant")
+	_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+	require.NoError(t, err)
+	require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+	require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+}
+
+func TestQueryFrontend_BackendInflightWorkClearedOnFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		cancel    bool
+		returnErr error
+	}{
+		{name: "backend error", returnErr: errors.New("backend failed")},
+		{name: "cancellation", cancel: true, returnErr: context.Canceled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reg := prometheus.NewRegistry()
+			backend := mockqueryfrontend.NewMockQueryBackend(t)
+			qf := backendWorkFrontend(t, reg, []*metastorev1.BlockMeta{
+				{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+			}, backend)
+
+			ctx, cancel := context.WithCancel(tenant.InjectTenantID(t.Context(), "test-tenant"))
+			defer cancel()
+			backend.On("Invoke", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+				require.Equal(t, float64(1), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+				require.Equal(t, float64(100), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+				if tc.cancel {
+					cancel()
+				}
+			}).Return(nil, func(ctx context.Context, _ *queryv1.InvokeRequest) error {
+				if tc.cancel {
+					return ctx.Err()
+				}
+				return tc.returnErr
+			}).Once()
+
+			_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+			require.ErrorIs(t, err, tc.returnErr)
+			require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+			require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+		})
+	}
+}
+
+func backendWorkFrontend(t *testing.T, reg *prometheus.Registry, blocks []*metastorev1.BlockMeta, backend QueryBackend) *QueryFrontend {
+	t.Helper()
+	metadata := mockmetastorev1.NewMockMetadataQueryServiceClient(t)
+	metadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(
+		func(context.Context, *metastorev1.QueryMetadataRequest, ...grpc.CallOption) *metastorev1.QueryMetadataResponse {
+			return &metastorev1.QueryMetadataResponse{Blocks: slices.Clone(blocks)}
+		}, nil)
+	limits := mockfrontend.NewMockLimits(t)
+	limits.On("QuerySanitizeOnMerge", "test-tenant").Return(false)
+	return NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, nil, nil, reg)
+}
+
+func backendWorkGauge(t *testing.T, reg *prometheus.Registry, name string) float64 {
+	t.Helper()
+	families, err := reg.Gather()
+	require.NoError(t, err)
+	for _, family := range families {
+		if family.GetName() == name {
+			require.Len(t, family.GetMetric(), 1)
+			require.Empty(t, family.GetMetric()[0].GetLabel())
+			return family.GetMetric()[0].GetGauge().GetValue()
+		}
+	}
+	t.Fatalf("metric %s not found", name)
+	return 0
 }
