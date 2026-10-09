@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"sort"
 	"testing"
@@ -16,6 +17,44 @@ func TestReplayAnonymizer(t *testing.T) {
 	a := replayAnonymizer("salt")
 	// SHA-256("salt" + "hello"), encoded as 64 hex characters.
 	require.Equal(t, "cd31b3b98ece60cb739c0bf770b2de892ae0ad133f645513c3d83f08757a843a", a.hash("hello"))
+}
+
+func TestReplayAnonymizerHeader(t *testing.T) {
+	original := replayHeader{
+		SourceQuery: `{service_name="private-service"}`,
+		Tenants:     []string{"private-tenant", "other-tenant"},
+		From:        1, To: 2, CreatedAt: 3,
+	}
+	for _, salt := range []string{"", "test salt"} {
+		t.Run(salt, func(t *testing.T) {
+			a := replayAnonymizer(salt)
+			header := a.header(original)
+			if salt == "" {
+				require.Equal(t, original, header)
+			} else {
+				require.Empty(t, header.SourceQuery)
+				require.Equal(t, []string{a.hash("private-tenant"), a.hash("other-tenant")}, header.Tenants)
+				require.Equal(t, original.From, header.From)
+				require.Equal(t, original.To, header.To)
+				require.Equal(t, original.CreatedAt, header.CreatedAt)
+			}
+			var buf bytes.Buffer
+			writer, err := newReplayWriter(&buf, header)
+			require.NoError(t, err)
+			require.NoError(t, writer.Flush())
+			if salt != "" {
+				require.NotContains(t, buf.String(), "private-service")
+				require.NotContains(t, buf.String(), "private-tenant")
+				require.NotContains(t, buf.String(), "other-tenant")
+			}
+			reader, err := newReplayReader(&buf)
+			require.NoError(t, err)
+			header.Version = replayFormatVersion
+			require.Equal(t, header, reader.Header)
+		})
+	}
+	require.Equal(t, []string{"private-tenant", "other-tenant"}, original.Tenants)
+	require.Equal(t, `{service_name="private-service"}`, original.SourceQuery)
 }
 
 func TestReplayAnonymizerLabels(t *testing.T) {

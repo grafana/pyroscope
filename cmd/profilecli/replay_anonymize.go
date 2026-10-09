@@ -18,6 +18,21 @@ func (a replayAnonymizer) hash(s string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// header removes the query rather than trying to rewrite matcher syntax, and
+// copies tenant IDs so the source metadata remains available for querying.
+func (a replayAnonymizer) header(h replayHeader) replayHeader {
+	if a == "" {
+		return h
+	}
+	h.SourceQuery = ""
+	tenants := make([]string, len(h.Tenants))
+	for i, tenant := range h.Tenants {
+		tenants[i] = a.hash(tenant)
+	}
+	h.Tenants = tenants
+	return h
+}
+
 func replayProfileTypeLabel(name string) bool {
 	switch name {
 	case phlaremodel.LabelNameProfileType, phlaremodel.LabelNameProfileName,

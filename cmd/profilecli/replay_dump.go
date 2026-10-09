@@ -107,16 +107,16 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	}
 
 	anonymizer := replayAnonymizer(params.AnonymizeSalt)
-	header := replayHeader{
+	header := anonymizer.header(replayHeader{
 		SourceQuery: params.Query,
 		Tenants:     []string{params.Tenant},
 		From:        from.UnixMilli(),
 		To:          to.UnixMilli(),
 		CreatedAt:   time.Now().UnixMilli(),
-	}
+	})
 	level.Info(logger).Log("msg", "starting replay dump",
-		"metastore", params.MetastoreAddress, "tenant", header.Tenants[0],
-		"query", header.SourceQuery, "from", from, "to", to, "output", params.Output)
+		"metastore", params.MetastoreAddress, "tenant", params.Tenant,
+		"query", params.Query, "from", from, "to", to, "output", params.Output)
 
 	bucket, err := params.initClient(ctx)
 	if err != nil {
