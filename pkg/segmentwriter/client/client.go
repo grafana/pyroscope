@@ -160,13 +160,14 @@ func NewSegmentWriterClient(
 	placement placement.Placement,
 	dialOpts ...grpc.DialOption,
 ) (*Client, error) {
-	pool, err := newConnPool(ring, logger, grpcClientConfig, dialOpts...)
+	m := newMetrics(registry)
+	pool, err := newConnPool(ring, logger, grpcClientConfig, m, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
 	c := &Client{
 		logger:      logger,
-		metrics:     newMetrics(registry),
+		metrics:     m,
 		distributor: distributor.NewDistributor(placement, ring),
 		pool:        pool,
 		ring:        ring,
@@ -318,6 +319,7 @@ func newConnPool(
 	rring ring.ReadRing,
 	logger log.Logger,
 	grpcClientConfig grpcclient.Config,
+	m *metrics,
 	dialOpts ...grpc.DialOption,
 ) (*connpool.Pool, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil, nil)
@@ -335,10 +337,19 @@ func newConnPool(
 	)
 
 	// Note that circuit breaker must be created per client conn.
-	factory := connpool.NewConnPoolFactory(func(ring.InstanceDesc) []grpc.DialOption {
-		cb := circuitbreaker.UnaryClientInterceptor(gobreaker.NewCircuitBreaker[any](circuitBreakerConfig))
-		return append(options, grpc.WithUnaryInterceptor(cb))
-	})
+	factory := connpool.NewConnPoolFactory(
+		func(ring.InstanceDesc) []grpc.DialOption {
+			cb := circuitbreaker.UnaryClientInterceptor(gobreaker.NewCircuitBreaker[any](circuitBreakerConfig))
+			return append(options, grpc.WithUnaryInterceptor(cb))
+		},
+		// Segment writer addresses churn with pod IPs, so every address that
+		// ever received a push would keep its (shard, tenant, addr) series
+		// forever. Drop them once the pool has retired the connection, i.e.
+		// the instance is no longer in the ring (grafana/pyroscope#5517).
+		func(addr string) {
+			m.sentBytes.DeletePartialMatch(prometheus.Labels{"addr": addr})
+		},
+	)
 
 	p := ring_client.NewPool(
 		"segment-writer",
