@@ -357,6 +357,12 @@ func (q *QueryBackend) invokePartialResults(ctx context.Context, span *tracing.S
 
 func (q *QueryBackend) invokeWithPartialResultWrite(ctx context.Context, span *tracing.Span, req *queryv1.InvokeRequest, identity *queryv1.PartialResultCacheKey, objectKey string) (*queryv1.InvokeResponse, error) {
 	c := q.partialResults
+	if c.exists(ctx, objectKey) {
+		c.metrics.skips.WithLabelValues("exists").Inc()
+		span.SetTag("partial_result_cache.write", "skipped")
+		span.SetTag("partial_result_cache.skip_reason", "exists")
+		return q.execute(ctx, withPartialResultCacheMode(req, queryv1.PartialResultCacheMode_PARTIAL_RESULT_CACHE_MODE_SKIP))
+	}
 	resp, err := q.execute(ctx, withPartialResultCacheMode(req, queryv1.PartialResultCacheMode_PARTIAL_RESULT_CACHE_MODE_COLLECT))
 	if err != nil {
 		return nil, err
@@ -375,6 +381,15 @@ func (q *QueryBackend) invokeWithPartialResultWrite(ctx context.Context, span *t
 	}
 	span.SetTag("partial_result_cache.write", "enqueued")
 	return resp, nil
+}
+
+// exists reports whether the entry is already written. Collecting trees
+// is skipped then; a slow or failed check collects them anyway.
+func (c *partialResultCache) exists(ctx context.Context, objectKey string) bool {
+	ctx, cancel := context.WithTimeout(ctx, c.config.ExecutionDelay)
+	defer cancel()
+	ok, err := c.resultCacheBucket.Exists(ctx, objectKey)
+	return err == nil && ok
 }
 
 func partialResultSkipReason(resp *queryv1.InvokeResponse, partial *queryv1.PartialResult) string {
@@ -428,13 +443,20 @@ type partialResultEntry struct {
 }
 
 func (c *partialResultCache) encode(w *partialResultEntry) ([]byte, error) {
-	tree := model.NewFunctionStackTree()
-	for _, t := range w.trees {
-		if err := tree.MergeProto(t); err != nil {
-			return nil, err
-		}
+	if len(w.trees) == 0 {
+		return nil, errors.New("no function stack trees")
 	}
-	data, err := tree.Proto().MarshalVT()
+	encoded := w.trees[0]
+	if len(w.trees) > 1 {
+		tree := model.NewFunctionStackTree()
+		for _, t := range w.trees {
+			if err := tree.MergeProto(t); err != nil {
+				return nil, err
+			}
+		}
+		encoded = tree.Proto()
+	}
+	data, err := encoded.MarshalVT()
 	if err != nil {
 		return nil, err
 	}
@@ -505,25 +527,25 @@ func (c *partialResultCache) lookup(ctx context.Context, objectKey string, ident
 	}
 	entry := new(queryv1.PartialResultCacheEntry)
 	if err = entry.UnmarshalVT(data); err != nil {
-		return nil, partialResultCorrupt
+		return nil, c.invalid(objectKey, partialResultCorrupt)
 	}
 	if entry.Key.GetVersion() != partialResultCacheVersion {
-		return nil, "version_mismatch"
+		return nil, c.invalid(objectKey, "version_mismatch")
 	}
 	if !proto.Equal(entry.Key, identity) {
 		return nil, "collision"
 	}
 	data, err = c.decoder.DecodeAll(entry.FunctionStackTree, nil)
 	if err != nil {
-		return nil, partialResultCorrupt
+		return nil, c.invalid(objectKey, partialResultCorrupt)
 	}
 	tree := new(queryv1.FunctionStackTree)
 	if err = tree.UnmarshalVT(data); err != nil {
-		return nil, partialResultCorrupt
+		return nil, c.invalid(objectKey, partialResultCorrupt)
 	}
 	x, err := model.NewFunctionStackIndex(tree)
 	if err != nil {
-		return nil, partialResultCorrupt
+		return nil, c.invalid(objectKey, partialResultCorrupt)
 	}
 	if ctx.Err() != nil {
 		return nil, resultCacheOutcomeCanceled
@@ -532,6 +554,19 @@ func (c *partialResultCache) lookup(ctx context.Context, objectKey string, ident
 		Reports:     []*queryv1.Report{projectFunctionStackIndex(x, query)},
 		Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{Stats: &queryv1.ExecutionStats{}}},
 	}, resultCacheOutcomeHit
+}
+
+// invalid deletes an unusable entry in the background, so that the next
+// flame graph query rewrites it instead of skipping an existing entry.
+func (c *partialResultCache) invalid(objectKey, outcome string) string {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), resultCacheWriteTimeout)
+		defer cancel()
+		if err := c.resultCacheBucket.Delete(ctx, objectKey); err != nil && !c.resultCacheBucket.IsObjNotFoundErr(err) {
+			level.Warn(c.logger).Log("msg", "failed to delete invalid partial result cache entry", "key", objectKey, "err", err)
+		}
+	}()
+	return outcome
 }
 
 func projectFunctionStackIndex(x *model.FunctionStackIndex, query *queryv1.Query) *queryv1.Report {
@@ -650,41 +685,41 @@ func (c *partialResultCache) collector(req *queryv1.InvokeRequest) *functionStac
 }
 
 func (c *partialResultCache) collected(span *tracing.Span, p *queryv1.PartialResult) {
-	var size int
+	var size, nodes int
 	for _, t := range p.Trees {
 		size += t.SizeVT()
+		nodes += len(t.NodeName)
 	}
 	c.metrics.collected.Add(float64(size))
-	span.SetTag("partial_result_cache.collected_trees", len(p.Trees))
+	span.SetTag("partial_result_cache.collected_nodes", nodes)
 	span.SetTag("partial_result_cache.collected_bytes", size)
 	if p.Incomplete != "" {
 		span.SetTag("partial_result_cache.incomplete", p.Incomplete)
 	}
 }
 
-// functionStackTreeCollector gathers the trees of a READ node.
+// functionStackTreeCollector merges the stacks of all datasets of a READ node.
 type functionStackTreeCollector struct {
 	maxSize    int
 	incomplete atomic.Bool
 	mu         sync.Mutex
-	size       int
 	tooLarge   bool
-	trees      []*queryv1.FunctionStackTree
+	tree       *model.FunctionStackTree
 }
 
-func (c *functionStackTreeCollector) add(tree *model.FunctionStackTree) {
-	p := tree.Proto()
-	size := p.SizeVT()
+func (c *functionStackTreeCollector) add(stacks *model.StacktraceTree, names []string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.tooLarge {
 		return
 	}
-	if c.size += size; c.size > c.maxSize {
-		c.tooLarge, c.trees = true, nil
-		return
+	if c.tree == nil {
+		c.tree = model.NewFunctionStackTree()
 	}
-	c.trees = append(c.trees, p)
+	c.tree.MergeStacktraceTree(stacks, names)
+	if c.tree.SizeEstimate() > c.maxSize {
+		c.tooLarge, c.tree = true, nil
+	}
 }
 
 func (c *functionStackTreeCollector) result() *queryv1.PartialResult {
@@ -695,17 +730,19 @@ func (c *functionStackTreeCollector) result() *queryv1.PartialResult {
 		return &queryv1.PartialResult{Incomplete: "incomplete"}
 	case c.tooLarge:
 		return &queryv1.PartialResult{Incomplete: "too_large"}
+	case c.tree == nil:
+		return &queryv1.PartialResult{}
 	}
-	return &queryv1.PartialResult{Trees: c.trees}
+	return &queryv1.PartialResult{Trees: []*queryv1.FunctionStackTree{c.tree.Proto()}}
 }
 
-// partialResultMerger gathers the trees of MERGE node children.
+// partialResultMerger merges the trees of MERGE node children as they arrive,
+// so that a node holds one merged tree instead of all child trees.
 type partialResultMerger struct {
 	maxSize    int
 	mu         sync.Mutex
-	size       int
 	incomplete string
-	trees      []*queryv1.FunctionStackTree
+	tree       *model.FunctionStackTree
 }
 
 func (m *partialResultMerger) add(p *queryv1.PartialResult) {
@@ -719,23 +756,29 @@ func (m *partialResultMerger) add(p *queryv1.PartialResult) {
 	case p.Incomplete != "":
 		m.incomplete = p.Incomplete
 	}
-	if m.incomplete == "" {
-		for _, t := range p.Trees {
-			m.size += t.SizeVT()
+	for _, t := range p.GetTrees() {
+		if m.incomplete != "" {
+			break
 		}
-		if m.size > m.maxSize {
+		if m.tree == nil {
+			m.tree = model.NewFunctionStackTree()
+		}
+		if err := m.tree.MergeProto(t); err != nil {
+			m.incomplete = "invalid"
+		} else if m.tree.SizeEstimate() > m.maxSize {
 			m.incomplete = "too_large"
 		}
 	}
 	if m.incomplete != "" {
-		m.trees = nil
-		return
+		m.tree = nil
 	}
-	m.trees = append(m.trees, p.Trees...)
 }
 
 func (m *partialResultMerger) result() *queryv1.PartialResult {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return &queryv1.PartialResult{Trees: m.trees, Incomplete: m.incomplete}
+	if m.incomplete != "" || m.tree == nil {
+		return &queryv1.PartialResult{Incomplete: m.incomplete}
+	}
+	return &queryv1.PartialResult{Trees: []*queryv1.FunctionStackTree{m.tree.Proto()}}
 }

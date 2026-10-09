@@ -276,6 +276,14 @@ func TestPartialResultCacheWritesOnlyTruncatedTrees(t *testing.T) {
 		invokeReports(t, q, req.CloneVT()), "collecting trees must not change the flame graph")
 	require.Eventually(t, func() bool { return objects() == 1 }, 10*time.Second, 10*time.Millisecond)
 	require.Equal(t, float64(1), testutil.ToFloat64(q.partialResults.metrics.writes.WithLabelValues("success")))
+
+	// An existing entry is not collected again.
+	collected = testutil.ToFloat64(q.partialResults.metrics.collected)
+	require.Equal(t,
+		invokeReports(t, uncached, req.CloneVT()),
+		invokeReports(t, q, req.CloneVT()))
+	require.Equal(t, float64(1), testutil.ToFloat64(q.partialResults.metrics.skips.WithLabelValues("exists")))
+	require.Equal(t, collected, testutil.ToFloat64(q.partialResults.metrics.collected))
 }
 
 func TestPartialResultCacheTooLarge(t *testing.T) {
@@ -371,11 +379,12 @@ func TestPartialResultCacheFallback(t *testing.T) {
 		name    string
 		object  []byte
 		outcome string
+		keep    bool
 	}{
 		{name: "miss", outcome: "miss"},
 		{name: "corrupt entry", object: []byte("not a protobuf entry"), outcome: "corrupt"},
 		{name: "old version", object: entry(func(e *queryv1.PartialResultCacheEntry) { e.Key.Version = 0 }), outcome: "version_mismatch"},
-		{name: "collision", object: entry(func(e *queryv1.PartialResultCacheEntry) { e.Key.Tenant = "other" }), outcome: "collision"},
+		{name: "collision", object: entry(func(e *queryv1.PartialResultCacheEntry) { e.Key.Tenant = "other" }), outcome: "collision", keep: true},
 		{name: "corrupt compression", object: entry(func(e *queryv1.PartialResultCacheEntry) { e.FunctionStackTree = []byte("garbage") }), outcome: "corrupt"},
 		{name: "corrupt tree", object: entry(func(e *queryv1.PartialResultCacheEntry) {
 			b, _ := (&queryv1.FunctionStackTree{Names: []string{""}, NodeName: []uint32{0}, NodeChildren: []uint32{1}, NodeSelf: []uint64{0}}).MarshalVT()
@@ -390,6 +399,19 @@ func TestPartialResultCacheFallback(t *testing.T) {
 			q, _ := f.backend(t, cache, resultCacheOverrides{partial: true})
 			require.Equal(t, want, invokeReports(t, q, req.CloneVT()))
 			require.Equal(t, float64(1), testutil.ToFloat64(q.partialResults.metrics.lookups.WithLabelValues("function_tree", tc.outcome)))
+			if tc.object == nil {
+				return
+			}
+			if tc.keep {
+				ok, err := cache.Exists(context.Background(), key)
+				require.NoError(t, err)
+				require.True(t, ok, "entries of other identities are kept")
+				return
+			}
+			require.Eventually(t, func() bool {
+				ok, err := cache.Exists(context.Background(), key)
+				return err == nil && !ok
+			}, 10*time.Second, 10*time.Millisecond, "invalid entries are deleted so that they can be written again")
 		})
 	}
 

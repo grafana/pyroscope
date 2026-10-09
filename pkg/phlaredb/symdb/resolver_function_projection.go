@@ -66,12 +66,25 @@ func (r *Resolver) Functions() (*typesv1.FunctionTable, error) {
 // FunctionStackTree resolves the untruncated function-name stacks that
 // Functions and FunctionTree project. The stack trace selector is ignored.
 func (r *Resolver) FunctionStackTree() (*model.FunctionStackTree, error) {
-	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.FunctionStackTree")
-	defer span.Finish()
-
 	var mu sync.Mutex
 	tree := model.NewFunctionStackTree()
-	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+	err := r.FunctionStacks(func(stacks *model.StacktraceTree, names []string) {
+		mu.Lock()
+		tree.MergeStacktraceTree(stacks, names)
+		mu.Unlock()
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tree, nil
+}
+
+// FunctionStacks calls fn with the stacks of each partition, concurrently.
+// Stack trace locations are indices in names; see FunctionStackTree.
+func (r *Resolver) FunctionStacks(fn func(stacks *model.StacktraceTree, names []string)) error {
+	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.FunctionStacks")
+	defer span.Finish()
+	return r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
 		stacks := newStackTreeSymbols(symbols, appender.Samples())
 		if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, stacks, stacks.samples.StacktraceIDs); err != nil {
 			return err
@@ -79,16 +92,9 @@ func (r *Resolver) FunctionStackTree() (*model.FunctionStackTree, error) {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		mu.Lock()
-		tree.MergeStacktraceTree(stacks.tree, stacks.names)
-		mu.Unlock()
+		fn(stacks.tree, stacks.names)
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	span.SetTag("nodes", tree.Len())
-	return tree, nil
 }
 
 type stackTreeSymbols struct {

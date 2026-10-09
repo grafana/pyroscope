@@ -3,9 +3,12 @@ package querybackend
 import (
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
+	"github.com/grafana/pyroscope/v2/pkg/util"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 )
@@ -55,16 +58,18 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return resp, nil
 	}
 
+	var stacks errgroup.Group
+	if q.stackTrees != nil {
+		stacks.Go(util.RecoverPanic(func() error {
+			return resolver.FunctionStacks(q.stackTrees.add)
+		}))
+	}
 	tree, err := resolver.Tree()
+	if stacksErr := stacks.Wait(); err == nil {
+		err = stacksErr
+	}
 	if err != nil {
 		return nil, err
-	}
-	if q.stackTrees != nil {
-		stacks, err := resolver.FunctionStackTree()
-		if err != nil {
-			return nil, err
-		}
-		q.stackTrees.add(stacks)
 	}
 
 	resp := &queryv1.Report{

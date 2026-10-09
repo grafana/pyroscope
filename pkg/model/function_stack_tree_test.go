@@ -102,8 +102,14 @@ func reportFunctionTable(m *FunctionTableMerger) *typesv1.FunctionTable {
 	return reports.Table()
 }
 
-func randomPartitions(rng *rand.Rand) [][]testStack {
+func randomPartitions(rng *rand.Rand, wide bool) [][]testStack {
 	alphabet := []string{"main", "a", "b", "c", "other", ""}
+	if wide {
+		// More distinct names than functionStackNodeScanLimit children per node.
+		for i := range 4 * functionStackNodeScanLimit {
+			alphabet = append(alphabet, fmt.Sprintf("f%02d", i))
+		}
+	}
 	partitions := make([][]testStack, 1+rng.Intn(3))
 	for p := range partitions {
 		for range 1 + rng.Intn(40) {
@@ -158,7 +164,7 @@ func TestFunctionStackIndexMatchesProjections(t *testing.T) {
 	depths := []*int32{nil, proto.Int32(0), proto.Int32(1), proto.Int32(2), proto.Int32(5)}
 	for seed := int64(0); seed < 60; seed++ {
 		rng := rand.New(rand.NewSource(seed))
-		partitions := randomPartitions(rng)
+		partitions := randomPartitions(rng, seed%2 == 1)
 		x := roundTrip(t, stackTreeFromPartitions(partitions))
 		for _, path := range testSelections(partitions) {
 			require.True(t, referenceFunctions(partitions, path).EqualVT(x.Functions(path)), "seed %d functions %q", seed, path)

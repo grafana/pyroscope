@@ -14,18 +14,24 @@ var ErrMalformedFunctionStackTree = errors.New("malformed function stack tree")
 // FunctionStackTree accumulates untruncated root-first function-name stacks.
 // Node 0 is the synthetic root; its self value belongs to stacks without names.
 type FunctionStackTree struct {
-	names    []string
-	nameIDs  map[string]uint32
-	nodes    []functionStackNode
-	children map[uint64]uint32
+	names     []string
+	nameIDs   map[string]uint32
+	nameBytes int
+	nodes     []functionStackNode
+	children  map[uint64]uint32
 }
 
 type functionStackNode struct {
 	name        uint32
+	children    uint32
 	self        uint64
 	firstChild  uint32
 	nextSibling uint32
 }
+
+// Children of wider nodes are indexed in FunctionStackTree.children;
+// narrower nodes are scanned, which is cheaper for the common small fan-out.
+const functionStackNodeScanLimit = 8
 
 func NewFunctionStackTree() *FunctionStackTree {
 	return &FunctionStackTree{
@@ -39,6 +45,12 @@ func NewFunctionStackTree() *FunctionStackTree {
 // Len reports the number of nodes, including the synthetic root.
 func (t *FunctionStackTree) Len() int { return len(t.nodes) }
 
+// SizeEstimate approximates the size of the encoded tree from above for
+// typical values, without encoding it.
+func (t *FunctionStackTree) SizeEstimate() int {
+	return t.nameBytes + 3*len(t.names) + 12*len(t.nodes)
+}
+
 func (t *FunctionStackTree) init() {
 	if len(t.nodes) == 0 {
 		*t = *NewFunctionStackTree()
@@ -51,19 +63,36 @@ func (t *FunctionStackTree) nameID(name string) uint32 {
 		id = uint32(len(t.names))
 		t.names = append(t.names, name)
 		t.nameIDs[name] = id
+		t.nameBytes += len(name)
 	}
 	return id
 }
 
 func (t *FunctionStackTree) child(parent, name uint32) uint32 {
-	k := uint64(parent)<<32 | uint64(name)
-	if c, ok := t.children[k]; ok {
-		return c
+	if t.nodes[parent].children > functionStackNodeScanLimit {
+		if c, ok := t.children[uint64(parent)<<32|uint64(name)]; ok {
+			return c
+		}
+	} else {
+		for c := t.nodes[parent].firstChild; c != 0; c = t.nodes[c].nextSibling {
+			if t.nodes[c].name == name {
+				return c
+			}
+		}
 	}
 	c := uint32(len(t.nodes))
 	t.nodes = append(t.nodes, functionStackNode{name: name, nextSibling: t.nodes[parent].firstChild})
-	t.nodes[parent].firstChild = c
-	t.children[k] = c
+	p := &t.nodes[parent]
+	p.firstChild = c
+	p.children++
+	switch {
+	case p.children == functionStackNodeScanLimit+1:
+		for x := p.firstChild; x != 0; x = t.nodes[x].nextSibling {
+			t.children[uint64(parent)<<32|uint64(t.nodes[x].name)] = x
+		}
+	case p.children > functionStackNodeScanLimit+1:
+		t.children[uint64(parent)<<32|uint64(name)] = c
+	}
 	return c
 }
 
@@ -143,13 +172,11 @@ func (t *FunctionStackTree) Proto() *queryv1.FunctionStackTree {
 		i := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		n := &t.nodes[i]
-		var children uint32
 		for c := n.firstChild; c != 0; c = t.nodes[c].nextSibling {
 			stack = append(stack, c)
-			children++
 		}
 		out.NodeName = append(out.NodeName, n.name)
-		out.NodeChildren = append(out.NodeChildren, children)
+		out.NodeChildren = append(out.NodeChildren, n.children)
 		out.NodeSelf = append(out.NodeSelf, n.self)
 	}
 	return out
