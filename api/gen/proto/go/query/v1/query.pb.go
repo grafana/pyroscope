@@ -38,21 +38,23 @@ const (
 	QueryType_QUERY_HEATMAP             QueryType = 7
 	QueryType_QUERY_TIME_SERIES_COMPACT QueryType = 8
 	QueryType_QUERY_PROFILE_PRESENCE    QueryType = 9
+	QueryType_QUERY_FUNCTIONS           QueryType = 10
 )
 
 // Enum value maps for QueryType.
 var (
 	QueryType_name = map[int32]string{
-		0: "QUERY_UNSPECIFIED",
-		1: "QUERY_LABEL_NAMES",
-		2: "QUERY_LABEL_VALUES",
-		3: "QUERY_SERIES_LABELS",
-		4: "QUERY_TIME_SERIES",
-		5: "QUERY_TREE",
-		6: "QUERY_PPROF",
-		7: "QUERY_HEATMAP",
-		8: "QUERY_TIME_SERIES_COMPACT",
-		9: "QUERY_PROFILE_PRESENCE",
+		0:  "QUERY_UNSPECIFIED",
+		1:  "QUERY_LABEL_NAMES",
+		2:  "QUERY_LABEL_VALUES",
+		3:  "QUERY_SERIES_LABELS",
+		4:  "QUERY_TIME_SERIES",
+		5:  "QUERY_TREE",
+		6:  "QUERY_PPROF",
+		7:  "QUERY_HEATMAP",
+		8:  "QUERY_TIME_SERIES_COMPACT",
+		9:  "QUERY_PROFILE_PRESENCE",
+		10: "QUERY_FUNCTIONS",
 	}
 	QueryType_value = map[string]int32{
 		"QUERY_UNSPECIFIED":         0,
@@ -65,6 +67,7 @@ var (
 		"QUERY_HEATMAP":             7,
 		"QUERY_TIME_SERIES_COMPACT": 8,
 		"QUERY_PROFILE_PRESENCE":    9,
+		"QUERY_FUNCTIONS":           10,
 	}
 )
 
@@ -108,21 +111,23 @@ const (
 	ReportType_REPORT_HEATMAP             ReportType = 7
 	ReportType_REPORT_TIME_SERIES_COMPACT ReportType = 8
 	ReportType_REPORT_PROFILE_PRESENCE    ReportType = 9
+	ReportType_REPORT_FUNCTIONS           ReportType = 10
 )
 
 // Enum value maps for ReportType.
 var (
 	ReportType_name = map[int32]string{
-		0: "REPORT_UNSPECIFIED",
-		1: "REPORT_LABEL_NAMES",
-		2: "REPORT_LABEL_VALUES",
-		3: "REPORT_SERIES_LABELS",
-		4: "REPORT_TIME_SERIES",
-		5: "REPORT_TREE",
-		6: "REPORT_PPROF",
-		7: "REPORT_HEATMAP",
-		8: "REPORT_TIME_SERIES_COMPACT",
-		9: "REPORT_PROFILE_PRESENCE",
+		0:  "REPORT_UNSPECIFIED",
+		1:  "REPORT_LABEL_NAMES",
+		2:  "REPORT_LABEL_VALUES",
+		3:  "REPORT_SERIES_LABELS",
+		4:  "REPORT_TIME_SERIES",
+		5:  "REPORT_TREE",
+		6:  "REPORT_PPROF",
+		7:  "REPORT_HEATMAP",
+		8:  "REPORT_TIME_SERIES_COMPACT",
+		9:  "REPORT_PROFILE_PRESENCE",
+		10: "REPORT_FUNCTIONS",
 	}
 	ReportType_value = map[string]int32{
 		"REPORT_UNSPECIFIED":         0,
@@ -135,6 +140,7 @@ var (
 		"REPORT_HEATMAP":             7,
 		"REPORT_TIME_SERIES_COMPACT": 8,
 		"REPORT_PROFILE_PRESENCE":    9,
+		"REPORT_FUNCTIONS":           10,
 	}
 )
 
@@ -596,6 +602,7 @@ type Query struct {
 	Heatmap           *HeatmapQuery         `protobuf:"bytes,8,opt,name=heatmap,proto3" json:"heatmap,omitempty"`
 	TimeSeriesCompact *TimeSeriesQuery      `protobuf:"bytes,9,opt,name=time_series_compact,json=timeSeriesCompact,proto3" json:"time_series_compact,omitempty"`
 	ProfilePresence   *ProfilePresenceQuery `protobuf:"bytes,10,opt,name=profile_presence,json=profilePresence,proto3" json:"profile_presence,omitempty"`
+	Functions         *FunctionsQuery       `protobuf:"bytes,11,opt,name=functions,proto3" json:"functions,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -696,6 +703,13 @@ func (x *Query) GetTimeSeriesCompact() *TimeSeriesQuery {
 func (x *Query) GetProfilePresence() *ProfilePresenceQuery {
 	if x != nil {
 		return x.ProfilePresence
+	}
+	return nil
+}
+
+func (x *Query) GetFunctions() *FunctionsQuery {
+	if x != nil {
+		return x.Functions
 	}
 	return nil
 }
@@ -1078,6 +1092,7 @@ type Report struct {
 	Heatmap           *HeatmapReport           `protobuf:"bytes,8,opt,name=heatmap,proto3" json:"heatmap,omitempty"`
 	TimeSeriesCompact *TimeSeriesCompactReport `protobuf:"bytes,9,opt,name=time_series_compact,json=timeSeriesCompact,proto3" json:"time_series_compact,omitempty"`
 	ProfilePresence   *ProfilePresenceReport   `protobuf:"bytes,10,opt,name=profile_presence,json=profilePresence,proto3" json:"profile_presence,omitempty"`
+	Functions         *FunctionsReport         `protobuf:"bytes,11,opt,name=functions,proto3" json:"functions,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1178,6 +1193,13 @@ func (x *Report) GetTimeSeriesCompact() *TimeSeriesCompactReport {
 func (x *Report) GetProfilePresence() *ProfilePresenceReport {
 	if x != nil {
 		return x.ProfilePresence
+	}
+	return nil
+}
+
+func (x *Report) GetFunctions() *FunctionsReport {
+	if x != nil {
+		return x.Functions
 	}
 	return nil
 }
@@ -2704,6 +2726,126 @@ func (x *TimeSeriesCompactReport) GetAttributeTable() *AttributeTable {
 	return nil
 }
 
+type FunctionsQuery struct {
+	state              protoimpl.MessageState  `protogen:"open.v1"`
+	StackTraceSelector *v11.StackTraceSelector `protobuf:"bytes,1,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
+	ProfileIdSelector  []string                `protobuf:"bytes,2,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
+	SpanSelector       []string                `protobuf:"bytes,3,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
+	TraceIdSelector    []string                `protobuf:"bytes,4,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *FunctionsQuery) Reset() {
+	*x = FunctionsQuery{}
+	mi := &file_query_v1_query_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionsQuery) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionsQuery) ProtoMessage() {}
+
+func (x *FunctionsQuery) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionsQuery.ProtoReflect.Descriptor instead.
+func (*FunctionsQuery) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *FunctionsQuery) GetStackTraceSelector() *v11.StackTraceSelector {
+	if x != nil {
+		return x.StackTraceSelector
+	}
+	return nil
+}
+
+func (x *FunctionsQuery) GetProfileIdSelector() []string {
+	if x != nil {
+		return x.ProfileIdSelector
+	}
+	return nil
+}
+
+func (x *FunctionsQuery) GetSpanSelector() []string {
+	if x != nil {
+		return x.SpanSelector
+	}
+	return nil
+}
+
+func (x *FunctionsQuery) GetTraceIdSelector() []string {
+	if x != nil {
+		return x.TraceIdSelector
+	}
+	return nil
+}
+
+type FunctionsReport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         *FunctionsQuery        `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Table         *v11.FunctionTable     `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FunctionsReport) Reset() {
+	*x = FunctionsReport{}
+	mi := &file_query_v1_query_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionsReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionsReport) ProtoMessage() {}
+
+func (x *FunctionsReport) ProtoReflect() protoreflect.Message {
+	mi := &file_query_v1_query_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionsReport.ProtoReflect.Descriptor instead.
+func (*FunctionsReport) Descriptor() ([]byte, []int) {
+	return file_query_v1_query_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *FunctionsReport) GetQuery() *FunctionsQuery {
+	if x != nil {
+		return x.Query
+	}
+	return nil
+}
+
+func (x *FunctionsReport) GetTable() *v11.FunctionTable {
+	if x != nil {
+		return x.Table
+	}
+	return nil
+}
+
 var File_query_v1_query_proto protoreflect.FileDescriptor
 
 const file_query_v1_query_proto_rawDesc = "" +
@@ -2739,7 +2881,7 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x04Type\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\t\n" +
 	"\x05MERGE\x10\x01\x12\b\n" +
-	"\x04READ\x10\x02\"\xd1\x04\n" +
+	"\x04READ\x10\x02\"\x89\x05\n" +
 	"\x05Query\x122\n" +
 	"\n" +
 	"query_type\x18\x01 \x01(\x0e2\x13.query.v1.QueryTypeR\tqueryType\x12:\n" +
@@ -2754,7 +2896,8 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\aheatmap\x18\b \x01(\v2\x16.query.v1.HeatmapQueryR\aheatmap\x12I\n" +
 	"\x13time_series_compact\x18\t \x01(\v2\x19.query.v1.TimeSeriesQueryR\x11timeSeriesCompact\x12I\n" +
 	"\x10profile_presence\x18\n" +
-	" \x01(\v2\x1e.query.v1.ProfilePresenceQueryR\x0fprofilePresence\"u\n" +
+	" \x01(\v2\x1e.query.v1.ProfilePresenceQueryR\x0fprofilePresence\x126\n" +
+	"\tfunctions\x18\v \x01(\v2\x18.query.v1.FunctionsQueryR\tfunctions\"u\n" +
 	"\x0eInvokeResponse\x12*\n" +
 	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\x127\n" +
 	"\vdiagnostics\x18\x02 \x01(\v2\x15.query.v1.DiagnosticsR\vdiagnostics\"\x81\x01\n" +
@@ -2783,7 +2926,7 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x12datasets_processed\x18\x04 \x01(\x03R\x11datasetsProcessed\x12\x12\n" +
 	"\x04size\x18\x05 \x01(\x04R\x04size\x12\x14\n" +
 	"\x05shard\x18\x06 \x01(\rR\x05shard\x12)\n" +
-	"\x10compaction_level\x18\a \x01(\rR\x0fcompactionLevel\"\xe5\x04\n" +
+	"\x10compaction_level\x18\a \x01(\rR\x0fcompactionLevel\"\x9e\x05\n" +
 	"\x06Report\x125\n" +
 	"\vreport_type\x18\x01 \x01(\x0e2\x14.query.v1.ReportTypeR\n" +
 	"reportType\x12;\n" +
@@ -2798,7 +2941,8 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\aheatmap\x18\b \x01(\v2\x17.query.v1.HeatmapReportR\aheatmap\x12Q\n" +
 	"\x13time_series_compact\x18\t \x01(\v2!.query.v1.TimeSeriesCompactReportR\x11timeSeriesCompact\x12J\n" +
 	"\x10profile_presence\x18\n" +
-	" \x01(\v2\x1f.query.v1.ProfilePresenceReportR\x0fprofilePresence\"\x11\n" +
+	" \x01(\v2\x1f.query.v1.ProfilePresenceReportR\x0fprofilePresence\x127\n" +
+	"\tfunctions\x18\v \x01(\v2\x19.query.v1.FunctionsReportR\tfunctions\"\x11\n" +
 	"\x0fLabelNamesQuery\"d\n" +
 	"\x10LabelNamesReport\x12/\n" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.LabelNamesQueryR\x05query\x12\x1f\n" +
@@ -2914,7 +3058,16 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x05query\x18\x01 \x01(\v2\x19.query.v1.TimeSeriesQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.query.v1.SeriesR\n" +
 	"timeSeries\x12A\n" +
-	"\x0fattribute_table\x18\x03 \x01(\v2\x18.query.v1.AttributeTableR\x0eattributeTable*\xf0\x01\n" +
+	"\x0fattribute_table\x18\x03 \x01(\v2\x18.query.v1.AttributeTableR\x0eattributeTable\"\xff\x01\n" +
+	"\x0eFunctionsQuery\x12S\n" +
+	"\x14stack_trace_selector\x18\x01 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
+	"\x13profile_id_selector\x18\x02 \x03(\tR\x11profileIdSelector\x12#\n" +
+	"\rspan_selector\x18\x03 \x03(\tR\fspanSelector\x12*\n" +
+	"\x11trace_id_selector\x18\x04 \x03(\tR\x0ftraceIdSelectorB\x17\n" +
+	"\x15_stack_trace_selector\"p\n" +
+	"\x0fFunctionsReport\x12.\n" +
+	"\x05query\x18\x01 \x01(\v2\x18.query.v1.FunctionsQueryR\x05query\x12-\n" +
+	"\x05table\x18\x02 \x01(\v2\x17.types.v1.FunctionTableR\x05table*\x85\x02\n" +
 	"\tQueryType\x12\x15\n" +
 	"\x11QUERY_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11QUERY_LABEL_NAMES\x10\x01\x12\x16\n" +
@@ -2926,7 +3079,9 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\vQUERY_PPROF\x10\x06\x12\x11\n" +
 	"\rQUERY_HEATMAP\x10\a\x12\x1d\n" +
 	"\x19QUERY_TIME_SERIES_COMPACT\x10\b\x12\x1a\n" +
-	"\x16QUERY_PROFILE_PRESENCE\x10\t*\xfb\x01\n" +
+	"\x16QUERY_PROFILE_PRESENCE\x10\t\x12\x13\n" +
+	"\x0fQUERY_FUNCTIONS\x10\n" +
+	"*\x91\x02\n" +
 	"\n" +
 	"ReportType\x12\x16\n" +
 	"\x12REPORT_UNSPECIFIED\x10\x00\x12\x16\n" +
@@ -2938,7 +3093,9 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\fREPORT_PPROF\x10\x06\x12\x12\n" +
 	"\x0eREPORT_HEATMAP\x10\a\x12\x1e\n" +
 	"\x1aREPORT_TIME_SERIES_COMPACT\x10\b\x12\x1b\n" +
-	"\x17REPORT_PROFILE_PRESENCE\x10\t2R\n" +
+	"\x17REPORT_PROFILE_PRESENCE\x10\t\x12\x14\n" +
+	"\x10REPORT_FUNCTIONS\x10\n" +
+	"2R\n" +
 	"\x14QueryFrontendService\x12:\n" +
 	"\x05Query\x12\x16.query.v1.QueryRequest\x1a\x17.query.v1.QueryResponse\"\x002T\n" +
 	"\x13QueryBackendService\x12=\n" +
@@ -2959,7 +3116,7 @@ func file_query_v1_query_proto_rawDescGZIP() []byte {
 }
 
 var file_query_v1_query_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_query_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_query_v1_query_proto_goTypes = []any{
 	(QueryType)(0),                  // 0: query.v1.QueryType
 	(ReportType)(0),                 // 1: query.v1.ReportType
@@ -3002,16 +3159,19 @@ var file_query_v1_query_proto_goTypes = []any{
 	(*Point)(nil),                   // 38: query.v1.Point
 	(*Series)(nil),                  // 39: query.v1.Series
 	(*TimeSeriesCompactReport)(nil), // 40: query.v1.TimeSeriesCompactReport
-	(*v1.BlockMeta)(nil),            // 41: metastore.v1.BlockMeta
-	(*v11.Labels)(nil),              // 42: types.v1.Labels
-	(v11.ExemplarType)(0),           // 43: types.v1.ExemplarType
-	(*v11.Series)(nil),              // 44: types.v1.Series
-	(*v11.StackTraceSelector)(nil),  // 45: types.v1.StackTraceSelector
-	(*v12.Mapping)(nil),             // 46: google.v1.Mapping
-	(*v12.Location)(nil),            // 47: google.v1.Location
-	(*v12.Function)(nil),            // 48: google.v1.Function
-	(*v11.LabelPair)(nil),           // 49: types.v1.LabelPair
-	(v13.HeatmapQueryType)(0),       // 50: querier.v1.HeatmapQueryType
+	(*FunctionsQuery)(nil),          // 41: query.v1.FunctionsQuery
+	(*FunctionsReport)(nil),         // 42: query.v1.FunctionsReport
+	(*v1.BlockMeta)(nil),            // 43: metastore.v1.BlockMeta
+	(*v11.Labels)(nil),              // 44: types.v1.Labels
+	(v11.ExemplarType)(0),           // 45: types.v1.ExemplarType
+	(*v11.Series)(nil),              // 46: types.v1.Series
+	(*v11.StackTraceSelector)(nil),  // 47: types.v1.StackTraceSelector
+	(*v12.Mapping)(nil),             // 48: google.v1.Mapping
+	(*v12.Location)(nil),            // 49: google.v1.Location
+	(*v12.Function)(nil),            // 50: google.v1.Function
+	(*v11.LabelPair)(nil),           // 51: types.v1.LabelPair
+	(v13.HeatmapQueryType)(0),       // 52: querier.v1.HeatmapQueryType
+	(*v11.FunctionTable)(nil),       // 53: types.v1.FunctionTable
 }
 var file_query_v1_query_proto_depIdxs = []int32{
 	9,  // 0: query.v1.QueryRequest.query:type_name -> query.v1.Query
@@ -3022,7 +3182,7 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	8,  // 5: query.v1.QueryPlan.root:type_name -> query.v1.QueryNode
 	2,  // 6: query.v1.QueryNode.type:type_name -> query.v1.QueryNode.Type
 	8,  // 7: query.v1.QueryNode.children:type_name -> query.v1.QueryNode
-	41, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
+	43, // 8: query.v1.QueryNode.blocks:type_name -> metastore.v1.BlockMeta
 	0,  // 9: query.v1.Query.query_type:type_name -> query.v1.QueryType
 	16, // 10: query.v1.Query.label_names:type_name -> query.v1.LabelNamesQuery
 	18, // 11: query.v1.Query.label_values:type_name -> query.v1.LabelValuesQuery
@@ -3033,62 +3193,67 @@ var file_query_v1_query_proto_depIdxs = []int32{
 	32, // 16: query.v1.Query.heatmap:type_name -> query.v1.HeatmapQuery
 	22, // 17: query.v1.Query.time_series_compact:type_name -> query.v1.TimeSeriesQuery
 	27, // 18: query.v1.Query.profile_presence:type_name -> query.v1.ProfilePresenceQuery
-	15, // 19: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
-	11, // 20: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
-	7,  // 21: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
-	12, // 22: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
-	2,  // 23: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
-	12, // 24: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
-	13, // 25: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
-	14, // 26: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
-	1,  // 27: query.v1.Report.report_type:type_name -> query.v1.ReportType
-	17, // 28: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
-	19, // 29: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
-	21, // 30: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
-	23, // 31: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
-	26, // 32: query.v1.Report.tree:type_name -> query.v1.TreeReport
-	31, // 33: query.v1.Report.pprof:type_name -> query.v1.PprofReport
-	36, // 34: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
-	40, // 35: query.v1.Report.time_series_compact:type_name -> query.v1.TimeSeriesCompactReport
-	28, // 36: query.v1.Report.profile_presence:type_name -> query.v1.ProfilePresenceReport
-	16, // 37: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
-	18, // 38: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
-	20, // 39: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
-	42, // 40: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
-	43, // 41: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	22, // 42: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
-	44, // 43: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
-	45, // 44: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	46, // 45: query.v1.TreeSymbols.mappings:type_name -> google.v1.Mapping
-	47, // 46: query.v1.TreeSymbols.locations:type_name -> google.v1.Location
-	48, // 47: query.v1.TreeSymbols.functions:type_name -> google.v1.Function
-	24, // 48: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
-	25, // 49: query.v1.TreeReport.symbols:type_name -> query.v1.TreeSymbols
-	27, // 50: query.v1.ProfilePresenceReport.query:type_name -> query.v1.ProfilePresenceQuery
-	29, // 51: query.v1.ProfilePresenceReport.profiles:type_name -> query.v1.ProfilePresenceEntry
-	49, // 52: query.v1.ProfilePresenceEntry.labels:type_name -> types.v1.LabelPair
-	45, // 53: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	30, // 54: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
-	50, // 55: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
-	43, // 56: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
-	34, // 57: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
-	32, // 58: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
-	35, // 59: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
-	33, // 60: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
-	37, // 61: query.v1.Point.exemplars:type_name -> query.v1.Exemplar
-	38, // 62: query.v1.Series.points:type_name -> query.v1.Point
-	22, // 63: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
-	39, // 64: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
-	33, // 65: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
-	3,  // 66: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
-	6,  // 67: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
-	4,  // 68: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
-	10, // 69: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
-	68, // [68:70] is the sub-list for method output_type
-	66, // [66:68] is the sub-list for method input_type
-	66, // [66:66] is the sub-list for extension type_name
-	66, // [66:66] is the sub-list for extension extendee
-	0,  // [0:66] is the sub-list for field type_name
+	41, // 19: query.v1.Query.functions:type_name -> query.v1.FunctionsQuery
+	15, // 20: query.v1.InvokeResponse.reports:type_name -> query.v1.Report
+	11, // 21: query.v1.InvokeResponse.diagnostics:type_name -> query.v1.Diagnostics
+	7,  // 22: query.v1.Diagnostics.query_plan:type_name -> query.v1.QueryPlan
+	12, // 23: query.v1.Diagnostics.execution_node:type_name -> query.v1.ExecutionNode
+	2,  // 24: query.v1.ExecutionNode.type:type_name -> query.v1.QueryNode.Type
+	12, // 25: query.v1.ExecutionNode.children:type_name -> query.v1.ExecutionNode
+	13, // 26: query.v1.ExecutionNode.stats:type_name -> query.v1.ExecutionStats
+	14, // 27: query.v1.ExecutionStats.block_executions:type_name -> query.v1.BlockExecution
+	1,  // 28: query.v1.Report.report_type:type_name -> query.v1.ReportType
+	17, // 29: query.v1.Report.label_names:type_name -> query.v1.LabelNamesReport
+	19, // 30: query.v1.Report.label_values:type_name -> query.v1.LabelValuesReport
+	21, // 31: query.v1.Report.series_labels:type_name -> query.v1.SeriesLabelsReport
+	23, // 32: query.v1.Report.time_series:type_name -> query.v1.TimeSeriesReport
+	26, // 33: query.v1.Report.tree:type_name -> query.v1.TreeReport
+	31, // 34: query.v1.Report.pprof:type_name -> query.v1.PprofReport
+	36, // 35: query.v1.Report.heatmap:type_name -> query.v1.HeatmapReport
+	40, // 36: query.v1.Report.time_series_compact:type_name -> query.v1.TimeSeriesCompactReport
+	28, // 37: query.v1.Report.profile_presence:type_name -> query.v1.ProfilePresenceReport
+	42, // 38: query.v1.Report.functions:type_name -> query.v1.FunctionsReport
+	16, // 39: query.v1.LabelNamesReport.query:type_name -> query.v1.LabelNamesQuery
+	18, // 40: query.v1.LabelValuesReport.query:type_name -> query.v1.LabelValuesQuery
+	20, // 41: query.v1.SeriesLabelsReport.query:type_name -> query.v1.SeriesLabelsQuery
+	44, // 42: query.v1.SeriesLabelsReport.series_labels:type_name -> types.v1.Labels
+	45, // 43: query.v1.TimeSeriesQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	22, // 44: query.v1.TimeSeriesReport.query:type_name -> query.v1.TimeSeriesQuery
+	46, // 45: query.v1.TimeSeriesReport.time_series:type_name -> types.v1.Series
+	47, // 46: query.v1.TreeQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	48, // 47: query.v1.TreeSymbols.mappings:type_name -> google.v1.Mapping
+	49, // 48: query.v1.TreeSymbols.locations:type_name -> google.v1.Location
+	50, // 49: query.v1.TreeSymbols.functions:type_name -> google.v1.Function
+	24, // 50: query.v1.TreeReport.query:type_name -> query.v1.TreeQuery
+	25, // 51: query.v1.TreeReport.symbols:type_name -> query.v1.TreeSymbols
+	27, // 52: query.v1.ProfilePresenceReport.query:type_name -> query.v1.ProfilePresenceQuery
+	29, // 53: query.v1.ProfilePresenceReport.profiles:type_name -> query.v1.ProfilePresenceEntry
+	51, // 54: query.v1.ProfilePresenceEntry.labels:type_name -> types.v1.LabelPair
+	47, // 55: query.v1.PprofQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	30, // 56: query.v1.PprofReport.query:type_name -> query.v1.PprofQuery
+	52, // 57: query.v1.HeatmapQuery.query_type:type_name -> querier.v1.HeatmapQueryType
+	45, // 58: query.v1.HeatmapQuery.exemplar_type:type_name -> types.v1.ExemplarType
+	34, // 59: query.v1.HeatmapSeries.points:type_name -> query.v1.HeatmapPoint
+	32, // 60: query.v1.HeatmapReport.query:type_name -> query.v1.HeatmapQuery
+	35, // 61: query.v1.HeatmapReport.heatmap_series:type_name -> query.v1.HeatmapSeries
+	33, // 62: query.v1.HeatmapReport.attribute_table:type_name -> query.v1.AttributeTable
+	37, // 63: query.v1.Point.exemplars:type_name -> query.v1.Exemplar
+	38, // 64: query.v1.Series.points:type_name -> query.v1.Point
+	22, // 65: query.v1.TimeSeriesCompactReport.query:type_name -> query.v1.TimeSeriesQuery
+	39, // 66: query.v1.TimeSeriesCompactReport.time_series:type_name -> query.v1.Series
+	33, // 67: query.v1.TimeSeriesCompactReport.attribute_table:type_name -> query.v1.AttributeTable
+	47, // 68: query.v1.FunctionsQuery.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	41, // 69: query.v1.FunctionsReport.query:type_name -> query.v1.FunctionsQuery
+	53, // 70: query.v1.FunctionsReport.table:type_name -> types.v1.FunctionTable
+	3,  // 71: query.v1.QueryFrontendService.Query:input_type -> query.v1.QueryRequest
+	6,  // 72: query.v1.QueryBackendService.Invoke:input_type -> query.v1.InvokeRequest
+	4,  // 73: query.v1.QueryFrontendService.Query:output_type -> query.v1.QueryResponse
+	10, // 74: query.v1.QueryBackendService.Invoke:output_type -> query.v1.InvokeResponse
+	73, // [73:75] is the sub-list for method output_type
+	71, // [71:73] is the sub-list for method input_type
+	71, // [71:71] is the sub-list for extension type_name
+	71, // [71:71] is the sub-list for extension extendee
+	0,  // [0:71] is the sub-list for field type_name
 }
 
 func init() { file_query_v1_query_proto_init() }
@@ -3099,13 +3264,14 @@ func file_query_v1_query_proto_init() {
 	file_query_v1_query_proto_msgTypes[21].OneofWrappers = []any{}
 	file_query_v1_query_proto_msgTypes[23].OneofWrappers = []any{}
 	file_query_v1_query_proto_msgTypes[27].OneofWrappers = []any{}
+	file_query_v1_query_proto_msgTypes[38].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_query_v1_query_proto_rawDesc), len(file_query_v1_query_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   38,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

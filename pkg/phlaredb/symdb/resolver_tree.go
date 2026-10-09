@@ -72,8 +72,7 @@ type treeSymbols struct {
 
 	addLocation bool
 
-	selection        *SelectedStackTraces
-	funcNamesMatcher func(funcNames []int32) bool
+	selection *SelectedStackTraces
 }
 
 var treeSymbolsPool = sync.Pool{
@@ -104,14 +103,16 @@ func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples, selection
 		// Branching factor.
 		r.tree = model.NewStacktraceTree(samples.Len() * 2)
 	}
-	if r.selection != nil && len(r.selection.callSite) > 0 {
-		r.funcNamesMatcher = r.funcNamesMatchSelection
-	}
 }
 
 func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
-	needLines := !r.addLocation || r.funcNamesMatcher != nil // lines needed lines should be insered or we have a funNamesMatcher
-	needLocs := r.addLocation                                // locs needed when requested
+	value := int64(r.samples.Values[r.cur])
+	r.cur++
+	if r.selection != nil && !matchesCallSite(r.symbols, locations, r.selection.funcNames, r.selection.callSite) {
+		return
+	}
+	needLines := !r.addLocation
+	needLocs := r.addLocation
 
 	if needLines {
 		r.lines = r.lines[:0]
@@ -128,29 +129,11 @@ func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
 			r.locID = addLocationID(r.locID, locations[i], r.symbols)
 		}
 	}
-	if r.funcNamesMatcher == nil || r.funcNamesMatcher(r.lines) {
-		if needLocs {
-			r.tree.Insert(r.locID, int64(r.samples.Values[r.cur]))
-		} else {
-			r.tree.Insert(r.lines, int64(r.samples.Values[r.cur]))
-		}
+	if needLocs {
+		r.tree.Insert(r.locID, value)
+	} else {
+		r.tree.Insert(r.lines, value)
 	}
-	r.cur++
-}
-
-// funcNamesMatchSelection checks if the funcNames match the selection.
-// Note funcNames is a slice of function name references and is reversed. The first item is the last function in the stack trace.
-func (r *treeSymbols) funcNamesMatchSelection(funcNames []int32) bool {
-	if len(funcNames) < int(r.selection.depth) {
-		return false
-	}
-
-	for i := 0; i < int(r.selection.depth); i++ {
-		if r.symbols.Strings[funcNames[len(funcNames)-1-i]] != r.selection.callSite[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func buildTreeFromParentPointerTrees[N model.NodeName, I model.NodeNameI[N]](

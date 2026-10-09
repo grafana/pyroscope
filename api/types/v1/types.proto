@@ -183,3 +183,18 @@ message HeatmapSlot {
   // Provide exemplars
   repeated Exemplar exemplars = 4;
 }
+
+message FunctionTable {
+  repeated FunctionStats functions = 1;
+  // Sum of selected sample values, not the sum of inclusive function values.
+  int64 total = 2;
+  // Number of functions before limiting. Compare with functions length for coverage.
+  int64 total_functions = 3;
+}
+
+message FunctionStats {
+  string name = 1;
+  // A sample contributes at most once, even if this function recurs in its stack.
+  int64 total = 2;
+  int64 self = 3;
+}
