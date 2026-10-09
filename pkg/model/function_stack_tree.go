@@ -42,11 +42,9 @@ func NewFunctionStackTree() *FunctionStackTree {
 	}
 }
 
-// Len reports the number of nodes, including the synthetic root.
 func (t *FunctionStackTree) Len() int { return len(t.nodes) }
 
-// SizeEstimate approximates the size of the encoded tree from above for
-// typical values, without encoding it.
+// SizeEstimate is an upper bound of the encoded size for typical values.
 func (t *FunctionStackTree) SizeEstimate() int {
 	return t.nameBytes + 3*len(t.names) + 12*len(t.nodes)
 }
@@ -158,7 +156,6 @@ func (t *FunctionStackTree) MergeProto(src *queryv1.FunctionStackTree) error {
 	return nil
 }
 
-// Proto encodes the tree in depth-first pre-order.
 func (t *FunctionStackTree) Proto() *queryv1.FunctionStackTree {
 	t.init()
 	out := &queryv1.FunctionStackTree{
@@ -268,7 +265,6 @@ func (x *FunctionStackIndex) lookupNames(names []string) ([]uint32, bool) {
 	return ids, true
 }
 
-// rootPath returns the nodes whose root-first path equals path.
 func (x *FunctionStackIndex) rootPath(path []uint32) []uint32 {
 	nodes := []uint32{0}
 	for _, name := range path {

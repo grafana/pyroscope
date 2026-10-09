@@ -360,3 +360,20 @@ func TestPartialResultCacheDiff(t *testing.T) {
 		testutil.ToFloat64(cached.partialResults.metrics.lookups.WithLabelValues("functions", "hit")) - hits
 	require.Equal(t, float64(2*diffs), got, "both diff sides must be answered from the cache")
 }
+
+func TestPartialResultCacheReadRoot(t *testing.T) {
+	f := newPartialResultFixture(t)
+	plan := queryplan.Build(f.blocks, len(f.blocks), 2)
+	require.Equal(t, queryv1.QueryNode_READ, plan.Root.Type)
+	cache := objstore.NewBucket(thanosobjstore.NewInMemBucket())
+	cached, primary := f.backend(t, cache, resultCacheOverrides{partial: true})
+	uncached, _ := f.backend(t, nil, resultCacheOverrides{})
+	writePartialResult(t, cached, cache, partialResultRequest(plan, partialResultTestSelector, treeQuery(16)))
+	reads := primary.reads.Load()
+	for _, query := range projectionQueries(fixtureStacks(t, uncached, plan, partialResultTestSelector), 3) {
+		require.Equal(t,
+			invokeReports(t, uncached, partialResultRequest(plan, partialResultTestSelector, query)),
+			invokeReports(t, cached, partialResultRequest(plan, partialResultTestSelector, query)), "%v", query)
+	}
+	require.Equal(t, reads, primary.reads.Load())
+}

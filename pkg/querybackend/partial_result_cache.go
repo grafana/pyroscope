@@ -131,8 +131,6 @@ const (
 	partialResultRead
 )
 
-// mode decides whether the plan root writes (flame graph) or reads
-// (function projections) the partial result cache for the request.
 func (c *partialResultCache) mode(req *queryv1.InvokeRequest) (partialResultMode, string) {
 	if c == nil || c.resultCacheBucket == nil || c.resultCacheOverrides == nil ||
 		req.GetOptions().GetPartialResultCache() != queryv1.PartialResultCacheMode_PARTIAL_RESULT_CACHE_MODE_UNSPECIFIED ||
@@ -315,8 +313,7 @@ func withPartialResultCacheMode(req *queryv1.InvokeRequest, mode queryv1.Partial
 	}
 }
 
-// invokePartialResults runs the request at the plan root, writing or
-// reading the partial result cache. Cache failures never fail the query.
+// Cache failures never fail the query.
 func (q *QueryBackend) invokePartialResults(ctx context.Context, span *tracing.Span, req *queryv1.InvokeRequest, mode partialResultMode, queryType string) (*queryv1.InvokeResponse, error) {
 	c := q.partialResults
 	identity, err := partialResultCacheIdentity(req)
@@ -472,7 +469,6 @@ func (c *partialResultCache) encode(w *partialResultEntry) ([]byte, error) {
 
 var errPartialResultTooLarge = errors.New("partial result exceeds the maximum size")
 
-// uploadPartialResult runs in the result cache writers.
 func (c *partialResultCache) uploadPartialResult(ctx context.Context, objectKey string, w *partialResultEntry) {
 	defer c.queued.Add(-1)
 	data, err := c.encode(w)
@@ -675,7 +671,6 @@ func (c *partialResultCache) race(
 	}
 }
 
-// collector returns nil unless the plan root asked this READ node for trees.
 func (c *partialResultCache) collector(req *queryv1.InvokeRequest) *functionStackTreeCollector {
 	if c == nil || req.GetOptions().GetPartialResultCache() != queryv1.PartialResultCacheMode_PARTIAL_RESULT_CACHE_MODE_COLLECT ||
 		len(req.Query) != 1 || req.Query[0].GetQueryType() != queryv1.QueryType_QUERY_TREE || req.Query[0].GetTree().GetFullSymbols() {
@@ -698,7 +693,6 @@ func (c *partialResultCache) collected(span *tracing.Span, p *queryv1.PartialRes
 	}
 }
 
-// functionStackTreeCollector merges the stacks of all datasets of a READ node.
 type functionStackTreeCollector struct {
 	maxSize    int
 	incomplete atomic.Bool
