@@ -59,6 +59,13 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	if err != nil {
 		return nil, err
 	}
+	if q.stackTrees != nil {
+		stacks, err := resolver.FunctionStackTree()
+		if err != nil {
+			return nil, err
+		}
+		q.stackTrees.add(stacks)
+	}
 
 	resp := &queryv1.Report{
 		Tree: &queryv1.TreeReport{

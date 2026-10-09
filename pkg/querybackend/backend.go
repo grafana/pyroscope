@@ -35,8 +35,9 @@ type Config struct {
 }
 
 type ResultCacheConfig struct {
-	ExecutionDelay time.Duration         `yaml:"execution_delay" category:"experimental"`
-	Storage        objstoreclient.Config `yaml:"storage" category:"experimental" doc:"hidden"`
+	ExecutionDelay time.Duration            `yaml:"execution_delay" category:"experimental"`
+	Storage        objstoreclient.Config    `yaml:"storage" category:"experimental" doc:"hidden"`
+	PartialResults PartialResultCacheConfig `yaml:"partial_results" category:"experimental"`
 }
 
 func (cfg *ResultCacheConfig) RegisterFlags(f *flag.FlagSet) {
@@ -54,6 +55,7 @@ func (cfg *ResultCacheConfig) RegisterFlags(f *flag.FlagSet) {
 	cfg.Storage.Backend = objstoreclient.None
 	f.Lookup(prefix + "backend").DefValue = objstoreclient.None
 	f.DurationVar(&cfg.ExecutionDelay, "query-backend.result-cache.execution-delay", 15*time.Millisecond, "Delay before starting block execution while a result-cache lookup is pending. Set to 0 to start immediately.")
+	cfg.PartialResults.RegisterFlags(f)
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -69,6 +71,9 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.ResultCache.ExecutionDelay < 0 {
 		return fmt.Errorf("query-backend.result-cache.execution-delay must not be negative")
+	}
+	if err := cfg.ResultCache.PartialResults.Validate(); err != nil {
+		return err
 	}
 	return cfg.GRPCClientConfig.Validate()
 }
@@ -101,6 +106,7 @@ type QueryBackend struct {
 	*resultCache
 	resultCacheStop      context.CancelFunc
 	resultCacheWriteStop context.CancelFunc
+	partialResults       *partialResultCache
 }
 
 func New(
@@ -130,8 +136,10 @@ func New(
 	if resultCacheBucket != nil {
 		q.resultCacheWrites = make(chan resultCacheWriteJob, resultCacheQueueSize)
 	}
+	q.partialResults = newPartialResultCache(q.resultCache, logger, config.ResultCache.PartialResults, reg)
 	if reader, ok := blockReader.(*BlockReader); ok {
 		reader.resultCache = q.resultCache
+		reader.partialResults = q.partialResults
 	}
 	q.service = services.NewBasicService(q.starting, q.running, q.stopping)
 	return &q, nil
@@ -192,7 +200,16 @@ func (q *QueryBackend) Invoke(
 		}
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("query plan is empty"))
 	}
+	if mode, queryType := q.partialResults.mode(req); mode != partialResultNone {
+		return q.invokePartialResults(ctx, span, req, mode, queryType)
+	}
+	return q.execute(ctx, req)
+}
 
+func (q *QueryBackend) execute(
+	ctx context.Context,
+	req *queryv1.InvokeRequest,
+) (*queryv1.InvokeResponse, error) {
 	collectDiag := req.Options != nil && req.Options.CollectDiagnostics
 	startTime := time.Now()
 
@@ -294,6 +311,10 @@ func (q *QueryBackend) merge(
 	request.QueryPlan = nil
 	m := newAggregator(request)
 	g, ctx := errgroup.WithContext(ctx)
+	var partials *partialResultMerger
+	if request.GetOptions().GetPartialResultCache() == queryv1.PartialResultCacheMode_PARTIAL_RESULT_CACHE_MODE_COLLECT {
+		partials = &partialResultMerger{maxSize: q.partialResults.config.MaxSizeBytes}
+	}
 
 	childExecNodes := make([]*queryv1.ExecutionNode, len(children))
 	var mu sync.Mutex
@@ -340,6 +361,10 @@ func (q *QueryBackend) merge(
 				childUnaccountedNs += remaining
 			}
 			aggregationStart := time.Now()
+			if partials != nil {
+				partials.add(resp.PartialResult)
+				resp.PartialResult = nil
+			}
 			err = m.aggregateResponse(resp)
 			childProcessingNs += time.Since(aggregationStart).Nanoseconds()
 			childTotalNs := childProcessingNs + childBackoffNs + childUnaccountedNs
@@ -370,6 +395,9 @@ func (q *QueryBackend) merge(
 	}
 
 	resp := m.response()
+	if partials != nil {
+		resp.PartialResult = partials.result()
+	}
 	return resp, executionNodes, &queryv1.ExecutionStats{
 		BytesFetched:          totalBytesFetched.Load(),
 		ProcessingDurationNs:  criticalProcessingNs,

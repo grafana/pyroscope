@@ -59,8 +59,9 @@ type BlockReader struct {
 	metrics  *metrics
 	hostname string
 
-	Overrides   Overrides
-	resultCache *resultCache
+	Overrides      Overrides
+	resultCache    *resultCache
+	partialResults *partialResultCache
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -113,6 +114,7 @@ func (b *BlockReader) Invoke(
 	}
 
 	weightCollector := &queryWeightCollector{}
+	stackTrees := b.partialResults.collector(req)
 
 	// Per-invocation byte counter: only the successful response carries the
 	// total, so retried calls from the query-frontend never double-count.
@@ -145,6 +147,10 @@ func (b *BlockReader) Invoke(
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,
 			includeStripped: includeStripped,
+		}
+		if stackTrees != nil {
+			bc.stackTrees = stackTrees
+			bc.incomplete = &stackTrees.incomplete
 		}
 		g.Go(util.RecoverPanic(func() error {
 			return b.executeBlock(ctx, req, bc, agg, &fetchedBytes)
@@ -182,6 +188,10 @@ func (b *BlockReader) Invoke(
 	}
 
 	resp := agg.response()
+	if stackTrees != nil {
+		resp.PartialResult = stackTrees.result()
+		b.partialResults.collected(span, resp.PartialResult)
+	}
 
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = &queryv1.Diagnostics{}

@@ -24,6 +24,8 @@ import (
 const (
 	resultCacheOutcomeError    = "error"
 	resultCacheOutcomeHit      = "hit"
+	resultCacheOutcomeMiss     = "miss"
+	resultCacheOutcomeCanceled = "canceled"
 	resultCacheLabelNames      = "label_names"
 	resultCacheLabelValues     = "label_values"
 	resultCacheSeriesLabels    = "series_labels"
@@ -36,6 +38,7 @@ const (
 type ResultCacheOverrides interface {
 	ResultCacheEnabled(tenantID string) bool
 	ResultCacheGeneration(tenantID string) uint
+	PartialResultCacheEnabled(tenantID string) bool
 }
 
 type resultCache struct {
@@ -65,6 +68,9 @@ type resultCacheWriteJob struct {
 	identity       *queryv1.ResultCacheKey
 	reports        []*queryv1.Report
 	bytesFetched   uint64
+	// upload and drop replace the default handling when set.
+	upload func(context.Context)
+	drop   func()
 }
 
 func cacheQuery(req *queryv1.InvokeRequest, start, end int64) (*queryv1.QueryRequest, error) {
@@ -150,13 +156,13 @@ func (q *resultCache) readResultCacheWithCost(ctx context.Context, queryType, ke
 	r, err := q.resultCacheBucket.Get(ctx, key)
 	if err != nil {
 		if q.resultCacheBucket.IsObjNotFoundErr(err) {
-			outcome = "miss"
+			outcome = resultCacheOutcomeMiss
 			return false, nil
 		}
 		// Cancellation is expected whenever block execution wins the race:
 		// it must not pollute the error rate.
 		if errors.Is(err, context.Canceled) {
-			outcome = "canceled"
+			outcome = resultCacheOutcomeCanceled
 			return false, err
 		}
 		return false, err
@@ -165,7 +171,7 @@ func (q *resultCache) readResultCacheWithCost(ctx context.Context, queryType, ke
 	b, err := io.ReadAll(r)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			outcome = "canceled"
+			outcome = resultCacheOutcomeCanceled
 		}
 		return false, err
 	}
@@ -228,6 +234,10 @@ func (q *resultCache) dropResultCacheWrites() {
 	for {
 		select {
 		case job := <-q.resultCacheWrites:
+			if job.drop != nil {
+				job.drop()
+				continue
+			}
 			q.resultCacheMetrics.writes.WithLabelValues(job.queryType, "L2", "dropped").Inc()
 		default:
 			return
@@ -236,6 +246,10 @@ func (q *resultCache) dropResultCacheWrites() {
 }
 
 func (q *resultCache) uploadResultCacheEntry(ctx context.Context, job resultCacheWriteJob) {
+	if job.upload != nil {
+		job.upload(ctx)
+		return
+	}
 	entry := &queryv1.ResultCacheEntry{Key: job.identity, Reports: job.reports, BytesFetched: job.bytesFetched}
 	data, err := proto.Marshal(entry)
 	if err == nil {

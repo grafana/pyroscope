@@ -23,10 +23,12 @@ import (
 type resultCacheOverrides struct {
 	enabled    bool
 	generation uint
+	partial    bool
 }
 
-func (o resultCacheOverrides) ResultCacheEnabled(string) bool    { return o.enabled }
-func (o resultCacheOverrides) ResultCacheGeneration(string) uint { return o.generation }
+func (o resultCacheOverrides) ResultCacheEnabled(string) bool        { return o.enabled }
+func (o resultCacheOverrides) ResultCacheGeneration(string) uint     { return o.generation }
+func (o resultCacheOverrides) PartialResultCacheEnabled(string) bool { return o.partial }
 
 type queryHandlerFunc func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
 

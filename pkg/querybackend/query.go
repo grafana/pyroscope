@@ -95,6 +95,8 @@ type blockContext struct {
 	includeStripped bool
 	// Shared by dataset query goroutines; nil when cache eligibility is irrelevant.
 	incomplete *atomic.Bool
+	// Collects untruncated trees for the partial result cache; nil unless requested.
+	stackTrees *functionStackTreeCollector
 }
 
 func (b *blockContext) execute() error {

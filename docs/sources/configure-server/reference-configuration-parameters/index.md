@@ -3424,6 +3424,12 @@ distributor_usage_groups:
 # CLI flag: -query-backend.result-cache.generation
 [result_cache_generation: <int> | default = 1]
 
+# (experimental) Cache untruncated flame graph data of truncated flame graph
+# queries to answer function projection queries. Requires the result-cache
+# storage. This sets the default for tenant overrides.
+# CLI flag: -query-backend.result-cache.partial-results.enabled
+[partial_result_cache_enabled: <boolean> | default = false]
+
 # (advanced) If true, the write path doesn't wait for the segment-writer to
 # durably store and index the profile before responding. This reduces ingestion
 # latency and allows a larger -segment-writer.segment-duration, but removes the

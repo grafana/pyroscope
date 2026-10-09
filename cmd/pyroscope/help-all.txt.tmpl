@@ -887,6 +887,12 @@ Usage of ./pyroscope:
     	[experimental] Delay before starting block execution while a result-cache lookup is pending. Set to 0 to start immediately. (default 15ms)
   -query-backend.result-cache.generation uint
     	[experimental] Result-cache invalidation generation. This sets the default for tenant overrides. (default 1)
+  -query-backend.result-cache.partial-results.enabled
+    	[experimental] Cache untruncated flame graph data of truncated flame graph queries to answer function projection queries. Requires the result-cache storage. This sets the default for tenant overrides.
+  -query-backend.result-cache.partial-results.execution-delay duration
+    	[experimental] Delay before executing a function projection query while its partial result cache lookup has not found an entry. A miss starts execution immediately. (default 100ms)
+  -query-backend.result-cache.partial-results.max-size-bytes int
+    	[experimental] Maximum uncompressed size of the function stack trees collected for a flame graph query. Larger results are not cached. (default 33554432)
   -query-backend.result-cache.storage.azure.account-key string
     	[experimental] Azure storage account key. If unset, Azure managed identities will be used for authentication instead.
   -query-backend.result-cache.storage.azure.account-name string

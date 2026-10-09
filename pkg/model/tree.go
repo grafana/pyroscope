@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"sort"
@@ -485,6 +486,30 @@ func (t *Tree[N, I]) MarshalTruncate(w io.Writer, maxNodes int64, keepName func(
 }
 
 var errMalformedTreeBytes = fmt.Errorf("malformed tree bytes")
+
+// TreeBytesTruncated reports whether marshaled FunctionName tree bytes
+// contain a node that MarshalTruncate created for truncated children.
+// A function named "other" is indistinguishable from such a node.
+func TreeBytesTruncated(b []byte) (bool, error) {
+	for offset := 0; offset < len(b); {
+		nameLen, o := binary.Uvarint(b[offset:])
+		if o <= 0 || nameLen > uint64(len(b)-offset-o) {
+			return false, errMalformedTreeBytes
+		}
+		offset += o
+		if string(b[offset:offset+int(nameLen)]) == truncatedNodeName {
+			return true, nil
+		}
+		offset += int(nameLen)
+		for range 2 {
+			if _, o = binary.Uvarint(b[offset:]); o <= 0 {
+				return false, errMalformedTreeBytes
+			}
+			offset += o
+		}
+	}
+	return false, nil
+}
 
 const estimateBytesPerNode = 16 // Chosen empirically.
 

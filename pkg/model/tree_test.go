@@ -550,3 +550,25 @@ func Test_TreeFromBackendProfileSampleType(t *testing.T) {
 		assert.Equal(t, 2, foundAddresses)
 	})
 }
+
+func TestTreeBytesTruncated(t *testing.T) {
+	tree := new(FunctionNameTree)
+	tree.InsertStack(10, "a", "main")
+	tree.InsertStack(1, "b", "main")
+	tree.InsertStack(1, "c", "main")
+	for _, tc := range []struct {
+		maxNodes  int64
+		truncated bool
+	}{{0, false}, {16, false}, {2, true}} {
+		b := MustUnmarshalTree[FunctionName, FunctionNameI](tree.Bytes(0, nil)).Bytes(tc.maxNodes, nil)
+		truncated, err := TreeBytesTruncated(b)
+		require.NoError(t, err)
+		require.Equal(t, tc.truncated, truncated, tc.maxNodes)
+	}
+	truncated, err := TreeBytesTruncated(nil)
+	require.NoError(t, err)
+	require.False(t, truncated)
+	b := tree.Bytes(0, nil)
+	_, err = TreeBytesTruncated(b[:len(b)-1])
+	require.Error(t, err)
+}

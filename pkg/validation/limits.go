@@ -120,8 +120,9 @@ type Limits struct {
 	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
 
 	// Per-tenant query result caching and invalidation generation.
-	ResultCacheEnabled    bool `yaml:"result_cache_enabled" json:"result_cache_enabled" category:"experimental"`
-	ResultCacheGeneration uint `yaml:"result_cache_generation" json:"result_cache_generation" category:"experimental"`
+	ResultCacheEnabled        bool `yaml:"result_cache_enabled" json:"result_cache_enabled" category:"experimental"`
+	ResultCacheGeneration     uint `yaml:"result_cache_generation" json:"result_cache_generation" category:"experimental"`
+	PartialResultCacheEnabled bool `yaml:"partial_result_cache_enabled" json:"partial_result_cache_enabled" category:"experimental"`
 
 	// Write path overrides used in distributor.
 	WritePathOverrides writepath.Config `yaml:",inline" json:",inline"`
@@ -165,6 +166,7 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&l.ResultCacheEnabled, "query-backend.result-cache.enabled", false, "Enable query result caching. This sets the default for tenant overrides.")
 	f.UintVar(&l.ResultCacheGeneration, "query-backend.result-cache.generation", 1, "Result-cache invalidation generation. This sets the default for tenant overrides.")
+	f.BoolVar(&l.PartialResultCacheEnabled, "query-backend.result-cache.partial-results.enabled", false, "Cache untruncated flame graph data of truncated flame graph queries to answer function projection queries. Requires the result-cache storage. This sets the default for tenant overrides.")
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
 	f.Float64Var(&l.IngestionBodyLimitMB, "distributor.ingestion-body-limit-mb", 256, "Per-tenant ingestion body size limit in MB, before decompressing. 0 to disable.")
@@ -584,6 +586,10 @@ func (o *Overrides) ResultCacheEnabled(tenantID string) bool {
 
 func (o *Overrides) ResultCacheGeneration(tenantID string) uint {
 	return o.getOverridesForTenant(tenantID).ResultCacheGeneration
+}
+
+func (o *Overrides) PartialResultCacheEnabled(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).PartialResultCacheEnabled
 }
 
 // QueryAnalysisEnabled can be used to disable the query analysis endpoint in the query frontend.
