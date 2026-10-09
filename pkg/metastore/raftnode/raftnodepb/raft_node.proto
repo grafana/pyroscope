@@ -55,6 +55,8 @@ message NodeInfo {
   uint64 current_term = 11;
   string build_version = 12;
   string build_revision = 13;
+  uint32 supported_fsm_version = 14;
+  uint32 active_fsm_version = 15;
 }
 
 message RemoveNodeRequest {

@@ -2,8 +2,11 @@ package metastoreclient
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -180,6 +183,40 @@ func (c *Client) NodeInfo(ctx context.Context, in *raftnodepb.NodeInfoRequest, o
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*raftnodepb.NodeInfoResponse, error) {
 		return instance.NodeInfo(ctx, in, opts...)
 	})
+}
+
+func (c *Client) NodeInfoAll(ctx context.Context) ([]*raftnodepb.NodeInfo, error) {
+	c.mu.Lock()
+	servers := make([]*client, 0, len(c.servers))
+	for _, s := range c.servers {
+		servers = append(servers, s)
+	}
+	c.mu.Unlock()
+
+	var (
+		wg    sync.WaitGroup
+		mu    sync.Mutex
+		infos = make([]*raftnodepb.NodeInfo, 0, len(servers))
+		errs  []error
+	)
+	for _, s := range servers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			resp, err := s.NodeInfo(ctx, &raftnodepb.NodeInfoRequest{})
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("server %s: %w", s.srv.Raft.ID, err))
+				return
+			}
+			if node := resp.GetNode(); node != nil {
+				infos = append(infos, node)
+			}
+		}()
+	}
+	wg.Wait()
+	return infos, errors.Join(errs...)
 }
 
 func (c *Client) RemoveNode(ctx context.Context, in *raftnodepb.RemoveNodeRequest, opts ...grpc.CallOption) (*raftnodepb.RemoveNodeResponse, error) {

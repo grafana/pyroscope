@@ -627,6 +627,16 @@ func (m *NodeInfo) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ActiveFsmVersion != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ActiveFsmVersion))
+		i--
+		dAtA[i] = 0x78
+	}
+	if m.SupportedFsmVersion != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.SupportedFsmVersion))
+		i--
+		dAtA[i] = 0x70
+	}
 	if len(m.BuildRevision) > 0 {
 		i -= len(m.BuildRevision)
 		copy(dAtA[i:], m.BuildRevision)
@@ -1197,6 +1207,12 @@ func (m *NodeInfo) SizeVT() (n int) {
 	l = len(m.BuildRevision)
 	if l > 0 {
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.SupportedFsmVersion != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.SupportedFsmVersion))
+	}
+	if m.ActiveFsmVersion != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ActiveFsmVersion))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2351,6 +2367,44 @@ func (m *NodeInfo) UnmarshalVT(dAtA []byte) error {
 			}
 			m.BuildRevision = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 14:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SupportedFsmVersion", wireType)
+			}
+			m.SupportedFsmVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SupportedFsmVersion |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 15:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ActiveFsmVersion", wireType)
+			}
+			m.ActiveFsmVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ActiveFsmVersion |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

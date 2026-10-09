@@ -33,6 +33,9 @@ type metastoreNode struct {
 	BuildVersion  string
 	BuildRevision string
 	Stats         map[string]string
+
+	SupportedFSMVersion uint32
+	ActiveFSMVersion    uint32
 }
 
 type raftNodeState struct {

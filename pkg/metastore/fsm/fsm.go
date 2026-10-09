@@ -47,6 +47,10 @@ type StateRestorer interface {
 	Restore(*bbolt.Tx) error
 }
 
+type SnapshotValidator interface {
+	ValidateSnapshot(*bbolt.Tx) error
+}
+
 type Config struct {
 	SnapshotCompression      string `yaml:"snapshot_compression" category:"advanced"`
 	SnapshotRateLimit        int    `yaml:"snapshot_rate_limit" category:"advanced"`
@@ -74,8 +78,9 @@ type FSM struct {
 	txns sync.WaitGroup
 	db   *boltdb
 
-	handlers  map[RaftLogEntryType]handler
-	restorers []StateRestorer
+	handlers   map[RaftLogEntryType]handler
+	restorers  []StateRestorer
+	validators []SnapshotValidator
 
 	appliedTerm  uint64
 	appliedIndex uint64
@@ -101,6 +106,19 @@ func New(logger log.Logger, reg prometheus.Registerer, config Config, contextReg
 
 func (fsm *FSM) RegisterRestorer(r ...StateRestorer) {
 	fsm.restorers = append(fsm.restorers, r...)
+}
+
+func (fsm *FSM) RegisterSnapshotValidator(v ...SnapshotValidator) {
+	fsm.validators = append(fsm.validators, v...)
+}
+
+func (fsm *FSM) validateSnapshot(tx *bbolt.Tx) error {
+	for _, v := range fsm.validators {
+		if err := v.ValidateSnapshot(tx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func RegisterRaftCommandHandler[Req, Resp proto.Message](fsm *FSM, t RaftLogEntryType, handler RaftHandler[Req, Resp]) {
@@ -184,7 +202,7 @@ func (fsm *FSM) Restore(snapshot io.ReadCloser) (err error) {
 	fsm.mu.Lock()
 	defer fsm.mu.Unlock()
 	fsm.txns.Wait()
-	if err = fsm.db.restore(r); err != nil {
+	if err = fsm.db.restore(r, fsm.validateSnapshot); err != nil {
 		level.Error(fsm.logger).Log("msg", "failed to restore database from snapshot", "err", err)
 		return err
 	}
@@ -271,7 +289,7 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 
 	handle, ok := fsm.handlers[e.Type]
 	if !ok {
-		return errResponse(cmd, fmt.Errorf("unknown command type: %d", e.Type))
+		panic(fmt.Sprintf("failed to apply command: unknown command type %d at index %d; the binary is likely older than the one that proposed the command", e.Type, cmd.Index))
 	}
 
 	// Apply is never called concurrently with Restore, so we don't need

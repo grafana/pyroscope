@@ -161,6 +161,8 @@ func (a *Admin) fetchRaftState(ctx context.Context) *raftNodeState {
 		node.AppliedIndex = nInfo.AppliedIndex
 		node.BuildVersion = nInfo.BuildVersion
 		node.BuildRevision = nInfo.BuildRevision
+		node.SupportedFSMVersion = nInfo.SupportedFsmVersion
+		node.ActiveFSMVersion = nInfo.ActiveFsmVersion
 		node.Stats = make(map[string]string)
 		for i, n := range nInfo.Stats.Name {
 			node.Stats[n] = nInfo.Stats.Value[i]

@@ -97,7 +97,7 @@ func (db *boltdb) shutdown() {
 	}
 }
 
-func (db *boltdb) restore(snapshot io.Reader) error {
+func (db *boltdb) restore(snapshot io.Reader, validate func(*bbolt.Tx) error) error {
 	start := time.Now()
 	defer func() {
 		db.metrics.boltDBRestoreSnapshotDuration.Observe(time.Since(start).Seconds())
@@ -122,6 +122,16 @@ func (db *boltdb) restore(snapshot io.Reader) error {
 			level.Error(db.logger).Log("msg", "failed to remove compacted snapshot", "err", removeErr)
 		}
 		return fmt.Errorf("failed to open restored snapshot: %w", err)
+	}
+
+	if validate != nil {
+		if err = restored.boltdb.View(validate); err != nil {
+			restored.shutdown()
+			if removeErr := os.RemoveAll(restored.path); removeErr != nil {
+				level.Error(db.logger).Log("msg", "failed to remove rejected snapshot", "err", removeErr)
+			}
+			return fmt.Errorf("snapshot rejected: %w", err)
+		}
 	}
 
 	if !db.config.SnapshotCompactOnRestore {

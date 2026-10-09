@@ -1368,6 +1368,23 @@ index:
 # (advanced)
 # CLI flag: -metastore.compaction-max-job-queue-size
 [compaction_max_job_queue_size: <int> | default = 10000]
+
+fsm_version:
+  # (advanced) How often the raft leader checks whether all metastore replicas
+  # support a newer FSM version and activates it. 0 to disable activation.
+  # CLI flag: -metastore.fsm-version.check-interval
+  [check_interval: <duration> | default = 1m]
+
+  # (advanced) How long all metastore replicas must report support for a newer
+  # FSM version before the raft leader activates it. Replicas refuse to start
+  # with a binary that does not support the active FSM version, so the delay is
+  # the window in which a rollback remains possible.
+  # CLI flag: -metastore.fsm-version.activation-delay
+  [activation_delay: <duration> | default = 0s]
+
+  # (advanced) Highest FSM version the raft leader activates. 0 means no limit.
+  # CLI flag: -metastore.fsm-version.max-version
+  [max_version: <int> | default = 0]
 ```
 
 ### compaction_worker

@@ -24,11 +24,17 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/v2/pkg/metastore/fsm"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/fsmversion"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
 )
 
 type ContextRegistry interface {
 	Store(id string, ctx context.Context)
+}
+
+type FSMVersion interface {
+	Supported() fsmversion.Version
+	Active() fsmversion.Version
 }
 
 type Config struct {
@@ -131,6 +137,7 @@ type Node struct {
 	metrics         *metrics
 	reg             prometheus.Registerer
 	fsm             raft.FSM
+	fsmVersion      FSMVersion
 	contextRegistry ContextRegistry
 
 	walDir        string
@@ -153,6 +160,7 @@ func NewNode(
 	config Config,
 	reg prometheus.Registerer,
 	fsm raft.FSM,
+	fsmVersion FSMVersion,
 	contextRegistry ContextRegistry,
 	raftNodeClient raftnodepb.RaftNodeServiceClient,
 ) (_ *Node, err error) {
@@ -162,6 +170,7 @@ func NewNode(
 		metrics:         newMetrics(reg),
 		reg:             reg,
 		fsm:             fsm,
+		fsmVersion:      fsmVersion,
 		contextRegistry: contextRegistry,
 		raftNodeClient:  raftNodeClient,
 	}

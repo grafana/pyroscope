@@ -242,22 +242,24 @@ func (x *NodeInfoResponse) GetNode() *NodeInfo {
 }
 
 type NodeInfo struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	ServerId           string                 `protobuf:"bytes,1,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
-	AdvertisedAddress  string                 `protobuf:"bytes,2,opt,name=advertised_address,json=advertisedAddress,proto3" json:"advertised_address,omitempty"`
-	State              string                 `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
-	LeaderId           string                 `protobuf:"bytes,4,opt,name=leader_id,json=leaderId,proto3" json:"leader_id,omitempty"`
-	CommitIndex        uint64                 `protobuf:"varint,5,opt,name=commit_index,json=commitIndex,proto3" json:"commit_index,omitempty"`
-	AppliedIndex       uint64                 `protobuf:"varint,6,opt,name=applied_index,json=appliedIndex,proto3" json:"applied_index,omitempty"`
-	LastIndex          uint64                 `protobuf:"varint,7,opt,name=last_index,json=lastIndex,proto3" json:"last_index,omitempty"`
-	Stats              *NodeInfo_Stats        `protobuf:"bytes,8,opt,name=stats,proto3" json:"stats,omitempty"`
-	Peers              []*NodeInfo_Peer       `protobuf:"bytes,9,rep,name=peers,proto3" json:"peers,omitempty"`
-	ConfigurationIndex uint64                 `protobuf:"varint,10,opt,name=configuration_index,json=configurationIndex,proto3" json:"configuration_index,omitempty"`
-	CurrentTerm        uint64                 `protobuf:"varint,11,opt,name=current_term,json=currentTerm,proto3" json:"current_term,omitempty"`
-	BuildVersion       string                 `protobuf:"bytes,12,opt,name=build_version,json=buildVersion,proto3" json:"build_version,omitempty"`
-	BuildRevision      string                 `protobuf:"bytes,13,opt,name=build_revision,json=buildRevision,proto3" json:"build_revision,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ServerId            string                 `protobuf:"bytes,1,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
+	AdvertisedAddress   string                 `protobuf:"bytes,2,opt,name=advertised_address,json=advertisedAddress,proto3" json:"advertised_address,omitempty"`
+	State               string                 `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
+	LeaderId            string                 `protobuf:"bytes,4,opt,name=leader_id,json=leaderId,proto3" json:"leader_id,omitempty"`
+	CommitIndex         uint64                 `protobuf:"varint,5,opt,name=commit_index,json=commitIndex,proto3" json:"commit_index,omitempty"`
+	AppliedIndex        uint64                 `protobuf:"varint,6,opt,name=applied_index,json=appliedIndex,proto3" json:"applied_index,omitempty"`
+	LastIndex           uint64                 `protobuf:"varint,7,opt,name=last_index,json=lastIndex,proto3" json:"last_index,omitempty"`
+	Stats               *NodeInfo_Stats        `protobuf:"bytes,8,opt,name=stats,proto3" json:"stats,omitempty"`
+	Peers               []*NodeInfo_Peer       `protobuf:"bytes,9,rep,name=peers,proto3" json:"peers,omitempty"`
+	ConfigurationIndex  uint64                 `protobuf:"varint,10,opt,name=configuration_index,json=configurationIndex,proto3" json:"configuration_index,omitempty"`
+	CurrentTerm         uint64                 `protobuf:"varint,11,opt,name=current_term,json=currentTerm,proto3" json:"current_term,omitempty"`
+	BuildVersion        string                 `protobuf:"bytes,12,opt,name=build_version,json=buildVersion,proto3" json:"build_version,omitempty"`
+	BuildRevision       string                 `protobuf:"bytes,13,opt,name=build_revision,json=buildRevision,proto3" json:"build_revision,omitempty"`
+	SupportedFsmVersion uint32                 `protobuf:"varint,14,opt,name=supported_fsm_version,json=supportedFsmVersion,proto3" json:"supported_fsm_version,omitempty"`
+	ActiveFsmVersion    uint32                 `protobuf:"varint,15,opt,name=active_fsm_version,json=activeFsmVersion,proto3" json:"active_fsm_version,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *NodeInfo) Reset() {
@@ -379,6 +381,20 @@ func (x *NodeInfo) GetBuildRevision() string {
 		return x.BuildRevision
 	}
 	return ""
+}
+
+func (x *NodeInfo) GetSupportedFsmVersion() uint32 {
+	if x != nil {
+		return x.SupportedFsmVersion
+	}
+	return 0
+}
+
+func (x *NodeInfo) GetActiveFsmVersion() uint32 {
+	if x != nil {
+		return x.ActiveFsmVersion
+	}
+	return 0
 }
 
 type RemoveNodeRequest struct {
@@ -859,7 +875,7 @@ const file_metastore_raftnode_raftnodepb_raft_node_proto_rawDesc = "" +
 	"\x04term\x18\x02 \x01(\x04R\x04term\"\x11\n" +
 	"\x0fNodeInfoRequest\";\n" +
 	"\x10NodeInfoResponse\x12'\n" +
-	"\x04node\x18\x01 \x01(\v2\x13.raft_node.NodeInfoR\x04node\"\x8c\x05\n" +
+	"\x04node\x18\x01 \x01(\v2\x13.raft_node.NodeInfoR\x04node\"\xee\x05\n" +
 	"\bNodeInfo\x12\x1b\n" +
 	"\tserver_id\x18\x01 \x01(\tR\bserverId\x12-\n" +
 	"\x12advertised_address\x18\x02 \x01(\tR\x11advertisedAddress\x12\x14\n" +
@@ -875,7 +891,9 @@ const file_metastore_raftnode_raftnodepb_raft_node_proto_rawDesc = "" +
 	" \x01(\x04R\x12configurationIndex\x12!\n" +
 	"\fcurrent_term\x18\v \x01(\x04R\vcurrentTerm\x12#\n" +
 	"\rbuild_version\x18\f \x01(\tR\fbuildVersion\x12%\n" +
-	"\x0ebuild_revision\x18\r \x01(\tR\rbuildRevision\x1a1\n" +
+	"\x0ebuild_revision\x18\r \x01(\tR\rbuildRevision\x122\n" +
+	"\x15supported_fsm_version\x18\x0e \x01(\rR\x13supportedFsmVersion\x12,\n" +
+	"\x12active_fsm_version\x18\x0f \x01(\rR\x10activeFsmVersion\x1a1\n" +
 	"\x05Stats\x12\x12\n" +
 	"\x04name\x18\x01 \x03(\tR\x04name\x12\x14\n" +
 	"\x05value\x18\x02 \x03(\tR\x05value\x1af\n" +

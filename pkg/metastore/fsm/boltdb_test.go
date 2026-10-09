@@ -29,7 +29,7 @@ func TestBoltDB_open_restore(t *testing.T) {
 	require.NoError(t, createDB(t, snapshotSource, data).Close())
 	s, err := os.ReadFile(snapshotSource)
 	require.NoError(t, err)
-	require.NoError(t, db.restore(bytes.NewReader(s)))
+	require.NoError(t, db.restore(bytes.NewReader(s), nil))
 
 	collected := make([]string, 0, len(data))
 	require.NoError(t, db.boltdb.View(func(tx *bbolt.Tx) error {
@@ -64,7 +64,7 @@ func TestBoltDB_open_restore_compact(t *testing.T) {
 	require.NoError(t, createDB(t, snapshotSource, data).Close())
 	s, err := os.ReadFile(snapshotSource)
 	require.NoError(t, err)
-	require.NoError(t, db.restore(bytes.NewReader(s)))
+	require.NoError(t, db.restore(bytes.NewReader(s), nil))
 
 	collected := make([]string, 0, len(data))
 	require.NoError(t, db.boltdb.View(func(tx *bbolt.Tx) error {

@@ -11,6 +11,7 @@ enum RaftCommand {
   RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE = 2;
   RAFT_COMMAND_UPDATE_COMPACTION_PLAN = 3;
   RAFT_COMMAND_TRUNCATE_INDEX = 4;
+  RAFT_COMMAND_SET_FSM_VERSION = 5;
 }
 
 message AddBlockMetadataRequest {
@@ -121,3 +122,12 @@ message TruncateIndexRequest {
 }
 
 message TruncateIndexResponse {}
+
+message SetFSMVersionRequest {
+  uint64 term = 1;
+  uint32 version = 2;
+}
+
+message SetFSMVersionResponse {
+  uint32 version = 1;
+}

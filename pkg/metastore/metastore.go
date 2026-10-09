@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction/compactor"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction/scheduler"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/fsm"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/fsmversion"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
@@ -42,6 +43,7 @@ type Config struct {
 	Index            index.Config      `yaml:"index" category:"advanced"`
 	Compactor        compactor.Config  `yaml:",inline" category:"advanced"`
 	Scheduler        scheduler.Config  `yaml:",inline" category:"advanced"`
+	FSMVersion       fsmversion.Config `yaml:"fsm_version" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
@@ -54,6 +56,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	cfg.Compactor.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Scheduler.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Index.RegisterFlagsWithPrefix(prefix+"index.", f)
+	cfg.FSMVersion.RegisterFlagsWithPrefix(prefix+"fsm-version.", f)
 }
 
 func (cfg *Config) Validate() error {
@@ -78,7 +81,10 @@ type Metastore struct {
 	raft            *raftnode.Node
 	fsm             *fsm.FSM
 	contextRegistry *tracing.ContextRegistry
-	raftNodeClient  raftnodepb.RaftNodeServiceClient
+	raftNodeClient  RaftNodeClient
+
+	fsmVersion          *fsmversion.State
+	fsmVersionActivator *fsmversion.Activator
 
 	bucket    objstore.Bucket
 	placement *placement.Manager
@@ -108,13 +114,18 @@ type Overrides interface {
 	retention.Overrides
 }
 
+type RaftNodeClient interface {
+	raftnodepb.RaftNodeServiceClient
+	NodeInfoAll(context.Context) ([]*raftnodepb.NodeInfo, error)
+}
+
 func New(
 	config Config,
 	overrides Overrides,
 	logger log.Logger,
 	reg prometheus.Registerer,
 	healthService health.Service,
-	client raftnodepb.RaftNodeServiceClient,
+	client RaftNodeClient,
 	bucket objstore.Bucket,
 	placementMgr *placement.Manager,
 ) (*Metastore, error) {
@@ -158,6 +169,13 @@ func New(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
 		m.compactionHandler.UpdateCompactionPlan)
 
+	m.fsmVersion = fsmversion.NewState(m.logger, config.FSMVersion.Supported(), m.reg)
+	fsm.RegisterRaftCommandHandler(m.fsm,
+		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_SET_FSM_VERSION),
+		m.fsmVersion.SetVersion)
+	m.fsm.RegisterSnapshotValidator(m.fsmVersion)
+
+	m.fsm.RegisterRestorer(m.fsmVersion)
 	m.fsm.RegisterRestorer(m.tombstones)
 	m.fsm.RegisterRestorer(m.compactor)
 	m.fsm.RegisterRestorer(m.scheduler)
@@ -165,6 +183,10 @@ func New(
 
 	// We are ready to start raft as our FSM is fully configured.
 	if err = m.buildRaftNode(); err != nil {
+		if m.raft != nil {
+			m.raft.Shutdown()
+		}
+		m.fsm.Shutdown()
 		return nil, err
 	}
 
@@ -180,6 +202,7 @@ func New(
 	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)
 	m.recovery = dlq.NewRecovery(logger, config.Index.Recovery, m.indexService, bucket, m.reg)
 	m.cleaner = cleaner.NewCleaner(m.logger, m.overrides, config.Index.Cleaner, m.indexService)
+	m.fsmVersionActivator = fsmversion.NewActivator(m.logger, config.FSMVersion, m.fsmVersion, m.raft, client)
 
 	// These are the services that only run on the raft leader.
 	// Keep in mind that the node may not be the leader at the moment the
@@ -187,6 +210,7 @@ func New(
 	m.raft.RunOnLeader(m.recovery)
 	m.raft.RunOnLeader(m.placement)
 	m.raft.RunOnLeader(m.cleaner)
+	m.raft.RunOnLeader(m.fsmVersionActivator)
 
 	m.service = services.NewBasicService(m.starting, m.running, m.stopping)
 	return m, nil
@@ -197,7 +221,7 @@ func (m *Metastore) buildRaftNode() (err error) {
 	// (via FSM.Restore), if it is present. Otherwise, when no snapshots
 	// available, the state must be initialized explicitly via FSM.Init before
 	// we call raft.Init, which starts applying the raft log.
-	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm, m.contextRegistry, m.raftNodeClient); err != nil {
+	if m.raft, err = raftnode.NewNode(m.logger, m.config.Raft, m.reg, m.fsm, m.fsmVersion, m.contextRegistry, m.raftNodeClient); err != nil {
 		return fmt.Errorf("failed to create raft node: %w", err)
 	}
 

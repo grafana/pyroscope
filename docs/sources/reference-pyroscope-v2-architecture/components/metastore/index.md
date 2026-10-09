@@ -96,5 +96,19 @@ One metastore instance is elected as the leader through Raft consensus. The lead
 - Enforcing retention policies
 - Running cleanup operations
 - Recovering metadata entries from the dead letter queue
+- Activating new FSM versions
 
 Follower replicas can serve read requests, distributing the query load across the cluster.
+
+## Upgrades and rollbacks
+
+Some releases change how metastore replicas apply the Raft log. To keep replicas consistent while a rolling update is in progress, such changes stay inactive until every metastore replica runs a version that supports them. The leader checks this periodically and then activates the change for the whole cluster through the Raft log. This is called the FSM version.
+
+You can roll back a metastore update as long as the new FSM version hasn't been activated. After activation, replicas running an older version that doesn't support the active FSM version refuse to start and log `unsupported FSM version`. In that case, roll forward instead.
+
+To keep the option to roll back for a while after an update, use these flags:
+
+- `-metastore.fsm-version.activation-delay`: how long every replica must report support for a new FSM version before the leader activates it. The default is `0s`, which activates the version as soon as all replicas support it.
+- `-metastore.fsm-version.max-version`: the highest FSM version the leader activates. The default, `0`, means no limit.
+
+Each replica reports its supported and active FSM versions in the `pyroscope_metastore_fsm_version_supported` and `pyroscope_metastore_fsm_version_active` metrics.

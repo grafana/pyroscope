@@ -99,6 +99,10 @@
                                 <div class="card-detail-label">Build Version:</div>
                                 <div class="card-detail-value">{{ $node.BuildVersion }} (revision {{ $node.BuildRevision }})</div>
                             </div>
+                            <div class="card-detail-row">
+                                <div class="card-detail-label">FSM Version:</div>
+                                <div class="card-detail-value">{{ $node.ActiveFSMVersion }} active ({{ $node.SupportedFSMVersion }} supported)</div>
+                            </div>
                             <hr/>
                             <div class="card-detail-row">
                                 <div class="card-detail-label">Raft Member:</div>
