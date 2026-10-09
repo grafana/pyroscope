@@ -9,6 +9,45 @@ tags:
     description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
   - name: metastore.v1.CompactionService
 paths:
+  /metastore.v1.CompactionService/GetCompactionState:
+    post:
+      tags:
+        - metastore.v1.CompactionService
+      summary: 'Returns a snapshot of the compaction state: the scheduler job queue and  the planner block queues. The method serves operational purposes and is  not part of the compaction protocol.'
+      description: |-
+        Returns a snapshot of the compaction state: the scheduler job queue and
+         the planner block queues. The method serves operational purposes and is
+         not part of the compaction protocol.
+      operationId: metastore.v1.CompactionService.GetCompactionState
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.GetCompactionStateRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.GetCompactionStateResponse'
   /metastore.v1.CompactionService/PollCompactionJobs:
     post:
       tags:
@@ -290,6 +329,92 @@ components:
           format: int64
       title: CompactionJobAssignment
       additionalProperties: false
+    metastore.v1.CompactionJobDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        tenant:
+          type: string
+          title: tenant
+        shard:
+          type: integer
+          title: shard
+        compactionLevel:
+          type: integer
+          title: compaction_level
+        status:
+          title: status
+          $ref: '#/components/schemas/metastore.v1.CompactionJobStatus'
+        token:
+          type:
+            - integer
+            - string
+          title: token
+          format: int64
+          description: |-
+            Fencing token of the current assignment:
+             the raft log index at assignment time.
+        leaseExpiresAt:
+          type:
+            - integer
+            - string
+          title: lease_expires_at
+          format: int64
+          description: Unix nanoseconds; refers to the raft leader clock.
+        addedAt:
+          type:
+            - integer
+            - string
+          title: added_at
+          format: int64
+          description: Unix nanoseconds, when the job was created.
+        failures:
+          type: integer
+          title: failures
+          description: Number of times the job was reassigned due to an expired lease.
+        sourceBlocks:
+          type: integer
+          title: source_blocks
+          description: Number of source blocks to compact.
+        workerId:
+          type: string
+          title: worker_id
+          description: |-
+            Identity of the worker the job is assigned to, as observed by the
+             current raft leader. Empty if not known: e.g., if the job was assigned
+             by a former leader, or the worker did not report its identity.
+        assignedAt:
+          type:
+            - integer
+            - string
+          title: assigned_at
+          format: int64
+          description: Unix nanoseconds, when the current assignment was observed. Zero if unknown.
+        updatedAt:
+          type:
+            - integer
+            - string
+          title: updated_at
+          format: int64
+          description: Unix nanoseconds, when the last status update was observed. Zero if unknown.
+        sourceBlockIds:
+          type: array
+          items:
+            type: string
+          title: source_block_ids
+          description: |-
+            Identifiers of the source blocks to compact. Only populated if the
+             request asks for them: see GetCompactionStateRequest#include_source_blocks.
+             The number of source blocks is always reported in source_blocks (10),
+             whether or not the identifiers are included.
+      title: CompactionJobDetails
+      additionalProperties: false
+      description: |-
+        CompactionJobDetails describes a compaction job in the scheduler queue.
+         The message combines the replicated job state with assignment details
+         observed by the node that served the request (normally, the raft leader).
     metastore.v1.CompactionJobStatus:
       type: string
       title: CompactionJobStatus
@@ -318,6 +443,43 @@ components:
           $ref: '#/components/schemas/metastore.v1.CompactedBlocks'
       title: CompactionJobStatusUpdate
       additionalProperties: false
+    metastore.v1.CompactionQueueDetails:
+      type: object
+      properties:
+        tenant:
+          type: string
+          title: tenant
+        shard:
+          type: integer
+          title: shard
+        compactionLevel:
+          type: integer
+          title: compaction_level
+        blocks:
+          type:
+            - integer
+            - string
+          title: blocks
+          format: int64
+          description: Number of blocks in the queue.
+        oldestBlockAt:
+          type:
+            - integer
+            - string
+          title: oldest_block_at
+          format: int64
+          description: Unix nanoseconds of the oldest and the newest block queue entries.
+        newestBlockAt:
+          type:
+            - integer
+            - string
+          title: newest_block_at
+          format: int64
+      title: CompactionQueueDetails
+      additionalProperties: false
+      description: |-
+        CompactionQueueDetails describes a planner queue of blocks
+         awaiting compaction, identified by tenant, shard, and level.
     metastore.v1.Dataset:
       type: object
       properties:
@@ -433,6 +595,83 @@ components:
              denormalized relationships is not a concern.
       title: Dataset
       additionalProperties: false
+    metastore.v1.GetCompactionStateRequest:
+      type: object
+      properties:
+        tenant:
+          type: string
+          title: tenant
+          description: |-
+            Optional. Restricts the response to the compaction jobs and the planner
+             queues of the tenant.
+
+             If not set, the entire state is returned. If set to an empty string, only
+             the entities that have no tenant are selected: these operate on the blocks
+             of compaction level 0, which are the multi-tenant segments written by the
+             segment writers.
+
+             The filter is an optimization, not a guarantee: a server that does not
+             know the field returns the entire state. Callers must not rely on it for
+             correctness and must filter the response on their side as well.
+          nullable: true
+        includeSourceBlocks:
+          type: boolean
+          title: include_source_blocks
+          description: |-
+            Optional. Includes the identifiers of the job source blocks into the
+             response. Disabled by default: the identifiers dominate the response
+             size, and the entire schedule may hold millions of them.
+      title: GetCompactionStateRequest
+      additionalProperties: false
+    metastore.v1.GetCompactionStateResponse:
+      type: object
+      properties:
+        compactionJobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.CompactionJobDetails'
+          title: compaction_jobs
+          description: Jobs in the scheduler queue.
+        compactionQueues:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.CompactionQueueDetails'
+          title: compaction_queues
+          description: Planner queues of blocks awaiting compaction.
+        jobLeaseDuration:
+          type:
+            - integer
+            - string
+          title: job_lease_duration
+          format: int64
+          description: |-
+            Scheduler configuration needed to interpret the job state.
+             Job lease duration in nanoseconds.
+        jobMaxFailures:
+          type:
+            - integer
+            - string
+          title: job_max_failures
+          format: int64
+          description: Number of failures after which a job is excluded from assignment.
+        maxJobQueueSize:
+          type:
+            - integer
+            - string
+          title: max_job_queue_size
+          format: int64
+          description: Scheduler queue size limit; failed jobs are evicted when it is exceeded.
+        compactionQueuesTruncated:
+          type: boolean
+          title: compaction_queues_truncated
+          description: |-
+            Reports that the planner queue scan stopped before reaching the end.
+             The number of blocks awaiting compaction is not bounded by any
+             configuration, so the scan is capped to bound the time the metastore
+             spends serving this request. When set, compaction_queues describes only
+             a prefix of the queues, and the block counts are lower bounds.
+      title: GetCompactionStateResponse
+      additionalProperties: false
     metastore.v1.PollCompactionJobsRequest:
       type: object
       properties:
@@ -445,6 +684,13 @@ components:
           type: integer
           title: job_capacity
           description: How many new jobs a worker can be assigned to.
+        workerId:
+          type: string
+          title: worker_id
+          description: |-
+            Identity of the worker, e.g., the host name. Optional: only used for
+             operational visibility (see GetCompactionState); ownership is governed
+             by fencing tokens.
       title: PollCompactionJobsRequest
       additionalProperties: false
     metastore.v1.PollCompactionJobsResponse:

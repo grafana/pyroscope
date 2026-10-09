@@ -162,8 +162,7 @@ func (*AddBlockMetadataResponse) Descriptor() ([]byte, []int) {
 // This is a read-only operation: it MUST NOT alter the state.
 type GetCompactionPlanUpdateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// CompactionJobStatusUpdate is a change
-	// requested by the compaction worker.
+	// CompactionJobStatusUpdate is a change requested by the compaction worker.
 	StatusUpdates []*CompactionJobStatusUpdate `protobuf:"bytes,1,rep,name=status_updates,json=statusUpdates,proto3" json:"status_updates,omitempty"`
 	AssignJobsMax uint32                       `protobuf:"varint,2,opt,name=assign_jobs_max,json=assignJobsMax,proto3" json:"assign_jobs_max,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1024,10 +1023,10 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"$metastore/v1/raft_log/raft_log.proto\x12\braft_log\x1a\x1cmetastore/v1/compactor.proto\x1a\x18metastore/v1/types.proto\"N\n" +
 	"\x17AddBlockMetadataRequest\x123\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x17.metastore.v1.BlockMetaR\bmetadata\"\x1a\n" +
-	"\x18AddBlockMetadataResponse\"\x94\x01\n" +
+	"\x18AddBlockMetadataResponse\"\x9a\x01\n" +
 	"\x1eGetCompactionPlanUpdateRequest\x12J\n" +
 	"\x0estatus_updates\x18\x01 \x03(\v2#.raft_log.CompactionJobStatusUpdateR\rstatusUpdates\x12&\n" +
-	"\x0fassign_jobs_max\x18\x02 \x01(\rR\rassignJobsMax\"\x86\x01\n" +
+	"\x0fassign_jobs_max\x18\x02 \x01(\rR\rassignJobsMaxJ\x04\b\x03\x10\x04\"\x86\x01\n" +
 	"\x19CompactionJobStatusUpdate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\x04R\x05token\x129\n" +
