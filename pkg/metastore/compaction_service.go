@@ -73,19 +73,21 @@ func (svc *CompactionService) PollCompactionJobs(
 		AssignJobsMax: req.JobCapacity,
 	}
 
-	// We only send the status updates (without job results) to minimize the
-	// traffic, but we want to include the results of compaction in the final
-	// proposal. If the status update is accepted, we trust the worker and
-	// don't need to load our own copy of the job.
+	// Compacted blocks are included in the prepare request so the leader can
+	// decide whether to accept the output (all source blocks still exist).
+	// The same results are attached to accepted jobs in the final proposal.
+	// If the status update is accepted, we trust the worker and don't need
+	// to load our own copy of the job.
 	compacted := make(map[string]*metastorev1.CompactionJobStatusUpdate, len(req.StatusUpdates))
 	for _, update := range req.StatusUpdates {
 		if update.CompactedBlocks != nil {
 			compacted[update.Name] = update
 		}
 		proposeReq.StatusUpdates = append(proposeReq.StatusUpdates, &raft_log.CompactionJobStatusUpdate{
-			Name:   update.Name,
-			Token:  update.Token,
-			Status: update.Status,
+			Name:            update.Name,
+			Token:           update.Token,
+			Status:          update.Status,
+			CompactedBlocks: update.CompactedBlocks,
 		})
 	}
 
@@ -135,10 +137,36 @@ func (svc *CompactionService) PollCompactionJobs(
 		assigned.Plan = nil
 	}
 
-	// Include the compacted blocks in the final proposal.
+	// Include the compacted blocks in the final proposal for accepted jobs.
+	// Rejected jobs keep CompactedBlocks unset so older replicas take the
+	// existing "compacted blocks are missing" apply path instead of
+	// replacing source blocks. Cleanup of already-written output objects
+	// is proposed separately via TRUNCATE_INDEX, which every version
+	// applies the same way.
+	var rejectedTombstones []*metastorev1.Tombstones
 	for _, job := range planUpdate.CompletedJobs {
-		if update := compacted[job.State.Name]; update != nil {
+		update := compacted[job.State.Name]
+		if job.RejectOutput {
+			if update != nil && update.CompactedBlocks != nil {
+				rejectedTombstones = append(rejectedTombstones, tombstonesForRejectedBlocks(job.State.Name, update.CompactedBlocks.NewBlocks)...)
+			}
+			continue
+		}
+		if update != nil {
 			job.CompactedBlocks = update.CompactedBlocks
+		}
+	}
+
+	if len(rejectedTombstones) > 0 {
+		truncateReq := &raft_log.TruncateIndexRequest{
+			Term:       prepared.Term,
+			Tombstones: rejectedTombstones,
+		}
+		if _, err = svc.raft.Propose(ctx, fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX), truncateReq); err != nil {
+			if !raftnode.IsRaftLeadershipError(err) {
+				level.Error(svc.logger).Log("msg", "failed to tombstone rejected compaction output", "err", err)
+			}
+			return nil, err
 		}
 	}
 
