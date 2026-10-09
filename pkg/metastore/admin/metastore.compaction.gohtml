@@ -9,55 +9,11 @@
     <div class="container mt-5">
         {{ template "compaction-page-header" . }}
 
-        <div class="row my-3">
-            <h2>Compaction</h2>
-            <p class="text-body-secondary">
-                Blocks flushed by the segment writers are queued for compaction per tenant, shard, and
-                compaction level. Compaction jobs are created from these queues on demand, as compaction
-                workers report spare capacity, and are assigned to workers, prioritizing lower levels.
-                Job ownership is granted for a limited time (a lease) and is protected with fencing tokens.
-            </p>
-            <p class="text-body-secondary">
-                This page summarizes the state of the entire cluster. Per-tenant details &mdash; the
-                individual jobs and the planner queues &mdash; are on the tenant pages, reachable from
-                the tenant index below.
-            </p>
-            <details class="text-body-secondary mb-3">
-                <summary>How to read this page</summary>
-                <ul class="mt-2">
-                    <li>
-                        <strong>Unassigned</strong> jobs wait in the scheduler queue for a worker.
-                        <strong>In progress</strong> jobs are owned by a worker that renews its lease with
-                        every status update (typically every few seconds).
-                    </li>
-                    <li>
-                        If a lease expires (<strong>lease expired</strong>), the worker is assumed to have
-                        abandoned the job: the job is reassigned to the next worker that asks for one, and
-                        its reassignment (failure) counter is incremented. Workers do not report failures
-                        explicitly &mdash; an expired lease is the only failure signal.
-                    </li>
-                    <li>
-                        Jobs reassigned more than the failure threshold are <strong>failed</strong>: they are
-                        excluded from assignment and evicted from the schedule only when the queue exceeds
-                        its size limit.
-                    </li>
-                    <li>
-                        Worker attribution is observed by the raft leader when it assigns jobs and processes
-                        status updates; it is not replicated. After a leader change, the worker of a job is
-                        unknown until the worker renews the lease. Timestamps derived from lease deadlines
-                        refer to the leader clock.
-                    </li>
-                    <li>
-                        The counters on this page always cover the entire schedule. The listings are
-                        bounded: the tenant index and the attention list only show the top entries of
-                        their order.
-                    </li>
-                </ul>
-            </details>
-        </div>
-
-        <div class="row gy-4">
-            <h2>Scheduler</h2>
+        <div class="row gy-4 mt-0">
+            <h2>
+                Scheduler
+                {{ template "compaction-info" "Blocks flushed by the segment writers are queued for compaction per tenant, shard, and compaction level. Compaction jobs are created from these queues on demand, as compaction workers report spare capacity, and are assigned to workers, prioritizing lower levels. Job ownership is granted for a limited time (a lease) and is protected with fencing tokens." }}
+            </h2>
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
