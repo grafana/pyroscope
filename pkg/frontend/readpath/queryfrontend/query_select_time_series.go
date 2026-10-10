@@ -3,6 +3,7 @@ package queryfrontend
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"connectrpc.com/connect"
@@ -40,9 +41,9 @@ func (q *QueryFrontend) SelectSeries(
 
 	// Sub-millisecond step values truncate to 0 in the backend's millisecond
 	// arithmetic and would cause an unbounded loop in RangeSeries; reject
-	// anything below 1ms.
-	if c.Msg.Step < 0.001 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be >= 1ms"))
+	// anything below 1ms, and non-finite values before duration conversion.
+	if math.IsNaN(c.Msg.Step) || math.IsInf(c.Msg.Step, 0) || c.Msg.Step < 0.001 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("step must be >= 1ms and finite"))
 	}
 
 	stepMs := time.Duration(c.Msg.Step * float64(time.Second)).Milliseconds()
