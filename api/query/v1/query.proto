@@ -43,6 +43,9 @@ message InvokeOptions {
   // be listed in the request explicitly.
   bool sanitize_on_merge = 1;
   bool collect_diagnostics = 2;
+  // Run final report processing after this invocation completes. Set only for
+  // the root invocation; child invocations must clear this flag.
+  bool finalize = 3;
 }
 
 message InvokeRequest {
@@ -89,6 +92,7 @@ message Query {
   HeatmapQuery heatmap = 8;
   TimeSeriesQuery time_series_compact = 9;
   ProfilePresenceQuery profile_presence = 10;
+  TimeSeriesAnalysisQuery time_series_analysis = 11;
   // function_details
   // call_graph
   // top_table
@@ -106,6 +110,7 @@ enum QueryType {
   QUERY_HEATMAP = 7;
   QUERY_TIME_SERIES_COMPACT = 8;
   QUERY_PROFILE_PRESENCE = 9;
+  QUERY_TIME_SERIES_ANALYSIS = 10;
 }
 
 message InvokeResponse {
@@ -166,6 +171,7 @@ message Report {
   HeatmapReport heatmap = 8;
   TimeSeriesCompactReport time_series_compact = 9;
   ProfilePresenceReport profile_presence = 10;
+  TimeSeriesAnalysisReport time_series_analysis = 11;
 }
 
 enum ReportType {
@@ -179,6 +185,7 @@ enum ReportType {
   REPORT_HEATMAP = 7;
   REPORT_TIME_SERIES_COMPACT = 8;
   REPORT_PROFILE_PRESENCE = 9;
+  REPORT_TIME_SERIES_ANALYSIS = 10;
 }
 
 message LabelNamesQuery {}
@@ -216,6 +223,38 @@ message TimeSeriesQuery {
 message TimeSeriesReport {
   TimeSeriesQuery query = 1;
   repeated types.v1.Series time_series = 2;
+}
+
+message TimeSeriesAnalysisConfig {
+  // Number of preceding observed points used to calculate the baseline.
+  uint32 baseline_window = 1;
+  // Number of subsequent observed points used to classify an event.
+  uint32 confirmation_window = 2;
+  // Number of elevated points required for an event to be sustained.
+  uint32 minimum_sustained_points = 3;
+  // Minimum absolute fractional deviation from the baseline.
+  double minimum_relative_change = 4;
+  // Minimum robust score, based on median absolute deviation.
+  double score_threshold = 5;
+  // Fraction of minimum_relative_change used to decide recovery.
+  double recovery_threshold_ratio = 6;
+  // Maximum normalized range for a series to be considered flat.
+  double flatness_threshold = 7;
+}
+
+message TimeSeriesAnalysisQuery {
+  double step = 1;
+  repeated string group_by = 2;
+  int64 limit = 3;
+  TimeSeriesAnalysisConfig config = 4;
+}
+
+message TimeSeriesAnalysisReport {
+  TimeSeriesAnalysisQuery query = 1;
+  // Intermediate series retained so parent query-plan nodes can merge and
+  // analyze the complete series.
+  repeated types.v1.Series time_series = 2;
+  repeated querier.v1.TimeSeriesAnomaly events = 3;
 }
 
 message TreeQuery {

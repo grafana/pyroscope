@@ -74,8 +74,8 @@ service QuerierService {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
 
-  // (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
-  // profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
+  // (Experimental) QueryAnomalies returns stacktrace anomalies and detected
+  // time-series changes for matching profiles, according to anomaly_types.
   rpc QueryAnomalies(QueryAnomaliesRequest) returns (QueryAnomaliesResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
@@ -378,6 +378,7 @@ message QueryImpact {
 enum AnomalyType {
   ANOMALY_TYPE_UNSPECIFIED = 0;
   ANOMALY_TYPE_STACKTRACE = 1;
+  ANOMALY_TYPE_TIME_SERIES = 2;
 }
 
 message QueryAnomaliesRequest {
@@ -390,15 +391,19 @@ message QueryAnomaliesRequest {
   int64 start = 3 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
   // Milliseconds since epoch.
   int64 end = 4 [(gnostic.openapi.v3.property).example = {yaml: "1676289600000"}];
-  // Which anomaly sources to consult. Only ANOMALY_TYPE_STACKTRACE is handled today; any
-  // other value returns an unimplemented error.
+  // Which anomaly sources to consult.
   repeated AnomalyType anomaly_types = 5;
+  // Required when ANOMALY_TYPE_TIME_SERIES is requested; there is no default step.
+  // Ignored when ANOMALY_TYPE_TIME_SERIES is not requested.
+  optional AnomalyTimeSeriesRequest time_series = 6;
 }
 
 message QueryAnomaliesResponse {
   // Profiles flagged by the stacktrace anomaly source and confirmed present for the given
   // label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
   repeated StacktraceAnomaly stacktrace_anomalies = 1;
+  // Detected time-series changes, populated when ANOMALY_TYPE_TIME_SERIES is requested.
+  repeated TimeSeriesAnomaly time_series_anomalies = 2;
 }
 
 message StacktraceAnomaly {
@@ -411,4 +416,39 @@ message StacktraceAnomaly {
   repeated types.v1.LabelPair labels = 3;
   // The anomaly source's score for this profile.
   double score = 4;
+}
+
+message AnomalyTimeSeriesRequest {
+  // Labels used to group matching profiles into series.
+  // If empty, all matching profiles are aggregated into a single series.
+  repeated string group_by = 1 [(gnostic.openapi.v3.property).example = {yaml: "['pod']"}];
+  // Query resolution step width in seconds. Must be at least 0.001 (1 ms).
+  // Unset or zero is invalid; there is no default.
+  double step = 2;
+  // Limit the result to anomalies from the top N series by strongest score.
+  // If unset, zero, or negative, no limit is applied.
+  optional int64 limit = 3;
+}
+
+enum TimeSeriesAnomalyType {
+  TIME_SERIES_ANOMALY_TYPE_UNSPECIFIED = 0;
+  TIME_SERIES_ANOMALY_TYPE_SPIKE = 1;
+  TIME_SERIES_ANOMALY_TYPE_DROP = 2;
+  TIME_SERIES_ANOMALY_TYPE_INCREASE = 3;
+  TIME_SERIES_ANOMALY_TYPE_DECREASE = 4;
+}
+
+message TimeSeriesAnomaly {
+  TimeSeriesAnomalyType type = 1;
+  repeated types.v1.LabelPair labels = 2;
+  // Milliseconds since epoch.
+  int64 timestamp_start = 3;
+  // Milliseconds since epoch.
+  int64 timestamp_end = 4;
+  // Milliseconds since epoch.
+  int64 timestamp_peak = 5;
+  double baseline = 6;
+  double peak_value = 7;
+  double relative_change = 8;
+  double score = 9;
 }

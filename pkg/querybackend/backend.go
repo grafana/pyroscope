@@ -129,6 +129,18 @@ func (q *QueryBackend) Invoke(
 		return nil, err
 	}
 
+	// Only the root invocation has the complete result. Intermediate nodes
+	// must retain their series without running detection or limiting events.
+	if req.GetOptions().GetFinalize() {
+		for _, report := range resp.Reports {
+			if report.TimeSeriesAnalysis != nil {
+				if err := finalizeTimeSeriesAnalysis(report.TimeSeriesAnalysis); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
 	// For MERGE nodes, unconditionally expose the summed BytesFetched so the
 	// query-frontend counter is correct even when diagnostics are not collected
 	// (the common production case).  For READ nodes, BlockReader already set
@@ -180,6 +192,9 @@ func (q *QueryBackend) merge(
 	for i, child := range children {
 		idx := i
 		req := request.CloneVT()
+		if req.Options != nil {
+			req.Options.Finalize = false
+		}
 		req.QueryPlan = &queryv1.QueryPlan{
 			Root: child,
 		}
