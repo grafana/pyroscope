@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	promtestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -873,6 +874,116 @@ func TestValidateProfile(t *testing.T) {
 			if tc.assert != nil {
 				tc.assert(t, tc.profile)
 			}
+		})
+	}
+}
+
+func TestValidateProfile_InvalidUTF8(t *testing.T) {
+	now := model.TimeFromUnixNano(1_676_635_994_000_000_000)
+	newProfile := func(functionName, mappingFile, labelValue string) *googlev1.Profile {
+		return &googlev1.Profile{
+			StringTable: []string{"", "cpu", "nanoseconds", "main", "main.go", functionName, mappingFile, "k", labelValue},
+			SampleType:  []*googlev1.ValueType{{Type: 1, Unit: 2}},
+			Mapping:     []*googlev1.Mapping{{Id: 1, Filename: 6}},
+			Function: []*googlev1.Function{
+				{Id: 1, Name: 3, Filename: 4},
+				{Id: 2, Name: 5, Filename: 4},
+			},
+			Location: []*googlev1.Location{
+				{Id: 1, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 1}}},
+				{Id: 2, MappingId: 1, Line: []*googlev1.Line{{FunctionId: 2}}},
+			},
+			Sample: []*googlev1.Sample{
+				{LocationId: []uint64{2, 1}, Value: []int64{1}},
+				{LocationId: []uint64{1}, Value: []int64{2}, Label: []*googlev1.Label{{Key: 7, Str: 8}}},
+			},
+		}
+	}
+	frameNames := func(p *googlev1.Profile, s *googlev1.Sample) []string {
+		var names []string
+		for _, id := range s.LocationId {
+			for _, loc := range p.Location {
+				if loc.Id != id {
+					continue
+				}
+				for _, fn := range p.Function {
+					if fn.Id == loc.Line[0].FunctionId {
+						names = append(names, p.StringTable[fn.Name])
+					}
+				}
+			}
+		}
+		return names
+	}
+
+	for _, tc := range []struct {
+		name             string
+		profile          *googlev1.Profile
+		mode             InvalidUTF8Mode
+		expectedErr      bool
+		expectedProfiles float64
+		expectedSamples  float64
+		assert           func(t *testing.T, p *googlev1.Profile)
+	}{
+		{
+			name:        "disabled rejects",
+			profile:     newProfile("bad\xff", "libc.so", "v"),
+			mode:        InvalidUTF8Disabled,
+			expectedErr: true,
+		},
+		{
+			name:             "replace stacktrace with invalid function name",
+			profile:          newProfile("bad\xff", "libc.so", "v\xff"),
+			mode:             InvalidUTF8ReplaceStacktrace,
+			expectedProfiles: 1,
+			expectedSamples:  1,
+			assert: func(t *testing.T, p *googlev1.Profile) {
+				require.Equal(t, []string{"utf8_invalid"}, frameNames(p, p.Sample[0]))
+				require.Equal(t, []string{"main"}, frameNames(p, p.Sample[1]))
+				require.Equal(t, "utf8_invalid", p.StringTable[p.Sample[1].Label[0].Str])
+			},
+		},
+		{
+			name:             "replace stacktrace with invalid mapping file",
+			profile:          newProfile("foo", "libc\xff.so", "v"),
+			mode:             InvalidUTF8ReplaceStacktrace,
+			expectedProfiles: 1,
+			expectedSamples:  2,
+			assert: func(t *testing.T, p *googlev1.Profile) {
+				require.Equal(t, []string{"utf8_invalid"}, frameNames(p, p.Sample[0]))
+				require.Equal(t, []string{"utf8_invalid"}, frameNames(p, p.Sample[1]))
+				require.Equal(t, p.Sample[0].LocationId, p.Sample[1].LocationId)
+				require.Len(t, p.Location, 3)
+			},
+		},
+		{
+			name:             "replace stacktrace with only invalid label",
+			profile:          newProfile("foo", "libc.so", "v\xff"),
+			mode:             InvalidUTF8ReplaceStacktrace,
+			expectedProfiles: 1,
+			assert: func(t *testing.T, p *googlev1.Profile) {
+				require.Equal(t, []string{"foo", "main"}, frameNames(p, p.Sample[0]))
+				require.Equal(t, []string{"main"}, frameNames(p, p.Sample[1]))
+				require.Equal(t, "utf8_invalid", p.StringTable[p.Sample[1].Label[0].Str])
+				require.Len(t, p.Location, 2)
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			limits := MockLimits{InvalidUTF8StringsValue: tc.mode}
+			profilesBefore := promtestutil.ToFloat64(sanitizedInvalidUTF8Profiles)
+			samplesBefore := promtestutil.ToFloat64(sanitizedInvalidUTF8Samples)
+			validated, err := ValidateProfile(limits, "foo", pprof.RawFromProto(tc.profile), 0, phlaremodel.LabelsFromStrings("foo", "bar"), now)
+			require.Equal(t, int(tc.expectedSamples), validated.SanitizedInvalidUTF8Samples)
+			require.Equal(t, tc.expectedProfiles, promtestutil.ToFloat64(sanitizedInvalidUTF8Profiles)-profilesBefore)
+			require.Equal(t, tc.expectedSamples, promtestutil.ToFloat64(sanitizedInvalidUTF8Samples)-samplesBefore)
+			if tc.expectedErr {
+				require.Error(t, err)
+				require.Equal(t, MalformedProfile, ReasonOf(err))
+				return
+			}
+			require.NoError(t, err)
+			tc.assert(t, tc.profile)
 		})
 	}
 }
