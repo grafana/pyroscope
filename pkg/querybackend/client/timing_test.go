@@ -86,7 +86,7 @@ func TestClient_NestedBackoffIsNotDoubleCounted(t *testing.T) {
 			leafStatsCh <- resp.GetDiagnostics().GetExecutionNode().GetStats().CloneVT()
 		}
 		return resp, err
-	}), nil)
+	}), nil, nil, nil)
 	require.NoError(t, err)
 	client := newTestClient(t, root)
 	start := time.Now()

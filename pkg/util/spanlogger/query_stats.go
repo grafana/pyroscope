@@ -9,6 +9,8 @@ import (
 // read by LogSpanParametersWrapper after the call returns, so that bytes
 // fetched can be included in the query log line.
 type QueryStats struct {
+	// ObjectStorageBytes is logical query cost, not physical storage traffic.
+	// Result-cache hits reuse the original execution's cost.
 	ObjectStorageBytes uint64
 	MetastoreBytes     uint64
 	// EstimatedBytes is the pre-execution metadata size estimate (weight.Total())

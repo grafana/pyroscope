@@ -7,6 +7,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -59,7 +60,7 @@ func TestQueryBackend_ReadProcessingIncludesFinalization(t *testing.T) {
 						}}},
 					}, nil
 				}}
-				q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler)
+				q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler, nil, nil)
 				require.NoError(t, err)
 				resp, err := q.Invoke(context.Background(), &queryv1.InvokeRequest{
 					QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ}},
@@ -77,6 +78,35 @@ func TestQueryBackend_ReadProcessingIncludesFinalization(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestQueryBackend_EmptyQueryPlan(t *testing.T) {
+	// The handler must never be called: there is nothing to execute.
+	handler := &testQueryHandler{invoke: func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+		t.Error("unexpected execution with an empty query plan")
+		return nil, nil
+	}}
+	q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler, nil, nil)
+	require.NoError(t, err)
+
+	t.Run("metadata query without blocks returns an empty response", func(t *testing.T) {
+		req := &queryv1.InvokeRequest{
+			Query: []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_LABEL_NAMES, LabelNames: &queryv1.LabelNamesQuery{}}},
+		}
+		resp, err := q.Invoke(context.Background(), req)
+		require.NoError(t, err)
+		require.Empty(t, resp.Reports)
+		require.NotNil(t, resp.Diagnostics.ExecutionNode.Stats)
+	})
+
+	t.Run("other queries without a plan are rejected", func(t *testing.T) {
+		req := &queryv1.InvokeRequest{
+			Query: []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_TREE}},
+		}
+		_, err := q.Invoke(context.Background(), req)
+		require.Error(t, err)
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	})
 }
 
 func TestQueryBackend_NoRetrySignal(t *testing.T) {
@@ -133,7 +163,7 @@ func TestQueryBackend_NoRetrySignal(t *testing.T) {
 			if tt.merge {
 				backendClient, blockReader = handler, nil
 			}
-			q, err := New(Config{}, log.NewNopLogger(), nil, backendClient, blockReader)
+			q, err := New(Config{}, log.NewNopLogger(), nil, backendClient, blockReader, nil, nil)
 			require.NoError(t, err)
 
 			stream := &testServerStream{}
@@ -162,7 +192,7 @@ func TestQueryBackend_NoRetrySignal_SiblingErrorWins(t *testing.T) {
 			}
 		},
 	}
-	q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil)
+	q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil, nil, nil)
 	require.NoError(t, err)
 
 	stream := &testServerStream{}
@@ -223,7 +253,7 @@ func TestQueryBackend_MergeCriticalPathStats(t *testing.T) {
 					ExecutionNode: &queryv1.ExecutionNode{Stats: stats},
 				}}, nil
 			}}
-			q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil)
+			q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil, nil, nil)
 			require.NoError(t, err)
 			go func() {
 				<-started
