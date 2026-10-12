@@ -75,33 +75,33 @@ func Test_openParquetFile(t *testing.T) {
 	}
 
 	t.Run("withFooterSizeSmallerThanEstimate", func(t *testing.T) {
-		pf, err := openParquetFile(bucket, path, 0, int64(buf.Len()), actualFooterSize*2, opts...)
+		pf, err := openParquetFile(ctx, bucket, path, 0, int64(buf.Len()), actualFooterSize*2, opts...)
 		require.NoError(t, err)
 
 		validateColumnIndex(t, pf.File, count)
 	})
 
 	t.Run("withFooterSizeExactEstimate", func(t *testing.T) {
-		pf, err := openParquetFile(bucket, path, 0, int64(buf.Len()), actualFooterSize, opts...)
+		pf, err := openParquetFile(ctx, bucket, path, 0, int64(buf.Len()), actualFooterSize, opts...)
 		require.NoError(t, err)
 
 		validateColumnIndex(t, pf.File, count)
 	})
 	t.Run("withFooterSizeSmallerEstimate", func(t *testing.T) {
-		pf, err := openParquetFile(bucket, path, 0, int64(buf.Len()), 200, opts...)
+		pf, err := openParquetFile(ctx, bucket, path, 0, int64(buf.Len()), 200, opts...)
 		require.NoError(t, err)
 
 		validateColumnIndex(t, pf.File, count)
 	})
 	t.Run("withFooterSizeVerySmall", func(t *testing.T) {
-		pf, err := openParquetFile(bucket, path, 0, int64(buf.Len()), 1, opts...)
+		pf, err := openParquetFile(ctx, bucket, path, 0, int64(buf.Len()), 1, opts...)
 		require.NoError(t, err)
 
 		validateColumnIndex(t, pf.File, count)
 	})
 
 	t.Run("withOffsetAndFooterSmallerThanEstimate", func(t *testing.T) {
-		pf, err := openParquetFile(bucket, pathOffset, 16, int64(buf.Len()), actualFooterSize*2, opts...)
+		pf, err := openParquetFile(ctx, bucket, pathOffset, 16, int64(buf.Len()), actualFooterSize*2, opts...)
 		require.NoError(t, err)
 		validateColumnIndex(t, pf.File, count)
 	})

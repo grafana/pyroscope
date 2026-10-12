@@ -100,6 +100,7 @@ func (b *blockContext) execute() error {
 	var span *tracing.Span
 	span, b.ctx = tracing.StartSpanFromContext(b.ctx, "blockContext.execute")
 	defer span.Finish()
+	span.SetTag("block_id", b.obj.Metadata().Id)
 
 	if idxs := b.datasetIndices(); len(idxs) > 0 {
 		if err := b.lookupDatasets(idxs); err != nil {
@@ -273,7 +274,10 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 		return err
 	}
 
-	if err = q.ds.Open(q.ctx, q.sections()...); err != nil {
+	openSpan, openCtx := tracing.StartSpanFromContext(q.ctx, "queryContext.openDataset")
+	err = q.ds.Open(openCtx, q.sections()...)
+	openSpan.Finish()
+	if err != nil {
 		if q.obj.IsNotExists(err) {
 			level.Warn(q.log).Log("msg", "object not found", "err", err)
 			return nil
@@ -290,6 +294,8 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 	}
 	if r != nil {
 		r.ReportType = QueryReportType(query.QueryType)
+		mergeSpan, _ := tracing.StartSpanFromContext(q.ctx, "queryContext.aggregateReport")
+		defer mergeSpan.Finish()
 		return q.agg.aggregateReport(r)
 	}
 
