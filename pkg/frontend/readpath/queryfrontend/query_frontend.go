@@ -93,18 +93,17 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 				Namespace: "pyroscope",
 				Subsystem: "query_frontend",
 				Name:      "fetched_bytes_total",
-				Help:      "Total bytes fetched per tenant per source (object_storage, metastore).",
+				Help:      "Total query bytes per tenant per source: object_storage is logical execution cost (cache hits reuse the original cost), not physical traffic; metastore is bytes fetched.",
 			},
 			[]string{"tenant", "kind"},
 		),
 		// estimationAccuracyRatio records the ratio of the pre-execution
-		// metadata size estimate (weight.Total()) to the actual object-storage
-		// bytes fetched per query.  A value of 1.0 means the estimate matched
-		// exactly; values below 1.0 mean the query fetched less than estimated
-		// (the common case, since the weight is an upper-bound derived from
-		// section offsets).  Format1 index-lookup blocks have unknown
-		// profile/symbol sizes pre-execution, so queries that hit those blocks
-		// will tend to produce ratios below 1.0.
+		// metadata size estimate (weight.Total()) to logical object-storage query
+		// cost. Cache hits reuse the original execution cost, not cache-read
+		// traffic. A value of 1.0 means the estimate matched exactly; values
+		// above 1.0 mean the estimate exceeded the logical cost. Format1
+		// index-lookup blocks have unknown profile/symbol sizes pre-execution,
+		// so queries that hit those blocks may produce ratios below 1.0.
 		// Both classic explicit buckets and native-histogram parameters are set
 		// so that scrapers that support native histograms get higher resolution
 		// automatically.
@@ -112,7 +111,7 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			Namespace:                       "pyroscope",
 			Subsystem:                       "query_frontend",
 			Name:                            "estimation_accuracy_ratio",
-			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = over-estimated; >1.0 = under-estimated.",
+			Help:                            "Ratio of the pre-execution metadata size estimate to logical object-storage query cost (estimate / cost), including the original execution cost on cache hits. 1.0 = perfect estimate; <1.0 = over-estimated; >1.0 = under-estimated.",
 			Buckets:                         []float64{0.1, 0.25, 0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2, 5, 10},
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
@@ -305,17 +304,18 @@ func (q *QueryFrontend) doQuery(
 		return nil, err
 	}
 
-	// Emit per-tenant bytes metrics. Object storage bytes come from the
-	// query-backend response; metastore bytes were measured above.
+	// Emit per-tenant query bytes. Object storage bytes represent logical query
+	// cost from the backend (the original execution cost for cache hits), not
+	// physical storage traffic. Metastore bytes were measured above.
 	// Use dskit's JoinTenantIDs so the label matches the standard |-separated
 	// org ID format used elsewhere in the Grafana stack.
 	tenantLabel := tenant.JoinTenantIDs(tenants)
 	objectBytes := resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(objectBytes))
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
-	// Record estimation accuracy: ratio of pre-execution weight to actual bytes
-	// fetched. Only observed when the backend fetched bytes to avoid division
-	// by zero (e.g. empty result sets).
+	// Record estimation accuracy: ratio of pre-execution weight to logical
+	// object-storage query cost. Skip zero-cost results to avoid division by
+	// zero (e.g. empty result sets).
 	if objectBytes > 0 {
 		q.metrics.estimationAccuracyRatio.Observe(float64(weight.Total()) / float64(objectBytes))
 	}

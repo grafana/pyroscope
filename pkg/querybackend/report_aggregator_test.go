@@ -181,7 +181,7 @@ func TestReportAggregator_AggregateResponse(t *testing.T) {
 		},
 	}
 
-	err := ra.aggregateResponse(resp, nil)
+	err := ra.aggregateResponse(resp)
 	require.NoError(t, err)
 
 	assert.Len(t, ra.aggregators, 1)

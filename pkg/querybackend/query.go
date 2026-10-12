@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -92,6 +93,8 @@ type blockContext struct {
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
 	includeStripped bool
+	// Shared by dataset query goroutines; nil when cache eligibility is irrelevant.
+	incomplete *atomic.Bool
 }
 
 func (b *blockContext) execute() error {
@@ -104,6 +107,9 @@ func (b *blockContext) execute() error {
 	if idxs := b.datasetIndices(); len(idxs) > 0 {
 		if err := b.lookupDatasets(idxs); err != nil {
 			if b.obj.IsNotExists(err) {
+				if b.incomplete != nil {
+					b.incomplete.Store(true)
+				}
 				level.Warn(b.log).Log("msg", "object not found", "err", err)
 				return nil
 			}
@@ -275,6 +281,9 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 
 	if err = q.ds.Open(q.ctx, q.sections()...); err != nil {
 		if q.obj.IsNotExists(err) {
+			if q.incomplete != nil {
+				q.incomplete.Store(true)
+			}
 			level.Warn(q.log).Log("msg", "object not found", "err", err)
 			return nil
 		}
