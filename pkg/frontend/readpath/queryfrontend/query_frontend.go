@@ -112,7 +112,7 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			Namespace:                       "pyroscope",
 			Subsystem:                       "query_frontend",
 			Name:                            "estimation_accuracy_ratio",
-			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = over-estimated; >1.0 = under-estimated.",
+			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = under-estimated; >1.0 = over-estimated.",
 			Buckets:                         []float64{0.1, 0.25, 0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2, 5, 10},
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
