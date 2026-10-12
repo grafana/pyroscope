@@ -118,6 +118,18 @@ message InvokeResponse {
   Diagnostics diagnostics = 2;
 }
 
+message ResultCacheKey {
+  QueryRequest query = 1;
+  repeated string block_ids = 2;
+}
+
+message ResultCacheEntry {
+  ResultCacheKey key = 1;
+  repeated Report reports = 2;
+  // Logical object-storage cost of the original block execution.
+  uint64 bytes_fetched = 3;
+}
+
 // Diagnostic messages, events, statistics, analytics, etc.
 message Diagnostics {
   QueryPlan query_plan = 1;
@@ -140,10 +152,12 @@ message ExecutionStats {
   int64 blocks_read = 1;
   int64 datasets_processed = 2;
   repeated BlockExecution block_executions = 3;
-  // bytes_fetched is the total number of bytes requested from object storage
-  // during this invocation. It counts only the bytes from this single,
-  // successful Invoke call: retried or hedged calls that did not produce a
-  // response are not included, so the value is deterministic across retries.
+  // bytes_fetched represents logical query cost in object-storage bytes, not
+  // physical storage traffic during this invocation. Uncached results use the
+  // bytes fetched to execute the query; result-cache hits reuse the original
+  // execution's cost stored with the cached result. Cache-object reads and
+  // losing speculative executions do not add to this cost. Only results from
+  // the successful Invoke call contribute; discarded retries and hedges do not.
   uint64 bytes_fetched = 4;
   // processing_duration_ns is the critical-path time (in nanoseconds) spent
   // executing successful invocations on query-backend nodes, including local

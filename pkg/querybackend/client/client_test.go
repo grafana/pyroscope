@@ -113,7 +113,7 @@ func TestClient_DoesNotRetryOversizedResponse(t *testing.T) {
 	const maxSendMessageSize = 1024
 
 	reader := oversizedReader(2 * maxSendMessageSize)
-	backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+	backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader, nil, nil)
 	require.NoError(t, err)
 	client := newTestClient(t, backend, grpc.MaxSendMsgSize(maxSendMessageSize))
 
@@ -131,10 +131,10 @@ func TestClient_DoesNotRetryOversizedChildResponse(t *testing.T) {
 	const maxSendMessageSize = 1024
 
 	reader := oversizedReader(2 * maxSendMessageSize)
-	leafBackend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+	leafBackend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader, nil, nil)
 	require.NoError(t, err)
 	leafClient := newTestClient(t, leafBackend, grpc.MaxSendMsgSize(maxSendMessageSize))
-	rootBackend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, leafClient, nil)
+	rootBackend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, leafClient, nil, nil, nil)
 	require.NoError(t, err)
 	client := newTestClient(t, rootBackend)
 
@@ -174,7 +174,7 @@ func TestClient_RetriesLoadShedding(t *testing.T) {
 				}, nil
 			},
 		}
-		backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+		backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader, nil, nil)
 		require.NoError(t, err)
 		client := newTestClient(t, backend)
 
@@ -208,7 +208,7 @@ func TestClient_RetriesRetryableStatus(t *testing.T) {
 					return &queryv1.InvokeResponse{}, nil
 				},
 			}
-			backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+			backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader, nil, nil)
 			require.NoError(t, err)
 			client := newTestClient(t, backend)
 
@@ -276,7 +276,7 @@ func Test_Concurrency(t *testing.T) {
 		b, err := querybackend.New(querybackend.Config{
 			Address:          backendAddress,
 			GRPCClientConfig: grpcClientCfg,
-		}, test.NewTestingLogger(t), nil, cl, QueryHandler{})
+		}, test.NewTestingLogger(t), nil, cl, QueryHandler{}, nil, nil)
 		require.NoError(t, err)
 
 		grpcOptions := []grpc.ServerOption{
