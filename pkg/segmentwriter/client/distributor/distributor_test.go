@@ -65,6 +65,14 @@ func Test_Distribution_AvailableShards(t *testing.T) {
 			},
 		},
 		{
+			description: "one shard left in each parent",
+			Policy: placement.Policy{
+				TenantShards:  2,
+				DatasetShards: 1,
+				PickShard:     zeroShard,
+			},
+		},
+		{
 			description: "insufficient",
 			Policy: placement.Policy{
 				TenantShards:  1 << 10,
