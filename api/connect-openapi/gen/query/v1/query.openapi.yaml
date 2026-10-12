@@ -663,10 +663,12 @@ components:
           title: bytes_fetched
           format: int64
           description: |-
-            bytes_fetched is the total number of bytes requested from object storage
-             during this invocation. It counts only the bytes from this single,
-             successful Invoke call: retried or hedged calls that did not produce a
-             response are not included, so the value is deterministic across retries.
+            bytes_fetched represents logical query cost in object-storage bytes, not
+             physical storage traffic during this invocation. Uncached results use the
+             bytes fetched to execute the query; result-cache hits reuse the original
+             execution's cost stored with the cached result. Cache-object reads and
+             losing speculative executions do not add to this cost. Only results from
+             the successful Invoke call contribute; discarded retries and hedges do not.
       title: ExecutionStats
       additionalProperties: false
       description: ExecutionStats captures statistics for READ node execution.

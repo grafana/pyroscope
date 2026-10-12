@@ -376,8 +376,8 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		"query-scheduler.service-discovery-mode": schedulerdiscovery.ModeRing,
 	}
 
-	// Keep primary and dedicated async-query storage HTTP defaults consistent.
-	for _, prefix := range []string{"storage.", "query-frontend.async-queries.storage."} {
+	// Keep primary, dedicated async-query, and result-cache storage HTTP defaults consistent.
+	for _, prefix := range []string{"storage.", "query-frontend.async-queries.storage.", "query-backend.result-cache.storage."} {
 		for name, value := range map[string]string{
 			"s3.http.idle-conn-timeout":         "10m",
 			"s3.max-idle-connections-per-host":  "1000",
@@ -442,6 +442,11 @@ func (c *Config) Validate() error {
 
 	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
 		return err
+	}
+	if c.QueryBackend.ResultCache.Storage.Backend != objstoreclient.None {
+		if err := c.QueryBackend.ResultCache.Storage.Validate(util.Logger); err != nil {
+			return err
+		}
 	}
 
 	if err := c.Frontend.AsyncQueries.Storage.Validate(util.Logger); err != nil {

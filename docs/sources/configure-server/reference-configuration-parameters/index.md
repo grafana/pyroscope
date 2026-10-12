@@ -3414,6 +3414,16 @@ distributor_usage_groups:
 # CLI flag: -validation.reject-newer-than
 [reject_newer_than: <duration> | default = 10m]
 
+# (experimental) Enable query result caching. This sets the default for tenant
+# overrides.
+# CLI flag: -query-backend.result-cache.enabled
+[result_cache_enabled: <boolean> | default = false]
+
+# (experimental) Result-cache invalidation generation. This sets the default for
+# tenant overrides.
+# CLI flag: -query-backend.result-cache.generation
+[result_cache_generation: <int> | default = 1]
+
 # (advanced) If true, the write path doesn't wait for the segment-writer to
 # durably store and index the profile before responding. This reduces ingestion
 # latency and allows a larger -segment-writer.segment-duration, but removes the
