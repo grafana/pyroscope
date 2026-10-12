@@ -23,6 +23,18 @@ The distributor data cleanup includes the following transformation:
 
 * Ensure the profile has a timestamp set, if not it will default to the time the distributor received the profile.
 * The distributor will remove samples that are having values of `0` and will sum samples that share the same stacktrace.
+* Reject profiles whose symbol strings aren't valid UTF-8. The distributor checks UTF-8 before truncating long symbol values, so invalid bytes in a truncated prefix still cause rejection.
+
+## Inflight bytes limit
+
+When downstream write path components are slow or unavailable, distributors can hold large amounts of uncompressed profile data in memory.
+Set `-distributor.max-inflight-bytes`, or the YAML key `distributor.max_inflight_bytes`, to cap the total uncompressed profile bytes one distributor instance may hold at a time.
+
+The limit is disabled when the value is `0`, which is the default.
+When a push would exceed the cap, the distributor rejects the request with HTTP 503 until in-flight bytes drop below the limit.
+Use the flag on distributor processes when you need backpressure against distributor out-of-memory failures.
+
+For the full parameter description, refer to the [configuration parameters](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters/#distributor) reference.
 
 ## Replication
 
