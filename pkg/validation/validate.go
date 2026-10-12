@@ -486,7 +486,7 @@ func replaceInvalidStacktraces(prof *pprof.Profile, isInvalid func(int64) bool) 
 	}
 	badMappings := make(map[uint64]struct{})
 	for _, m := range prof.Mapping {
-		if isInvalid(m.Filename) || isInvalid(m.BuildId) {
+		if m.Id != 0 && (isInvalid(m.Filename) || isInvalid(m.BuildId)) {
 			badMappings[m.Id] = struct{}{}
 		}
 	}

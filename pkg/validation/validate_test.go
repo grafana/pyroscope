@@ -957,6 +957,24 @@ func TestValidateProfile_InvalidUTF8(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid mapping with zero id does not affect unmapped locations",
+			profile: func() *googlev1.Profile {
+				p := newProfile("foo", "libc\xff.so", "v")
+				p.Mapping[0].Id = 0
+				for _, loc := range p.Location {
+					loc.MappingId = 0
+				}
+				return p
+			}(),
+			mode:             InvalidUTF8ReplaceStacktrace,
+			expectedProfiles: 1,
+			assert: func(t *testing.T, p *googlev1.Profile) {
+				require.Equal(t, []string{"foo", "main"}, frameNames(p, p.Sample[0]))
+				require.Equal(t, []string{"main"}, frameNames(p, p.Sample[1]))
+				require.Len(t, p.Location, 2)
+			},
+		},
+		{
 			name:             "replace stacktrace with only invalid label",
 			profile:          newProfile("foo", "libc.so", "v\xff"),
 			mode:             InvalidUTF8ReplaceStacktrace,
