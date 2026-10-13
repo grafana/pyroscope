@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model/timeseriescompact"
 	parquetquery "github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 )
 
 func init() {
@@ -53,8 +54,15 @@ type timeSeriesQueryResult struct {
 	exemplarCount int
 }
 
+func hasStackSampleFilter(selector *typesv1.StackTraceSelector) bool {
+	filter := selector.GetFrameFilter()
+	return (selector.GetGoPgo() == nil && len(selector.GetCallSite()) > 0) ||
+		len(filter.GetIncludeFunctionNames()) > 0 || len(filter.GetExcludeFunctionNames()) > 0 ||
+		len(filter.GetIncludeFunctionNameRegexes()) > 0 || len(filter.GetExcludeFunctionNameRegexes()) > 0
+}
+
 // executeTimeSeriesQuery is shared by both query types to avoid duplication.
-func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType typesv1.ExemplarType) (*timeSeriesQueryResult, error) {
+func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType typesv1.ExemplarType, selector *typesv1.StackTraceSelector) (*timeSeriesQueryResult, error) {
 	includeExemplars, err := validateExemplarType(exemplarType)
 	if err != nil {
 		return nil, err
@@ -66,7 +74,8 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 		attribute.String("exemplars.type", exemplarType.String()),
 	)
 
-	opts := []profileIteratorOption{withFetchPartition(false)}
+	filtered := hasStackSampleFilter(selector)
+	opts := []profileIteratorOption{withFetchPartition(filtered)}
 	if includeExemplars {
 		opts = append(opts, withAllLabels(), withFetchProfileIDs(true))
 	} else {
@@ -82,20 +91,47 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
-	column, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), strings.Split("TotalValue", "."))
-	if err != nil {
-		return nil, err
+	var indices []int
+	var resolver *symdb.Resolver
+	if filtered {
+		var columns schemav1.SampleColumns
+		if err := columns.Resolve(q.ds.Profiles().Schema()); err != nil {
+			return nil, err
+		}
+		indices = []int{columns.StacktraceID.ColumnIndex, columns.Value.ColumnIndex}
+		resolver = symdb.NewResolver(q.ctx, q.ds.Symbols(), symdb.WithResolverStackTraceSelector(selector))
+		defer resolver.Release()
+	} else {
+		column, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), strings.Split("TotalValue", "."))
+		if err != nil {
+			return nil, err
+		}
+		indices = []int{column.ColumnIndex}
 	}
 
 	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
 	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
 
-	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, column.ColumnIndex, annotationKeysColumn.ColumnIndex, annotationValuesColumn.ColumnIndex)
+	indices = append(indices, annotationKeysColumn.ColumnIndex, annotationValuesColumn.ColumnIndex)
+	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, indices...)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
 	builder := timeseries.NewBuilder(groupBy...)
 	for rows.Next() {
 		row := rows.At()
+		var value float64
+		if filtered {
+			total, err := resolver.SelectedValuesParquet(row.Row.Partition, row.Values[0], row.Values[1])
+			if err != nil {
+				return nil, err
+			}
+			if total == 0 {
+				continue
+			}
+			value = float64(total)
+		} else {
+			value = float64(row.Values[0][0].Int64())
+		}
 		annotations := schemav1.Annotations{Keys: make([]string, 0), Values: make([]string, 0)}
 		stripped := row.Row.Labels.Get(phlaremodel.LabelNameSampled) == "true"
 		for _, e := range row.Values {
@@ -114,7 +150,7 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 			row.Row.Fingerprint,
 			row.Row.Labels,
 			int64(row.Row.Timestamp),
-			float64(row.Values[0][0].Int64()),
+			value,
 			annotations,
 			exemplarID,
 		)
@@ -134,7 +170,7 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 }
 
 func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	result, err := executeTimeSeriesQuery(q, query.TimeSeries.GroupBy, query.TimeSeries.ExemplarType)
+	result, err := executeTimeSeriesQuery(q, query.TimeSeries.GroupBy, query.TimeSeries.ExemplarType, query.TimeSeries.StackTraceSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +188,7 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 }
 
 func queryTimeSeriesCompact(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
-	result, err := executeTimeSeriesQuery(q, query.TimeSeriesCompact.GroupBy, query.TimeSeriesCompact.ExemplarType)
+	result, err := executeTimeSeriesQuery(q, query.TimeSeriesCompact.GroupBy, query.TimeSeriesCompact.ExemplarType, query.TimeSeriesCompact.StackTraceSelector)
 	if err != nil {
 		return nil, err
 	}

@@ -285,6 +285,57 @@ func (s *testSuite) Test_QueryTimeSeries() {
 	s.Assert().JSONEq(string(expected), string(actual))
 }
 
+func (s *testSuite) Test_QueryTimeSeriesFrameFilter() {
+	query := func(selector *typesv1.StackTraceSelector) float64 {
+		resp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+			StartTime:     startTime.UnixMilli(),
+			EndTime:       startTime.Add(time.Hour).UnixMilli(),
+			QueryPlan:     s.plan,
+			LabelSelector: "{}",
+			Tenant:        s.tenant,
+			Query: []*queryv1.Query{{
+				QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
+				TimeSeries: &queryv1.TimeSeriesQuery{
+					Step: 30, GroupBy: []string{"service_name"}, StackTraceSelector: selector,
+				},
+			}},
+		})
+		s.Require().NoError(err)
+		var total float64
+		for _, series := range resp.Reports[0].TimeSeries.TimeSeries {
+			for _, point := range series.Points {
+				total += point.Value
+			}
+		}
+		return total
+	}
+
+	baseline := query(nil)
+	include := query(&typesv1.StackTraceSelector{FrameFilter: &typesv1.StackFrameFilter{IncludeFunctionNames: []string{"runtime.main"}}})
+	exclude := query(&typesv1.StackTraceSelector{FrameFilter: &typesv1.StackFrameFilter{ExcludeFunctionNames: []string{"runtime.main"}}})
+	s.Require().Greater(include, float64(0))
+	s.Require().Greater(exclude, float64(0))
+	s.Require().InDelta(baseline, include+exclude, 1)
+	regexInclude := query(&typesv1.StackTraceSelector{FrameFilter: &typesv1.StackFrameFilter{
+		IncludeFunctionNameRegexes: []string{"^runtime\\.main$"},
+	}})
+	regexExclude := query(&typesv1.StackTraceSelector{FrameFilter: &typesv1.StackFrameFilter{
+		ExcludeFunctionNameRegexes: []string{"^runtime\\.main$"},
+	}})
+	s.Require().InDelta(include, regexInclude, 1)
+	s.Require().InDelta(exclude, regexExclude, 1)
+
+	callSite := []*typesv1.Location{{Name: "runtime.main"}}
+	prefix := query(&typesv1.StackTraceSelector{CallSite: callSite})
+	both := query(&typesv1.StackTraceSelector{
+		CallSite:    callSite,
+		FrameFilter: &typesv1.StackFrameFilter{IncludeFunctionNames: []string{"main.main"}},
+	})
+	s.Require().Greater(prefix, float64(0))
+	s.Require().Greater(both, float64(0))
+	s.Require().LessOrEqual(both, prefix)
+}
+
 // When there is only one report we don't run the aggregate method. This check ensures that the timeseries, is still correctly formatted.
 func (s *testSuite) Test_QueryTimeSeriesOneReport() {
 	query := &queryv1.Query{

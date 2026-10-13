@@ -211,6 +211,7 @@ message TimeSeriesQuery {
   repeated string group_by = 2;
   int64 limit = 3;
   types.v1.ExemplarType exemplar_type = 4;
+  optional types.v1.StackTraceSelector stack_trace_selector = 5;
 }
 
 message TimeSeriesReport {

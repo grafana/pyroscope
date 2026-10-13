@@ -55,3 +55,16 @@ func Test_SampleAppender(t *testing.T) {
 		test.assert(t, a)
 	}
 }
+
+func Test_SampleAppender_Filter(t *testing.T) {
+	for _, maxMapSize := range []uint32{1, 16} {
+		a := NewSampleAppenderSize(maxMapSize, 4)
+		a.AppendMany([]uint32{1, 2, 5}, []uint64{10, 20, 30})
+		a.Filter(func(id uint32) bool { return id != 2 })
+		assert.Equal(t, 2, a.Len())
+		assert.Equal(t, schemav1.Samples{
+			StacktraceIDs: []uint32{1, 5},
+			Values:        []uint64{10, 30},
+		}, a.Samples())
+	}
+}

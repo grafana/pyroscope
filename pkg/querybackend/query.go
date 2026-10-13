@@ -302,6 +302,10 @@ func (q *queryContext) sections() []block.Section {
 		for _, s := range queryDependencies[qt.QueryType] {
 			sections[s] = struct{}{}
 		}
+		if (qt.QueryType == queryv1.QueryType_QUERY_TIME_SERIES && hasStackSampleFilter(qt.GetTimeSeries().GetStackTraceSelector())) ||
+			(qt.QueryType == queryv1.QueryType_QUERY_TIME_SERIES_COMPACT && hasStackSampleFilter(qt.GetTimeSeriesCompact().GetStackTraceSelector())) {
+			sections[block.SectionSymbols] = struct{}{}
+		}
 	}
 	unique := make([]block.Section, 0, len(sections))
 	for s := range sections {

@@ -313,6 +313,7 @@ func (m *StackTraceSelector) CloneVT() *StackTraceSelector {
 	}
 	r := new(StackTraceSelector)
 	r.GoPgo = m.GoPgo.CloneVT()
+	r.FrameFilter = m.FrameFilter.CloneVT()
 	if rhs := m.CallSite; rhs != nil {
 		tmpContainer := make([]*Location, len(rhs))
 		for k, v := range rhs {
@@ -328,6 +329,42 @@ func (m *StackTraceSelector) CloneVT() *StackTraceSelector {
 }
 
 func (m *StackTraceSelector) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *StackFrameFilter) CloneVT() *StackFrameFilter {
+	if m == nil {
+		return (*StackFrameFilter)(nil)
+	}
+	r := new(StackFrameFilter)
+	if rhs := m.IncludeFunctionNames; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.IncludeFunctionNames = tmpContainer
+	}
+	if rhs := m.ExcludeFunctionNames; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ExcludeFunctionNames = tmpContainer
+	}
+	if rhs := m.IncludeFunctionNameRegexes; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.IncludeFunctionNameRegexes = tmpContainer
+	}
+	if rhs := m.ExcludeFunctionNameRegexes; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ExcludeFunctionNameRegexes = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *StackFrameFilter) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -933,11 +970,66 @@ func (this *StackTraceSelector) EqualVT(that *StackTraceSelector) bool {
 	if !this.GoPgo.EqualVT(that.GoPgo) {
 		return false
 	}
+	if !this.FrameFilter.EqualVT(that.FrameFilter) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
 func (this *StackTraceSelector) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*StackTraceSelector)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *StackFrameFilter) EqualVT(that *StackFrameFilter) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.IncludeFunctionNames) != len(that.IncludeFunctionNames) {
+		return false
+	}
+	for i, vx := range this.IncludeFunctionNames {
+		vy := that.IncludeFunctionNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.ExcludeFunctionNames) != len(that.ExcludeFunctionNames) {
+		return false
+	}
+	for i, vx := range this.ExcludeFunctionNames {
+		vy := that.ExcludeFunctionNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.IncludeFunctionNameRegexes) != len(that.IncludeFunctionNameRegexes) {
+		return false
+	}
+	for i, vx := range this.IncludeFunctionNameRegexes {
+		vy := that.IncludeFunctionNameRegexes[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.ExcludeFunctionNameRegexes) != len(that.ExcludeFunctionNameRegexes) {
+		return false
+	}
+	for i, vx := range this.ExcludeFunctionNameRegexes {
+		vy := that.ExcludeFunctionNameRegexes[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *StackFrameFilter) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*StackFrameFilter)
 	if !ok {
 		return false
 	}
@@ -1869,6 +1961,16 @@ func (m *StackTraceSelector) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.FrameFilter != nil {
+		size, err := m.FrameFilter.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if m.GoPgo != nil {
 		size, err := m.GoPgo.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1887,6 +1989,75 @@ func (m *StackTraceSelector) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			}
 			i -= size
 			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *StackFrameFilter) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *StackFrameFilter) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *StackFrameFilter) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.ExcludeFunctionNameRegexes) > 0 {
+		for iNdEx := len(m.ExcludeFunctionNameRegexes) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ExcludeFunctionNameRegexes[iNdEx])
+			copy(dAtA[i:], m.ExcludeFunctionNameRegexes[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ExcludeFunctionNameRegexes[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.IncludeFunctionNameRegexes) > 0 {
+		for iNdEx := len(m.IncludeFunctionNameRegexes) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.IncludeFunctionNameRegexes[iNdEx])
+			copy(dAtA[i:], m.IncludeFunctionNameRegexes[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.IncludeFunctionNameRegexes[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.ExcludeFunctionNames) > 0 {
+		for iNdEx := len(m.ExcludeFunctionNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ExcludeFunctionNames[iNdEx])
+			copy(dAtA[i:], m.ExcludeFunctionNames[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ExcludeFunctionNames[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.IncludeFunctionNames) > 0 {
+		for iNdEx := len(m.IncludeFunctionNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.IncludeFunctionNames[iNdEx])
+			copy(dAtA[i:], m.IncludeFunctionNames[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.IncludeFunctionNames[iNdEx])))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -2568,6 +2739,44 @@ func (m *StackTraceSelector) SizeVT() (n int) {
 	if m.GoPgo != nil {
 		l = m.GoPgo.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.FrameFilter != nil {
+		l = m.FrameFilter.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *StackFrameFilter) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.IncludeFunctionNames) > 0 {
+		for _, s := range m.IncludeFunctionNames {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.ExcludeFunctionNames) > 0 {
+		for _, s := range m.ExcludeFunctionNames {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.IncludeFunctionNameRegexes) > 0 {
+		for _, s := range m.IncludeFunctionNameRegexes {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.ExcludeFunctionNameRegexes) > 0 {
+		for _, s := range m.ExcludeFunctionNameRegexes {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4406,6 +4615,221 @@ func (m *StackTraceSelector) UnmarshalVT(dAtA []byte) error {
 			if err := m.GoPgo.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FrameFilter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.FrameFilter == nil {
+				m.FrameFilter = &StackFrameFilter{}
+			}
+			if err := m.FrameFilter.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *StackFrameFilter) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: StackFrameFilter: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: StackFrameFilter: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IncludeFunctionNames", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IncludeFunctionNames = append(m.IncludeFunctionNames, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExcludeFunctionNames", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExcludeFunctionNames = append(m.ExcludeFunctionNames, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IncludeFunctionNameRegexes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IncludeFunctionNameRegexes = append(m.IncludeFunctionNameRegexes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExcludeFunctionNameRegexes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExcludeFunctionNameRegexes = append(m.ExcludeFunctionNameRegexes, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

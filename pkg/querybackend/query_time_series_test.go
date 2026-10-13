@@ -487,9 +487,14 @@ func BenchmarkTimeSeriesQuery(b *testing.B) {
 	benchmarks := []struct {
 		name         string
 		exemplarType typesv1.ExemplarType
+		filter       *typesv1.StackFrameFilter
 	}{
-		{"NoExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE},
-		{"WithExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL},
+		{"NoExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE, nil},
+		{"WithExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL, nil},
+		{"IncludeFrame", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE, &typesv1.StackFrameFilter{IncludeFunctionNames: []string{"runtime.main"}}},
+		{"ExcludeFrame", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE, &typesv1.StackFrameFilter{ExcludeFunctionNames: []string{"runtime.main"}}},
+		{"IncludeRegex", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE, &typesv1.StackFrameFilter{IncludeFunctionNameRegexes: []string{"^runtime\\.main$"}}},
+		{"ExcludeRegex", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE, &typesv1.StackFrameFilter{ExcludeFunctionNameRegexes: []string{"^runtime\\.main$"}}},
 	}
 
 	for _, bm := range benchmarks {
@@ -500,6 +505,9 @@ func BenchmarkTimeSeriesQuery(b *testing.B) {
 				[]string{"service_name"},
 				bm.exemplarType,
 			)
+			if bm.filter != nil {
+				req.Query[0].TimeSeries.StackTraceSelector = &typesv1.StackTraceSelector{FrameFilter: bm.filter}
+			}
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {

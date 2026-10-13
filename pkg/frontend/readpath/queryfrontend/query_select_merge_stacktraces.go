@@ -12,6 +12,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/dot"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -19,6 +20,9 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if err := symdb.ValidateFrameFilter(c.Msg.StackTraceSelector.GetFrameFilter()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	if len(c.Msg.SpanSelector) > 0 && len(c.Msg.TraceIdSelector) > 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("span_selector and trace_id_selector cannot be combined"))
 	}
