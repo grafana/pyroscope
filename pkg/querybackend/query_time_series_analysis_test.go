@@ -3,6 +3,7 @@ package querybackend
 import (
 	"math"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,9 @@ func TestQueryTimeSeriesAnalysis_InvalidStep(t *testing.T) {
 		{"NaN", math.NaN()},
 		{"positive infinity", math.Inf(1)},
 		{"negative infinity", math.Inf(-1)},
+		{"duration overflow", 1e10},
+		{"duration boundary", math.Ldexp(1, 63) / float64(time.Second)},
+		{"maximum float", math.MaxFloat64},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := queryTimeSeriesAnalysis(nil, &queryv1.Query{

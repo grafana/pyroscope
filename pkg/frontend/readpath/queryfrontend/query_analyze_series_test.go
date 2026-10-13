@@ -2,6 +2,8 @@ package queryfrontend
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -19,6 +21,19 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
 )
+
+func TestQueryAnomalies_TimeSeriesOverflowStep(t *testing.T) {
+	for _, step := range []float64{1e10, math.Ldexp(1, 63) / float64(time.Second), math.MaxFloat64} {
+		t.Run(fmt.Sprintf("%g", step), func(t *testing.T) {
+			// Validation must reject the step before accessing dependencies.
+			qf := &QueryFrontend{}
+			_, err := qf.queryTimeSeriesAnomalies(context.Background(), &querierv1.QueryAnomaliesRequest{
+				TimeSeries: &querierv1.AnomalyTimeSeriesRequest{Step: step},
+			})
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+	}
+}
 
 func TestQueryAnomalies_TimeSeriesFinalizesOnQueryBackend(t *testing.T) {
 	limits := mockfrontend.NewMockLimits(t)

@@ -3,7 +3,6 @@ package queryfrontend
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"connectrpc.com/connect"
@@ -20,8 +19,8 @@ func (q *QueryFrontend) queryTimeSeriesAnomalies(ctx context.Context, req *queri
 	if options == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("time_series is required for ANOMALY_TYPE_TIME_SERIES"))
 	}
-	if math.IsNaN(options.Step) || math.IsInf(options.Step, 0) || options.Step < timeseries.MinimumStep.Seconds() {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("step must be >= 1ms and finite"))
+	if err := timeseries.ValidateStep(options.Step); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {

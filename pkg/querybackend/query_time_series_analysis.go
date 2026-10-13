@@ -1,7 +1,6 @@
 package querybackend
 
 import (
-	"math"
 	"sync"
 	"time"
 
@@ -33,8 +32,8 @@ func queryTimeSeriesAnalysis(q *queryContext, query *queryv1.Query) (*queryv1.Re
 	if analysisQuery == nil {
 		return nil, status.Error(codes.InvalidArgument, "time series analysis query is required")
 	}
-	if math.IsNaN(analysisQuery.Step) || math.IsInf(analysisQuery.Step, 0) || analysisQuery.Step < timeseries.MinimumStep.Seconds() {
-		return nil, status.Error(codes.InvalidArgument, "step must be >= 1ms and finite")
+	if err := timeseries.ValidateStep(analysisQuery.Step); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if err := analysisConfig(analysisQuery.Config).WithDefaults().Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
