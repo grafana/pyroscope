@@ -325,6 +325,9 @@ func (e *env) bringUp(t *testing.T, ctx context.Context) {
 	registerActive(e)
 	t.Cleanup(func() {
 		unregisterActive(e)
+		if t.Failed() {
+			e.dumpLogs(t)
+		}
 		if err := e.run(t, context.Background(), "down", "--volumes"); err != nil {
 			t.Logf("cleanup error=%v", err)
 		}
@@ -337,6 +340,18 @@ func (e *env) bringUp(t *testing.T, ctx context.Context) {
 		require.NoError(t, e.run(t, ctx, "pull"))
 	})
 	require.NoError(t, e.run(t, ctx, "up", "--detach"))
+}
+
+// dumpLogs logs the output of every container in the stack, since failures
+// such as "no profiles ingested" are otherwise opaque.
+func (e *env) dumpLogs(t testing.TB) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	out, err := e.newCmd(ctx, "logs", "--no-color", "--timestamps", "--tail", "500").CombinedOutput()
+	if err != nil {
+		t.Logf("[%s] failed to collect container logs: %v", e.repoDir(), err)
+	}
+	t.Logf("[%s] container logs:\n%s", e.repoDir(), out)
 }
 
 // waitReady waits until all regular containers are running and all init

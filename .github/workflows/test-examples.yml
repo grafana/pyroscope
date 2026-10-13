@@ -88,6 +88,11 @@ jobs:
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: 1.26.9
+      # eBPF-based examples depend on the runner's kernel and Docker versions.
+      - name: Show host environment
+        run: |
+          uname -a
+          docker version
       - name: Query profiles (and span profiles) for selected examples
         env:
           PYROSCOPE_TEST_EXAMPLES: ${{ needs.detect.outputs.examples }}
