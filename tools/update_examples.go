@@ -325,7 +325,7 @@ func extractGoVersion(module string) func(tag Tag) *version {
 
 func extractRSVersion(module string) func(tag Tag) *version {
 	return func(tag Tag) *version {
-		re := regexp.MustCompile(`(\S+)-(\d+).(\d+).(\d+)`)
+		re := regexp.MustCompile(`(\S+)[-/](\d+).(\d+).(\d+)`)
 		match := re.FindStringSubmatch(tag.Name)
 		if match != nil {
 			//fmt.Println(len(match), match)
