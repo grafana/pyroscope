@@ -3,6 +3,7 @@ package segmentwriter
 import (
 	"context"
 	"errors"
+	"flag"
 	"io"
 	"strconv"
 	"strings"
@@ -10,13 +11,19 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockobjstore"
 )
@@ -294,4 +301,249 @@ func TestBucketHealthCheckKeyIsNotABlockPath(t *testing.T) {
 	// The shard element is a uint32, which is what keeps _health out of any scanned directory.
 	_, err = strconv.ParseUint(strings.TrimSuffix(strings.TrimPrefix(bucketHealthCheckPrefix, block.DirNameSegment+"/"), "/"), 10, 32)
 	require.Error(t, err, "probe directory must not be parseable as a shard")
+}
+
+func newTestPushService(t *testing.T, cfg Config) (*SegmentWriterService, *sw) {
+	t.Helper()
+	testSW := newTestSegmentWriter(t, cfg)
+	svc := &SegmentWriterService{
+		logger:        testSW.segmentsWriter.logger,
+		config:        cfg,
+		segmentWriter: testSW.segmentsWriter,
+	}
+	svc.requests.Open()
+	t.Cleanup(func() {
+		svc.requests.Drain()
+		testSW.stop()
+	})
+	return svc, &testSW
+}
+
+func newValidPushRequest(t *testing.T, tenantID string) *segmentwriterv1.PushRequest {
+	t.Helper()
+	p := cpuProfile(10, 100, "myservice", "func1", "func2")
+	profileBytes, err := p.Profile.MarshalVT()
+	require.NoError(t, err)
+
+	id := uuid.New()
+	idBytes, err := id.MarshalBinary()
+	require.NoError(t, err)
+
+	return &segmentwriterv1.PushRequest{
+		TenantId:  tenantID,
+		ProfileId: idBytes,
+		Profile:   profileBytes,
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "process_cpu"},
+			{Name: "service_name", Value: "myservice"},
+		},
+		Shard: 0,
+	}
+}
+
+func TestSegmentWriterConfig_RegisterFlags_AsyncIngest(t *testing.T) {
+	t.Parallel()
+
+	var cfg Config
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	cfg.RegisterFlags(fs)
+
+	require.False(t, cfg.AsyncIngest)
+
+	err := fs.Parse([]string{"-segment-writer.async-ingest=true"})
+	require.NoError(t, err)
+	require.True(t, cfg.AsyncIngest)
+}
+
+func TestSegmentWriterService_Push_Async(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultTestConfig()
+	cfg.AsyncIngest = true
+	cfg.SegmentDuration = 5 * time.Second
+
+	svc, testSW := newTestPushService(t, cfg)
+
+	blockFlushed := make(chan struct{})
+	testSW.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			close(blockFlushed)
+		}).
+		Return(new(metastorev1.AddBlockResponse), nil)
+
+	req := newValidPushRequest(t, "tenant-a")
+	start := time.Now()
+	resp, err := svc.Push(context.Background(), req)
+	elapsed := time.Since(start)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	// Must return immediately without waiting for the segment flush (5s).
+	require.Less(t, elapsed, time.Second)
+
+	select {
+	case <-blockFlushed:
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for background segment flush")
+	}
+}
+
+func TestSegmentWriterService_Push_Async_ContextCanceled(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultTestConfig()
+	cfg.AsyncIngest = true
+
+	svc, _ := newTestPushService(t, cfg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	req := newValidPushRequest(t, "tenant-a")
+	resp, err := svc.Push(ctx, req)
+
+	require.Error(t, err)
+	require.Nil(t, resp)
+	require.Equal(t, codes.Canceled, status.Code(err))
+}
+
+func TestSegmentWriterService_Push_Sync_Success(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultTestConfig()
+	cfg.AsyncIngest = false
+	cfg.SegmentDuration = 50 * time.Millisecond
+
+	svc, testSW := newTestPushService(t, cfg)
+
+	testSW.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Return(new(metastorev1.AddBlockResponse), nil)
+
+	req := newValidPushRequest(t, "tenant-sync")
+	resp, err := svc.Push(context.Background(), req)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestSegmentWriterService_Push_Sync_Timeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultTestConfig()
+	cfg.AsyncIngest = false
+	cfg.SegmentDuration = 5 * time.Second
+
+	svc, testSW := newTestPushService(t, cfg)
+
+	testSW.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			time.Sleep(2 * time.Second)
+		}).
+		Return(new(metastorev1.AddBlockResponse), nil).
+		Maybe()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	req := newValidPushRequest(t, "tenant-timeout")
+	resp, err := svc.Push(ctx, req)
+
+	require.Error(t, err)
+	require.Nil(t, resp)
+	require.Equal(t, codes.DeadlineExceeded, status.Code(err))
+}
+
+func TestSegmentWriterService_Push_ValidationErrors(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultTestConfig()
+	cfg.AsyncIngest = true
+
+	svc, _ := newTestPushService(t, cfg)
+
+	// Missing tenant ID
+	reqNoTenant := newValidPushRequest(t, "")
+	_, err := svc.Push(context.Background(), reqNoTenant)
+	require.Error(t, err)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	// Missing tenant ID with canceled context returns InvalidArgument
+	ctxCanceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = svc.Push(ctxCanceled, reqNoTenant)
+	require.Error(t, err)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	// Invalid profile ID
+	reqBadID := newValidPushRequest(t, "tenant-a")
+	reqBadID.ProfileId = []byte("not-a-uuid")
+	_, err = svc.Push(context.Background(), reqBadID)
+	require.Error(t, err)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	// Invalid profile payload
+	reqBadProfile := newValidPushRequest(t, "tenant-a")
+	reqBadProfile.Profile = []byte("invalid-pprof-data")
+	_, err = svc.Push(context.Background(), reqBadProfile)
+	require.Error(t, err)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestSegmentWriterService_Push_Unavailable(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultTestConfig()
+	cfg.AsyncIngest = true
+
+	testSW := newTestSegmentWriter(t, cfg)
+	svc := &SegmentWriterService{
+		logger:        testSW.segmentsWriter.logger,
+		config:        cfg,
+		segmentWriter: testSW.segmentsWriter,
+	}
+
+	req := newValidPushRequest(t, "tenant-a")
+	_, err := svc.Push(context.Background(), req)
+	require.Error(t, err)
+	require.Equal(t, codes.Unavailable, status.Code(err))
+}
+
+func TestSegmentWriterService_Push_Async_FlushesOnShutdown(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultTestConfig()
+	cfg.AsyncIngest = true
+	cfg.SegmentDuration = 10 * time.Minute
+
+	testSW := newTestSegmentWriter(t, cfg)
+	svc := &SegmentWriterService{
+		logger:        testSW.segmentsWriter.logger,
+		config:        cfg,
+		segmentWriter: testSW.segmentsWriter,
+	}
+	svc.requests.Open()
+
+	blockFlushed := make(chan struct{}, 1)
+	testSW.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			select {
+			case blockFlushed <- struct{}{}:
+			default:
+			}
+		}).
+		Return(new(metastorev1.AddBlockResponse), nil)
+
+	req := newValidPushRequest(t, "tenant-stop")
+	resp, err := svc.Push(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	svc.requests.Drain()
+	testSW.stop()
+
+	select {
+	case <-blockFlushed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected segment to flush on shutdown")
+	}
 }
