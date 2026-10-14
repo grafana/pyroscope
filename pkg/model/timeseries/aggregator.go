@@ -29,10 +29,42 @@ func NewAggregatorWithLimit(aggregation *typesv1.TimeSeriesAggregationType, maxE
 	return &sumAggregator{ts: -1, maxExemplarsPerPoint: maxExemplarsPerPoint}
 }
 
+// annotationAccumulator deduplicates key/value pairs on insertion, bounding
+// memory for repeated annotations while preserving first-seen order.
+type annotationAccumulator struct {
+	points []*typesv1.ProfileAnnotation
+	seen   map[annotationKey]struct{}
+}
+
+type annotationKey struct{ key, value string }
+
+func (a *annotationAccumulator) add(annotations []*typesv1.ProfileAnnotation) {
+	for _, annotation := range annotations {
+		key := annotationKey{annotation.Key, annotation.Value}
+		if _, exists := a.seen[key]; exists {
+			continue
+		}
+		if a.seen == nil {
+			a.seen = make(map[annotationKey]struct{})
+		}
+		a.seen[key] = struct{}{}
+		a.points = append(a.points, annotation)
+	}
+}
+
+func (a *annotationAccumulator) getAndReset() []*typesv1.ProfileAnnotation {
+	points := make([]*typesv1.ProfileAnnotation, len(a.points))
+	copy(points, a.points)
+	clear(a.points)
+	a.points = a.points[:0]
+	clear(a.seen)
+	return points
+}
+
 type sumAggregator struct {
 	ts                   int64
 	sum                  float64
-	annotations          []*typesv1.ProfileAnnotation
+	annotations          annotationAccumulator
 	exemplars            []*typesv1.Exemplar
 	maxExemplarsPerPoint int
 }
@@ -40,7 +72,7 @@ type sumAggregator struct {
 func (a *sumAggregator) Add(ts int64, point *Value) {
 	a.ts = ts
 	a.sum += point.Value
-	a.annotations = append(a.annotations, point.Annotations...)
+	a.annotations.add(point.Annotations)
 
 	if len(point.Exemplars) > 0 {
 		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
@@ -50,8 +82,7 @@ func (a *sumAggregator) Add(ts int64, point *Value) {
 func (a *sumAggregator) GetAndReset() *typesv1.Point {
 	tsCopy := a.ts
 	sumCopy := a.sum
-	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
-	copy(annotationsCopy, a.annotations)
+	annotationsCopy := a.annotations.getAndReset()
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
@@ -60,7 +91,6 @@ func (a *sumAggregator) GetAndReset() *typesv1.Point {
 
 	a.ts = -1
 	a.sum = 0
-	a.annotations = a.annotations[:0]
 	a.exemplars = nil
 
 	return &typesv1.Point{
@@ -78,7 +108,7 @@ type avgAggregator struct {
 	ts                   int64
 	sum                  float64
 	count                int64
-	annotations          []*typesv1.ProfileAnnotation
+	annotations          annotationAccumulator
 	exemplars            []*typesv1.Exemplar
 	maxExemplarsPerPoint int
 }
@@ -87,7 +117,7 @@ func (a *avgAggregator) Add(ts int64, point *Value) {
 	a.ts = ts
 	a.sum += point.Value
 	a.count++
-	a.annotations = append(a.annotations, point.Annotations...)
+	a.annotations.add(point.Annotations)
 
 	if len(point.Exemplars) > 0 {
 		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
@@ -97,8 +127,7 @@ func (a *avgAggregator) Add(ts int64, point *Value) {
 func (a *avgAggregator) GetAndReset() *typesv1.Point {
 	avg := a.sum / float64(a.count)
 	tsCopy := a.ts
-	annotationsCopy := make([]*typesv1.ProfileAnnotation, len(a.annotations))
-	copy(annotationsCopy, a.annotations)
+	annotationsCopy := a.annotations.getAndReset()
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
@@ -108,7 +137,6 @@ func (a *avgAggregator) GetAndReset() *typesv1.Point {
 	a.ts = -1
 	a.sum = 0
 	a.count = 0
-	a.annotations = a.annotations[:0]
 	a.exemplars = nil
 
 	return &typesv1.Point{
