@@ -122,7 +122,7 @@ pyroscope:
     #
     # Note that if memory consumption is higher than you would like, you can decrease the interval
     # that profiles are written into blocks by setting `pyroscopedb.max-block-duration` in the `extraArgs`
-    # stanza. By default, it is set to 3h - override it, for example, as below:
+    # stanza. By default, it is set to 1h - override it, for example, as below:
     # ```
     # extraArgs:
     #   pyroscopedb.max-block-duration: 30m
