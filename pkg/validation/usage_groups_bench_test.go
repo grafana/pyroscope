@@ -1,12 +1,12 @@
 package validation
 
 import (
+	"github.com/go-kit/log"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/v2/pkg/model"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func BenchmarkUsageGroups_Regular(b *testing.B) {
@@ -24,7 +24,7 @@ func BenchmarkUsageGroups_Regular(b *testing.B) {
 		{Name: "team", Value: "platform"},
 		{Name: "environment", Value: "production"},
 	}
-	evaluator := NewUsageGroupEvaluator(util.Logger)
+	evaluator := NewUsageGroupEvaluator(log.NewNopLogger())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -47,7 +47,7 @@ func BenchmarkUsageGroups_Dynamic(b *testing.B) {
 		{Name: "team", Value: "platform"},
 		{Name: "environment", Value: "production"},
 	}
-	evaluator := NewUsageGroupEvaluator(util.Logger)
+	evaluator := NewUsageGroupEvaluator(log.NewNopLogger())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -65,7 +65,7 @@ func BenchmarkUsageGroups_ComplexRegex(b *testing.B) {
 	l := model.Labels{
 		{Name: "service_name", Value: "frontend-123.prod"},
 	}
-	evaluator := NewUsageGroupEvaluator(util.Logger)
+	evaluator := NewUsageGroupEvaluator(log.NewNopLogger())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
