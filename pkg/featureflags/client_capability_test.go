@@ -75,6 +75,11 @@ func TestClientCapabilitiesGRPCMiddleware_SpanAttributes(t *testing.T) {
 			wantAttrs: []attribute.KeyValue{utf8LabelNamesSpanAttr.Bool(true)},
 		},
 		{
+			name:      "capability not sent",
+			accept:    "application/json",
+			wantAttrs: []attribute.KeyValue{utf8LabelNamesSpanAttr.Bool(false)},
+		},
+		{
 			name:     "invalid Accept header",
 			accept:   "invalid/mime/type/format",
 			wantCode: connect.CodeInvalidArgument,
