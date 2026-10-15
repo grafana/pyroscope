@@ -1,8 +1,10 @@
 package metrics
 
 import (
+	"bytes"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,7 +58,14 @@ func TestRecordingRulesConfig_ReconcileWithExporter(t *testing.T) {
 			exporter.RulesSource.ClientAddress = tc.legacyAddr
 			shared := tc.shared
 
-			shared.ReconcileWithExporter(&exporter)
+			var logs bytes.Buffer
+			shared.ReconcileWithExporter(&exporter, log.NewLogfmtLogger(&logs))
+
+			if tc.legacyOn || tc.legacyAddr != "" {
+				assert.Contains(t, logs.String(), "deprecated")
+			} else {
+				assert.Empty(t, logs.String())
+			}
 
 			// Shared and deprecated fields both hold the effective values.
 			assert.Equal(t, tc.wantEnabled, shared.Enabled)

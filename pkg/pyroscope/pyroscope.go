@@ -405,7 +405,7 @@ func (c *Config) Validate() error {
 		return errors.New("no modules specified")
 	}
 
-	c.RecordingRules.ReconcileWithExporter(&c.CompactionWorker.MetricsExporter)
+	c.RecordingRules.ReconcileWithExporter(&c.CompactionWorker.MetricsExporter, util.Logger)
 
 	if err := c.Frontend.Validate(); err != nil {
 		return err
