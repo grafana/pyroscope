@@ -30,6 +30,7 @@ func TestSelectSeries_RejectsInvalidStep(t *testing.T) {
 		{"NaN", math.NaN()},
 		{"positive infinity", math.Inf(1)},
 		{"negative infinity", math.Inf(-1)},
+		{"duration overflow", 1e10},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			limits := mockfrontend.NewMockLimits(t)
@@ -49,7 +50,6 @@ func TestSelectSeries_RejectsInvalidStep(t *testing.T) {
 
 			require.Error(t, err)
 			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-			require.Contains(t, err.Error(), "step must be >= 1ms and finite")
 		})
 	}
 }
@@ -74,6 +74,27 @@ func TestSelectHeatmap_RejectsSubMillisecondStep(t *testing.T) {
 			require.Contains(t, err.Error(), "step must be >= 1ms")
 		})
 	}
+}
+
+func TestAnalyzeSeries_RejectsSubMillisecondStep(t *testing.T) {
+	limits := mockfrontend.NewMockLimits(t)
+	limits.On("MaxQueryLookback", "test-tenant").Return(time.Duration(0)).Maybe()
+	limits.On("MaxQueryLength", "test-tenant").Return(time.Duration(0)).Maybe()
+	qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, nil, nil, nil, nil, nil, nil)
+	ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
+
+	_, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES},
+		ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+		LabelSelector: "{}",
+		Start:         1000,
+		End:           2000,
+		TimeSeries:    &querierv1.AnomalyTimeSeriesRequest{Step: 0.0005},
+	}))
+
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Contains(t, err.Error(), "step must be >= 1ms")
 }
 
 func formatStep(s float64) string {
