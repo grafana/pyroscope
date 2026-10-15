@@ -10,7 +10,7 @@ import (
 // Ruler provides a tenant's recording rules, used to decide which stacktraces
 // of a sampled-out profile must be preserved during stripping.
 type Ruler interface {
-	RecordingRules(tenant string) []*phlaremodel.RecordingRule
+	RecordingRules(tenant string) ([]*phlaremodel.RecordingRule, error)
 }
 
 type deferredRule struct {
@@ -28,16 +28,21 @@ type deferredRule struct {
 type exceptions struct {
 	functionLocations map[uint64][]deferredRule
 	totalRules        []deferredRule
+	rulesUnavailable  bool
 }
 
 func (s *ProfileStripper) computeExceptions(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) exceptions {
 	if s.ruler == nil {
 		return exceptions{}
 	}
+	rules, err := s.ruler.RecordingRules(tenantID)
+	if err != nil {
+		return exceptions{rulesUnavailable: true}
+	}
 	profileTypes := profileTypeNames(p, seriesLabels.Get(phlaremodel.LabelNameProfileName))
 	rulesByFunctionName := map[string][]deferredRule{}
 	var totalRules []deferredRule
-	for _, rule := range s.ruler.RecordingRules(tenantID) {
+	for _, rule := range rules {
 		if rule == nil {
 			continue
 		}

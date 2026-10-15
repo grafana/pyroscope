@@ -1,6 +1,7 @@
 package sampling
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -17,8 +18,14 @@ type fakeRuler struct {
 	rules map[string][]*phlaremodel.RecordingRule
 }
 
-func (r fakeRuler) RecordingRules(tenant string) []*phlaremodel.RecordingRule {
-	return r.rules[tenant]
+func (r fakeRuler) RecordingRules(tenant string) ([]*phlaremodel.RecordingRule, error) {
+	return r.rules[tenant], nil
+}
+
+type failingRuler struct{}
+
+func (failingRuler) RecordingRules(string) ([]*phlaremodel.RecordingRule, error) {
+	return nil, errors.New("rules unavailable")
 }
 
 // stripTestProfile returns a deterministic profile without sample labels,
@@ -637,4 +644,22 @@ func TestProfileStripper_Strip_FunctionRuleNotEqualKeepsLabel(t *testing.T) {
 		}
 	}
 	assert.Equal(t, "us", region)
+}
+
+func TestProfileStripper_Strip_RulesUnavailable(t *testing.T) {
+	t.Run("ruler error strips to plain totals and reports it", func(t *testing.T) {
+		p := stripTestProfile()
+		unavailable := NewProfileStripper(failingRuler{}).Strip("tenant-a", nil, p)
+
+		assert.True(t, unavailable)
+		require.Len(t, p.Sample, 1)
+		assert.Empty(t, p.Sample[0].LocationId)
+		assert.Equal(t, []int64{15, 1500}, p.Sample[0].Value)
+	})
+
+	t.Run("working and nil rulers are available", func(t *testing.T) {
+		rules := map[string][]*phlaremodel.RecordingRule{"tenant-a": {{FunctionName: "func-a"}}}
+		assert.False(t, NewProfileStripper(fakeRuler{rules}).Strip("tenant-a", nil, stripTestProfile()))
+		assert.False(t, NewProfileStripper(nil).Strip("tenant-a", nil, stripTestProfile()))
+	})
 }

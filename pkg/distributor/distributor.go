@@ -664,7 +664,10 @@ func (d *Distributor) pushSeries(ctx context.Context, req *distributormodel.Prof
 		// Language detection reads the string table, which is about to be
 		// stripped; the result is cached in the request.
 		d.GetProfileLanguage(req)
-		d.stripper.Strip(tenantID, req.Labels, req.Profile.Profile)
+		if d.stripper.Strip(tenantID, req.Labels, req.Profile.Profile) {
+			d.metrics.strippedWithoutRules.WithLabelValues(tenantID).Add(float64(req.TotalProfiles))
+			finalLog.addFields("recording_rules_unavailable", true)
+		}
 		req.Labels = phlaremodel.Labels(req.Labels).InsertSorted(phlaremodel.LabelNameSampled, "true")
 
 		// The stripped part of the profile is discarded, and from here on

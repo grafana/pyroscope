@@ -42,7 +42,7 @@ func Test_Observer_observe(t *testing.T) {
 			},
 			GroupBy: []string{},
 		},
-	})
+	}, nil)
 	observer := NewSampleObserver(blockTime, exporter, ruler, labels.New(labels.Label{Name: "external2", Value: "external2"}))
 	entries := entriesOf([][]any{
 		{"tenant1", [][]string{{"a", "0"}, {"b", "0"}, {"c", "0"}, {"d", "0"}}, int64(1) << 0},

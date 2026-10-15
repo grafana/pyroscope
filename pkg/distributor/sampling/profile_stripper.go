@@ -25,7 +25,10 @@ func NewProfileStripper(ruler Ruler) *ProfileStripper {
 // totals are kept. Stacktraces targeted by the tenant's recording rules are the
 // exception: they are kept, trimmed to the frames of the targeted functions,
 // together with the labels those rules need to match and group.
-func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) {
+//
+// It returns true when the tenant's rules could not be loaded. The profile is
+// then stripped to plain totals, so the stacktraces the rules need are lost.
+func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) (rulesUnavailable bool) {
 	exc := s.computeExceptions(tenantID, seriesLabels, p)
 
 	stripSamples(p, exc)
@@ -33,6 +36,8 @@ func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels
 	pruneUnreferencedSymbols(p)
 
 	compactStringTable(p)
+
+	return exc.rulesUnavailable
 }
 
 // compactStringTable rebuilds p.StringTable so it holds only the strings still
