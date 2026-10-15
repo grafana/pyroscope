@@ -68,12 +68,26 @@ type QueryFrontend struct {
 }
 
 type queryFrontendMetrics struct {
-	fetchedBytesTotal       *prometheus.CounterVec
-	estimationAccuracyRatio prometheus.Histogram
+	fetchedBytesTotal             *prometheus.CounterVec
+	estimationAccuracyRatio       prometheus.Histogram
+	backendInflightBlocks         prometheus.Gauge
+	backendInflightEstimatedBytes prometheus.Gauge
 }
 
 func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 	m := &queryFrontendMetrics{
+		backendInflightBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Subsystem: "query_frontend",
+			Name:      "backend_inflight_blocks",
+			Help:      "Number of blocks in frontend queries awaiting a query-backend response.",
+		}),
+		backendInflightEstimatedBytes: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Subsystem: "query_frontend",
+			Name:      "backend_inflight_estimated_bytes",
+			Help:      "Estimated dataset bytes in queries awaiting a query-backend response.",
+		}),
 		fetchedBytesTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "pyroscope",
@@ -98,7 +112,7 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			Namespace:                       "pyroscope",
 			Subsystem:                       "query_frontend",
 			Name:                            "estimation_accuracy_ratio",
-			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = over-estimated; >1.0 = under-estimated.",
+			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = under-estimated; >1.0 = over-estimated.",
 			Buckets:                         []float64{0.1, 0.25, 0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2, 5, 10},
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
@@ -106,7 +120,7 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 		}),
 	}
 	if reg != nil {
-		reg.MustRegister(m.fetchedBytesTotal, m.estimationAccuracyRatio)
+		reg.MustRegister(m.fetchedBytesTotal, m.estimationAccuracyRatio, m.backendInflightBlocks, m.backendInflightEstimatedBytes)
 	}
 	return m
 }
@@ -145,6 +159,21 @@ var xrandMutex = sync.Mutex{} // todo fix the race properly
 // We currently use this mainly to change backend query, for symbolizing unsymbolized blocks.
 // TODO: Once symbolization moves to the query-backend, the query-backend plan should incorporate the symbolize step
 type backendWrapper = func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend
+
+type measuredQueryBackend struct {
+	upstream       QueryBackend
+	metrics        *queryFrontendMetrics
+	blocks         float64
+	estimatedBytes float64
+}
+
+func (b measuredQueryBackend) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+	b.metrics.backendInflightBlocks.Add(b.blocks)
+	b.metrics.backendInflightEstimatedBytes.Add(b.estimatedBytes)
+	defer b.metrics.backendInflightBlocks.Sub(b.blocks)
+	defer b.metrics.backendInflightEstimatedBytes.Sub(b.estimatedBytes)
+	return b.upstream.Invoke(ctx, req)
+}
 
 func (q *QueryFrontend) Query(
 	ctx context.Context,
@@ -249,10 +278,17 @@ func (q *QueryFrontend) doQuery(
 		p = queryplan.Build(blocks, 4, 20)
 	}
 
-	backend := q.querybackend
+	// Measure only the underlying query backend call
+	var backend QueryBackend = measuredQueryBackend{
+		upstream:       q.querybackend,
+		metrics:        q.metrics,
+		blocks:         float64(len(blocks)),
+		estimatedBytes: float64(weight.Total()),
+	}
 	if backendC != nil {
 		backend = backendC(ctx, backend, blocks)
 	}
+
 	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
@@ -261,6 +297,7 @@ func (q *QueryFrontend) doQuery(
 		Options: &queryv1.InvokeOptions{
 			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
 			CollectDiagnostics: collectDiagnostics,
+			Finalize:           true,
 		},
 		QueryPlan: p,
 		Query:     req.Query,

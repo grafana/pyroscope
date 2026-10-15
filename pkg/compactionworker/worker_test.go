@@ -88,7 +88,15 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 	block2ID := test.ULID("2024-01-01T11:00:00Z")
 	compactedBlockID := test.ULID("2024-01-01T12:00:00Z")
 
+	// Force an in-progress poll before compaction finishes, rather than
+	// assuming compaction always completes within one polling interval.
+	resumeCompaction := make(chan struct{})
 	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+		select {
+		case <-resumeCompaction:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 		require.Len(t, blocks, 2)
 		assert.Equal(t, block1ID, blocks[0].Id)
 		assert.Equal(t, block2ID, blocks[1].Id)
@@ -144,8 +152,22 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 		close(done)
 	}).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
 
-	// Additional polls should return empty responses.
-	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
+	var resumeOnce sync.Once
+	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
+		return len(req.StatusUpdates) == 1 &&
+			req.StatusUpdates[0].Name == job.Name &&
+			req.StatusUpdates[0].Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
+	}), mock.Anything).Run(func(context.Context, *metastorev1.PollCompactionJobsRequest, ...grpc.CallOption) {
+		resumeOnce.Do(func() { close(resumeCompaction) })
+	}).Return(&metastorev1.PollCompactionJobsResponse{
+		// Missing assignments revoke the lease and remove the running job.
+		Assignments: []*metastorev1.CompactionJobAssignment{assignment},
+	}, nil).Maybe()
+
+	// Additional polls without active jobs should return empty responses.
+	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
+		return len(req.StatusUpdates) == 0
+	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
 	runWorker(t, w, done)
 }

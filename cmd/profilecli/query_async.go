@@ -32,7 +32,7 @@ func runAsyncSelectMergeStacktraces(
 	submit, err := client.SelectMergeStacktraces(ctx, connect.NewRequest(submitReq))
 	if err != nil {
 		if connectErr := new(connect.Error); errors.As(err, &connectErr) && connectErr.Code() == connect.CodeUnimplemented {
-			return nil, fmt.Errorf("server has async queries disabled (set -query-frontend.async-queries-enabled=true)")
+			return nil, fmt.Errorf("server has async queries disabled (set -query-frontend.async-queries.enabled=true)")
 		}
 		return nil, err
 	}

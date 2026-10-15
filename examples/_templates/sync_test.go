@@ -244,6 +244,10 @@ var examples = []example{
 
 	// ── language-sdk-instrumentation/ruby ────────────────────────────────────
 	{
+		compose:   "language-sdk-instrumentation/ruby/rails_puma_cluster",
+		templates: []string{"grafana", "pyroscope"},
+	},
+	{
 		compose:   "language-sdk-instrumentation/ruby/rideshare",
 		templates: []string{"grafana", "pyroscope"},
 	},

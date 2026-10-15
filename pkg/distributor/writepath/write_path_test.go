@@ -5,6 +5,7 @@ import (
 	"io"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -16,6 +17,7 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/inflight"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockwritepath"
@@ -266,6 +268,49 @@ func (s *routerTestSuite) Test_AsyncIngest_Asynchronous() {
 	s.Assert().NoError(err)
 
 	s.router.inflight.Wait()
+}
+
+func (s *routerTestSuite) Test_AsyncIngest_InflightReservationOutlivesSend() {
+	config := Config{
+		WritePath:            SegmentWriterPath,
+		AsyncIngest:          true,
+		SegmentWriterTimeout: time.Minute,
+	}
+
+	limiter := inflight.NewLimiter(0, nil)
+	reservation, _ := limiter.Reserve(1024)
+	ctx := inflight.NewContext(context.Background(), reservation)
+
+	release := make(chan struct{})
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Run(func(mock.Arguments) { <-release }).
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
+		Once()
+
+	s.Require().NoError(s.router.Send(ctx, s.request, config))
+	// The request handler returns while the segment writer is still busy.
+	reservation.Release()
+	s.Assert().Equal(int64(1024), limiter.Bytes())
+
+	close(release)
+	s.router.inflight.Wait()
+	s.Assert().Equal(int64(0), limiter.Bytes())
+}
+
+func (s *routerTestSuite) Test_SegmentWriterPath_InflightReservationNotRetained() {
+	config := Config{WritePath: SegmentWriterPath}
+
+	limiter := inflight.NewLimiter(0, nil)
+	reservation, _ := limiter.Reserve(1024)
+	ctx := inflight.NewContext(context.Background(), reservation)
+
+	s.segwriter.On("Push", mock.Anything, mock.Anything).
+		Return(new(connect.Response[pushv1.PushResponse]), nil).
+		Once()
+
+	s.Require().NoError(s.router.Send(ctx, s.request, config))
+	reservation.Release()
+	s.Assert().Equal(int64(0), limiter.Bytes())
 }
 
 func (s *routerTestSuite) Test_AsyncIngest_CombinedPath() {
