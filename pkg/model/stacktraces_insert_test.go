@@ -172,3 +172,21 @@ func Benchmark_StacktraceTree_Insert_fanout(b *testing.B) {
 		})
 	}
 }
+
+// Truncated frames are inserted with the sentinel location.
+func Test_StacktraceTree_Insert_truncated_child_of_wide_node(t *testing.T) {
+	var stacks [][]int32
+	for i := int32(0); i < 200; i++ {
+		stacks = append(stacks, []int32{i, 0})
+		if i%100 == 99 {
+			stacks = append(stacks, []int32{-1, 0})
+		}
+	}
+	scanned := model.NewStacktraceTree(0)
+	indexed := model.NewStacktraceTree(0)
+	for i, s := range stacks {
+		v := int64(i%7 + 1)
+		require.Equal(t, insertScan(scanned, s, v), indexed.Insert(s, v))
+	}
+	require.Equal(t, scanned.Nodes, indexed.Nodes)
+}

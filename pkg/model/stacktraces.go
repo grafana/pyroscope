@@ -193,7 +193,7 @@ func (t *StacktraceTree) lookupWideChild(parent, location, next int32) int32 {
 	if i, ok := t.wide.get(childKey(parent, location)); ok {
 		return i
 	}
-	tail := childKey(parent, sentinel)
+	tail := lastChildKey(parent)
 	if last, ok := t.wide.get(tail); ok {
 		i := t.newChild(parent, location, last)
 		t.wide.set(childKey(parent, location), i)
@@ -238,9 +238,13 @@ func childKey(parent, location int32) uint64 {
 	return uint64(uint32(parent))<<32 | uint64(uint32(location))
 }
 
+// lastChildKey never equals a childKey: parents are non-negative.
+func lastChildKey(parent int32) uint64 {
+	return 1<<63 | uint64(uint32(parent))
+}
+
 // childIndex is an open-addressing hash table from child keys to node indexes.
 // It grows by doubling two flat slices, so it allocates a few times per tree.
-// The sentinel location of a parent keys its last child.
 type childIndex struct {
 	keys []uint64 // key+1; 0 marks an empty slot
 	vals []int32
