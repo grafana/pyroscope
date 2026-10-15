@@ -101,4 +101,6 @@ func TestTimeSeriesAnalysisAggregator(t *testing.T) {
 	assert.Equal(t, int64(4000), event.TimestampStart)
 	assert.Equal(t, int64(4000), event.TimestampEnd)
 	assert.Equal(t, "api", event.Labels[0].Value)
+	assert.Equal(t, float64(100), event.Score)
+	assert.Equal(t, event.Score, event.PriorityScore)
 }

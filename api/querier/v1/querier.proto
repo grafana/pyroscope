@@ -425,7 +425,7 @@ message AnomalyTimeSeriesRequest {
   // Query resolution step width in seconds. Must be at least 0.001 (1 ms).
   // Unset or zero is invalid; there is no default.
   double step = 2;
-  // Limit the result to anomalies from the top N series by strongest score.
+  // Retain all anomalies from the top N series by highest event priority_score.
   // If unset, zero, or negative, no limit is applied.
   optional int64 limit = 3;
 }
@@ -450,5 +450,10 @@ message TimeSeriesAnomaly {
   double baseline = 6;
   double peak_value = 7;
   double relative_change = 8;
+  // Statistical anomaly score relative to pre-event baseline variability.
   double score = 9;
+  // Statistical score weighted by resource usage relative to the largest input
+  // series (including series without anomalies). Used to rank series for limits.
+  // Usage is the sum of non-negative finite buckets across the selected window.
+  double priority_score = 10;
 }

@@ -15,7 +15,7 @@ func outputSeriesAnalysis(ctx context.Context, response *querierv1.QueryAnomalie
 		return outputAnomalies(ctx, response, []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES}, outputJSON)
 	}
 	table := newTableWriter(output(ctx))
-	table.SetHeader([]string{"Labels", "Type", "Start", "End", "Peak time", "Baseline", "Peak value", "Change", "Score"})
+	table.SetHeader([]string{"Labels", "Type", "Start", "End", "Peak time", "Baseline", "Peak value", "Change", "Score", "Priority score"})
 	for _, event := range response.TimeSeriesAnomalies {
 		table.Append([]string{
 			model.Labels(event.Labels).ToPrometheusLabels().String(),
@@ -25,6 +25,7 @@ func outputSeriesAnalysis(ctx context.Context, response *querierv1.QueryAnomalie
 			time.UnixMilli(event.TimestampPeak).UTC().Format(time.RFC3339Nano),
 			fmt.Sprintf("%.6g", event.Baseline), fmt.Sprintf("%.6g", event.PeakValue),
 			fmt.Sprintf("%.2f%%", event.RelativeChange*100), fmt.Sprintf("%.6g", event.Score),
+			fmt.Sprintf("%.6g", event.PriorityScore),
 		})
 	}
 	table.Render()

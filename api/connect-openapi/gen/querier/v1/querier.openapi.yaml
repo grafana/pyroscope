@@ -1052,7 +1052,7 @@ components:
           title: limit
           format: int64
           description: |-
-            Limit the result to anomalies from the top N series by strongest score.
+            Retain all anomalies from the top N series by highest event priority_score.
              If unset, zero, or negative, no limit is applied.
           nullable: true
       title: AnomalyTimeSeriesRequest
@@ -1983,6 +1983,15 @@ components:
           type: number
           title: score
           format: double
+          description: Statistical anomaly score relative to pre-event baseline variability.
+        priorityScore:
+          type: number
+          title: priority_score
+          format: double
+          description: |-
+            Statistical score weighted by resource usage relative to the largest input
+             series (including series without anomalies). Used to rank series for limits.
+             Usage is the sum of non-negative finite buckets across the selected window.
       title: TimeSeriesAnomaly
       additionalProperties: false
     querier.v1.TimeSeriesAnomalyType:

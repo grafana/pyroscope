@@ -2344,7 +2344,7 @@ type AnomalyTimeSeriesRequest struct {
 	// Query resolution step width in seconds. Must be at least 0.001 (1 ms).
 	// Unset or zero is invalid; there is no default.
 	Step float64 `protobuf:"fixed64,2,opt,name=step,proto3" json:"step,omitempty"`
-	// Limit the result to anomalies from the top N series by strongest score.
+	// Retain all anomalies from the top N series by highest event priority_score.
 	// If unset, zero, or negative, no limit is applied.
 	Limit         *int64 `protobuf:"varint,3,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2415,9 +2415,14 @@ type TimeSeriesAnomaly struct {
 	Baseline       float64 `protobuf:"fixed64,6,opt,name=baseline,proto3" json:"baseline,omitempty"`
 	PeakValue      float64 `protobuf:"fixed64,7,opt,name=peak_value,json=peakValue,proto3" json:"peak_value,omitempty"`
 	RelativeChange float64 `protobuf:"fixed64,8,opt,name=relative_change,json=relativeChange,proto3" json:"relative_change,omitempty"`
-	Score          float64 `protobuf:"fixed64,9,opt,name=score,proto3" json:"score,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Statistical anomaly score relative to pre-event baseline variability.
+	Score float64 `protobuf:"fixed64,9,opt,name=score,proto3" json:"score,omitempty"`
+	// Statistical score weighted by resource usage relative to the largest input
+	// series (including series without anomalies). Used to rank series for limits.
+	// Usage is the sum of non-negative finite buckets across the selected window.
+	PriorityScore float64 `protobuf:"fixed64,10,opt,name=priority_score,json=priorityScore,proto3" json:"priority_score,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TimeSeriesAnomaly) Reset() {
@@ -2509,6 +2514,13 @@ func (x *TimeSeriesAnomaly) GetRelativeChange() float64 {
 func (x *TimeSeriesAnomaly) GetScore() float64 {
 	if x != nil {
 		return x.Score
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetPriorityScore() float64 {
+	if x != nil {
+		return x.PriorityScore
 	}
 	return 0
 }
@@ -2698,7 +2710,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\bgroup_by\x18\x01 \x03(\tB\x0e\xbaG\v:\t\x12\a['pod']R\agroupBy\x12\x12\n" +
 	"\x04step\x18\x02 \x01(\x01R\x04step\x12\x19\n" +
 	"\x05limit\x18\x03 \x01(\x03H\x00R\x05limit\x88\x01\x01B\b\n" +
-	"\x06_limit\"\xe6\x02\n" +
+	"\x06_limit\"\x8d\x03\n" +
 	"\x11TimeSeriesAnomaly\x125\n" +
 	"\x04type\x18\x01 \x01(\x0e2!.querier.v1.TimeSeriesAnomalyTypeR\x04type\x12+\n" +
 	"\x06labels\x18\x02 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12'\n" +
@@ -2709,7 +2721,9 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\n" +
 	"peak_value\x18\a \x01(\x01R\tpeakValue\x12'\n" +
 	"\x0frelative_change\x18\b \x01(\x01R\x0erelativeChange\x12\x14\n" +
-	"\x05score\x18\t \x01(\x01R\x05score*\x99\x01\n" +
+	"\x05score\x18\t \x01(\x01R\x05score\x12%\n" +
+	"\x0epriority_score\x18\n" +
+	" \x01(\x01R\rpriorityScore*\x99\x01\n" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
