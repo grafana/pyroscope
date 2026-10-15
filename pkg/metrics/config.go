@@ -3,6 +3,9 @@ package metrics
 import (
 	"errors"
 	"flag"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 )
 
 type Config struct {
@@ -52,7 +55,10 @@ func (c *RecordingRulesConfig) RegisterFlags(f *flag.FlagSet) {
 // settings into the shared recording-rules config. The shared values take
 // precedence; the deprecated ones are honored as a fallback. Effective values
 // are written back to both, so components reading either stay consistent.
-func (c *RecordingRulesConfig) ReconcileWithExporter(exporter *Config) {
+func (c *RecordingRulesConfig) ReconcileWithExporter(exporter *Config, logger log.Logger) {
+	if exporter.Enabled || exporter.RulesSource.ClientAddress != "" {
+		level.Warn(logger).Log("msg", "compaction-worker.metrics-exporter.enabled and compaction-worker.metrics-exporter.rules-source.client-address are deprecated, use recording-rules.enabled and recording-rules.client-address")
+	}
 	if exporter.Enabled {
 		c.Enabled = true
 	}
