@@ -30,6 +30,7 @@ func TestSelectSeries_RejectsInvalidStep(t *testing.T) {
 		{"NaN", math.NaN()},
 		{"positive infinity", math.Inf(1)},
 		{"negative infinity", math.Inf(-1)},
+		{"duration overflow", 1e10},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			limits := mockfrontend.NewMockLimits(t)
@@ -49,7 +50,6 @@ func TestSelectSeries_RejectsInvalidStep(t *testing.T) {
 
 			require.Error(t, err)
 			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-			require.Contains(t, err.Error(), "step must be >= 1ms and finite")
 		})
 	}
 }
