@@ -2896,7 +2896,35 @@ type fakeRuler struct {
 	rules []*phlaremodel.RecordingRule
 }
 
-func (r fakeRuler) RecordingRules(string) []*phlaremodel.RecordingRule { return r.rules }
+func (r fakeRuler) RecordingRules(string) ([]*phlaremodel.RecordingRule, error) {
+	return r.rules, nil
+}
+
+type failingRuler struct{}
+
+func (failingRuler) RecordingRules(string) ([]*phlaremodel.RecordingRule, error) {
+	return nil, errors.New("rules unavailable")
+}
+
+func TestPushSeries_KeepStrippedProfiles_RulesUnavailable(t *testing.T) {
+	d, _ := newStripTestDistributor(t, true)
+	d.stripper = sampling.NewProfileStripper(failingRuler{})
+
+	counter := d.metrics.strippedWithoutRules.WithLabelValues("user-1")
+	before := testutil.ToFloat64(counter)
+
+	req := &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+		},
+		Profile:       pprof2.RawFromProto(stripTestProfile()),
+		TotalProfiles: 1,
+	}
+	require.NoError(t, d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0))
+
+	assert.Equal(t, before+1, testutil.ToFloat64(counter))
+}
 
 // A total rule that groups by a sample label makes the stripped totals carry
 // that label, which the pprof split then promotes to series labels. This drives

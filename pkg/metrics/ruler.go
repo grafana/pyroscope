@@ -26,7 +26,7 @@ func NewStaticRulerFromOverrides(overrides *validation.Overrides) Ruler {
 	}
 }
 
-func (ruler StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
+func (ruler StaticRuler) RecordingRules(tenant string) ([]*model.RecordingRule, error) {
 	rules := ruler.overrides.RecordingRules(tenant)
 	rs := make([]*model.RecordingRule, 0, len(rules))
 	for _, rule := range rules {
@@ -34,7 +34,7 @@ func (ruler StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
 		r, _ := model.NewRecordingRule(rule)
 		rs = append(rs, r)
 	}
-	return rs
+	return rs, nil
 }
 
 // CachedRemoteRuler is a thread-safe ruler that retrieves rules from an external service.
@@ -65,7 +65,7 @@ func NewCachedRemoteRuler(client RecordingRulesClient, logger log.Logger) (Ruler
 	}, nil
 }
 
-func (r *CachedRemoteRuler) RecordingRules(tenant string) []*model.RecordingRule {
+func (r *CachedRemoteRuler) RecordingRules(tenant string) ([]*model.RecordingRule, error) {
 	// get the per-tenant cache
 	r.mu.RLock()
 	cache, ok := r.rulesPerTenant[tenant]
@@ -99,6 +99,7 @@ func (r *CachedRemoteRuler) RecordingRules(tenant string) []*model.RecordingRule
 type tenantCache struct {
 	value      []*model.RecordingRule
 	loaded     bool
+	err        error
 	refreshing bool
 	ttl        time.Time
 	expiry     time.Duration
@@ -112,11 +113,11 @@ type tenantCache struct {
 // value keeps being served while a single background refresh runs. Only the
 // very first load blocks callers, and it is bounded by the client's timeout.
 // A failed fetch is not retried until the retry interval has passed.
-func (c *tenantCache) get() []*model.RecordingRule {
+func (c *tenantCache) get() ([]*model.RecordingRule, error) {
 	c.mu.RLock()
 	if time.Now().Before(c.ttl) {
 		defer c.mu.RUnlock()
-		return c.value
+		return c.result()
 	}
 	c.mu.RUnlock()
 
@@ -124,17 +125,24 @@ func (c *tenantCache) get() []*model.RecordingRule {
 	defer c.mu.Unlock()
 
 	if time.Now().Before(c.ttl) {
-		return c.value
+		return c.result()
 	}
 	if !c.loaded {
 		c.apply(c.initFunc())
-		return c.value
+		return c.result()
 	}
 	if !c.refreshing {
 		c.refreshing = true
 		go c.refresh()
 	}
-	return c.value
+	return c.result()
+}
+
+func (c *tenantCache) result() ([]*model.RecordingRule, error) {
+	if !c.loaded {
+		return nil, c.err
+	}
+	return c.value, nil
 }
 
 func (c *tenantCache) refresh() {
@@ -145,10 +153,10 @@ func (c *tenantCache) refresh() {
 	c.apply(value, err)
 }
 
-// apply stores a fetch result. The caller must hold the write lock.
 func (c *tenantCache) apply(value []*model.RecordingRule, err error) {
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch recording rules", "err", err)
+		c.err = err
 		c.ttl = time.Now().Add(c.retry)
 		return
 	}

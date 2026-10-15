@@ -45,7 +45,7 @@ func TestCachedRemoteRuler_FirstLoadIsSingleFlight(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			results[i] = ruler.RecordingRules("t")
+			results[i] = rulesOf(t, ruler, "t")
 		}()
 	}
 	time.Sleep(50 * time.Millisecond)
@@ -69,17 +69,18 @@ func TestCachedRemoteRuler_ServesStaleWhileRefreshing(t *testing.T) {
 	}}
 	ruler := newTestRuler(client, 10*time.Millisecond, time.Hour)
 
-	require.Equal(t, defaultRecordingRules, ruler.RecordingRules("t"))
+	require.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
 	time.Sleep(20 * time.Millisecond)
 
 	for range 5 {
-		assert.Equal(t, defaultRecordingRules, ruler.RecordingRules("t"))
+		assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
 	}
 	require.Eventually(t, func() bool { return client.calls.Load() == 2 }, time.Second, 5*time.Millisecond)
 
 	close(release)
 	require.Eventually(t, func() bool {
-		return assert.ObjectsAreEqual(overriddenRecordingRules, ruler.RecordingRules("t"))
+		rules, err := ruler.RecordingRules("t")
+		return err == nil && assert.ObjectsAreEqual(overriddenRecordingRules, rules)
 	}, time.Second, 5*time.Millisecond)
 	assert.EqualValues(t, 2, client.calls.Load())
 }
@@ -91,7 +92,9 @@ func TestCachedRemoteRuler_FailureBacksOff(t *testing.T) {
 	ruler := newTestRuler(client, time.Hour, time.Hour)
 
 	for range 5 {
-		assert.Nil(t, ruler.RecordingRules("t"))
+		rules, err := ruler.RecordingRules("t")
+		assert.Nil(t, rules)
+		assert.Error(t, err)
 	}
 	assert.EqualValues(t, 1, client.calls.Load())
 }
@@ -105,14 +108,40 @@ func TestCachedRemoteRuler_RefreshFailureKeepsStaleValue(t *testing.T) {
 	}}
 	ruler := newTestRuler(client, 10*time.Millisecond, time.Hour)
 
-	require.Equal(t, defaultRecordingRules, ruler.RecordingRules("t"))
+	require.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
 	time.Sleep(20 * time.Millisecond)
 
-	assert.Equal(t, defaultRecordingRules, ruler.RecordingRules("t"))
+	assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
 	require.Eventually(t, func() bool { return client.calls.Load() == 2 }, time.Second, 5*time.Millisecond)
 	time.Sleep(20 * time.Millisecond)
 	for range 5 {
-		assert.Equal(t, defaultRecordingRules, ruler.RecordingRules("t"))
+		assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
 	}
 	assert.EqualValues(t, 2, client.calls.Load())
+}
+
+func TestCachedRemoteRuler_RecoversAfterFailure(t *testing.T) {
+	fail := atomic.Bool{}
+	fail.Store(true)
+	client := &fakeRulesClient{fn: func(int32) ([]*model.RecordingRule, error) {
+		if fail.Load() {
+			return nil, errors.New("unavailable")
+		}
+		return defaultRecordingRules, nil
+	}}
+	ruler := newTestRuler(client, time.Hour, 10*time.Millisecond)
+
+	_, err := ruler.RecordingRules("t")
+	assert.Error(t, err)
+
+	fail.Store(false)
+	time.Sleep(20 * time.Millisecond)
+	assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
+}
+
+func rulesOf(t *testing.T, r Ruler, tenant string) []*model.RecordingRule {
+	t.Helper()
+	rules, err := r.RecordingRules(tenant)
+	require.NoError(t, err)
+	return rules
 }

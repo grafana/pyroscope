@@ -56,7 +56,7 @@ type Ruler interface {
 	//   with `profiles_recorded_`
 	// - a "profiles_rule_id" label is present among ExternalLabels. It identifies the rule.
 	// - a matcher with name "__profile__type__" is present in Matchers
-	RecordingRules(tenant string) []*phlaremodel.RecordingRule
+	RecordingRules(tenant string) ([]*phlaremodel.RecordingRule, error)
 }
 
 type Exporter interface {
@@ -82,7 +82,7 @@ func NewSampleObserver(recordingTime int64, exporter Exporter, ruler Ruler, labe
 
 func (o *SampleObserver) initTenantState(tenant string) {
 	o.state.tenant = tenant
-	recordingRules := o.ruler.RecordingRules(tenant)
+	recordingRules, _ := o.ruler.RecordingRules(tenant)
 
 	for _, rule := range recordingRules {
 		o.state.recordings = append(o.state.recordings, &recording{

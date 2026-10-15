@@ -46,6 +46,7 @@ type metrics struct {
 	inflightBytesHighWatermark     prometheus.Summary
 	rejectedRequests               *prometheus.CounterVec
 	profileIDGeneration            *prometheus.CounterVec
+	strippedWithoutRules           *prometheus.CounterVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -193,6 +194,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"source"},
 		),
+		strippedWithoutRules: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_stripped_profiles_without_rules_total",
+				Help:      "Number of sampled-out profiles stripped to totals because the tenant's recording rules could not be loaded.",
+			},
+			[]string{"tenant"},
+		),
 	}
 	if reg != nil {
 		reg.MustRegister(
@@ -210,6 +219,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.inflightBytesHighWatermark,
 			m.rejectedRequests,
 			m.profileIDGeneration,
+			m.strippedWithoutRules,
 		)
 	}
 	// Initialize expected rejected request labels, so the series exists before
