@@ -12,6 +12,10 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
+func emptyMapping() map[string]string {
+    return map[string]string{}
+}
+
 func Test_ExportToFlamebearer(t *testing.T) {
 	pType := &typesv1.ProfileType{
 		ID:         "memory:inuse_space:bytes:space:bytes",
@@ -59,6 +63,7 @@ func Test_ExportToFlamebearer(t *testing.T) {
 					value:     1,
 				},
 			}),
+            emptyMapping(),
 			-1,
 		), pType)
 	require.Equal(t, expected, actual)
@@ -95,7 +100,7 @@ func BenchmarkFlamegraph(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		f = NewFlameGraph(tr, -1)
+		f = NewFlameGraph(tr, emptyMapping(), -1)
 	}
 }
 
@@ -108,7 +113,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 		s.InsertStack(2, "foo", "qux")
 		s.InsertStack(1, "fred", "zoo")
 		s.InsertStack(1, "fred", "other")
-		m.MergeFlameGraph(NewFlameGraph(s, -1))
+		m.MergeFlameGraph(NewFlameGraph(s, emptyMapping(), -1))
 
 		s = new(FunctionNameTree)
 		s.InsertStack(1, "foo", "bar", "baz")
@@ -117,7 +122,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 		s.InsertStack(1, "func", "other")
 		s.InsertStack(1, "func")
 		s.InsertStack(1, "other")
-		m.MergeFlameGraph(NewFlameGraph(s, -1))
+		m.MergeFlameGraph(NewFlameGraph(s, emptyMapping(), -1))
 
 		expected := new(FunctionNameTree)
 		expected.InsertStack(1, "foo", "bar")
@@ -143,7 +148,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 		s.InsertStack(2, "foo", "qux")
 		s.InsertStack(1, "fred", "zoo")
 		s.InsertStack(1, "fred", "other")
-		m.MergeFlameGraph(NewFlameGraph(s, -1))
+		m.MergeFlameGraph(NewFlameGraph(s, emptyMapping(), -1))
 
 		fg := m.FlameGraph(4)
 		m = NewFlameGraphMerger()
@@ -160,7 +165,7 @@ func Test_FlameGraphMerger(t *testing.T) {
 
 	t.Run("empty flamegraph", func(t *testing.T) {
 		m := NewFlameGraphMerger()
-		m.MergeFlameGraph(NewFlameGraph(new(FunctionNameTree), -1))
+		m.MergeFlameGraph(NewFlameGraph(new(FunctionNameTree), emptyMapping(), -1))
 		require.Equal(t, new(FunctionNameTree).String(), m.Tree().String())
 	})
 
@@ -168,4 +173,71 @@ func Test_FlameGraphMerger(t *testing.T) {
 		m := NewFlameGraphMerger()
 		require.Equal(t, new(FunctionNameTree).String(), m.Tree().String())
 	})
+}
+
+func Test_NewFlameGraph_Mappings(t *testing.T) {
+    t.Run("mappings are correctly assigned to names", func(t *testing.T) {
+        s := new(FunctionNameTree)
+        s.InsertStack(1, "foo", "bar")
+        s.InsertStack(1, "foo", "baz")
+
+        nameToMapping := map[string]string{
+            "foo": "foo_file",
+            "bar": "bar_file",
+            "baz": "baz_file",
+        }
+
+        fg := NewFlameGraph(s, nameToMapping, -1)
+
+        require.Equal(t, len(fg.Names), len(fg.MappingNames))
+        for i, name := range fg.Names {
+            if name == "total" {
+                require.Equal(t, "", fg.MappingNames[i])
+                continue
+            }
+            require.Equal(t, nameToMapping[name], fg.MappingNames[i])
+        }
+    })
+
+    t.Run("empty mapping returns empty strings", func(t *testing.T) {
+        s := new(FunctionNameTree)
+        s.InsertStack(1, "foo", "bar")
+
+        fg := NewFlameGraph(s, emptyMapping(), -1)
+
+        require.Equal(t, len(fg.Names), len(fg.MappingNames))
+        for _, m := range fg.MappingNames {
+            require.Equal(t, "", m)
+        }
+    })
+
+    t.Run("partial mapping leaves missing names as empty string", func(t *testing.T) {
+        s := new(FunctionNameTree)
+        s.InsertStack(1, "foo", "bar")
+
+        nameToMapping := map[string]string{
+            "foo": "foo_file",
+        }
+
+        fg := NewFlameGraph(s, nameToMapping, -1)
+
+        require.Equal(t, len(fg.Names), len(fg.MappingNames))
+        for i, name := range fg.Names {
+            if name == "bar" {
+                require.Equal(t, "", fg.MappingNames[i])
+            }
+        }
+    })
+}
+
+func Test_FlameGraphMerger_Mapping(t *testing.T) {
+    t.Run("merge mapping stores values", func(t *testing.T) {
+        m := NewFlameGraphMerger()
+        src := map[string]string{
+            "foo": "foo_file",
+            "bar": "bar_file",
+        }
+        m.MergeMapping(src)
+        require.Equal(t, src, m.Mapping())
+    })
 }

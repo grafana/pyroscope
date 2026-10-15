@@ -3,6 +3,7 @@ package frontend
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -36,16 +37,17 @@ func (f *Frontend) SelectMergeStacktraces(
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
 		return f.selectMergeStacktracesPprof(ctx, c)
 	}
-	t, err := f.selectMergeStacktracesTree(ctx, c)
+	t, mapping, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 	var resp querierv1.SelectMergeStacktracesResponse
 	switch c.Msg.Format {
 	default:
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+		resp.Flamegraph = phlaremodel.NewFlameGraph(t, mapping, c.Msg.GetMaxNodes())
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = t.Bytes(c.Msg.GetMaxNodes(), nil)
+		resp.Mapping = mapping
 	}
 	return connect.NewResponse(&resp), nil
 }
@@ -53,7 +55,7 @@ func (f *Frontend) SelectMergeStacktraces(
 func (f *Frontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
-) (*phlaremodel.FunctionNameTree, error) {
+) (*phlaremodel.FunctionNameTree, map[string]string, error) {
 	if len(c.Msg.SpanSelector) > 0 {
 		resp, err := f.SelectMergeSpanProfile(ctx, connect.NewRequest(&querierv1.SelectMergeSpanProfileRequest{
 			ProfileTypeID: c.Msg.ProfileTypeID,
@@ -65,27 +67,31 @@ func (f *Frontend) selectMergeStacktracesTree(
 			Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
 		}))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree)
+		tree, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](resp.Msg.Tree)
+		if err != nil {
+			return nil, nil, err
+		}
+		return tree, resp.Msg.Mapping, nil
 	}
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, model.Interval{Start: model.Time(c.Msg.Start), End: model.Time(c.Msg.End)}, model.Now())
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
-		return new(phlaremodel.FunctionNameTree), nil
+		return new(phlaremodel.FunctionNameTree), nil, nil
 	}
 	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -97,6 +103,8 @@ func (f *Frontend) selectMergeStacktracesTree(
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
+	mapping := map[string]string{}
+	var mappingMu sync.Mutex
 	for intervals.Next() {
 		r := intervals.At()
 		g.Go(func() error {
@@ -114,6 +122,13 @@ func (f *Frontend) selectMergeStacktracesTree(
 			if err != nil {
 				return err
 			}
+			mappingMu.Lock()
+			if resp.Msg.Mapping != nil {
+				for k, v := range resp.Msg.Mapping {
+					mapping[k] = v
+				}
+			}
+			mappingMu.Unlock()
 			if len(resp.Msg.Tree) > 0 {
 				err = m.MergeTreeBytes(resp.Msg.Tree)
 			} else if resp.Msg.Flamegraph != nil {
@@ -125,10 +140,10 @@ func (f *Frontend) selectMergeStacktracesTree(
 	}
 
 	if err = g.Wait(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	return m.Tree(), nil
+	m.MergeMapping(mapping)
+	return m.Tree(), m.Mapping(), nil
 }
 
 func (f *Frontend) selectMergeStacktracesPprof(
@@ -154,7 +169,7 @@ func (f *Frontend) selectMergeStacktracesPprof(
 		}), nil
 	}
 
-	tree, err := f.selectMergeStacktracesTree(ctx, c)
+	tree, _, err := f.selectMergeStacktracesTree(ctx, c)
 	if err != nil {
 		return nil, err
 	}
