@@ -35,6 +35,43 @@ func TestQueryAnomalies_TimeSeriesOverflowStep(t *testing.T) {
 	}
 }
 
+func TestQueryAnomalies_TimeSeriesInvalidSelectorOrProfileType(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		profileTypeID string
+		labelSelector string
+	}{
+		{
+			name:          "invalid profile type",
+			profileTypeID: "invalid",
+			labelSelector: "{}",
+		},
+		{
+			name:          "invalid label selector",
+			profileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			labelSelector: "{invalid",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			limits := mockfrontend.NewMockLimits(t)
+			limits.On("MaxQueryLookback", "test").Return(time.Duration(0))
+			limits.On("MaxQueryLength", "test").Return(time.Duration(0))
+
+			qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, nil, nil, nil, nil, nil, nil)
+			_, err := qf.QueryAnomalies(tenant.InjectTenantID(context.Background(), "test"), connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+				AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES},
+				ProfileTypeID: tc.profileTypeID,
+				LabelSelector: tc.labelSelector,
+				Start:         1000,
+				End:           8000,
+				TimeSeries:    &querierv1.AnomalyTimeSeriesRequest{Step: 1},
+			}))
+			require.Error(t, err)
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+	}
+}
+
 func TestQueryAnomalies_TimeSeriesFinalizesOnQueryBackend(t *testing.T) {
 	limits := mockfrontend.NewMockLimits(t)
 	limits.On("MaxQueryLookback", "test").Return(time.Duration(0))

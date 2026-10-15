@@ -36,7 +36,7 @@ func (q *QueryFrontend) queryTimeSeriesAnomalies(ctx context.Context, req *queri
 	}
 	labelSelector, err := buildLabelSelectorWithProfileType(req.LabelSelector, req.ProfileTypeID)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	stepMillis := time.Duration(options.Step * float64(time.Second)).Milliseconds()
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
