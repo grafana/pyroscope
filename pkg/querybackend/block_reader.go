@@ -59,7 +59,8 @@ type BlockReader struct {
 	metrics  *metrics
 	hostname string
 
-	Overrides Overrides
+	Overrides   Overrides
+	treeResults *treeResultCache
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -69,15 +70,27 @@ type BlockReader struct {
 	//    Instead, they should share the processing pipeline, if possible.
 }
 
-func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer, overrides Overrides) *BlockReader {
+type BlockReaderOption func(*BlockReader)
+
+func WithTreeResultCacheMaxBytes(maxBytes int64, reg prometheus.Registerer) BlockReaderOption {
+	return func(b *BlockReader) {
+		b.treeResults = newTreeResultCache(maxBytes, reg)
+	}
+}
+
+func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer, overrides Overrides, opts ...BlockReaderOption) *BlockReader {
 	hostname, _ := os.Hostname()
-	return &BlockReader{
+	b := &BlockReader{
 		log:       logger,
 		storage:   storage,
 		metrics:   newMetrics(reg),
 		hostname:  hostname,
 		Overrides: overrides,
 	}
+	for _, opt := range opts {
+		opt(b)
+	}
+	return b
 }
 
 func (b *BlockReader) Invoke(
@@ -142,6 +155,7 @@ func (b *BlockReader) Invoke(
 			execCollector:   blockExecCollector,
 			weightCollector: weightCollector,
 			includeStripped: includeStripped,
+			treeResults:     b.treeResults,
 		}).execute))
 	}
 
