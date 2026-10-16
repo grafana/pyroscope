@@ -88,6 +88,11 @@ func (q *QueryFrontend) Series(
 	if err != nil {
 		return nil, err
 	}
+	if len(c.Msg.LabelNames) > 0 && len(labelNames) == 0 {
+		// Every requested label name was filtered out. Querying with no label
+		// names would return all labels, including the filtered ones.
+		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
+	}
 
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
 		StartTime:     c.Msg.Start,
