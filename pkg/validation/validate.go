@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"slices"
@@ -359,7 +358,7 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 	}
 	for _, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
-			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string")
 		}
 	}
 	if symbolLengthLimit > 0 {
