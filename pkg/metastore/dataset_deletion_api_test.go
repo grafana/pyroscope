@@ -14,6 +14,27 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
 )
 
+func TestDatasetDeletionCommandCompatibility(t *testing.T) {
+	req := &metastorev1.DeleteDatasetsRequest{
+		Tenant: "tenant-a", MinTime: 123, MaxTime: 456,
+		Filter:             &metastorev1.DeleteFilter{ServiceNameRegex: "svc-a"},
+		MinCompactionLevel: 2,
+	}
+	command := datasetDeletionCommand(req)
+	apiBytes, err := proto.Marshal(req)
+	require.NoError(t, err)
+	commandBytes, err := proto.Marshal(command)
+	require.NoError(t, err)
+	require.Equal(t, apiBytes, commandBytes)
+	var decoded raft_log.PrepareDatasetDeletionRequest
+	require.NoError(t, proto.Unmarshal(apiBytes, &decoded))
+	require.True(t, proto.Equal(command, &decoded))
+
+	// API-only dry-run state must never enter newly proposed commands.
+	req.DryRun = true
+	require.True(t, proto.Equal(command, datasetDeletionCommand(req)))
+}
+
 func TestDeletionFilterSemantics(t *testing.T) {
 	for _, tt := range []struct {
 		name, regex, service string
@@ -45,7 +66,7 @@ func TestDeletionFilterSemantics(t *testing.T) {
 func TestPrepareDatasetDeletionRejection(t *testing.T) {
 	// Invalid requests are successful FSM outcomes, even without a database.
 	h := new(CompactionCommandHandler)
-	response, err := h.PrepareDatasetDeletion(context.Background(), nil, &raft.Log{Term: 7}, &metastorev1.DeleteDatasetsRequest{})
+	response, err := h.PrepareDatasetDeletion(context.Background(), nil, &raft.Log{Term: 7}, &raft_log.PrepareDatasetDeletionRequest{})
 	require.NoError(t, err)
 	require.EqualValues(t, 7, response.Term)
 	require.Nil(t, response.GetDeletion())

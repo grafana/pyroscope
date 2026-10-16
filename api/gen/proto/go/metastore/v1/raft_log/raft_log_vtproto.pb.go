@@ -138,6 +138,33 @@ func (m *DatasetDeletionRejection) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *PrepareDatasetDeletionRequest) CloneVT() *PrepareDatasetDeletionRequest {
+	if m == nil {
+		return (*PrepareDatasetDeletionRequest)(nil)
+	}
+	r := new(PrepareDatasetDeletionRequest)
+	r.Tenant = m.Tenant
+	r.MinTime = m.MinTime
+	r.MaxTime = m.MaxTime
+	r.MinCompactionLevel = m.MinCompactionLevel
+	if rhs := m.Filter; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.DeleteFilter }); ok {
+			r.Filter = vtpb.CloneVT()
+		} else {
+			r.Filter = proto.Clone(rhs).(*v1.DeleteFilter)
+		}
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *PrepareDatasetDeletionRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *PrepareDatasetDeletionResponse) CloneVT() *PrepareDatasetDeletionResponse {
 	if m == nil {
 		return (*PrepareDatasetDeletionResponse)(nil)
@@ -617,6 +644,41 @@ func (this *DatasetDeletionRejection) EqualVT(that *DatasetDeletionRejection) bo
 
 func (this *DatasetDeletionRejection) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*DatasetDeletionRejection)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *PrepareDatasetDeletionRequest) EqualVT(that *PrepareDatasetDeletionRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Tenant != that.Tenant {
+		return false
+	}
+	if this.MinTime != that.MinTime {
+		return false
+	}
+	if this.MaxTime != that.MaxTime {
+		return false
+	}
+	if equal, ok := interface{}(this.Filter).(interface{ EqualVT(*v1.DeleteFilter) bool }); ok {
+		if !equal.EqualVT(that.Filter) {
+			return false
+		}
+	} else if !proto.Equal(this.Filter, that.Filter) {
+		return false
+	}
+	if this.MinCompactionLevel != that.MinCompactionLevel {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *PrepareDatasetDeletionRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*PrepareDatasetDeletionRequest)
 	if !ok {
 		return false
 	}
@@ -1402,6 +1464,83 @@ func (m *DatasetDeletionRejection) MarshalToSizedBufferVT(dAtA []byte) (int, err
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Reason))
 		i--
 		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *PrepareDatasetDeletionRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PrepareDatasetDeletionRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *PrepareDatasetDeletionRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MinCompactionLevel != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MinCompactionLevel))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.Filter != nil {
+		if vtmsg, ok := interface{}(m.Filter).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Filter)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.MaxTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MaxTime))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.MinTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MinTime))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Tenant) > 0 {
+		i -= len(m.Tenant)
+		copy(dAtA[i:], m.Tenant)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -2344,6 +2483,39 @@ func (m *DatasetDeletionRejection) SizeVT() (n int) {
 	return n
 }
 
+func (m *PrepareDatasetDeletionRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Tenant)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.MinTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MinTime))
+	}
+	if m.MaxTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MaxTime))
+	}
+	if m.Filter != nil {
+		if size, ok := interface{}(m.Filter).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Filter)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.MinCompactionLevel != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MinCompactionLevel))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *PrepareDatasetDeletionResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -3232,6 +3404,190 @@ func (m *DatasetDeletionRejection) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Message = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PrepareDatasetDeletionRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PrepareDatasetDeletionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PrepareDatasetDeletionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tenant = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinTime", wireType)
+			}
+			m.MinTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MinTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxTime", wireType)
+			}
+			m.MaxTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Filter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Filter == nil {
+				m.Filter = &v1.DeleteFilter{}
+			}
+			if unmarshal, ok := interface{}(m.Filter).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Filter); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinCompactionLevel", wireType)
+			}
+			m.MinCompactionLevel = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MinCompactionLevel |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

@@ -133,7 +133,7 @@ func (svc *CompactionService) DeleteDatasets(ctx context.Context, req *metastore
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_PREPARE_DATASET_DELETION)
-	result, err := svc.raft.Propose(ctx, cmd, req)
+	result, err := svc.raft.Propose(ctx, cmd, datasetDeletionCommand(req))
 	if err != nil {
 		return nil, err
 	}
@@ -251,9 +251,16 @@ func (h *CompactionCommandHandler) busyDeletionBlocks(tx *bbolt.Tx) (map[deletio
 	return busy, nil
 }
 
+func datasetDeletionCommand(req *metastorev1.DeleteDatasetsRequest) *raft_log.PrepareDatasetDeletionRequest {
+	return &raft_log.PrepareDatasetDeletionRequest{
+		Tenant: req.Tenant, MinTime: req.MinTime, MaxTime: req.MaxTime,
+		Filter: req.Filter, MinCompactionLevel: req.MinCompactionLevel,
+	}
+}
+
 // PrepareDatasetDeletion plans deletion independently of worker polling.
 // An expected rejection must not fail the FSM transaction or poison replay.
-func (h *CompactionCommandHandler) PrepareDatasetDeletion(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.DeleteDatasetsRequest) (resp *raft_log.PrepareDatasetDeletionResponse, err error) {
+func (h *CompactionCommandHandler) PrepareDatasetDeletion(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.PrepareDatasetDeletionRequest) (resp *raft_log.PrepareDatasetDeletionResponse, err error) {
 	span, ctx := metastoretracing.StartSpanFromContext(ctx, "raft.PrepareDatasetDeletion")
 	span.SetTag("tenant_id", req.GetTenant())
 	span.SetTag("raft_log_index", cmd.Index)
@@ -266,7 +273,10 @@ func (h *CompactionCommandHandler) PrepareDatasetDeletion(ctx context.Context, t
 		span.Finish()
 	}()
 
-	prepared, err := h.prepareDatasetDeletion(ctx, tx, cmd, req)
+	prepared, err := h.prepareDatasetDeletion(ctx, tx, cmd, &metastorev1.DeleteDatasetsRequest{
+		Tenant: req.Tenant, MinTime: req.MinTime, MaxTime: req.MaxTime,
+		Filter: req.Filter, MinCompactionLevel: req.MinCompactionLevel,
+	})
 	if err == nil {
 		span.SetTag("new_jobs", len(prepared.GetPlanUpdate().GetNewJobs()))
 		return prepared, nil

@@ -61,6 +61,17 @@ message DatasetDeletionRejection {
   string message = 2;
 }
 
+// Persisted deletion selection. Field numbers match the original API payload
+// for replay compatibility; dry_run is never part of a committed command.
+message PrepareDatasetDeletionRequest {
+  string tenant = 1;
+  int64 min_time = 2;
+  int64 max_time = 3;
+  metastore.v1.DeleteFilter filter = 4;
+  reserved 5;
+  uint32 min_compaction_level = 6;
+}
+
 message PrepareDatasetDeletionResponse {
   uint64 term = 1;
   CompactionPlanUpdate plan_update = 2;

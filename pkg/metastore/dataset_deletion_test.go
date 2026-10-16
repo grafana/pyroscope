@@ -59,7 +59,7 @@ func (r *deletionTestRaft) Propose(ctx context.Context, _ fsm.RaftLogEntryType, 
 		switch q := req.(type) {
 		case *raft_log.GetCompactionPlanUpdateRequest:
 			resp, e = r.handler.GetCompactionPlanUpdate(ctx, tx, cmd, q)
-		case *metastorev1.DeleteDatasetsRequest:
+		case *raft_log.PrepareDatasetDeletionRequest:
 			resp, e = r.handler.PrepareDatasetDeletion(ctx, tx, cmd, q)
 		case *raft_log.UpdateCompactionPlanRequest:
 			resp, e = r.handler.UpdateCompactionPlan(ctx, tx, cmd, q)
@@ -188,7 +188,7 @@ func TestDeleteDatasets(t *testing.T) {
 		return nil
 	}))
 	h.scheduler = sc
-	stale, err := r.Propose(ctx, fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_PREPARE_DATASET_DELETION), req)
+	stale, err := r.Propose(ctx, fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_PREPARE_DATASET_DELETION), datasetDeletionCommand(req))
 	require.NoError(t, err)
 	resp, err = svc.DeleteDatasets(ctx, req)
 	require.NoError(t, err)
