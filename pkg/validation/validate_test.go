@@ -792,7 +792,7 @@ func TestValidateProfile(t *testing.T) {
 			MockLimits{
 				MaxProfileSymbolValueLengthValue: 3,
 			},
-			NewErrorf(MalformedProfile, "invalid utf8 string hex: ff616263"),
+			NewErrorf(MalformedProfile, "invalid utf8 string"),
 			nil,
 		},
 		{
@@ -805,7 +805,7 @@ func TestValidateProfile(t *testing.T) {
 			MockLimits{
 				MaxProfileSymbolValueLengthValue: 3,
 			},
-			NewErrorf(MalformedProfile, "invalid utf8 string hex: 616263ff"),
+			NewErrorf(MalformedProfile, "invalid utf8 string"),
 			nil,
 		},
 		{
