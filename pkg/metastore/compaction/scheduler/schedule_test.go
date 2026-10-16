@@ -368,6 +368,63 @@ func TestSchedule_QueueSizeLimit(t *testing.T) {
 	})
 }
 
+func TestSchedule_AddRejectsExistingJob(t *testing.T) {
+	store := new(mockscheduler.MockJobStore)
+	config := Config{
+		MaxFailures:   3,
+		LeaseDuration: 10 * time.Second,
+	}
+
+	scheduler := NewScheduler(config, store, nil)
+	states := []*raft_log.CompactionJobState{
+		{Name: "live", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 100, Failures: 0},
+		{Name: "failed", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+	}
+	for _, s := range states {
+		scheduler.queue.put(s)
+	}
+
+	test.AssertIdempotent(t, func(t *testing.T) {
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, 1)})
+		// Neither a live nor a failed job may be overwritten by a new plan.
+		assert.Nil(t, s.AddJob(&raft_log.CompactionJobPlan{Name: "live"}))
+		assert.Nil(t, s.AddJob(&raft_log.CompactionJobPlan{Name: "failed"}))
+		assert.NotNil(t, s.AddJob(&raft_log.CompactionJobPlan{Name: "new"}))
+	})
+}
+
+// Eviction only trims the queue down to MaxQueueSize; it never frees a slot
+// for AddJob within the same schedule. Callers must not rely on an
+// evict-then-add retry to make room.
+func TestSchedule_EvictDoesNotMakeRoomForAdd(t *testing.T) {
+	store := new(mockscheduler.MockJobStore)
+	config := Config{
+		MaxQueueSize:  2,
+		MaxFailures:   3,
+		LeaseDuration: 10 * time.Second,
+	}
+
+	scheduler := NewScheduler(config, store, nil)
+	states := []*raft_log.CompactionJobState{
+		{Name: "1", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "2", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+		{Name: "3", Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS, Token: 1, LeaseExpiresAt: 0, Failures: 3},
+	}
+	for _, s := range states {
+		scheduler.queue.put(s)
+	}
+
+	test.AssertIdempotent(t, func(t *testing.T) {
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, 1)})
+		assert.Nil(t, s.AddJob(&raft_log.CompactionJobPlan{Name: "4"}))
+		// One eviction brings the queue to the limit, then eviction stops.
+		assert.NotNil(t, s.EvictJob())
+		assert.Nil(t, s.EvictJob())
+		// The queue is at the limit, so a new job still does not fit.
+		assert.Nil(t, s.AddJob(&raft_log.CompactionJobPlan{Name: "4"}))
+	})
+}
+
 func TestSchedule_AssignEvict(t *testing.T) {
 	store := new(mockscheduler.MockJobStore)
 	config := Config{

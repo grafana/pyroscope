@@ -120,6 +120,73 @@ func (m *GetCompactionPlanUpdateResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *DatasetDeletionRejection) CloneVT() *DatasetDeletionRejection {
+	if m == nil {
+		return (*DatasetDeletionRejection)(nil)
+	}
+	r := new(DatasetDeletionRejection)
+	r.Reason = m.Reason
+	r.Message = m.Message
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *DatasetDeletionRejection) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *PrepareDatasetDeletionResponse) CloneVT() *PrepareDatasetDeletionResponse {
+	if m == nil {
+		return (*PrepareDatasetDeletionResponse)(nil)
+	}
+	r := new(PrepareDatasetDeletionResponse)
+	r.Term = m.Term
+	r.PlanUpdate = m.PlanUpdate.CloneVT()
+	if m.Outcome != nil {
+		r.Outcome = m.Outcome.(interface {
+			CloneVT() isPrepareDatasetDeletionResponse_Outcome
+		}).CloneVT()
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *PrepareDatasetDeletionResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *PrepareDatasetDeletionResponse_Deletion) CloneVT() isPrepareDatasetDeletionResponse_Outcome {
+	if m == nil {
+		return (*PrepareDatasetDeletionResponse_Deletion)(nil)
+	}
+	r := new(PrepareDatasetDeletionResponse_Deletion)
+	if rhs := m.Deletion; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface {
+			CloneVT() *v1.DeleteDatasetsResponse
+		}); ok {
+			r.Deletion = vtpb.CloneVT()
+		} else {
+			r.Deletion = proto.Clone(rhs).(*v1.DeleteDatasetsResponse)
+		}
+	}
+	return r
+}
+
+func (m *PrepareDatasetDeletionResponse_Rejection) CloneVT() isPrepareDatasetDeletionResponse_Outcome {
+	if m == nil {
+		return (*PrepareDatasetDeletionResponse_Rejection)(nil)
+	}
+	r := new(PrepareDatasetDeletionResponse_Rejection)
+	r.Rejection = m.Rejection.CloneVT()
+	return r
+}
+
 func (m *CompactionPlanUpdate) CloneVT() *CompactionPlanUpdate {
 	if m == nil {
 		return (*CompactionPlanUpdate)(nil)
@@ -277,6 +344,7 @@ func (m *CompactionJobState) CloneVT() *CompactionJobState {
 	r.LeaseExpiresAt = m.LeaseExpiresAt
 	r.AddedAt = m.AddedAt
 	r.Failures = m.Failures
+	r.DatasetDeletion = m.DatasetDeletion
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -312,6 +380,13 @@ func (m *CompactionJobPlan) CloneVT() *CompactionJobPlan {
 			}
 		}
 		r.Tombstones = tmpContainer
+	}
+	if rhs := m.DeleteFilter; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.DeleteFilter }); ok {
+			r.DeleteFilter = vtpb.CloneVT()
+		} else {
+			r.DeleteFilter = proto.Clone(rhs).(*v1.DeleteFilter)
+		}
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -525,6 +600,118 @@ func (this *GetCompactionPlanUpdateResponse) EqualMessageVT(thatMsg proto.Messag
 	}
 	return this.EqualVT(that)
 }
+func (this *DatasetDeletionRejection) EqualVT(that *DatasetDeletionRejection) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Reason != that.Reason {
+		return false
+	}
+	if this.Message != that.Message {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *DatasetDeletionRejection) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*DatasetDeletionRejection)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *PrepareDatasetDeletionResponse) EqualVT(that *PrepareDatasetDeletionResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Outcome == nil && that.Outcome != nil {
+		return false
+	} else if this.Outcome != nil {
+		if that.Outcome == nil {
+			return false
+		}
+		if !this.Outcome.(interface {
+			EqualVT(isPrepareDatasetDeletionResponse_Outcome) bool
+		}).EqualVT(that.Outcome) {
+			return false
+		}
+	}
+	if this.Term != that.Term {
+		return false
+	}
+	if !this.PlanUpdate.EqualVT(that.PlanUpdate) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *PrepareDatasetDeletionResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*PrepareDatasetDeletionResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *PrepareDatasetDeletionResponse_Deletion) EqualVT(thatIface isPrepareDatasetDeletionResponse_Outcome) bool {
+	that, ok := thatIface.(*PrepareDatasetDeletionResponse_Deletion)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.Deletion, that.Deletion; p != q {
+		if p == nil {
+			p = &v1.DeleteDatasetsResponse{}
+		}
+		if q == nil {
+			q = &v1.DeleteDatasetsResponse{}
+		}
+		if equal, ok := interface{}(p).(interface {
+			EqualVT(*v1.DeleteDatasetsResponse) bool
+		}); ok {
+			if !equal.EqualVT(q) {
+				return false
+			}
+		} else if !proto.Equal(p, q) {
+			return false
+		}
+	}
+	return true
+}
+
+func (this *PrepareDatasetDeletionResponse_Rejection) EqualVT(thatIface isPrepareDatasetDeletionResponse_Outcome) bool {
+	that, ok := thatIface.(*PrepareDatasetDeletionResponse_Rejection)
+	if !ok {
+		return false
+	}
+	if this == that {
+		return true
+	}
+	if this == nil && that != nil || this != nil && that == nil {
+		return false
+	}
+	if p, q := this.Rejection, that.Rejection; p != q {
+		if p == nil {
+			p = &DatasetDeletionRejection{}
+		}
+		if q == nil {
+			q = &DatasetDeletionRejection{}
+		}
+		if !p.EqualVT(q) {
+			return false
+		}
+	}
+	return true
+}
+
 func (this *CompactionPlanUpdate) EqualVT(that *CompactionPlanUpdate) bool {
 	if this == that {
 		return true
@@ -763,6 +950,9 @@ func (this *CompactionJobState) EqualVT(that *CompactionJobState) bool {
 	if this.Failures != that.Failures {
 		return false
 	}
+	if this.DatasetDeletion != that.DatasetDeletion {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -820,6 +1010,13 @@ func (this *CompactionJobPlan) EqualVT(that *CompactionJobPlan) bool {
 				return false
 			}
 		}
+	}
+	if equal, ok := interface{}(this.DeleteFilter).(interface{ EqualVT(*v1.DeleteFilter) bool }); ok {
+		if !equal.EqualVT(that.DeleteFilter) {
+			return false
+		}
+	} else if !proto.Equal(this.DeleteFilter, that.DeleteFilter) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -1164,6 +1361,158 @@ func (m *GetCompactionPlanUpdateResponse) MarshalToSizedBufferVT(dAtA []byte) (i
 	return len(dAtA) - i, nil
 }
 
+func (m *DatasetDeletionRejection) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DatasetDeletionRejection) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DatasetDeletionRejection) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Message) > 0 {
+		i -= len(m.Message)
+		copy(dAtA[i:], m.Message)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Message)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Reason != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Reason))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *PrepareDatasetDeletionResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PrepareDatasetDeletionResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *PrepareDatasetDeletionResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if vtmsg, ok := m.Outcome.(interface {
+		MarshalToSizedBufferVT([]byte) (int, error)
+	}); ok {
+		size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+	}
+	if m.PlanUpdate != nil {
+		size, err := m.PlanUpdate.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Term != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Term))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *PrepareDatasetDeletionResponse_Deletion) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *PrepareDatasetDeletionResponse_Deletion) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Deletion != nil {
+		if vtmsg, ok := interface{}(m.Deletion).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Deletion)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *PrepareDatasetDeletionResponse_Rejection) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *PrepareDatasetDeletionResponse_Rejection) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Rejection != nil {
+		size, err := m.Rejection.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	return len(dAtA) - i, nil
+}
 func (m *CompactionPlanUpdate) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -1544,6 +1893,16 @@ func (m *CompactionJobState) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.DatasetDeletion {
+		i--
+		if m.DatasetDeletion {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x40
+	}
 	if m.Failures != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Failures))
 		i--
@@ -1613,6 +1972,28 @@ func (m *CompactionJobPlan) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.DeleteFilter != nil {
+		if vtmsg, ok := interface{}(m.DeleteFilter).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.DeleteFilter)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x3a
 	}
 	if len(m.Tombstones) > 0 {
 		for iNdEx := len(m.Tombstones) - 1; iNdEx >= 0; iNdEx-- {
@@ -1946,6 +2327,73 @@ func (m *GetCompactionPlanUpdateResponse) SizeVT() (n int) {
 	return n
 }
 
+func (m *DatasetDeletionRejection) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Reason != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Reason))
+	}
+	l = len(m.Message)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *PrepareDatasetDeletionResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Term != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Term))
+	}
+	if m.PlanUpdate != nil {
+		l = m.PlanUpdate.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if vtmsg, ok := m.Outcome.(interface{ SizeVT() int }); ok {
+		n += vtmsg.SizeVT()
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *PrepareDatasetDeletionResponse_Deletion) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Deletion != nil {
+		if size, ok := interface{}(m.Deletion).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Deletion)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
+func (m *PrepareDatasetDeletionResponse_Rejection) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Rejection != nil {
+		l = m.Rejection.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	return n
+}
 func (m *CompactionPlanUpdate) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -2102,6 +2550,9 @@ func (m *CompactionJobState) SizeVT() (n int) {
 	if m.Failures != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Failures))
 	}
+	if m.DatasetDeletion {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -2143,6 +2594,16 @@ func (m *CompactionJobPlan) SizeVT() (n int) {
 			}
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.DeleteFilter != nil {
+		if size, ok := interface{}(m.DeleteFilter).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.DeleteFilter)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2667,6 +3128,312 @@ func (m *GetCompactionPlanUpdateResponse) UnmarshalVT(dAtA []byte) error {
 			}
 			if err := m.PlanUpdate.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DatasetDeletionRejection) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DatasetDeletionRejection: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DatasetDeletionRejection: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Reason", wireType)
+			}
+			m.Reason = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Reason |= DatasetDeletionRejection_Reason(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Message", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Message = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PrepareDatasetDeletionResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PrepareDatasetDeletionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PrepareDatasetDeletionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Term", wireType)
+			}
+			m.Term = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Term |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PlanUpdate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.PlanUpdate == nil {
+				m.PlanUpdate = &CompactionPlanUpdate{}
+			}
+			if err := m.PlanUpdate.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Deletion", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Outcome.(*PrepareDatasetDeletionResponse_Deletion); ok {
+				if unmarshal, ok := interface{}(oneof.Deletion).(interface {
+					UnmarshalVT([]byte) error
+				}); ok {
+					if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+						return err
+					}
+				} else {
+					if err := proto.Unmarshal(dAtA[iNdEx:postIndex], oneof.Deletion); err != nil {
+						return err
+					}
+				}
+			} else {
+				v := &v1.DeleteDatasetsResponse{}
+				if unmarshal, ok := interface{}(v).(interface {
+					UnmarshalVT([]byte) error
+				}); ok {
+					if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+						return err
+					}
+				} else {
+					if err := proto.Unmarshal(dAtA[iNdEx:postIndex], v); err != nil {
+						return err
+					}
+				}
+				m.Outcome = &PrepareDatasetDeletionResponse_Deletion{Deletion: v}
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Rejection", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if oneof, ok := m.Outcome.(*PrepareDatasetDeletionResponse_Rejection); ok {
+				if err := oneof.Rejection.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				v := &DatasetDeletionRejection{}
+				if err := v.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+				m.Outcome = &PrepareDatasetDeletionResponse_Rejection{Rejection: v}
 			}
 			iNdEx = postIndex
 		default:
@@ -3638,6 +4405,26 @@ func (m *CompactionJobState) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetDeletion", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.DatasetDeletion = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -3861,6 +4648,50 @@ func (m *CompactionJobPlan) UnmarshalVT(dAtA []byte) error {
 				}
 			} else {
 				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Tombstones[len(m.Tombstones)-1]); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeleteFilter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DeleteFilter == nil {
+				m.DeleteFilter = &v1.DeleteFilter{}
+			}
+			if unmarshal, ok := interface{}(m.DeleteFilter).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.DeleteFilter); err != nil {
 					return err
 				}
 			}

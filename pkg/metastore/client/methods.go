@@ -146,6 +146,18 @@ func (c *Client) QueryMetadataLabels(ctx context.Context, in *metastorev1.QueryM
 	})
 }
 
+func (c *Client) ListCompactionJobs(ctx context.Context, in *metastorev1.ListCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.ListCompactionJobsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.ListCompactionJobsResponse, error) {
+		return instance.ListCompactionJobs(ctx, in, opts...)
+	})
+}
+
+func (c *Client) DeleteDatasets(ctx context.Context, in *metastorev1.DeleteDatasetsRequest, opts ...grpc.CallOption) (*metastorev1.DeleteDatasetsResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.DeleteDatasetsResponse, error) {
+		return instance.DeleteDatasets(ctx, in, opts...)
+	})
+}
+
 func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.PollCompactionJobsResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.PollCompactionJobsResponse, error) {
 		return instance.PollCompactionJobs(ctx, in, opts...)

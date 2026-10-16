@@ -11,6 +11,7 @@ enum RaftCommand {
   RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE = 2;
   RAFT_COMMAND_UPDATE_COMPACTION_PLAN = 3;
   RAFT_COMMAND_TRUNCATE_INDEX = 4;
+  RAFT_COMMAND_PREPARE_DATASET_DELETION = 5;
 }
 
 message AddBlockMetadataRequest {
@@ -45,6 +46,28 @@ message CompactionJobStatusUpdate {
 message GetCompactionPlanUpdateResponse {
   uint64 term = 1;
   CompactionPlanUpdate plan_update = 2;
+}
+
+// Expected rejections are successful FSM applications, not handler errors.
+message DatasetDeletionRejection {
+  enum Reason {
+    REASON_UNSPECIFIED = 0;
+    REASON_INVALID_REQUEST = 1;
+    REASON_UNSUPPORTED = 2;
+    REASON_BLOCK_BUSY = 3;
+    REASON_SCHEDULER_FULL = 4;
+  }
+  Reason reason = 1;
+  string message = 2;
+}
+
+message PrepareDatasetDeletionResponse {
+  uint64 term = 1;
+  CompactionPlanUpdate plan_update = 2;
+  oneof outcome {
+    metastore.v1.DeleteDatasetsResponse deletion = 3;
+    DatasetDeletionRejection rejection = 4;
+  }
 }
 
 message CompactionPlanUpdate {
@@ -92,6 +115,7 @@ message CompactionJobState {
   int64 lease_expires_at = 5;
   int64 added_at = 6;
   uint32 failures = 7;
+  bool dataset_deletion = 8;
 }
 
 message CompactionJobPlan {
@@ -103,6 +127,7 @@ message CompactionJobPlan {
   repeated string source_blocks = 5;
   // Objects to be deleted.
   repeated metastore.v1.Tombstones tombstones = 6;
+  metastore.v1.DeleteFilter delete_filter = 7;
 }
 
 // UpdateCompactionPlanRequest proposes compaction plan changes.
