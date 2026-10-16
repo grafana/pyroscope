@@ -1,5 +1,7 @@
 # Block Compaction
 
+For service-scoped dataset deletion, see [Dataset deletion](#dataset-deletion-v2).
+
 ## Background
 
 The Pyroscope ingestion pipeline is designed to gather data in memory as small segments, which are periodically flushed
@@ -126,6 +128,64 @@ Profiling data from each service (identified by the `service_name` label) is sto
 The block layout is composed of a collection of non-overlapping, independent datasets, each containing distinct data.
 At compaction, matching datasets from different blocks are merged: their tsdb index, symbols, and profile tables are
 merged and rewritten to a new block, to optimize the data for efficient reading.
+
+---
+
+# Dataset deletion (V2)
+
+Use `metastore.v1.CompactionService/DeleteDatasets` or:
+
+```sh
+profilecli admin compaction delete-datasets \
+  --metastore.address=<host:port> \
+  --tenant-id=<tenant> \
+  --from=<from> --to=<to> \
+  --service-name-regex='svc-a|svc-b'
+```
+
+Start with a dry run (`dry_run: true` in the RPC; enabled by default in the CLI).
+It shows the planned work without scheduling jobs. Disable it with `--dry-run=false` to delete.
+
+The RPC requires a non-blank tenant, an inclusive `min_time` / `max_time` range in Unix
+nanoseconds, and a `filter` with a full-string Go/RE2 `service_name_regex`.
+`min_time` must not exceed `max_time`; zero means the Unix epoch.
+The regex above matches either service exactly. Use `.*` for all services.
+An empty regex matches only an empty name; datasets without a service name are skipped.
+
+**Deletion removes whole matching datasets from overlapping blocks, not just samples
+in the time range.** Only single-tenant compacted blocks are eligible
+(`CompactionLevel > 0` and `BlockMeta.Tenant != 0`). Wait for multi-tenant L0 segments
+to compact to L1 before deleting them. You can optionally set `min_compaction_level`
+(`--min-compaction-level`, `0` by default) to skip blocks below a given compaction level.
+
+The response lists block and matched dataset bounds, dataset counts and bytes, and
+whether each block will be rewritten or removed. Response times are Unix nanoseconds;
+stored block metadata uses milliseconds. `matched_bytes` is the size of selected datasets,
+not the storage space that will be freed or the rebuilt tenant index size.
+Counts and `BlockDeletionSummary` entries describe planned work, not completed deletion.
+
+A non-dry run schedules one asynchronous job per block and returns its name.
+If a block already has a persisted job, the request fails with `FailedPrecondition`;
+retry after that job finishes or is retired by the scheduler. This includes jobs that
+have exhausted `MaxFailures`: their final worker can still report completion, even
+after its lease expires. Dataset deletion does not reset or bypass these jobs. A full scheduler returns `ResourceExhausted` without
+scheduling part of the plan. Dry runs do not reserve blocks, and earlier requests do
+not cover newly ingested data.
+
+Deletion uses a separate Raft preparation command, independent of worker polling.
+Expected rejections become gRPC errors, not fatal FSM errors.
+Workers rebuild profiles, indexes, symbols, and metadata from surviving datasets.
+They keep the compaction level unchanged and re-enqueue replacements for subsequent level-up compaction.
+If no datasets remain, no replacement object is uploaded.
+
+After a job succeeds, the source block is removed from the index and tombstoned,
+even if the result is empty. Objects are removed after the normal tombstone cleanup
+delay (15 minutes by default), **not immediately**. Backups and historical snapshots
+are not deleted.
+
+Upgrade **all metastore replicas and compaction workers** before using this API.
+Older workers cannot apply deletion filters. This is an internal admin API:
+authenticate callers and check their access to the requested tenant at the gateway.
 
 ---
 

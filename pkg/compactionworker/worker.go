@@ -458,9 +458,29 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		),
 	}
 
-	if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
-		defer observer.Close()
-		options = append(options, block.WithSampleObserver(observer))
+	if filter := job.GetDeleteFilter(); filter != nil {
+		if job.CompactionLevel == 0 || job.Tenant == "" {
+			level.Error(logger).Log("msg", "dataset deletion requires a single-tenant compacted block")
+			statusName = statusFailure
+			return
+		}
+		re, err := block.CompileServiceNameRegex(filter.ServiceNameRegex)
+		if err != nil {
+			level.Error(logger).Log("msg", "invalid dataset deletion filter", "err", err)
+			statusName = statusFailure
+			return
+		}
+		options = append(options, block.WithPreserveCompactionLevel(), block.WithDatasetFilter(func(tenant, service string) bool {
+			return tenant != job.Tenant || !re.MatchString(service)
+		}))
+	}
+
+	// Deletion rewrites must not export surviving L0 samples a second time.
+	if job.GetDeleteFilter() == nil {
+		if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
+			defer observer.Close()
+			options = append(options, block.WithSampleObserver(observer))
+		}
 	}
 
 	compacted, err := w.compactFn(ctx, job.blocks, w.storage, options...)

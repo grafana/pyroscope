@@ -122,16 +122,22 @@ func (p *schedule) EvictJob() *raft_log.CompactionJobState {
 // AddJob creates a state for the newly planned job.
 //
 // The method must be called after the last AssignJob and UpdateJob calls.
-// It returns an empty state if the queue size limit is reached.
+// It returns an empty state if the queue size limit is reached, or if a job
+// with the same name is already scheduled: overwriting the state of a live job
+// would reset its token and lease.
 func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) *raft_log.CompactionJobState {
 	p.scheduler.mu.Lock()
 	defer p.scheduler.mu.Unlock()
+	if _, exists := p.scheduler.queue.jobs[plan.Name]; exists {
+		return nil
+	}
 	if limit := p.scheduler.config.MaxQueueSize; limit > 0 {
 		if size := uint64(p.added + p.scheduler.queue.size()); size >= limit {
 			return nil
 		}
 	}
 	state := &raft_log.CompactionJobState{
+		DatasetDeletion: plan.DeleteFilter != nil,
 		Name:            plan.Name,
 		CompactionLevel: plan.CompactionLevel,
 		Status:          metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED,

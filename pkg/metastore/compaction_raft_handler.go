@@ -178,6 +178,15 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 		return new(raft_log.UpdateCompactionPlanResponse), nil
 	}
 
+	// Recheck deletion sources before applying the prepared plan: retention
+	// or another leader request may have changed the index in between.
+	if ok, checkErr := h.validateDeletionJobs(ctx, tx, req.PlanUpdate); checkErr != nil || !ok {
+		if checkErr != nil {
+			return nil, checkErr
+		}
+		return new(raft_log.UpdateCompactionPlanResponse), nil
+	}
+
 	if err = h.planner.UpdatePlan(tx, req.PlanUpdate); err != nil {
 		level.Error(h.logger).Log("msg", "failed to update compaction planner", "err", err)
 		return nil, err
@@ -197,7 +206,7 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 
 	for _, job := range req.PlanUpdate.CompletedJobs {
 		compacted := job.GetCompactedBlocks()
-		if compacted == nil || compacted.SourceBlocks == nil || len(compacted.NewBlocks) == 0 {
+		if compacted == nil || compacted.SourceBlocks == nil || len(compacted.SourceBlocks.Blocks) == 0 || (len(compacted.NewBlocks) == 0 && !job.State.DatasetDeletion) {
 			level.Warn(h.logger).Log("msg", "compacted blocks are missing; skipping", "job", job.State.Name)
 			continue
 		}
