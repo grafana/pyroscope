@@ -40,8 +40,20 @@ The distributor cleans and validates data before sending it to segment-writers:
 - Ensures profiles have timestamps set (defaults to receive time if missing)
 - Removes samples with zero values
 - Sums samples that share the same stacktrace
+- Rejects profiles whose symbol strings aren't valid UTF-8, before applying symbol-length truncation
 
 If a request contains invalid data, the distributor returns a 400 HTTP status code with details in the response body.
+
+## Inflight bytes limit
+
+When segment-writers are slow or unavailable, distributors can hold large amounts of uncompressed profile data in memory.
+Set `-distributor.max-inflight-bytes`, or the YAML key `distributor.max_inflight_bytes`, to cap the total uncompressed profile bytes one distributor instance may hold at a time.
+
+The limit is disabled when the value is `0`, which is the default.
+When a push would exceed the cap, the distributor rejects the request with HTTP 503 until in-flight bytes drop below the limit.
+Use the flag on distributor processes when you need backpressure against distributor out-of-memory failures.
+
+For the full parameter description, refer to the [configuration parameters](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters/#distributor) reference.
 
 ## Sampling
 

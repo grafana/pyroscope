@@ -33,7 +33,9 @@ bundle add pyroscope
 
 ## Configure the Ruby client
 
-Add the following code to your application. If you're using Rails, put this into `config/initializers` directory. This code will initialize the Pyroscope profiler and start profiling:
+Add the following code to your application.
+If you're using Rails in a single process, put this into a file under `config/initializers`.
+This code initializes the Pyroscope profiler and starts profiling:
 
 ```ruby
 require 'pyroscope'
@@ -43,6 +45,11 @@ Pyroscope.configure do |config|
   config.server_address   = "http://my-pyroscope-server:4040" # replace this with the address of your Pyroscope server
 end
 ```
+
+{{< admonition type="caution" >}}
+If you run Rails with Puma in clustered mode and `preload_app!`, don't call `Pyroscope.configure` from an initializer.
+Configure after the fork instead. Refer to [Configure Puma clustered mode](#configure-puma-clustered-mode).
+{{< /admonition >}}
 
 ## How to add profiling labels to Ruby applications
 
@@ -81,6 +88,44 @@ Pyroscope.configure do |config|
 end
 ```
 
+## Configure Puma clustered mode
+
+The Ruby SDK samples from a background thread.
+`fork(2)` doesn't copy threads, so a `Pyroscope.configure` call that runs before a fork profiles only the parent process.
+
+Puma clustered mode with `preload_app!` boots Rails initializers in the master process, then forks workers.
+If you configure Pyroscope in `config/initializers`, the master reports nearly idle stacks and the workers that serve traffic aren't profiled.
+Configuring in both the initializer and the worker is worse: the worker can abort while booting.
+
+Configure Pyroscope in a Puma hook that runs in the worker after the fork.
+On Puma 7 use `before_worker_boot`.
+On Puma 6 and earlier use `on_worker_boot`.
+
+```ruby
+# config/puma.rb
+workers Integer(ENV.fetch("WEB_CONCURRENCY", "4"))
+preload_app!
+
+before_worker_boot do |index|
+  Pyroscope.configure do |config|
+    config.application_name = "my.ruby.app"
+    config.server_address = "http://my-pyroscope-server:4040"
+    config.tags = { "role" => "worker-#{index}" }
+  end
+
+  # Restore Rails action tags when preload_app! skipped the railtie hook.
+  Pyroscope.initialize_rails_hooks
+end
+```
+
+Remove any `Pyroscope.configure` call from Rails initializers when you use this pattern.
+Skip `Pyroscope.initialize_rails_hooks` if you set `autoinstrument_rails` to `false`.
+
+`before_worker_boot` doesn't run when `workers` is `0`, which is Puma single mode.
+In that case, an initializer or Puma's `after_booted` hook in the single serving process is fine.
+
+For a runnable example, refer to the [Rails Puma clustered example](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/ruby/rails_puma_cluster).
+
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Ruby SDK
 
 ```ruby
@@ -111,6 +156,7 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 
 ## Ruby profiling examples
 
-Check out the following resources to learn more about Ruby profiling:
-- [Ruby examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/ruby) demonstrating how Ruby applications, including Rails, can be profiled with Pyroscope.
-- A [Ruby demo](https://play.grafana.org/a/grafana-pyroscope-app/explore?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-ruby&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) on play.grafana.org.
+Resources for learning more about Ruby profiling:
+
+- [Ruby examples](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/ruby), including Rails and the [Puma clustered mode example](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/ruby/rails_puma_cluster)
+- A [Ruby demo](https://play.grafana.org/a/grafana-pyroscope-app/explore?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-ruby&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) on play.grafana.org
