@@ -614,6 +614,11 @@ runtime_config:
   # right.
   # file: ""
 
+recording_rules:
+  # Enable generating metrics from profiles using recording rules. Read by the
+  # query-frontend, distributor and compaction-worker.
+  # enabled: false
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
