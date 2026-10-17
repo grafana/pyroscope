@@ -9,13 +9,16 @@ weight: 50
 
 The [Helm](https://helm.sh/) chart allows you to configure, install, and upgrade Pyroscope within a Kubernetes cluster.
 
+The chart defaults to the [v2 storage architecture](../reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture/) and installs [Grafana Alloy](https://grafana.com/docs/alloy/latest/) to discover and scrape profile endpoints from annotated pods.
+
 ## Before you begin
 
 These instructions are common across any flavor of Kubernetes and assume that you know how to install, configure, and operate a Kubernetes cluster as well as use `kubectl`.
 
 Hardware requirements:
 
-- A single Kubernetes node with a minimum of 4 cores and 16GiB RAM
+- Option A (single binary): A single Kubernetes node with a minimum of 4 cores and 16GiB RAM
+- Option B (microservices): Multiple nodes recommended. The default replica counts deploy more than twenty pods.
 
 Software requirements:
 
@@ -39,7 +42,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    kubectl create namespace pyroscope-test
    ```
 
-   For more details, see the Kubernetes documentation about [Creating a new namespace](https://kubernetes.io/docs/tasks/administer-cluster/namespaces/#creating-a-new-namespace).
+   For more details, refer to the Kubernetes documentation about [Creating a new namespace](https://kubernetes.io/docs/tasks/administer-cluster/namespaces/#creating-a-new-namespace).
 
 1. Set up a Helm repository using the following commands:
 
@@ -49,12 +52,12 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    ```
 
    {{% admonition type="note" %}}
-   The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope).
+   The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope). To list available chart versions, run `helm search repo grafana/pyroscope --versions`. To pin a version, add `--version <CHART_VERSION>` to your `helm install` command.
    {{% /admonition %}}
 
 1. Install Pyroscope using the Helm chart using one of the following options:
 
-   - Option A: Install Pyroscope as single binary. Use this mode _only when you need one Pyroscope instance_. Multiple instances won't share information with each other.
+   - Option A: Install Pyroscope as a single binary. Use this mode _only when you need one Pyroscope instance_. Multiple instances won't share information with each other.
 
    ```bash
    helm -n pyroscope-test install pyroscope grafana/pyroscope
@@ -65,29 +68,39 @@ Use a custom namespace so that you don't have to overwrite the default namespace
 
    ```
    [...]
-   The in-cluster query URL is:
-   http://pyroscope.pyroscope-test.svc.cluster.local.:4040/
+   The in-cluster query URL for the data source in Grafana is:
+
+   http://pyroscope.pyroscope-test.svc.cluster.local.:4040
    [...]
    ```
    {{% /admonition %}}
 
-   - Option B: Install Pyroscope as multiple microservices. In this mode, as you scale out the number of instances, they will share a singular backend for storage and querying.
+   {{% admonition type="note" %}}
+   Option A uses the filesystem storage backend with no persistent volume by default. This setup suits trying Pyroscope locally, but data is lost when the pod is recreated. For production, configure object storage using `pyroscope.structuredConfig`. Refer to [Configure object storage backend](../configure-server/storage/configure-object-storage-backend/).
+   {{% /admonition %}}
+
+   - Option B: Install Pyroscope as multiple microservices. In this mode, as you scale out the number of instances, they share a singular backend for storage and querying. This option enables the bundled MinIO object store for local development and testing.
 
    ```bash
-   # Gather the default config for micro-services
-   curl -Lo values-micro-services.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
-   helm -n pyroscope-test install pyroscope grafana/pyroscope --values values-micro-services.yaml
+   helm -n pyroscope-test install pyroscope grafana/pyroscope \
+     --set architecture.microservices.enabled=true \
+     --set minio.enabled=true
    ```
 
    {{% admonition type="note" %}}
-   The output of the command contains the query URLs necessary for the following steps, so for a microservice setup, it will look like this:
+   The output of the command contains the query URLs necessary for the following steps, so for a microservices setup, it will look like this:
 
    ```
    [...]
-   The in-cluster query URL is:
-   http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040
+   The in-cluster query URL for the data source in Grafana is:
+
+   http://pyroscope-query-frontend.pyroscope-test.svc.cluster.local.:4040
    [...]
    ```
+   {{% /admonition %}}
+
+   {{% admonition type="note" %}}
+   Option B deploys many pods using the chart's default replica counts. A single node with 4 cores and 16GiB RAM might not schedule every pod. Use a multi-node cluster for the default install, or reduce replicas with `--set` when testing on one node.
    {{% /admonition %}}
 
 1. Check the statuses of the Pyroscope pods:
@@ -100,18 +113,31 @@ Use a custom namespace so that you don't have to overwrite the default namespace
 
    ```bash
    kubectl -n pyroscope-test get pods
-   NAME                                 READY   STATUS    RESTARTS   AGE
-   pyroscope-agent-7d75b4f9dc-xwpsw        1/1     Running   0          3m23s
-   pyroscope-distributor-7c474947c-2p5cc   1/1     Running   0          3m23s
-   pyroscope-distributor-7c474947c-xbszv   1/1     Running   0          3m23s
-   pyroscope-ingester-0                    1/1     Running   0          5s
-   pyroscope-ingester-1                    1/1     Running   0          37s
-   pyroscope-ingester-2                    1/1     Running   0          69s
-   pyroscope-minio-0                       1/1     Running   0          3m23s
-   pyroscope-querier-66bf58dfcc-89gb8      1/1     Running   0          3m23s
-   pyroscope-querier-66bf58dfcc-p7lnc      1/1     Running   0          3m23s
-   pyroscope-querier-66bf58dfcc-zbggm      1/1     Running   0          3m23s
+   NAME                                       READY   STATUS    RESTARTS   AGE
+   pyroscope-ad-hoc-profiles-7d75b4f9dc-xwpsw   1/1     Running   0          3m23s
+   pyroscope-admin-7c474947c-2p5cc              1/1     Running   0          3m23s
+   pyroscope-alloy-0                            1/1     Running   0          3m23s
+   pyroscope-compaction-worker-0                1/1     Running   0          5s
+   pyroscope-compaction-worker-1                1/1     Running   0          37s
+   pyroscope-compaction-worker-2                1/1     Running   0          69s
+   pyroscope-distributor-7c474947c-2p5cc        1/1     Running   0          3m23s
+   pyroscope-distributor-7c474947c-xbszv        1/1     Running   0          3m23s
+   pyroscope-metastore-0                        1/1     Running   0          3m23s
+   pyroscope-metastore-1                        1/1     Running   0          3m23s
+   pyroscope-metastore-2                        1/1     Running   0          3m23s
+   pyroscope-minio-0                            1/1     Running   0          3m23s
+   pyroscope-query-backend-66bf58dfcc-89gb8     1/1     Running   0          3m23s
+   pyroscope-query-backend-66bf58dfcc-p7lnc     1/1     Running   0          3m23s
+   pyroscope-query-backend-66bf58dfcc-zbggm     1/1     Running   0          3m23s
+   pyroscope-query-frontend-66bf58dfcc-89gb8    1/1     Running   0          3m23s
+   pyroscope-query-frontend-66bf58dfcc-p7lnc    1/1     Running   0          3m23s
+   pyroscope-segment-writer-0                   1/1     Running   0          3m23s
+   pyroscope-segment-writer-1                   1/1     Running   0          3m23s
+   pyroscope-segment-writer-2                   1/1     Running   0          3m23s
+   pyroscope-tenant-settings-7d75b4f9dc-xwpsw   1/1     Running   0          3m23s
    ```
+
+   In single-binary mode, you should see `pyroscope-0` and `pyroscope-alloy-0`.
 
 1. Wait until all the pods have a status of `Running` or `Completed`, which might take a few minutes.
 
@@ -137,7 +163,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
      --set-string 'podAnnotations.profiles\.grafana\.com/goroutine\.port=9094'
    ```
 
-   For details, see [Deploy Grafana on Kubernetes](/docs/grafana/latest/setup-grafana/installation/kubernetes/).
+   For details, refer to [Deploy Grafana on Kubernetes](/docs/grafana/latest/setup-grafana/installation/kubernetes/).
 
 1. Port-forward Grafana to `localhost`, by using the `kubectl` command:
 
@@ -147,12 +173,12 @@ Use a custom namespace so that you don't have to overwrite the default namespace
 
 1. In a browser, go to the Grafana server at [http://localhost:3000](http://localhost:3000).
 1. On the left side, go to **Configuration** > **Data sources**.
-1. Configure a Pyroscope data source to query the Pyroscope server, by using the following settings:
+1. Configure a Pyroscope data source to query the Pyroscope server.
 
-   | Field | Value                                                        |
-   | ----- | ------------------------------------------------------------ |
-   | Name  | Pyroscope                                                       |
-   | URL   | `http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/`   |
+   Set **Name** to `Pyroscope`. Set **URL** to the in-cluster query URL from the Helm install output:
+
+   - Single binary: `http://pyroscope.pyroscope-test.svc.cluster.local.:4040/`
+   - Microservices: `http://pyroscope-query-frontend.pyroscope-test.svc.cluster.local.:4040/`
 
    To add a data source, refer to [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
@@ -165,7 +191,9 @@ Use a custom namespace so that you don't have to overwrite the default namespace
 
 The deployment of Grafana has no persistent database, so it will not retain settings like the data source configuration across restarts.
 
-To ensure the data source gets provisioned at start-up, create the following `datasources.yaml` file:
+To ensure the data source gets provisioned at start-up, create the following `datasources.yaml` file for your deployment mode.
+
+Single binary:
 
 ```yaml
 datasources:
@@ -175,7 +203,20 @@ datasources:
    - name: Pyroscope
      type: grafana-pyroscope-datasource
      uid: pyroscope-test
-     url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/
+     url: http://pyroscope.pyroscope-test.svc.cluster.local.:4040/
+```
+
+Microservices:
+
+```yaml
+datasources:
+  pyroscope.yaml:
+   apiVersion: 1
+   datasources:
+   - name: Pyroscope
+     type: grafana-pyroscope-datasource
+     uid: pyroscope-test
+     url: http://pyroscope-query-frontend.pyroscope-test.svc.cluster.local.:4040/
 ```
 
 Modify the Helm deployment by running:
@@ -187,8 +228,8 @@ Modify the Helm deployment by running:
 
 ## Optional: Scrape your own workload's profiles
 
-The Pyroscope chart uses a default configuration that causes its agent to scrape Pods, provided they have the correct annotations.
-This functionality uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) you might be familiar with the Prometheus or Grafana Alloy configuration.
+The Pyroscope chart uses a default configuration that causes Grafana Alloy to scrape pods, provided they have the correct annotations.
+This functionality uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) you might be familiar with from Prometheus or Grafana Alloy configuration.
 
 To get Pyroscope to scrape pods, you must add the following annotations to the Pods:
 
@@ -233,3 +274,8 @@ By default, the port is discovered using named port `http2` or ending with `-met
 If you don't have a named port, the scraping target is dropped.
 
 If you don't want to use the port name, then you can use the `profiles.grafana.com/<profile-type>.port` annotation to statically specify the port number.
+
+## Next steps
+
+- If you installed an older v1 microservices deployment and need to move to v2 storage, refer to [Migrate from v1 to v2 storage using Helm](../reference-pyroscope-v2-architecture/migrate-from-v1/).
+- To deploy with Jsonnet and Tanka instead, refer to [Deploy Pyroscope with Jsonnet and Tanka](tanka-jsonnet/).
