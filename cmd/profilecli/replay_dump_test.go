@@ -8,12 +8,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 )
 
@@ -47,7 +49,7 @@ func TestDumpBlock_MultipleDatasets(t *testing.T) {
 	rw, err := newReplayWriter(&buf, replayHeader{})
 	require.NoError(t, err)
 
-	count, err := dumpBlock(ctx, bucket, md, nil, 0, math.MaxInt64, rw)
+	count, err := dumpBlock(ctx, bucket, md, nil, 0, math.MaxInt64, rw, "")
 	require.NoError(t, err)
 	assert.NotZero(t, count)
 	require.NoError(t, rw.Flush())
@@ -70,7 +72,7 @@ func TestDumpBlock_MultipleDatasets(t *testing.T) {
 	writer, err := newReplayWriter(&sorted, replayHeader{})
 	require.NoError(t, err)
 	dir := t.TempDir()
-	n, err := dumpBlocks(ctx, bucket, []*metastorev1.BlockMeta{md, md}, nil, 0, math.MaxInt64, writer, dir)
+	n, err := dumpBlocks(ctx, bucket, []*metastorev1.BlockMeta{md, md}, nil, 0, math.MaxInt64, writer, dir, "")
 	require.NoError(t, err)
 	require.Equal(t, count*2, n)
 	require.NoError(t, writer.Flush())
@@ -96,9 +98,54 @@ func TestDumpBlock_MultipleDatasets(t *testing.T) {
 		require.ElementsMatch(t, profiles, got[timestamp])
 	}
 
+	var anonymized bytes.Buffer
+	anonWriter, err := newReplayWriter(&anonymized, replayHeader{})
+	require.NoError(t, err)
+	anonymizer := replayAnonymizer("integration-test-salt")
+	n, err = dumpBlocks(ctx, bucket, []*metastorev1.BlockMeta{md}, nil, 0, math.MaxInt64, anonWriter, dir, anonymizer)
+	require.NoError(t, err)
+	require.Equal(t, count, n)
+	require.NoError(t, anonWriter.Flush())
+	anonReader, err := newReplayReader(&anonymized)
+	require.NoError(t, err)
+	for range n {
+		rec, err := anonReader.ReadRecord()
+		require.NoError(t, err)
+		for _, l := range rec.Labels {
+			if !replayProfileTypeLabel(l.Name) {
+				if l.Name != phlaremodel.LabelNameServiceName {
+					require.Regexp(t, `^_[0-9a-f]{64}$`, l.Name)
+				}
+				require.Regexp(t, `^[0-9a-f]{64}$`, l.Value)
+			}
+		}
+		p, err := profile.ParseData(rec.Pprof)
+		require.NoError(t, err)
+		require.NoError(t, p.CheckValid())
+		require.Equal(t, rec.TimestampNanos, p.TimeNanos)
+		pt, err := phlaremodel.ParseProfileTypeSelector(phlaremodel.Labels(rec.Labels).Get(phlaremodel.LabelNameProfileType))
+		require.NoError(t, err)
+		require.Equal(t, pt.SampleType, p.SampleType[0].Type)
+		require.Equal(t, pt.SampleUnit, p.SampleType[0].Unit)
+		for _, f := range p.Function {
+			for _, s := range []string{f.Name, f.SystemName, f.Filename} {
+				if s != "" {
+					require.Regexp(t, `^[0-9a-f]{64}$`, s)
+				}
+			}
+		}
+		for _, m := range p.Mapping {
+			for _, s := range []string{m.File, m.BuildID} {
+				if s != "" {
+					require.Regexp(t, `^[0-9a-f]{64}$`, s)
+				}
+			}
+		}
+	}
+
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	_, err = dumpBlocks(cancelled, bucket, []*metastorev1.BlockMeta{md}, nil, 0, math.MaxInt64, writer, dir)
+	_, err = dumpBlocks(cancelled, bucket, []*metastorev1.BlockMeta{md}, nil, 0, math.MaxInt64, writer, dir, "")
 	require.ErrorIs(t, err, context.Canceled)
 	files, err = os.ReadDir(dir)
 	require.NoError(t, err)

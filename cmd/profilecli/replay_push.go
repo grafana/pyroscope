@@ -216,32 +216,36 @@ func (r *resumableReplayBody) Read(p []byte) (int, error) {
 		if r.offset == r.size {
 			return 0, io.EOF
 		}
-		if r.retries >= 5 {
-			return 0, fmt.Errorf("replay HTTP stream interrupted at byte %d: %w", r.offset, err)
-		}
-		r.retries++
 		_ = r.body.Close()
-		select {
-		case <-r.ctx.Done():
-			return 0, r.ctx.Err()
-		case <-time.After(time.Duration(r.retries) * time.Second):
+		for {
+			if r.retries >= 5 {
+				return 0, fmt.Errorf("replay HTTP stream interrupted at byte %d: %w", r.offset, err)
+			}
+			r.retries++
+			select {
+			case <-r.ctx.Done():
+				return 0, r.ctx.Err()
+			case <-time.After(time.Duration(r.retries) * time.Second):
+			}
+			req, e := http.NewRequestWithContext(r.ctx, http.MethodGet, r.url, nil)
+			if e != nil {
+				return 0, e
+			}
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", r.offset))
+			req.Header.Set("Accept-Encoding", "identity")
+			resp, e := http.DefaultClient.Do(req)
+			if e != nil {
+				err = e
+				continue
+			}
+			want := fmt.Sprintf("bytes %d-%d/%d", r.offset, r.size-1, r.size)
+			if resp.StatusCode != http.StatusPartialContent || resp.Header.Get("Content-Range") != want || resp.ContentLength != r.size-r.offset || (r.generation != "" && resp.Header.Get("X-Goog-Generation") != r.generation) {
+				_ = resp.Body.Close()
+				return 0, fmt.Errorf("replay HTTP resume at byte %d: unexpected response %s (Content-Range %q)", r.offset, resp.Status, resp.Header.Get("Content-Range"))
+			}
+			r.body = resp.Body
+			break
 		}
-		req, e := http.NewRequestWithContext(r.ctx, http.MethodGet, r.url, nil)
-		if e != nil {
-			return 0, e
-		}
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", r.offset))
-		req.Header.Set("Accept-Encoding", "identity")
-		resp, e := http.DefaultClient.Do(req)
-		if e != nil {
-			continue
-		}
-		want := fmt.Sprintf("bytes %d-%d/%d", r.offset, r.size-1, r.size)
-		if resp.StatusCode != http.StatusPartialContent || resp.Header.Get("Content-Range") != want || resp.ContentLength != r.size-r.offset || (r.generation != "" && resp.Header.Get("X-Goog-Generation") != r.generation) {
-			_ = resp.Body.Close()
-			return 0, fmt.Errorf("replay HTTP resume at byte %d: unexpected response %s (Content-Range %q)", r.offset, resp.Status, resp.Header.Get("Content-Range"))
-		}
-		r.body = resp.Body
 	}
 }
 
@@ -455,11 +459,13 @@ func runReplayReaderCycle(
 	for {
 		if ctx.Err() != nil {
 			interrupted = true
+			failed += buildFailed
 			return
 		}
 		firstTarget := scheduledTarget(current)
 		if !waitUntil(ctx, firstTarget) {
 			interrupted = true
+			failed += buildFailed
 			return
 		}
 		batch := make([]*pushv1.RawProfileSeries, 0, params.BatchSize)

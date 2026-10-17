@@ -2,6 +2,7 @@ package readpath
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"connectrpc.com/connect"
@@ -193,4 +194,37 @@ func query[Req, Resp any](
 	}
 
 	return resp.(*connect.Response[Resp]), nil
+}
+
+// Time-series anomaly detection requires the complete range to use V2 storage.
+func (r *Router) validateTimeSeriesAnomalyRange(
+	ctx context.Context,
+	c *connect.Request[querierv1.QueryAnomaliesRequest],
+) error {
+	tenantIDs, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if len(tenantIDs) != 1 {
+		level.Warn(r.logger).Log("msg", "ignoring inter-tenant query overrides", "tenants", tenantIDs)
+	}
+	overrides := r.overrides.ReadPathOverrides(tenantIDs[0])
+	if !overrides.EnableQueryBackend {
+		return v2AnalysisRequiredError()
+	}
+	splitTime, err := overrides.EnableQueryBackendFrom.SplitTime(func() (time.Time, error) {
+		return r.resolver.OldestProfileTime(ctx, tenantIDs[0])
+	})
+	if err != nil {
+		return connect.NewError(connect.CodeUnavailable, err)
+	}
+	queryRange := phlaremodel.GetSafeTimeRange(time.Now(), c.Msg)
+	if split := model.TimeFromUnixNano(splitTime.UnixNano()); split.After(queryRange.Start) {
+		return v2AnalysisRequiredError()
+	}
+	return nil
+}
+
+func v2AnalysisRequiredError() *connect.Error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("time series analysis requires the V2 query backend for the complete query range"))
 }

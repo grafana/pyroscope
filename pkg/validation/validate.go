@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"slices"
@@ -63,6 +62,8 @@ const (
 	SkippedBySamplingRules Reason = "dropped_by_sampling_rules"
 
 	BodySizeLimit Reason = "body_size_limit_exceeded"
+
+	MaxInflightBytes Reason = "max_inflight_bytes"
 
 	// Those profiles were dropped because of relabeling rules
 	DroppedByRelabelRules Reason = "dropped_by_relabel_rules"
@@ -357,7 +358,7 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 	}
 	for _, s := range prof.StringTable {
 		if !utf8.ValidString(s) {
-			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "invalid utf8 string")
 		}
 	}
 	if symbolLengthLimit > 0 {
