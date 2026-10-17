@@ -124,11 +124,6 @@ The `resources` field only configures container resource requests and limits; ar
 For example, for a deployment using v1 storage, save the following as `values.yaml` to set the maximum block duration to 30 minutes:
 
 ```yaml
-architecture:
-  storage:
-    v1: true
-    v2: false
-
 pyroscope:
   extraArgs:
     pyroscopedb.max-block-duration: 30m
