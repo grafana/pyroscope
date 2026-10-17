@@ -140,7 +140,8 @@ The `pyroscopedb.max-block-duration` option applies to the v1 ingester, not v2 s
 Before deploying, render the chart and verify that the Pyroscope container's `args` include `-pyroscopedb.max-block-duration=30m`:
 
 ```bash
-helm template pyroscope grafana/pyroscope --values values.yaml
+helm template pyroscope grafana/pyroscope --values values.yaml \
+  | grep -F -- '-pyroscopedb.max-block-duration=30m'
 ```
 
 ## Query profiles in Grafana
