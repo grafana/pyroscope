@@ -22,10 +22,6 @@ pyroscope:
     # Allows to override the image tag, which defaults to the appVersion in the chart metadata
     tag: ""
 
-  # For v1 storage, reduce the maximum block duration with:
-  # extraArgs:
-  #   pyroscopedb.max-block-duration: 30m
-
   # -- Additional command-line arguments. Set these under pyroscope.extraArgs, not pyroscope.resources.
   extraArgs:
     log.level: debug
