@@ -29,8 +29,8 @@ const (
 )
 
 var (
-	// This is a duplicate of distributor_received_decompressed_bytes, but with
-	// usage_group as a label.
+	// This tracks the same data as distributor_received_decompressed_bytes_total, but with
+	// usage_group as an additional label.
 	usageGroupReceivedDecompressedBytes = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "pyroscope",
