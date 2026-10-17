@@ -102,6 +102,12 @@ func NewStore() *indexstore.IndexStore { return indexstore.NewIndexStore() }
 func (i *Index) Init(tx *bbolt.Tx) error { return i.store.CreateBuckets(tx) }
 
 func (i *Index) Restore(tx *bbolt.Tx) error {
+	// Reset in-memory state before loading entries from the store.
+	// The FSM has replaced the whole database, so anything cached from the
+	// previous one describes a database that is no longer there.
+	i.shards.purge()
+	i.blocks.purge()
+
 	// See comment in DefaultConfig.queryLookaroundPeriod.
 	now := time.Now()
 	start := now.Add(-i.config.queryLookaroundPeriod)
@@ -117,7 +123,11 @@ func (i *Index) Restore(tx *bbolt.Tx) error {
 		}
 		for tenant := range q.Tenants() {
 			for shard := range q.Shards(tenant) {
-				if _, err := i.shards.getForWrite(tx, p, tenant, shard.Shard); err != nil {
+				// Version 0 means "no version information". That would normally
+				// reuse a cached entry, but the cache was purged above, so this
+				// always loads from the current transaction and caches the
+				// shard read-only, which is what a read transaction requires.
+				if _, err := i.shards.getForReadAtVersion(tx, p, tenant, shard.Shard, 0); err != nil {
 					level.Error(i.logger).Log(
 						"msg", "failed to load tenant partition shard",
 						"partition", p,
