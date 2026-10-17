@@ -8,9 +8,9 @@ import (
 	context "context"
 	binary "encoding/binary"
 	fmt "fmt"
-	v12 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	v13 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
-	v13 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	v12 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protohelpers "github.com/planetscale/vtprotobuf/protohelpers"
 	grpc "google.golang.org/grpc"
@@ -85,6 +85,7 @@ func (m *InvokeOptions) CloneVT() *InvokeOptions {
 	r := new(InvokeOptions)
 	r.SanitizeOnMerge = m.SanitizeOnMerge
 	r.CollectDiagnostics = m.CollectDiagnostics
+	r.Finalize = m.Finalize
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -196,6 +197,7 @@ func (m *Query) CloneVT() *Query {
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	r.ProfilePresence = m.ProfilePresence.CloneVT()
+	r.TimeSeriesAnalysis = m.TimeSeriesAnalysis.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -342,6 +344,7 @@ func (m *Report) CloneVT() *Report {
 	r.Heatmap = m.Heatmap.CloneVT()
 	r.TimeSeriesCompact = m.TimeSeriesCompact.CloneVT()
 	r.ProfilePresence = m.ProfilePresence.CloneVT()
+	r.TimeSeriesAnalysis = m.TimeSeriesAnalysis.CloneVT()
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -531,6 +534,92 @@ func (m *TimeSeriesReport) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *TimeSeriesAnalysisConfig) CloneVT() *TimeSeriesAnalysisConfig {
+	if m == nil {
+		return (*TimeSeriesAnalysisConfig)(nil)
+	}
+	r := new(TimeSeriesAnalysisConfig)
+	r.BaselineWindow = m.BaselineWindow
+	r.ConfirmationWindow = m.ConfirmationWindow
+	r.MinimumSustainedPoints = m.MinimumSustainedPoints
+	r.MinimumRelativeChange = m.MinimumRelativeChange
+	r.ScoreThreshold = m.ScoreThreshold
+	r.RecoveryThresholdRatio = m.RecoveryThresholdRatio
+	r.FlatnessThreshold = m.FlatnessThreshold
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *TimeSeriesAnalysisConfig) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *TimeSeriesAnalysisQuery) CloneVT() *TimeSeriesAnalysisQuery {
+	if m == nil {
+		return (*TimeSeriesAnalysisQuery)(nil)
+	}
+	r := new(TimeSeriesAnalysisQuery)
+	r.Step = m.Step
+	r.Limit = m.Limit
+	r.Config = m.Config.CloneVT()
+	if rhs := m.GroupBy; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.GroupBy = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *TimeSeriesAnalysisQuery) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *TimeSeriesAnalysisReport) CloneVT() *TimeSeriesAnalysisReport {
+	if m == nil {
+		return (*TimeSeriesAnalysisReport)(nil)
+	}
+	r := new(TimeSeriesAnalysisReport)
+	r.Query = m.Query.CloneVT()
+	if rhs := m.TimeSeries; rhs != nil {
+		tmpContainer := make([]*v11.Series, len(rhs))
+		for k, v := range rhs {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v11.Series }); ok {
+				tmpContainer[k] = vtpb.CloneVT()
+			} else {
+				tmpContainer[k] = proto.Clone(v).(*v11.Series)
+			}
+		}
+		r.TimeSeries = tmpContainer
+	}
+	if rhs := m.Events; rhs != nil {
+		tmpContainer := make([]*v12.TimeSeriesAnomaly, len(rhs))
+		for k, v := range rhs {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v12.TimeSeriesAnomaly }); ok {
+				tmpContainer[k] = vtpb.CloneVT()
+			} else {
+				tmpContainer[k] = proto.Clone(v).(*v12.TimeSeriesAnomaly)
+			}
+		}
+		r.Events = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *TimeSeriesAnalysisReport) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *TreeQuery) CloneVT() *TreeQuery {
 	if m == nil {
 		return (*TreeQuery)(nil)
@@ -579,34 +668,34 @@ func (m *TreeSymbols) CloneVT() *TreeSymbols {
 	}
 	r := new(TreeSymbols)
 	if rhs := m.Mappings; rhs != nil {
-		tmpContainer := make([]*v12.Mapping, len(rhs))
+		tmpContainer := make([]*v13.Mapping, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v12.Mapping }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v13.Mapping }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v12.Mapping)
+				tmpContainer[k] = proto.Clone(v).(*v13.Mapping)
 			}
 		}
 		r.Mappings = tmpContainer
 	}
 	if rhs := m.Locations; rhs != nil {
-		tmpContainer := make([]*v12.Location, len(rhs))
+		tmpContainer := make([]*v13.Location, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v12.Location }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v13.Location }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v12.Location)
+				tmpContainer[k] = proto.Clone(v).(*v13.Location)
 			}
 		}
 		r.Locations = tmpContainer
 	}
 	if rhs := m.Functions; rhs != nil {
-		tmpContainer := make([]*v12.Function, len(rhs))
+		tmpContainer := make([]*v13.Function, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v12.Function }); ok {
+			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v13.Function }); ok {
 				tmpContainer[k] = vtpb.CloneVT()
 			} else {
-				tmpContainer[k] = proto.Clone(v).(*v12.Function)
+				tmpContainer[k] = proto.Clone(v).(*v13.Function)
 			}
 		}
 		r.Functions = tmpContainer
@@ -1136,6 +1225,9 @@ func (this *InvokeOptions) EqualVT(that *InvokeOptions) bool {
 	if this.CollectDiagnostics != that.CollectDiagnostics {
 		return false
 	}
+	if this.Finalize != that.Finalize {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1313,6 +1405,9 @@ func (this *Query) EqualVT(that *Query) bool {
 		return false
 	}
 	if !this.ProfilePresence.EqualVT(that.ProfilePresence) {
+		return false
+	}
+	if !this.TimeSeriesAnalysis.EqualVT(that.TimeSeriesAnalysis) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1547,6 +1642,9 @@ func (this *Report) EqualVT(that *Report) bool {
 		return false
 	}
 	if !this.ProfilePresence.EqualVT(that.ProfilePresence) {
+		return false
+	}
+	if !this.TimeSeriesAnalysis.EqualVT(that.TimeSeriesAnalysis) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1789,6 +1887,140 @@ func (this *TimeSeriesReport) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *TimeSeriesAnalysisConfig) EqualVT(that *TimeSeriesAnalysisConfig) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BaselineWindow != that.BaselineWindow {
+		return false
+	}
+	if this.ConfirmationWindow != that.ConfirmationWindow {
+		return false
+	}
+	if this.MinimumSustainedPoints != that.MinimumSustainedPoints {
+		return false
+	}
+	if this.MinimumRelativeChange != that.MinimumRelativeChange {
+		return false
+	}
+	if this.ScoreThreshold != that.ScoreThreshold {
+		return false
+	}
+	if this.RecoveryThresholdRatio != that.RecoveryThresholdRatio {
+		return false
+	}
+	if this.FlatnessThreshold != that.FlatnessThreshold {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *TimeSeriesAnalysisConfig) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*TimeSeriesAnalysisConfig)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *TimeSeriesAnalysisQuery) EqualVT(that *TimeSeriesAnalysisQuery) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Step != that.Step {
+		return false
+	}
+	if len(this.GroupBy) != len(that.GroupBy) {
+		return false
+	}
+	for i, vx := range this.GroupBy {
+		vy := that.GroupBy[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Limit != that.Limit {
+		return false
+	}
+	if !this.Config.EqualVT(that.Config) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *TimeSeriesAnalysisQuery) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*TimeSeriesAnalysisQuery)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *TimeSeriesAnalysisReport) EqualVT(that *TimeSeriesAnalysisReport) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Query.EqualVT(that.Query) {
+		return false
+	}
+	if len(this.TimeSeries) != len(that.TimeSeries) {
+		return false
+	}
+	for i, vx := range this.TimeSeries {
+		vy := that.TimeSeries[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v11.Series{}
+			}
+			if q == nil {
+				q = &v11.Series{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v11.Series) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	if len(this.Events) != len(that.Events) {
+		return false
+	}
+	for i, vx := range this.Events {
+		vy := that.Events[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v12.TimeSeriesAnomaly{}
+			}
+			if q == nil {
+				q = &v12.TimeSeriesAnomaly{}
+			}
+			if equal, ok := interface{}(p).(interface {
+				EqualVT(*v12.TimeSeriesAnomaly) bool
+			}); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *TimeSeriesAnalysisReport) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*TimeSeriesAnalysisReport)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *TreeQuery) EqualVT(that *TreeQuery) bool {
 	if this == that {
 		return true
@@ -1860,12 +2092,12 @@ func (this *TreeSymbols) EqualVT(that *TreeSymbols) bool {
 		vy := that.Mappings[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v12.Mapping{}
+				p = &v13.Mapping{}
 			}
 			if q == nil {
-				q = &v12.Mapping{}
+				q = &v13.Mapping{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v12.Mapping) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v13.Mapping) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -1881,12 +2113,12 @@ func (this *TreeSymbols) EqualVT(that *TreeSymbols) bool {
 		vy := that.Locations[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v12.Location{}
+				p = &v13.Location{}
 			}
 			if q == nil {
-				q = &v12.Location{}
+				q = &v13.Location{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v12.Location) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v13.Location) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -1902,12 +2134,12 @@ func (this *TreeSymbols) EqualVT(that *TreeSymbols) bool {
 		vy := that.Functions[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v12.Function{}
+				p = &v13.Function{}
 			}
 			if q == nil {
-				q = &v12.Function{}
+				q = &v13.Function{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v12.Function) bool }); ok {
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v13.Function) bool }); ok {
 				if !equal.EqualVT(q) {
 					return false
 				}
@@ -2850,6 +3082,16 @@ func (m *InvokeOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Finalize {
+		i--
+		if m.Finalize {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
+	}
 	if m.CollectDiagnostics {
 		i--
 		if m.CollectDiagnostics {
@@ -3110,6 +3352,16 @@ func (m *Query) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.TimeSeriesAnalysis != nil {
+		size, err := m.TimeSeriesAnalysis.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x5a
 	}
 	if m.ProfilePresence != nil {
 		size, err := m.ProfilePresence.MarshalToSizedBufferVT(dAtA[:i])
@@ -3560,6 +3812,16 @@ func (m *Report) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.TimeSeriesAnalysis != nil {
+		size, err := m.TimeSeriesAnalysis.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x5a
 	}
 	if m.ProfilePresence != nil {
 		size, err := m.ProfilePresence.MarshalToSizedBufferVT(dAtA[:i])
@@ -4032,6 +4294,232 @@ func (m *TimeSeriesReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.TimeSeries) > 0 {
+		for iNdEx := len(m.TimeSeries) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.TimeSeries[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.TimeSeries[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.Query != nil {
+		size, err := m.Query.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *TimeSeriesAnalysisConfig) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TimeSeriesAnalysisConfig) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *TimeSeriesAnalysisConfig) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.FlatnessThreshold != 0 {
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.FlatnessThreshold))))
+		i--
+		dAtA[i] = 0x39
+	}
+	if m.RecoveryThresholdRatio != 0 {
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.RecoveryThresholdRatio))))
+		i--
+		dAtA[i] = 0x31
+	}
+	if m.ScoreThreshold != 0 {
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.ScoreThreshold))))
+		i--
+		dAtA[i] = 0x29
+	}
+	if m.MinimumRelativeChange != 0 {
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.MinimumRelativeChange))))
+		i--
+		dAtA[i] = 0x21
+	}
+	if m.MinimumSustainedPoints != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MinimumSustainedPoints))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.ConfirmationWindow != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ConfirmationWindow))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.BaselineWindow != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BaselineWindow))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *TimeSeriesAnalysisQuery) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TimeSeriesAnalysisQuery) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *TimeSeriesAnalysisQuery) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Config != nil {
+		size, err := m.Config.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Limit != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Limit))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.GroupBy) > 0 {
+		for iNdEx := len(m.GroupBy) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.GroupBy[iNdEx])
+			copy(dAtA[i:], m.GroupBy[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.GroupBy[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.Step != 0 {
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Step))))
+		i--
+		dAtA[i] = 0x9
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *TimeSeriesAnalysisReport) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TimeSeriesAnalysisReport) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *TimeSeriesAnalysisReport) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Events) > 0 {
+		for iNdEx := len(m.Events) - 1; iNdEx >= 0; iNdEx-- {
+			if vtmsg, ok := interface{}(m.Events[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Events[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+			}
+			i--
+			dAtA[i] = 0x1a
+		}
 	}
 	if len(m.TimeSeries) > 0 {
 		for iNdEx := len(m.TimeSeries) - 1; iNdEx >= 0; iNdEx-- {
@@ -5390,6 +5878,9 @@ func (m *InvokeOptions) SizeVT() (n int) {
 	if m.CollectDiagnostics {
 		n += 2
 	}
+	if m.Finalize {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -5522,6 +6013,10 @@ func (m *Query) SizeVT() (n int) {
 	}
 	if m.ProfilePresence != nil {
 		l = m.ProfilePresence.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.TimeSeriesAnalysis != nil {
+		l = m.TimeSeriesAnalysis.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -5705,6 +6200,10 @@ func (m *Report) SizeVT() (n int) {
 		l = m.ProfilePresence.SizeVT()
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
+	if m.TimeSeriesAnalysis != nil {
+		l = m.TimeSeriesAnalysis.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -5852,6 +6351,101 @@ func (m *TimeSeriesReport) SizeVT() (n int) {
 	}
 	if len(m.TimeSeries) > 0 {
 		for _, e := range m.TimeSeries {
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *TimeSeriesAnalysisConfig) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BaselineWindow != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BaselineWindow))
+	}
+	if m.ConfirmationWindow != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ConfirmationWindow))
+	}
+	if m.MinimumSustainedPoints != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MinimumSustainedPoints))
+	}
+	if m.MinimumRelativeChange != 0 {
+		n += 9
+	}
+	if m.ScoreThreshold != 0 {
+		n += 9
+	}
+	if m.RecoveryThresholdRatio != 0 {
+		n += 9
+	}
+	if m.FlatnessThreshold != 0 {
+		n += 9
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *TimeSeriesAnalysisQuery) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Step != 0 {
+		n += 9
+	}
+	if len(m.GroupBy) > 0 {
+		for _, s := range m.GroupBy {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.Limit != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Limit))
+	}
+	if m.Config != nil {
+		l = m.Config.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *TimeSeriesAnalysisReport) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Query != nil {
+		l = m.Query.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if len(m.TimeSeries) > 0 {
+		for _, e := range m.TimeSeries {
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.Events) > 0 {
+		for _, e := range m.Events {
 			if size, ok := interface{}(e).(interface {
 				SizeVT() int
 			}); ok {
@@ -6682,6 +7276,26 @@ func (m *InvokeOptions) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.CollectDiagnostics = bool(v != 0)
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Finalize", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Finalize = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -7565,6 +8179,42 @@ func (m *Query) UnmarshalVT(dAtA []byte) error {
 				m.ProfilePresence = &ProfilePresenceQuery{}
 			}
 			if err := m.ProfilePresence.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeriesAnalysis", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.TimeSeriesAnalysis == nil {
+				m.TimeSeriesAnalysis = &TimeSeriesAnalysisQuery{}
+			}
+			if err := m.TimeSeriesAnalysis.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8787,6 +9437,42 @@ func (m *Report) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeriesAnalysis", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.TimeSeriesAnalysis == nil {
+				m.TimeSeriesAnalysis = &TimeSeriesAnalysisReport{}
+			}
+			if err := m.TimeSeriesAnalysis.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -9654,6 +10340,478 @@ func (m *TimeSeriesReport) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *TimeSeriesAnalysisConfig) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TimeSeriesAnalysisConfig: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TimeSeriesAnalysisConfig: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BaselineWindow", wireType)
+			}
+			m.BaselineWindow = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BaselineWindow |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ConfirmationWindow", wireType)
+			}
+			m.ConfirmationWindow = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ConfirmationWindow |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinimumSustainedPoints", wireType)
+			}
+			m.MinimumSustainedPoints = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MinimumSustainedPoints |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinimumRelativeChange", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.MinimumRelativeChange = float64(math.Float64frombits(v))
+		case 5:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ScoreThreshold", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.ScoreThreshold = float64(math.Float64frombits(v))
+		case 6:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RecoveryThresholdRatio", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.RecoveryThresholdRatio = float64(math.Float64frombits(v))
+		case 7:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FlatnessThreshold", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.FlatnessThreshold = float64(math.Float64frombits(v))
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TimeSeriesAnalysisQuery) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TimeSeriesAnalysisQuery: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TimeSeriesAnalysisQuery: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Step", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Step = float64(math.Float64frombits(v))
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field GroupBy", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.GroupBy = append(m.GroupBy, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
+			}
+			m.Limit = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Limit |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Config", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Config == nil {
+				m.Config = &TimeSeriesAnalysisConfig{}
+			}
+			if err := m.Config.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TimeSeriesAnalysisReport) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TimeSeriesAnalysisReport: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TimeSeriesAnalysisReport: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Query", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Query == nil {
+				m.Query = &TimeSeriesAnalysisQuery{}
+			}
+			if err := m.Query.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeries", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TimeSeries = append(m.TimeSeries, &v11.Series{})
+			if unmarshal, ok := interface{}(m.TimeSeries[len(m.TimeSeries)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.TimeSeries[len(m.TimeSeries)-1]); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Events", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Events = append(m.Events, &v12.TimeSeriesAnomaly{})
+			if unmarshal, ok := interface{}(m.Events[len(m.Events)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Events[len(m.Events)-1]); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *TreeQuery) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -9942,7 +11100,7 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Mappings = append(m.Mappings, &v12.Mapping{})
+			m.Mappings = append(m.Mappings, &v13.Mapping{})
 			if unmarshal, ok := interface{}(m.Mappings[len(m.Mappings)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -9984,7 +11142,7 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Locations = append(m.Locations, &v12.Location{})
+			m.Locations = append(m.Locations, &v13.Location{})
 			if unmarshal, ok := interface{}(m.Locations[len(m.Locations)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -10026,7 +11184,7 @@ func (m *TreeSymbols) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Functions = append(m.Functions, &v12.Function{})
+			m.Functions = append(m.Functions, &v13.Function{})
 			if unmarshal, ok := interface{}(m.Functions[len(m.Functions)-1]).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
@@ -11319,7 +12477,7 @@ func (m *HeatmapQuery) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.QueryType |= v13.HeatmapQueryType(b&0x7F) << shift
+				m.QueryType |= v12.HeatmapQueryType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
