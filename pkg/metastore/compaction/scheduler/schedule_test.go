@@ -11,6 +11,7 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction"
 	"github.com/grafana/pyroscope/v2/pkg/test"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockscheduler"
 )
@@ -502,4 +503,96 @@ func TestSchedule_NoEvictNoQueueSizeLimit(t *testing.T) {
 		// Eviction is not possible if the queue size limit is not set.
 		assert.Nil(t, s.EvictJob())
 	})
+}
+
+func TestSchedule_SpreadLevels(t *testing.T) {
+	config := Config{
+		MaxFailures:   3,
+		LeaseDuration: 10 * time.Second,
+	}
+	inProgress := metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
+	unspecified := metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED
+
+	setup := func(states ...*raft_log.CompactionJobState) *Scheduler {
+		store := new(mockscheduler.MockJobStore)
+		store.On("GetJobPlan", mock.Anything, mock.Anything).Return(&raft_log.CompactionJobPlan{}, nil)
+		scheduler := NewScheduler(config, store, nil)
+		for _, s := range states {
+			scheduler.queue.put(s)
+		}
+		return scheduler
+	}
+
+	assignAll := func(t *testing.T, s compaction.Schedule, capacity int) []string {
+		var names []string
+		for i := 0; i < capacity; i++ {
+			job, err := s.AssignJob()
+			require.NoError(t, err)
+			if job != nil {
+				names = append(names, job.State.Name)
+			}
+		}
+		return names
+	}
+
+	renew := func(t *testing.T, s compaction.Schedule, name string) {
+		require.NotNil(t, s.UpdateJob(&raft_log.CompactionJobStatusUpdate{Name: name, Token: 1, Status: inProgress}))
+	}
+
+	now := 20 * time.Second
+	fresh := int64(now) - int64(time.Second)
+	stale := int64(now) - int64(levelSpreadDelay)
+
+	t.Run("BusyWorkerTakesOtherLevels", test.AssertIdempotentSubtest(t, func(t *testing.T) {
+		scheduler := setup(
+			&raft_log.CompactionJobState{Name: "held", CompactionLevel: 2, Status: inProgress, Token: 1, LeaseExpiresAt: int64(now) + 1},
+			&raft_log.CompactionJobState{Name: "l2", CompactionLevel: 2, Status: unspecified, AddedAt: fresh},
+			&raft_log.CompactionJobState{Name: "l1", CompactionLevel: 1, Status: unspecified, AddedAt: fresh},
+		)
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(now))})
+		renew(t, s, "held")
+		assert.Equal(t, []string{"l1"}, assignAll(t, s, 3))
+	}))
+
+	t.Run("BusyWorkerTakesStaleJob", test.AssertIdempotentSubtest(t, func(t *testing.T) {
+		scheduler := setup(
+			&raft_log.CompactionJobState{Name: "held", CompactionLevel: 2, Status: inProgress, Token: 1, LeaseExpiresAt: int64(now) + 1},
+			&raft_log.CompactionJobState{Name: "l2", CompactionLevel: 2, Status: unspecified, AddedAt: stale},
+		)
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(now))})
+		renew(t, s, "held")
+		assert.Equal(t, []string{"l2"}, assignAll(t, s, 3))
+	}))
+
+	t.Run("IdleWorkerTakesOneFreshJobPerLevel", test.AssertIdempotentSubtest(t, func(t *testing.T) {
+		scheduler := setup(
+			&raft_log.CompactionJobState{Name: "l1a", CompactionLevel: 1, Status: unspecified, AddedAt: fresh},
+			&raft_log.CompactionJobState{Name: "l1b", CompactionLevel: 1, Status: unspecified, AddedAt: fresh},
+			&raft_log.CompactionJobState{Name: "l2a", CompactionLevel: 2, Status: unspecified, AddedAt: fresh},
+			&raft_log.CompactionJobState{Name: "l2b", CompactionLevel: 2, Status: unspecified, AddedAt: fresh},
+		)
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(now))})
+		assert.Equal(t, []string{"l1a", "l2a"}, assignAll(t, s, 4))
+	}))
+
+	t.Run("Level0IsNotSpread", test.AssertIdempotentSubtest(t, func(t *testing.T) {
+		scheduler := setup(
+			&raft_log.CompactionJobState{Name: "a", Status: unspecified, AddedAt: fresh},
+			&raft_log.CompactionJobState{Name: "b", Status: unspecified, AddedAt: fresh},
+		)
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(now))})
+		assert.Equal(t, []string{"a", "b"}, assignAll(t, s, 2))
+	}))
+
+	t.Run("AbandonedJobDelayCountsFromLeaseExpiry", test.AssertIdempotentSubtest(t, func(t *testing.T) {
+		scheduler := setup(
+			&raft_log.CompactionJobState{Name: "held", CompactionLevel: 2, Status: inProgress, Token: 1, LeaseExpiresAt: int64(now) + 1},
+			// Added long ago, but its previous owner only just lost the lease.
+			&raft_log.CompactionJobState{Name: "abandoned", CompactionLevel: 2, Status: inProgress, Token: 1, AddedAt: 0, LeaseExpiresAt: fresh},
+			&raft_log.CompactionJobState{Name: "expired", CompactionLevel: 2, Status: inProgress, Token: 1, AddedAt: 0, LeaseExpiresAt: stale},
+		)
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 2, AppendedAt: time.Unix(0, int64(now))})
+		renew(t, s, "held")
+		assert.Equal(t, []string{"expired"}, assignAll(t, s, 3))
+	}))
 }
