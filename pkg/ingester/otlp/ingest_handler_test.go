@@ -41,6 +41,13 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
+// testAttrDictionary backs attributes that reference strings by index
+// (key_strindex, string_value_strindex). Index 0 is the required empty-string
+// sentinel.
+var testAttrDictionary = &v1experimental.ProfilesDictionary{
+	StringTable: []string{"", "service.name", "test-service", "process.executable.name", "bash", "host.name", "host1"},
+}
+
 func TestGetServiceNameFromAttributes(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -132,11 +139,39 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 			},
 			expected: "test-service",
 		},
+		{
+			name: "dictionary-encoded service name",
+			attrs: []*v1.KeyValue{
+				{
+					KeyStrindex: 1, // service.name
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValueStrindex{
+							StringValueStrindex: 2, // test-service
+						},
+					},
+				},
+			},
+			expected: "test-service",
+		},
+		{
+			name: "dictionary-encoded executable name",
+			attrs: []*v1.KeyValue{
+				{
+					KeyStrindex: 3, // process.executable.name
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValueStrindex{
+							StringValueStrindex: 4, // bash
+						},
+					},
+				},
+			},
+			expected: phlaremodel.AttrServiceNameFallback + ":bash",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getServiceNameFromAttributes(tt.attrs, nil)
+			result := getServiceNameFromAttributes(tt.attrs, testAttrDictionary)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -198,11 +233,91 @@ func TestAppendAttributesUnique(t *testing.T) {
 				{Name: "key1", Value: "value1"},
 			},
 		},
+		{
+			name:          "dictionary-encoded attributes",
+			existingAttrs: []*typesv1.LabelPair{},
+			newAttrs: []*v1.KeyValue{
+				{
+					KeyStrindex: 5, // host.name
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValueStrindex{
+							StringValueStrindex: 6, // host1
+						},
+					},
+				},
+			},
+			processedKeys: make(map[string]bool),
+			expected: []*typesv1.LabelPair{
+				{Name: "host.name", Value: "host1"},
+			},
+		},
+		{
+			name: "dictionary-encoded duplicate attributes",
+			existingAttrs: []*typesv1.LabelPair{
+				{Name: "host.name", Value: "host0"},
+			},
+			newAttrs: []*v1.KeyValue{
+				{
+					KeyStrindex: 5, // host.name
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValueStrindex{
+							StringValueStrindex: 6, // host1
+						},
+					},
+				},
+			},
+			processedKeys: map[string]bool{"host.name": true},
+			expected: []*typesv1.LabelPair{
+				{Name: "host.name", Value: "host0"},
+			},
+		},
+		{
+			name:          "inline key takes precedence over key_strindex",
+			existingAttrs: []*typesv1.LabelPair{},
+			newAttrs: []*v1.KeyValue{
+				{
+					Key:         "new",
+					KeyStrindex: 5, // host.name
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "newvalue",
+						},
+					},
+				},
+			},
+			processedKeys: make(map[string]bool),
+			expected: []*typesv1.LabelPair{
+				{Name: "new", Value: "newvalue"},
+			},
+		},
+		{
+			name:          "attributes without a key are skipped",
+			existingAttrs: []*typesv1.LabelPair{},
+			newAttrs: []*v1.KeyValue{
+				{
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "no-key",
+						},
+					},
+				},
+				{
+					KeyStrindex: 100, // out of range
+					Value: &v1.AnyValue{
+						Value: &v1.AnyValue_StringValue{
+							StringValue: "unresolvable-key",
+						},
+					},
+				},
+			},
+			processedKeys: make(map[string]bool),
+			expected:      []*typesv1.LabelPair{},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := appendAttributesUnique(tt.existingAttrs, tt.newAttrs, tt.processedKeys, nil)
+			result := appendAttributesUnique(tt.existingAttrs, tt.newAttrs, tt.processedKeys, testAttrDictionary)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -698,11 +813,38 @@ func TestStringValueFromAnyValue(t *testing.T) {
 			},
 			expected: "0",
 		},
+		{
+			name: "dictionary-encoded string",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 6}, // host1
+			},
+			expected: "host1",
+		},
+		{
+			name: "single-element dictionary-encoded string slice",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_ArrayValue{
+					ArrayValue: &v1.ArrayValue{
+						Values: []*v1.AnyValue{{
+							Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 6}, // host1
+						}},
+					},
+				},
+			},
+			expected: "host1",
+		},
+		{
+			name: "unresolvable dictionary-encoded string returns empty",
+			value: &v1.AnyValue{
+				Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 100},
+			},
+			expected: "",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := stringValueFromAnyValue(tt.value, nil)
+			result := stringValueFromAnyValue(tt.value, testAttrDictionary)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -992,131 +1134,59 @@ func TestExport_PreservesMissingTimestamp(t *testing.T) {
 	assert.Zero(t, series.OriginalTimeNanos)
 }
 
-func TestExport_ResolvesDictionaryEncodedAttributes(t *testing.T) {
-	// attr builds an attribute either inline (Key/StringValue) or
-	// dictionary-encoded (KeyStrindex/StringValueStrindex). Int values are
-	// always sent inline.
-	type attr struct {
-		key    string
-		str    string
-		int    int64
-		isInt  bool
-		inline bool
-	}
-	build := func(dc *v1experimental.ProfilesDictionary, attrs []attr) []*v1.KeyValue {
-		addstr := func(s string) int32 {
-			dc.StringTable = append(dc.StringTable, s)
-			return int32(len(dc.StringTable) - 1)
-		}
-		kvs := make([]*v1.KeyValue, 0, len(attrs))
-		for _, a := range attrs {
-			kv := &v1.KeyValue{Value: &v1.AnyValue{}}
-			if a.inline {
-				kv.Key = a.key
-			} else {
-				kv.KeyStrindex = addstr(a.key)
-			}
-			switch {
-			case a.isInt:
-				kv.Value.Value = &v1.AnyValue_IntValue{IntValue: a.int}
-			case a.inline:
-				kv.Value.Value = &v1.AnyValue_StringValue{StringValue: a.str}
-			default:
-				kv.Value.Value = &v1.AnyValue_StringValueStrindex{StringValueStrindex: addstr(a.str)}
-			}
-			kvs = append(kvs, kv)
-		}
-		return kvs
-	}
+func TestExport_DictionaryEncodedAttributes(t *testing.T) {
+	svc, profiles := recordPushBatch(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
 
-	tests := []struct {
-		name           string
-		resourceAttrs  []attr
-		scopeAttrs     []attr
-		extraResource  []*v1.KeyValue
-		expectedLabels map[string]string
-	}{
-		{
-			name: "dictionary-encoded keys and values",
-			resourceAttrs: []attr{
-				{key: "process.pid", int: 2787, isInt: true},
-				{key: "process.executable.name", str: "slack"},
+	req := createValidOTLPRequest()
+	addstr := func(s string) int32 {
+		req.Dictionary.StringTable = append(req.Dictionary.StringTable, s)
+		return int32(len(req.Dictionary.StringTable) - 1)
+	}
+	// Resource and scope attributes as sent by OTLP/gRPC exporters since
+	// collector v0.163.0: keys and string values reference the string table.
+	req.ResourceProfiles[0].Resource = &resourcev1.Resource{
+		Attributes: []*v1.KeyValue{
+			{
+				KeyStrindex: addstr("process.pid"),
+				Value: &v1.AnyValue{
+					Value: &v1.AnyValue_IntValue{IntValue: 2787},
+				},
 			},
-			scopeAttrs: []attr{{key: "scope.attr", str: "scope-value"}},
-			expectedLabels: map[string]string{
-				"process.pid":             "2787",
-				"process.executable.name": "slack",
-				"scope.attr":              "scope-value",
-				"service_name":            "unknown_service:slack",
-			},
-		},
-		{
-			name:          "dictionary-encoded service.name",
-			resourceAttrs: []attr{{key: "service.name", str: "my-service"}},
-			expectedLabels: map[string]string{
-				"service.name": "my-service",
-				"service_name": "my-service",
-			},
-		},
-		{
-			name: "inline keys and values",
-			resourceAttrs: []attr{
-				{key: "process.pid", int: 2787, isInt: true, inline: true},
-				{key: "process.executable.name", str: "slack", inline: true},
-			},
-			scopeAttrs: []attr{{key: "scope.attr", str: "scope-value", inline: true}},
-			expectedLabels: map[string]string{
-				"process.pid":             "2787",
-				"process.executable.name": "slack",
-				"scope.attr":              "scope-value",
-				"service_name":            "unknown_service:slack",
-			},
-		},
-		{
-			name:          "unresolvable key is skipped",
-			resourceAttrs: []attr{{key: "service.name", str: "my-service"}},
-			extraResource: []*v1.KeyValue{
-				{KeyStrindex: 1000, Value: &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: "orphan"}}},
-			},
-			expectedLabels: map[string]string{
-				"service.name": "my-service",
-				"service_name": "my-service",
+			{
+				KeyStrindex: addstr("process.executable.name"),
+				Value: &v1.AnyValue{
+					Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: addstr("slack")},
+				},
 			},
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc, profiles := recordPushBatch(t)
-			h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
-
-			req := createValidOTLPRequest()
-			rp := req.ResourceProfiles[0]
-			rp.Resource = &resourcev1.Resource{
-				Attributes: append(build(req.Dictionary, tt.resourceAttrs), tt.extraResource...),
-			}
-			rp.ScopeProfiles[0].Scope = &v1.InstrumentationScope{
-				Attributes: build(req.Dictionary, tt.scopeAttrs),
-			}
-			orig := proto.Clone(req)
-
-			_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
-			require.NoError(t, err)
-			assert.True(t, proto.Equal(orig, req), "request must not be mutated")
-			require.Len(t, *profiles, 1)
-			require.Len(t, (*profiles)[0].Series, 1)
-
-			got := map[string]string{}
-			for _, l := range (*profiles)[0].Series[0].Labels {
-				require.NotEmpty(t, l.Name, "label with empty name: %v", l)
-				assert.NotEqual(t, "orphan", l.Value)
-				got[l.Name] = l.Value
-			}
-			for name, value := range tt.expectedLabels {
-				assert.Equal(t, value, got[name], "label %q", name)
-			}
-		})
+	req.ResourceProfiles[0].ScopeProfiles[0].Scope = &v1.InstrumentationScope{
+		Attributes: []*v1.KeyValue{
+			{
+				KeyStrindex: addstr("scope.attr"),
+				Value: &v1.AnyValue{
+					Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: addstr("scope-value")},
+				},
+			},
+		},
 	}
+	orig := proto.Clone(req)
+
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+	require.NoError(t, err)
+	assert.True(t, proto.Equal(orig, req), "request must not be mutated")
+	require.Len(t, *profiles, 1)
+	require.Len(t, (*profiles)[0].Series, 1)
+
+	labels := phlaremodel.Labels((*profiles)[0].Series[0].Labels)
+	for _, l := range labels {
+		assert.NotEmpty(t, l.Name, "label with empty name: %v", l)
+	}
+	assert.Equal(t, "2787", labels.Get("process.pid"))
+	assert.Equal(t, "slack", labels.Get("process.executable.name"))
+	assert.Equal(t, "scope-value", labels.Get("scope.attr"))
+	assert.Equal(t, "unknown_service:slack", labels.Get(phlaremodel.LabelNameServiceName))
 }
 
 func TestCustomProfileTypeLanguageLabeling(t *testing.T) {
