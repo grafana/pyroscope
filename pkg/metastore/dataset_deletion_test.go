@@ -175,10 +175,25 @@ func TestDeleteDatasets(t *testing.T) {
 
 	req.DryRun = false
 	// Capacity rejection is represented in the Raft response, not a handler
-	// error (which would cause the real FSM to panic). No partial jobs persist.
-	h.scheduler = scheduler.NewScheduler(scheduler.Config{MaxQueueSize: 1}, scheduler.NewStore(), nil)
+	// error (which would cause the real FSM to panic). When the deletion
+	// queue watermark is already full, no jobs are scheduled.
+	fullSc := scheduler.NewScheduler(scheduler.Config{MaxQueueSize: 1}, scheduler.NewStore(), nil)
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		existing := &raft_log.CompactionJobPlan{Name: "occupy-queue"}
+		state := fullSc.NewSchedule(tx, &raft.Log{Index: 1, AppendedAt: time.Now()}).AddJob(existing)
+		require.NotNil(t, state)
+		return fullSc.UpdateSchedule(tx, &raft_log.CompactionPlanUpdate{
+			NewJobs: []*raft_log.NewCompactionJob{{Plan: existing, State: state}},
+		})
+	}))
+	h.scheduler = fullSc
 	_, err = svc.DeleteDatasets(ctx, req)
 	require.Equal(t, codes.ResourceExhausted, status.Code(err))
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		return fullSc.UpdateSchedule(tx, &raft_log.CompactionPlanUpdate{
+			CompletedJobs: []*raft_log.CompletedCompactionJob{{State: &raft_log.CompactionJobState{Name: "occupy-queue"}}},
+		})
+	}))
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
 		jobs, e := sc.BusyBlocks(tx)
 		require.NoError(t, e)
@@ -678,4 +693,85 @@ func TestDeleteDatasets_FinalRetryRemainsBusy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeleteDatasets_PartialSchedulingUpTo90PercentQueue(t *testing.T) {
+	ctx := context.Background()
+	db, err := bbolt.Open(filepath.Join(t.TempDir(), "index.db"), 0600, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	logger := log.NewNopLogger()
+	idx := index.NewIndex(logger, index.NewStore(), index.DefaultConfig, nil)
+	ts := tombstones.NewTombstones(tombstones.NewStore(), nil)
+	c := compactor.NewCompactor(compactor.DefaultConfig(), compactor.NewStore(), ts, nil)
+	// MaxQueueSize=10 allows at most 9 deletion jobs (90%), leaving 1 slot for normal compaction.
+	sc := scheduler.NewScheduler(scheduler.Config{LeaseDuration: time.Minute, MaxFailures: 3, MaxQueueSize: 10}, scheduler.NewStore(), nil)
+	h := NewCompactionCommandHandler(logger, idx, c, c, sc, ts)
+	r := &deletionTestRaft{db: db, handler: h}
+	svc := NewCompactionService(logger, r, deletionTestState{db: db}, h)
+
+	var blocks []*metastorev1.BlockMeta
+	for range 12 {
+		blocks = append(blocks, &metastorev1.BlockMeta{
+			Id:              ulid.Make().String(),
+			Tenant:          1,
+			Shard:           1,
+			CompactionLevel: 1,
+			MinTime:         1000,
+			MaxTime:         9000,
+			StringTable:     []string{"", "tenant-a", "svc-a"},
+			Datasets:        []*metastorev1.Dataset{{Tenant: 1, Name: 2, MinTime: 2000, MaxTime: 8000, Size: 100}},
+		})
+	}
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		require.NoError(t, idx.Init(tx))
+		require.NoError(t, ts.Init(tx))
+		require.NoError(t, c.Init(tx))
+		require.NoError(t, sc.Init(tx))
+		for _, b := range blocks {
+			require.NoError(t, idx.InsertBlock(tx, b.CloneVT()))
+		}
+		return nil
+	}))
+
+	req := &metastorev1.DeleteDatasetsRequest{
+		Tenant:  "tenant-a",
+		MinTime: 1000 * 1e6,
+		MaxTime: 9000 * 1e6,
+		Filter:  &metastorev1.DeleteFilter{ServiceNameRegex: "svc-a"},
+	}
+
+	// First call schedules up to 90% of MaxQueueSize (9 of 12 matching blocks).
+	resp, err := svc.DeleteDatasets(ctx, req)
+	require.NoError(t, err)
+	require.EqualValues(t, 12, resp.MatchedBlocksCount)
+	require.Len(t, resp.ScheduledJobNames, 9)
+
+	// Calling again while the queue is at 90% returns ResourceExhausted.
+	_, err = svc.DeleteDatasets(ctx, req)
+	require.Equal(t, codes.ResourceExhausted, status.Code(err))
+
+	// Complete 2 of the 9 queued deletion jobs so 2 slots open below the 90% watermark.
+	polled, err := svc.PollCompactionJobs(ctx, &metastorev1.PollCompactionJobsRequest{JobCapacity: 2})
+	require.NoError(t, err)
+	require.Len(t, polled.CompactionJobs, 2)
+	var updates []*metastorev1.CompactionJobStatusUpdate
+	for i, job := range polled.CompactionJobs {
+		updates = append(updates, &metastorev1.CompactionJobStatusUpdate{
+			Name:   job.Name,
+			Token:  polled.Assignments[i].Token,
+			Status: metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS,
+			CompactedBlocks: &metastorev1.CompactedBlocks{
+				SourceBlocks: &metastorev1.BlockList{Tenant: job.Tenant, Shard: job.Shard, Blocks: job.SourceBlocks},
+			},
+		})
+	}
+	_, err = svc.PollCompactionJobs(ctx, &metastorev1.PollCompactionJobsRequest{StatusUpdates: updates})
+	require.NoError(t, err)
+
+	// Retrying skips the 7 still-busy blocks and schedules 2 of the 3 remaining unscheduled blocks.
+	resp, err = svc.DeleteDatasets(ctx, req)
+	require.NoError(t, err)
+	require.EqualValues(t, 10, resp.MatchedBlocksCount)
+	require.Len(t, resp.ScheduledJobNames, 2)
 }

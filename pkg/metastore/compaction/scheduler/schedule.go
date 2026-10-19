@@ -124,7 +124,8 @@ func (p *schedule) EvictJob() *raft_log.CompactionJobState {
 // The method must be called after the last AssignJob and UpdateJob calls.
 // It returns an empty state if the queue size limit is reached, or if a job
 // with the same name is already scheduled: overwriting the state of a live job
-// would reset its token and lease.
+// would reset its token and lease. Dataset deletion jobs are capped at 90% of
+// MaxQueueSize so normal compaction retains headroom.
 func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) *raft_log.CompactionJobState {
 	p.scheduler.mu.Lock()
 	defer p.scheduler.mu.Unlock()
@@ -132,6 +133,9 @@ func (p *schedule) AddJob(plan *raft_log.CompactionJobPlan) *raft_log.Compaction
 		return nil
 	}
 	if limit := p.scheduler.config.MaxQueueSize; limit > 0 {
+		if plan.DeleteFilter != nil {
+			limit = max(1, limit*9/10)
+		}
 		if size := uint64(p.added + p.scheduler.queue.size()); size >= limit {
 			return nil
 		}

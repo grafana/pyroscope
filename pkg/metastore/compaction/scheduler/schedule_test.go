@@ -366,6 +366,23 @@ func TestSchedule_QueueSizeLimit(t *testing.T) {
 		assert.Equal(t, states[1], s.AddJob(plans[1]))
 		assert.Nil(t, s.AddJob(plans[2]))
 	})
+
+	t.Run("DatasetDeletionReservesTenPercentHeadroom", func(t *testing.T) {
+		scheduler := NewScheduler(Config{MaxQueueSize: 10, MaxFailures: 3, LeaseDuration: 10 * time.Second}, store, nil)
+		s := scheduler.NewSchedule(nil, &raft.Log{Index: 1, AppendedAt: time.Unix(0, 1)})
+		for i := range 9 {
+			require.NotNil(t, s.AddJob(&raft_log.CompactionJobPlan{
+				Name:         string(rune('a' + i)),
+				DeleteFilter: &metastorev1.DeleteFilter{ServiceNameRegex: "svc"},
+			}))
+		}
+		// 10th deletion job is rejected at 90% of MaxQueueSize, but normal compaction still fits.
+		assert.Nil(t, s.AddJob(&raft_log.CompactionJobPlan{
+			Name:         "deletion-10",
+			DeleteFilter: &metastorev1.DeleteFilter{ServiceNameRegex: "svc"},
+		}))
+		assert.NotNil(t, s.AddJob(&raft_log.CompactionJobPlan{Name: "compaction-10"}))
+	})
 }
 
 func TestSchedule_AddRejectsExistingJob(t *testing.T) {

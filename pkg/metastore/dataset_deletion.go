@@ -237,9 +237,13 @@ func (h *CompactionCommandHandler) prepareDatasetDeletion(ctx context.Context, t
 		return nil, nil, err
 	}
 	schedule := h.scheduler.NewSchedule(tx, cmd)
+	var firstBusyBlock string
 	for _, b := range resp.Blocks {
 		if busy[deletionBlockKey{b.Tenant, b.Shard, b.BlockId}] {
-			return nil, nil, status.Errorf(codes.FailedPrecondition, "block %s already has a compaction job; retry after completion", b.BlockId)
+			if firstBusyBlock == "" {
+				firstBusyBlock = b.BlockId
+			}
+			continue
 		}
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%q/%d/%s/%q", b.Tenant, b.Shard, b.BlockId, req.GetFilter().GetServiceNameRegex())))
 		plan := &raft_log.CompactionJobPlan{
@@ -247,14 +251,20 @@ func (h *CompactionCommandHandler) prepareDatasetDeletion(ctx context.Context, t
 			Tenant: b.Tenant, Shard: b.Shard, CompactionLevel: b.CompactionLevel, SourceBlocks: []string{b.BlockId},
 			DeleteFilter: &metastorev1.DeleteFilter{ServiceNameRegex: req.GetFilter().GetServiceNameRegex()},
 		}
-		// Busy blocks were rejected above, so a nil state can only mean the
-		// queue is full. Failed jobs are evicted by the regular polling path.
+		// Busy blocks are skipped above, so a nil state means the deletion
+		// queue watermark (90% of MaxQueueSize) has been reached.
 		state := schedule.AddJob(plan)
 		if state == nil {
-			return nil, nil, status.Error(codes.ResourceExhausted, "compaction scheduler is full; no deletion jobs scheduled")
+			if len(update.NewJobs) == 0 {
+				return nil, nil, status.Error(codes.ResourceExhausted, "compaction scheduler is full; no deletion jobs scheduled")
+			}
+			break
 		}
 		update.NewJobs = append(update.NewJobs, &raft_log.NewCompactionJob{Plan: plan, State: state})
 		resp.ScheduledJobNames = append(resp.ScheduledJobNames, plan.Name)
+	}
+	if len(update.NewJobs) == 0 && firstBusyBlock != "" {
+		return nil, nil, status.Errorf(codes.FailedPrecondition, "block %s already has a compaction job; retry after completion", firstBusyBlock)
 	}
 	return resp, update, nil
 }
