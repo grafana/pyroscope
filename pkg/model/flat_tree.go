@@ -609,124 +609,172 @@ func (t *FlatTree) BytesCompact(maxNodes int64) ([]byte, []string) {
 }
 
 func (t *FlatTree) marshal(maxNodes int64, compact bool) ([]byte, []string) {
-	n := len(t.parent)
-	if n < 2 {
+	if len(t.parent) < 2 {
 		return nil, nil
 	}
 	total := t.totals()
-	minValue := t.minValue(total, maxNodes)
-	names := t.names.names
-	other, hasOther := t.names.ids[truncatedNodeName]
+	m := newTreeMarshaler(t, total, t.minValue(total, maxNodes), compact)
+	m.write(0)
+	return m.buf, m.table
+}
+
+type treeMarshaler struct {
+	t        *FlatTree
+	n        int32
+	total    []int64
+	minValue int64
+	compact  bool
+
+	names    []string
+	other    int32
+	hasOther bool
 
 	// Nodes with ids >= n are "other" nodes that replace truncated children,
 	// synthetic holds their weight. Existing "other" nodes take the weight
 	// of truncated siblings in extra.
-	var extra []int64
-	var synthetic []int64
+	extra     []int64
+	synthetic []int64
 
-	var buf []byte
-	var table []string
-	var index []int32 // Position of the name in the table, by name id.
+	buf        []byte
+	table      []string
+	index      []int32 // Position of the name in the table, by name id.
+	otherIndex int32
+
+	stack    []int32
+	children []int32
+}
+
+func newTreeMarshaler(t *FlatTree, total []int64, minValue int64, compact bool) *treeMarshaler {
+	n := len(t.parent)
+	m := &treeMarshaler{
+		t:          t,
+		n:          int32(n),
+		total:      total,
+		minValue:   minValue,
+		compact:    compact,
+		names:      t.names.names,
+		otherIndex: -1,
+		stack:      make([]int32, 0, 1024),
+		children:   make([]int32, 0, 128),
+	}
+	m.other, m.hasOther = t.names.ids[truncatedNodeName]
 	if compact {
-		buf = make([]byte, 0, n*6+64)
-		index = make([]int32, len(names))
-		for i := range index {
-			index[i] = -1
+		m.buf = make([]byte, 0, n*6+64)
+		m.index = make([]int32, len(m.names))
+		for i := range m.index {
+			m.index[i] = -1
 		}
 	} else {
 		size := 0
 		for i := 1; i < n; i++ {
-			size += len(names[t.name[i]]) + 4
+			size += len(m.names[t.name[i]]) + 4
 		}
-		buf = make([]byte, 0, size+64)
+		m.buf = make([]byte, 0, size+64)
 	}
-	writeName := func(id int32) {
-		if !compact {
-			name := truncatedNodeName
-			if id >= 0 {
-				name = names[id]
-			}
-			buf = binary.AppendUvarint(buf, uint64(len(name)))
-			buf = append(buf, name...)
+	return m
+}
+
+func (m *treeMarshaler) writeName(id int32) {
+	if !m.compact {
+		name := truncatedNodeName
+		if id >= 0 {
+			name = m.names[id]
+		}
+		m.buf = binary.AppendUvarint(m.buf, uint64(len(name)))
+		m.buf = append(m.buf, name...)
+		return
+	}
+	if id < 0 {
+		if m.otherIndex >= 0 {
+			m.buf = binary.AppendUvarint(m.buf, uint64(m.otherIndex))
 			return
 		}
-		if id < 0 {
-			if !hasOther {
-				other, hasOther = t.names.id(truncatedNodeName), true
-				names = t.names.names
-				index = append(index, -1)
-			}
-			id = other
+		if !m.hasOther {
+			m.other, m.hasOther = m.t.names.id(truncatedNodeName), true
+			m.names = m.t.names.names
+			m.index = append(m.index, -1)
 		}
-		if index[id] < 0 {
-			index[id] = int32(len(table))
-			table = append(table, names[id])
-		}
-		buf = binary.AppendUvarint(buf, uint64(index[id]))
+		id = m.other
 	}
+	if m.index[id] < 0 {
+		m.index[id] = int32(len(m.table))
+		m.table = append(m.table, m.names[id])
+	}
+	m.buf = binary.AppendUvarint(m.buf, uint64(m.index[id]))
+}
 
-	stack := make([]int32, 1, 1024)
-	children := make([]int32, 0, 128)
-	for len(stack) > 0 {
-		x := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if x >= int32(n) {
-			writeName(-1)
-			buf = binary.AppendUvarint(buf, uint64(synthetic[x-int32(n)]))
-			buf = binary.AppendUvarint(buf, 0)
+func (m *treeMarshaler) write(x int32) {
+	t := m.t
+	m.stack = append(m.stack[:0], x)
+	for len(m.stack) > 0 {
+		x := m.stack[len(m.stack)-1]
+		m.stack = m.stack[:len(m.stack)-1]
+		if x >= m.n {
+			m.writeName(-1)
+			m.buf = binary.AppendUvarint(m.buf, uint64(m.synthetic[x-m.n]))
+			m.buf = binary.AppendUvarint(m.buf, 0)
 			continue
 		}
 		var self int64
 		if x > 0 {
-			writeName(t.name[x])
+			m.writeName(t.name[x])
 			self = t.self[x]
-			if extra != nil {
-				self += extra[x]
+			if m.extra != nil {
+				self += m.extra[x]
 			}
 		} else {
 			// The virtual root.
-			buf = binary.AppendUvarint(buf, 0)
+			m.buf = binary.AppendUvarint(m.buf, 0)
 		}
-		buf = binary.AppendUvarint(buf, uint64(self))
-
-		// Kept children in descending name order; the "other" node
-		// is placed according to its name.
-		children = children[:0]
-		var truncated int64
-		otherAt := -1
-		for c := t.child[x]; c != noNode; c = t.next[c] {
-			isOther := hasOther && t.name[c] == other
-			if total[c] >= minValue || isOther {
-				if isOther {
-					otherAt = len(children)
-				}
-				children = append(children, c)
-			} else {
-				truncated += total[c]
-			}
-		}
-		if truncated > 0 {
-			if otherAt >= 0 {
-				if extra == nil {
-					extra = make([]int64, n)
-				}
-				extra[children[otherAt]] += truncated
-			} else {
-				i := 0
-				for i < len(children) && names[t.name[children[i]]] > truncatedNodeName {
-					i++
-				}
-				children = slices.Insert(children, i, int32(n+len(synthetic)))
-				synthetic = append(synthetic, truncated)
-			}
-		}
+		m.buf = binary.AppendUvarint(m.buf, uint64(self))
+		children := m.keptChildren(x)
 		// Push in ascending order, to pop in descending.
 		for i := len(children) - 1; i >= 0; i-- {
-			stack = append(stack, children[i])
+			m.stack = append(m.stack, children[i])
 		}
-		buf = binary.AppendUvarint(buf, uint64(len(children)))
+		m.buf = binary.AppendUvarint(m.buf, uint64(len(children)))
 	}
-	return buf, table
+}
+
+func (m *treeMarshaler) keptChildren(x int32) []int32 {
+	// Kept children in descending name order; the "other" node
+	// is placed according to its name.
+	t := m.t
+	children := m.children[:0]
+	var truncated int64
+	otherAt := -1
+	for c := t.child[x]; c != noNode; c = t.next[c] {
+		isOther := m.hasOther && t.name[c] == m.other
+		if m.total[c] >= m.minValue || isOther {
+			if isOther {
+				otherAt = len(children)
+			}
+			children = append(children, c)
+		} else {
+			truncated += m.total[c]
+		}
+	}
+	if truncated > 0 {
+		if otherAt >= 0 {
+			m.addExtra(children[otherAt], truncated)
+		} else {
+			i := 0
+			for i < len(children) && m.names[t.name[children[i]]] > truncatedNodeName {
+				i++
+			}
+			children = slices.Insert(children, i, m.n+int32(len(m.synthetic)))
+			m.synthetic = append(m.synthetic, truncated)
+		}
+	}
+	m.children = children
+	return children
+}
+
+func (m *treeMarshaler) addExtra(x int32, v int64) {
+	if m.extra == nil {
+		m.extra = make([]int64, m.n)
+	}
+	m.extra[x] += v
 }
 
 // readCompactRecord reads the name index, the value, and the number of
@@ -764,19 +812,45 @@ func (t *FlatTree) MergeCompactBytes(b []byte, names []string) error {
 		return nil
 	}
 	t.reserve(len(t.parent) + len(b)/6)
-	ids := make([]int32, len(names))
-	for i, name := range names {
-		ids[i] = t.names.id(name)
-	}
 	_, _, childrenLen, offset, err := readCompactRecord(b, 0)
 	if err != nil {
 		return err
 	}
-	stack := make([]mergeFrame, 0, 256)
-	if childrenLen > 0 {
-		stack = append(stack, mergeFrame{cursor{0, noNode, t.child[0]}, childrenLen})
+	_, err = t.mergeCompactRecords(b, offset, newCompactNames(names), 0, childrenLen)
+	return err
+}
+
+type compactNames struct {
+	names []string
+	ids   []int32
+}
+
+func newCompactNames(names []string) *compactNames {
+	ids := make([]int32, len(names))
+	for i := range ids {
+		ids[i] = noNode
 	}
-	var name, value uint64
+	return &compactNames{names: names, ids: ids}
+}
+
+func (n *compactNames) id(t *FlatTree, i uint64) (int32, error) {
+	if i >= uint64(len(n.ids)) {
+		return 0, errMalformedTreeBytes
+	}
+	id := n.ids[i]
+	if id == noNode {
+		id = t.names.id(n.names[i])
+		n.ids[i] = id
+	}
+	return id, nil
+}
+
+func (t *FlatTree) mergeCompactRecords(b []byte, offset int, names *compactNames, node int32, count uint64) (int, error) {
+	if count == 0 {
+		return offset, nil
+	}
+	stack := make([]mergeFrame, 1, 256)
+	stack[0] = mergeFrame{cursor{node, noNode, t.child[node]}, count}
 	for len(stack) > 0 {
 		f := &stack[len(stack)-1]
 		if f.left == 0 {
@@ -784,19 +858,54 @@ func (t *FlatTree) MergeCompactBytes(b []byte, names []string) error {
 			continue
 		}
 		f.left--
-		if name, value, childrenLen, offset, err = readCompactRecord(b, offset); err != nil {
+		name, value, children, next, err := readCompactRecord(b, offset)
+		if err != nil {
+			return 0, err
+		}
+		offset = next
+		id, err := names.id(t, name)
+		if err != nil {
+			return 0, err
+		}
+		x := t.findID(&f.cursor, id)
+		t.self[x] += int64(value)
+		if children > 0 {
+			stack = append(stack, mergeFrame{cursor{x, noNode, t.child[x]}, children})
+		}
+	}
+	return offset, nil
+}
+
+func (t *FlatTree) mergeCompactRoots(b []byte, names []string, offsets []int) error {
+	n := newCompactNames(names)
+	c := cursor{0, noNode, t.child[0]}
+	for _, offset := range offsets {
+		name, value, children, next, err := readCompactRecord(b, offset)
+		if err != nil {
 			return err
 		}
-		if name >= uint64(len(ids)) {
-			return errMalformedTreeBytes
+		id, err := n.id(t, name)
+		if err != nil {
+			return err
 		}
-		x := t.findID(&f.cursor, ids[name])
+		x := t.findID(&c, id)
 		t.self[x] += int64(value)
-		if childrenLen > 0 {
-			stack = append(stack, mergeFrame{cursor{x, noNode, t.child[x]}, childrenLen})
+		if _, err = t.mergeCompactRecords(b, next, n, x, children); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func skipCompactRecords(b []byte, offset int, count uint64) (int, error) {
+	for count > 0 {
+		_, _, children, next, err := readCompactRecord(b, offset)
+		if err != nil {
+			return 0, err
+		}
+		offset, count = next, count-1+children
+	}
+	return offset, nil
 }
 
 // FlameGraph builds the flame graph as NewFlameGraph does for the tree.

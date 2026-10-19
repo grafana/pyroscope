@@ -217,10 +217,10 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	}
 
 	a.initTree(r.Query)
+	if len(r.Names) > 0 {
+		return a.parts.MergeCompactBytes(r.Tree, r.Names)
+	}
 	return a.trees.merge(func(t *model.FlatTree) error {
-		if len(r.Names) > 0 {
-			return t.MergeCompactBytes(r.Tree, r.Names)
-		}
 		return t.MergeBytes(r.Tree)
 	})
 }
@@ -267,7 +267,13 @@ func (a *treeAggregator) build() *queryv1.Report {
 
 	// A single tree is passed through as is, as a single report would be.
 	if a.query.GetCompact() {
-		result.Tree.Tree, result.Tree.Names = a.tree().BytesCompact(a.query.GetMaxNodes())
+		t := a.trees.tree()
+		if a.parts.Inputs() == 0 {
+			result.Tree.Tree, result.Tree.Names = t.BytesCompact(a.query.GetMaxNodes())
+			return result
+		}
+		a.parts.MergeTree(t)
+		result.Tree.Tree, result.Tree.Names = a.parts.BytesCompact(a.query.GetMaxNodes())
 		return result
 	}
 	result.Tree.Tree = a.tree().Bytes(a.query.GetMaxNodes())

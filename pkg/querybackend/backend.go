@@ -233,7 +233,9 @@ func (q *QueryBackend) merge(
 		}
 	}
 
+	span, _ := tracing.StartSpanFromContext(ctx, "reportAggregator.response")
 	resp := m.response()
+	span.Finish()
 	return resp, executionNodes, totalBytesFetched.Load(), nil
 }
 

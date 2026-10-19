@@ -175,7 +175,9 @@ func (b *BlockReader) Invoke(
 		span.SetTag("resolved_datasets_count", weightCollector.datasetsCount)
 	}
 
+	responseSpan, _ := tracing.StartSpanFromContext(ctx, "reportAggregator.response")
 	resp := agg.response()
+	responseSpan.Finish()
 
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = &queryv1.Diagnostics{}
