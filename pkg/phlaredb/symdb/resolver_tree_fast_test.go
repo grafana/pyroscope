@@ -104,3 +104,26 @@ func testBuildCallTree(t *testing.T) {
 		})
 	}
 }
+
+type countedStacktraces struct {
+	StacktraceResolver
+	n int
+}
+
+func (s countedStacktraces) stacktraceCount() int { return s.n }
+
+func Test_denseSamples(t *testing.T) {
+	appender := func(stacks int) *SampleAppender {
+		a := NewSampleAppender()
+		for i := 1; i <= stacks; i++ {
+			a.Append(uint32(i), 1)
+		}
+		return a
+	}
+	symbols := &Symbols{Stacktraces: countedStacktraces{n: 1600}}
+	require.True(t, denseSamples(symbols, appender(1600)))
+	require.True(t, denseSamples(symbols, appender(100)))
+	require.False(t, denseSamples(symbols, appender(99)))
+	require.False(t, denseSamples(symbols, appender(0)))
+	require.False(t, denseSamples(&Symbols{}, appender(1600)))
+}

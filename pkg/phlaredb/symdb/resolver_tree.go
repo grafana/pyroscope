@@ -41,7 +41,7 @@ func buildTree[N model.NodeName, I model.NodeNameI[N]](
 	}
 	// Otherwise, build the tree of the sampled stack traces in full.
 	var treeI I
-	if !treeI.IsLocationTree() && (selection == nil || len(selection.callSite) == 0) {
+	if !treeI.IsLocationTree() && (selection == nil || len(selection.callSite) == 0) && denseSamples(symbols, appender) {
 		if c, ok := buildCallTree(symbols, appender); ok {
 			return model.TreeFromStacktraceTree[N, I](stacktraceTreeFromCallTree(c), maxNodes, lookup), nil
 		}

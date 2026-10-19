@@ -491,6 +491,14 @@ func (p *partition) SplitStacktraceIDRanges(appender *SampleAppender) iter.Itera
 	return iter.NewSliceIterator(ranges)
 }
 
+func (p *partition) stacktraceCount() int {
+	var n int
+	for _, c := range p.stacktraces {
+		n += int(c.header.Stacktraces)
+	}
+	return n
+}
+
 func (p *partition) initStacktraces(chunks []StacktraceBlockHeader) {
 	p.stacktraces = make([]*stacktraceBlock, len(chunks))
 	for i, c := range chunks {

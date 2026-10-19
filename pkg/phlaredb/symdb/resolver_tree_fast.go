@@ -188,6 +188,16 @@ func buildCallTree(symbols *Symbols, appender *SampleAppender) (*model.CallTree,
 	return t.callTree(symbols.Strings), true
 }
 
+const minSampledStacktracesRatio = 16
+
+func denseSamples(symbols *Symbols, appender *SampleAppender) bool {
+	c, ok := symbols.Stacktraces.(interface{ stacktraceCount() int })
+	if !ok {
+		return false
+	}
+	return appender.Len()*minSampledStacktracesRatio >= c.stacktraceCount()
+}
+
 func (t *functionTree) callTree(names []string) *model.CallTree {
 	total := make([]int64, len(t.self))
 	copy(total, t.self)
