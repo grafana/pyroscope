@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,7 +10,25 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
+// forEachCallTreeMode runs the test with call trees built sequentially and
+// concurrently.
+func forEachCallTreeMode(t *testing.T, fn func(t *testing.T)) {
+	defer func(n int) { parallelCallTreeMinNodes = n }(parallelCallTreeMinNodes)
+	for _, n := range []int{1 << 30, 0} {
+		parallelCallTreeMinNodes = n
+		t.Run(fmt.Sprintf("parallel_min_nodes=%d", n), fn)
+	}
+}
+
 func Test_buildTruncatedCallTree_matches_parent_pointer_tree_copies(t *testing.T) {
+	forEachCallTreeMode(t, testBuildTruncatedCallTree)
+}
+
+func Test_buildCallTree_matches_stacktrace_inserts(t *testing.T) {
+	forEachCallTreeMode(t, testBuildCallTree)
+}
+
+func testBuildTruncatedCallTree(t *testing.T) {
 	for _, f := range []string{"testdata/profile.pb.gz", "testdata/big-profile.pb.gz"} {
 		t.Run(f, func(t *testing.T) {
 			s := newBlockSuite(t, [][]string{{f}})
@@ -47,7 +66,7 @@ func Test_buildTruncatedCallTree_matches_parent_pointer_tree_copies(t *testing.T
 	}
 }
 
-func Test_buildCallTree_matches_stacktrace_inserts(t *testing.T) {
+func testBuildCallTree(t *testing.T) {
 	for _, f := range []string{"testdata/profile.pb.gz", "testdata/big-profile.pb.gz"} {
 		t.Run(f, func(t *testing.T) {
 			s := newBlockSuite(t, [][]string{{f}})

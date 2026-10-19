@@ -335,6 +335,10 @@ func (t *FlatTree) MergePreparedCallTree(p *PreparedCallTree) {
 		ids[i] = noNode
 	}
 	other := t.names.id(truncatedNodeName)
+	if len(t.parent) == 1 {
+		t.buildPreparedCallTree(p, ids, other)
+		return
+	}
 	type frame struct {
 		cursor
 		kids []int32
@@ -362,6 +366,54 @@ func (t *FlatTree) MergePreparedCallTree(p *PreparedCallTree) {
 		t.self[x] += c.Self[src]
 		if s := kids[off[src]:off[src+1]]; len(s) > 0 {
 			stack = append(stack, frame{cursor{x, noNode, t.child[x]}, s})
+		}
+	}
+}
+
+// buildPreparedCallTree copies the prepared call tree into the empty tree:
+// the children are already in order, so no lookups are needed.
+func (t *FlatTree) buildPreparedCallTree(p *PreparedCallTree, ids []int32, other int32) {
+	c, off, kids := p.c, p.off, p.kids
+	n := int32(len(c.Parent))
+	type frame struct {
+		node, prev int32
+		kids       []int32
+	}
+	stack := []frame{{0, noNode, kids[off[0]:off[1]]}}
+	for len(stack) > 0 {
+		f := &stack[len(stack)-1]
+		if len(f.kids) == 0 {
+			stack = stack[:len(stack)-1]
+			continue
+		}
+		var src int32
+		src, f.kids = f.kids[0], f.kids[1:]
+		id, self := other, int64(0)
+		if src >= n {
+			self = p.otherSum[src-n]
+		} else {
+			if id = ids[c.Name[src]]; id == noNode {
+				id = t.names.id(c.Names[c.Name[src]])
+				ids[c.Name[src]] = id
+			}
+			self = c.Self[src]
+		}
+		x := int32(len(t.parent))
+		t.name = append(t.name, id)
+		t.self = append(t.self, self)
+		t.parent = append(t.parent, f.node)
+		t.child = append(t.child, noNode)
+		t.next = append(t.next, noNode)
+		if f.prev == noNode {
+			t.child[f.node] = x
+		} else {
+			t.next[f.prev] = x
+		}
+		f.prev = x
+		if src < n {
+			if s := kids[off[src]:off[src+1]]; len(s) > 0 {
+				stack = append(stack, frame{x, noNode, s})
+			}
 		}
 	}
 }
