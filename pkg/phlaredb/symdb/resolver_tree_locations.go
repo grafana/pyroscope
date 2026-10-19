@@ -81,6 +81,8 @@ func buildLocationCallTree(symbols *Symbols, appender *SampleAppender, maxNodes 
 		total:    b.total,
 		minValue: minValue,
 	}
+	b.locName = locationNames(b.locName, symbols)
+	m.locName = b.locName
 	b.fn = zeroed(b.fn, n)
 	m.fn = b.fn
 	workers := 1
@@ -110,12 +112,22 @@ func buildLocationCallTree(symbols *Symbols, appender *SampleAppender, maxNodes 
 // truncatedLocation marks locations dropped by truncation in fn.
 const truncatedLocation = -1
 
+// Names of locations that do not resolve to a single function, in locName.
+const (
+	noLineLocation    = -1
+	multiLineLocation = -2
+)
+
 type locationCallTreeMapper struct {
 	symbols  *Symbols
 	nodes    []pptNode
 	self     []int64
 	total    []int64
 	minValue int64
+	// Function name of each location with a single line: most of them.
+	// Kept apart from the location and function tables, which are visited
+	// in random order, so that most lookups hit the cache.
+	locName []int32
 	// Call tree node of the location, in the tree of the worker
 	// the location is assigned to, or truncatedLocation.
 	fn []int32
@@ -225,9 +237,14 @@ func (m *locationCallTreeMapper) mapNodes(nodes []int32, sizeHint int) (*functio
 			return
 		}
 		f := m.fn[p]
-		lines := m.symbols.Locations[m.nodes[i].r].Line
-		for l := len(lines) - 1; l >= 0; l-- {
-			f = t.child(f, int32(m.symbols.Functions[lines[l].FunctionId].Name))
+		r := m.nodes[i].r
+		if name := m.locName[r]; name >= 0 {
+			f = t.child(f, name)
+		} else if name == multiLineLocation {
+			lines := m.symbols.Locations[r].Line
+			for l := len(lines) - 1; l >= 0; l-- {
+				f = t.child(f, int32(m.symbols.Functions[lines[l].FunctionId].Name))
+			}
 		}
 		m.fn[i] = f
 		t.self[f] += m.self[i]
@@ -244,11 +261,28 @@ func (m *locationCallTreeMapper) mapNodes(nodes []int32, sizeHint int) (*functio
 	return t, rootTruncated
 }
 
+// locationNames returns the function name of each location with a single
+// line, or noLineLocation, or multiLineLocation.
+func locationNames(dst []int32, symbols *Symbols) []int32 {
+	dst = zeroed(dst, len(symbols.Locations))
+	for i, loc := range symbols.Locations {
+		switch len(loc.Line) {
+		case 0:
+			dst[i] = noLineLocation
+		case 1:
+			dst[i] = int32(symbols.Functions[loc.Line[0].FunctionId].Name)
+		default:
+			dst[i] = multiLineLocation
+		}
+	}
+	return dst
+}
+
 // callTreeBuffers are the transient buffers of buildLocationCallTree, sized
 // by the number of locations of a block: they are reused across calls.
 type callTreeBuffers struct {
 	self, total, scratch []int64
-	fn, top, size, order []int32
+	fn, top, size, order, locName []int32
 }
 
 var callTreeBuffersPool sync.Pool
