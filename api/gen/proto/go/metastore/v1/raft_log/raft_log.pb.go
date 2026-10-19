@@ -215,12 +215,15 @@ func (x *GetCompactionPlanUpdateRequest) GetAssignJobsMax() uint32 {
 }
 
 type CompactionJobStatusUpdate struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Token         uint64                 `protobuf:"varint,2,opt,name=token,proto3" json:"token,omitempty"`
-	Status        v1.CompactionJobStatus `protobuf:"varint,3,opt,name=status,proto3,enum=metastore.v1.CompactionJobStatus" json:"status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Name   string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Token  uint64                 `protobuf:"varint,2,opt,name=token,proto3" json:"token,omitempty"`
+	Status v1.CompactionJobStatus `protobuf:"varint,3,opt,name=status,proto3,enum=metastore.v1.CompactionJobStatus" json:"status,omitempty"`
+	// CompactedBlocks is the worker-reported result. Present on successful
+	// completions so the prepare step can decide whether to accept the output.
+	CompactedBlocks *v1.CompactedBlocks `protobuf:"bytes,5,opt,name=compacted_blocks,json=compactedBlocks,proto3" json:"compacted_blocks,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CompactionJobStatusUpdate) Reset() {
@@ -272,6 +275,13 @@ func (x *CompactionJobStatusUpdate) GetStatus() v1.CompactionJobStatus {
 		return x.Status
 	}
 	return v1.CompactionJobStatus(0)
+}
+
+func (x *CompactionJobStatusUpdate) GetCompactedBlocks() *v1.CompactedBlocks {
+	if x != nil {
+		return x.CompactedBlocks
+	}
+	return nil
 }
 
 // GetCompactionPlanUpdateResponse includes the planned change.
@@ -556,8 +566,12 @@ type CompletedCompactionJob struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	State           *CompactionJobState    `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
 	CompactedBlocks *v1.CompactedBlocks    `protobuf:"bytes,2,opt,name=compacted_blocks,json=compactedBlocks,proto3" json:"compacted_blocks,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// RejectOutput is set by the prepare step when the job output must not be
+	// applied (for example, source blocks were deleted by retention). Replicas
+	// complete the job without replacing source blocks or enqueueing outputs.
+	RejectOutput  bool `protobuf:"varint,3,opt,name=reject_output,json=rejectOutput,proto3" json:"reject_output,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CompletedCompactionJob) Reset() {
@@ -602,6 +616,13 @@ func (x *CompletedCompactionJob) GetCompactedBlocks() *v1.CompactedBlocks {
 		return x.CompactedBlocks
 	}
 	return nil
+}
+
+func (x *CompletedCompactionJob) GetRejectOutput() bool {
+	if x != nil {
+		return x.RejectOutput
+	}
+	return false
 }
 
 type EvictedCompactionJob struct {
@@ -1027,11 +1048,12 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\x18AddBlockMetadataResponse\"\x94\x01\n" +
 	"\x1eGetCompactionPlanUpdateRequest\x12J\n" +
 	"\x0estatus_updates\x18\x01 \x03(\v2#.raft_log.CompactionJobStatusUpdateR\rstatusUpdates\x12&\n" +
-	"\x0fassign_jobs_max\x18\x02 \x01(\rR\rassignJobsMax\"\x86\x01\n" +
+	"\x0fassign_jobs_max\x18\x02 \x01(\rR\rassignJobsMax\"\xd0\x01\n" +
 	"\x19CompactionJobStatusUpdate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\x04R\x05token\x129\n" +
-	"\x06status\x18\x03 \x01(\x0e2!.metastore.v1.CompactionJobStatusR\x06statusJ\x04\b\x04\x10\x05\"v\n" +
+	"\x06status\x18\x03 \x01(\x0e2!.metastore.v1.CompactionJobStatusR\x06status\x12H\n" +
+	"\x10compacted_blocks\x18\x05 \x01(\v2\x1d.metastore.v1.CompactedBlocksR\x0fcompactedBlocksJ\x04\b\x04\x10\x05\"v\n" +
 	"\x1fGetCompactionPlanUpdateResponse\x12\x12\n" +
 	"\x04term\x18\x01 \x01(\x04R\x04term\x12?\n" +
 	"\vplan_update\x18\x02 \x01(\v2\x1e.raft_log.CompactionPlanUpdateR\n" +
@@ -1049,10 +1071,11 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\x12/\n" +
 	"\x04plan\x18\x02 \x01(\v2\x1b.raft_log.CompactionJobPlanR\x04plan\"J\n" +
 	"\x14UpdatedCompactionJob\x122\n" +
-	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\"\x96\x01\n" +
+	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\"\xbb\x01\n" +
 	"\x16CompletedCompactionJob\x122\n" +
 	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\x12H\n" +
-	"\x10compacted_blocks\x18\x02 \x01(\v2\x1d.metastore.v1.CompactedBlocksR\x0fcompactedBlocks\"J\n" +
+	"\x10compacted_blocks\x18\x02 \x01(\v2\x1d.metastore.v1.CompactedBlocksR\x0fcompactedBlocks\x12#\n" +
+	"\rreject_output\x18\x03 \x01(\bR\frejectOutput\"J\n" +
 	"\x14EvictedCompactionJob\x122\n" +
 	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\"\x85\x02\n" +
 	"\x12CompactionJobState\x12\x12\n" +
@@ -1135,30 +1158,31 @@ var file_metastore_v1_raft_log_raft_log_proto_depIdxs = []int32{
 	18, // 0: raft_log.AddBlockMetadataRequest.metadata:type_name -> metastore.v1.BlockMeta
 	4,  // 1: raft_log.GetCompactionPlanUpdateRequest.status_updates:type_name -> raft_log.CompactionJobStatusUpdate
 	19, // 2: raft_log.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
-	6,  // 3: raft_log.GetCompactionPlanUpdateResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	7,  // 4: raft_log.CompactionPlanUpdate.new_jobs:type_name -> raft_log.NewCompactionJob
-	8,  // 5: raft_log.CompactionPlanUpdate.assigned_jobs:type_name -> raft_log.AssignedCompactionJob
-	9,  // 6: raft_log.CompactionPlanUpdate.updated_jobs:type_name -> raft_log.UpdatedCompactionJob
-	10, // 7: raft_log.CompactionPlanUpdate.completed_jobs:type_name -> raft_log.CompletedCompactionJob
-	11, // 8: raft_log.CompactionPlanUpdate.evicted_jobs:type_name -> raft_log.EvictedCompactionJob
-	12, // 9: raft_log.NewCompactionJob.state:type_name -> raft_log.CompactionJobState
-	13, // 10: raft_log.NewCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
-	12, // 11: raft_log.AssignedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	13, // 12: raft_log.AssignedCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
-	12, // 13: raft_log.UpdatedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	12, // 14: raft_log.CompletedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	20, // 15: raft_log.CompletedCompactionJob.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
-	12, // 16: raft_log.EvictedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	19, // 17: raft_log.CompactionJobState.status:type_name -> metastore.v1.CompactionJobStatus
-	21, // 18: raft_log.CompactionJobPlan.tombstones:type_name -> metastore.v1.Tombstones
-	6,  // 19: raft_log.UpdateCompactionPlanRequest.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	6,  // 20: raft_log.UpdateCompactionPlanResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	21, // 21: raft_log.TruncateIndexRequest.tombstones:type_name -> metastore.v1.Tombstones
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	20, // 3: raft_log.CompactionJobStatusUpdate.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
+	6,  // 4: raft_log.GetCompactionPlanUpdateResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	7,  // 5: raft_log.CompactionPlanUpdate.new_jobs:type_name -> raft_log.NewCompactionJob
+	8,  // 6: raft_log.CompactionPlanUpdate.assigned_jobs:type_name -> raft_log.AssignedCompactionJob
+	9,  // 7: raft_log.CompactionPlanUpdate.updated_jobs:type_name -> raft_log.UpdatedCompactionJob
+	10, // 8: raft_log.CompactionPlanUpdate.completed_jobs:type_name -> raft_log.CompletedCompactionJob
+	11, // 9: raft_log.CompactionPlanUpdate.evicted_jobs:type_name -> raft_log.EvictedCompactionJob
+	12, // 10: raft_log.NewCompactionJob.state:type_name -> raft_log.CompactionJobState
+	13, // 11: raft_log.NewCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
+	12, // 12: raft_log.AssignedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	13, // 13: raft_log.AssignedCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
+	12, // 14: raft_log.UpdatedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	12, // 15: raft_log.CompletedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	20, // 16: raft_log.CompletedCompactionJob.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
+	12, // 17: raft_log.EvictedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	19, // 18: raft_log.CompactionJobState.status:type_name -> metastore.v1.CompactionJobStatus
+	21, // 19: raft_log.CompactionJobPlan.tombstones:type_name -> metastore.v1.Tombstones
+	6,  // 20: raft_log.UpdateCompactionPlanRequest.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	6,  // 21: raft_log.UpdateCompactionPlanResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	21, // 22: raft_log.TruncateIndexRequest.tombstones:type_name -> metastore.v1.Tombstones
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_metastore_v1_raft_log_raft_log_proto_init() }
