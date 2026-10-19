@@ -57,6 +57,7 @@ func (t *FlatTree) reserve(n int) {
 	if n <= cap(t.parent) {
 		return
 	}
+	n = max(n, 2*cap(t.parent))
 	g := n - len(t.parent)
 	t.name = slices.Grow(t.name, g)
 	t.self = slices.Grow(t.self, g)
@@ -119,6 +120,9 @@ func (t *FlatTree) findID(c *cursor, id int32) int32 {
 // insert inserts a child at the cursor.
 func (t *FlatTree) insert(c *cursor, id int32) int32 {
 	x := int32(len(t.parent))
+	if len(t.parent) == cap(t.parent) {
+		t.reserve(len(t.parent) + 1)
+	}
 	t.name = append(t.name, id)
 	t.self = append(t.self, 0)
 	t.parent = append(t.parent, c.node)
@@ -319,6 +323,24 @@ func (p *PreparedCallTree) nameOf(x int32) string {
 		return truncatedNodeName
 	}
 	return p.c.Names[p.c.Name[x]]
+}
+
+func (p *PreparedCallTree) subtreeSizes(roots []int32) []int64 {
+	n := int32(len(p.c.Parent))
+	sizes := make([]int64, len(roots))
+	stack := make([]int32, 0, 256)
+	for i, r := range roots {
+		stack = append(stack[:0], r)
+		for len(stack) > 0 {
+			x := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			sizes[i]++
+			if x < n {
+				stack = append(stack, p.kids[p.off[x]:p.off[x+1]]...)
+			}
+		}
+	}
+	return sizes
 }
 
 // MergePreparedCallTree merges the call tree prepared with PrepareCallTree.

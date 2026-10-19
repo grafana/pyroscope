@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cmp"
 	"slices"
 	"strings"
 	"sync"
@@ -10,6 +11,10 @@ import (
 type FlatTreeParts struct {
 	parts  []flatTreePart
 	inputs atomic.Int64
+
+	mu       sync.Mutex
+	assigned map[string]int
+	load     []int64
 }
 
 type flatTreePart struct {
@@ -18,7 +23,12 @@ type flatTreePart struct {
 }
 
 func NewFlatTreeParts(n int) *FlatTreeParts {
-	f := &FlatTreeParts{parts: make([]flatTreePart, max(n, 1))}
+	n = max(n, 1)
+	f := &FlatTreeParts{
+		parts:    make([]flatTreePart, n),
+		assigned: make(map[string]int),
+		load:     make([]int64, n),
+	}
 	for i := range f.parts {
 		f.parts[i].t = NewFlatTree()
 	}
@@ -27,13 +37,33 @@ func NewFlatTreeParts(n int) *FlatTreeParts {
 
 func (f *FlatTreeParts) Inputs() int { return int(f.inputs.Load()) }
 
-func (f *FlatTreeParts) part(name string) int {
-	h := uint32(2166136261)
-	for i := 0; i < len(name); i++ {
-		h ^= uint32(name[i])
-		h *= 16777619
+func (f *FlatTreeParts) partsOf(names []string, weights []int64) []int {
+	parts := make([]int, len(names))
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var unassigned []int
+	for i, name := range names {
+		k, ok := f.assigned[name]
+		if !ok {
+			unassigned = append(unassigned, i)
+			continue
+		}
+		parts[i] = k
+		f.load[k] += weights[i]
 	}
-	return int(h % uint32(len(f.parts)))
+	slices.SortStableFunc(unassigned, func(a, b int) int { return cmp.Compare(weights[b], weights[a]) })
+	for _, i := range unassigned {
+		k := 0
+		for j := range f.load {
+			if f.load[j] < f.load[k] {
+				k = j
+			}
+		}
+		f.assigned[names[i]] = k
+		f.load[k] += weights[i]
+		parts[i] = k
+	}
+	return parts
 }
 
 func (f *FlatTreeParts) MergePreparedCallTree(p *PreparedCallTree) {
@@ -41,10 +71,14 @@ func (f *FlatTreeParts) MergePreparedCallTree(p *PreparedCallTree) {
 	if p.c == nil {
 		return
 	}
+	roots := p.kids[p.off[0]:p.off[1]]
+	names := make([]string, len(roots))
+	for i, r := range roots {
+		names[i] = p.nameOf(r)
+	}
 	groups := make([][]int32, len(f.parts))
-	for _, r := range p.kids[p.off[0]:p.off[1]] {
-		k := f.part(p.nameOf(r))
-		groups[k] = append(groups[k], r)
+	for i, k := range f.partsOf(names, p.subtreeSizes(roots)) {
+		groups[k] = append(groups[k], roots[i])
 	}
 	f.each(groups, func(t *FlatTree, roots []int32) { t.mergePreparedRoots(p, roots) })
 }
@@ -54,10 +88,27 @@ func (f *FlatTreeParts) MergeTree(src *FlatTree) {
 	if len(src.parent) == 1 {
 		return
 	}
-	groups := make([][]int32, len(f.parts))
+	top := make([]int32, len(src.parent))
+	size := make([]int64, len(src.parent))
+	for i := 1; i < len(src.parent); i++ {
+		if p := src.parent[i]; p == 0 {
+			top[i] = int32(i)
+		} else {
+			top[i] = top[p]
+		}
+		size[top[i]]++
+	}
+	var roots []int32
+	var names []string
+	var weights []int64
 	for r := src.child[0]; r != noNode; r = src.next[r] {
-		k := f.part(src.names.names[src.name[r]])
-		groups[k] = append(groups[k], r)
+		roots = append(roots, r)
+		names = append(names, src.names.names[src.name[r]])
+		weights = append(weights, size[r])
+	}
+	groups := make([][]int32, len(f.parts))
+	for i, k := range f.partsOf(names, weights) {
+		groups[k] = append(groups[k], roots[i])
 	}
 	f.each(groups, func(t *FlatTree, roots []int32) { t.mergeTreeRoots(src, roots) })
 }

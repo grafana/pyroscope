@@ -132,16 +132,30 @@ func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 		return err
 	}
 	// Found a staged report of the same type.
-	if v != nil {
-		// It should be aggregated and removed from the table.
-		err = ra.aggregateReportNoCheck(v)
-		ra.staged[r.ReportType] = nil
-	}
+	ra.staged[r.ReportType] = nil
+	a, err := ra.aggregatorLocked(r)
 	ra.sm.Unlock()
 	if err != nil {
 		return err
 	}
-	return ra.aggregateReportNoCheck(r)
+	if v != nil {
+		if err = a.aggregate(v); err != nil {
+			return err
+		}
+	}
+	return a.aggregate(r)
+}
+
+func (ra *reportAggregator) aggregatorLocked(report *queryv1.Report) (aggregator, error) {
+	a, ok := ra.aggregators[report.ReportType]
+	if !ok {
+		var err error
+		if a, err = getAggregator(ra.request, report); err != nil {
+			return nil, err
+		}
+		ra.aggregators[report.ReportType] = a
+	}
+	return a, nil
 }
 
 // aggregateCallTree merges the call tree into the tree report aggregate, as
