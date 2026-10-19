@@ -229,7 +229,7 @@ func (h *CompactionCommandHandler) prepareDatasetDeletion(ctx context.Context, t
 		return nil, nil, err
 	}
 	update := new(raft_log.CompactionPlanUpdate)
-	if req.DryRun || len(resp.Blocks) == 0 {
+	if len(resp.Blocks) == 0 {
 		return resp, update, nil
 	}
 	busy, err := h.busyDeletionBlocks(tx)
