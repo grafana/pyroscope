@@ -1510,6 +1510,12 @@ components:
           items:
             type: string
           title: trace_id_selector
+        compact:
+          type: boolean
+          title: compact
+          description: |-
+            Requests trees in the compact format, see TreeReport.names. Backends
+             that do not support the format return trees with inline names.
       title: TreeQuery
       additionalProperties: false
     query.v1.TreeReport:
@@ -1526,6 +1532,14 @@ components:
           title: symbols
           nullable: true
           $ref: '#/components/schemas/query.v1.TreeSymbols'
+        names:
+          type: array
+          items:
+            type: string
+          title: names
+          description: |-
+            If not empty, the tree is in the compact format: the name of a node is
+             an index into names, instead of the name itself.
       title: TreeReport
       additionalProperties: false
     query.v1.TreeSymbols:

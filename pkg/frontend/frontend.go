@@ -65,6 +65,12 @@ type Config struct {
 	// it the only strategy and remove both the classic planner and this option.
 	QueryPlannerStrategy string `yaml:"query_planner_strategy" category:"advanced" doc:"hidden"`
 
+	// CompactTrees requests trees from query-backends in the compact format,
+	// for flame graphs. It must only be enabled once all the query-backends
+	// support the format: older ones forward the request, but not the
+	// format of the responses.
+	CompactTrees bool `yaml:"compact_trees" category:"experimental" doc:"hidden"`
+
 	// Used to find local IP address, that is sent to scheduler and querier-worker.
 	InfNames   []string `yaml:"instance_interface_names" category:"advanced" doc:"default=[<private network interfaces>]"`
 	Addr       string   `yaml:"instance_addr" category:"advanced"`
@@ -127,6 +133,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 		return nil
 	})
 	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced")
+	f.BoolVar(&cfg.CompactTrees, "query-frontend.compact-trees", false, "Request trees from query-backends in the compact format. Only enable once all the query-backends support it.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
 	cfg.AnomalyAPI.RegisterFlags(f)
 }

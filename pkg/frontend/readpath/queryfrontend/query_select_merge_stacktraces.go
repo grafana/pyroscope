@@ -36,21 +36,31 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 		}), nil
 	}
 
-	b, err := q.selectMergeStacktracesTree(ctx, c)
+	var resp querierv1.SelectMergeStacktracesResponse
+	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_TREE {
+		b, err := q.selectMergeStacktracesTree(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		resp.Tree = b
+		return connect.NewResponse(&resp), nil
+	}
+
+	// The tree is only used to build the flame graph: it may be compact.
+	r, err := q.selectMergeStacktracesTreeReport(ctx, c, q.compactTrees)
 	if err != nil {
 		return nil, err
 	}
-	var resp querierv1.SelectMergeStacktracesResponse
-	switch c.Msg.Format {
-	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
-		resp.Tree = b
-	default:
-		t := phlaremodel.NewFlatTree()
-		if err = t.MergeBytes(b); err != nil {
-			return nil, err
-		}
-		resp.Flamegraph = t.FlameGraph(c.Msg.GetMaxNodes())
+	t := phlaremodel.NewFlatTree()
+	if len(r.GetNames()) > 0 {
+		err = t.MergeCompactBytes(r.GetTree(), r.GetNames())
+	} else {
+		err = t.MergeBytes(r.GetTree())
 	}
+	if err != nil {
+		return nil, err
+	}
+	resp.Flamegraph = t.FlameGraph(c.Msg.GetMaxNodes())
 	return connect.NewResponse(&resp), nil
 }
 
@@ -101,6 +111,18 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (tree []byte, err error) {
+	r, err := q.selectMergeStacktracesTreeReport(ctx, c, false)
+	return r.GetTree(), err
+}
+
+// selectMergeStacktracesTreeReport returns the tree report of the query, or
+// nil if the time range is empty. If compact is set, the tree is requested
+// in the compact format; backends may return it with inline names anyway.
+func (q *QueryFrontend) selectMergeStacktracesTreeReport(
+	ctx context.Context,
+	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
+	compact bool,
+) (*queryv1.TreeReport, error) {
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -140,6 +162,7 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 					ProfileIdSelector:  c.Msg.ProfileIdSelector,
 					TraceIdSelector:    c.Msg.TraceIdSelector,
 					SpanSelector:       c.Msg.SpanSelector,
+					Compact:            compact,
 				},
 			}},
 		},
@@ -160,5 +183,5 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 	if report == nil {
 		return nil, nil
 	}
-	return report.Tree.Tree, nil
+	return report.Tree, nil
 }

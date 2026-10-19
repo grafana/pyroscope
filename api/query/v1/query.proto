@@ -264,6 +264,9 @@ message TreeQuery {
   repeated string profile_id_selector = 4;
   bool full_symbols = 5;
   repeated string trace_id_selector = 6;
+  // Requests trees in the compact format, see TreeReport.names. Backends
+  // that do not support the format return trees with inline names.
+  bool compact = 7;
 }
 
 message TreeSymbols {
@@ -281,6 +284,9 @@ message TreeReport {
   TreeQuery query = 1;
   bytes tree = 2;
   optional TreeSymbols symbols = 3;
+  // If not empty, the tree is in the compact format: the name of a node is
+  // an index into names, instead of the name itself.
+  repeated string names = 4;
 }
 
 // (Experimental) ProfilePresenceQuery checks which of profile_id_selector are actually

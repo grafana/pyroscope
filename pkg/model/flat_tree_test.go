@@ -187,3 +187,32 @@ func Test_kthLargest(t *testing.T) {
 		}
 	}
 }
+
+func Test_FlatTree_compact(t *testing.T) {
+	r := rand.New(rand.NewSource(6))
+	for iter := 0; iter < 300; iter++ {
+		maxNodes := []int64{0, 1, 2, 5, 10, 30, 100, 1 << 20}[r.Intn(8)]
+		trees := make([][]byte, 1+r.Intn(4))
+		for i := range trees {
+			trees[i] = randomTree(r, r.Intn(60), 1+r.Intn(8), testNames).Bytes(maxNodes, nil)
+		}
+		expected := flatMerge(t, trees, maxNodes).Bytes(maxNodes)
+
+		// Compact inputs merge as inline ones do.
+		compact := NewFlatTree()
+		for _, b := range trees {
+			f := NewFlatTree()
+			require.NoError(t, f.MergeBytes(b))
+			cb, names := f.BytesCompact(maxNodes)
+			require.NoError(t, compact.MergeCompactBytes(cb, names))
+		}
+		require.Equal(t, expected, compact.Bytes(maxNodes), "iter=%d", iter)
+
+		// Compact output parses into the tree inline output does.
+		cb, names := flatMerge(t, trees, maxNodes).BytesCompact(maxNodes)
+		f := NewFlatTree()
+		require.NoError(t, f.MergeCompactBytes(cb, names))
+		require.Equal(t, expected, f.MarshalTruncate(0), "iter=%d", iter)
+	}
+	require.Error(t, NewFlatTree().MergeCompactBytes([]byte{0, 0, 1, 5, 1, 0}, []string{"a"}))
+}

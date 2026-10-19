@@ -1851,8 +1851,11 @@ type TreeQuery struct {
 	ProfileIdSelector  []string                `protobuf:"bytes,4,rep,name=profile_id_selector,json=profileIdSelector,proto3" json:"profile_id_selector,omitempty"`
 	FullSymbols        bool                    `protobuf:"varint,5,opt,name=full_symbols,json=fullSymbols,proto3" json:"full_symbols,omitempty"`
 	TraceIdSelector    []string                `protobuf:"bytes,6,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Requests trees in the compact format, see TreeReport.names. Backends
+	// that do not support the format return trees with inline names.
+	Compact       bool `protobuf:"varint,7,opt,name=compact,proto3" json:"compact,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TreeQuery) Reset() {
@@ -1925,6 +1928,13 @@ func (x *TreeQuery) GetTraceIdSelector() []string {
 		return x.TraceIdSelector
 	}
 	return nil
+}
+
+func (x *TreeQuery) GetCompact() bool {
+	if x != nil {
+		return x.Compact
+	}
+	return false
 }
 
 type TreeSymbols struct {
@@ -2028,10 +2038,13 @@ func (x *TreeSymbols) GetStringHashes() []uint64 {
 }
 
 type TreeReport struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Query         *TreeQuery             `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
-	Tree          []byte                 `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
-	Symbols       *TreeSymbols           `protobuf:"bytes,3,opt,name=symbols,proto3,oneof" json:"symbols,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Query   *TreeQuery             `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Tree    []byte                 `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
+	Symbols *TreeSymbols           `protobuf:"bytes,3,opt,name=symbols,proto3,oneof" json:"symbols,omitempty"`
+	// If not empty, the tree is in the compact format: the name of a node is
+	// an index into names, instead of the name itself.
+	Names         []string `protobuf:"bytes,4,rep,name=names,proto3" json:"names,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2083,6 +2096,13 @@ func (x *TreeReport) GetTree() []byte {
 func (x *TreeReport) GetSymbols() *TreeSymbols {
 	if x != nil {
 		return x.Symbols
+	}
+	return nil
+}
+
+func (x *TreeReport) GetNames() []string {
+	if x != nil {
+		return x.Names
 	}
 	return nil
 }
@@ -3106,14 +3126,15 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x05query\x18\x01 \x01(\v2!.query.v1.TimeSeriesAnalysisQueryR\x05query\x121\n" +
 	"\vtime_series\x18\x02 \x03(\v2\x10.types.v1.SeriesR\n" +
 	"timeSeries\x125\n" +
-	"\x06events\x18\x03 \x03(\v2\x1d.querier.v1.TimeSeriesAnomalyR\x06events\"\xba\x02\n" +
+	"\x06events\x18\x03 \x03(\v2\x1d.querier.v1.TimeSeriesAnomalyR\x06events\"\xd4\x02\n" +
 	"\tTreeQuery\x12\x1b\n" +
 	"\tmax_nodes\x18\x01 \x01(\x03R\bmaxNodes\x12#\n" +
 	"\rspan_selector\x18\x02 \x03(\tR\fspanSelector\x12S\n" +
 	"\x14stack_trace_selector\x18\x03 \x01(\v2\x1c.types.v1.StackTraceSelectorH\x00R\x12stackTraceSelector\x88\x01\x01\x12.\n" +
 	"\x13profile_id_selector\x18\x04 \x03(\tR\x11profileIdSelector\x12!\n" +
 	"\ffull_symbols\x18\x05 \x01(\bR\vfullSymbols\x12*\n" +
-	"\x11trace_id_selector\x18\x06 \x03(\tR\x0ftraceIdSelectorB\x17\n" +
+	"\x11trace_id_selector\x18\x06 \x03(\tR\x0ftraceIdSelector\x12\x18\n" +
+	"\acompact\x18\a \x01(\bR\acompactB\x17\n" +
 	"\x15_stack_trace_selector\"\xdb\x02\n" +
 	"\vTreeSymbols\x12.\n" +
 	"\bmappings\x18\x01 \x03(\v2\x12.google.v1.MappingR\bmappings\x121\n" +
@@ -3123,12 +3144,13 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x0emapping_hashes\x18\x05 \x03(\x04R\rmappingHashes\x12'\n" +
 	"\x0flocation_hashes\x18\x06 \x03(\x04R\x0elocationHashes\x12'\n" +
 	"\x0ffunction_hashes\x18\a \x03(\x04R\x0efunctionHashes\x12#\n" +
-	"\rstring_hashes\x18\b \x03(\x04R\fstringHashes\"\x8d\x01\n" +
+	"\rstring_hashes\x18\b \x03(\x04R\fstringHashes\"\xa3\x01\n" +
 	"\n" +
 	"TreeReport\x12)\n" +
 	"\x05query\x18\x01 \x01(\v2\x13.query.v1.TreeQueryR\x05query\x12\x12\n" +
 	"\x04tree\x18\x02 \x01(\fR\x04tree\x124\n" +
-	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01B\n" +
+	"\asymbols\x18\x03 \x01(\v2\x15.query.v1.TreeSymbolsH\x00R\asymbols\x88\x01\x01\x12\x14\n" +
+	"\x05names\x18\x04 \x03(\tR\x05namesB\n" +
 	"\n" +
 	"\b_symbols\"F\n" +
 	"\x14ProfilePresenceQuery\x12.\n" +

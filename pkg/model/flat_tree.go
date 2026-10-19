@@ -589,9 +589,29 @@ func (t *FlatTree) Bytes(maxNodes int64) []byte {
 // MarshalTruncate serializes the tree truncated to maxNodes as
 // FunctionNameTree.MarshalTruncate does.
 func (t *FlatTree) MarshalTruncate(maxNodes int64) []byte {
+	b, _ := t.marshal(maxNodes, false)
+	return b
+}
+
+// MarshalTruncateCompact is MarshalTruncate in the compact format: node
+// names are written as indices into the returned names, in the order of
+// first use. The record of the virtual root refers to no name.
+func (t *FlatTree) MarshalTruncateCompact(maxNodes int64) ([]byte, []string) {
+	return t.marshal(maxNodes, true)
+}
+
+// BytesCompact is Bytes in the compact format.
+func (t *FlatTree) BytesCompact(maxNodes int64) ([]byte, []string) {
+	if t.inputs == 1 {
+		maxNodes = 0
+	}
+	return t.marshal(maxNodes, true)
+}
+
+func (t *FlatTree) marshal(maxNodes int64, compact bool) ([]byte, []string) {
 	n := len(t.parent)
 	if n < 2 {
-		return nil
+		return nil, nil
 	}
 	total := t.totals()
 	minValue := t.minValue(total, maxNodes)
@@ -604,34 +624,69 @@ func (t *FlatTree) MarshalTruncate(maxNodes int64) []byte {
 	var extra []int64
 	var synthetic []int64
 
-	size := 0
-	for i := 1; i < n; i++ {
-		size += len(names[t.name[i]]) + 4
+	var buf []byte
+	var table []string
+	var index []int32 // Position of the name in the table, by name id.
+	if compact {
+		buf = make([]byte, 0, n*6+64)
+		index = make([]int32, len(names))
+		for i := range index {
+			index[i] = -1
+		}
+	} else {
+		size := 0
+		for i := 1; i < n; i++ {
+			size += len(names[t.name[i]]) + 4
+		}
+		buf = make([]byte, 0, size+64)
 	}
-	buf := make([]byte, 0, size+64)
+	writeName := func(id int32) {
+		if !compact {
+			name := truncatedNodeName
+			if id >= 0 {
+				name = names[id]
+			}
+			buf = binary.AppendUvarint(buf, uint64(len(name)))
+			buf = append(buf, name...)
+			return
+		}
+		if id < 0 {
+			if !hasOther {
+				other, hasOther = t.names.id(truncatedNodeName), true
+				names = t.names.names
+				index = append(index, -1)
+			}
+			id = other
+		}
+		if index[id] < 0 {
+			index[id] = int32(len(table))
+			table = append(table, names[id])
+		}
+		buf = binary.AppendUvarint(buf, uint64(index[id]))
+	}
+
 	stack := make([]int32, 1, 1024)
 	children := make([]int32, 0, 128)
 	for len(stack) > 0 {
 		x := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		if x >= int32(n) {
-			buf = binary.AppendUvarint(buf, uint64(len(truncatedNodeName)))
-			buf = append(buf, truncatedNodeName...)
+			writeName(-1)
 			buf = binary.AppendUvarint(buf, uint64(synthetic[x-int32(n)]))
 			buf = binary.AppendUvarint(buf, 0)
 			continue
 		}
 		var self int64
-		var name string
 		if x > 0 {
-			name = names[t.name[x]]
+			writeName(t.name[x])
 			self = t.self[x]
 			if extra != nil {
 				self += extra[x]
 			}
+		} else {
+			// The virtual root.
+			buf = binary.AppendUvarint(buf, 0)
 		}
-		buf = binary.AppendUvarint(buf, uint64(len(name)))
-		buf = append(buf, name...)
 		buf = binary.AppendUvarint(buf, uint64(self))
 
 		// Kept children in descending name order; the "other" node
@@ -671,7 +726,77 @@ func (t *FlatTree) MarshalTruncate(maxNodes int64) []byte {
 		}
 		buf = binary.AppendUvarint(buf, uint64(len(children)))
 	}
-	return buf
+	return buf, table
+}
+
+// readCompactRecord reads the name index, the value, and the number of
+// children of a node record.
+func readCompactRecord(b []byte, offset int) (name, value, children uint64, next int, err error) {
+	var o int
+	if offset >= len(b) {
+		return 0, 0, 0, 0, errMalformedTreeBytes
+	}
+	if name, o = varint.Uvarint(b[offset:]); o < 0 {
+		return 0, 0, 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+	if offset >= len(b) {
+		return 0, 0, 0, 0, errMalformedTreeBytes
+	}
+	if value, o = varint.Uvarint(b[offset:]); o < 0 {
+		return 0, 0, 0, 0, errMalformedTreeBytes
+	}
+	offset += o
+	if offset >= len(b) {
+		return 0, 0, 0, 0, errMalformedTreeBytes
+	}
+	if children, o = varint.Uvarint(b[offset:]); o < 0 {
+		return 0, 0, 0, 0, errMalformedTreeBytes
+	}
+	return name, value, children, offset + o, nil
+}
+
+// MergeCompactBytes merges a tree serialized with MarshalTruncateCompact.
+// The names are retained.
+func (t *FlatTree) MergeCompactBytes(b []byte, names []string) error {
+	t.inputs++
+	if len(b) < 2 {
+		return nil
+	}
+	t.reserve(len(t.parent) + len(b)/6)
+	ids := make([]int32, len(names))
+	for i, name := range names {
+		ids[i] = t.names.id(name)
+	}
+	_, _, childrenLen, offset, err := readCompactRecord(b, 0)
+	if err != nil {
+		return err
+	}
+	stack := make([]mergeFrame, 0, 256)
+	if childrenLen > 0 {
+		stack = append(stack, mergeFrame{cursor{0, noNode, t.child[0]}, childrenLen})
+	}
+	var name, value uint64
+	for len(stack) > 0 {
+		f := &stack[len(stack)-1]
+		if f.left == 0 {
+			stack = stack[:len(stack)-1]
+			continue
+		}
+		f.left--
+		if name, value, childrenLen, offset, err = readCompactRecord(b, offset); err != nil {
+			return err
+		}
+		if name >= uint64(len(ids)) {
+			return errMalformedTreeBytes
+		}
+		x := t.findID(&f.cursor, ids[name])
+		t.self[x] += int64(value)
+		if childrenLen > 0 {
+			stack = append(stack, mergeFrame{cursor{x, noNode, t.child[x]}, childrenLen})
+		}
+	}
+	return nil
 }
 
 // FlameGraph builds the flame graph as NewFlameGraph does for the tree.

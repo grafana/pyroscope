@@ -60,6 +60,7 @@ type QueryFrontend struct {
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 	queryPlanType       string
+	compactTrees        bool
 
 	// anomalyAPI is nil when unconfigured.
 	anomalyAPI *anomalyapi.Client
@@ -146,6 +147,7 @@ func NewQueryFrontend(
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 		queryPlanType:       cfg.QueryPlannerStrategy,
+		compactTrees:        cfg.CompactTrees,
 		anomalyAPI:          anomalyapi.New(cfg.AnomalyAPI, nil),
 		metrics:             newQueryFrontendMetrics(reg),
 	}
