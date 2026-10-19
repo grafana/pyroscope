@@ -281,7 +281,7 @@ func locationNames(dst []int32, symbols *Symbols) []int32 {
 // callTreeBuffers are the transient buffers of buildLocationCallTree, sized
 // by the number of locations of a block: they are reused across calls.
 type callTreeBuffers struct {
-	self, total, scratch []int64
+	self, total, scratch          []int64
 	fn, top, size, order, locName []int32
 }
 
