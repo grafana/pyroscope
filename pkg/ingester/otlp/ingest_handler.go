@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 	pprofileotlp "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 	v1 "go.opentelemetry.io/proto/otlp/common/v1"
+	otelProfile "go.opentelemetry.io/proto/otlp/profiles/v1development"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
@@ -271,8 +272,8 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		RawProfileType: distributormodel.RawProfileTypeOTEL,
 	}
 	for _, rp := range rps {
-		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
-		language := getLanguageFromAttributes(rp.Resource.GetAttributes())
+		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes(), dc)
+		language := getLanguageFromAttributes(rp.Resource.GetAttributes(), dc)
 		for _, sp := range rp.ScopeProfiles {
 			for _, p := range sp.Profiles {
 				sz := proto.Size(p)
@@ -290,8 +291,8 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					labels := getDefaultLabels()
 					labels = append(labels, pprofProfile.name)
 					processedKeys := map[string]bool{model.LabelNameProfileName: true}
-					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
-					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
+					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys, dc)
+					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys, dc)
 					svc := samplesServiceName
 					if svc == "" {
 						svc = serviceName
@@ -341,16 +342,17 @@ func otlpProfileID(profileID []byte) string {
 // according to otel spec https://github.com/open-telemetry/opentelemetry-go/blob/ecfb73581f1b05af85fc393c3ce996a90cf2a5e2/semconv/v1.30.0/attribute_group.go#L10011-L10025
 // Returns "unknown_service:$process_name" if no service.name, but there is a process.executable.name
 // Returns "unknown_service" if no service.name and no process.executable.name
-func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
+func getServiceNameFromAttributes(attrs []*v1.KeyValue, dc *otelProfile.ProfilesDictionary) string {
 	fallback := model.AttrServiceNameFallback
 	for _, attr := range attrs {
-		if attr.Key == string(model.AttrServiceName) {
-			if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
+		key := attributeKey(attr, dc)
+		if key == string(model.AttrServiceName) {
+			if sv := stringValueFromAnyValue(attr.GetValue(), dc); sv != "" {
 				return sv
 			}
 		}
-		if attr.Key == string(model.AttrProcessExecutableName) {
-			if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
+		if key == string(model.AttrProcessExecutableName) {
+			if sv := stringValueFromAnyValue(attr.GetValue(), dc); sv != "" {
 				fallback += ":" + sv
 			}
 		}
@@ -362,10 +364,10 @@ func getServiceNameFromAttributes(attrs []*v1.KeyValue) string {
 // getLanguageFromAttributes extracts the profile language from the OTLP
 // resource attribute "telemetry.sdk.language", as defined by the semantic
 // conventions: https://opentelemetry.io/docs/specs/semconv/resource/#telemetry-sdk
-func getLanguageFromAttributes(attrs []*v1.KeyValue) string {
+func getLanguageFromAttributes(attrs []*v1.KeyValue, dc *otelProfile.ProfilesDictionary) string {
 	for _, attr := range attrs {
-		if attr.Key == string(model.AttrTelemetrySDKLanguage) {
-			return stringValueFromAnyValue(attr.GetValue())
+		if attributeKey(attr, dc) == string(model.AttrTelemetrySDKLanguage) {
+			return stringValueFromAnyValue(attr.GetValue(), dc)
 		}
 	}
 	return ""
@@ -385,25 +387,37 @@ func getDefaultLabels() []*typesv1.LabelPair {
 	}
 }
 
-func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, processedKeys map[string]bool) []*typesv1.LabelPair {
+func appendAttributesUnique(labels []*typesv1.LabelPair, attrs []*v1.KeyValue, processedKeys map[string]bool, dc *otelProfile.ProfilesDictionary) []*typesv1.LabelPair {
 	for _, attr := range attrs {
-		// Skip if we've already seen this key at any level
-		if processedKeys[attr.Key] {
+		key := attributeKey(attr, dc)
+		// Skip attributes without a name, and keys we've already seen at any level
+		if key == "" || processedKeys[key] {
 			continue
 		}
 
-		if sv := stringValueFromAnyValue(attr.GetValue()); sv != "" {
+		if sv := stringValueFromAnyValue(attr.GetValue(), dc); sv != "" {
 			labels = append(labels, &typesv1.LabelPair{
-				Name:  attr.Key,
+				Name:  key,
 				Value: sv,
 			})
-			processedKeys[attr.Key] = true
+			processedKeys[key] = true
 		}
 	}
 	return labels
 }
 
-func decodeSingleAnyValue(v *v1.AnyValue) string {
+// attributeKey returns the attribute key. Senders may put the key in the
+// profiles dictionary string table (key_strindex) instead of inline. Index 0
+// is the empty-string sentinel, and an unresolvable index yields "".
+func attributeKey(attr *v1.KeyValue, dc *otelProfile.ProfilesDictionary) string {
+	if attr.Key != "" || attr.GetKeyStrindex() == 0 {
+		return attr.Key
+	}
+	key, _ := at(dc.GetStringTable(), attr.GetKeyStrindex())
+	return key
+}
+
+func decodeSingleAnyValue(v *v1.AnyValue, dc *otelProfile.ProfilesDictionary) string {
 	if v == nil {
 		return ""
 	}
@@ -411,6 +425,9 @@ func decodeSingleAnyValue(v *v1.AnyValue) string {
 	switch value := v.Value.(type) {
 	case *v1.AnyValue_StringValue:
 		return value.StringValue
+	case *v1.AnyValue_StringValueStrindex:
+		s, _ := at(dc.GetStringTable(), value.StringValueStrindex)
+		return s
 	case *v1.AnyValue_IntValue:
 		return strconv.FormatInt(value.IntValue, 10)
 	default:
@@ -418,17 +435,17 @@ func decodeSingleAnyValue(v *v1.AnyValue) string {
 	}
 }
 
-func stringValueFromAnyValue(v *v1.AnyValue) string {
+func stringValueFromAnyValue(v *v1.AnyValue, dc *otelProfile.ProfilesDictionary) string {
 	if v == nil {
 		return ""
 	}
-	if decoded := decodeSingleAnyValue(v); decoded != "" {
+	if decoded := decodeSingleAnyValue(v, dc); decoded != "" {
 		return decoded
 	}
 	if av := v.GetArrayValue(); av != nil {
 		values := av.GetValues()
 		if len(values) == 1 {
-			return decodeSingleAnyValue(values[0])
+			return decodeSingleAnyValue(values[0], dc)
 		}
 	}
 	return ""
