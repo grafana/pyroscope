@@ -327,23 +327,27 @@ func (t *FlatTree) MergePreparedCallTree(p *PreparedCallTree) {
 	if p.c == nil {
 		return
 	}
+	t.reserve(len(t.parent) + len(p.kids))
+	t.mergePreparedRoots(p, p.kids[p.off[0]:p.off[1]])
+}
+
+func (t *FlatTree) mergePreparedRoots(p *PreparedCallTree, roots []int32) {
 	c, off, kids := p.c, p.off, p.kids
 	n := int32(len(c.Parent))
-	t.reserve(len(t.parent) + len(kids))
 	ids := make([]int32, len(c.Names))
 	for i := range ids {
 		ids[i] = noNode
 	}
 	other := t.names.id(truncatedNodeName)
 	if len(t.parent) == 1 {
-		t.buildPreparedCallTree(p, ids, other)
+		t.buildPreparedCallTree(p, roots, ids, other)
 		return
 	}
 	type frame struct {
 		cursor
 		kids []int32
 	}
-	stack := []frame{{cursor{0, noNode, t.child[0]}, kids[off[0]:off[1]]}}
+	stack := []frame{{cursor{0, noNode, t.child[0]}, roots}}
 	for len(stack) > 0 {
 		f := &stack[len(stack)-1]
 		if len(f.kids) == 0 {
@@ -372,14 +376,14 @@ func (t *FlatTree) MergePreparedCallTree(p *PreparedCallTree) {
 
 // buildPreparedCallTree copies the prepared call tree into the empty tree:
 // the children are already in order, so no lookups are needed.
-func (t *FlatTree) buildPreparedCallTree(p *PreparedCallTree, ids []int32, other int32) {
+func (t *FlatTree) buildPreparedCallTree(p *PreparedCallTree, roots, ids []int32, other int32) {
 	c, off, kids := p.c, p.off, p.kids
 	n := int32(len(c.Parent))
 	type frame struct {
 		node, prev int32
 		kids       []int32
 	}
-	stack := []frame{{0, noNode, kids[off[0]:off[1]]}}
+	stack := []frame{{0, noNode, roots}}
 	for len(stack) > 0 {
 		f := &stack[len(stack)-1]
 		if len(f.kids) == 0 {
@@ -432,15 +436,44 @@ func (t *FlatTree) MergeTree(src *FlatTree) {
 		return
 	}
 	t.reserve(len(t.parent) + len(src.parent)/4)
+	t.mergeTreeChildren(src, t.sourceIDs(src), 0, src.child[0])
+}
+
+func (t *FlatTree) sourceIDs(src *FlatTree) []int32 {
 	ids := make([]int32, len(src.names.names))
 	for i := range ids {
 		ids[i] = noNode
 	}
+	return ids
+}
+
+func (t *FlatTree) sourceID(src *FlatTree, ids []int32, s int32) int32 {
+	id := ids[src.name[s]]
+	if id == noNode {
+		id = t.names.id(src.names.names[src.name[s]])
+		ids[src.name[s]] = id
+	}
+	return id
+}
+
+func (t *FlatTree) mergeTreeRoots(src *FlatTree, roots []int32) {
+	ids := t.sourceIDs(src)
+	c := cursor{0, noNode, t.child[0]}
+	for _, s := range roots {
+		x := t.findID(&c, t.sourceID(src, ids, s))
+		t.self[x] += src.self[s]
+		if first := src.child[s]; first != noNode {
+			t.mergeTreeChildren(src, ids, x, first)
+		}
+	}
+}
+
+func (t *FlatTree) mergeTreeChildren(src *FlatTree, ids []int32, node, first int32) {
 	type frame struct {
 		cursor
 		src int32 // Next child of the source node to merge.
 	}
-	stack := []frame{{cursor{0, noNode, t.child[0]}, src.child[0]}}
+	stack := []frame{{cursor{node, noNode, t.child[node]}, first}}
 	for len(stack) > 0 {
 		f := &stack[len(stack)-1]
 		if f.src == noNode {
@@ -449,12 +482,7 @@ func (t *FlatTree) MergeTree(src *FlatTree) {
 		}
 		var s int32
 		s, f.src = f.src, src.next[f.src]
-		id := ids[src.name[s]]
-		if id == noNode {
-			id = t.names.id(src.names.names[src.name[s]])
-			ids[src.name[s]] = id
-		}
-		x := t.findID(&f.cursor, id)
+		x := t.findID(&f.cursor, t.sourceID(src, ids, s))
 		t.self[x] += src.self[s]
 		if c := src.child[s]; c != noNode {
 			stack = append(stack, frame{cursor{x, noNode, t.child[x]}, c})

@@ -2,6 +2,7 @@ package querybackend
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -189,6 +190,7 @@ type treeAggregator struct {
 	query *queryv1.TreeQuery
 
 	trees *treeMergePool
+	parts *model.FlatTreeParts
 
 	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
 	symbolLock   sync.Mutex
@@ -223,6 +225,7 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 func (a *treeAggregator) initTree(q *queryv1.TreeQuery) {
 	a.init.Do(func() {
 		a.trees = newTreeMergePool()
+		a.parts = model.NewFlatTreeParts(runtime.GOMAXPROCS(0))
 		a.query = q.CloneVT()
 	})
 }
@@ -232,10 +235,16 @@ func (a *treeAggregator) initTree(q *queryv1.TreeQuery) {
 func (a *treeAggregator) aggregateCallTree(q *queryv1.TreeQuery, c *model.CallTree) {
 	a.initTree(q)
 	p := model.PrepareCallTree(c, q.GetMaxNodes())
-	_ = a.trees.merge(func(t *model.FlatTree) error {
-		t.MergePreparedCallTree(p)
-		return nil
-	})
+	a.parts.MergePreparedCallTree(p)
+}
+
+func (a *treeAggregator) tree() *model.FlatTree {
+	t := a.trees.tree()
+	if a.parts.Inputs() == 0 {
+		return t
+	}
+	a.parts.MergeTree(t)
+	return a.parts.Tree()
 }
 
 func (a *treeAggregator) build() *queryv1.Report {
@@ -254,6 +263,6 @@ func (a *treeAggregator) build() *queryv1.Report {
 	}
 
 	// A single tree is passed through as is, as a single report would be.
-	result.Tree.Tree = a.trees.tree().Bytes(a.query.GetMaxNodes())
+	result.Tree.Tree = a.tree().Bytes(a.query.GetMaxNodes())
 	return result
 }
