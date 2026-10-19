@@ -180,7 +180,7 @@ func (h *CompactionCommandHandler) UpdateCompactionPlan(
 
 	// Recheck deletion sources before applying the prepared plan: retention
 	// or another leader request may have changed the index in between.
-	if ok, checkErr := h.validateDeletionJobs(ctx, tx, req.PlanUpdate); checkErr != nil || !ok {
+	if ok, checkErr := h.validateDeletionJobs(tx, req.PlanUpdate); checkErr != nil || !ok {
 		if checkErr != nil {
 			return nil, checkErr
 		}

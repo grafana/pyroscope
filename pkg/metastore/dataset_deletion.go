@@ -269,7 +269,7 @@ func (h *CompactionCommandHandler) prepareDatasetDeletion(ctx context.Context, t
 	return resp, update, nil
 }
 
-func (h *CompactionCommandHandler) validateDeletionJobs(ctx context.Context, tx *bbolt.Tx, update *raft_log.CompactionPlanUpdate) (bool, error) {
+func (h *CompactionCommandHandler) validateDeletionJobs(tx *bbolt.Tx, update *raft_log.CompactionPlanUpdate) (bool, error) {
 	var busy map[deletionBlockKey]bool
 	for _, j := range update.NewJobs {
 		if j.Plan.DeleteFilter == nil {
@@ -281,9 +281,6 @@ func (h *CompactionCommandHandler) validateDeletionJobs(ctx context.Context, tx 
 			if err != nil {
 				return false, err
 			}
-		}
-		if err := ctx.Err(); err != nil {
-			return false, err
 		}
 		idx, ok := h.index.(deletionIndex)
 		if !ok {
