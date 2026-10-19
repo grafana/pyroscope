@@ -226,7 +226,7 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 		setCapabilities      bool
 		requestLabelNames    []string
 		backendLabelNames    []string // For empty request case
-		expectedQueryRequest []string // What should be passed to backend
+		expectedQueryRequest []string // What should be passed to backend; nil means the backend is not queried
 	}{
 		{
 			name:                 "all label names pass through when UTF8 enabled",
@@ -263,11 +263,10 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			expectedQueryRequest: []string{"foo", "bar", "service_name"},
 		},
 		{
-			name:                 "labels with dots do not pass through",
-			allowUtf8LabelNames:  false,
-			setCapabilities:      true,
-			requestLabelNames:    []string{"service.name", "app.version"},
-			expectedQueryRequest: []string{},
+			name:                "only labels with dots returns no series",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"service.name", "app.version"},
 		},
 		{
 			name:                 "empty label names with UTF8 disabled queries and filters all labels",
@@ -321,12 +320,12 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 						},
 					},
 				},
-			}, nil).Once()
+			}, nil).Maybe()
 
 			mockLimits := mockfrontend.NewMockLimits(t)
 			mockLimits.On("MaxQueryLookback", "test-tenant").Return(time.Duration(0))
 			mockLimits.On("MaxQueryLength", "test-tenant").Return(time.Duration(0))
-			mockLimits.On("QuerySanitizeOnMerge", "test-tenant").Return(true)
+			mockLimits.On("QuerySanitizeOnMerge", "test-tenant").Return(true).Maybe()
 			mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
 			mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).Return(&metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "test-block"}},
