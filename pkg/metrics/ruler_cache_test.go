@@ -45,7 +45,7 @@ func TestCachedRemoteRuler_FirstLoadIsSingleFlight(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			results[i] = rulesOf(t, ruler, "t")
+			results[i] = rulesOf(t, ruler)
 		}()
 	}
 	time.Sleep(50 * time.Millisecond)
@@ -69,11 +69,11 @@ func TestCachedRemoteRuler_ServesStaleWhileRefreshing(t *testing.T) {
 	}}
 	ruler := newTestRuler(client, 10*time.Millisecond, time.Hour)
 
-	require.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
+	require.Equal(t, defaultRecordingRules, rulesOf(t, ruler))
 	time.Sleep(20 * time.Millisecond)
 
 	for range 5 {
-		assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
+		assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler))
 	}
 	require.Eventually(t, func() bool { return client.calls.Load() == 2 }, time.Second, 5*time.Millisecond)
 
@@ -108,14 +108,14 @@ func TestCachedRemoteRuler_RefreshFailureKeepsStaleValue(t *testing.T) {
 	}}
 	ruler := newTestRuler(client, 10*time.Millisecond, time.Hour)
 
-	require.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
+	require.Equal(t, defaultRecordingRules, rulesOf(t, ruler))
 	time.Sleep(20 * time.Millisecond)
 
-	assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
+	assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler))
 	require.Eventually(t, func() bool { return client.calls.Load() == 2 }, time.Second, 5*time.Millisecond)
 	time.Sleep(20 * time.Millisecond)
 	for range 5 {
-		assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
+		assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler))
 	}
 	assert.EqualValues(t, 2, client.calls.Load())
 }
@@ -136,12 +136,12 @@ func TestCachedRemoteRuler_RecoversAfterFailure(t *testing.T) {
 
 	fail.Store(false)
 	time.Sleep(20 * time.Millisecond)
-	assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler, "t"))
+	assert.Equal(t, defaultRecordingRules, rulesOf(t, ruler))
 }
 
-func rulesOf(t *testing.T, r Ruler, tenant string) []*model.RecordingRule {
+func rulesOf(t *testing.T, r Ruler) []*model.RecordingRule {
 	t.Helper()
-	rules, err := r.RecordingRules(tenant)
+	rules, err := r.RecordingRules("t")
 	require.NoError(t, err)
 	return rules
 }
