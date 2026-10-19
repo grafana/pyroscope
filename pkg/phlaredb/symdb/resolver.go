@@ -298,6 +298,33 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 	return tree, sym.ResultBuilder(), err
 }
 
+// CallTree returns the call tree of function names of the samples, to be
+// merged with model.FlatTree.MergeCallTree: merged trees are identical to
+// those of Tree serialized with FunctionNameTree.Bytes.
+//
+// The function reports false if the call tree can't be built in this way:
+// the samples span multiple partitions, a stack trace selector is set, the
+// stack traces are not backed by parent pointer trees, a function is named
+// as truncated nodes are, or Tree would truncate the stack trace tree before
+// building the function name tree.
+func (r *Resolver) CallTree() (*model.CallTree, bool, error) {
+	if len(r.p) != 1 || r.sts != nil {
+		return nil, false, nil
+	}
+	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.CallTree")
+	defer span.Finish()
+	var tree *model.CallTree
+	var ok bool
+	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
+		if shouldCopyTree(appender, r.maxNodes) || model.HasOtherFunctionName(symbols.Strings) {
+			return nil
+		}
+		tree, ok = buildCallTree(symbols, appender)
+		return nil
+	})
+	return tree, ok, err
+}
+
 func (r *Resolver) Tree() (*model.FunctionNameTree, error) {
 	span, ctx := tracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
 	defer span.Finish()

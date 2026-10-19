@@ -443,6 +443,15 @@ func (x *childIndex) set(k uint64, v int32) {
 	x.keys[i], x.vals[i] = k+1, v
 }
 
+// reserve sizes an empty index for n keys.
+func (x *childIndex) reserve(n int) {
+	size := 1024
+	for 3*size < 4*n {
+		size <<= 1
+	}
+	x.keys, x.vals, x.n = make([]uint64, size), make([]int32, size), 0
+}
+
 func (x *childIndex) grow() {
 	keys, vals := x.keys, x.vals
 	size := max(2*len(keys), 1024)

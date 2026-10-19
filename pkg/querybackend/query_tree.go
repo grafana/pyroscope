@@ -141,6 +141,18 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		return nil, err
 	}
 
+	if !query.Tree.FullSymbols {
+		// Merge the call tree into the aggregate directly, sparing
+		// the serialization of the tree.
+		tree, ok, err := resolver.CallTree()
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			return nil, q.agg.aggregateCallTree(query.Tree, tree)
+		}
+	}
+
 	// output full pprof tree if that's requested
 	if query.Tree.FullSymbols {
 		tree, symbolBuilder, err := resolver.LocationRefNameTree()
@@ -175,7 +187,9 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 type treeAggregator struct {
 	init  sync.Once
 	query *queryv1.TreeQuery
-	tree  *model.TreeMerger[model.FunctionName, model.FunctionNameI]
+
+	treeLock sync.Mutex
+	tree     *model.FlatTree
 
 	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
 	symbolLock   sync.Mutex
@@ -201,11 +215,26 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 		return a.lrTree.MergeTreeBytes(r.Tree, model.WithTreeMergeFormatNodeNames(adder))
 	}
 
+	a.initTree(r.Query)
+	a.treeLock.Lock()
+	defer a.treeLock.Unlock()
+	return a.tree.MergeBytes(r.Tree)
+}
+
+func (a *treeAggregator) initTree(q *queryv1.TreeQuery) {
 	a.init.Do(func() {
-		a.tree = model.NewTreeMerger[model.FunctionName, model.FunctionNameI]()
-		a.query = r.Query.CloneVT()
+		a.tree = model.NewFlatTree()
+		a.query = q.CloneVT()
 	})
-	return a.tree.MergeTreeBytes(r.Tree)
+}
+
+// aggregateCallTree merges the call tree as if it was the tree of a report
+// built by queryTree.
+func (a *treeAggregator) aggregateCallTree(q *queryv1.TreeQuery, c *model.CallTree) {
+	a.initTree(q)
+	a.treeLock.Lock()
+	defer a.treeLock.Unlock()
+	a.tree.MergeCallTree(c, q.GetMaxNodes())
 }
 
 func (a *treeAggregator) build() *queryv1.Report {
@@ -223,6 +252,7 @@ func (a *treeAggregator) build() *queryv1.Report {
 		return result
 	}
 
-	result.Tree.Tree = a.tree.Tree().Bytes(a.query.GetMaxNodes(), nil)
+	// A single tree is passed through as is, as a single report would be.
+	result.Tree.Tree = a.tree.Bytes(a.query.GetMaxNodes())
 	return result
 }

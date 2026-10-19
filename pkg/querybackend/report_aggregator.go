@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 var (
@@ -141,6 +142,28 @@ func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 		return err
 	}
 	return ra.aggregateReportNoCheck(r)
+}
+
+// aggregateCallTree merges the call tree into the tree report aggregate, as
+// if it was the tree of a report produced by queryTree.
+func (ra *reportAggregator) aggregateCallTree(q *queryv1.TreeQuery, c *model.CallTree) error {
+	const t = queryv1.ReportType_REPORT_TREE
+	ra.sm.Lock()
+	staged := ra.staged[t]
+	ra.staged[t] = nil
+	a, ok := ra.aggregators[t]
+	if !ok {
+		a = newTreeAggregator(ra.request)
+		ra.aggregators[t] = a
+	}
+	ra.sm.Unlock()
+	if staged != nil {
+		if err := a.aggregate(staged); err != nil {
+			return err
+		}
+	}
+	a.(*treeAggregator).aggregateCallTree(q, c)
+	return nil
 }
 
 func (ra *reportAggregator) aggregateReportNoCheck(report *queryv1.Report) (err error) {

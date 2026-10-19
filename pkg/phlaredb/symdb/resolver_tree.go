@@ -39,13 +39,28 @@ func buildTree[N model.NodeName, I model.NodeNameI[N]](
 		ranges := iterator.SplitStacktraceIDRanges(appender)
 		return buildTreeFromParentPointerTrees[N, I](ctx, ranges, symbols, maxNodes, selection, lookup)
 	}
-	// Otherwise, use the basic approach: resolve each stack trace
-	// and insert them into the new tree one by one. The method
-	// performs best on small sample sets.
+	// Otherwise, build the tree of the sampled stack traces in full.
+	var treeI I
+	if !treeI.IsLocationTree() && (selection == nil || len(selection.callSite) == 0) {
+		if c, ok := buildCallTree(symbols, appender); ok {
+			return model.TreeFromStacktraceTree[N, I](stacktraceTreeFromCallTree(c), maxNodes, lookup), nil
+		}
+	}
+	return buildTreeFromStacktraces[N, I](ctx, symbols, appender, maxNodes, selection, lookup)
+}
 
+// buildTreeFromStacktraces resolves each stack trace and inserts them into
+// the new tree one by one.
+func buildTreeFromStacktraces[N model.NodeName, I model.NodeNameI[N]](
+	ctx context.Context,
+	symbols *Symbols,
+	appender *SampleAppender,
+	maxNodes int64,
+	selection *SelectedStackTraces,
+	lookup func(int32) N,
+) (*model.Tree[N, I], error) {
 	// Select insert method depending on type
 	var treeI I
-
 	samples := appender.Samples()
 	t := treeSymbolsFromPool()
 	defer t.reset()

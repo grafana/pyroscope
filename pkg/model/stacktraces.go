@@ -313,6 +313,13 @@ func unsafeStringBytes(s string) []byte {
 	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
+func unsafeString(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(&b[0], len(b))
+}
+
 func (t *StacktraceTree) Tree(maxNodes int64, names []FunctionName) *FunctionNameTree {
 	if len(names) == 0 {
 		return new(FunctionNameTree)

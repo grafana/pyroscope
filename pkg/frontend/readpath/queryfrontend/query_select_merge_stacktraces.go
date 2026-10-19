@@ -45,11 +45,11 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	case querierv1.ProfileFormat_PROFILE_FORMAT_TREE:
 		resp.Tree = b
 	default:
-		t, err := phlaremodel.UnmarshalTree[phlaremodel.FunctionName, phlaremodel.FunctionNameI](b)
-		if err != nil {
+		t := phlaremodel.NewFlatTree()
+		if err = t.MergeBytes(b); err != nil {
 			return nil, err
 		}
-		resp.Flamegraph = phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes())
+		resp.Flamegraph = t.FlameGraph(c.Msg.GetMaxNodes())
 	}
 	return connect.NewResponse(&resp), nil
 }
