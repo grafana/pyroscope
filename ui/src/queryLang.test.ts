@@ -8,7 +8,24 @@ import {
   buildQuery,
   parseQuery,
   isInternalLabel,
+  formatLabelName,
 } from './queryLang.ts';
+
+describe('formatLabelName', () => {
+  it('quotes only non-legacy label names', () => {
+    assert.equal(formatLabelName('service_name'), 'service_name');
+    assert.equal(formatLabelName('_private'), '_private');
+    assert.equal(formatLabelName('Region9'), 'Region9');
+    assert.equal(formatLabelName('service.name'), '"service.name"');
+    assert.equal(formatLabelName('k8s-pod'), '"k8s-pod"');
+    assert.equal(formatLabelName('9lives'), '"9lives"');
+    assert.equal(formatLabelName('名前'), '"名前"');
+  });
+
+  it('escapes quotes and backslashes inside quoted names', () => {
+    assert.equal(formatLabelName('a"b\\c'), '"a\\"b\\\\c"');
+  });
+});
 
 describe('tokenize', () => {
   it('reports -1 for missing braces', () => {
@@ -93,6 +110,41 @@ describe('tokenize', () => {
     assert.equal(t.matchers.length, 2);
     assert.equal(t.matchers[0].name, 'a');
     assert.equal(t.matchers[1].name, '');
+  });
+
+  it('parses a quoted label name', () => {
+    const t = tokenize('{"service.name"="api"}');
+    assert.equal(t.matchers.length, 1);
+    const [m] = t.matchers;
+    assert.equal(m.name, 'service.name');
+    assert.equal(m.op, '=');
+    assert.equal(m.value, 'api');
+    assert.equal(m.complete, true);
+  });
+
+  it('parses quoted label names alongside unquoted ones', () => {
+    const t = tokenize('{"k8s.pod,name" != "x", env=~"prod"}');
+    assert.deepEqual(
+      t.matchers.map((m) => [m.name, m.op, m.value, m.complete]),
+      [
+        ['k8s.pod,name', '!=', 'x', true],
+        ['env', '=~', 'prod', true],
+      ],
+    );
+  });
+
+  it('unescapes quoted label names', () => {
+    const t = tokenize('{"a\\"b"="x"}');
+    assert.equal(t.matchers[0].name, 'a"b');
+    assert.equal(t.matchers[0].complete, true);
+  });
+
+  it('handles an unterminated quoted label name', () => {
+    const t = tokenize('{"service.na');
+    assert.equal(t.matchers.length, 1);
+    assert.equal(t.matchers[0].name, 'service.na');
+    assert.equal(t.matchers[0].op, '');
+    assert.equal(t.matchers[0].complete, false);
   });
 });
 
@@ -189,6 +241,45 @@ describe('getCursorContext', () => {
     assert.deepEqual(ctx.otherMatchers, ['{a="x"}']);
   });
 
+  it('suggests values for a quoted label name', () => {
+    const q = '{"service.name"="ap"}';
+    const ctx = getCursorContext(q, q.indexOf('ap') + 2);
+    assert.equal(ctx.kind, 'value');
+    if (ctx.kind !== 'value') return;
+    assert.equal(ctx.labelName, 'service.name');
+    assert.equal(ctx.prefix, 'ap');
+    assert.deepEqual(ctx.replaceRange, [17, 19]);
+  });
+
+  it('suggests names inside an unterminated quoted name', () => {
+    const q = '{"service.na';
+    const ctx = getCursorContext(q, q.length);
+    assert.equal(ctx.kind, 'name');
+    if (ctx.kind !== 'name') return;
+    assert.equal(ctx.prefix, 'service.na');
+    assert.deepEqual(ctx.replaceRange, [1, q.length]);
+  });
+
+  it('excludes the quotes from the prefix of a quoted name', () => {
+    const q = '{"service.name"}';
+    const ctx = getCursorContext(q, q.indexOf('}'));
+    assert.equal(ctx.kind, 'name');
+    if (ctx.kind !== 'name') return;
+    assert.equal(ctx.prefix, 'service.name');
+    assert.deepEqual(ctx.replaceRange, [1, q.indexOf('}')]);
+  });
+
+  it('quotes non-legacy names in otherMatchers', () => {
+    const q = '{"service.name"="api", "region"="us", env=""}';
+    const ctx = getCursorContext(q, q.lastIndexOf('"'));
+    assert.equal(ctx.kind, 'value');
+    if (ctx.kind !== 'value') return;
+    assert.deepEqual(ctx.otherMatchers, [
+      '{"service.name"="api"}',
+      '{region="us"}',
+    ]);
+  });
+
   it('suggests names in a new slot after a comma', () => {
     const q = '{a="b", }';
     const ctx = getCursorContext(q, 8);
@@ -238,6 +329,36 @@ describe('applySuggestion', () => {
     const { next, cursor } = applySuggestion(q, ctx, 'api');
     assert.equal(next, '{a="api"');
     assert.equal(cursor, next.length);
+  });
+
+  it('quotes an accepted non-legacy name', () => {
+    const q = '{serv}';
+    const ctx = getCursorContext(q, 5);
+    const { next, cursor } = applySuggestion(q, ctx, 'service.name');
+    assert.equal(next, '{"service.name"="}');
+    assert.equal(cursor, '{"service.name"="'.length);
+  });
+
+  it('replaces a quoted name including its quotes', () => {
+    const q = '{"a.b"="x"}';
+    const ctx = getCursorContext(q, 3);
+    const { next, cursor } = applySuggestion(q, ctx, 'region');
+    assert.equal(next, '{region="x"}');
+    assert.equal(cursor, '{region'.length);
+  });
+
+  it('replaces an unterminated quoted name', () => {
+    const q = '{"service.na';
+    const ctx = getCursorContext(q, q.length);
+    const { next } = applySuggestion(q, ctx, 'service.name');
+    assert.equal(next, '{"service.name"="');
+  });
+
+  it('keeps text after the cursor in an unterminated quoted name', () => {
+    const q = '{env="prod", "serv}';
+    const ctx = getCursorContext(q, q.indexOf('}'));
+    const { next } = applySuggestion(q, ctx, 'service.name');
+    assert.equal(next, '{env="prod", "service.name"="}');
   });
 
   it('handles accepting a value for an empty quoted string', () => {
@@ -315,6 +436,11 @@ describe('parseQuery / buildQuery', () => {
       service: 'api',
       labelSelector: '{service_name="api", region="us-east"}',
     });
+  });
+
+  it('extracts a quoted service_name alongside UTF-8 label names', () => {
+    const q = '{"service.namespace"="prod", "service_name"="api"}';
+    assert.deepEqual(parseQuery(q), { service: 'api', labelSelector: q });
   });
 
   it('returns null if service_name uses regex or non-equals operator', () => {
