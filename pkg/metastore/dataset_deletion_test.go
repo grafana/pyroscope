@@ -37,7 +37,7 @@ func (s deletionTestState) ConsistentRead(_ context.Context, fn func(*bbolt.Tx, 
 	if s.err != nil {
 		return s.err
 	}
-	return s.db.View(func(tx *bbolt.Tx) error { fn(tx, raftnode.ReadIndex{}); return nil })
+	return s.db.View(func(tx *bbolt.Tx) error { fn(tx, raftnode.ReadIndex{Term: 1, CommitIndex: 1}); return nil })
 }
 
 type deletionTestRaft struct {
@@ -59,8 +59,6 @@ func (r *deletionTestRaft) Propose(ctx context.Context, _ fsm.RaftLogEntryType, 
 		switch q := req.(type) {
 		case *raft_log.GetCompactionPlanUpdateRequest:
 			resp, e = r.handler.GetCompactionPlanUpdate(ctx, tx, cmd, q)
-		case *raft_log.PrepareDatasetDeletionRequest:
-			resp, e = r.handler.PrepareDatasetDeletion(ctx, tx, cmd, q)
 		case *raft_log.UpdateCompactionPlanRequest:
 			resp, e = r.handler.UpdateCompactionPlan(ctx, tx, cmd, q)
 		}
@@ -188,13 +186,16 @@ func TestDeleteDatasets(t *testing.T) {
 		return nil
 	}))
 	h.scheduler = sc
-	stale, err := r.Propose(ctx, fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_PREPARE_DATASET_DELETION), datasetDeletionCommand(req))
-	require.NoError(t, err)
+	var staleUpdate *raft_log.CompactionPlanUpdate
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		var e error
+		_, staleUpdate, e = h.prepareDatasetDeletion(ctx, tx, &raft.Log{Index: 1, Term: 1, AppendedAt: time.Now()}, req)
+		return e
+	}))
 	resp, err = svc.DeleteDatasets(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, resp.ScheduledJobNames, 2)
-	oldPlan := stale.(*raft_log.PrepareDatasetDeletionResponse)
-	rejected, err := r.Propose(ctx, fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN), &raft_log.UpdateCompactionPlanRequest{Term: oldPlan.Term, PlanUpdate: oldPlan.PlanUpdate})
+	rejected, err := r.Propose(ctx, fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN), &raft_log.UpdateCompactionPlanRequest{Term: 1, PlanUpdate: staleUpdate})
 	require.NoError(t, err)
 	require.Nil(t, rejected.(*raft_log.UpdateCompactionPlanResponse).PlanUpdate, "stale plans must not race scheduled jobs")
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {

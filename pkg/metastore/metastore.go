@@ -158,10 +158,6 @@ func New(
 		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN),
 		m.compactionHandler.UpdateCompactionPlan)
 
-	fsm.RegisterRaftCommandHandler(m.fsm,
-		fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_PREPARE_DATASET_DELETION),
-		m.compactionHandler.PrepareDatasetDeletion)
-
 	m.fsm.RegisterRestorer(m.tombstones)
 	m.fsm.RegisterRestorer(m.compactor)
 	m.fsm.RegisterRestorer(m.scheduler)

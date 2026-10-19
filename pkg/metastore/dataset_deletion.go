@@ -3,7 +3,6 @@ package metastore
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -22,7 +21,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/fsm"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
-	metastoretracing "github.com/grafana/pyroscope/v2/pkg/metastore/tracing"
 )
 
 type deletionIndex interface {
@@ -40,59 +38,27 @@ type deletionBlockKey struct {
 	id     string
 }
 
-type datasetDeletionRejected struct {
-	reason  raft_log.DatasetDeletionRejection_Reason
-	message string
-}
-
-func (e *datasetDeletionRejected) Error() string { return e.message }
-
-func rejectDatasetDeletion(reason raft_log.DatasetDeletionRejection_Reason, message string) error {
-	return &datasetDeletionRejected{reason: reason, message: message}
-}
-
-func deletionRPCError(err error) error {
-	var rejection *datasetDeletionRejected
-	if errors.As(err, &rejection) {
-		return deletionRejectionStatus(&raft_log.DatasetDeletionRejection{Reason: rejection.reason, Message: rejection.message})
-	}
-	return err
-}
-
-func deletionRejectionStatus(rejection *raft_log.DatasetDeletionRejection) error {
-	code := codes.Internal
-	switch rejection.Reason {
-	case raft_log.DatasetDeletionRejection_REASON_INVALID_REQUEST:
-		code = codes.InvalidArgument
-	case raft_log.DatasetDeletionRejection_REASON_UNSUPPORTED:
-		code = codes.Unimplemented
-	case raft_log.DatasetDeletionRejection_REASON_BLOCK_BUSY:
-		code = codes.FailedPrecondition
-	case raft_log.DatasetDeletionRejection_REASON_SCHEDULER_FULL:
-		code = codes.ResourceExhausted
-	}
-	return status.Error(code, rejection.Message)
-}
-
 func validateDeletionRequest(req *metastorev1.DeleteDatasetsRequest) (*regexp.Regexp, error) {
 	if req == nil || strings.TrimSpace(req.Tenant) == "" {
-		return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_INVALID_REQUEST, "tenant is required")
+		return nil, status.Error(codes.InvalidArgument, "tenant is required")
 	}
 	if req.Filter == nil {
-		return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_INVALID_REQUEST, "filter is required")
+		return nil, status.Error(codes.InvalidArgument, "filter is required")
 	}
 	if req.MinTime > req.MaxTime {
-		return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_INVALID_REQUEST, "min_time exceeds max_time")
+		return nil, status.Error(codes.InvalidArgument, "min_time exceeds max_time")
 	}
 	re, err := block.CompileServiceNameRegex(req.GetFilter().GetServiceNameRegex())
 	if err != nil {
-		return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_INVALID_REQUEST, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	return re, nil
 }
 
 // DeleteDatasets plans full-dataset removal, never sample-level time filtering.
-// Dry runs use a consistent read and do not append anything to the Raft log.
+// Both dry runs and deletion planning scan the index in a read-only BoltDB
+// transaction via ConsistentRead so FSM writes (such as AddBlock) are not
+// blocked during the partition scan.
 func (svc *CompactionService) DeleteDatasets(ctx context.Context, req *metastorev1.DeleteDatasetsRequest) (resp *metastorev1.DeleteDatasetsResponse, err error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CompactionService.DeleteDatasets")
 	defer func() {
@@ -110,12 +76,11 @@ func (svc *CompactionService) DeleteDatasets(ctx context.Context, req *metastore
 	span.SetTag("min_compaction_level", req.GetMinCompactionLevel())
 
 	if _, err = validateDeletionRequest(req); err != nil {
-		return nil, deletionRPCError(err)
+		return nil, err
 	}
 	if req.DryRun {
-		// Dry runs are plain consistent reads: they neither propose anything
-		// nor depend on the prepare/update sequence, so they must not block
-		// worker polling behind svc.mu.
+		// Dry runs neither propose anything nor depend on the prepare/update
+		// sequence, so they must not block worker polling behind svc.mu.
 		readErr := svc.state.ConsistentRead(ctx, func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
 			resp, err = svc.deletionHandler.datasetDeletionReport(ctx, tx, req)
 		})
@@ -123,39 +88,46 @@ func (svc *CompactionService) DeleteDatasets(ctx context.Context, req *metastore
 			return nil, status.Error(codes.Unavailable, readErr.Error())
 		}
 		if err != nil {
-			return nil, deletionRPCError(err)
+			return nil, err
 		}
 		span.SetTag("matched_blocks", resp.GetMatchedBlocksCount())
 		return resp, nil
 	}
+
 	// The prepare/update pair below must not interleave with another plan
 	// update (PollCompactionJobs or a concurrent deletion), same as polling.
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
-	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_PREPARE_DATASET_DELETION)
-	result, err := svc.raft.Propose(ctx, cmd, datasetDeletionCommand(req))
+
+	var (
+		update *raft_log.CompactionPlanUpdate
+		term   uint64
+	)
+	readErr := svc.state.ConsistentRead(ctx, func(tx *bbolt.Tx, r raftnode.ReadIndex) {
+		term = r.Term
+		cmd := &raft.Log{Index: r.CommitIndex, Term: r.Term, AppendedAt: time.Now()}
+		resp, update, err = svc.deletionHandler.prepareDatasetDeletion(ctx, tx, cmd, req)
+	})
+	if readErr != nil {
+		return nil, status.Error(codes.Unavailable, readErr.Error())
+	}
 	if err != nil {
 		return nil, err
 	}
-	prepared := result.(*raft_log.PrepareDatasetDeletionResponse)
-	if rejection := prepared.GetRejection(); rejection != nil {
-		return nil, deletionRejectionStatus(rejection)
-	}
-	if len(prepared.PlanUpdate.NewJobs) == 0 {
-		resp = prepared.GetDeletion()
+	if len(update.NewJobs) == 0 {
 		span.SetTag("matched_blocks", resp.GetMatchedBlocksCount())
 		span.SetTag("scheduled_jobs", len(resp.GetScheduledJobNames()))
 		return resp, nil
 	}
-	cmd = fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN)
-	result, err = svc.raft.Propose(ctx, cmd, &raft_log.UpdateCompactionPlanRequest{Term: prepared.Term, PlanUpdate: prepared.PlanUpdate})
+
+	cmd := fsm.RaftLogEntryType(raft_log.RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN)
+	result, err := svc.raft.Propose(ctx, cmd, &raft_log.UpdateCompactionPlanRequest{Term: term, PlanUpdate: update})
 	if err != nil {
 		return nil, err
 	}
 	if result.(*raft_log.UpdateCompactionPlanResponse).PlanUpdate == nil {
 		return nil, status.Error(codes.FailedPrecondition, "deletion plan changed; retry request")
 	}
-	resp = prepared.GetDeletion()
 	span.SetTag("matched_blocks", resp.GetMatchedBlocksCount())
 	span.SetTag("scheduled_jobs", len(resp.GetScheduledJobNames()))
 	return resp, nil
@@ -168,7 +140,7 @@ func (h *CompactionCommandHandler) datasetDeletionReport(ctx context.Context, tx
 	}
 	idx, ok := h.index.(deletionIndex)
 	if !ok {
-		return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_UNSUPPORTED, "index does not support dataset deletion")
+		return nil, status.Error(codes.Unimplemented, "index does not support dataset deletion")
 	}
 	blocks, err := idx.DeletionCandidates(ctx, tx, req.Tenant, req.MinTime, req.MaxTime)
 	if err != nil {
@@ -236,7 +208,7 @@ func (h *CompactionCommandHandler) datasetDeletionReport(ctx context.Context, tx
 func (h *CompactionCommandHandler) busyDeletionBlocks(tx *bbolt.Tx) (map[deletionBlockKey]bool, error) {
 	sc, ok := h.scheduler.(deletionScheduler)
 	if !ok {
-		return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_UNSUPPORTED, "scheduler does not support dataset deletion")
+		return nil, status.Error(codes.Unimplemented, "scheduler does not support dataset deletion")
 	}
 	lists, err := sc.BusyBlocks(tx)
 	if err != nil {
@@ -251,63 +223,23 @@ func (h *CompactionCommandHandler) busyDeletionBlocks(tx *bbolt.Tx) (map[deletio
 	return busy, nil
 }
 
-func datasetDeletionCommand(req *metastorev1.DeleteDatasetsRequest) *raft_log.PrepareDatasetDeletionRequest {
-	return &raft_log.PrepareDatasetDeletionRequest{
-		Tenant: req.Tenant, MinTime: req.MinTime, MaxTime: req.MaxTime,
-		Filter: req.Filter, MinCompactionLevel: req.MinCompactionLevel,
-	}
-}
-
-// PrepareDatasetDeletion plans deletion independently of worker polling.
-// An expected rejection must not fail the FSM transaction or poison replay.
-func (h *CompactionCommandHandler) PrepareDatasetDeletion(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *raft_log.PrepareDatasetDeletionRequest) (resp *raft_log.PrepareDatasetDeletionResponse, err error) {
-	span, ctx := metastoretracing.StartSpanFromContext(ctx, "raft.PrepareDatasetDeletion")
-	span.SetTag("tenant_id", req.GetTenant())
-	span.SetTag("raft_log_index", cmd.Index)
-	span.SetTag("raft_log_term", cmd.Term)
-	defer func() {
-		if err != nil {
-			span.LogError(err)
-			span.SetError()
-		}
-		span.Finish()
-	}()
-
-	prepared, err := h.prepareDatasetDeletion(ctx, tx, cmd, &metastorev1.DeleteDatasetsRequest{
-		Tenant: req.Tenant, MinTime: req.MinTime, MaxTime: req.MaxTime,
-		Filter: req.Filter, MinCompactionLevel: req.MinCompactionLevel,
-	})
-	if err == nil {
-		span.SetTag("new_jobs", len(prepared.GetPlanUpdate().GetNewJobs()))
-		return prepared, nil
-	}
-	var rejection *datasetDeletionRejected
-	if !errors.As(err, &rejection) {
-		return nil, err
-	}
-	span.SetTag("rejected_reason", rejection.reason.String())
-	return &raft_log.PrepareDatasetDeletionResponse{Term: cmd.Term, Outcome: &raft_log.PrepareDatasetDeletionResponse_Rejection{
-		Rejection: &raft_log.DatasetDeletionRejection{Reason: rejection.reason, Message: rejection.message},
-	}}, nil
-}
-
-func (h *CompactionCommandHandler) prepareDatasetDeletion(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.DeleteDatasetsRequest) (*raft_log.PrepareDatasetDeletionResponse, error) {
+func (h *CompactionCommandHandler) prepareDatasetDeletion(ctx context.Context, tx *bbolt.Tx, cmd *raft.Log, req *metastorev1.DeleteDatasetsRequest) (*metastorev1.DeleteDatasetsResponse, *raft_log.CompactionPlanUpdate, error) {
 	resp, err := h.datasetDeletionReport(ctx, tx, req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	update := new(raft_log.CompactionPlanUpdate)
-	if req.DryRun {
-		return &raft_log.PrepareDatasetDeletionResponse{Term: cmd.Term, PlanUpdate: update, Outcome: &raft_log.PrepareDatasetDeletionResponse_Deletion{Deletion: resp}}, nil
+	if req.DryRun || len(resp.Blocks) == 0 {
+		return resp, update, nil
 	}
 	busy, err := h.busyDeletionBlocks(tx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	schedule := h.scheduler.NewSchedule(tx, cmd)
 	for _, b := range resp.Blocks {
 		if busy[deletionBlockKey{b.Tenant, b.Shard, b.BlockId}] {
-			return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_BLOCK_BUSY, fmt.Sprintf("block %s already has a compaction job; retry after completion", b.BlockId))
+			return nil, nil, status.Errorf(codes.FailedPrecondition, "block %s already has a compaction job; retry after completion", b.BlockId)
 		}
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%q/%d/%s/%q", b.Tenant, b.Shard, b.BlockId, req.GetFilter().GetServiceNameRegex())))
 		plan := &raft_log.CompactionJobPlan{
@@ -319,12 +251,12 @@ func (h *CompactionCommandHandler) prepareDatasetDeletion(ctx context.Context, t
 		// queue is full. Failed jobs are evicted by the regular polling path.
 		state := schedule.AddJob(plan)
 		if state == nil {
-			return nil, rejectDatasetDeletion(raft_log.DatasetDeletionRejection_REASON_SCHEDULER_FULL, "compaction scheduler is full; no deletion jobs scheduled")
+			return nil, nil, status.Error(codes.ResourceExhausted, "compaction scheduler is full; no deletion jobs scheduled")
 		}
 		update.NewJobs = append(update.NewJobs, &raft_log.NewCompactionJob{Plan: plan, State: state})
 		resp.ScheduledJobNames = append(resp.ScheduledJobNames, plan.Name)
 	}
-	return &raft_log.PrepareDatasetDeletionResponse{Term: cmd.Term, PlanUpdate: update, Outcome: &raft_log.PrepareDatasetDeletionResponse_Deletion{Deletion: resp}}, nil
+	return resp, update, nil
 }
 
 func (h *CompactionCommandHandler) validateDeletionJobs(ctx context.Context, tx *bbolt.Tx, update *raft_log.CompactionPlanUpdate) (bool, error) {

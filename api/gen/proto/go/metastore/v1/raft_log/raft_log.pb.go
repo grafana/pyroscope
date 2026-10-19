@@ -30,7 +30,6 @@ const (
 	RaftCommand_RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE RaftCommand = 2
 	RaftCommand_RAFT_COMMAND_UPDATE_COMPACTION_PLAN     RaftCommand = 3
 	RaftCommand_RAFT_COMMAND_TRUNCATE_INDEX             RaftCommand = 4
-	RaftCommand_RAFT_COMMAND_PREPARE_DATASET_DELETION   RaftCommand = 5
 )
 
 // Enum value maps for RaftCommand.
@@ -41,7 +40,6 @@ var (
 		2: "RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE",
 		3: "RAFT_COMMAND_UPDATE_COMPACTION_PLAN",
 		4: "RAFT_COMMAND_TRUNCATE_INDEX",
-		5: "RAFT_COMMAND_PREPARE_DATASET_DELETION",
 	}
 	RaftCommand_value = map[string]int32{
 		"RAFT_COMMAND_UNKNOWN":                    0,
@@ -49,7 +47,6 @@ var (
 		"RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE": 2,
 		"RAFT_COMMAND_UPDATE_COMPACTION_PLAN":     3,
 		"RAFT_COMMAND_TRUNCATE_INDEX":             4,
-		"RAFT_COMMAND_PREPARE_DATASET_DELETION":   5,
 	}
 )
 
@@ -78,61 +75,6 @@ func (x RaftCommand) Number() protoreflect.EnumNumber {
 // Deprecated: Use RaftCommand.Descriptor instead.
 func (RaftCommand) EnumDescriptor() ([]byte, []int) {
 	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{0}
-}
-
-type DatasetDeletionRejection_Reason int32
-
-const (
-	DatasetDeletionRejection_REASON_UNSPECIFIED     DatasetDeletionRejection_Reason = 0
-	DatasetDeletionRejection_REASON_INVALID_REQUEST DatasetDeletionRejection_Reason = 1
-	DatasetDeletionRejection_REASON_UNSUPPORTED     DatasetDeletionRejection_Reason = 2
-	DatasetDeletionRejection_REASON_BLOCK_BUSY      DatasetDeletionRejection_Reason = 3
-	DatasetDeletionRejection_REASON_SCHEDULER_FULL  DatasetDeletionRejection_Reason = 4
-)
-
-// Enum value maps for DatasetDeletionRejection_Reason.
-var (
-	DatasetDeletionRejection_Reason_name = map[int32]string{
-		0: "REASON_UNSPECIFIED",
-		1: "REASON_INVALID_REQUEST",
-		2: "REASON_UNSUPPORTED",
-		3: "REASON_BLOCK_BUSY",
-		4: "REASON_SCHEDULER_FULL",
-	}
-	DatasetDeletionRejection_Reason_value = map[string]int32{
-		"REASON_UNSPECIFIED":     0,
-		"REASON_INVALID_REQUEST": 1,
-		"REASON_UNSUPPORTED":     2,
-		"REASON_BLOCK_BUSY":      3,
-		"REASON_SCHEDULER_FULL":  4,
-	}
-)
-
-func (x DatasetDeletionRejection_Reason) Enum() *DatasetDeletionRejection_Reason {
-	p := new(DatasetDeletionRejection_Reason)
-	*p = x
-	return p
-}
-
-func (x DatasetDeletionRejection_Reason) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (DatasetDeletionRejection_Reason) Descriptor() protoreflect.EnumDescriptor {
-	return file_metastore_v1_raft_log_raft_log_proto_enumTypes[1].Descriptor()
-}
-
-func (DatasetDeletionRejection_Reason) Type() protoreflect.EnumType {
-	return &file_metastore_v1_raft_log_raft_log_proto_enumTypes[1]
-}
-
-func (x DatasetDeletionRejection_Reason) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use DatasetDeletionRejection_Reason.Descriptor instead.
-func (DatasetDeletionRejection_Reason) EnumDescriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{5, 0}
 }
 
 type AddBlockMetadataRequest struct {
@@ -386,235 +328,6 @@ func (x *GetCompactionPlanUpdateResponse) GetPlanUpdate() *CompactionPlanUpdate 
 	return nil
 }
 
-// Expected rejections are successful FSM applications, not handler errors.
-type DatasetDeletionRejection struct {
-	state         protoimpl.MessageState          `protogen:"open.v1"`
-	Reason        DatasetDeletionRejection_Reason `protobuf:"varint,1,opt,name=reason,proto3,enum=raft_log.DatasetDeletionRejection_Reason" json:"reason,omitempty"`
-	Message       string                          `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DatasetDeletionRejection) Reset() {
-	*x = DatasetDeletionRejection{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DatasetDeletionRejection) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DatasetDeletionRejection) ProtoMessage() {}
-
-func (x *DatasetDeletionRejection) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DatasetDeletionRejection.ProtoReflect.Descriptor instead.
-func (*DatasetDeletionRejection) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *DatasetDeletionRejection) GetReason() DatasetDeletionRejection_Reason {
-	if x != nil {
-		return x.Reason
-	}
-	return DatasetDeletionRejection_REASON_UNSPECIFIED
-}
-
-func (x *DatasetDeletionRejection) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-// Persisted deletion selection. Field numbers match the original API payload
-// for replay compatibility; dry_run is never part of a committed command.
-type PrepareDatasetDeletionRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Tenant             string                 `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	MinTime            int64                  `protobuf:"varint,2,opt,name=min_time,json=minTime,proto3" json:"min_time,omitempty"`
-	MaxTime            int64                  `protobuf:"varint,3,opt,name=max_time,json=maxTime,proto3" json:"max_time,omitempty"`
-	Filter             *v1.DeleteFilter       `protobuf:"bytes,4,opt,name=filter,proto3" json:"filter,omitempty"`
-	MinCompactionLevel uint32                 `protobuf:"varint,6,opt,name=min_compaction_level,json=minCompactionLevel,proto3" json:"min_compaction_level,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *PrepareDatasetDeletionRequest) Reset() {
-	*x = PrepareDatasetDeletionRequest{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PrepareDatasetDeletionRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PrepareDatasetDeletionRequest) ProtoMessage() {}
-
-func (x *PrepareDatasetDeletionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PrepareDatasetDeletionRequest.ProtoReflect.Descriptor instead.
-func (*PrepareDatasetDeletionRequest) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *PrepareDatasetDeletionRequest) GetTenant() string {
-	if x != nil {
-		return x.Tenant
-	}
-	return ""
-}
-
-func (x *PrepareDatasetDeletionRequest) GetMinTime() int64 {
-	if x != nil {
-		return x.MinTime
-	}
-	return 0
-}
-
-func (x *PrepareDatasetDeletionRequest) GetMaxTime() int64 {
-	if x != nil {
-		return x.MaxTime
-	}
-	return 0
-}
-
-func (x *PrepareDatasetDeletionRequest) GetFilter() *v1.DeleteFilter {
-	if x != nil {
-		return x.Filter
-	}
-	return nil
-}
-
-func (x *PrepareDatasetDeletionRequest) GetMinCompactionLevel() uint32 {
-	if x != nil {
-		return x.MinCompactionLevel
-	}
-	return 0
-}
-
-type PrepareDatasetDeletionResponse struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Term       uint64                 `protobuf:"varint,1,opt,name=term,proto3" json:"term,omitempty"`
-	PlanUpdate *CompactionPlanUpdate  `protobuf:"bytes,2,opt,name=plan_update,json=planUpdate,proto3" json:"plan_update,omitempty"`
-	// Types that are valid to be assigned to Outcome:
-	//
-	//	*PrepareDatasetDeletionResponse_Deletion
-	//	*PrepareDatasetDeletionResponse_Rejection
-	Outcome       isPrepareDatasetDeletionResponse_Outcome `protobuf_oneof:"outcome"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PrepareDatasetDeletionResponse) Reset() {
-	*x = PrepareDatasetDeletionResponse{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PrepareDatasetDeletionResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PrepareDatasetDeletionResponse) ProtoMessage() {}
-
-func (x *PrepareDatasetDeletionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PrepareDatasetDeletionResponse.ProtoReflect.Descriptor instead.
-func (*PrepareDatasetDeletionResponse) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *PrepareDatasetDeletionResponse) GetTerm() uint64 {
-	if x != nil {
-		return x.Term
-	}
-	return 0
-}
-
-func (x *PrepareDatasetDeletionResponse) GetPlanUpdate() *CompactionPlanUpdate {
-	if x != nil {
-		return x.PlanUpdate
-	}
-	return nil
-}
-
-func (x *PrepareDatasetDeletionResponse) GetOutcome() isPrepareDatasetDeletionResponse_Outcome {
-	if x != nil {
-		return x.Outcome
-	}
-	return nil
-}
-
-func (x *PrepareDatasetDeletionResponse) GetDeletion() *v1.DeleteDatasetsResponse {
-	if x != nil {
-		if x, ok := x.Outcome.(*PrepareDatasetDeletionResponse_Deletion); ok {
-			return x.Deletion
-		}
-	}
-	return nil
-}
-
-func (x *PrepareDatasetDeletionResponse) GetRejection() *DatasetDeletionRejection {
-	if x != nil {
-		if x, ok := x.Outcome.(*PrepareDatasetDeletionResponse_Rejection); ok {
-			return x.Rejection
-		}
-	}
-	return nil
-}
-
-type isPrepareDatasetDeletionResponse_Outcome interface {
-	isPrepareDatasetDeletionResponse_Outcome()
-}
-
-type PrepareDatasetDeletionResponse_Deletion struct {
-	Deletion *v1.DeleteDatasetsResponse `protobuf:"bytes,3,opt,name=deletion,proto3,oneof"`
-}
-
-type PrepareDatasetDeletionResponse_Rejection struct {
-	Rejection *DatasetDeletionRejection `protobuf:"bytes,4,opt,name=rejection,proto3,oneof"`
-}
-
-func (*PrepareDatasetDeletionResponse_Deletion) isPrepareDatasetDeletionResponse_Outcome() {}
-
-func (*PrepareDatasetDeletionResponse_Rejection) isPrepareDatasetDeletionResponse_Outcome() {}
-
 type CompactionPlanUpdate struct {
 	state         protoimpl.MessageState    `protogen:"open.v1"`
 	NewJobs       []*NewCompactionJob       `protobuf:"bytes,1,rep,name=new_jobs,json=newJobs,proto3" json:"new_jobs,omitempty"`
@@ -628,7 +341,7 @@ type CompactionPlanUpdate struct {
 
 func (x *CompactionPlanUpdate) Reset() {
 	*x = CompactionPlanUpdate{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[8]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -640,7 +353,7 @@ func (x *CompactionPlanUpdate) String() string {
 func (*CompactionPlanUpdate) ProtoMessage() {}
 
 func (x *CompactionPlanUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[8]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -653,7 +366,7 @@ func (x *CompactionPlanUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionPlanUpdate.ProtoReflect.Descriptor instead.
 func (*CompactionPlanUpdate) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{8}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CompactionPlanUpdate) GetNewJobs() []*NewCompactionJob {
@@ -701,7 +414,7 @@ type NewCompactionJob struct {
 
 func (x *NewCompactionJob) Reset() {
 	*x = NewCompactionJob{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[9]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +426,7 @@ func (x *NewCompactionJob) String() string {
 func (*NewCompactionJob) ProtoMessage() {}
 
 func (x *NewCompactionJob) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[9]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +439,7 @@ func (x *NewCompactionJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewCompactionJob.ProtoReflect.Descriptor instead.
 func (*NewCompactionJob) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{9}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *NewCompactionJob) GetState() *CompactionJobState {
@@ -753,7 +466,7 @@ type AssignedCompactionJob struct {
 
 func (x *AssignedCompactionJob) Reset() {
 	*x = AssignedCompactionJob{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[10]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -765,7 +478,7 @@ func (x *AssignedCompactionJob) String() string {
 func (*AssignedCompactionJob) ProtoMessage() {}
 
 func (x *AssignedCompactionJob) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[10]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -778,7 +491,7 @@ func (x *AssignedCompactionJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignedCompactionJob.ProtoReflect.Descriptor instead.
 func (*AssignedCompactionJob) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{10}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AssignedCompactionJob) GetState() *CompactionJobState {
@@ -804,7 +517,7 @@ type UpdatedCompactionJob struct {
 
 func (x *UpdatedCompactionJob) Reset() {
 	*x = UpdatedCompactionJob{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[11]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -816,7 +529,7 @@ func (x *UpdatedCompactionJob) String() string {
 func (*UpdatedCompactionJob) ProtoMessage() {}
 
 func (x *UpdatedCompactionJob) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[11]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -829,7 +542,7 @@ func (x *UpdatedCompactionJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatedCompactionJob.ProtoReflect.Descriptor instead.
 func (*UpdatedCompactionJob) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{11}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdatedCompactionJob) GetState() *CompactionJobState {
@@ -849,7 +562,7 @@ type CompletedCompactionJob struct {
 
 func (x *CompletedCompactionJob) Reset() {
 	*x = CompletedCompactionJob{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[12]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -861,7 +574,7 @@ func (x *CompletedCompactionJob) String() string {
 func (*CompletedCompactionJob) ProtoMessage() {}
 
 func (x *CompletedCompactionJob) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[12]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -874,7 +587,7 @@ func (x *CompletedCompactionJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompletedCompactionJob.ProtoReflect.Descriptor instead.
 func (*CompletedCompactionJob) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{12}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CompletedCompactionJob) GetState() *CompactionJobState {
@@ -900,7 +613,7 @@ type EvictedCompactionJob struct {
 
 func (x *EvictedCompactionJob) Reset() {
 	*x = EvictedCompactionJob{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[13]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -912,7 +625,7 @@ func (x *EvictedCompactionJob) String() string {
 func (*EvictedCompactionJob) ProtoMessage() {}
 
 func (x *EvictedCompactionJob) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[13]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -925,7 +638,7 @@ func (x *EvictedCompactionJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvictedCompactionJob.ProtoReflect.Descriptor instead.
 func (*EvictedCompactionJob) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{13}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *EvictedCompactionJob) GetState() *CompactionJobState {
@@ -957,7 +670,7 @@ type CompactionJobState struct {
 
 func (x *CompactionJobState) Reset() {
 	*x = CompactionJobState{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[14]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -969,7 +682,7 @@ func (x *CompactionJobState) String() string {
 func (*CompactionJobState) ProtoMessage() {}
 
 func (x *CompactionJobState) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[14]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -982,7 +695,7 @@ func (x *CompactionJobState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJobState.ProtoReflect.Descriptor instead.
 func (*CompactionJobState) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{14}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CompactionJobState) GetName() string {
@@ -1058,7 +771,7 @@ type CompactionJobPlan struct {
 
 func (x *CompactionJobPlan) Reset() {
 	*x = CompactionJobPlan{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[15]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1070,7 +783,7 @@ func (x *CompactionJobPlan) String() string {
 func (*CompactionJobPlan) ProtoMessage() {}
 
 func (x *CompactionJobPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[15]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1083,7 +796,7 @@ func (x *CompactionJobPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJobPlan.ProtoReflect.Descriptor instead.
 func (*CompactionJobPlan) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{15}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CompactionJobPlan) GetName() string {
@@ -1146,7 +859,7 @@ type UpdateCompactionPlanRequest struct {
 
 func (x *UpdateCompactionPlanRequest) Reset() {
 	*x = UpdateCompactionPlanRequest{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[16]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1158,7 +871,7 @@ func (x *UpdateCompactionPlanRequest) String() string {
 func (*UpdateCompactionPlanRequest) ProtoMessage() {}
 
 func (x *UpdateCompactionPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[16]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1171,7 +884,7 @@ func (x *UpdateCompactionPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCompactionPlanRequest.ProtoReflect.Descriptor instead.
 func (*UpdateCompactionPlanRequest) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{16}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UpdateCompactionPlanRequest) GetTerm() uint64 {
@@ -1197,7 +910,7 @@ type UpdateCompactionPlanResponse struct {
 
 func (x *UpdateCompactionPlanResponse) Reset() {
 	*x = UpdateCompactionPlanResponse{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[17]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1209,7 +922,7 @@ func (x *UpdateCompactionPlanResponse) String() string {
 func (*UpdateCompactionPlanResponse) ProtoMessage() {}
 
 func (x *UpdateCompactionPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[17]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1222,7 +935,7 @@ func (x *UpdateCompactionPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCompactionPlanResponse.ProtoReflect.Descriptor instead.
 func (*UpdateCompactionPlanResponse) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{17}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UpdateCompactionPlanResponse) GetPlanUpdate() *CompactionPlanUpdate {
@@ -1242,7 +955,7 @@ type TruncateIndexRequest struct {
 
 func (x *TruncateIndexRequest) Reset() {
 	*x = TruncateIndexRequest{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[18]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1254,7 +967,7 @@ func (x *TruncateIndexRequest) String() string {
 func (*TruncateIndexRequest) ProtoMessage() {}
 
 func (x *TruncateIndexRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[18]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1267,7 +980,7 @@ func (x *TruncateIndexRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TruncateIndexRequest.ProtoReflect.Descriptor instead.
 func (*TruncateIndexRequest) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{18}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TruncateIndexRequest) GetTerm() uint64 {
@@ -1292,7 +1005,7 @@ type TruncateIndexResponse struct {
 
 func (x *TruncateIndexResponse) Reset() {
 	*x = TruncateIndexResponse{}
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[19]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1304,7 +1017,7 @@ func (x *TruncateIndexResponse) String() string {
 func (*TruncateIndexResponse) ProtoMessage() {}
 
 func (x *TruncateIndexResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[19]
+	mi := &file_metastore_v1_raft_log_raft_log_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1317,7 +1030,7 @@ func (x *TruncateIndexResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TruncateIndexResponse.ProtoReflect.Descriptor instead.
 func (*TruncateIndexResponse) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{19}
+	return file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP(), []int{16}
 }
 
 var File_metastore_v1_raft_log_raft_log_proto protoreflect.FileDescriptor
@@ -1338,29 +1051,7 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\x1fGetCompactionPlanUpdateResponse\x12\x12\n" +
 	"\x04term\x18\x01 \x01(\x04R\x04term\x12?\n" +
 	"\vplan_update\x18\x02 \x01(\v2\x1e.raft_log.CompactionPlanUpdateR\n" +
-	"planUpdate\"\x80\x02\n" +
-	"\x18DatasetDeletionRejection\x12A\n" +
-	"\x06reason\x18\x01 \x01(\x0e2).raft_log.DatasetDeletionRejection.ReasonR\x06reason\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x86\x01\n" +
-	"\x06Reason\x12\x16\n" +
-	"\x12REASON_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16REASON_INVALID_REQUEST\x10\x01\x12\x16\n" +
-	"\x12REASON_UNSUPPORTED\x10\x02\x12\x15\n" +
-	"\x11REASON_BLOCK_BUSY\x10\x03\x12\x19\n" +
-	"\x15REASON_SCHEDULER_FULL\x10\x04\"\xd9\x01\n" +
-	"\x1dPrepareDatasetDeletionRequest\x12\x16\n" +
-	"\x06tenant\x18\x01 \x01(\tR\x06tenant\x12\x19\n" +
-	"\bmin_time\x18\x02 \x01(\x03R\aminTime\x12\x19\n" +
-	"\bmax_time\x18\x03 \x01(\x03R\amaxTime\x122\n" +
-	"\x06filter\x18\x04 \x01(\v2\x1a.metastore.v1.DeleteFilterR\x06filter\x120\n" +
-	"\x14min_compaction_level\x18\x06 \x01(\rR\x12minCompactionLevelJ\x04\b\x05\x10\x06\"\x88\x02\n" +
-	"\x1ePrepareDatasetDeletionResponse\x12\x12\n" +
-	"\x04term\x18\x01 \x01(\x04R\x04term\x12?\n" +
-	"\vplan_update\x18\x02 \x01(\v2\x1e.raft_log.CompactionPlanUpdateR\n" +
-	"planUpdate\x12B\n" +
-	"\bdeletion\x18\x03 \x01(\v2$.metastore.v1.DeleteDatasetsResponseH\x00R\bdeletion\x12B\n" +
-	"\trejection\x18\x04 \x01(\v2\".raft_log.DatasetDeletionRejectionH\x00R\trejectionB\t\n" +
-	"\aoutcome\"\xe2\x02\n" +
+	"planUpdate\"\xe2\x02\n" +
 	"\x14CompactionPlanUpdate\x125\n" +
 	"\bnew_jobs\x18\x01 \x03(\v2\x1a.raft_log.NewCompactionJobR\anewJobs\x12D\n" +
 	"\rassigned_jobs\x18\x02 \x03(\v2\x1f.raft_log.AssignedCompactionJobR\fassignedJobs\x12A\n" +
@@ -1411,14 +1102,13 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\n" +
 	"tombstones\x18\x02 \x03(\v2\x18.metastore.v1.TombstonesR\n" +
 	"tombstones\"\x17\n" +
-	"\x15TruncateIndexResponse*\xee\x01\n" +
+	"\x15TruncateIndexResponse*\xc3\x01\n" +
 	"\vRaftCommand\x12\x18\n" +
 	"\x14RAFT_COMMAND_UNKNOWN\x10\x00\x12#\n" +
 	"\x1fRAFT_COMMAND_ADD_BLOCK_METADATA\x10\x01\x12+\n" +
 	"'RAFT_COMMAND_GET_COMPACTION_PLAN_UPDATE\x10\x02\x12'\n" +
 	"#RAFT_COMMAND_UPDATE_COMPACTION_PLAN\x10\x03\x12\x1f\n" +
-	"\x1bRAFT_COMMAND_TRUNCATE_INDEX\x10\x04\x12)\n" +
-	"%RAFT_COMMAND_PREPARE_DATASET_DELETION\x10\x05B\x9d\x01\n" +
+	"\x1bRAFT_COMMAND_TRUNCATE_INDEX\x10\x04B\x9d\x01\n" +
 	"\fcom.raft_logB\fRaftLogProtoP\x01ZCgithub.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log\xa2\x02\x03RXX\xaa\x02\aRaftLog\xca\x02\aRaftLog\xe2\x02\x13RaftLog\\GPBMetadata\xea\x02\aRaftLogb\x06proto3"
 
 var (
@@ -1433,72 +1123,62 @@ func file_metastore_v1_raft_log_raft_log_proto_rawDescGZIP() []byte {
 	return file_metastore_v1_raft_log_raft_log_proto_rawDescData
 }
 
-var file_metastore_v1_raft_log_raft_log_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_metastore_v1_raft_log_raft_log_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_metastore_v1_raft_log_raft_log_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_metastore_v1_raft_log_raft_log_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_metastore_v1_raft_log_raft_log_proto_goTypes = []any{
 	(RaftCommand)(0),                        // 0: raft_log.RaftCommand
-	(DatasetDeletionRejection_Reason)(0),    // 1: raft_log.DatasetDeletionRejection.Reason
-	(*AddBlockMetadataRequest)(nil),         // 2: raft_log.AddBlockMetadataRequest
-	(*AddBlockMetadataResponse)(nil),        // 3: raft_log.AddBlockMetadataResponse
-	(*GetCompactionPlanUpdateRequest)(nil),  // 4: raft_log.GetCompactionPlanUpdateRequest
-	(*CompactionJobStatusUpdate)(nil),       // 5: raft_log.CompactionJobStatusUpdate
-	(*GetCompactionPlanUpdateResponse)(nil), // 6: raft_log.GetCompactionPlanUpdateResponse
-	(*DatasetDeletionRejection)(nil),        // 7: raft_log.DatasetDeletionRejection
-	(*PrepareDatasetDeletionRequest)(nil),   // 8: raft_log.PrepareDatasetDeletionRequest
-	(*PrepareDatasetDeletionResponse)(nil),  // 9: raft_log.PrepareDatasetDeletionResponse
-	(*CompactionPlanUpdate)(nil),            // 10: raft_log.CompactionPlanUpdate
-	(*NewCompactionJob)(nil),                // 11: raft_log.NewCompactionJob
-	(*AssignedCompactionJob)(nil),           // 12: raft_log.AssignedCompactionJob
-	(*UpdatedCompactionJob)(nil),            // 13: raft_log.UpdatedCompactionJob
-	(*CompletedCompactionJob)(nil),          // 14: raft_log.CompletedCompactionJob
-	(*EvictedCompactionJob)(nil),            // 15: raft_log.EvictedCompactionJob
-	(*CompactionJobState)(nil),              // 16: raft_log.CompactionJobState
-	(*CompactionJobPlan)(nil),               // 17: raft_log.CompactionJobPlan
-	(*UpdateCompactionPlanRequest)(nil),     // 18: raft_log.UpdateCompactionPlanRequest
-	(*UpdateCompactionPlanResponse)(nil),    // 19: raft_log.UpdateCompactionPlanResponse
-	(*TruncateIndexRequest)(nil),            // 20: raft_log.TruncateIndexRequest
-	(*TruncateIndexResponse)(nil),           // 21: raft_log.TruncateIndexResponse
-	(*v1.BlockMeta)(nil),                    // 22: metastore.v1.BlockMeta
-	(v1.CompactionJobStatus)(0),             // 23: metastore.v1.CompactionJobStatus
-	(*v1.DeleteFilter)(nil),                 // 24: metastore.v1.DeleteFilter
-	(*v1.DeleteDatasetsResponse)(nil),       // 25: metastore.v1.DeleteDatasetsResponse
-	(*v1.CompactedBlocks)(nil),              // 26: metastore.v1.CompactedBlocks
-	(*v1.Tombstones)(nil),                   // 27: metastore.v1.Tombstones
+	(*AddBlockMetadataRequest)(nil),         // 1: raft_log.AddBlockMetadataRequest
+	(*AddBlockMetadataResponse)(nil),        // 2: raft_log.AddBlockMetadataResponse
+	(*GetCompactionPlanUpdateRequest)(nil),  // 3: raft_log.GetCompactionPlanUpdateRequest
+	(*CompactionJobStatusUpdate)(nil),       // 4: raft_log.CompactionJobStatusUpdate
+	(*GetCompactionPlanUpdateResponse)(nil), // 5: raft_log.GetCompactionPlanUpdateResponse
+	(*CompactionPlanUpdate)(nil),            // 6: raft_log.CompactionPlanUpdate
+	(*NewCompactionJob)(nil),                // 7: raft_log.NewCompactionJob
+	(*AssignedCompactionJob)(nil),           // 8: raft_log.AssignedCompactionJob
+	(*UpdatedCompactionJob)(nil),            // 9: raft_log.UpdatedCompactionJob
+	(*CompletedCompactionJob)(nil),          // 10: raft_log.CompletedCompactionJob
+	(*EvictedCompactionJob)(nil),            // 11: raft_log.EvictedCompactionJob
+	(*CompactionJobState)(nil),              // 12: raft_log.CompactionJobState
+	(*CompactionJobPlan)(nil),               // 13: raft_log.CompactionJobPlan
+	(*UpdateCompactionPlanRequest)(nil),     // 14: raft_log.UpdateCompactionPlanRequest
+	(*UpdateCompactionPlanResponse)(nil),    // 15: raft_log.UpdateCompactionPlanResponse
+	(*TruncateIndexRequest)(nil),            // 16: raft_log.TruncateIndexRequest
+	(*TruncateIndexResponse)(nil),           // 17: raft_log.TruncateIndexResponse
+	(*v1.BlockMeta)(nil),                    // 18: metastore.v1.BlockMeta
+	(v1.CompactionJobStatus)(0),             // 19: metastore.v1.CompactionJobStatus
+	(*v1.CompactedBlocks)(nil),              // 20: metastore.v1.CompactedBlocks
+	(*v1.Tombstones)(nil),                   // 21: metastore.v1.Tombstones
+	(*v1.DeleteFilter)(nil),                 // 22: metastore.v1.DeleteFilter
 }
 var file_metastore_v1_raft_log_raft_log_proto_depIdxs = []int32{
-	22, // 0: raft_log.AddBlockMetadataRequest.metadata:type_name -> metastore.v1.BlockMeta
-	5,  // 1: raft_log.GetCompactionPlanUpdateRequest.status_updates:type_name -> raft_log.CompactionJobStatusUpdate
-	23, // 2: raft_log.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
-	10, // 3: raft_log.GetCompactionPlanUpdateResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	1,  // 4: raft_log.DatasetDeletionRejection.reason:type_name -> raft_log.DatasetDeletionRejection.Reason
-	24, // 5: raft_log.PrepareDatasetDeletionRequest.filter:type_name -> metastore.v1.DeleteFilter
-	10, // 6: raft_log.PrepareDatasetDeletionResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	25, // 7: raft_log.PrepareDatasetDeletionResponse.deletion:type_name -> metastore.v1.DeleteDatasetsResponse
-	7,  // 8: raft_log.PrepareDatasetDeletionResponse.rejection:type_name -> raft_log.DatasetDeletionRejection
-	11, // 9: raft_log.CompactionPlanUpdate.new_jobs:type_name -> raft_log.NewCompactionJob
-	12, // 10: raft_log.CompactionPlanUpdate.assigned_jobs:type_name -> raft_log.AssignedCompactionJob
-	13, // 11: raft_log.CompactionPlanUpdate.updated_jobs:type_name -> raft_log.UpdatedCompactionJob
-	14, // 12: raft_log.CompactionPlanUpdate.completed_jobs:type_name -> raft_log.CompletedCompactionJob
-	15, // 13: raft_log.CompactionPlanUpdate.evicted_jobs:type_name -> raft_log.EvictedCompactionJob
-	16, // 14: raft_log.NewCompactionJob.state:type_name -> raft_log.CompactionJobState
-	17, // 15: raft_log.NewCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
-	16, // 16: raft_log.AssignedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	17, // 17: raft_log.AssignedCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
-	16, // 18: raft_log.UpdatedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	16, // 19: raft_log.CompletedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	26, // 20: raft_log.CompletedCompactionJob.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
-	16, // 21: raft_log.EvictedCompactionJob.state:type_name -> raft_log.CompactionJobState
-	23, // 22: raft_log.CompactionJobState.status:type_name -> metastore.v1.CompactionJobStatus
-	27, // 23: raft_log.CompactionJobPlan.tombstones:type_name -> metastore.v1.Tombstones
-	24, // 24: raft_log.CompactionJobPlan.delete_filter:type_name -> metastore.v1.DeleteFilter
-	10, // 25: raft_log.UpdateCompactionPlanRequest.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	10, // 26: raft_log.UpdateCompactionPlanResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	27, // 27: raft_log.TruncateIndexRequest.tombstones:type_name -> metastore.v1.Tombstones
-	28, // [28:28] is the sub-list for method output_type
-	28, // [28:28] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	18, // 0: raft_log.AddBlockMetadataRequest.metadata:type_name -> metastore.v1.BlockMeta
+	4,  // 1: raft_log.GetCompactionPlanUpdateRequest.status_updates:type_name -> raft_log.CompactionJobStatusUpdate
+	19, // 2: raft_log.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
+	6,  // 3: raft_log.GetCompactionPlanUpdateResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	7,  // 4: raft_log.CompactionPlanUpdate.new_jobs:type_name -> raft_log.NewCompactionJob
+	8,  // 5: raft_log.CompactionPlanUpdate.assigned_jobs:type_name -> raft_log.AssignedCompactionJob
+	9,  // 6: raft_log.CompactionPlanUpdate.updated_jobs:type_name -> raft_log.UpdatedCompactionJob
+	10, // 7: raft_log.CompactionPlanUpdate.completed_jobs:type_name -> raft_log.CompletedCompactionJob
+	11, // 8: raft_log.CompactionPlanUpdate.evicted_jobs:type_name -> raft_log.EvictedCompactionJob
+	12, // 9: raft_log.NewCompactionJob.state:type_name -> raft_log.CompactionJobState
+	13, // 10: raft_log.NewCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
+	12, // 11: raft_log.AssignedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	13, // 12: raft_log.AssignedCompactionJob.plan:type_name -> raft_log.CompactionJobPlan
+	12, // 13: raft_log.UpdatedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	12, // 14: raft_log.CompletedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	20, // 15: raft_log.CompletedCompactionJob.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
+	12, // 16: raft_log.EvictedCompactionJob.state:type_name -> raft_log.CompactionJobState
+	19, // 17: raft_log.CompactionJobState.status:type_name -> metastore.v1.CompactionJobStatus
+	21, // 18: raft_log.CompactionJobPlan.tombstones:type_name -> metastore.v1.Tombstones
+	22, // 19: raft_log.CompactionJobPlan.delete_filter:type_name -> metastore.v1.DeleteFilter
+	6,  // 20: raft_log.UpdateCompactionPlanRequest.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	6,  // 21: raft_log.UpdateCompactionPlanResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	21, // 22: raft_log.TruncateIndexRequest.tombstones:type_name -> metastore.v1.Tombstones
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_metastore_v1_raft_log_raft_log_proto_init() }
@@ -1506,17 +1186,13 @@ func file_metastore_v1_raft_log_raft_log_proto_init() {
 	if File_metastore_v1_raft_log_raft_log_proto != nil {
 		return
 	}
-	file_metastore_v1_raft_log_raft_log_proto_msgTypes[7].OneofWrappers = []any{
-		(*PrepareDatasetDeletionResponse_Deletion)(nil),
-		(*PrepareDatasetDeletionResponse_Rejection)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_metastore_v1_raft_log_raft_log_proto_rawDesc), len(file_metastore_v1_raft_log_raft_log_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   20,
+			NumEnums:      1,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
