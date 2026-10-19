@@ -133,6 +133,12 @@ func main() {
 	v2MigrationBucketCleanupCmd := v2MigrationCmd.Command("bucket-cleanup", "Clean up v1 artificats from data bucket.")
 	v2MigrationBucketCleanupParams := addV2MigrationBackupCleanupParam(v2MigrationBucketCleanupCmd)
 
+	compactionCmd := adminCmd.Command("compaction", "Inspect and manage V2 compaction.")
+	listJobsCmd := compactionCmd.Command("list-jobs", "List queued and assigned compaction jobs without claiming them.")
+	listJobsParams := addListCompactionJobsParams(listJobsCmd)
+	deleteDatasetsCmd := compactionCmd.Command("delete-datasets", "Delete service datasets and symbols from V2 single-tenant blocks overlapping a time window, and wait for completion. Dry-run by default.")
+	deleteDatasetsParams := addDeleteDatasetsParams(deleteDatasetsCmd)
+
 	kubeProxyCmd := adminCmd.Command("kube-proxy", "Start a reverse proxy unifying all the micro services in a single endpoint.")
 	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
 
@@ -271,6 +277,14 @@ func main() {
 		}
 	case v2MigrationBucketCleanupCmd.FullCommand():
 		if err := v2MigrationBucketCleanup(ctx, v2MigrationBucketCleanupParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case listJobsCmd.FullCommand():
+		if err := listCompactionJobs(ctx, listJobsParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case deleteDatasetsCmd.FullCommand():
+		if err := deleteDatasets(ctx, deleteDatasetsParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case kubeProxyCmd.FullCommand():

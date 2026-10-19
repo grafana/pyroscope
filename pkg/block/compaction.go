@@ -58,12 +58,26 @@ func WithSampleObserver(observer SampleObserver) CompactionOption {
 	}
 }
 
+// WithDatasetFilter excludes datasets before any of their sections are opened.
+func WithDatasetFilter(keep func(tenant, serviceName string) bool) CompactionOption {
+	return func(c *compactionConfig) { c.datasetFilter = keep }
+}
+
+// WithPreserveCompactionLevel rewrites blocks without promoting them.
+// All input blocks must be single-tenant blocks (CompactionLevel > 0 && Tenant != 0)
+// at the same compaction level.
+func WithPreserveCompactionLevel() CompactionOption {
+	return func(c *compactionConfig) { c.preserveCompactionLevel = true }
+}
+
 type compactionConfig struct {
-	objectOptions  []ObjectOption
-	source         objstore.BucketReader
-	destination    objstore.Bucket
-	tempdir        string
-	sampleObserver SampleObserver
+	datasetFilter           func(string, string) bool
+	preserveCompactionLevel bool
+	objectOptions           []ObjectOption
+	source                  objstore.BucketReader
+	destination             objstore.Bucket
+	tempdir                 string
+	sampleObserver          SampleObserver
 }
 
 type SampleObserver interface {
@@ -90,9 +104,13 @@ func Compact(
 	}
 
 	objects := ObjectsFromMetas(storage, blocks, c.objectOptions...)
-	plan, err := PlanCompaction(objects)
+	plan, err := planCompaction(objects, c)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(plan) == 0 {
+		return nil, nil
 	}
 
 	if err = objects.Open(ctx); err != nil {
@@ -114,7 +132,15 @@ func Compact(
 	return compacted, nil
 }
 
-func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
+func PlanCompaction(objects Objects, options ...CompactionOption) ([]*CompactionPlan, error) {
+	var c compactionConfig
+	for _, option := range options {
+		option(&c)
+	}
+	return planCompaction(objects, &c)
+}
+
+func planCompaction(objects Objects, c *compactionConfig) ([]*CompactionPlan, error) {
 	if len(objects) == 0 {
 		// Even if there's just a single object, we still need to rewrite it.
 		return nil, ErrNoBlocksToMerge
@@ -126,28 +152,42 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 		if r.meta.Shard != obj.meta.Shard {
 			return nil, ErrShardMergeMismatch
 		}
+		if c.preserveCompactionLevel {
+			if obj.meta.CompactionLevel == 0 || obj.meta.Tenant == 0 {
+				return nil, fmt.Errorf("cannot preserve compaction level on segments")
+			}
+			if obj.meta.CompactionLevel != r.meta.CompactionLevel {
+				return nil, fmt.Errorf("cannot preserve different compaction levels")
+			}
+		}
 		level = max(level, obj.meta.CompactionLevel)
 	}
-	level++
+	if !c.preserveCompactionLevel {
+		level++
+	}
 
 	g := NewULIDGenerator(objects)
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
 		for _, ds := range obj.meta.Datasets {
-			if ds.Name == 0 {
+			if ds.Name == 0 || ds.Format != 0 {
 				// Anonymous dataset is never compacted:
 				// it is rebuilt based on the actual block contents.
 				continue
 			}
-			tm, ok := m[obj.meta.StringTable[ds.Tenant]]
+			tenant, service := obj.meta.StringTable[ds.Tenant], obj.meta.StringTable[ds.Name]
+			if c.datasetFilter != nil && !c.datasetFilter(tenant, service) {
+				continue
+			}
+			tm, ok := m[tenant]
 			if !ok {
 				tm = newBlockCompaction(
 					g.ULID().String(),
-					obj.meta.StringTable[ds.Tenant],
+					tenant,
 					r.meta.Shard,
 					level,
 				)
-				m[obj.meta.StringTable[ds.Tenant]] = tm
+				m[tenant] = tm
 			}
 			// Bind objects to datasets.
 			sm := tm.addDataset(obj.meta, ds)
