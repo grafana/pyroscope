@@ -3,34 +3,81 @@ package metastore
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tracing"
+	"go.etcd.io/bbolt"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1/raft_log"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction/compactor"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/compaction/scheduler"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/fsm"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
 )
 
+// jobOwnerTTL limits how long the worker attribution of a job is kept
+// after the last observed status update. Attribution of a job that is
+// not updated (e.g., a failed job that exceeded the failure threshold)
+// expires, and the job owner is reported as unknown.
+const jobOwnerTTL = time.Hour
+
+// maxCompactionQueueScan caps how many planner queue entries a single
+// GetCompactionState reads.
+//
+// The queue holds one entry per block awaiting compaction and is bounded by
+// nothing but the backlog, so an uncapped scan would let a struggling cluster
+// make its own observability expensive: the scan holds a read transaction,
+// which keeps the database from reusing the pages its writers free. The cap
+// trades a complete count for a bounded one, and the response says which it
+// is. At the measured scan rate this is roughly a tenth of a second.
+const maxCompactionQueueScan = 2_000_000
+
 type CompactionService struct {
 	metastorev1.CompactionServiceServer
 
-	logger log.Logger
-	mu     sync.Mutex
-	raft   Raft
+	logger    log.Logger
+	mu        sync.Mutex
+	raft      Raft
+	state     State
+	scheduler *scheduler.Scheduler
+	compactor *compactor.Compactor
+
+	// Worker attribution of the assigned jobs, as observed by the local
+	// node serving the poll requests (the raft leader). The attribution
+	// is not replicated: after a leader change, it is restored gradually,
+	// as workers renew their job leases. An entry is only valid while its
+	// fencing token matches the job state.
+	ownersMu sync.Mutex
+	owners   map[string]*jobOwner
+}
+
+type jobOwner struct {
+	worker     string
+	token      uint64
+	assignedAt time.Time
+	updatedAt  time.Time
 }
 
 func NewCompactionService(
 	logger log.Logger,
 	raft Raft,
+	state State,
+	scheduler *scheduler.Scheduler,
+	compactor *compactor.Compactor,
 ) *CompactionService {
 	return &CompactionService{
-		logger: logger,
-		raft:   raft,
+		logger:    logger,
+		raft:      raft,
+		state:     state,
+		scheduler: scheduler,
+		compactor: compactor,
+		owners:    make(map[string]*jobOwner),
 	}
 }
 
@@ -168,10 +215,164 @@ func (svc *CompactionService) PollCompactionJobs(
 		return nil, status.Error(codes.FailedPrecondition, "failed to update compaction plan")
 	}
 
-	// As of now, accepted plan always matches the proposed one,
-	// so our prepared worker response is still valid.
+	// As of now, accepted plan always matches the proposed one, so our prepared
+	// worker response is still valid.
+	svc.updateOwners(workerID(ctx, req), accepted)
 
 	span.SetTag("assigned_jobs", len(workerResp.GetCompactionJobs()))
 	span.SetTag("assignment_updates", len(workerResp.GetAssignments()))
 	return workerResp, nil
+}
+
+// workerID identifies the worker on a best-effort basis: the identity reported
+// by the worker itself, or the peer address as a fallback.
+func workerID(ctx context.Context, req *metastorev1.PollCompactionJobsRequest) string {
+	if req.WorkerId != "" {
+		return req.WorkerId
+	}
+	if p, ok := peer.FromContext(ctx); ok && p.Addr != nil {
+		return p.Addr.String()
+	}
+	return ""
+}
+
+func (svc *CompactionService) updateOwners(worker string, update *raft_log.CompactionPlanUpdate) {
+	now := time.Now()
+	svc.ownersMu.Lock()
+	defer svc.ownersMu.Unlock()
+	for _, job := range update.CompletedJobs {
+		delete(svc.owners, job.State.Name)
+	}
+	for _, job := range update.EvictedJobs {
+		delete(svc.owners, job.State.Name)
+	}
+	for _, job := range update.AssignedJobs {
+		svc.owners[job.State.Name] = &jobOwner{
+			worker:     worker,
+			token:      job.State.Token,
+			assignedAt: now,
+			updatedAt:  now,
+		}
+	}
+	for _, job := range update.UpdatedJobs {
+		owner := svc.owners[job.State.Name]
+		if owner == nil || owner.token != job.State.Token {
+			// The job was assigned before we started observing it,
+			// e.g., by a former leader: the assignment time is unknown.
+			owner = &jobOwner{token: job.State.Token}
+			svc.owners[job.State.Name] = owner
+		}
+		owner.worker = worker
+		owner.updatedAt = now
+	}
+	for name, owner := range svc.owners {
+		if now.Sub(owner.updatedAt) > jobOwnerTTL {
+			delete(svc.owners, name)
+		}
+	}
+}
+
+func (svc *CompactionService) GetCompactionState(
+	ctx context.Context,
+	req *metastorev1.GetCompactionStateRequest,
+) (resp *metastorev1.GetCompactionStateResponse, err error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CompactionService.GetCompactionState")
+	defer func() {
+		if err != nil {
+			span.LogError(err)
+			span.SetError()
+		}
+		span.Finish()
+	}()
+
+	// The tenant filter distinguishes "every tenant" from "the entities that
+	// have no tenant", so it is read from the field itself rather than from
+	// the accessor: the field carries explicit presence.
+	var tenantFilter *string
+	if req != nil {
+		tenantFilter = req.Tenant
+	}
+	jobFilter := scheduler.JobFilter{
+		Tenant:              tenantFilter,
+		IncludeSourceBlocks: req.GetIncludeSourceBlocks(),
+	}
+	queueFilter := compactor.QueueFilter{
+		Tenant:     tenantFilter,
+		MaxEntries: maxCompactionQueueScan,
+	}
+
+	var jobs []scheduler.JobInfo
+	var queues []compactor.QueueStats
+	var queuesTruncated bool
+	var readErr error
+	read := func(tx *bbolt.Tx, _ raftnode.ReadIndex) {
+		if jobs, readErr = svc.scheduler.ListJobs(ctx, tx, jobFilter); readErr != nil {
+			return
+		}
+		queues, queuesTruncated, readErr = svc.compactor.ListQueues(ctx, tx, queueFilter)
+	}
+	if err = svc.state.ConsistentRead(ctx, read); err != nil {
+		// Preserve the status details, if any: e.g., the raft leader hint
+		// attached at ReadIndex, which the client uses to redirect the
+		// request to the leader node.
+		if _, ok := status.FromError(err); ok {
+			return nil, err
+		}
+		return nil, status.Error(codes.Unavailable, err.Error())
+	}
+	if readErr != nil {
+		return nil, status.Error(codes.Internal, readErr.Error())
+	}
+
+	config := svc.scheduler.Config()
+	resp = &metastorev1.GetCompactionStateResponse{
+		CompactionJobs:   make([]*metastorev1.CompactionJobDetails, 0, len(jobs)),
+		CompactionQueues: make([]*metastorev1.CompactionQueueDetails, 0, len(queues)),
+		JobLeaseDuration: config.LeaseDuration.Nanoseconds(),
+		JobMaxFailures:   config.MaxFailures,
+		MaxJobQueueSize:  config.MaxQueueSize,
+
+		CompactionQueuesTruncated: queuesTruncated,
+	}
+
+	svc.ownersMu.Lock()
+	for _, job := range jobs {
+		details := &metastorev1.CompactionJobDetails{
+			Name:            job.State.Name,
+			Tenant:          job.Tenant,
+			Shard:           job.Shard,
+			CompactionLevel: job.State.CompactionLevel,
+			Status:          job.State.Status,
+			Token:           job.State.Token,
+			LeaseExpiresAt:  job.State.LeaseExpiresAt,
+			AddedAt:         job.State.AddedAt,
+			Failures:        job.State.Failures,
+			SourceBlocks:    job.SourceBlocks,
+			SourceBlockIds:  job.SourceBlockIDs,
+		}
+		if owner := svc.owners[job.State.Name]; owner != nil && owner.token == job.State.Token {
+			details.WorkerId = owner.worker
+			details.UpdatedAt = owner.updatedAt.UnixNano()
+			if !owner.assignedAt.IsZero() {
+				details.AssignedAt = owner.assignedAt.UnixNano()
+			}
+		}
+		resp.CompactionJobs = append(resp.CompactionJobs, details)
+	}
+	svc.ownersMu.Unlock()
+
+	for _, q := range queues {
+		resp.CompactionQueues = append(resp.CompactionQueues, &metastorev1.CompactionQueueDetails{
+			Tenant:          q.Tenant,
+			Shard:           q.Shard,
+			CompactionLevel: q.Level,
+			Blocks:          q.Blocks,
+			OldestBlockAt:   q.OldestAppendedAt,
+			NewestBlockAt:   q.NewestAppendedAt,
+		})
+	}
+
+	span.SetTag("compaction_jobs", len(resp.CompactionJobs))
+	span.SetTag("compaction_queues", len(resp.CompactionQueues))
+	return resp, nil
 }
