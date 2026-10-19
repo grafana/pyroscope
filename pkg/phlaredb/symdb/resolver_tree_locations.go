@@ -333,7 +333,9 @@ func concatCallTrees(trees []*functionTree, rootTruncated []int64, names []strin
 			}
 			c.Parent = append(c.Parent, p)
 		}
-		c.Name = append(c.Name, t.name[1:]...)
+		for j := 1; j < len(t.links); j++ {
+			c.Name = append(c.Name, t.links[j].name)
+		}
 		c.Self = append(c.Self, t.self[1:]...)
 		c.Self[0] += t.self[0]
 	}

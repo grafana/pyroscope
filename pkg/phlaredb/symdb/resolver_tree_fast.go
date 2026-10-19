@@ -12,24 +12,28 @@ import (
 // a few children. The children of wide nodes are indexed instead.
 type functionTree struct {
 	parent []int32
-	name   []int32
 	self   []int64
-	first  []int32 // First child.
-	next   []int32 // Next sibling.
+	links  []functionTreeLinks
 
 	wideChildren childIndex // keyed by parent and name; the sentinel name keys the last child
 	wideParents  []uint64   // bitmap of the nodes whose children are indexed
 }
 
+// functionTreeLinks keeps together what a scan of siblings reads.
+type functionTreeLinks struct {
+	name  int32
+	first int32 // First child.
+	next  int32 // Next sibling.
+}
+
 func newFunctionTree(sizeHint int) *functionTree {
 	t := &functionTree{
 		parent: make([]int32, 1, sizeHint),
-		name:   make([]int32, 1, sizeHint),
 		self:   make([]int64, 1, sizeHint),
-		first:  make([]int32, 1, sizeHint),
-		next:   make([]int32, 1, sizeHint),
+		links:  make([]functionTreeLinks, 1, sizeHint),
 	}
-	t.parent[0], t.first[0], t.next[0] = sentinel, sentinel, sentinel
+	t.parent[0] = sentinel
+	t.links[0] = functionTreeLinks{first: sentinel, next: sentinel}
 	return t
 }
 
@@ -46,12 +50,13 @@ func (t *functionTree) child(parent, name int32) int32 {
 		t.wideChildren.set(tail, i)
 		return i
 	}
-	i, last, n := t.first[parent], int32(sentinel), 0
-	for ; i != sentinel; i = t.next[i] {
-		if t.name[i] == name {
+	i, last, n := t.links[parent].first, int32(sentinel), 0
+	for i != sentinel {
+		l := &t.links[i]
+		if l.name == name {
 			return i
 		}
-		last = i
+		last, i = i, l.next
 		n++
 	}
 	i = t.newChild(parent, name, last)
@@ -65,16 +70,23 @@ func (t *functionTree) child(parent, name int32) int32 {
 func (t *functionTree) newChild(parent, name, last int32) int32 {
 	i := int32(len(t.parent))
 	t.parent = append(t.parent, parent)
-	t.name = append(t.name, name)
 	t.self = append(t.self, 0)
-	t.first = append(t.first, sentinel)
-	t.next = append(t.next, sentinel)
+	t.links = append(t.links, functionTreeLinks{name: name, first: sentinel, next: sentinel})
 	if last == sentinel {
-		t.first[parent] = i
+		t.links[parent].first = i
 	} else {
-		t.next[last] = i
+		t.links[last].next = i
 	}
 	return i
+}
+
+// names returns the name of every node.
+func (t *functionTree) names() []int32 {
+	names := make([]int32, len(t.links))
+	for i := range t.links {
+		names[i] = t.links[i].name
+	}
+	return names
 }
 
 func (t *functionTree) isWide(i int32) bool {
@@ -84,8 +96,8 @@ func (t *functionTree) isWide(i int32) bool {
 
 func (t *functionTree) indexChildren(parent int32) {
 	last := int32(sentinel)
-	for i := t.first[parent]; i != sentinel; i = t.next[i] {
-		t.wideChildren.set(childKey(parent, t.name[i]), i)
+	for i := t.links[parent].first; i != sentinel; i = t.links[i].next {
+		t.wideChildren.set(childKey(parent, t.links[i].name), i)
 		last = i
 	}
 	t.wideChildren.set(childKey(parent, sentinel), last)
@@ -183,10 +195,11 @@ func (t *functionTree) callTree(names []string) *model.CallTree {
 		total[t.parent[i]] += total[i]
 	}
 	total[0] = 0
-	t.name[0] = 0
+	name := t.names()
+	name[0] = 0
 	return &model.CallTree{
 		Parent: t.parent,
-		Name:   t.name,
+		Name:   name,
 		Self:   t.self,
 		Total:  total,
 		Names:  names,
