@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"slices"
@@ -73,6 +74,52 @@ func Test_FlatTree_matches_FunctionNameTree(t *testing.T) {
 			actualFG := flatMerge(t, [][]byte{expected}, fgMaxNodes).FlameGraph(fgMaxNodes)
 			require.True(t, proto.Equal(expectedFG, actualFG), "%s fgMaxNodes=%d\nexpected: %v\nactual: %v", name, fgMaxNodes, expectedFG, actualFG)
 		}
+	}
+}
+
+func Test_FlatTree_MergeTree(t *testing.T) {
+	r := rand.New(rand.NewSource(4))
+	for iter := 0; iter < 300; iter++ {
+		maxNodes := []int64{0, 1, 2, 5, 10, 30, 100, 1 << 20}[r.Intn(8)]
+		trees := make([][]byte, 1+r.Intn(6))
+		for i := range trees {
+			trees[i] = randomTree(r, r.Intn(60), 1+r.Intn(8), testNames).Bytes(maxNodes, nil)
+		}
+		expected := referenceMerge(trees, maxNodes)
+		// Split the inputs between partial trees, and reduce them.
+		partials := make([]*FlatTree, 1+r.Intn(3))
+		for i := range partials {
+			partials[i] = NewFlatTree()
+		}
+		for _, b := range trees {
+			require.NoError(t, partials[r.Intn(len(partials))].MergeBytes(b))
+		}
+		for len(partials) > 1 {
+			partials[0].MergeTree(partials[len(partials)-1])
+			partials = partials[:len(partials)-1]
+		}
+		require.Equal(t, len(trees), partials[0].Inputs())
+		require.Equal(t, expected, partials[0].Bytes(maxNodes), "iter=%d inputs=%d maxNodes=%d", iter, len(trees), maxNodes)
+	}
+}
+
+func Test_FlatTree_unordered_input(t *testing.T) {
+	r := rand.New(rand.NewSource(5))
+	names := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
+	for iter := 0; iter < 200; iter++ {
+		// StacktraceTree serializes children in insertion order.
+		var b bytes.Buffer
+		st, _ := randomStacktraceTree(r, 1+r.Intn(60), 1+r.Intn(8), names)
+		st.Bytes(&b, 0, names)
+		expected := MustUnmarshalTree[FunctionName, FunctionNameI](b.Bytes()).Bytes(0, nil)
+		f := NewFlatTree()
+		require.NoError(t, f.MergeBytes(b.Bytes()))
+		require.NoError(t, f.MergeBytes(b.Bytes()))
+		require.NoError(t, f.MergeBytes(nil))
+		doubled := new(FunctionNameTree)
+		doubled.Merge(MustUnmarshalTree[FunctionName, FunctionNameI](expected))
+		doubled.Merge(MustUnmarshalTree[FunctionName, FunctionNameI](expected))
+		require.Equal(t, doubled.Bytes(0, nil), f.MarshalTruncate(0), "iter=%d", iter)
 	}
 }
 

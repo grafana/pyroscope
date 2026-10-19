@@ -7,11 +7,18 @@ import (
 // functionTree is the call tree of function names built from stack trace
 // samples. Nodes are stored in creation order, so a parent always precedes
 // its children; node 0 is the root.
+//
+// Children are found by scanning the list of siblings: most nodes have
+// a few children. The children of wide nodes are indexed instead.
 type functionTree struct {
-	parent   []int32
-	name     []int32
-	self     []int64
-	children childIndex // keyed by parent and function name
+	parent []int32
+	name   []int32
+	self   []int64
+	first  []int32 // First child.
+	next   []int32 // Next sibling.
+
+	wideChildren childIndex // keyed by parent and name; the sentinel name keys the last child
+	wideParents  []uint64   // bitmap of the nodes whose children are indexed
 }
 
 func newFunctionTree(sizeHint int) *functionTree {
@@ -19,23 +26,76 @@ func newFunctionTree(sizeHint int) *functionTree {
 		parent: make([]int32, 1, sizeHint),
 		name:   make([]int32, 1, sizeHint),
 		self:   make([]int64, 1, sizeHint),
+		first:  make([]int32, 1, sizeHint),
+		next:   make([]int32, 1, sizeHint),
 	}
-	t.parent[0] = sentinel
-	t.children.reserve(sizeHint)
+	t.parent[0], t.first[0], t.next[0] = sentinel, sentinel, sentinel
 	return t
 }
 
 func (t *functionTree) child(parent, name int32) int32 {
-	k := childKey(parent, name)
-	if i, ok := t.children.get(k); ok {
+	if t.isWide(parent) {
+		k := childKey(parent, name)
+		if i, ok := t.wideChildren.get(k); ok {
+			return i
+		}
+		tail := childKey(parent, sentinel)
+		last, _ := t.wideChildren.get(tail)
+		i := t.newChild(parent, name, last)
+		t.wideChildren.set(k, i)
+		t.wideChildren.set(tail, i)
 		return i
 	}
+	i, last, n := t.first[parent], int32(sentinel), 0
+	for ; i != sentinel; i = t.next[i] {
+		if t.name[i] == name {
+			return i
+		}
+		last = i
+		n++
+	}
+	i = t.newChild(parent, name, last)
+	if n >= wideNodeScan {
+		t.indexChildren(parent)
+	}
+	return i
+}
+
+// newChild appends a child after last (sentinel: no children yet).
+func (t *functionTree) newChild(parent, name, last int32) int32 {
 	i := int32(len(t.parent))
 	t.parent = append(t.parent, parent)
 	t.name = append(t.name, name)
 	t.self = append(t.self, 0)
-	t.children.set(k, i)
+	t.first = append(t.first, sentinel)
+	t.next = append(t.next, sentinel)
+	if last == sentinel {
+		t.first[parent] = i
+	} else {
+		t.next[last] = i
+	}
 	return i
+}
+
+func (t *functionTree) isWide(i int32) bool {
+	w := int(i) >> 6
+	return w < len(t.wideParents) && t.wideParents[w]&(1<<(uint(i)&63)) != 0
+}
+
+func (t *functionTree) indexChildren(parent int32) {
+	last := int32(sentinel)
+	for i := t.first[parent]; i != sentinel; i = t.next[i] {
+		t.wideChildren.set(childKey(parent, t.name[i]), i)
+		last = i
+	}
+	t.wideChildren.set(childKey(parent, sentinel), last)
+	w := int(parent) >> 6
+	if w >= len(t.wideParents) {
+		words := make([]uint64, max(w+1, cap(t.parent)>>6+1))
+		copy(words, t.wideParents)
+		t.wideParents = words
+	}
+	t.wideParents[w] |= 1 << (uint(parent) & 63)
 }
 
 // buildCallTree builds the call tree of function names of the samples by

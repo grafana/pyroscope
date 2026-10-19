@@ -75,10 +75,6 @@ type cursor struct {
 // child if it is not present, and returns the child. Lookups of names in
 // descending order take a single pass over the list.
 func (t *FlatTree) find(c *cursor, name string, id func() int32) int32 {
-	if c.prev != noNode && t.names.names[t.name[c.prev]] <= name {
-		// Out of order: start over.
-		c.prev, c.cur = noNode, t.child[c.node]
-	}
 	for c.cur != noNode {
 		s := t.names.names[t.name[c.cur]]
 		if s == name {
@@ -91,8 +87,39 @@ func (t *FlatTree) find(c *cursor, name string, id func() int32) int32 {
 		}
 		c.prev, c.cur = c.cur, t.next[c.cur]
 	}
+	if c.prev != noNode && t.names.names[t.name[c.prev]] <= name {
+		// Out of order: the child may precede the cursor.
+		c.prev, c.cur = noNode, t.child[c.node]
+		return t.find(c, name, id)
+	}
+	return t.insert(c, id())
+}
+
+// findID is find for a name of the tree's dictionary.
+func (t *FlatTree) findID(c *cursor, id int32) int32 {
+	name := t.names.names[id]
+	for c.cur != noNode {
+		if t.name[c.cur] == id {
+			x := c.cur
+			c.prev, c.cur = x, t.next[x]
+			return x
+		}
+		if t.names.names[t.name[c.cur]] < name {
+			break
+		}
+		c.prev, c.cur = c.cur, t.next[c.cur]
+	}
+	if c.prev != noNode && t.names.names[t.name[c.prev]] <= name {
+		c.prev, c.cur = noNode, t.child[c.node]
+		return t.findID(c, id)
+	}
+	return t.insert(c, id)
+}
+
+// insert inserts a child at the cursor.
+func (t *FlatTree) insert(c *cursor, id int32) int32 {
 	x := int32(len(t.parent))
-	t.name = append(t.name, id())
+	t.name = append(t.name, id)
 	t.self = append(t.self, 0)
 	t.parent = append(t.parent, c.node)
 	t.child = append(t.child, noNode)
@@ -199,15 +226,29 @@ type CallTree struct {
 
 // MergeCallTree merges the call tree truncated to maxNodes as if it was
 // converted to FunctionNameTree with TreeFromStacktraceTree and serialized
-// with Bytes(maxNodes). The names of the call tree are copied if retained.
+// with Bytes(maxNodes). The names of the call tree are retained.
 //
 // The caller must ensure that no node is named "other", see
 // HasOtherFunctionName.
 func (t *FlatTree) MergeCallTree(c *CallTree, maxNodes int64) {
-	t.inputs++
+	t.MergePreparedCallTree(PrepareCallTree(c, maxNodes))
+}
+
+// PreparedCallTree is a call tree truncated and ordered for merging.
+type PreparedCallTree struct {
+	c        *CallTree
+	off      []int32 // The children of node i are kids[off[i]:off[i+1]].
+	kids     []int32 // Node n+i is the "other" node of node i.
+	otherSum []int64
+}
+
+// PrepareCallTree truncates the call tree for MergePreparedCallTree, which
+// is then equivalent to MergeCallTree(c, maxNodes). Preparation takes most
+// of the time of the merge, and does not need access to the tree.
+func PrepareCallTree(c *CallTree, maxNodes int64) *PreparedCallTree {
 	n := len(c.Parent)
 	if n < 2 {
-		return
+		return new(PreparedCallTree)
 	}
 	minValue := callTreeMinValue(c, maxNodes)
 
@@ -253,34 +294,36 @@ func (t *FlatTree) MergeCallTree(c *CallTree, maxNodes int64) {
 			pos[i]++
 		}
 	}
-	nameOf := func(x int32) string {
-		if x >= int32(n) {
-			return truncatedNodeName
-		}
-		return c.Names[c.Name[x]]
-	}
+	p := &PreparedCallTree{c: c, off: off, kids: kids, otherSum: otherSum}
 	for i := 0; i < n; i++ {
 		if s := kids[off[i]:off[i+1]]; len(s) > 1 {
-			slices.SortFunc(s, func(a, b int32) int { return strings.Compare(nameOf(b), nameOf(a)) })
+			slices.SortFunc(s, func(a, b int32) int { return strings.Compare(p.nameOf(b), p.nameOf(a)) })
 		}
 	}
+	return p
+}
 
-	t.reserve(len(t.parent) + int(off[n]))
+func (p *PreparedCallTree) nameOf(x int32) string {
+	if x >= int32(len(p.c.Parent)) {
+		return truncatedNodeName
+	}
+	return p.c.Names[p.c.Name[x]]
+}
+
+// MergePreparedCallTree merges the call tree prepared with PrepareCallTree.
+func (t *FlatTree) MergePreparedCallTree(p *PreparedCallTree) {
+	t.inputs++
+	if p.c == nil {
+		return
+	}
+	c, off, kids := p.c, p.off, p.kids
+	n := int32(len(c.Parent))
+	t.reserve(len(t.parent) + len(kids))
 	ids := make([]int32, len(c.Names))
 	for i := range ids {
 		ids[i] = noNode
 	}
-	var src int32
-	id := func() int32 {
-		if src >= int32(n) {
-			return t.names.id(truncatedNodeName)
-		}
-		x := c.Name[src]
-		if ids[x] == noNode {
-			ids[x] = t.names.id(strings.Clone(c.Names[x]))
-		}
-		return ids[x]
-	}
+	other := t.names.id(truncatedNodeName)
 	type frame struct {
 		cursor
 		kids []int32
@@ -292,15 +335,66 @@ func (t *FlatTree) MergeCallTree(c *CallTree, maxNodes int64) {
 			stack = stack[:len(stack)-1]
 			continue
 		}
+		var src int32
 		src, f.kids = f.kids[0], f.kids[1:]
-		x := t.find(&f.cursor, nameOf(src), id)
-		if src >= int32(n) {
-			t.self[x] += otherSum[src-int32(n)]
+		if src >= n {
+			x := t.findID(&f.cursor, other)
+			t.self[x] += p.otherSum[src-n]
 			continue
 		}
+		id := ids[c.Name[src]]
+		if id == noNode {
+			id = t.names.id(c.Names[c.Name[src]])
+			ids[c.Name[src]] = id
+		}
+		x := t.findID(&f.cursor, id)
 		t.self[x] += c.Self[src]
 		if s := kids[off[src]:off[src+1]]; len(s) > 0 {
 			stack = append(stack, frame{cursor{x, noNode, t.child[x]}, s})
+		}
+	}
+}
+
+// MergeTree merges src into t. src must not be used afterwards: t may take
+// over its contents.
+func (t *FlatTree) MergeTree(src *FlatTree) {
+	if len(t.parent) == 1 {
+		inputs := t.inputs
+		*t = *src
+		t.inputs += inputs
+		return
+	}
+	t.inputs += src.inputs
+	if len(src.parent) == 1 {
+		return
+	}
+	t.reserve(len(t.parent) + len(src.parent)/4)
+	ids := make([]int32, len(src.names.names))
+	for i := range ids {
+		ids[i] = noNode
+	}
+	type frame struct {
+		cursor
+		src int32 // Next child of the source node to merge.
+	}
+	stack := []frame{{cursor{0, noNode, t.child[0]}, src.child[0]}}
+	for len(stack) > 0 {
+		f := &stack[len(stack)-1]
+		if f.src == noNode {
+			stack = stack[:len(stack)-1]
+			continue
+		}
+		var s int32
+		s, f.src = f.src, src.next[f.src]
+		id := ids[src.name[s]]
+		if id == noNode {
+			id = t.names.id(src.names.names[src.name[s]])
+			ids[src.name[s]] = id
+		}
+		x := t.findID(&f.cursor, id)
+		t.self[x] += src.self[s]
+		if c := src.child[s]; c != noNode {
+			stack = append(stack, frame{cursor{x, noNode, t.child[x]}, c})
 		}
 	}
 }

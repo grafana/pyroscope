@@ -188,8 +188,7 @@ type treeAggregator struct {
 	init  sync.Once
 	query *queryv1.TreeQuery
 
-	treeLock sync.Mutex
-	tree     *model.FlatTree
+	trees *treeMergePool
 
 	lrTree       *model.TreeMerger[model.LocationRefName, model.LocationRefNameI]
 	symbolLock   sync.Mutex
@@ -216,14 +215,14 @@ func (a *treeAggregator) aggregate(report *queryv1.Report) error {
 	}
 
 	a.initTree(r.Query)
-	a.treeLock.Lock()
-	defer a.treeLock.Unlock()
-	return a.tree.MergeBytes(r.Tree)
+	return a.trees.merge(func(t *model.FlatTree) error {
+		return t.MergeBytes(r.Tree)
+	})
 }
 
 func (a *treeAggregator) initTree(q *queryv1.TreeQuery) {
 	a.init.Do(func() {
-		a.tree = model.NewFlatTree()
+		a.trees = newTreeMergePool()
 		a.query = q.CloneVT()
 	})
 }
@@ -232,9 +231,11 @@ func (a *treeAggregator) initTree(q *queryv1.TreeQuery) {
 // built by queryTree.
 func (a *treeAggregator) aggregateCallTree(q *queryv1.TreeQuery, c *model.CallTree) {
 	a.initTree(q)
-	a.treeLock.Lock()
-	defer a.treeLock.Unlock()
-	a.tree.MergeCallTree(c, q.GetMaxNodes())
+	p := model.PrepareCallTree(c, q.GetMaxNodes())
+	_ = a.trees.merge(func(t *model.FlatTree) error {
+		t.MergePreparedCallTree(p)
+		return nil
+	})
 }
 
 func (a *treeAggregator) build() *queryv1.Report {
@@ -253,6 +254,6 @@ func (a *treeAggregator) build() *queryv1.Report {
 	}
 
 	// A single tree is passed through as is, as a single report would be.
-	result.Tree.Tree = a.tree.Bytes(a.query.GetMaxNodes())
+	result.Tree.Tree = a.trees.tree().Bytes(a.query.GetMaxNodes())
 	return result
 }
