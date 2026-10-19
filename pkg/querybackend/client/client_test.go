@@ -160,7 +160,15 @@ func TestClient_RetriesLoadShedding(t *testing.T) {
 			if call == 1 {
 				return nil, status.Error(codes.ResourceExhausted, "concurrency limit exceeded")
 			}
-			return &queryv1.InvokeResponse{}, nil
+			return &queryv1.InvokeResponse{
+				Diagnostics: &queryv1.Diagnostics{
+					ExecutionNode: &queryv1.ExecutionNode{
+						Stats: &queryv1.ExecutionStats{
+							ProcessingDurationNs: int64(10 * time.Millisecond),
+						},
+					},
+				},
+			}, nil
 		},
 	}
 	backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
@@ -175,6 +183,10 @@ func TestClient_RetriesLoadShedding(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, int32(2), reader.calls.Load())
+	stats := resp.GetDiagnostics().GetExecutionNode().GetStats()
+	require.NotNil(t, stats)
+	require.Equal(t, int64(10*time.Millisecond), stats.GetProcessingDurationNs())
+	require.Greater(t, stats.GetBackoffDurationNs(), int64(500*time.Millisecond))
 }
 
 func TestClient_RetriesRetryableStatus(t *testing.T) {

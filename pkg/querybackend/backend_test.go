@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
 )
@@ -144,4 +146,77 @@ func TestConfig_DisableClientRateLimitRetries(t *testing.T) {
 	cfg.GRPCClientConfig.BackoffOnRatelimits = true
 	cfg.DisableClientRateLimitRetries(log.NewNopLogger())
 	require.False(t, cfg.GRPCClientConfig.BackoffOnRatelimits)
+}
+
+func TestQueryBackend_MergeCriticalPathStats(t *testing.T) {
+	for _, collectDiagnostics := range []bool{false, true} {
+		name := "without diagnostics"
+		if collectDiagnostics {
+			name = "with diagnostics"
+		}
+		t.Run(name, func(t *testing.T) {
+			// Both RPCs start before either responds. The slower child has
+			// less processing but more backoff and unaccounted time.
+			started := make(chan struct{}, 2)
+			release := make(chan struct{})
+			handler := &testQueryHandler{invoke: func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+				started <- struct{}{}
+				<-release
+				stats := &queryv1.ExecutionStats{
+					BytesFetched:          100,
+					ProcessingDurationNs:  int64(20 * time.Millisecond),
+					BackoffDurationNs:     int64(5 * time.Millisecond),
+					UnaccountedDurationNs: int64(5 * time.Millisecond),
+				}
+				duration := 30 * time.Millisecond
+				if req.QueryPlan.Root.Blocks[0].Id == "slow" {
+					stats = &queryv1.ExecutionStats{
+						BytesFetched:          200,
+						ProcessingDurationNs:  int64(10 * time.Millisecond),
+						BackoffDurationNs:     int64(70 * time.Millisecond),
+						UnaccountedDurationNs: int64(20 * time.Millisecond),
+					}
+					duration = 100 * time.Millisecond
+				}
+				time.Sleep(duration)
+				return &queryv1.InvokeResponse{Diagnostics: &queryv1.Diagnostics{
+					ExecutionNode: &queryv1.ExecutionNode{Stats: stats},
+				}}, nil
+			}}
+			q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil)
+			require.NoError(t, err)
+			go func() {
+				<-started
+				<-started
+				close(release)
+			}()
+			start := time.Now()
+			resp, err := q.Invoke(t.Context(), &queryv1.InvokeRequest{
+				Options: &queryv1.InvokeOptions{CollectDiagnostics: collectDiagnostics},
+				QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{
+					Type: queryv1.QueryNode_MERGE,
+					Children: []*queryv1.QueryNode{
+						{Type: queryv1.QueryNode_READ, Blocks: []*metastorev1.BlockMeta{{Id: "fast"}}},
+						{Type: queryv1.QueryNode_READ, Blocks: []*metastorev1.BlockMeta{{Id: "slow"}}},
+					},
+				}},
+			})
+			elapsed := time.Since(start)
+			require.NoError(t, err)
+			node := resp.GetDiagnostics().GetExecutionNode()
+			stats := node.GetStats()
+			require.NotNil(t, stats)
+			require.Equal(t, uint64(300), stats.BytesFetched)
+			require.Equal(t, int64(70*time.Millisecond), stats.BackoffDurationNs)
+			require.GreaterOrEqual(t, stats.UnaccountedDurationNs, int64(20*time.Millisecond))
+			require.GreaterOrEqual(t, stats.ProcessingDurationNs, int64(10*time.Millisecond))
+			total := stats.ProcessingDurationNs + stats.BackoffDurationNs + stats.UnaccountedDurationNs
+			require.InDelta(t, elapsed.Nanoseconds(), total, float64(20*time.Millisecond))
+			if collectDiagnostics {
+				require.Len(t, node.Children, 2)
+			} else {
+				require.Empty(t, node.Children)
+			}
+		})
+	}
 }
