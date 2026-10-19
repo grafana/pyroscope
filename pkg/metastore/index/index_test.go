@@ -328,6 +328,36 @@ func TestIndex_DeleteShard(t *testing.T) {
 		assert.Nil(t, cached)
 	})
 
+	t.Run("evicts the shard's blocks from the block cache", func(t *testing.T) {
+		db := test.BoltDB(t)
+		idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+		require.NoError(t, db.Update(idx.Init))
+
+		tenant := "test-tenant"
+		compacted := createBlock(tenant, 1, 0)
+		compacted.CompactionLevel = 2 // read cache
+		segment := createBlock(tenant, 1, 10*time.Minute)
+		other := createBlock(tenant, 2, 20*time.Minute)
+		other.CompactionLevel = 2
+		insertBlocks(t, db, idx, []*metastorev1.BlockMeta{compacted, segment, other})
+		p := indexstore.NewPartition(test.Time(baseTime), idx.config.partitionDuration)
+
+		key := func(b *metastorev1.BlockMeta) blockCacheKey {
+			return blockCacheKey{tenant: tenant, shard: b.Shard, block: b.Id}
+		}
+		require.True(t, idx.blocks.read.Contains(key(compacted)))
+		require.True(t, idx.blocks.write.Contains(key(segment)))
+		require.True(t, idx.blocks.read.Contains(key(other)))
+
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return idx.DeleteShard(tx, p, tenant, 1)
+		}))
+
+		assert.False(t, idx.blocks.read.Contains(key(compacted)))
+		assert.False(t, idx.blocks.write.Contains(key(segment)))
+		assert.True(t, idx.blocks.read.Contains(key(other)))
+	})
+
 	t.Run("delete non-existent shard", func(t *testing.T) {
 		db := test.BoltDB(t)
 		idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
