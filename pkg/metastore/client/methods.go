@@ -20,6 +20,7 @@ import (
 
 func invoke[R any](ctx context.Context, cl *Client,
 	f func(ctx context.Context, instance instance) (*R, error),
+	noRetryCodes ...codes.Code,
 ) (*R, error) {
 	backoffConfig := backoff.Config{
 		MinBackoff: 10 * time.Millisecond,
@@ -46,6 +47,12 @@ func invoke[R any](ctx context.Context, cl *Client,
 		if errFromAttempt == nil {
 			res = responseFromAttempt
 			return true
+		}
+		for _, code := range noRetryCodes {
+			if status.Code(errFromAttempt) == code {
+				err = errFromAttempt
+				return true
+			}
 		}
 		cl.logger.Log(
 			"msg", "metastore client error",
@@ -155,7 +162,7 @@ func (c *Client) ListCompactionJobs(ctx context.Context, in *metastorev1.ListCom
 func (c *Client) DeleteDatasets(ctx context.Context, in *metastorev1.DeleteDatasetsRequest, opts ...grpc.CallOption) (*metastorev1.DeleteDatasetsResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.DeleteDatasetsResponse, error) {
 		return instance.DeleteDatasets(ctx, in, opts...)
-	})
+	}, codes.ResourceExhausted, codes.FailedPrecondition)
 }
 
 func (c *Client) PollCompactionJobs(ctx context.Context, in *metastorev1.PollCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.PollCompactionJobsResponse, error) {
