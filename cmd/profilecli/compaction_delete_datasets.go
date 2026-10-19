@@ -94,14 +94,37 @@ func deleteDatasets(ctx context.Context, params *deleteDatasetsParams) error {
 	if err := outputDeleteDatasets(ctx, req, resp, params.Output); err != nil {
 		return err
 	}
-	if !req.DryRun && len(resp.ScheduledJobNames) > 0 {
-		return watchDeletionJobs(ctx, mc.ListCompactionJobs, params.Tenant, resp.ScheduledJobNames, params.Output, time.Second)
+	if req.DryRun {
+		return nil
+	}
+	if len(resp.ScheduledJobNames) > 0 {
+		if err := watchDeletionJobs(ctx, mc.ListCompactionJobs, params.Tenant, resp.ScheduledJobNames, params.Output, time.Second); err != nil {
+			return err
+		}
+	}
+	if uint64(len(resp.ScheduledJobNames)) < uint64(resp.MatchedBlocksCount) {
+		return fmt.Errorf("incomplete deletion: scheduled %d of %d matched blocks; rerun the command to delete remaining datasets", len(resp.ScheduledJobNames), resp.MatchedBlocksCount)
+	}
+
+	// Disappearing jobs may have been evicted rather than completed. Verify
+	// the selection again instead of treating absence as proof of deletion.
+	verifyReq := req.CloneVT()
+	verifyReq.DryRun = true
+	remaining, err := mc.DeleteDatasets(ctx, verifyReq)
+	if err != nil {
+		return fmt.Errorf("failed to verify deletion: %w", err)
+	}
+	if remaining.MatchedBlocksCount > 0 {
+		return fmt.Errorf("incomplete deletion: %d matching blocks remain (jobs may have been evicted or new data ingested); rerun the command", remaining.MatchedBlocksCount)
+	}
+	if params.Output != outputJSON {
+		fmt.Fprintln(output(ctx), "Deletion verified: no matching datasets remain in eligible blocks.")
 	}
 	return nil
 }
 
-// Completed jobs are removed from the persisted list. Failures remain visible
-// while the scheduler retries them; stop watching on the first observed failure.
+// Wait until jobs leave the persisted list, then let the caller verify deletion.
+// Absence alone does not prove completion: failed jobs can also be evicted.
 func watchDeletionJobs(ctx context.Context, list func(context.Context, *metastorev1.ListCompactionJobsRequest, ...grpc.CallOption) (*metastorev1.ListCompactionJobsResponse, error), tenant string, names []string, format string, interval time.Duration) error {
 	pending := make(map[string]struct{}, len(names))
 	for _, name := range names {
@@ -133,15 +156,12 @@ func watchDeletionJobs(ctx context.Context, list func(context.Context, *metastor
 		for name := range pending {
 			if _, ok := active[name]; !ok {
 				if format != outputJSON {
-					fmt.Fprintf(output(ctx), "Job %s completed.\n", name)
+					fmt.Fprintf(output(ctx), "Job %s is no longer scheduled.\n", name)
 				}
 				delete(pending, name)
 			}
 		}
 		if len(pending) == 0 {
-			if format != outputJSON {
-				fmt.Fprintln(output(ctx), "All deletion jobs completed.")
-			}
 			return nil
 		}
 		select {

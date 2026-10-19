@@ -164,16 +164,35 @@ stored block metadata uses milliseconds. `matched_bytes` is the size of selected
 not the storage space that will be freed or the rebuilt tenant index size.
 Counts and `BlockDeletionSummary` entries describe planned work, not completed deletion.
 
-A non-dry run schedules one asynchronous job per block and returns its name.
-If a block already has a persisted job, the request fails with `FailedPrecondition`;
-retry after that job finishes or is retired by the scheduler. This includes jobs that
-have exhausted `MaxFailures`: their final worker can still report completion, even
-after its lease expires. Dataset deletion does not reset or bypass these jobs. A full scheduler returns `ResourceExhausted` without
-scheduling part of the plan. Dry runs do not reserve blocks, and earlier requests do
-not cover newly ingested data.
+A non-dry run schedules one asynchronous job per available block and returns its name.
+Blocks with persisted jobs are skipped. This includes jobs that have exhausted
+`MaxFailures`: their final worker can still report completion, even after its lease
+expires. Dataset deletion does not reset or bypass these jobs. If all matching blocks
+are busy, the request fails with `FailedPrecondition`; retry after their jobs finish
+or are retired by the scheduler.
 
-Deletion uses a separate Raft preparation command, independent of worker polling.
-Expected rejections become gRPC errors, not fatal FSM errors.
+Deletion jobs can fill at most 90% of the scheduler's configured maximum queue size
+(with a minimum limit of one job), leaving headroom for normal compaction. Scheduling
+stops at this watermark and returns any jobs already scheduled. If no jobs can be
+scheduled because the queue is full, the request returns `ResourceExhausted`.
+Response counts describe all matching blocks, not just those scheduled: compare
+`matched_blocks_count` with the number of `scheduled_job_names` to detect partial
+scheduling. Dry runs do not reserve blocks, and earlier requests do not cover newly
+ingested data.
+
+The CLI waits for the returned jobs to leave the schedule. If only part of the
+selection was scheduled, it exits with an incomplete-deletion error; rerun the command
+to process remaining datasets. Otherwise, it performs a final dry run and reports
+success only if no matching datasets remain in eligible blocks. Missing jobs alone
+are not proof of completion because failed jobs can be evicted. Newly ingested data
+can also cause verification to report remaining matches. JSON output remains the
+initial scheduling response; check the command's exit status for verification success.
+
+Deletion planning uses a read-only BoltDB transaction via `ConsistentRead`, without
+blocking FSM writes during the index scan. Non-dry-run planning is serialized with
+worker polling and concurrent deletion requests. The prepared update is committed
+through the normal Raft compaction-plan update command, which rechecks deletion
+sources before applying it. Expected rejections become gRPC errors, not fatal FSM errors.
 Workers rebuild profiles, indexes, symbols, and metadata from surviving datasets.
 They keep the compaction level unchanged and re-enqueue replacements for subsequent level-up compaction.
 If no datasets remain, no replacement object is uploaded.

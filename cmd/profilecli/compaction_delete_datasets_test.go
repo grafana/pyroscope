@@ -18,13 +18,17 @@ import (
 type fakeDeleteDatasetsServer struct {
 	metastorev1.UnimplementedCompactionServiceServer
 
-	addr    string
-	lastReq *metastorev1.DeleteDatasetsRequest
-	resp    *metastorev1.DeleteDatasetsResponse
+	addr       string
+	lastReq    *metastorev1.DeleteDatasetsRequest
+	resp       *metastorev1.DeleteDatasetsResponse
+	verifyResp *metastorev1.DeleteDatasetsResponse
 }
 
 func (s *fakeDeleteDatasetsServer) DeleteDatasets(_ context.Context, req *metastorev1.DeleteDatasetsRequest) (*metastorev1.DeleteDatasetsResponse, error) {
 	s.lastReq = req
+	if req.DryRun && s.verifyResp != nil {
+		return s.verifyResp, nil
+	}
 	return s.resp, nil
 }
 
@@ -140,6 +144,8 @@ func TestDeleteDatasetsCommand(t *testing.T) {
 	})
 
 	t.Run("json output", func(t *testing.T) {
+		srv.verifyResp = &metastorev1.DeleteDatasetsResponse{DryRun: true}
+		defer func() { srv.verifyResp = nil }()
 		var buf bytes.Buffer
 		ctx := withOutput(context.Background(), &buf)
 
@@ -153,7 +159,7 @@ func TestDeleteDatasetsCommand(t *testing.T) {
 			Output:           outputJSON,
 		})
 		require.NoError(t, err)
-		require.False(t, srv.lastReq.DryRun)
+		require.True(t, srv.lastReq.DryRun, "verify deletion with a dry run")
 
 		var parsed metastorev1.DeleteDatasetsResponse
 		dec := json.NewDecoder(&buf)
