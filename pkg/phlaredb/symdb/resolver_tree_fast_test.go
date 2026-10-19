@@ -9,6 +9,44 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
+func Test_buildTruncatedCallTree_matches_parent_pointer_tree_copies(t *testing.T) {
+	for _, f := range []string{"testdata/profile.pb.gz", "testdata/big-profile.pb.gz"} {
+		t.Run(f, func(t *testing.T) {
+			s := newBlockSuite(t, [][]string{{f}})
+			defer s.teardown()
+			p, err := s.reader.Partition(context.Background(), 0)
+			require.NoError(t, err)
+			defer p.Release()
+			symbols := p.Symbols()
+			lookup := func(i int32) model.FunctionName { return model.FunctionName(symbols.Strings[i]) }
+			iterator := symbols.Stacktraces.(StacktraceIDRangeIterator)
+
+			for _, samples := range s.indexed[0] {
+				for _, maxNodes := range []int64{0, 1, 16, 100, 1 << 10, 16 << 10, 1 << 20} {
+					appender := NewSampleAppender()
+					appender.AppendMany(samples.Samples.StacktraceIDs, samples.Samples.Values)
+
+					expected, err := buildTreeFromParentPointerTrees[model.FunctionName, model.FunctionNameI](
+						context.Background(), iterator.SplitStacktraceIDRanges(appender), symbols, maxNodes, nil, lookup)
+					require.NoError(t, err)
+
+					c, ok := buildTruncatedCallTree(symbols, appender, maxNodes)
+					require.True(t, ok)
+					actual := model.TreeFromStacktraceTree[model.FunctionName, model.FunctionNameI](stacktraceTreeFromCallTree(c), maxNodes, lookup)
+					require.Equal(t, expected.Bytes(maxNodes, nil), actual.Bytes(maxNodes, nil), "max nodes %d", maxNodes)
+
+					expected, err = buildTreeFromParentPointerTrees[model.FunctionName, model.FunctionNameI](
+						context.Background(), iterator.SplitStacktraceIDRanges(appender), symbols, maxNodes, nil, lookup)
+					require.NoError(t, err)
+					f := model.NewFlatTree()
+					f.MergeCallTree(c, maxNodes)
+					require.Equal(t, expected.Bytes(maxNodes, nil), f.Bytes(maxNodes), "max nodes %d", maxNodes)
+				}
+			}
+		})
+	}
+}
+
 func Test_buildCallTree_matches_stacktrace_inserts(t *testing.T) {
 	for _, f := range []string{"testdata/profile.pb.gz", "testdata/big-profile.pb.gz"} {
 		t.Run(f, func(t *testing.T) {

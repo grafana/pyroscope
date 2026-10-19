@@ -1,6 +1,8 @@
 package symdb
 
 import (
+	"slices"
+
 	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
@@ -169,6 +171,10 @@ func buildCallTree(symbols *Symbols, appender *SampleAppender) (*model.CallTree,
 		}
 	}
 
+	return t.callTree(symbols.Strings), true
+}
+
+func (t *functionTree) callTree(names []string) *model.CallTree {
 	total := make([]int64, len(t.self))
 	copy(total, t.self)
 	for i := len(total) - 1; i > 0; i-- {
@@ -181,8 +187,83 @@ func buildCallTree(symbols *Symbols, appender *SampleAppender) (*model.CallTree,
 		Name:   t.name,
 		Self:   t.self,
 		Total:  total,
-		Names:  symbols.Strings,
-	}, true
+		Names:  names,
+	}
+}
+
+// buildTruncatedCallTree is buildCallTree for the stack traces truncated
+// as buildTreeForStacktraceIDRange does before building the function tree:
+// locations with subtree totals below the maxNodes*4-th largest are dropped,
+// and the weight of each dropped subtree is kept in a model.CallTreeTruncated
+// leaf of the parent.
+//
+// The function reports false if the stack traces are not backed by a single
+// parent pointer tree.
+func buildTruncatedCallTree(symbols *Symbols, appender *SampleAppender, maxNodes int64) (*model.CallTree, bool) {
+	iterator, ok := symbols.Stacktraces.(StacktraceIDRangeIterator)
+	if !ok || appender.Len() == 0 {
+		return nil, false
+	}
+	it := iterator.SplitStacktraceIDRanges(appender)
+	if !it.Next() {
+		return nil, false
+	}
+	r := it.At()
+	ppt, ok := r.ParentPointerTree.(*parentPointerTree)
+	if !ok || it.Next() {
+		return nil, false
+	}
+	nodes := ppt.nodes
+	n := len(nodes)
+
+	// Sample values, and totals of location subtrees. As in
+	// propagateNodeValues, totals do not propagate to the root.
+	self := make([]int64, n)
+	for i, sid := range r.IDs {
+		if v := int64(r.Values[i]); sid > 0 && int(sid) < n && v > 0 {
+			self[sid] = v
+		}
+	}
+	total := make([]int64, n)
+	copy(total, self)
+	for i := n - 1; i >= 1; i-- {
+		if p := nodes[i].p; p > 0 {
+			total[p] += total[i]
+		}
+	}
+	var minValue int64
+	if m := maxNodes * 4; m >= 1 && m < int64(n) {
+		minValue = model.KthLargest(slices.Clone(total), int(m))
+	}
+
+	t := newFunctionTree(n)
+	fn := make([]int32, n)
+	truncated := make([]bool, n)
+	for i := 1; i < n; i++ {
+		p := nodes[i].p
+		if total[i] < minValue {
+			truncated[i] = true
+			if !truncated[p] && total[i] > 0 {
+				// The topmost truncated location keeps the weight of
+				// its subtree.
+				x := t.child(fn[p], model.CallTreeTruncated)
+				t.self[x] += total[i]
+			}
+			continue
+		}
+		if total[i] == 0 {
+			// The location is not sampled.
+			continue
+		}
+		f := fn[p]
+		lines := symbols.Locations[nodes[i].r].Line
+		for l := len(lines) - 1; l >= 0; l-- {
+			f = t.child(f, int32(symbols.Functions[lines[l].FunctionId].Name))
+		}
+		fn[i] = f
+		t.self[f] += self[i]
+	}
+	return t.callTree(symbols.Strings), true
 }
 
 // stacktraceTreeFromCallTree converts the call tree to the stack trace tree
@@ -205,6 +286,9 @@ func stacktraceTreeFromCallTree(c *model.CallTree) *model.StacktraceTree {
 		p := c.Parent[i]
 		st.Nodes[i].NextSibling = st.Nodes[p].FirstChild
 		st.Nodes[p].FirstChild = int32(i)
+		if c.Name[i] == model.CallTreeTruncated {
+			st.Nodes[i].Location = sentinel
+		}
 	}
 	return st
 }

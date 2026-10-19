@@ -218,11 +218,20 @@ func readFlatTreeRecord(b []byte, offset int) (name []byte, value uint64, next i
 // zero.
 type CallTree struct {
 	Parent []int32
-	Name   []int32 // Index into Names.
+	Name   []int32 // Index into Names, or CallTreeTruncated.
 	Self   []int64
 	Total  []int64
 	Names  []string
 }
+
+// CallTreeTruncated is the name of a leaf of truncated stack traces, the
+// sentinel location of StacktraceTree: it is always replaced by "other".
+const CallTreeTruncated = -2
+
+// KthLargest returns the k-th largest value of s (1-based), or 0 if s has
+// fewer values: the root of a min-heap of the k largest values. The values
+// are reordered.
+func KthLargest(s []int64, k int) int64 { return kthLargest(s, k) }
 
 // MergeCallTree merges the call tree truncated to maxNodes as if it was
 // converted to FunctionNameTree with TreeFromStacktraceTree and serialized
@@ -263,7 +272,7 @@ func PrepareCallTree(c *CallTree, maxNodes int64) *PreparedCallTree {
 		if !kept[p] {
 			continue
 		}
-		if c.Total[i] >= minValue {
+		if c.Total[i] >= minValue && c.Name[i] != CallTreeTruncated {
 			kept[i] = true
 			off[p+1]++
 			continue
@@ -271,10 +280,12 @@ func PrepareCallTree(c *CallTree, maxNodes int64) *PreparedCallTree {
 		if otherSum == nil {
 			otherSum = make([]int64, n)
 		}
-		if otherSum[p] == 0 {
-			off[p+1]++
-		}
 		otherSum[p] += c.Total[i]
+	}
+	for i, v := range otherSum {
+		if v > 0 {
+			off[i+1]++
+		}
 	}
 	for i := 1; i <= n; i++ {
 		off[i] += off[i-1]
@@ -419,7 +430,7 @@ func callTreeMinValue(c *CallTree, maxNodes int64) int64 {
 	var other []int64
 	for i := 1; i < n; i++ {
 		p := c.Parent[i]
-		if c.Total[i] >= m1 {
+		if c.Total[i] >= m1 && c.Name[i] != CallTreeTruncated {
 			totals = append(totals, c.Total[i])
 		} else if p == 0 || c.Total[p] >= m1 {
 			if other == nil {

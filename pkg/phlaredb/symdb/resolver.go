@@ -304,9 +304,8 @@ func (r *Resolver) LocationRefNameTree() (*model.LocationRefNameTree, ResultBuil
 //
 // The function reports false if the call tree can't be built in this way:
 // the samples span multiple partitions, a stack trace selector is set, the
-// stack traces are not backed by parent pointer trees, a function is named
-// as truncated nodes are, or Tree would truncate the stack trace tree before
-// building the function name tree.
+// stack traces are not backed by parent pointer trees, or a function is
+// named as truncated nodes are.
 func (r *Resolver) CallTree() (*model.CallTree, bool, error) {
 	if len(r.p) != 1 || r.sts != nil {
 		return nil, false, nil
@@ -316,10 +315,15 @@ func (r *Resolver) CallTree() (*model.CallTree, bool, error) {
 	var tree *model.CallTree
 	var ok bool
 	err := r.withSymbols(ctx, func(symbols *Symbols, appender *SampleAppender) error {
-		if shouldCopyTree(appender, r.maxNodes) || model.HasOtherFunctionName(symbols.Strings) {
+		if model.HasOtherFunctionName(symbols.Strings) {
 			return nil
 		}
-		tree, ok = buildCallTree(symbols, appender)
+		if shouldCopyTree(appender, r.maxNodes) {
+			span.SetTag("truncated", true)
+			tree, ok = buildTruncatedCallTree(symbols, appender, r.maxNodes)
+		} else {
+			tree, ok = buildCallTree(symbols, appender)
+		}
 		return nil
 	})
 	return tree, ok, err
