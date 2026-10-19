@@ -30,7 +30,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/dskit v0.0.0-20260616135346-e96eda8260cd
+	github.com/grafana/dskit v0.0.0-20261014094829-7a896efbf053
 	github.com/grafana/pyroscope-go v1.2.8
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
