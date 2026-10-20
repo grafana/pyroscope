@@ -171,6 +171,19 @@ func (q *QueryBackend) Invoke(
 		}
 	}
 
+	if nodeType == queryv1.QueryNode_READ {
+		// BlockReader snapshots its timing before root-level finalization. Include
+		// all local processing here so the client does not classify it as unaccounted.
+		if node := resp.GetDiagnostics().GetExecutionNode(); node != nil && node.Stats != nil {
+			endTime := time.Now()
+			node.Stats.ProcessingDurationNs = endTime.Sub(startTime).Nanoseconds()
+			if collectDiag {
+				node.StartTimeNs = startTime.UnixNano()
+				node.EndTimeNs = endTime.UnixNano()
+			}
+		}
+	}
+
 	// The response is complete: all that remains is encoding and the size check in
 	// grpc-go's Server.sendResponse, so a failure there recurs on every attempt.
 	// Queries that failed return above, still retryable.
