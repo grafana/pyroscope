@@ -38,7 +38,7 @@ Our .NET profiler works with the following .NET versions:
 * .NET 8
 * .NET 9
 * .NET 10
-* .NET Framework 4.7 and later, including 4.7.2 and 4.8 (Windows only)
+* .NET Framework 4.7 and later (Windows only)
 
 {{< admonition type="caution" >}}
 Windows support is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with version 1.3.0 of the profiler. On .NET 8 and later, all profiling types work the same as on Linux. On .NET Framework 4.7 and later, CPU and wall-time profiling are available, including for applications hosted in IIS.

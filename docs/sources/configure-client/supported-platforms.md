@@ -30,7 +30,7 @@ For the list of profile types each SDK produces, refer to [Profile types and ins
 | Node.js | Yes | Yes | Yes | Yes | Yes |
 
 {{< admonition type="note" >}}
-Windows support for the .NET SDK is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with profiler version 1.3.0. On .NET 8 and later it has full parity with Linux; on .NET Framework 4.7 and later (including 4.7.2 and 4.8), CPU and wall-time profiling are available, including for applications hosted in IIS. Refer to the [.NET SDK documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/dotnet/).
+Windows support for the .NET SDK is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with profiler version 1.3.0. On .NET 8 and later it has full parity with Linux; on .NET Framework 4.7 and later, CPU and wall-time profiling are available, including for applications hosted in IIS. Refer to the [.NET SDK documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/dotnet/).
 {{< /admonition >}}
 
 
