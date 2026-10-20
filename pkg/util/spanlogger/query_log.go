@@ -69,6 +69,9 @@ func (l LogSpanParametersWrapper) logQuery(
 			"fetched_object_bytes", humanize.Bytes(stats.ObjectStorageBytes),
 			"fetched_metastore_bytes", humanize.Bytes(stats.MetastoreBytes),
 			"estimated_object_bytes", humanize.Bytes(stats.EstimatedBytes),
+			"backend_processing_duration", stats.ProcessingDuration,
+			"backend_backoff_duration", stats.BackoffDuration,
+			"backend_unaccounted_duration", stats.UnaccountedDuration,
 		)
 		if stats.ObjectStorageBytes > 0 {
 			finishFields = append(finishFields,

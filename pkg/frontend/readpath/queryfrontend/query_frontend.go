@@ -69,6 +69,7 @@ type QueryFrontend struct {
 
 type queryFrontendMetrics struct {
 	fetchedBytesTotal             *prometheus.CounterVec
+	backendDurationSecondsTotal   *prometheus.CounterVec
 	estimationAccuracyRatio       prometheus.Histogram
 	backendInflightBlocks         prometheus.Gauge
 	backendInflightEstimatedBytes prometheus.Gauge
@@ -97,6 +98,15 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			},
 			[]string{"tenant", "kind"},
 		),
+		backendDurationSecondsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Subsystem: "query_frontend",
+				Name:      "backend_duration_seconds_total",
+				Help:      "Total critical-path query-backend latency in seconds for successful queries, broken down by phase (processing, backoff, unaccounted).",
+			},
+			[]string{"phase"},
+		),
 		// estimationAccuracyRatio records the ratio of the pre-execution
 		// metadata size estimate (weight.Total()) to the actual object-storage
 		// bytes fetched per query.  A value of 1.0 means the estimate matched
@@ -120,7 +130,13 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 		}),
 	}
 	if reg != nil {
-		reg.MustRegister(m.fetchedBytesTotal, m.estimationAccuracyRatio, m.backendInflightBlocks, m.backendInflightEstimatedBytes)
+		reg.MustRegister(
+			m.fetchedBytesTotal,
+			m.backendDurationSecondsTotal,
+			m.estimationAccuracyRatio,
+			m.backendInflightBlocks,
+			m.backendInflightEstimatedBytes,
+		)
 	}
 	return m
 }
@@ -311,9 +327,16 @@ func (q *QueryFrontend) doQuery(
 	// Use dskit's JoinTenantIDs so the label matches the standard |-separated
 	// org ID format used elsewhere in the Grafana stack.
 	tenantLabel := tenant.JoinTenantIDs(tenants)
-	objectBytes := resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
+	execStats := resp.GetDiagnostics().GetExecutionNode().GetStats()
+	objectBytes := execStats.GetBytesFetched()
+	processingDuration := time.Duration(execStats.GetProcessingDurationNs())
+	backoffDuration := time.Duration(execStats.GetBackoffDurationNs())
+	unaccountedDuration := time.Duration(execStats.GetUnaccountedDurationNs())
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(objectBytes))
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
+	q.metrics.backendDurationSecondsTotal.WithLabelValues("processing").Add(processingDuration.Seconds())
+	q.metrics.backendDurationSecondsTotal.WithLabelValues("backoff").Add(backoffDuration.Seconds())
+	q.metrics.backendDurationSecondsTotal.WithLabelValues("unaccounted").Add(unaccountedDuration.Seconds())
 	// Record estimation accuracy: ratio of pre-execution weight to actual bytes
 	// fetched. Only observed when the backend fetched bytes to avoid division
 	// by zero (e.g. empty result sets).
@@ -324,6 +347,9 @@ func (q *QueryFrontend) doQuery(
 		qs.ObjectStorageBytes += objectBytes
 		qs.MetastoreBytes += metastoreBytes
 		qs.EstimatedBytes += weight.Total()
+		qs.ProcessingDuration += processingDuration
+		qs.BackoffDuration += backoffDuration
+		qs.UnaccountedDuration += unaccountedDuration
 	}
 
 	if resp.Diagnostics == nil {

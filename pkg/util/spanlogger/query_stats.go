@@ -1,6 +1,9 @@
 package spanlogger
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // QueryStats is populated by the query-frontend during query execution and
 // read by LogSpanParametersWrapper after the call returns, so that bytes
@@ -11,6 +14,11 @@ type QueryStats struct {
 	// EstimatedBytes is the pre-execution metadata size estimate (weight.Total())
 	// derived from block dataset section offsets before the backend is invoked.
 	EstimatedBytes uint64
+	// Backend durations cover successful queries only. Failed queries do not
+	// return the execution statistics needed for the critical-path breakdown.
+	ProcessingDuration  time.Duration
+	BackoffDuration     time.Duration
+	UnaccountedDuration time.Duration
 }
 
 type queryStatsKey struct{}

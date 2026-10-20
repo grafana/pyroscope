@@ -922,7 +922,7 @@ func (x *ExecutionNode) GetError() string {
 	return ""
 }
 
-// ExecutionStats captures statistics for READ node execution.
+// ExecutionStats captures statistics for READ and MERGE node execution.
 type ExecutionStats struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	BlocksRead        int64                  `protobuf:"varint,1,opt,name=blocks_read,json=blocksRead,proto3" json:"blocks_read,omitempty"`
@@ -932,9 +932,20 @@ type ExecutionStats struct {
 	// during this invocation. It counts only the bytes from this single,
 	// successful Invoke call: retried or hedged calls that did not produce a
 	// response are not included, so the value is deterministic across retries.
-	BytesFetched  uint64 `protobuf:"varint,4,opt,name=bytes_fetched,json=bytesFetched,proto3" json:"bytes_fetched,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BytesFetched uint64 `protobuf:"varint,4,opt,name=bytes_fetched,json=bytesFetched,proto3" json:"bytes_fetched,omitempty"`
+	// processing_duration_ns is the critical-path time (in nanoseconds) spent
+	// executing successful invocations on query-backend nodes, including local
+	// aggregation but excluding client-side retry backoff and unaccounted time.
+	ProcessingDurationNs int64 `protobuf:"varint,5,opt,name=processing_duration_ns,json=processingDurationNs,proto3" json:"processing_duration_ns,omitempty"`
+	// backoff_duration_ns is the critical-path time (in nanoseconds) spent waiting
+	// between query-backend RPC attempts (e.g. concurrency-limiter retry backoff).
+	BackoffDurationNs int64 `protobuf:"varint,6,opt,name=backoff_duration_ns,json=backoffDurationNs,proto3" json:"backoff_duration_ns,omitempty"`
+	// unaccounted_duration_ns is the remaining critical-path client-observed time
+	// not classified as processing or backoff. It includes transport, connection
+	// waits, and failed attempts whose backend timings were not returned.
+	UnaccountedDurationNs int64 `protobuf:"varint,7,opt,name=unaccounted_duration_ns,json=unaccountedDurationNs,proto3" json:"unaccounted_duration_ns,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ExecutionStats) Reset() {
@@ -991,6 +1002,27 @@ func (x *ExecutionStats) GetBlockExecutions() []*BlockExecution {
 func (x *ExecutionStats) GetBytesFetched() uint64 {
 	if x != nil {
 		return x.BytesFetched
+	}
+	return 0
+}
+
+func (x *ExecutionStats) GetProcessingDurationNs() int64 {
+	if x != nil {
+		return x.ProcessingDurationNs
+	}
+	return 0
+}
+
+func (x *ExecutionStats) GetBackoffDurationNs() int64 {
+	if x != nil {
+		return x.BackoffDurationNs
+	}
+	return 0
+}
+
+func (x *ExecutionStats) GetUnaccountedDurationNs() int64 {
+	if x != nil {
+		return x.UnaccountedDurationNs
 	}
 	return 0
 }
@@ -3032,13 +3064,16 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\vend_time_ns\x18\x04 \x01(\x03R\tendTimeNs\x123\n" +
 	"\bchildren\x18\x05 \x03(\v2\x17.query.v1.ExecutionNodeR\bchildren\x12.\n" +
 	"\x05stats\x18\x06 \x01(\v2\x18.query.v1.ExecutionStatsR\x05stats\x12\x14\n" +
-	"\x05error\x18\a \x01(\tR\x05error\"\xca\x01\n" +
+	"\x05error\x18\a \x01(\tR\x05error\"\xe8\x02\n" +
 	"\x0eExecutionStats\x12\x1f\n" +
 	"\vblocks_read\x18\x01 \x01(\x03R\n" +
 	"blocksRead\x12-\n" +
 	"\x12datasets_processed\x18\x02 \x01(\x03R\x11datasetsProcessed\x12C\n" +
 	"\x10block_executions\x18\x03 \x03(\v2\x18.query.v1.BlockExecutionR\x0fblockExecutions\x12#\n" +
-	"\rbytes_fetched\x18\x04 \x01(\x04R\fbytesFetched\"\xf3\x01\n" +
+	"\rbytes_fetched\x18\x04 \x01(\x04R\fbytesFetched\x124\n" +
+	"\x16processing_duration_ns\x18\x05 \x01(\x03R\x14processingDurationNs\x12.\n" +
+	"\x13backoff_duration_ns\x18\x06 \x01(\x03R\x11backoffDurationNs\x126\n" +
+	"\x17unaccounted_duration_ns\x18\a \x01(\x03R\x15unaccountedDurationNs\"\xf3\x01\n" +
 	"\x0eBlockExecution\x12\x19\n" +
 	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\"\n" +
 	"\rstart_time_ns\x18\x02 \x01(\x03R\vstartTimeNs\x12\x1e\n" +

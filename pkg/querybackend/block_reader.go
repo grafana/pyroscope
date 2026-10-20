@@ -180,8 +180,10 @@ func (b *BlockReader) Invoke(
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = &queryv1.Diagnostics{}
 	}
+	endTime := time.Now()
 	stats := &queryv1.ExecutionStats{
-		BytesFetched: fetchedBytes.Load(),
+		BytesFetched:         fetchedBytes.Load(),
+		ProcessingDurationNs: endTime.Sub(startTime).Nanoseconds(),
 	}
 	if collectDiag {
 		stats.BlocksRead = blocksCount
@@ -191,7 +193,7 @@ func (b *BlockReader) Invoke(
 			Type:        queryv1.QueryNode_READ,
 			Executor:    b.hostname,
 			StartTimeNs: startTime.UnixNano(),
-			EndTimeNs:   time.Now().UnixNano(),
+			EndTimeNs:   endTime.UnixNano(),
 			Stats:       stats,
 		}
 	} else {
