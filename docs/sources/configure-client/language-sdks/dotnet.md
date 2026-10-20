@@ -38,10 +38,10 @@ Our .NET profiler works with the following .NET versions:
 * .NET 8
 * .NET 9
 * .NET 10
-* .NET Framework 4.8 (Windows only)
+* .NET Framework 4.7 and later, including 4.7.2 and 4.8 (Windows only)
 
 {{< admonition type="caution" >}}
-Windows support is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with version 1.3.0 of the profiler. On .NET 8 and later, all profiling types work the same as on Linux. On .NET Framework 4.8, only CPU profiling is available.
+Windows support is in [public preview](https://grafana.com/docs/release-life-cycle/), starting with version 1.3.0 of the profiler. On .NET 8 and later, all profiling types work the same as on Linux. On .NET Framework 4.7 and later, CPU and wall-time profiling are available, including for applications hosted in IIS.
 {{< /admonition >}}
 
 For platform support across all SDKs, refer to [Supported operating systems and architectures](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/supported-platforms/).
@@ -101,13 +101,35 @@ CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
 CORECLR_PROFILER_PATH=C:\pyroscope\Pyroscope.Profiler.Native.dll
 ```
 
-For .NET Framework 4.8 applications, use the `COR_*` attach variables instead of the `CORECLR_*` ones:
+For .NET Framework applications, use the `COR_*` attach variables instead of the `CORECLR_*` ones:
 
 ```shell
 COR_ENABLE_PROFILING=1
 COR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
 COR_PROFILER_PATH=C:\pyroscope\Pyroscope.Profiler.Native.dll
 ```
+
+#### IIS
+
+For ASP.NET applications hosted in IIS, set the variables on the application pool. The `w3wp.exe` worker processes of the pool load the profiler after a recycle. For example, for `DefaultAppPool`:
+
+```powershell
+$appcmd = "$env:windir\System32\inetsrv\appcmd.exe"
+$vars = @{
+    COR_ENABLE_PROFILING        = "1"
+    COR_PROFILER                = "{BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}"
+    COR_PROFILER_PATH           = "C:\pyroscope\Pyroscope.Profiler.Native.dll"
+    PYROSCOPE_PROFILING_ENABLED = "1"
+    PYROSCOPE_APPLICATION_NAME  = "my.iis.app"
+    PYROSCOPE_SERVER_ADDRESS    = "http://localhost:4040"
+}
+foreach ($k in $vars.Keys) {
+    & $appcmd set config -section:system.applicationHost/applicationPools "/+[name='DefaultAppPool'].environmentVariables.[name='$k',value='$($vars[$k])']" /commit:apphost
+}
+& $appcmd recycle apppool /apppool.name:DefaultAppPool
+```
+
+The application pool identity must have read access to `Pyroscope.Profiler.Native.dll`.
 
 {{< admonition type="note" >}}
 Since .NET version 8 the environment variable `DOTNET_EnableDiagnostics=0` (or its legacy equivalent `COMPlus_EnableDiagnostics=0`) will also disable the profiler. In order to get the previous behaviour (allowing profiling, but switch off IPC and Debugging) the following environment variables should be set instead:
