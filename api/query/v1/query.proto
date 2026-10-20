@@ -135,7 +135,7 @@ message ExecutionNode {
   string error = 7;
 }
 
-// ExecutionStats captures statistics for READ node execution.
+// ExecutionStats captures statistics for READ and MERGE node execution.
 message ExecutionStats {
   int64 blocks_read = 1;
   int64 datasets_processed = 2;
@@ -145,6 +145,17 @@ message ExecutionStats {
   // successful Invoke call: retried or hedged calls that did not produce a
   // response are not included, so the value is deterministic across retries.
   uint64 bytes_fetched = 4;
+  // processing_duration_ns is the critical-path time (in nanoseconds) spent
+  // executing successful invocations on query-backend nodes, including local
+  // aggregation but excluding client-side retry backoff and unaccounted time.
+  int64 processing_duration_ns = 5;
+  // backoff_duration_ns is the critical-path time (in nanoseconds) spent waiting
+  // between query-backend RPC attempts (e.g. concurrency-limiter retry backoff).
+  int64 backoff_duration_ns = 6;
+  // unaccounted_duration_ns is the remaining critical-path client-observed time
+  // not classified as processing or backoff. It includes transport, connection
+  // waits, and failed attempts whose backend timings were not returned.
+  int64 unaccounted_duration_ns = 7;
 }
 
 // BlockExecution captures execution details for a single block.

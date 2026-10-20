@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
+	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
 const (
@@ -451,4 +452,47 @@ func backendWorkGauge(t *testing.T, reg *prometheus.Registry, name string) float
 	}
 	t.Fatalf("metric %s not found", name)
 	return 0
+}
+
+func TestQueryFrontend_BackendDurationMetrics(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	blocks := []*metastorev1.BlockMeta{
+		{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+	}
+	backend := mockqueryfrontend.NewMockQueryBackend(t)
+	backend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{
+		Diagnostics: &queryv1.Diagnostics{
+			ExecutionNode: &queryv1.ExecutionNode{
+				Stats: &queryv1.ExecutionStats{
+					ProcessingDurationNs:  int64(250 * time.Millisecond),
+					BackoffDurationNs:     int64(1500 * time.Millisecond),
+					UnaccountedDurationNs: int64(50 * time.Millisecond),
+				},
+			},
+		},
+	}, nil).Once()
+	qf := backendWorkFrontend(t, reg, blocks, backend)
+
+	ctx, stats := spanlogger.ContextWithQueryStats(tenant.InjectTenantID(t.Context(), "test-tenant"))
+	_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+	require.NoError(t, err)
+	require.Equal(t, 250*time.Millisecond, stats.ProcessingDuration)
+	require.Equal(t, 1500*time.Millisecond, stats.BackoffDuration)
+	require.Equal(t, 50*time.Millisecond, stats.UnaccountedDuration)
+
+	families, err := reg.Gather()
+	require.NoError(t, err)
+	got := map[string]float64{}
+	for _, family := range families {
+		if family.GetName() == "pyroscope_query_frontend_backend_duration_seconds_total" {
+			for _, m := range family.GetMetric() {
+				require.Len(t, m.GetLabel(), 1)
+				require.Equal(t, "phase", m.GetLabel()[0].GetName())
+				got[m.GetLabel()[0].GetValue()] = m.GetCounter().GetValue()
+			}
+		}
+	}
+	require.InDelta(t, 0.25, got["processing"], 1e-6)
+	require.InDelta(t, 1.5, got["backoff"], 1e-6)
+	require.InDelta(t, 0.05, got["unaccounted"], 1e-6)
 }

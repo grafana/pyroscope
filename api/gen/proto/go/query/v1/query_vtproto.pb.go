@@ -288,6 +288,9 @@ func (m *ExecutionStats) CloneVT() *ExecutionStats {
 	r.BlocksRead = m.BlocksRead
 	r.DatasetsProcessed = m.DatasetsProcessed
 	r.BytesFetched = m.BytesFetched
+	r.ProcessingDurationNs = m.ProcessingDurationNs
+	r.BackoffDurationNs = m.BackoffDurationNs
+	r.UnaccountedDurationNs = m.UnaccountedDurationNs
 	if rhs := m.BlockExecutions; rhs != nil {
 		tmpContainer := make([]*BlockExecution, len(rhs))
 		for k, v := range rhs {
@@ -1559,6 +1562,15 @@ func (this *ExecutionStats) EqualVT(that *ExecutionStats) bool {
 		}
 	}
 	if this.BytesFetched != that.BytesFetched {
+		return false
+	}
+	if this.ProcessingDurationNs != that.ProcessingDurationNs {
+		return false
+	}
+	if this.BackoffDurationNs != that.BackoffDurationNs {
+		return false
+	}
+	if this.UnaccountedDurationNs != that.UnaccountedDurationNs {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -3682,6 +3694,21 @@ func (m *ExecutionStats) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.UnaccountedDurationNs != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.UnaccountedDurationNs))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.BackoffDurationNs != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BackoffDurationNs))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.ProcessingDurationNs != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ProcessingDurationNs))
+		i--
+		dAtA[i] = 0x28
 	}
 	if m.BytesFetched != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BytesFetched))
@@ -6118,6 +6145,15 @@ func (m *ExecutionStats) SizeVT() (n int) {
 	}
 	if m.BytesFetched != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.BytesFetched))
+	}
+	if m.ProcessingDurationNs != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ProcessingDurationNs))
+	}
+	if m.BackoffDurationNs != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BackoffDurationNs))
+	}
+	if m.UnaccountedDurationNs != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.UnaccountedDurationNs))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -8842,6 +8878,63 @@ func (m *ExecutionStats) UnmarshalVT(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.BytesFetched |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProcessingDurationNs", wireType)
+			}
+			m.ProcessingDurationNs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ProcessingDurationNs |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BackoffDurationNs", wireType)
+			}
+			m.BackoffDurationNs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BackoffDurationNs |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UnaccountedDurationNs", wireType)
+			}
+			m.UnaccountedDurationNs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.UnaccountedDurationNs |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
