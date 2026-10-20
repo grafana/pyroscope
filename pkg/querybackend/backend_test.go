@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-kit/log"
@@ -42,36 +43,38 @@ func (s *testServerStream) SetTrailer(md metadata.MD) error {
 func TestQueryBackend_ReadProcessingIncludesFinalization(t *testing.T) {
 	for _, collectDiag := range []bool{false, true} {
 		t.Run(map[bool]string{false: "without diagnostics", true: "with diagnostics"}[collectDiag], func(t *testing.T) {
-			var readerEnd time.Time
-			handler := &testQueryHandler{invoke: func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
-				readerEnd = time.Now()
-				// Ensure post-snapshot work is visible even on coarse clocks.
-				time.Sleep(time.Millisecond)
-				return &queryv1.InvokeResponse{
-					Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{
-						EndTimeNs: readerEnd.UnixNano(),
-						Stats:     &queryv1.ExecutionStats{ProcessingDurationNs: 1},
-					}},
-					Reports: []*queryv1.Report{{TimeSeriesAnalysis: &queryv1.TimeSeriesAnalysisReport{
-						Query: &queryv1.TimeSeriesAnalysisQuery{Step: 1},
-					}}},
-				}, nil
-			}}
-			q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler)
-			require.NoError(t, err)
-			resp, err := q.Invoke(context.Background(), &queryv1.InvokeRequest{
-				QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ}},
-				Options:   &queryv1.InvokeOptions{Finalize: true, CollectDiagnostics: collectDiag},
+			synctest.Test(t, func(t *testing.T) {
+				var readerEnd time.Time
+				handler := &testQueryHandler{invoke: func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+					readerEnd = time.Now()
+					// Simulate local work after the reader snapshots its timing.
+					time.Sleep(time.Millisecond)
+					return &queryv1.InvokeResponse{
+						Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{
+							EndTimeNs: readerEnd.UnixNano(),
+							Stats:     &queryv1.ExecutionStats{ProcessingDurationNs: 1},
+						}},
+						Reports: []*queryv1.Report{{TimeSeriesAnalysis: &queryv1.TimeSeriesAnalysisReport{
+							Query: &queryv1.TimeSeriesAnalysisQuery{Step: 1},
+						}}},
+					}, nil
+				}}
+				q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler)
+				require.NoError(t, err)
+				resp, err := q.Invoke(context.Background(), &queryv1.InvokeRequest{
+					QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ}},
+					Options:   &queryv1.InvokeOptions{Finalize: true, CollectDiagnostics: collectDiag},
+				})
+				require.NoError(t, err)
+				node := resp.Diagnostics.ExecutionNode
+				require.Equal(t, int64(time.Millisecond), node.Stats.ProcessingDurationNs)
+				require.Zero(t, node.Stats.UnaccountedDurationNs)
+				require.Zero(t, node.Stats.BackoffDurationNs)
+				if collectDiag {
+					require.Greater(t, node.EndTimeNs, readerEnd.UnixNano())
+					require.Equal(t, node.EndTimeNs-node.StartTimeNs, node.Stats.ProcessingDurationNs)
+				}
 			})
-			require.NoError(t, err)
-			node := resp.Diagnostics.ExecutionNode
-			require.Greater(t, node.Stats.ProcessingDurationNs, int64(1))
-			require.Zero(t, node.Stats.UnaccountedDurationNs)
-			require.Zero(t, node.Stats.BackoffDurationNs)
-			if collectDiag {
-				require.Greater(t, node.EndTimeNs, readerEnd.UnixNano())
-				require.InDelta(t, node.EndTimeNs-node.StartTimeNs, node.Stats.ProcessingDurationNs, float64(time.Millisecond))
-			}
 		})
 	}
 }
