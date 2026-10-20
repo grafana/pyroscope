@@ -217,7 +217,7 @@ func (q *QueryBackend) merge(
 				}
 				return err
 			}
-			childRPCNs := time.Since(childStart).Nanoseconds()
+			elapsedNs := time.Since(childStart).Nanoseconds()
 			childStats := resp.GetDiagnostics().GetExecutionNode().GetStats()
 			// Always accumulate bytes regardless of collectDiag so the
 			// query-frontend counter is correct in the common (non-diagnostic) path.
@@ -230,7 +230,7 @@ func (q *QueryBackend) merge(
 			childBackoffNs := childStats.GetBackoffDurationNs()
 			childProcessingNs := childStats.GetProcessingDurationNs()
 			childUnaccountedNs := childStats.GetUnaccountedDurationNs()
-			if remaining := childRPCNs - childProcessingNs - childBackoffNs - childUnaccountedNs; remaining > 0 {
+			if remaining := elapsedNs - childProcessingNs - childBackoffNs - childUnaccountedNs; remaining > 0 {
 				childUnaccountedNs += remaining
 			}
 			aggregationStart := time.Now()
