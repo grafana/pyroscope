@@ -126,7 +126,17 @@ func Truncate(p *profilev1.Profile, maxNodes int64) *profilev1.Profile {
 		samples = append(samples, &profilev1.Sample{
 			LocationId: stack,
 			Value:      append([]int64(nil), s.Value...),
-			Label:      s.Label,
+			// Labels are cloned, not aliased: compact rewrites the
+			// label string indices in place, and the samples that
+			// the profile carried before the truncation must not
+			// observe it. Cloning also detaches the new slice from
+			// any entries hidden past the length of the original
+			// one (see GroupSamplesWithoutLabelsByKey): a cap walk
+			// on the rebuilt samples cannot surface stale string
+			// indices. Callers must restore such hidden labels
+			// before truncating; they are not part of the visible
+			// profile and are not preserved.
+			Label: cloneLabels(s.Label),
 		})
 	}
 	for i, s := range p.Sample {
@@ -317,6 +327,9 @@ func compact(p *profilev1.Profile) {
 			markString(l.NumUnit)
 		}
 	}
+	for _, c := range p.Comment {
+		markString(c)
+	}
 
 	// The synthetic "other" function and location, when the enforcement
 	// actually cut frames. The stub location is appended last, so that it
@@ -423,6 +436,9 @@ func compact(p *profilev1.Profile) {
 	p.DropFrames = rewriteString(p.DropFrames)
 	p.KeepFrames = rewriteString(p.KeepFrames)
 	p.DefaultSampleType = rewriteString(p.DefaultSampleType)
+	for i, c := range p.Comment {
+		p.Comment[i] = rewriteString(c)
+	}
 	for _, s := range p.Sample {
 		for _, l := range s.Label {
 			l.Key = rewriteString(l.Key)
@@ -447,6 +463,27 @@ func lookupString(p *profilev1.Profile, s string) int64 {
 		}
 	}
 	return 0
+}
+
+// cloneLabels returns a deep copy of the label slice: the slice and the
+// label objects it references are owned exclusively by the result.
+func cloneLabels(labels []*profilev1.Label) []*profilev1.Label {
+	if len(labels) == 0 {
+		return nil
+	}
+	c := make([]*profilev1.Label, len(labels))
+	for i, l := range labels {
+		if l == nil {
+			continue
+		}
+		c[i] = &profilev1.Label{
+			Key:     l.Key,
+			Str:     l.Str,
+			Num:     l.Num,
+			NumUnit: l.NumUnit,
+		}
+	}
+	return c
 }
 
 // sampleKey identifies a sample by its stack and labels. It follows the

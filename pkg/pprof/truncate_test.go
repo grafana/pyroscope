@@ -460,3 +460,106 @@ func TestTruncatePreservesAddressesAndMappings(t *testing.T) {
 	assert.NotEmpty(t, got.StringTable[got.Mapping[0].Filename])
 	assert.True(t, hasDenseIdentifiers(got))
 }
+
+// TestTruncateClonesSampleLabels verifies that the rebuilt samples own
+// their labels: compact rewrites label string indices in place, so the
+// label slice and the label objects must not be shared with the samples
+// the profile carried before the truncation. Entries hidden past the
+// length of the original slice (see GroupSamplesWithoutLabelsByKey)
+// must not be reachable from the rebuilt samples either, with their
+// stale string indices.
+func TestTruncateClonesSampleLabels(t *testing.T) {
+	const (
+		branches = 30
+		maxNodes = int64(12)
+	)
+	b := newBuilder()
+	mid, root := b.function("mid"), b.function("root")
+	keyIdx := b.str("key")
+	shhIdx := b.str("shh")
+	originals := make([]*profilev1.Sample, 0, branches)
+	for j := 0; j < branches; j++ {
+		d := b.function(fmt.Sprintf("d%d", j))
+		c := b.function(fmt.Sprintf("c%d", j))
+		e := b.function(fmt.Sprintf("e%d", j))
+		a := b.function(fmt.Sprintf("a%d", j))
+		s := b.stack(int64(j+1), d, c, e, a, mid, root)
+		visible := &profilev1.Label{Key: keyIdx, Str: b.str(fmt.Sprintf("v%d", j))}
+		hidden := &profilev1.Label{Key: shhIdx, Str: b.str(fmt.Sprintf("h%d", j))}
+		// One visible label, and one hidden past the length of the
+		// slice, in the shape restoreRemovedLabels expects.
+		s.Label = []*profilev1.Label{visible, hidden}[:1]
+		originals = append(originals, s)
+	}
+	p := b.profile()
+	require.Len(t, p.Sample, branches)
+
+	got := Truncate(p, maxNodes)
+
+	// The rebuilt samples carry the visible labels, cloned: equal in
+	// value, but neither the slice nor the label objects are shared
+	// with the original samples.
+	newLabels := make(map[*profilev1.Label]bool, branches)
+	for _, ns := range got.Sample {
+		for _, l := range ns.Label {
+			newLabels[l] = true
+		}
+		// No stale hidden entries are reachable via the cap of the
+		// rebuilt label slices; a restore walk yields nothing.
+		restored := restoreRemovedLabels(ns.Label)
+		require.Empty(t, restored)
+	}
+	require.Len(t, newLabels, branches) // Every branch kept its label.
+	for _, s := range originals {
+		l := s.Label[0]
+		require.False(t, newLabels[l], "rebuilt samples share a label object with the original samples")
+		// The original label objects are left untouched: they still
+		// reference the string table the profile had before the call.
+		require.Equal(t, keyIdx, l.Key)
+	}
+	// The hidden entries never surface in the rebuilt profile: their
+	// strings are not part of the visible profile and must be absent
+	// from the rebuilt string table.
+	forbidden := map[string]bool{"shh": true, "h0": true, "h29": true}
+	for _, str := range got.StringTable {
+		require.False(t, forbidden[str], "hidden label string %q surfaced in the rebuilt profile", str)
+	}
+}
+
+// TestTruncateRemapsProfileComments verifies that profile comments —
+// string table indices — are kept and remapped to the rebuilt string
+// table when the truncation compacts the profile.
+func TestTruncateRemapsProfileComments(t *testing.T) {
+	const (
+		branches = 30
+		maxNodes = int64(12)
+	)
+	b := newBuilder()
+	mid, root := b.function("mid"), b.function("root")
+	for j := 0; j < branches; j++ {
+		d := b.function(fmt.Sprintf("d%d", j))
+		c := b.function(fmt.Sprintf("c%d", j))
+		e := b.function(fmt.Sprintf("e%d", j))
+		a := b.function(fmt.Sprintf("a%d", j))
+		b.stack(int64(j+1), d, c, e, a, mid, root)
+	}
+	comments := []string{"collected with pyroscope", "revision 42"}
+	for _, c := range comments {
+		b.str(c) // Not referenced by anything else in the profile.
+	}
+	p := b.profile()
+	for _, c := range comments {
+		p.Comment = append(p.Comment, b.str(c))
+	}
+	require.Len(t, p.Comment, len(comments))
+
+	got := Truncate(p, maxNodes)
+
+	require.Len(t, got.Comment, len(comments))
+	for i, c := range got.Comment {
+		if c < 0 || int(c) >= len(got.StringTable) {
+			t.Fatalf("comment %d index %d falls outside the rebuilt string table of %d strings", i, c, len(got.StringTable))
+		}
+		require.Equal(t, comments[i], got.StringTable[c])
+	}
+}
