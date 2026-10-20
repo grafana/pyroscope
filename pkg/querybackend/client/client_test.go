@@ -259,7 +259,7 @@ func TestClient_KeepsInFlightInvokeOnStop(t *testing.T) {
 	require.NoError(t, services.StopAndAwaitTerminated(ctx, client.Service()))
 	select {
 	case err := <-result:
-		require.NoError(t, err)
+		t.Fatalf("invoke returned before release: %v", err)
 	case <-time.After(100 * time.Millisecond):
 	}
 	close(release)
