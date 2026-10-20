@@ -174,7 +174,7 @@ func New(
 
 	// Services should be registered after FSM and Raft have been initialized.
 	// Services provide an interface to interact with the metastore components.
-	m.compactionService = NewCompactionService(m.logger, m.raft)
+	m.compactionService = NewCompactionService(m.logger, m.raft, m.followerRead, m.compactionHandler)
 	m.indexService = NewIndexService(m.logger, m.raft, m.leaderRead, m.index, m.placement)
 	m.tenantService = NewTenantService(m.logger, m.followerRead, m.index)
 	m.queryService = NewQueryService(m.logger, m.followerRead, m.index)
@@ -290,7 +290,7 @@ func (m *Metastore) CheckReady(ctx context.Context) error {
 		m.readySince = time.Now()
 	})
 	if w := m.config.MinReadyDuration - time.Since(m.readySince); w > 0 {
-		return fmt.Errorf("%v before reporting readiness", w)
+		return fmt.Errorf("%v before reporting readiness (the wait slows rolling updates so the rest of the cluster can pick up this instance; set -metastore.min-ready-duration=0 to disable it, which is safe for local or single-instance setups)", w)
 	}
 	return nil
 }

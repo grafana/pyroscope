@@ -8,6 +8,11 @@ export interface Matcher {
   end: number;
   nameStart: number;
   nameEnd: number;
+  // Range of the name's characters, excluding the quotes of a quoted name.
+  nameTextStart: number;
+  nameTextEnd: number;
+  // False only for a quoted name that is missing its closing quote.
+  nameClosed: boolean;
   opStart: number;
   opEnd: number;
   valueStart: number;
@@ -40,6 +45,22 @@ export type CursorContext =
 
 const IDENT = /[A-Za-z0-9_]/;
 const WS = /\s/;
+const LEGACY_LABEL_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+// Label names outside the legacy charset (e.g. OTel's service.namespace) must
+// be quoted in selectors: {"service.namespace"="prod"}. JSON string escapes
+// are a subset of the Go escapes the backend's Prometheus parser accepts.
+export function formatLabelName(name: string): string {
+  return LEGACY_LABEL_NAME.test(name) ? name : JSON.stringify(name);
+}
+
+function unquoteLabelName(text: string): string {
+  try {
+    return JSON.parse(`"${text}"`) as string;
+  } catch {
+    return text;
+  }
+}
 
 // Labels wrapped in double underscores (e.g. __delta__, __session_id__) are
 // reserved internals and should not surface in autocomplete.
@@ -102,13 +123,43 @@ export function tokenize(q: string): Tokens {
   return { matchers, braceOpen, braceClose };
 }
 
+// Scans the double-quoted string whose opening quote is at q[start]. Returns
+// the index of the closing quote, or limit if the string is unterminated.
+function scanQuoted(
+  q: string,
+  start: number,
+  limit: number,
+): { close: number; closed: boolean } {
+  let esc = false;
+  for (let i = start + 1; i < limit; i++) {
+    if (esc) esc = false;
+    else if (q[i] === '\\') esc = true;
+    else if (q[i] === '"') return { close: i, closed: true };
+  }
+  return { close: limit, closed: false };
+}
+
 function parseSlot(q: string, slotStart: number, slotEnd: number): Matcher {
   let i = slotStart;
   while (i < slotEnd && WS.test(q[i])) i++;
   const nameStart = i;
-  while (i < slotEnd && IDENT.test(q[i])) i++;
+  let nameTextStart = i;
+  let nameTextEnd: number;
+  let nameClosed = true;
+  let name: string;
+  if (q[i] === '"') {
+    const { close, closed } = scanQuoted(q, i, slotEnd);
+    nameTextStart = i + 1;
+    nameTextEnd = close;
+    nameClosed = closed;
+    name = unquoteLabelName(q.slice(nameTextStart, nameTextEnd));
+    i = closed ? close + 1 : close;
+  } else {
+    while (i < slotEnd && IDENT.test(q[i])) i++;
+    nameTextEnd = i;
+    name = q.slice(nameStart, nameTextEnd);
+  }
   const nameEnd = i;
-  const name = q.slice(nameStart, nameEnd);
 
   while (i < slotEnd && WS.test(q[i])) i++;
   const opStart = i;
@@ -138,30 +189,10 @@ function parseSlot(q: string, slotStart: number, slotEnd: number): Matcher {
   let valueClosed = false;
   if (q[i] === '"') {
     valueStart = i;
-    i++;
-    const textStart = i;
-    let esc = false;
-    while (i < slotEnd) {
-      if (esc) {
-        esc = false;
-        i++;
-        continue;
-      }
-      if (q[i] === '\\') {
-        esc = true;
-        i++;
-        continue;
-      }
-      if (q[i] === '"') {
-        valueEnd = i;
-        valueClosed = true;
-        i++;
-        break;
-      }
-      i++;
-    }
-    if (!valueClosed) valueEnd = i;
-    value = q.slice(textStart, valueEnd);
+    const { close, closed } = scanQuoted(q, i, slotEnd);
+    valueEnd = close;
+    valueClosed = closed;
+    value = q.slice(valueStart + 1, valueEnd);
   }
 
   const complete = name.length > 0 && op !== '' && valueClosed;
@@ -174,6 +205,9 @@ function parseSlot(q: string, slotStart: number, slotEnd: number): Matcher {
     end: slotEnd,
     nameStart,
     nameEnd,
+    nameTextStart,
+    nameTextEnd,
+    nameClosed,
     opStart,
     opEnd,
     valueStart,
@@ -184,7 +218,7 @@ function parseSlot(q: string, slotStart: number, slotEnd: number): Matcher {
 }
 
 function serializeMatcher(m: Matcher): string {
-  return `{${m.name}${m.op}"${m.value}"}`;
+  return `{${formatLabelName(m.name)}${m.op}"${m.value}"}`;
 }
 
 export function getCursorContext(query: string, cursor: number): CursorContext {
@@ -218,25 +252,33 @@ export function getCursorContext(query: string, cursor: number): CursorContext {
     }
   }
 
+  const namePrefix = query.slice(
+    slot.nameTextStart,
+    Math.min(cursor, slot.nameTextEnd),
+  );
+
   // Cursor in or right after the label-name token (no op typed yet, or op being typed).
   // We treat positions from slot start up to (and including) nameEnd as "name" position,
   // as long as no operator has been parsed.
-  if (slot.op === '' && cursor <= slot.nameEnd + 0) {
-    const prefix = query.slice(slot.nameStart, cursor);
+  // An unterminated quoted name runs to the end of the slot, so like an
+  // unclosed value it is only replaced up to the cursor.
+  if (slot.op === '' && cursor <= slot.nameEnd) {
+    const replaceEnd = slot.nameClosed
+      ? Math.max(slot.nameEnd, cursor)
+      : cursor;
     return {
       kind: 'name',
-      prefix,
-      replaceRange: [slot.nameStart, Math.max(slot.nameEnd, cursor)],
+      prefix: namePrefix,
+      replaceRange: [slot.nameStart, replaceEnd],
       otherMatchers,
     };
   }
 
   // Cursor strictly inside the name (when op is also typed) — still complete the name.
   if (cursor >= slot.nameStart && cursor <= slot.nameEnd) {
-    const prefix = query.slice(slot.nameStart, cursor);
     return {
       kind: 'name',
-      prefix,
+      prefix: namePrefix,
       replaceRange: [slot.nameStart, slot.nameEnd],
       otherMatchers,
     };
@@ -256,7 +298,8 @@ export function applySuggestion(
     const [s, e] = context.replaceRange;
     const after = query[e] ?? '';
     const needsOp = after !== '=' && after !== '!';
-    const insertion = needsOp ? `${suggestion}="` : suggestion;
+    const name = formatLabelName(suggestion);
+    const insertion = needsOp ? `${name}="` : name;
     const next = query.slice(0, s) + insertion + query.slice(e);
     const cursor = s + insertion.length;
     return { next, cursor };

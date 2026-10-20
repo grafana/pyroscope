@@ -36,7 +36,7 @@ jobs:
           key: yarn-${{ hashFiles('ui/yarn.lock') }}
           restore-keys: yarn-
       - run: yarn install --immutable
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: node_modules
           include-hidden-files: true
@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: 24
       - run: corepack enable
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: node_modules
           path: ui
@@ -79,7 +79,7 @@ jobs:
         with:
           node-version: 24
       - run: corepack enable
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: node_modules
           path: ui
@@ -100,7 +100,7 @@ jobs:
         with:
           node-version: 24
       - run: corepack enable
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: node_modules
           path: ui
@@ -121,7 +121,7 @@ jobs:
         with:
           node-version: 24
       - run: corepack enable
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: node_modules
           path: ui
@@ -142,7 +142,7 @@ jobs:
         with:
           node-version: 24
       - run: corepack enable
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: node_modules
           path: ui

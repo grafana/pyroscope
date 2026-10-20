@@ -407,7 +407,7 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 			"storage",
 		)
 		if err != nil {
-			return nil, fmt.Errorf("unable to initialise bucket: %w", err)
+			return nil, fmt.Errorf("unable to initialize bucket: %w", err)
 		}
 		f.storageBucket = b
 	}
@@ -475,12 +475,8 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
-<<<<<<< HEAD
 		tracecontext.UnaryServerInterceptor,
-		featureflags.ClientCapabilitiesGRPCMiddleware(),
-=======
 		featureflags.ClientCapabilitiesGRPCMiddleware(f.logger),
->>>>>>> 089eca9 (Remove global util.Logger; pass logger explicitly)
 	)
 
 	if f.Cfg.ArchitectureStorage != V1 {

@@ -85,10 +85,13 @@ func main() {
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
 	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
+
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
 	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
 	queryTopParams := addQueryTopParams(queryTopCmd)
+	queryAnomaliesCmd := queryCmd.Command("anomalies", "List profile anomalies. Experimental.")
+	queryAnomaliesParams := addQueryAnomaliesParams(queryAnomaliesCmd)
 	queryExemplarsCmd := queryCmd.Command("exemplars", "Query exemplars from profile data. V2 only.")
 	queryExemplarsProfileCmd := queryExemplarsCmd.Command("profile", "List profile exemplars for a time window.")
 	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsProfileCmd)
@@ -129,6 +132,12 @@ func main() {
 	v2MigrationCmd := adminCmd.Command("v2-migration", "Operation to aid the v1 to v2 storage migration.")
 	v2MigrationBucketCleanupCmd := v2MigrationCmd.Command("bucket-cleanup", "Clean up v1 artificats from data bucket.")
 	v2MigrationBucketCleanupParams := addV2MigrationBackupCleanupParam(v2MigrationBucketCleanupCmd)
+
+	compactionCmd := adminCmd.Command("compaction", "Inspect and manage V2 compaction.")
+	listJobsCmd := compactionCmd.Command("list-jobs", "List queued and assigned compaction jobs without claiming them.")
+	listJobsParams := addListCompactionJobsParams(listJobsCmd)
+	deleteDatasetsCmd := compactionCmd.Command("delete-datasets", "Delete service datasets and symbols from V2 single-tenant blocks overlapping a time window, and wait for completion. Dry-run by default.")
+	deleteDatasetsParams := addDeleteDatasetsParams(deleteDatasetsCmd)
 
 	kubeProxyCmd := adminCmd.Command("kube-proxy", "Start a reverse proxy unifying all the micro services in a single endpoint.")
 	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
@@ -212,6 +221,10 @@ func main() {
 		if err := queryTop(ctx, queryTopParams); err != nil {
 			os.Exit(checkError(err))
 		}
+	case queryAnomaliesCmd.FullCommand():
+		if err := queryAnomalies(ctx, queryAnomaliesParams); err != nil {
+			os.Exit(checkError(err))
+		}
 	case queryExemplarsProfileCmd.FullCommand():
 		if err := queryExemplars(ctx, queryExemplarsParams); err != nil {
 			os.Exit(checkError(err))
@@ -264,6 +277,14 @@ func main() {
 		}
 	case v2MigrationBucketCleanupCmd.FullCommand():
 		if err := v2MigrationBucketCleanup(ctx, v2MigrationBucketCleanupParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case listJobsCmd.FullCommand():
+		if err := listCompactionJobs(ctx, listJobsParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case deleteDatasetsCmd.FullCommand():
+		if err := deleteDatasets(ctx, deleteDatasetsParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case kubeProxyCmd.FullCommand():

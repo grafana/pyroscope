@@ -2,15 +2,19 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/user"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -23,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
+	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
 const (
@@ -222,7 +227,7 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 		setCapabilities      bool
 		requestLabelNames    []string
 		backendLabelNames    []string // For empty request case
-		expectedQueryRequest []string // What should be passed to backend
+		expectedQueryRequest []string // What should be passed to backend; nil means the backend is not queried
 	}{
 		{
 			name:                 "all label names pass through when UTF8 enabled",
@@ -259,11 +264,10 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			expectedQueryRequest: []string{"foo", "bar", "service_name"},
 		},
 		{
-			name:                 "labels with dots do not pass through",
-			allowUtf8LabelNames:  false,
-			setCapabilities:      true,
-			requestLabelNames:    []string{"service.name", "app.version"},
-			expectedQueryRequest: []string{},
+			name:                "only labels with dots returns no series",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"service.name", "app.version"},
 		},
 		{
 			name:                 "empty label names with UTF8 disabled queries and filters all labels",
@@ -317,12 +321,12 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 						},
 					},
 				},
-			}, nil).Once()
+			}, nil).Maybe()
 
 			mockLimits := mockfrontend.NewMockLimits(t)
 			mockLimits.On("MaxQueryLookback", "test-tenant").Return(time.Duration(0))
 			mockLimits.On("MaxQueryLength", "test-tenant").Return(time.Duration(0))
-			mockLimits.On("QuerySanitizeOnMerge", "test-tenant").Return(true)
+			mockLimits.On("QuerySanitizeOnMerge", "test-tenant").Return(true).Maybe()
 			mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
 			mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).Return(&metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "test-block"}},
@@ -362,4 +366,133 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 				"Expected label names sent to backend to be %v, but got %v", tc.expectedQueryRequest, capturedLabelNames)
 		})
 	}
+}
+
+func TestQueryFrontend_BackendInflightWork(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	blocks := []*metastorev1.BlockMeta{
+		{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+		{Id: "b", Datasets: []*metastorev1.Dataset{{Size: 250, TableOfContents: []uint64{0, 50, 100}}}},
+	}
+	backend := mockqueryfrontend.NewMockQueryBackend(t)
+	backend.On("Invoke", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+		require.Equal(t, float64(2), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+		require.Equal(t, float64(350), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+	}).Return(&queryv1.InvokeResponse{}, nil).Once()
+	qf := backendWorkFrontend(t, reg, blocks, backend)
+
+	ctx := tenant.InjectTenantID(t.Context(), "test-tenant")
+	_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+	require.NoError(t, err)
+	require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+	require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+}
+
+func TestQueryFrontend_BackendInflightWorkClearedOnFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		cancel    bool
+		returnErr error
+	}{
+		{name: "backend error", returnErr: errors.New("backend failed")},
+		{name: "cancellation", cancel: true, returnErr: context.Canceled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reg := prometheus.NewRegistry()
+			backend := mockqueryfrontend.NewMockQueryBackend(t)
+			qf := backendWorkFrontend(t, reg, []*metastorev1.BlockMeta{
+				{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+			}, backend)
+
+			ctx, cancel := context.WithCancel(tenant.InjectTenantID(t.Context(), "test-tenant"))
+			defer cancel()
+			backend.On("Invoke", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+				require.Equal(t, float64(1), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+				require.Equal(t, float64(100), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+				if tc.cancel {
+					cancel()
+				}
+			}).Return(nil, func(ctx context.Context, _ *queryv1.InvokeRequest) error {
+				if tc.cancel {
+					return ctx.Err()
+				}
+				return tc.returnErr
+			}).Once()
+
+			_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+			require.ErrorIs(t, err, tc.returnErr)
+			require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+			require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+		})
+	}
+}
+
+func backendWorkFrontend(t *testing.T, reg *prometheus.Registry, blocks []*metastorev1.BlockMeta, backend QueryBackend) *QueryFrontend {
+	t.Helper()
+	metadata := mockmetastorev1.NewMockMetadataQueryServiceClient(t)
+	metadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(
+		func(context.Context, *metastorev1.QueryMetadataRequest, ...grpc.CallOption) *metastorev1.QueryMetadataResponse {
+			return &metastorev1.QueryMetadataResponse{Blocks: slices.Clone(blocks)}
+		}, nil)
+	limits := mockfrontend.NewMockLimits(t)
+	limits.On("QuerySanitizeOnMerge", "test-tenant").Return(false)
+	return NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, nil, nil, reg)
+}
+
+func backendWorkGauge(t *testing.T, reg *prometheus.Registry, name string) float64 {
+	t.Helper()
+	families, err := reg.Gather()
+	require.NoError(t, err)
+	for _, family := range families {
+		if family.GetName() == name {
+			require.Len(t, family.GetMetric(), 1)
+			require.Empty(t, family.GetMetric()[0].GetLabel())
+			return family.GetMetric()[0].GetGauge().GetValue()
+		}
+	}
+	t.Fatalf("metric %s not found", name)
+	return 0
+}
+
+func TestQueryFrontend_BackendDurationMetrics(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	blocks := []*metastorev1.BlockMeta{
+		{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+	}
+	backend := mockqueryfrontend.NewMockQueryBackend(t)
+	backend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{
+		Diagnostics: &queryv1.Diagnostics{
+			ExecutionNode: &queryv1.ExecutionNode{
+				Stats: &queryv1.ExecutionStats{
+					ProcessingDurationNs:  int64(250 * time.Millisecond),
+					BackoffDurationNs:     int64(1500 * time.Millisecond),
+					UnaccountedDurationNs: int64(50 * time.Millisecond),
+				},
+			},
+		},
+	}, nil).Once()
+	qf := backendWorkFrontend(t, reg, blocks, backend)
+
+	ctx, stats := spanlogger.ContextWithQueryStats(tenant.InjectTenantID(t.Context(), "test-tenant"))
+	_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+	require.NoError(t, err)
+	require.Equal(t, 250*time.Millisecond, stats.ProcessingDuration)
+	require.Equal(t, 1500*time.Millisecond, stats.BackoffDuration)
+	require.Equal(t, 50*time.Millisecond, stats.UnaccountedDuration)
+
+	families, err := reg.Gather()
+	require.NoError(t, err)
+	got := map[string]float64{}
+	for _, family := range families {
+		if family.GetName() == "pyroscope_query_frontend_backend_duration_seconds_total" {
+			for _, m := range family.GetMetric() {
+				require.Len(t, m.GetLabel(), 1)
+				require.Equal(t, "phase", m.GetLabel()[0].GetName())
+				got[m.GetLabel()[0].GetValue()] = m.GetCounter().GetValue()
+			}
+		}
+	}
+	require.InDelta(t, 0.25, got["processing"], 1e-6)
+	require.InDelta(t, 1.5, got["backoff"], 1e-6)
+	require.InDelta(t, 0.05, got["unaccounted"], 1e-6)
 }

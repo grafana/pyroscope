@@ -33,16 +33,17 @@ func (c *CursorIterator) Next() bool {
 	if !c.seek {
 		c.k, c.v = c.cursor.Seek(c.Prefix)
 		c.seek = true
-		return c.valid()
+	} else {
+		c.k, c.v = c.cursor.Next()
 	}
 	for {
-		c.k, c.v = c.cursor.Next()
 		if !c.valid() {
 			return false
 		}
 		if len(c.SkipPrefix) == 0 || !bytes.HasPrefix(c.k, c.SkipPrefix) {
 			return true
 		}
+		c.k, c.v = c.cursor.Next()
 	}
 }
 

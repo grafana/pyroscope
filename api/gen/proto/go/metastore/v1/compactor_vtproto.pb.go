@@ -23,6 +23,67 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *ListCompactionJobsRequest) CloneVT() *ListCompactionJobsRequest {
+	if m == nil {
+		return (*ListCompactionJobsRequest)(nil)
+	}
+	r := new(ListCompactionJobsRequest)
+	r.Tenant = m.Tenant
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ListCompactionJobsRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ListCompactionJobsResponse) CloneVT() *ListCompactionJobsResponse {
+	if m == nil {
+		return (*ListCompactionJobsResponse)(nil)
+	}
+	r := new(ListCompactionJobsResponse)
+	if rhs := m.Jobs; rhs != nil {
+		tmpContainer := make([]*CompactionJobInfo, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Jobs = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ListCompactionJobsResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *CompactionJobInfo) CloneVT() *CompactionJobInfo {
+	if m == nil {
+		return (*CompactionJobInfo)(nil)
+	}
+	r := new(CompactionJobInfo)
+	r.Job = m.Job.CloneVT()
+	r.Status = m.Status
+	r.AddedAt = m.AddedAt
+	r.LeaseExpiresAt = m.LeaseExpiresAt
+	r.Failures = m.Failures
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *CompactionJobInfo) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *PollCompactionJobsRequest) CloneVT() *PollCompactionJobsRequest {
 	if m == nil {
 		return (*PollCompactionJobsRequest)(nil)
@@ -86,6 +147,7 @@ func (m *CompactionJob) CloneVT() *CompactionJob {
 	r.Shard = m.Shard
 	r.Tenant = m.Tenant
 	r.CompactionLevel = m.CompactionLevel
+	r.DeleteFilter = m.DeleteFilter.CloneVT()
 	if rhs := m.SourceBlocks; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -236,6 +298,197 @@ func (m *CompactedBlocks) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *DeleteFilter) CloneVT() *DeleteFilter {
+	if m == nil {
+		return (*DeleteFilter)(nil)
+	}
+	r := new(DeleteFilter)
+	r.ServiceNameRegex = m.ServiceNameRegex
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *DeleteFilter) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *DeleteDatasetsRequest) CloneVT() *DeleteDatasetsRequest {
+	if m == nil {
+		return (*DeleteDatasetsRequest)(nil)
+	}
+	r := new(DeleteDatasetsRequest)
+	r.Tenant = m.Tenant
+	r.MinTime = m.MinTime
+	r.MaxTime = m.MaxTime
+	r.Filter = m.Filter.CloneVT()
+	r.DryRun = m.DryRun
+	r.MinCompactionLevel = m.MinCompactionLevel
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *DeleteDatasetsRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *BlockDeletionSummary) CloneVT() *BlockDeletionSummary {
+	if m == nil {
+		return (*BlockDeletionSummary)(nil)
+	}
+	r := new(BlockDeletionSummary)
+	r.BlockId = m.BlockId
+	r.Tenant = m.Tenant
+	r.Shard = m.Shard
+	r.CompactionLevel = m.CompactionLevel
+	r.BlockMinTime = m.BlockMinTime
+	r.BlockMaxTime = m.BlockMaxTime
+	r.MatchedMinTime = m.MatchedMinTime
+	r.MatchedMaxTime = m.MatchedMaxTime
+	r.FullBlockPlanned = m.FullBlockPlanned
+	r.MatchedDatasetsCount = m.MatchedDatasetsCount
+	r.RemainingDatasetsCount = m.RemainingDatasetsCount
+	r.MatchedBytes = m.MatchedBytes
+	if rhs := m.MatchedServices; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.MatchedServices = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *BlockDeletionSummary) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *DeleteDatasetsResponse) CloneVT() *DeleteDatasetsResponse {
+	if m == nil {
+		return (*DeleteDatasetsResponse)(nil)
+	}
+	r := new(DeleteDatasetsResponse)
+	r.DryRun = m.DryRun
+	r.MatchedBlocksCount = m.MatchedBlocksCount
+	r.PlannedFullBlockDeletionsCount = m.PlannedFullBlockDeletionsCount
+	r.PlannedBlockRewritesCount = m.PlannedBlockRewritesCount
+	r.MatchedDatasetsCount = m.MatchedDatasetsCount
+	r.MatchedBytes = m.MatchedBytes
+	r.EffectiveMatchedMinTime = m.EffectiveMatchedMinTime
+	r.EffectiveMatchedMaxTime = m.EffectiveMatchedMaxTime
+	if rhs := m.Blocks; rhs != nil {
+		tmpContainer := make([]*BlockDeletionSummary, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Blocks = tmpContainer
+	}
+	if rhs := m.ScheduledJobNames; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.ScheduledJobNames = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *DeleteDatasetsResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (this *ListCompactionJobsRequest) EqualVT(that *ListCompactionJobsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Tenant != that.Tenant {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ListCompactionJobsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ListCompactionJobsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ListCompactionJobsResponse) EqualVT(that *ListCompactionJobsResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Jobs) != len(that.Jobs) {
+		return false
+	}
+	for i, vx := range this.Jobs {
+		vy := that.Jobs[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &CompactionJobInfo{}
+			}
+			if q == nil {
+				q = &CompactionJobInfo{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ListCompactionJobsResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ListCompactionJobsResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *CompactionJobInfo) EqualVT(that *CompactionJobInfo) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Job.EqualVT(that.Job) {
+		return false
+	}
+	if this.Status != that.Status {
+		return false
+	}
+	if this.AddedAt != that.AddedAt {
+		return false
+	}
+	if this.LeaseExpiresAt != that.LeaseExpiresAt {
+		return false
+	}
+	if this.Failures != that.Failures {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *CompactionJobInfo) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*CompactionJobInfo)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *PollCompactionJobsRequest) EqualVT(that *PollCompactionJobsRequest) bool {
 	if this == that {
 		return true
@@ -365,6 +618,9 @@ func (this *CompactionJob) EqualVT(that *CompactionJob) bool {
 				return false
 			}
 		}
+	}
+	if !this.DeleteFilter.EqualVT(that.DeleteFilter) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -555,6 +811,186 @@ func (this *CompactedBlocks) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *DeleteFilter) EqualVT(that *DeleteFilter) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.ServiceNameRegex != that.ServiceNameRegex {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *DeleteFilter) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*DeleteFilter)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *DeleteDatasetsRequest) EqualVT(that *DeleteDatasetsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Tenant != that.Tenant {
+		return false
+	}
+	if this.MinTime != that.MinTime {
+		return false
+	}
+	if this.MaxTime != that.MaxTime {
+		return false
+	}
+	if !this.Filter.EqualVT(that.Filter) {
+		return false
+	}
+	if this.DryRun != that.DryRun {
+		return false
+	}
+	if this.MinCompactionLevel != that.MinCompactionLevel {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *DeleteDatasetsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*DeleteDatasetsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockDeletionSummary) EqualVT(that *BlockDeletionSummary) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.BlockId != that.BlockId {
+		return false
+	}
+	if this.Tenant != that.Tenant {
+		return false
+	}
+	if this.Shard != that.Shard {
+		return false
+	}
+	if this.CompactionLevel != that.CompactionLevel {
+		return false
+	}
+	if this.BlockMinTime != that.BlockMinTime {
+		return false
+	}
+	if this.BlockMaxTime != that.BlockMaxTime {
+		return false
+	}
+	if this.MatchedMinTime != that.MatchedMinTime {
+		return false
+	}
+	if this.MatchedMaxTime != that.MatchedMaxTime {
+		return false
+	}
+	if this.FullBlockPlanned != that.FullBlockPlanned {
+		return false
+	}
+	if this.MatchedDatasetsCount != that.MatchedDatasetsCount {
+		return false
+	}
+	if this.RemainingDatasetsCount != that.RemainingDatasetsCount {
+		return false
+	}
+	if len(this.MatchedServices) != len(that.MatchedServices) {
+		return false
+	}
+	for i, vx := range this.MatchedServices {
+		vy := that.MatchedServices[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.MatchedBytes != that.MatchedBytes {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockDeletionSummary) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockDeletionSummary)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *DeleteDatasetsResponse) EqualVT(that *DeleteDatasetsResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.DryRun != that.DryRun {
+		return false
+	}
+	if this.MatchedBlocksCount != that.MatchedBlocksCount {
+		return false
+	}
+	if this.PlannedFullBlockDeletionsCount != that.PlannedFullBlockDeletionsCount {
+		return false
+	}
+	if this.PlannedBlockRewritesCount != that.PlannedBlockRewritesCount {
+		return false
+	}
+	if this.MatchedDatasetsCount != that.MatchedDatasetsCount {
+		return false
+	}
+	if this.MatchedBytes != that.MatchedBytes {
+		return false
+	}
+	if this.EffectiveMatchedMinTime != that.EffectiveMatchedMinTime {
+		return false
+	}
+	if this.EffectiveMatchedMaxTime != that.EffectiveMatchedMaxTime {
+		return false
+	}
+	if len(this.Blocks) != len(that.Blocks) {
+		return false
+	}
+	for i, vx := range this.Blocks {
+		vy := that.Blocks[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &BlockDeletionSummary{}
+			}
+			if q == nil {
+				q = &BlockDeletionSummary{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.ScheduledJobNames) != len(that.ScheduledJobNames) {
+		return false
+	}
+	for i, vx := range this.ScheduledJobNames {
+		vy := that.ScheduledJobNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *DeleteDatasetsResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*DeleteDatasetsResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -565,6 +1001,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CompactionServiceClient interface {
+	// Read-only snapshot of queued and assigned jobs.
+	ListCompactionJobs(ctx context.Context, in *ListCompactionJobsRequest, opts ...grpc.CallOption) (*ListCompactionJobsResponse, error)
+	// Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
+	DeleteDatasets(ctx context.Context, in *DeleteDatasetsRequest, opts ...grpc.CallOption) (*DeleteDatasetsResponse, error)
 	// Used to both retrieve jobs and update the jobs status at the same time.
 	PollCompactionJobs(ctx context.Context, in *PollCompactionJobsRequest, opts ...grpc.CallOption) (*PollCompactionJobsResponse, error)
 }
@@ -575,6 +1015,24 @@ type compactionServiceClient struct {
 
 func NewCompactionServiceClient(cc grpc.ClientConnInterface) CompactionServiceClient {
 	return &compactionServiceClient{cc}
+}
+
+func (c *compactionServiceClient) ListCompactionJobs(ctx context.Context, in *ListCompactionJobsRequest, opts ...grpc.CallOption) (*ListCompactionJobsResponse, error) {
+	out := new(ListCompactionJobsResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.CompactionService/ListCompactionJobs", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *compactionServiceClient) DeleteDatasets(ctx context.Context, in *DeleteDatasetsRequest, opts ...grpc.CallOption) (*DeleteDatasetsResponse, error) {
+	out := new(DeleteDatasetsResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.CompactionService/DeleteDatasets", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *compactionServiceClient) PollCompactionJobs(ctx context.Context, in *PollCompactionJobsRequest, opts ...grpc.CallOption) (*PollCompactionJobsResponse, error) {
@@ -590,6 +1048,10 @@ func (c *compactionServiceClient) PollCompactionJobs(ctx context.Context, in *Po
 // All implementations must embed UnimplementedCompactionServiceServer
 // for forward compatibility
 type CompactionServiceServer interface {
+	// Read-only snapshot of queued and assigned jobs.
+	ListCompactionJobs(context.Context, *ListCompactionJobsRequest) (*ListCompactionJobsResponse, error)
+	// Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
+	DeleteDatasets(context.Context, *DeleteDatasetsRequest) (*DeleteDatasetsResponse, error)
 	// Used to both retrieve jobs and update the jobs status at the same time.
 	PollCompactionJobs(context.Context, *PollCompactionJobsRequest) (*PollCompactionJobsResponse, error)
 	mustEmbedUnimplementedCompactionServiceServer()
@@ -599,6 +1061,12 @@ type CompactionServiceServer interface {
 type UnimplementedCompactionServiceServer struct {
 }
 
+func (UnimplementedCompactionServiceServer) ListCompactionJobs(context.Context, *ListCompactionJobsRequest) (*ListCompactionJobsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListCompactionJobs not implemented")
+}
+func (UnimplementedCompactionServiceServer) DeleteDatasets(context.Context, *DeleteDatasetsRequest) (*DeleteDatasetsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDatasets not implemented")
+}
 func (UnimplementedCompactionServiceServer) PollCompactionJobs(context.Context, *PollCompactionJobsRequest) (*PollCompactionJobsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PollCompactionJobs not implemented")
 }
@@ -613,6 +1081,42 @@ type UnsafeCompactionServiceServer interface {
 
 func RegisterCompactionServiceServer(s grpc.ServiceRegistrar, srv CompactionServiceServer) {
 	s.RegisterService(&CompactionService_ServiceDesc, srv)
+}
+
+func _CompactionService_ListCompactionJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCompactionJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompactionServiceServer).ListCompactionJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.CompactionService/ListCompactionJobs",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompactionServiceServer).ListCompactionJobs(ctx, req.(*ListCompactionJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompactionService_DeleteDatasets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDatasetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompactionServiceServer).DeleteDatasets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.CompactionService/DeleteDatasets",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompactionServiceServer).DeleteDatasets(ctx, req.(*DeleteDatasetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _CompactionService_PollCompactionJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -641,12 +1145,168 @@ var CompactionService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*CompactionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "ListCompactionJobs",
+			Handler:    _CompactionService_ListCompactionJobs_Handler,
+		},
+		{
+			MethodName: "DeleteDatasets",
+			Handler:    _CompactionService_DeleteDatasets_Handler,
+		},
+		{
 			MethodName: "PollCompactionJobs",
 			Handler:    _CompactionService_PollCompactionJobs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "metastore/v1/compactor.proto",
+}
+
+func (m *ListCompactionJobsRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListCompactionJobsRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ListCompactionJobsRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Tenant) > 0 {
+		i -= len(m.Tenant)
+		copy(dAtA[i:], m.Tenant)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ListCompactionJobsResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListCompactionJobsResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *ListCompactionJobsResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Jobs) > 0 {
+		for iNdEx := len(m.Jobs) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Jobs[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *CompactionJobInfo) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CompactionJobInfo) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *CompactionJobInfo) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Failures != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Failures))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.LeaseExpiresAt != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.LeaseExpiresAt))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.AddedAt != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.AddedAt))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.Status != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Status))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.Job != nil {
+		size, err := m.Job.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *PollCompactionJobsRequest) MarshalVT() (dAtA []byte, err error) {
@@ -785,6 +1445,16 @@ func (m *CompactionJob) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.DeleteFilter != nil {
+		size, err := m.DeleteFilter.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x3a
 	}
 	if len(m.Tombstones) > 0 {
 		for iNdEx := len(m.Tombstones) - 1; iNdEx >= 0; iNdEx-- {
@@ -1180,6 +1850,387 @@ func (m *CompactedBlocks) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *DeleteFilter) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DeleteFilter) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DeleteFilter) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.ServiceNameRegex) > 0 {
+		i -= len(m.ServiceNameRegex)
+		copy(dAtA[i:], m.ServiceNameRegex)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ServiceNameRegex)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *DeleteDatasetsRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DeleteDatasetsRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DeleteDatasetsRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MinCompactionLevel != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MinCompactionLevel))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.DryRun {
+		i--
+		if m.DryRun {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.Filter != nil {
+		size, err := m.Filter.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.MaxTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MaxTime))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.MinTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MinTime))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Tenant) > 0 {
+		i -= len(m.Tenant)
+		copy(dAtA[i:], m.Tenant)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *BlockDeletionSummary) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockDeletionSummary) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *BlockDeletionSummary) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MatchedBytes != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MatchedBytes))
+		i--
+		dAtA[i] = 0x68
+	}
+	if len(m.MatchedServices) > 0 {
+		for iNdEx := len(m.MatchedServices) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.MatchedServices[iNdEx])
+			copy(dAtA[i:], m.MatchedServices[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.MatchedServices[iNdEx])))
+			i--
+			dAtA[i] = 0x62
+		}
+	}
+	if m.RemainingDatasetsCount != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.RemainingDatasetsCount))
+		i--
+		dAtA[i] = 0x58
+	}
+	if m.MatchedDatasetsCount != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MatchedDatasetsCount))
+		i--
+		dAtA[i] = 0x50
+	}
+	if m.FullBlockPlanned {
+		i--
+		if m.FullBlockPlanned {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x48
+	}
+	if m.MatchedMaxTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MatchedMaxTime))
+		i--
+		dAtA[i] = 0x40
+	}
+	if m.MatchedMinTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MatchedMinTime))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.BlockMaxTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BlockMaxTime))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.BlockMinTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.BlockMinTime))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.CompactionLevel != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.CompactionLevel))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.Shard != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Shard))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Tenant) > 0 {
+		i -= len(m.Tenant)
+		copy(dAtA[i:], m.Tenant)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Tenant)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *DeleteDatasetsResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DeleteDatasetsResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *DeleteDatasetsResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.ScheduledJobNames) > 0 {
+		for iNdEx := len(m.ScheduledJobNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ScheduledJobNames[iNdEx])
+			copy(dAtA[i:], m.ScheduledJobNames[iNdEx])
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ScheduledJobNames[iNdEx])))
+			i--
+			dAtA[i] = 0x52
+		}
+	}
+	if len(m.Blocks) > 0 {
+		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Blocks[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x4a
+		}
+	}
+	if m.EffectiveMatchedMaxTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.EffectiveMatchedMaxTime))
+		i--
+		dAtA[i] = 0x40
+	}
+	if m.EffectiveMatchedMinTime != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.EffectiveMatchedMinTime))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.MatchedBytes != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MatchedBytes))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.MatchedDatasetsCount != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MatchedDatasetsCount))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.PlannedBlockRewritesCount != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.PlannedBlockRewritesCount))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.PlannedFullBlockDeletionsCount != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.PlannedFullBlockDeletionsCount))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.MatchedBlocksCount != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.MatchedBlocksCount))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.DryRun {
+		i--
+		if m.DryRun {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ListCompactionJobsRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Tenant)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ListCompactionJobsResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Jobs) > 0 {
+		for _, e := range m.Jobs {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *CompactionJobInfo) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Job != nil {
+		l = m.Job.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Status != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Status))
+	}
+	if m.AddedAt != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.AddedAt))
+	}
+	if m.LeaseExpiresAt != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.LeaseExpiresAt))
+	}
+	if m.Failures != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Failures))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *PollCompactionJobsRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1252,6 +2303,10 @@ func (m *CompactionJob) SizeVT() (n int) {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.DeleteFilter != nil {
+		l = m.DeleteFilter.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1396,6 +2451,481 @@ func (m *CompactedBlocks) SizeVT() (n int) {
 	return n
 }
 
+func (m *DeleteFilter) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ServiceNameRegex)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *DeleteDatasetsRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Tenant)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.MinTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MinTime))
+	}
+	if m.MaxTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MaxTime))
+	}
+	if m.Filter != nil {
+		l = m.Filter.SizeVT()
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.DryRun {
+		n += 2
+	}
+	if m.MinCompactionLevel != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MinCompactionLevel))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *BlockDeletionSummary) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	l = len(m.Tenant)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Shard != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Shard))
+	}
+	if m.CompactionLevel != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.CompactionLevel))
+	}
+	if m.BlockMinTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BlockMinTime))
+	}
+	if m.BlockMaxTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.BlockMaxTime))
+	}
+	if m.MatchedMinTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MatchedMinTime))
+	}
+	if m.MatchedMaxTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MatchedMaxTime))
+	}
+	if m.FullBlockPlanned {
+		n += 2
+	}
+	if m.MatchedDatasetsCount != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MatchedDatasetsCount))
+	}
+	if m.RemainingDatasetsCount != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.RemainingDatasetsCount))
+	}
+	if len(m.MatchedServices) > 0 {
+		for _, s := range m.MatchedServices {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if m.MatchedBytes != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MatchedBytes))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *DeleteDatasetsResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.DryRun {
+		n += 2
+	}
+	if m.MatchedBlocksCount != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MatchedBlocksCount))
+	}
+	if m.PlannedFullBlockDeletionsCount != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.PlannedFullBlockDeletionsCount))
+	}
+	if m.PlannedBlockRewritesCount != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.PlannedBlockRewritesCount))
+	}
+	if m.MatchedDatasetsCount != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MatchedDatasetsCount))
+	}
+	if m.MatchedBytes != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.MatchedBytes))
+	}
+	if m.EffectiveMatchedMinTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.EffectiveMatchedMinTime))
+	}
+	if m.EffectiveMatchedMaxTime != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.EffectiveMatchedMaxTime))
+	}
+	if len(m.Blocks) > 0 {
+		for _, e := range m.Blocks {
+			l = e.SizeVT()
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	if len(m.ScheduledJobNames) > 0 {
+		for _, s := range m.ScheduledJobNames {
+			l = len(s)
+			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+		}
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *ListCompactionJobsRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListCompactionJobsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListCompactionJobsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tenant = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListCompactionJobsResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListCompactionJobsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListCompactionJobsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Jobs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Jobs = append(m.Jobs, &CompactionJobInfo{})
+			if err := m.Jobs[len(m.Jobs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CompactionJobInfo) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CompactionJobInfo: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CompactionJobInfo: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Job", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Job == nil {
+				m.Job = &CompactionJob{}
+			}
+			if err := m.Job.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Status |= CompactionJobStatus(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AddedAt", wireType)
+			}
+			m.AddedAt = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.AddedAt |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LeaseExpiresAt", wireType)
+			}
+			m.LeaseExpiresAt = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LeaseExpiresAt |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Failures", wireType)
+			}
+			m.Failures = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Failures |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *PollCompactionJobsRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1813,6 +3343,42 @@ func (m *CompactionJob) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Tombstones = append(m.Tombstones, &Tombstones{})
 			if err := m.Tombstones[len(m.Tombstones)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeleteFilter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DeleteFilter == nil {
+				m.DeleteFilter = &DeleteFilter{}
+			}
+			if err := m.DeleteFilter.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2694,6 +4260,893 @@ func (m *CompactedBlocks) UnmarshalVT(dAtA []byte) error {
 			if err := m.NewBlocks[len(m.NewBlocks)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DeleteFilter) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteFilter: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteFilter: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceNameRegex", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServiceNameRegex = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DeleteDatasetsRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteDatasetsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteDatasetsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tenant = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinTime", wireType)
+			}
+			m.MinTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MinTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxTime", wireType)
+			}
+			m.MaxTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Filter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Filter == nil {
+				m.Filter = &DeleteFilter{}
+			}
+			if err := m.Filter.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DryRun", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.DryRun = bool(v != 0)
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinCompactionLevel", wireType)
+			}
+			m.MinCompactionLevel = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MinCompactionLevel |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockDeletionSummary) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockDeletionSummary: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockDeletionSummary: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tenant", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Tenant = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Shard", wireType)
+			}
+			m.Shard = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Shard |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CompactionLevel", wireType)
+			}
+			m.CompactionLevel = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CompactionLevel |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockMinTime", wireType)
+			}
+			m.BlockMinTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlockMinTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockMaxTime", wireType)
+			}
+			m.BlockMaxTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlockMaxTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedMinTime", wireType)
+			}
+			m.MatchedMinTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MatchedMinTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedMaxTime", wireType)
+			}
+			m.MatchedMaxTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MatchedMaxTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FullBlockPlanned", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.FullBlockPlanned = bool(v != 0)
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedDatasetsCount", wireType)
+			}
+			m.MatchedDatasetsCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MatchedDatasetsCount |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RemainingDatasetsCount", wireType)
+			}
+			m.RemainingDatasetsCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RemainingDatasetsCount |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedServices", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MatchedServices = append(m.MatchedServices, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedBytes", wireType)
+			}
+			m.MatchedBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MatchedBytes |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DeleteDatasetsResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteDatasetsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteDatasetsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DryRun", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.DryRun = bool(v != 0)
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedBlocksCount", wireType)
+			}
+			m.MatchedBlocksCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MatchedBlocksCount |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PlannedFullBlockDeletionsCount", wireType)
+			}
+			m.PlannedFullBlockDeletionsCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.PlannedFullBlockDeletionsCount |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PlannedBlockRewritesCount", wireType)
+			}
+			m.PlannedBlockRewritesCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.PlannedBlockRewritesCount |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedDatasetsCount", wireType)
+			}
+			m.MatchedDatasetsCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MatchedDatasetsCount |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MatchedBytes", wireType)
+			}
+			m.MatchedBytes = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MatchedBytes |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EffectiveMatchedMinTime", wireType)
+			}
+			m.EffectiveMatchedMinTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.EffectiveMatchedMinTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EffectiveMatchedMaxTime", wireType)
+			}
+			m.EffectiveMatchedMaxTime = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.EffectiveMatchedMaxTime |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Blocks = append(m.Blocks, &BlockDeletionSummary{})
+			if err := m.Blocks[len(m.Blocks)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ScheduledJobNames", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ScheduledJobNames = append(m.ScheduledJobNames, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

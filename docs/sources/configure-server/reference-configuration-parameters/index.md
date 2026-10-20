@@ -730,6 +730,12 @@ pool_config:
   # CLI flag: -distributor.health-check-timeout
   [remote_timeout: <duration> | default = 5s]
 
+# (advanced) Maximum total size, in bytes, of the uncompressed profiles the
+# distributor may hold in memory at a time. Requests exceeding it are rejected
+# with 503. 0 to disable.
+# CLI flag: -distributor.max-inflight-bytes
+[max_inflight_bytes: <int> | default = 0]
+
 ring:
   # The key-value store used to share the hash ring across multiple instances.
   kvstore:
@@ -1718,11 +1724,6 @@ The `query_frontend` block configures the query-frontend.
 # query-frontend.grpc-client-config
 [grpc_client_config: <grpc_client>]
 
-# (experimental) Enable the experimental asynchronous query path on
-# SelectMergeStacktraces (default false)
-# CLI flag: -query-frontend.async-queries-enabled
-[async_queries_enabled: <boolean> | default = false]
-
 # (advanced) List of network interface names to look up when finding the
 # instance IP address. This address is sent to query-scheduler and querier,
 # which uses it to send the query response back to query-frontend.
@@ -1742,6 +1743,12 @@ The `query_frontend` block configures the query-frontend.
 # -server.http-listen-port).
 # CLI flag: -query-frontend.instance-port
 [instance_port: <int> | default = 0]
+
+anomaly_api:
+  # (experimental) Base URL of an externally configured anomaly source, used for
+  # the "stacktrace" anomaly query type. Leave empty to disable.
+  # CLI flag: -query-frontend.anomaly-api.url
+  [url: <string> | default = ""]
 ```
 
 ### query_backend

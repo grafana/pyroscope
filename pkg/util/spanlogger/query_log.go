@@ -69,6 +69,9 @@ func (l LogSpanParametersWrapper) logQuery(
 			"fetched_object_bytes", humanize.Bytes(stats.ObjectStorageBytes),
 			"fetched_metastore_bytes", humanize.Bytes(stats.MetastoreBytes),
 			"estimated_object_bytes", humanize.Bytes(stats.EstimatedBytes),
+			"backend_processing_duration", stats.ProcessingDuration,
+			"backend_backoff_duration", stats.BackoffDuration,
+			"backend_unaccounted_duration", stats.UnaccountedDuration,
 		)
 		if stats.ObjectStorageBytes > 0 {
 			finishFields = append(finishFields,
@@ -332,6 +335,13 @@ func (l LogSpanParametersWrapper) GetProfileStats(ctx context.Context, c *connec
 	defer sp.Finish()
 
 	return l.client.GetProfileStats(ctx, c)
+}
+
+func (l LogSpanParametersWrapper) QueryAnomalies(ctx context.Context, c *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	sp, ctx := tracing.StartSpanFromContext(ctx, "QueryAnomalies")
+	defer sp.Finish()
+
+	return l.client.QueryAnomalies(ctx, c)
 }
 
 func (l LogSpanParametersWrapper) AnalyzeQuery(ctx context.Context, c *connect.Request[querierv1.AnalyzeQueryRequest]) (*connect.Response[querierv1.AnalyzeQueryResponse], error) {

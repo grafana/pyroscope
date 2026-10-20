@@ -306,6 +306,12 @@ func TestGRPCHandler(t *testing.T) {
 		return NewHTTP(limits)(h)
 	})
 
+	// A frozen clock keeps the full delay pending, however slow the request is.
+	now := time.Now()
+	oldTimeNow := timeNow
+	timeNow = func() time.Time { return now }
+	defer func() { timeNow = oldTimeNow }()
+
 	sleeps, cleanUpSleep := timeAfterMock()
 	defer cleanUpSleep()
 

@@ -24,6 +24,10 @@ var (
 	// stdLibRegex matches Python version directories and captures the version.
 	// Example: "python3.12/" → version="3.12"
 	stdLibRegex = regexp.MustCompile(`python(\d+\.\d{1,2})/`)
+
+	// nonStdlibDirs are directories that sit under the interpreter's lib
+	// directory but hold INSTALLED PACKAGES rather than the standard library.
+	nonStdlibDirs = []string{"site-packages/", "dist-packages/"}
 )
 
 func (ff FileFinder) fetchPythonStdlib(ctx context.Context, path string, version string) (*vcsv1.GetFileResponse, error) {
@@ -65,6 +69,16 @@ func isPythonStdlibPath(path string) (string, string, bool) {
 	remaining := path[m[1]:]
 	if remaining == "" {
 		return "", "", false
+	}
+	// Installed packages live under the interpreter's lib directory, so the
+	// version directory alone does not identify the standard library. Without
+	// this check every third-party and application frame in an ordinary
+	// install is claimed as stdlib and fetched from cpython, where it does not
+	// exist — and the mapping loop in findPythonFile is never reached.
+	for _, dir := range nonStdlibDirs {
+		if strings.HasPrefix(remaining, dir) {
+			return "", "", false
+		}
 	}
 	return remaining, version, true
 }

@@ -35,6 +35,15 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
+	} else if s.obj.local != nil {
+		// A downloaded object is read from local disk, where read-ahead
+		// and large buffers only hold more memory per column.
+		s.profiles, err = openParquetFile(
+			s.obj.storage, s.obj.path, offset, size,
+			estimateFooterSize(size),
+			parquet.SkipBloomFilters(true),
+			parquet.FileReadMode(parquet.ReadModeSync),
+			parquet.ReadBufferSize(localReadBufferSize))
 	} else {
 		s.profiles, err = openParquetFile(
 			s.obj.storage, s.obj.path, offset, size,

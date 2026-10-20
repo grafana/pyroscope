@@ -72,6 +72,12 @@ limits:
           replacement: service_name
 ```
 
+### Language detection
+
+When Pyroscope receives OTLP profiles, it reads the resource attribute `telemetry.sdk.language` to determine the profile language. That attribute follows the [OpenTelemetry resource semantic conventions](https://opentelemetry.io/docs/specs/semconv/resource/#telemetry-sdk). If the attribute is absent or empty, Pyroscope falls back to inferring the language from the profile contents.
+
+Resource attributes, including `telemetry.sdk.language` when present, are also stored as profile labels.
+
 ### Kubernetes metadata enrichment
 
 In Kubernetes, you can add a `k8sattributes` processor to enrich profiles with pod, namespace, deployment, and node metadata:
