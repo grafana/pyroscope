@@ -41,14 +41,12 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
-// testAttrDictionary backs attributes that reference strings by index
-// (key_strindex, string_value_strindex). Index 0 is the required empty-string
-// sentinel.
-var testAttrDictionary = &v1experimental.ProfilesDictionary{
-	StringTable: []string{"", "service.name", "test-service", "process.executable.name", "bash", "host.name", "host1"},
-}
-
 func TestGetServiceNameFromAttributes(t *testing.T) {
+	// Index 0 is the required empty-string sentinel.
+	dict := &v1experimental.ProfilesDictionary{
+		StringTable: []string{"", "service.name", "test-service", "process.executable.name", "bash"},
+	}
+
 	tests := []struct {
 		name     string
 		attrs    []*v1.KeyValue
@@ -171,13 +169,16 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getServiceNameFromAttributes(tt.attrs, testAttrDictionary)
+			result := getServiceNameFromAttributes(tt.attrs, dict)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
 func TestAppendAttributesUnique(t *testing.T) {
+	// Index 0 is the required empty-string sentinel.
+	dict := &v1experimental.ProfilesDictionary{StringTable: []string{"", "host.name", "host1"}}
+
 	tests := []struct {
 		name          string
 		existingAttrs []*typesv1.LabelPair
@@ -238,10 +239,10 @@ func TestAppendAttributesUnique(t *testing.T) {
 			existingAttrs: []*typesv1.LabelPair{},
 			newAttrs: []*v1.KeyValue{
 				{
-					KeyStrindex: 5, // host.name
+					KeyStrindex: 1, // host.name
 					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValueStrindex{
-							StringValueStrindex: 6, // host1
+							StringValueStrindex: 2, // host1
 						},
 					},
 				},
@@ -258,10 +259,10 @@ func TestAppendAttributesUnique(t *testing.T) {
 			},
 			newAttrs: []*v1.KeyValue{
 				{
-					KeyStrindex: 5, // host.name
+					KeyStrindex: 1, // host.name
 					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValueStrindex{
-							StringValueStrindex: 6, // host1
+							StringValueStrindex: 2, // host1
 						},
 					},
 				},
@@ -277,7 +278,7 @@ func TestAppendAttributesUnique(t *testing.T) {
 			newAttrs: []*v1.KeyValue{
 				{
 					Key:         "new",
-					KeyStrindex: 5, // host.name
+					KeyStrindex: 1, // host.name
 					Value: &v1.AnyValue{
 						Value: &v1.AnyValue_StringValue{
 							StringValue: "newvalue",
@@ -317,7 +318,7 @@ func TestAppendAttributesUnique(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := appendAttributesUnique(tt.existingAttrs, tt.newAttrs, tt.processedKeys, testAttrDictionary)
+			result := appendAttributesUnique(tt.existingAttrs, tt.newAttrs, tt.processedKeys, dict)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -744,6 +745,9 @@ func TestSampleAttributesWithSliceValues(t *testing.T) {
 }
 
 func TestStringValueFromAnyValue(t *testing.T) {
+	// Index 0 is the required empty-string sentinel.
+	dict := &v1experimental.ProfilesDictionary{StringTable: []string{"", "host1"}}
+
 	tests := []struct {
 		name     string
 		value    *v1.AnyValue
@@ -816,7 +820,7 @@ func TestStringValueFromAnyValue(t *testing.T) {
 		{
 			name: "dictionary-encoded string",
 			value: &v1.AnyValue{
-				Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 6}, // host1
+				Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 1}, // host1
 			},
 			expected: "host1",
 		},
@@ -826,7 +830,7 @@ func TestStringValueFromAnyValue(t *testing.T) {
 				Value: &v1.AnyValue_ArrayValue{
 					ArrayValue: &v1.ArrayValue{
 						Values: []*v1.AnyValue{{
-							Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 6}, // host1
+							Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 1}, // host1
 						}},
 					},
 				},
@@ -844,7 +848,7 @@ func TestStringValueFromAnyValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := stringValueFromAnyValue(tt.value, testAttrDictionary)
+			result := stringValueFromAnyValue(tt.value, dict)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
