@@ -3,12 +3,14 @@ package querybackendclient
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/stats"
 
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
@@ -40,6 +42,7 @@ func dial(address string, grpcClientConfig grpcclient.Config, timeout time.Durat
 	options = append(options,
 		grpc.WithDefaultServiceConfig(serviceConfig),
 		grpc.WithMaxCallAttempts(500),
+		grpc.WithStatsHandler(retryStatsHandler{}),
 	)
 	options = append(options, dialOpts...)
 	return grpc.NewClient(address, options...)
@@ -50,13 +53,97 @@ func (b *Client) starting(context.Context) error { return nil }
 func (b *Client) stopping(error) error           { return nil }
 
 func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+	ctx, tracker := withRetryTracker(ctx)
 	var trailer metadata.MD
+	start := time.Now()
 	resp, err := b.grpcClient.Invoke(ctx, req, grpc.Trailer(&trailer))
+	elapsed := time.Since(start).Nanoseconds()
 	if err != nil && pushback.IsNoRetry(trailer) {
 		err = pushback.Mark(err)
 	}
+	if err == nil && resp != nil {
+		if resp.Diagnostics == nil {
+			resp.Diagnostics = &queryv1.Diagnostics{}
+		}
+		if resp.Diagnostics.ExecutionNode == nil {
+			resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{}
+		}
+		if resp.Diagnostics.ExecutionNode.Stats == nil {
+			resp.Diagnostics.ExecutionNode.Stats = &queryv1.ExecutionStats{}
+		}
+		stats := resp.Diagnostics.ExecutionNode.Stats
+		stats.BackoffDurationNs += tracker.backoffDuration().Nanoseconds()
+		// Preserve the backend's processing breakdown. Transport, connection
+		// waits and failed attempts cannot be classified from the response.
+		accounted := stats.ProcessingDurationNs + stats.BackoffDurationNs + stats.UnaccountedDurationNs
+		if remaining := elapsed - accounted; remaining > 0 {
+			stats.UnaccountedDurationNs += remaining
+		}
+	}
 	return resp, err
 }
+
+type retryTrackerKey struct{}
+
+type retryTracker struct {
+	mu          sync.Mutex
+	lastAttempt time.Time
+	backoff     time.Duration
+}
+
+func withRetryTracker(ctx context.Context) (context.Context, *retryTracker) {
+	t := &retryTracker{}
+	return context.WithValue(ctx, retryTrackerKey{}, t), t
+}
+
+func (t *retryTracker) onBegin(beginTime time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.lastAttempt.IsZero() && beginTime.After(t.lastAttempt) {
+		t.backoff += beginTime.Sub(t.lastAttempt)
+	}
+}
+
+func (t *retryTracker) onEnd(endTime time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.lastAttempt = endTime
+}
+
+func (t *retryTracker) backoffDuration() time.Duration {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.backoff
+}
+
+type retryStatsHandler struct{}
+
+func (retryStatsHandler) TagRPC(ctx context.Context, _ *stats.RPCTagInfo) context.Context {
+	return ctx
+}
+
+func (retryStatsHandler) HandleRPC(ctx context.Context, rs stats.RPCStats) {
+	t, _ := ctx.Value(retryTrackerKey{}).(*retryTracker)
+	if t == nil {
+		return
+	}
+	switch s := rs.(type) {
+	case *stats.Begin:
+		if s.IsClient() {
+			t.onBegin(s.BeginTime)
+		}
+	case *stats.End:
+		if s.IsClient() {
+			t.onEnd(s.EndTime)
+		}
+	}
+}
+
+func (retryStatsHandler) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context {
+	return ctx
+}
+
+func (retryStatsHandler) HandleConn(context.Context, stats.ConnStats) {}
 
 const grpcServiceConfigTemplate = `{
     "loadBalancingPolicy":"round_robin",

@@ -71,23 +71,23 @@ For more information on the language SDKs, refer to [Pyroscope language SDKs](ht
 
 This table lists the available profile types based on the language SDK.
 
-| Profile type   | Go (push) | Java | .NET       | Ruby | Python | Rust | Node.js |
-| -------------- | --------- | ---- | ---------- | ---- | ------ | ---- | ------- |
-| CPU            | Yes       | Yes  | Yes        | Yes  | Yes    | Yes  | Yes     |
-| Alloc Objects  | Yes       | Yes  | Yes        |      | Yes    |      |         |
-| Alloc Space    | Yes       | Yes  | Yes        |      | Yes    |      |         |
-| Inuse Objects  | Yes       |      | Yes (7.0+) |      | Yes    | Yes  |         |
-| Inuse Space    | Yes       |      | Yes (7.0+) |      | Yes    | Yes  |         |
-| Goroutines     | Yes       |      |            |      |        |      |         |
-| Mutex Count    | Yes       |      | Yes        |      |        |      |         |
-| Mutex Duration | Yes       |      | Yes        |      |        |      |         |
-| Block Count    | Yes       |      |            |      |        |      |         |
-| Block Duration | Yes       |      |            |      |        |      |         |
-| Lock Count     |           | Yes  | Yes        |      |        |      |         |
-| Lock Duration  |           | Yes  | Yes        |      |        |      |         |
-| Exceptions     |           |      | Yes        |      |        |      |         |
-| Wall           |           | Yes  | Yes        |      |        |      | Yes     |
-| Heap           |           |      | Yes (7.0+) |      |        |      | Yes     |
+| Profile type   | Go (push) | Java | .NET       | .NET Framework | Ruby | Python | Rust | Node.js |
+| -------------- | --------- | ---- | ---------- | -------------- | ---- | ------ | ---- | ------- |
+| CPU            | Yes       | Yes  | Yes        | Yes            | Yes  | Yes    | Yes  | Yes     |
+| Alloc Objects  | Yes       | Yes  | Yes        |                |      | Yes    |      |         |
+| Alloc Space    | Yes       | Yes  | Yes        |                |      | Yes    |      |         |
+| Inuse Objects  | Yes       |      | Yes (7.0+) |                |      | Yes    | Yes  |         |
+| Inuse Space    | Yes       |      | Yes (7.0+) |                |      | Yes    | Yes  |         |
+| Goroutines     | Yes       |      |            |                |      |        |      |         |
+| Mutex Count    | Yes       |      | Yes        |                |      |        |      |         |
+| Mutex Duration | Yes       |      | Yes        |                |      |        |      |         |
+| Block Count    | Yes       |      |            |                |      |        |      |         |
+| Block Duration | Yes       |      |            |                |      |        |      |         |
+| Lock Count     |           | Yes  | Yes        |                |      |        |      |         |
+| Lock Duration  |           | Yes  | Yes        |                |      |        |      |         |
+| Exceptions     |           |      | Yes        |                |      |        |      |         |
+| Wall           |           | Yes  | Yes        | Yes            |      |        |      | Yes     |
+| Heap           |           |      | Yes (7.0+) |                |      |        |      | Yes     |
 
 ## Profile types supported with span profiles
 

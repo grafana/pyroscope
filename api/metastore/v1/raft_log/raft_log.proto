@@ -92,6 +92,7 @@ message CompactionJobState {
   int64 lease_expires_at = 5;
   int64 added_at = 6;
   uint32 failures = 7;
+  bool dataset_deletion = 8;
 }
 
 message CompactionJobPlan {
@@ -103,6 +104,7 @@ message CompactionJobPlan {
   repeated string source_blocks = 5;
   // Objects to be deleted.
   repeated metastore.v1.Tombstones tombstones = 6;
+  metastore.v1.DeleteFilter delete_filter = 7;
 }
 
 // UpdateCompactionPlanRequest proposes compaction plan changes.

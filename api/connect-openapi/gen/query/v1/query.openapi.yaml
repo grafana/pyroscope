@@ -735,9 +735,38 @@ components:
              during this invocation. It counts only the bytes from this single,
              successful Invoke call: retried or hedged calls that did not produce a
              response are not included, so the value is deterministic across retries.
+        processingDurationNs:
+          type:
+            - integer
+            - string
+          title: processing_duration_ns
+          format: int64
+          description: |-
+            processing_duration_ns is the critical-path time (in nanoseconds) spent
+             executing successful invocations on query-backend nodes, including local
+             aggregation but excluding client-side retry backoff and unaccounted time.
+        backoffDurationNs:
+          type:
+            - integer
+            - string
+          title: backoff_duration_ns
+          format: int64
+          description: |-
+            backoff_duration_ns is the critical-path time (in nanoseconds) spent waiting
+             between query-backend RPC attempts (e.g. concurrency-limiter retry backoff).
+        unaccountedDurationNs:
+          type:
+            - integer
+            - string
+          title: unaccounted_duration_ns
+          format: int64
+          description: |-
+            unaccounted_duration_ns is the remaining critical-path client-observed time
+             not classified as processing or backoff. It includes transport, connection
+             waits, and failed attempts whose backend timings were not returned.
       title: ExecutionStats
       additionalProperties: false
-      description: ExecutionStats captures statistics for READ node execution.
+      description: ExecutionStats captures statistics for READ and MERGE node execution.
     query.v1.Exemplar:
       type: object
       properties:

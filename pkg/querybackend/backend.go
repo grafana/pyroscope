@@ -106,7 +106,7 @@ func (q *QueryBackend) Invoke(
 	var resp *queryv1.InvokeResponse
 	var err error
 	var childNodes []*queryv1.ExecutionNode
-	var mergeBytes uint64
+	var mergeStats *queryv1.ExecutionStats
 
 	// Capture the node type before merge() sets QueryPlan to nil.
 	root := req.QueryPlan.Root
@@ -114,7 +114,7 @@ func (q *QueryBackend) Invoke(
 
 	switch nodeType {
 	case queryv1.QueryNode_MERGE:
-		resp, childNodes, mergeBytes, err = q.merge(ctx, req, root.Children, collectDiag)
+		resp, childNodes, mergeStats, err = q.merge(ctx, req, root.Children, collectDiag)
 	case queryv1.QueryNode_READ:
 		resp, err = q.read(ctx, req, root.Blocks)
 	default:
@@ -141,27 +141,45 @@ func (q *QueryBackend) Invoke(
 		}
 	}
 
-	// For MERGE nodes, unconditionally expose the summed BytesFetched so the
-	// query-frontend counter is correct even when diagnostics are not collected
-	// (the common production case).  For READ nodes, BlockReader already set
-	// the ExecutionNode.
+	// For MERGE nodes, unconditionally expose the summed BytesFetched and
+	// critical-path duration breakdown so the query-frontend metrics are
+	// correct even when diagnostics are not collected (the common production
+	// case). For READ nodes, BlockReader already set the ExecutionNode.
 	if nodeType == queryv1.QueryNode_MERGE {
 		if resp.Diagnostics == nil {
 			resp.Diagnostics = &queryv1.Diagnostics{}
 		}
-		stats := &queryv1.ExecutionStats{BytesFetched: mergeBytes}
+		endTime := time.Now()
+		// Add time spent after child RPCs completed (e.g. final response building).
+		mergeDurationNs := endTime.Sub(startTime).Nanoseconds()
+		if childTotalNs := mergeStats.ProcessingDurationNs + mergeStats.BackoffDurationNs + mergeStats.UnaccountedDurationNs; mergeDurationNs > childTotalNs {
+			mergeStats.ProcessingDurationNs += mergeDurationNs - childTotalNs
+		}
 		if collectDiag {
 			resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
 				Type:        nodeType,
 				Executor:    q.hostname,
 				StartTimeNs: startTime.UnixNano(),
-				EndTimeNs:   time.Now().UnixNano(),
+				EndTimeNs:   endTime.UnixNano(),
 				Children:    childNodes,
-				Stats:       stats,
+				Stats:       mergeStats,
 			}
 		} else {
 			resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
-				Stats: stats,
+				Stats: mergeStats,
+			}
+		}
+	}
+
+	if nodeType == queryv1.QueryNode_READ {
+		// BlockReader snapshots its timing before root-level finalization. Include
+		// all local processing here so the client does not classify it as unaccounted.
+		if node := resp.GetDiagnostics().GetExecutionNode(); node != nil && node.Stats != nil {
+			endTime := time.Now()
+			node.Stats.ProcessingDurationNs = endTime.Sub(startTime).Nanoseconds()
+			if collectDiag {
+				node.StartTimeNs = startTime.UnixNano()
+				node.EndTimeNs = endTime.UnixNano()
 			}
 		}
 	}
@@ -179,7 +197,7 @@ func (q *QueryBackend) merge(
 	request *queryv1.InvokeRequest,
 	children []*queryv1.QueryNode,
 	collectDiag bool,
-) (*queryv1.InvokeResponse, []*queryv1.ExecutionNode, uint64, error) {
+) (*queryv1.InvokeResponse, []*queryv1.ExecutionNode, *queryv1.ExecutionStats, error) {
 	request.QueryPlan = nil
 	m := newAggregator(request)
 	g, ctx := errgroup.WithContext(ctx)
@@ -188,6 +206,10 @@ func (q *QueryBackend) merge(
 	var mu sync.Mutex
 	var totalBytesFetched atomic.Uint64
 	var noRetry atomic.Bool
+	var maxChildTotalNs int64
+	var criticalProcessingNs int64
+	var criticalBackoffNs int64
+	var criticalUnaccountedNs int64
 
 	for i, child := range children {
 		idx := i
@@ -200,6 +222,7 @@ func (q *QueryBackend) merge(
 		}
 		g.Go(util.RecoverPanic(func() error {
 			// TODO: Speculative retry.
+			childStart := time.Now()
 			resp, err := q.backendClient.Invoke(ctx, req)
 			if err != nil {
 				if pushback.IsMarked(err) {
@@ -207,15 +230,35 @@ func (q *QueryBackend) merge(
 				}
 				return err
 			}
+			elapsedNs := time.Since(childStart).Nanoseconds()
+			childStats := resp.GetDiagnostics().GetExecutionNode().GetStats()
 			// Always accumulate bytes regardless of collectDiag so the
 			// query-frontend counter is correct in the common (non-diagnostic) path.
-			totalBytesFetched.Add(resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched())
+			totalBytesFetched.Add(childStats.GetBytesFetched())
 			if collectDiag && resp.Diagnostics != nil && resp.Diagnostics.ExecutionNode != nil {
 				mu.Lock()
 				childExecNodes[idx] = resp.Diagnostics.ExecutionNode
 				mu.Unlock()
 			}
-			return m.aggregateResponse(resp, nil)
+			childBackoffNs := childStats.GetBackoffDurationNs()
+			childProcessingNs := childStats.GetProcessingDurationNs()
+			childUnaccountedNs := childStats.GetUnaccountedDurationNs()
+			if remaining := elapsedNs - childProcessingNs - childBackoffNs - childUnaccountedNs; remaining > 0 {
+				childUnaccountedNs += remaining
+			}
+			aggregationStart := time.Now()
+			err = m.aggregateResponse(resp, nil)
+			childProcessingNs += time.Since(aggregationStart).Nanoseconds()
+			childTotalNs := childProcessingNs + childBackoffNs + childUnaccountedNs
+			mu.Lock()
+			if childTotalNs > maxChildTotalNs {
+				maxChildTotalNs = childTotalNs
+				criticalProcessingNs = childProcessingNs
+				criticalBackoffNs = childBackoffNs
+				criticalUnaccountedNs = childUnaccountedNs
+			}
+			mu.Unlock()
+			return err
 		}))
 	}
 	if err := g.Wait(); err != nil {
@@ -223,7 +266,7 @@ func (q *QueryBackend) merge(
 		if noRetry.Load() {
 			err = pushback.Mark(err)
 		}
-		return nil, nil, 0, err
+		return nil, nil, nil, err
 	}
 
 	var executionNodes []*queryv1.ExecutionNode
@@ -234,7 +277,12 @@ func (q *QueryBackend) merge(
 	}
 
 	resp := m.response()
-	return resp, executionNodes, totalBytesFetched.Load(), nil
+	return resp, executionNodes, &queryv1.ExecutionStats{
+		BytesFetched:          totalBytesFetched.Load(),
+		ProcessingDurationNs:  criticalProcessingNs,
+		BackoffDurationNs:     criticalBackoffNs,
+		UnaccountedDurationNs: criticalUnaccountedNs,
+	}, nil
 }
 
 func (q *QueryBackend) read(

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-kit/log"
@@ -155,26 +156,42 @@ func TestClient_DoesNotRetryOversizedChildResponse(t *testing.T) {
 // The concurrency limiter rejects with the status an undeliverable response
 // also carries, and no pushback.
 func TestClient_RetriesLoadShedding(t *testing.T) {
-	reader := &testQueryBackendServer{
-		invoke: func(ctx context.Context, call int32) (*queryv1.InvokeResponse, error) {
-			if call == 1 {
-				return nil, status.Error(codes.ResourceExhausted, "concurrency limit exceeded")
-			}
-			return &queryv1.InvokeResponse{}, nil
-		},
-	}
-	backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
-	require.NoError(t, err)
-	client := newTestClient(t, backend)
+	synctest.Test(t, func(t *testing.T) {
+		reader := &testQueryBackendServer{
+			invoke: func(ctx context.Context, call int32) (*queryv1.InvokeResponse, error) {
+				if call == 1 {
+					return nil, status.Error(codes.ResourceExhausted, "concurrency limit exceeded")
+				}
+				time.Sleep(10 * time.Millisecond)
+				return &queryv1.InvokeResponse{
+					Diagnostics: &queryv1.Diagnostics{
+						ExecutionNode: &queryv1.ExecutionNode{
+							Stats: &queryv1.ExecutionStats{
+								ProcessingDurationNs: int64(10 * time.Millisecond),
+							},
+						},
+					},
+				}, nil
+			},
+		}
+		backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+		require.NoError(t, err)
+		client := newTestClient(t, backend)
 
-	resp, err := client.Invoke(context.Background(), &queryv1.InvokeRequest{
-		QueryPlan: &queryv1.QueryPlan{
-			Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ},
-		},
+		resp, err := client.Invoke(context.Background(), &queryv1.InvokeRequest{
+			QueryPlan: &queryv1.QueryPlan{
+				Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, int32(2), reader.calls.Load())
+		stats := resp.GetDiagnostics().GetExecutionNode().GetStats()
+		require.NotNil(t, stats)
+		require.Equal(t, int64(10*time.Millisecond), stats.GetProcessingDurationNs())
+		require.Greater(t, stats.GetBackoffDurationNs(), int64(500*time.Millisecond))
+		require.Zero(t, stats.GetUnaccountedDurationNs())
 	})
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, int32(2), reader.calls.Load())
 }
 
 func TestClient_RetriesRetryableStatus(t *testing.T) {
