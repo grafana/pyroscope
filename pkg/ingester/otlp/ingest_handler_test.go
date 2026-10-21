@@ -142,6 +142,58 @@ func TestGetServiceNameFromAttributes(t *testing.T) {
 	}
 }
 
+func TestResolveProfileAttributes(t *testing.T) {
+	stringTable := []string{"", "service.name", "rolldice", "process.pid", "telemetry.sdk.language", "go", "deployment.environment", "production", "nested.key", "nested.value"}
+	attrs, err := resolveProfileAttributes([]*v1.KeyValue{
+		{KeyStrindex: 1, Value: &v1.AnyValue{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 2}}},
+		{KeyStrindex: 3, Value: &v1.AnyValue{Value: &v1.AnyValue_IntValue{IntValue: 8838}}},
+		{KeyStrindex: 4, Value: &v1.AnyValue{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 5}}},
+		{Key: "legacy.inline", Value: &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: "kept"}}},
+		{KeyStrindex: 6, Value: &v1.AnyValue{Value: &v1.AnyValue_ArrayValue{ArrayValue: &v1.ArrayValue{Values: []*v1.AnyValue{
+			{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 7}},
+		}}}}},
+		{Key: "nested", Value: &v1.AnyValue{Value: &v1.AnyValue_KvlistValue{KvlistValue: &v1.KeyValueList{Values: []*v1.KeyValue{{
+			KeyStrindex: 8, Value: &v1.AnyValue{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 9}},
+		}}}}}},
+	}, stringTable)
+	require.NoError(t, err)
+	require.Equal(t, "rolldice", getServiceNameFromAttributes(attrs))
+	require.Equal(t, "go", getLanguageFromAttributes(attrs))
+	labels := appendAttributesUnique(nil, attrs, map[string]bool{})
+	got := make(map[string]string, len(labels))
+	for _, label := range labels {
+		got[label.Name] = label.Value
+	}
+	assert.Equal(t, "8838", got["process.pid"])
+	assert.Equal(t, "rolldice", got["service.name"])
+	assert.Equal(t, "go", got["telemetry.sdk.language"])
+	assert.Equal(t, "kept", got["legacy.inline"])
+	assert.Equal(t, "production", got["deployment.environment"])
+	require.IsType(t, &v1.AnyValue_KvlistValue{}, attrs[5].Value.Value)
+	nested := attrs[5].Value.GetKvlistValue().Values[0]
+	assert.Equal(t, "nested.key", nested.Key)
+	assert.Equal(t, "nested.value", nested.Value.GetStringValue())
+
+	_, err = resolveProfileAttributes([]*v1.KeyValue{nil}, stringTable)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "attribute 0 is nil")
+}
+
+func TestResolveProfileAttributesRejectsInvalidStringReferences(t *testing.T) {
+	_, err := resolveProfileAttributes([]*v1.KeyValue{{
+		KeyStrindex: 9,
+	}}, []string{"", "known"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "key_strindex")
+
+	_, err = resolveProfileAttributes([]*v1.KeyValue{{
+		Key:   "known",
+		Value: &v1.AnyValue{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 9}},
+	}}, []string{"", "known"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "string_value_strindex")
+}
+
 func TestAppendAttributesUnique(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -932,6 +984,97 @@ func TestExport_PreservesOriginalTimestamp(t *testing.T) {
 	require.Len(t, (*profiles)[0].Series, 1)
 	assert.Zero(t, (*profiles)[0].Series[0].ID)
 	assert.Equal(t, int64(1234), (*profiles)[0].Series[0].OriginalTimeNanos)
+}
+
+func TestExportResolvesResourceAndScopeStringReferences(t *testing.T) {
+	svc, captured := recordPushBatch(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
+	req := createValidOTLPRequest()
+	base := int32(len(req.Dictionary.StringTable))
+	req.Dictionary.StringTable = append(req.Dictionary.StringTable,
+		"service.name", "rolldice", "process.pid", "telemetry.sdk.language", "go", "deployment.environment", "production")
+	var (
+		serviceName     = base
+		appName         = base + 1
+		pidName         = base + 2
+		languageName    = base + 3
+		goValue         = base + 4
+		deploymentName  = base + 5
+		productionValue = base + 6
+	)
+	rp := req.ResourceProfiles[0]
+	rp.Resource = &resourcev1.Resource{Attributes: []*v1.KeyValue{
+		{KeyStrindex: serviceName, Value: &v1.AnyValue{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: appName}}},
+		{KeyStrindex: pidName, Value: &v1.AnyValue{Value: &v1.AnyValue_IntValue{IntValue: 8838}}},
+		{KeyStrindex: languageName, Value: &v1.AnyValue{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: goValue}}},
+	}}
+	sp := rp.ScopeProfiles[0]
+	sp.Scope = &v1.InstrumentationScope{Attributes: []*v1.KeyValue{
+		{KeyStrindex: deploymentName, Value: &v1.AnyValue{Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: productionValue}}},
+	}}
+
+	// Marshal/unmarshal as the gRPC transport does, ensuring the indexed fields survive on the wire.
+	wire, err := proto.Marshal(req)
+	require.NoError(t, err)
+	var received v1experimental2.ExportProfilesServiceRequest
+	require.NoError(t, proto.Unmarshal(wire, &received))
+	original := proto.Clone(&received)
+	_, err = h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), &received)
+	require.NoError(t, err)
+	assert.True(t, proto.Equal(original, &received), "export must not modify the request")
+	require.Len(t, *captured, 1)
+	require.Len(t, (*captured)[0].Series, 1)
+	series := (*captured)[0].Series[0]
+	labels := phlaremodel.Labels(series.Labels).ToPrometheusLabels().Map()
+	assert.Equal(t, "rolldice", labels["service_name"])
+	assert.Equal(t, "8838", labels["process.pid"])
+	assert.Equal(t, "production", labels["deployment.environment"])
+	assert.Equal(t, "go", series.Language)
+}
+
+func TestExportRejectsInvalidResourceAndScopeStringReferences(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*v1experimental2.ExportProfilesServiceRequest)
+	}{
+		{
+			name: "negative resource key index",
+			setup: func(req *v1experimental2.ExportProfilesServiceRequest) {
+				req.ResourceProfiles[0].Resource = &resourcev1.Resource{Attributes: []*v1.KeyValue{{KeyStrindex: -1}}}
+			},
+		},
+		{
+			name: "conflicting inline and indexed scope key",
+			setup: func(req *v1experimental2.ExportProfilesServiceRequest) {
+				req.ResourceProfiles[0].ScopeProfiles[0].Scope = &v1.InstrumentationScope{Attributes: []*v1.KeyValue{{Key: "inline", KeyStrindex: 1}}}
+			},
+		},
+		{
+			name: "nested array value index out of bounds",
+			setup: func(req *v1experimental2.ExportProfilesServiceRequest) {
+				req.ResourceProfiles[0].ScopeProfiles[0].Scope = &v1.InstrumentationScope{Attributes: []*v1.KeyValue{{
+					Key: "nested",
+					Value: &v1.AnyValue{Value: &v1.AnyValue_ArrayValue{ArrayValue: &v1.ArrayValue{Values: []*v1.AnyValue{{
+						Value: &v1.AnyValue_StringValueStrindex{StringValueStrindex: 99},
+					}}}}},
+				}}}
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := mockotlp.NewMockPushService(t)
+			var calls int
+			svc.On("PushBatch", mock.Anything, mock.Anything).Run(func(mock.Arguments) { calls++ }).Return(nil).Maybe()
+			h := NewOTLPIngestHandler(testConfig(), svc, test.NewTestingLogger(t), defaultLimits())
+			req := createValidOTLPRequest()
+			tc.setup(req)
+			_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+			require.Error(t, err)
+			assert.Equal(t, codes.InvalidArgument, status.Code(err))
+			assert.Zero(t, calls, "invalid attributes must not reach PushBatch")
+		})
+	}
 }
 
 func TestExport_PreservesProfileID(t *testing.T) {

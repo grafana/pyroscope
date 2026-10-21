@@ -271,9 +271,17 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		RawProfileType: distributormodel.RawProfileTypeOTEL,
 	}
 	for _, rp := range rps {
-		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes())
-		language := getLanguageFromAttributes(rp.Resource.GetAttributes())
+		resourceAttrs, err := resolveProfileAttributes(rp.Resource.GetAttributes(), dc.StringTable)
+		if err != nil {
+			return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "failed to resolve resource attributes: %s", err)
+		}
+		serviceName := getServiceNameFromAttributes(resourceAttrs)
+		language := getLanguageFromAttributes(resourceAttrs)
 		for _, sp := range rp.ScopeProfiles {
+			scopeAttrs, err := resolveProfileAttributes(sp.Scope.GetAttributes(), dc.StringTable)
+			if err != nil {
+				return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.InvalidArgument, "failed to resolve scope attributes: %s", err)
+			}
 			for _, p := range sp.Profiles {
 				sz := proto.Size(p)
 				req.ReceivedCompressedProfileSize += sz
@@ -290,8 +298,8 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					labels := getDefaultLabels()
 					labels = append(labels, pprofProfile.name)
 					processedKeys := map[string]bool{model.LabelNameProfileName: true}
-					labels = appendAttributesUnique(labels, rp.Resource.GetAttributes(), processedKeys)
-					labels = appendAttributesUnique(labels, sp.Scope.GetAttributes(), processedKeys)
+					labels = appendAttributesUnique(labels, resourceAttrs, processedKeys)
+					labels = appendAttributesUnique(labels, scopeAttrs, processedKeys)
 					svc := samplesServiceName
 					if svc == "" {
 						svc = serviceName
@@ -327,6 +335,91 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 	}
 
 	return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+}
+
+// resolveProfileAttributes expands the string-table references used by the
+// OTLP Profiles signal in resource and instrumentation-scope attributes.
+func resolveProfileAttributes(attrs []*v1.KeyValue, stringTable []string) ([]*v1.KeyValue, error) {
+	resolved := make([]*v1.KeyValue, len(attrs))
+	for i, attr := range attrs {
+		if attr == nil {
+			return nil, fmt.Errorf("attribute %d is nil", i)
+		}
+		key := attr.Key
+		if attr.KeyStrindex != 0 {
+			if attr.Key != "" {
+				return nil, fmt.Errorf("attribute %d sets both key and key_strindex", i)
+			}
+			resolvedKey, err := at(stringTable, attr.KeyStrindex)
+			if err != nil {
+				return nil, fmt.Errorf("attribute %d key_strindex: %w", i, err)
+			}
+			key = resolvedKey
+		}
+		value, err := resolveProfileAnyValue(attr.Value, stringTable)
+		if err != nil {
+			return nil, fmt.Errorf("attribute %d value: %w", i, err)
+		}
+		if key == attr.Key && value == attr.Value {
+			resolved[i] = attr
+		} else {
+			kv := proto.Clone(attr).(*v1.KeyValue)
+			kv.Key = key
+			kv.KeyStrindex = 0
+			kv.Value = value
+			resolved[i] = kv
+		}
+	}
+	return resolved, nil
+}
+
+func resolveProfileAnyValue(value *v1.AnyValue, stringTable []string) (*v1.AnyValue, error) {
+	if value == nil {
+		return nil, nil
+	}
+	switch v := value.Value.(type) {
+	case *v1.AnyValue_StringValueStrindex:
+		str, err := at(stringTable, v.StringValueStrindex)
+		if err != nil {
+			return nil, fmt.Errorf("string_value_strindex: %w", err)
+		}
+		return &v1.AnyValue{Value: &v1.AnyValue_StringValue{StringValue: str}}, nil
+	case *v1.AnyValue_ArrayValue:
+		if v.ArrayValue == nil {
+			return value, nil
+		}
+		var values []*v1.AnyValue
+		for i, element := range v.ArrayValue.Values {
+			normalized, err := resolveProfileAnyValue(element, stringTable)
+			if err != nil {
+				return nil, fmt.Errorf("array value %d: %w", i, err)
+			}
+			if normalized != element && values == nil {
+				values = append([]*v1.AnyValue(nil), v.ArrayValue.Values...)
+			}
+			if values != nil {
+				values[i] = normalized
+			}
+		}
+		if values == nil {
+			return value, nil
+		}
+		return &v1.AnyValue{Value: &v1.AnyValue_ArrayValue{ArrayValue: &v1.ArrayValue{Values: values}}}, nil
+	case *v1.AnyValue_KvlistValue:
+		if v.KvlistValue == nil {
+			return value, nil
+		}
+		attrs, err := resolveProfileAttributes(v.KvlistValue.Values, stringTable)
+		if err != nil {
+			return nil, err
+		}
+		for i := range attrs {
+			if attrs[i] != v.KvlistValue.Values[i] {
+				return &v1.AnyValue{Value: &v1.AnyValue_KvlistValue{KvlistValue: &v1.KeyValueList{Values: attrs}}}, nil
+			}
+		}
+	}
+	return value, nil
 }
 
 func otlpProfileID(profileID []byte) string {
