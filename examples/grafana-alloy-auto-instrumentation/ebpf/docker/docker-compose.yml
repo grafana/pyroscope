@@ -6,7 +6,8 @@ services:
     ports:
     - 4040:4040
   grafana-alloy:
-    image: grafana/alloy:latest
+    # fixes grafana/opentelemetry-ebpf-profiler#68; will revert to :latest once fix released
+    image: grafana/alloy-dev:v1.21.0-devel-7b0591a
     user: root
     privileged: true
     pid: host
