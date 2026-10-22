@@ -186,7 +186,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dolthub/maphash v0.1.0 // indirect
 	github.com/edsrzf/mmap-go v1.2.0 // indirect
-	github.com/efficientgo/core v1.0.0-rc.2 // indirect
+	github.com/efficientgo/core v1.0.0-rc.3 // indirect
 	github.com/efficientgo/e2e v0.14.1-0.20230710114240-c316eb95ae5b // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
