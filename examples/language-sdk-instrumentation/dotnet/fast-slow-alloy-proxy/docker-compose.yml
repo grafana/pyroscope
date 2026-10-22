@@ -1,0 +1,53 @@
+services:
+  pyroscope:
+    # This service is generated from examples/_templates/pyroscope/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: grafana/pyroscope:latest
+    ports:
+    - 4040:4040
+  squid:
+    image: ubuntu/squid:latest
+    volumes:
+    - ./squid.conf:/etc/squid/squid.conf:ro
+    networks:
+    - default
+    - edge
+  alloy:
+    image: grafana/alloy:v1.21.1
+    command:
+    - run
+    - /etc/alloy/config.alloy
+    - --server.http.listen-addr=0.0.0.0:12345
+    volumes:
+    - ./config.alloy:/etc/alloy/config.alloy
+    ports:
+    - 12345:12345
+    networks:
+    - edge
+  app:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+    - PYROSCOPE_APPLICATION_NAME=fast-slow-alloy-proxy.dotnet.app
+    - PYROSCOPE_SERVER_ADDRESS=http://alloy:9999
+    networks:
+    - edge
+  grafana:
+    # This service is generated from examples/_templates/grafana/docker-compose.yml
+    # Do not edit directly. To update, edit the template and run: make examples/sync-templates
+    image: grafana/grafana:latest
+    environment:
+    - GF_PLUGINS_PREINSTALL_SYNC=grafana-pyroscope-app
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_FEATURE_TOGGLES_ENABLE=traceToProfiles tracesEmbeddedFlameGraph
+    volumes:
+    - ./grafana-provisioning:/etc/grafana/provisioning
+    ports:
+    - 3000:3000
+
+networks:
+  edge:

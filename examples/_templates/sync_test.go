@@ -159,6 +159,10 @@ var examples = []example{
 		templates: []string{"grafana", "pyroscope"},
 	},
 	{
+		compose:   "language-sdk-instrumentation/dotnet/fast-slow-alloy-proxy",
+		templates: []string{"grafana", "pyroscope"},
+	},
+	{
 		compose:   "language-sdk-instrumentation/dotnet/rideshare",
 		templates: []string{"grafana", "pyroscope"},
 	},

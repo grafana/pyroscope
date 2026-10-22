@@ -16,3 +16,7 @@ To run the example execute the following commands:
 # cd examples/dotnet/fast-slow
 # docker-compose up
 ```
+
+### Fast-slow with Alloy and an HTTP proxy
+
+The .NET SDK does not support HTTP proxies. The [fast-slow-alloy-proxy](fast-slow-alloy-proxy) example shows how to send profiles through a forward proxy (Squid) with Grafana Alloy as a relay.
