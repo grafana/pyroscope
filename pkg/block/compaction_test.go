@@ -192,7 +192,7 @@ func Test_CompactBlocks_recordingRules(t *testing.T) {
 			ExternalLabels: labels.New(labels.Label{Name: "__name__", Value: "profiles_recorded_cpu_usage_function_total_servehttp_samples"}),
 			FunctionName:   "net/http.HandlerFunc.ServeHTTP",
 		},
-	})
+	}, nil)
 	sampleObserver := metrics.NewSampleObserver(0, exporter, ruler, labels.EmptyLabels())
 
 	compactedBlocks, err := block.Compact(ctx, resp.Blocks, bucket,
@@ -298,7 +298,7 @@ func Test_CompactBlocks_recordingRules_shadowedSymbols(t *testing.T) {
 			ExternalLabels: labels.New(labels.Label{Name: "__name__", Value: "profiles_recorded_mem_alloc_total_query_Serve_bytes"}),
 			FunctionName:   "net/http.HandlerFunc.ServeHTTP",
 		},
-	})
+	}, nil)
 	sampleObserver := metrics.NewSampleObserver(0, exporter, ruler, labels.EmptyLabels())
 
 	compactedBlocks, err := block.Compact(ctx, resp.Blocks, bucket,
