@@ -44,6 +44,7 @@ func main() {
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
 	adminCmd := app.Command("admin", "Administrative tasks for Pyroscope cluster operators.")
+	profileDumpCommands := addProfileDumpCommands(adminCmd)
 
 	blocksCmd := adminCmd.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
 	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/anonymous/local").StringVar(&cfg.blocks.path)
@@ -176,6 +177,9 @@ func main() {
 		logger = level.NewFilter(logger, level.AllowInfo())
 	}
 
+	if p, ok := profileDumpCommands[parsedCmd]; ok {
+		os.Exit(checkError(profileDump(ctx, p)))
+	}
 	switch parsedCmd {
 	case blocksListCmd.FullCommand():
 		os.Exit(checkError(blocksList(ctx)))
