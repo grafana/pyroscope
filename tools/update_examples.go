@@ -410,6 +410,9 @@ func getTagsV(repo string, extractVersion func(Tag) *version) []version {
 			versions = append(versions, *v)
 		}
 	}
+	if len(versions) == 0 {
+		panic(fmt.Errorf("%s: no tags matched the expected version format", repo))
+	}
 	slices.SortFunc(versions, compareVersion)
 	return versions
 }
