@@ -24,13 +24,13 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
-func openProfileTable(_ context.Context, s *Dataset) (err error) {
+func openProfileTable(ctx context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionProfiles)
 	size := s.sectionSize(SectionProfiles)
 	if buf := s.inMemoryBuffer(); buf != nil {
 		offset -= int64(s.offset())
 		s.profiles, err = openParquetFile(
-			s.inMemoryBucket(buf), s.obj.path, offset, size,
+			ctx, s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
@@ -39,14 +39,14 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 		// A downloaded object is read from local disk, where read-ahead
 		// and large buffers only hold more memory per column.
 		s.profiles, err = openParquetFile(
-			s.obj.storage, s.obj.path, offset, size,
+			ctx, s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(localReadBufferSize))
 	} else {
 		s.profiles, err = openParquetFile(
-			s.obj.storage, s.obj.path, offset, size,
+			ctx, s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
@@ -71,14 +71,16 @@ type ParquetFile struct {
 }
 
 func openParquetFile(
+	parent context.Context,
 	storage objstore.BucketReader,
 	path string,
 	offset, size, footerSize int64,
 	options ...parquet.FileOption,
 ) (p *ParquetFile, err error) {
-	// The context is used for GetRange calls and should not
-	// be canceled until the parquet file is closed.
-	ctx, cancel := context.WithCancel(context.Background())
+	// Preserve trace ancestry and other context values for GetRange calls,
+	// but not the section-opening errgroup's cancellation: that context is
+	// canceled once initialization returns. The reader lives until Close.
+	ctx, cancel := context.WithCancel(context.WithoutCancel(parent))
 	defer func() {
 		if err != nil {
 			cancel()
