@@ -3,11 +3,11 @@ package parquet
 import (
 	"io"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
 
 	"github.com/grafana/pyroscope/v2/pkg/iter"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
@@ -58,17 +58,23 @@ func NewMergeRowReader(readers []parquet.RowReader, maxValue parquet.Row, less f
 				func(it iter.Iterator[parquet.Row]) { _ = it.Close() },
 			),
 		),
+		nil,
 	)
 }
 
 type IteratorRowReader struct {
 	iter.Iterator[parquet.Row]
+	logger log.Logger
 }
 
 // NewIteratorRowReader returns a RowReader that reads rows from the given iterator.
-func NewIteratorRowReader(it iter.Iterator[parquet.Row]) *IteratorRowReader {
+func NewIteratorRowReader(it iter.Iterator[parquet.Row], logger log.Logger) *IteratorRowReader {
+	if logger == nil {
+		logger = log.NewNopLogger()
+	}
 	return &IteratorRowReader{
 		Iterator: it,
+		logger:   logger,
 	}
 }
 
@@ -80,7 +86,7 @@ func (it *IteratorRowReader) ReadRows(rows []parquet.Row) (int, error) {
 	for n != len(rows) {
 
 		if !it.Next() {
-			runutil.CloseWithLogOnErr(util.Logger, it.Iterator, "failed to close iterator")
+			runutil.CloseWithLogOnErr(it.logger, it.Iterator, "failed to close iterator")
 			if it.Err() != nil {
 				return n, it.Err()
 			}
