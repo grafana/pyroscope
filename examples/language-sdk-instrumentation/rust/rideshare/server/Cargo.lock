@@ -1361,9 +1361,9 @@ dependencies = [
 
 [[package]]
 name = "pyroscope"
-version = "2.1.4"
+version = "2.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3536c0e5b33c941c4e6893b9af1df6dd9f9f8d678b4c674e1d4cdf6776a96bb7"
+checksum = "47fac6c830e2cdcbaed360392220c9258e771d8630701a5fb4251a73dce257ca"
 dependencies = [
  "aligned-vec",
  "backtrace",
