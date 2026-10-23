@@ -286,12 +286,13 @@ func (q *QueryFrontend) doQuery(
 	})
 	xrandMutex.Unlock()
 
+	maxReads := maxReadsForQueries(req.Query)
 	var p *queryv1.QueryPlan
 	switch q.queryPlanType {
 	case "balanced":
-		p = queryplan.BuildBalanced(blocks, 4, 20)
+		p = queryplan.BuildBalanced(blocks, maxReads, 20)
 	default: // Always fallback to the classic planner
-		p = queryplan.Build(blocks, 4, 20)
+		p = queryplan.Build(blocks, maxReads, 20)
 	}
 
 	// Measure only the underlying query backend call
