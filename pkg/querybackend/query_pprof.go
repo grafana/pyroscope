@@ -193,10 +193,14 @@ func (a *pprofAggregator) aggregate(report *queryv1.Report) error {
 }
 
 func (a *pprofAggregator) build() *queryv1.Report {
+	p := a.profile.Profile()
+	if maxNodes := a.query.GetMaxNodes(); maxNodes > 0 {
+		p = pprof.Truncate(p, maxNodes)
+	}
 	return &queryv1.Report{
 		Pprof: &queryv1.PprofReport{
 			Query: a.query,
-			Pprof: pprof.MustMarshal(a.profile.Profile(), true),
+			Pprof: pprof.MustMarshal(p, true),
 		},
 	}
 }
