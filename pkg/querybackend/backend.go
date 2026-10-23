@@ -25,20 +25,25 @@ import (
 )
 
 type Config struct {
-	Address          string            `yaml:"address" category:"advanced"`
-	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
-	ClientTimeout    time.Duration     `yaml:"client_timeout" category:"advanced"`
+	Address                 string            `yaml:"address" category:"advanced"`
+	GRPCClientConfig        grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
+	ClientTimeout           time.Duration     `yaml:"client_timeout" category:"advanced"`
+	TreeResultCacheMaxBytes int64             `yaml:"tree_result_cache_max_bytes" category:"advanced"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
 	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for query-backend client requests.")
+	f.Int64Var(&cfg.TreeResultCacheMaxBytes, "query-backend.tree-result-cache-max-bytes", 0, "Maximum serialized bytes retained in the per-dataset tree-result cache. 0 disables the cache.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
 }
 
 func (cfg *Config) Validate() error {
 	if cfg.Address == "" {
 		return fmt.Errorf("query-backend.address is required")
+	}
+	if cfg.TreeResultCacheMaxBytes < 0 {
+		return fmt.Errorf("query-backend.tree-result-cache-max-bytes must be non-negative")
 	}
 	return cfg.GRPCClientConfig.Validate()
 }
