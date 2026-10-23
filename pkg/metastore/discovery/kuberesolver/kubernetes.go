@@ -32,11 +32,21 @@ type K8sClient interface {
 	Host() string
 }
 
+// tokenRefreshPeriod is how long a cached service account token is
+// used before it is re-read from disk. Projected service account tokens
+// are rotated by the kubelet, and fsnotify events are not reliable
+// enough to be the only refresh mechanism: if an event is missed or the
+// watcher fails, the in-memory token is never replaced and every API
+// request starts failing with 401 until the pod restarts.
+const tokenRefreshPeriod = time.Minute
+
 type k8sClient struct {
-	host       string
-	token      string
-	tokenLck   sync.RWMutex
-	httpClient *http.Client
+	host        string
+	token       string
+	tokenFile   string
+	tokenReadAt time.Time
+	tokenLck    sync.RWMutex
+	httpClient  *http.Client
 }
 
 func (kc *k8sClient) GetRequest(url string) (*http.Request, error) {
@@ -47,12 +57,41 @@ func (kc *k8sClient) GetRequest(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	kc.tokenLck.RLock()
-	defer kc.tokenLck.RUnlock()
-	if len(kc.token) > 0 {
-		req.Header.Set("Authorization", "Bearer "+kc.token)
+	if token := kc.currentToken(); len(token) > 0 {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	return req, nil
+}
+
+// currentToken returns the cached service account token, re-reading it
+// from disk when the cached copy is older than tokenRefreshPeriod. A
+// failed re-read is not an error: the cached token is kept and the next
+// request retries.
+func (kc *k8sClient) currentToken() string {
+	kc.tokenLck.RLock()
+	token, readAt, tokenFile := kc.token, kc.tokenReadAt, kc.tokenFile
+	kc.tokenLck.RUnlock()
+	if tokenFile == "" || time.Since(readAt) < tokenRefreshPeriod {
+		return token
+	}
+	// Serialize the re-read so that concurrent requests refresh at most
+	// once per period, and a delayed disk read cannot clobber a newer
+	// token delivered via fsnotify.
+	kc.tokenLck.Lock()
+	defer kc.tokenLck.Unlock()
+	if time.Since(kc.tokenReadAt) < tokenRefreshPeriod {
+		return kc.token
+	}
+	refreshed, err := os.ReadFile(tokenFile)
+	if err != nil {
+		// Keep the cached token and retry after the next period
+		// instead of hitting the filesystem on every request.
+		kc.tokenReadAt = time.Now()
+		return kc.token
+	}
+	kc.token = string(refreshed)
+	kc.tokenReadAt = time.Now()
+	return kc.token
 }
 
 func (kc *k8sClient) Do(req *http.Request) (*http.Response, error) {
@@ -67,6 +106,7 @@ func (kc *k8sClient) setToken(token string) {
 	kc.tokenLck.Lock()
 	defer kc.tokenLck.Unlock()
 	kc.token = token
+	kc.tokenReadAt = time.Now()
 }
 
 // NewInClusterK8sClient creates K8sClient if it is inside Kubernetes
@@ -92,9 +132,11 @@ func NewInClusterK8sClient() (K8sClient, error) {
 	httpClient := &http.Client{Transport: transport, Timeout: time.Nanosecond * 0}
 
 	client := &k8sClient{
-		host:       "https://" + net.JoinHostPort(host, port),
-		token:      string(token),
-		httpClient: httpClient,
+		host:        "https://" + net.JoinHostPort(host, port),
+		token:       string(token),
+		tokenFile:   serviceAccountToken,
+		tokenReadAt: time.Now(),
+		httpClient:  httpClient,
 	}
 
 	// Create a new file watcher to listen for new Service Account tokens
