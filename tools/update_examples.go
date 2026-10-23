@@ -26,6 +26,7 @@ var dotnet = flag.Bool("dotnet", false, "")
 var node = flag.Bool("node", false, "")
 var rust = flag.Bool("rust", false, "")
 var tempo = flag.Bool("tempo", false, "")
+var otelEbpfProfiler = flag.Bool("otel-ebpf-profiler", false, "")
 var report = flag.String("report", ".tmp/update_examples_report.md", "path to write the run report to, used as the PR body")
 
 // this program requires ruby, bundle, yarn, go to be installed
@@ -42,6 +43,7 @@ func main() {
 		*node = true
 		*rust = true
 		*tempo = true
+		*otelEbpfProfiler = true
 	}
 
 	languages := []struct {
@@ -65,6 +67,7 @@ func main() {
 		{"node", *node, updateNodeJS},
 		{"rust", *rust, updateRust},
 		{"tempo", *tempo, updateTempo},
+		{"otel-ebpf-profiler", *otelEbpfProfiler, updateOtelEbpfProfiler},
 	}
 
 	var results []updateResult
@@ -164,7 +167,7 @@ func updateDotnet() {
 }
 
 func updateTempo() {
-	tags := getTagsV("grafana/tempo", extractTempoVersion(2))
+	tags := getTagsV("grafana/tempo", extractMajorVersion(2))
 	last := tags[len(tags)-1]
 	fmt.Println("tempo", last)
 
@@ -184,9 +187,26 @@ func updateTempo() {
 	}
 }
 
-// extractTempoVersion returns a version extractor that only matches tags for the
+func updateOtelEbpfProfiler() {
+	// The releases repo also tags nightlies (v0.164.0-nightly.202610230218), which the strict extractor skips.
+	tags := getTagsV("open-telemetry/opentelemetry-collector-releases", extractMajorVersion(0))
+	last := tags[len(tags)-1]
+	fmt.Println("otel-ebpf-profiler", last)
+
+	re := regexp.MustCompile(`otel/opentelemetry-collector-ebpf-profiler:\d+\.\d+\.\d+`)
+	repl := fmt.Sprintf("otel/opentelemetry-collector-ebpf-profiler:%s", last.version())
+	for _, f := range []string{
+		"examples/otel-collector/ebpf/docker/docker-compose.yml",
+		"examples/otel-collector/ebpf/kubernetes/otel-ebpf-profiler.yaml",
+		"docs/sources/configure-client/opentelemetry/ebpf-profiler.md",
+	} {
+		replaceInplace(re, f, repl)
+	}
+}
+
+// extractMajorVersion returns a version extractor that only matches tags for the
 // given major version (e.g. 2 for "2.x.y").
-func extractTempoVersion(major int) func(tag Tag) *version {
+func extractMajorVersion(major int) func(tag Tag) *version {
 	return func(tag Tag) *version {
 		re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
 		match := re.FindStringSubmatch(tag.Name)
