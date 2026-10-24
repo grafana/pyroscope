@@ -1715,6 +1715,68 @@ func TestExport_PushBatchError_Propagates(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to make a GRPC request")
 }
 
+// TestConvertOtelToGoogle_InvalidSampleAttributeIndex reproduces the bug where a
+// sample referencing an out-of-bounds AttributeIndices entry made
+// ConvertOtelToGoogle return an empty, error-free result instead of surfacing
+// the malformed input.
+func TestConvertOtelToGoogle_InvalidSampleAttributeIndex(t *testing.T) {
+	req := createValidOTLPRequest()
+	sample := req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0].Samples[0]
+	// AttributeTable is empty, so index 0 is out of bounds.
+	sample.AttributeIndices = []int32{0}
+
+	result, err := ConvertOtelToGoogle(req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0], req.Dictionary)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "could not determine service name for sample")
+	assert.Nil(t, result)
+}
+
+// TestExport_InvalidSampleAttributeIndex_RejectsAsClientError reproduces the
+// end-to-end symptom: a malformed profile was silently dropped, acknowledged
+// with a 200/OK and nothing stored. PushBatch must never be called, and the
+// client must see a visible error instead.
+func TestExport_InvalidSampleAttributeIndex_RejectsAsClientError(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+
+	req := createValidOTLPRequest()
+	// Reference an attribute index that doesn't exist in AttributeTable.
+	req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0].Samples[0].AttributeIndices = []int32{0}
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	_, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), req)
+
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	svc.AssertNotCalled(t, "PushBatch", mock.Anything, mock.Anything)
+}
+
+// TestHTTPExport_InvalidSampleAttributeIndex_Returns400 verifies the HTTP
+// path classifies the same malformed attribute index as a 400, not a 500
+// leaking the raw gRPC status text.
+func TestHTTPExport_InvalidSampleAttributeIndex_Returns400(t *testing.T) {
+	svc := mockotlp.NewMockPushService(t)
+
+	req := createValidOTLPRequest()
+	req.ResourceProfiles[0].ScopeProfiles[0].Profiles[0].Samples[0].AttributeIndices = []int32{0}
+	body, err := proto.Marshal(req)
+	require.NoError(t, err)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+	httpReq.Header.Set(user.OrgIDHeaderName, "tenant-a")
+
+	w := httptest.NewRecorder()
+	httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.NotContains(t, w.Body.String(), "rpc error", "HTTP client must not see a raw gRPC status string")
+	svc.AssertNotCalled(t, "PushBatch", mock.Anything, mock.Anything)
+}
+
 // recordPushBatch wires a mock PushService that records every PushRequest it
 // receives (labels sorted for deterministic comparison).
 func recordPushBatch(t *testing.T) (*mockotlp.MockPushService, *[]*model.PushRequest) {

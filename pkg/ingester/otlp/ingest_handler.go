@@ -282,8 +282,9 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
-					grpcError := status.Errorf(codes.InvalidArgument, "failed to convert otel profile: %s", err.Error())
-					return &pprofileotlp.ExportProfilesServiceResponse{}, grpcError
+					// validation error, not a raw gRPC status, so the HTTP path classifies it as 400 too.
+					validationErr := validation.NewErrorf(validation.MalformedProfile, "failed to convert otel profile: %s", err.Error())
+					return &pprofileotlp.ExportProfilesServiceResponse{}, connect.NewError(connect.CodeInvalidArgument, validationErr)
 				}
 				profileID := otlpProfileID(p.ProfileId)
 
