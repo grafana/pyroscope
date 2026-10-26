@@ -1,11 +1,11 @@
-FROM gcr.io/distroless/static:debug@sha256:11c839f18a0d7b91b093cda53a5d4cee84f23ec450a6f6e1bf17ab12bf296333 AS debug
+FROM gcr.io/distroless/static:debug@sha256:6a5e9a4921c51d613ab8128402badf19d27b16627f92f97146f4597d2c593104 AS debug
 
 SHELL [ "/busybox/sh", "-c" ]
 
 RUN addgroup -g 10001 -S pyroscope && \
     adduser -u 10001 -S pyroscope -G pyroscope -h /data
 
-FROM gcr.io/distroless/static@sha256:034df5c1737e8241f6ed6423a12e720ee0f6d6f088609ee172f98f6f2166ef5d
+FROM gcr.io/distroless/static@sha256:15f8637509792e05b97d83451b0b6ccfa4abd548f997e406ac1e72c87fe1fa78
 
 COPY --from=debug /etc/passwd /etc/passwd
 COPY --from=debug /etc/group /etc/group
