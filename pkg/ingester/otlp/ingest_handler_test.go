@@ -1803,6 +1803,9 @@ func TestExport_MixedBatch_PushesValidProfilesWithPartialSuccess(t *testing.T) {
 	assert.Contains(t, resp.PartialSuccess.ErrorMessage, "could not determine service name for sample")
 	require.Len(t, *pushed, 1)
 	assert.Len(t, (*pushed)[0].Series, 1)
+	validSize := proto.Size(createValidOTLPRequest().ResourceProfiles[0].ScopeProfiles[0].Profiles[0])
+	assert.Equal(t, validSize, (*pushed)[0].ReceivedDecompressedProfileSize, "rejected profile bytes must not count as received")
+	assert.Equal(t, validSize, (*pushed)[0].ReceivedCompressedProfileSize)
 }
 
 // TestHTTPExport_MixedBatch_ReturnsPartialSuccess checks the HTTP path returns

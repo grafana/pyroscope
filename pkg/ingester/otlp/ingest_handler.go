@@ -282,13 +282,12 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		for _, sp := range rp.ScopeProfiles {
 			for _, p := range sp.Profiles {
 				sz := proto.Size(p)
-				req.ReceivedCompressedProfileSize += sz
-				req.ReceivedDecompressedProfileSize += sz
-
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
 					// Reject only this profile. The rest of the request is still
 					// ingested and the rejection is reported through partial_success.
+					// Its bytes count as discarded, not received. Only the first
+					// error is kept so the message stays bounded.
 					rejected++
 					if firstRejection == nil {
 						firstRejection = err
@@ -299,6 +298,8 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					continue
 				}
 				accepted++
+				req.ReceivedCompressedProfileSize += sz
+				req.ReceivedDecompressedProfileSize += sz
 				profileID := otlpProfileID(p.ProfileId)
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
