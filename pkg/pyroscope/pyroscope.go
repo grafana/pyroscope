@@ -859,6 +859,10 @@ func (f *Pyroscope) Run() error {
 		// 1) Signal is received and manager is stopped.
 		// 2) Any service fails.
 		err = sm.AwaitStopped(context.Background())
+		// The server drains requests after other services stop, so close the client after it.
+		if f.queryBackendClient != nil {
+			err = errors.Join(err, f.queryBackendClient.Close())
+		}
 	}
 	if f.versions != nil {
 		f.versions.Shutdown()

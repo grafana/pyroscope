@@ -11,10 +11,10 @@
     pprof-format "^2.2.1"
     source-map "^0.7.4"
 
-"@pyroscope/nodejs@v0.6.5":
-  version "0.6.5"
-  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.6.5.tgz#9279cdefee3eb9a1290727206211b7b214d840e2"
-  integrity sha512-ESR8yKzo+cCUfXw550gOun+vBVFHSMWZp+pC/IfevSUIEmZvQXeow1Wx+evz4BS530yDom6B/wByfYDDE9a26w==
+"@pyroscope/nodejs@v0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.7.0.tgz#1177d38985792e6d4d131336cf05ed4214073cc1"
+  integrity sha512-4vK8IXnSYcD20tR5zaLm3ZPkR2RssO8F8bjo3C8qDC6GROByJuNxnklzjSlGx9E0ckvtr/9Hb7Ouv4eBa1w6fw==
   dependencies:
     "@datadog/pprof" "5.14.4"
     debug "^4.4.3"
