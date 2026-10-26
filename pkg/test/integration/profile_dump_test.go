@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -133,7 +134,7 @@ func TestProfileDumpConnectCLI(t *testing.T) {
 	require.NoError(t, bucket.Upload(ctx, "unrelated/keep", strings.NewReader("keep")))
 	cleanConfig := profiledump.CleanerConfig{Retention: 90 * time.Minute}
 	registry := prometheus.NewRegistry()
-	cleaner, err := profiledump.NewCleaner(cleanConfig, bucket, registry, func() time.Time { return now.Add(cleanConfig.Retention + time.Hour) })
+	cleaner, err := profiledump.NewCleaner(cleanConfig, bucket, log.NewNopLogger(), registry, func() time.Time { return now.Add(cleanConfig.Retention + time.Hour) })
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, cleaner))
 	t.Cleanup(func() { require.NoError(t, services.StopAndAwaitTerminated(context.Background(), cleaner)) })

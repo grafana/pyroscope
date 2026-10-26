@@ -3,9 +3,12 @@ package profiledump
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -33,20 +36,19 @@ type CleanupBucket interface {
 	IsObjNotFoundErr(error) bool
 }
 
-// Cleaner sweeps native capture files sequentially with conservative hourly retention.
+// Cleaner sweeps capture files sequentially with conservative hourly retention.
 type Cleaner struct {
 	services.Service
 	cfg           CleanerConfig
 	bucket        CleanupBucket
+	logger        log.Logger
 	now           func() time.Time
 	sweepInterval time.Duration
 	deleteTimeout time.Duration
-	deleted       prometheus.Counter
-	errors        *prometheus.CounterVec
 	success       prometheus.Gauge
 }
 
-func NewCleaner(cfg CleanerConfig, bucket CleanupBucket, reg prometheus.Registerer, now func() time.Time) (*Cleaner, error) {
+func NewCleaner(cfg CleanerConfig, bucket CleanupBucket, logger log.Logger, reg prometheus.Registerer, now func() time.Time) (*Cleaner, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -57,14 +59,10 @@ func NewCleaner(cfg CleanerConfig, bucket CleanupBucket, reg prometheus.Register
 		now = time.Now
 	}
 	m := promauto.With(reg)
-	c := &Cleaner{cfg: cfg, bucket: bucket, now: now,
+	c := &Cleaner{cfg: cfg, bucket: bucket, logger: logger, now: now,
 		sweepInterval: cleanupSweepInterval, deleteTimeout: cleanupDeleteTimeout,
-		deleted: m.NewCounter(prometheus.CounterOpts{Name: "pyroscope_profile_dump_cleanup_deleted_total", Help: "Delete calls returning success. Provider-recognized not-found responses are excluded. Idempotent provider successes may include concurrent deletes."}),
-		errors:  m.NewCounterVec(prometheus.CounterOpts{Name: "pyroscope_profile_dump_cleanup_errors_total", Help: "Cleanup storage failures by operation: list or delete. Shutdown cancellation is excluded."}, []string{"operation"}),
-		success: m.NewGauge(prometheus.GaugeOpts{Name: "pyroscope_profile_dump_cleanup_last_success_timestamp_seconds", Help: "Completion time of the last namespace sweep without storage errors. Listings are not snapshots."}),
+		success: m.NewGauge(prometheus.GaugeOpts{Name: "pyroscope_profile_dump_cleanup_last_success_timestamp_seconds", Help: "Completion time of the last full cleanup sweep without storage errors, as a Unix timestamp in seconds."}),
 	}
-	c.errors.WithLabelValues("list")
-	c.errors.WithLabelValues("delete")
 	c.Service = services.NewBasicService(nil, c.running, nil)
 	return c, nil
 }
@@ -82,20 +80,24 @@ func (c *Cleaner) running(ctx context.Context) error {
 	return nil
 }
 
+// sweep records success only if traversal completes without storage errors
+// and the context has not been canceled.
 func (c *Cleaner) sweep(ctx context.Context) {
 	cutoff := c.now().UTC().Add(-c.cfg.Retention)
-	if c.walk(ctx, ObjectPrefix, cleanupRootDepth, cutoff) && ctx.Err() == nil {
+	if err := c.walk(ctx, ObjectPrefix, cleanupRootDepth, cutoff); err != nil {
+		level.Error(c.logger).Log("msg", "failed to clean up profile dumps", "err", err)
+	} else if ctx.Err() == nil {
 		c.success.Set(float64(c.now().UnixNano()) / 1e9)
 	}
 }
 
-// walk lists tenant, date, and hour partitions before recursively listing files
-// in an eligible hour. All state belongs to this sweep, including failures.
-func (c *Cleaner) walk(ctx context.Context, prefix string, depth int, cutoff time.Time) bool {
+// walk lists files within eligible hour partitions, continuing after storage
+// failures and returning the first error encountered.
+func (c *Cleaner) walk(ctx context.Context, prefix string, depth int, cutoff time.Time) error {
 	if ctx.Err() != nil {
-		return false
+		return nil
 	}
-	success := true
+	var firstErr error
 	var opts []objstore.IterOption
 	if depth == cleanupHourDepth {
 		opts = append(opts, objstore.WithRecursiveIter())
@@ -107,35 +109,34 @@ func (c *Cleaner) walk(ctx context.Context, prefix string, depth int, cutoff tim
 			return nil
 		}
 		if depth < cleanupHourDepth {
-			if cleanupPartition(prefix, key, depth, cutoff) && !c.walk(ctx, key, depth+1, cutoff) {
-				success = false
+			if cleanupPartition(prefix, key, depth, cutoff) {
+				if err := c.walk(ctx, key, depth+1, cutoff); err != nil && firstErr == nil {
+					firstErr = err
+				}
 			}
 			return nil
 		}
-		parsed, err := ParseObjectKey(key)
-		if err != nil || !strings.HasPrefix(key, prefix) || !parsed.CaptureTime.Before(cutoff) {
+		// Capture owns every object beneath a valid eligible hour, including nested
+		// objects and malformed filenames. Partition validation bounds deletion.
+		if !strings.HasPrefix(key, prefix) {
 			return nil
 		}
 		if ctx.Err() != nil {
 			return nil
 		}
 		deleteCtx, cancel := context.WithTimeout(ctx, c.deleteTimeout)
-		err = c.bucket.Delete(deleteCtx, key)
+		err := c.bucket.Delete(deleteCtx, key)
 		cancel()
-		if err == nil {
-			c.deleted.Inc()
-		} else if ctx.Err() == nil && !c.bucket.IsObjNotFoundErr(err) {
-			c.errors.WithLabelValues("delete").Inc()
-			success = false
+		if err != nil && ctx.Err() == nil && !c.bucket.IsObjNotFoundErr(err) && firstErr == nil {
+			firstErr = fmt.Errorf("delete profile dump %q: %w", key, err)
 		}
 		return nil
 	}, opts...)
 	// A not-found listing error can mean the bucket itself is inaccessible.
-	if err != nil && ctx.Err() == nil {
-		c.errors.WithLabelValues("list").Inc()
-		success = false
+	if err != nil && ctx.Err() == nil && firstErr == nil {
+		firstErr = fmt.Errorf("list profile dumps under %q: %w", prefix, err)
 	}
-	return success && ctx.Err() == nil
+	return firstErr
 }
 
 func cleanupPartition(prefix, key string, depth int, cutoff time.Time) bool {

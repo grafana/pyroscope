@@ -427,7 +427,7 @@ func (f *Pyroscope) initProfileDumpCleaner() (services.Service, error) {
 	if f.storageBucket == nil {
 		return nil, nil
 	}
-	c, err := profiledump.NewCleaner(f.Cfg.ProfileDump.Cleaner, f.storageBucket, f.reg, nil)
+	c, err := profiledump.NewCleaner(f.Cfg.ProfileDump.Cleaner, f.storageBucket, f.logger, f.reg, nil)
 	if err != nil {
 		return nil, err
 	}
