@@ -40,7 +40,7 @@ func TestCleanerS3Cancellation(t *testing.T) {
 				w.Header().Set("Content-Type", "application/xml")
 				_, _ = fmt.Fprint(w, `<ListBucketResult><Name>captures</Name><IsTruncated>true</IsTruncated><NextContinuationToken>next</NextContinuationToken>`)
 				for i := range 1000 {
-					_, _ = fmt.Fprintf(w, "<Contents><Key>%sunexpected-%04d</Key><Size>1</Size></Contents>", NativeObjectPrefix, i)
+					_, _ = fmt.Fprintf(w, "<Contents><Key>%sunexpected-%04d</Key><Size>1</Size></Contents>", ObjectPrefix, i)
 				}
 				_, _ = fmt.Fprint(w, `</ListBucketResult>`)
 			}))
@@ -102,7 +102,7 @@ func TestCleanerCOSMissingBucket(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, bucket.Close()) })
 
-	err = bucket.Iter(context.Background(), NativeObjectPrefix, func(string) error {
+	err = bucket.Iter(context.Background(), ObjectPrefix, func(string) error {
 		t.Fatal("unexpected object")
 		return nil
 	})

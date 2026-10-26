@@ -18,7 +18,7 @@ const (
 	cleanupMaxPartitionKeyBytes = 4096
 )
 
-// Depth identifies the directory being listed, relative to NativeObjectPrefix.
+// Depth identifies the directory being listed, relative to ObjectPrefix.
 const (
 	cleanupRootDepth = iota
 	cleanupTenantDepth
@@ -84,7 +84,7 @@ func (c *Cleaner) running(ctx context.Context) error {
 
 func (c *Cleaner) sweep(ctx context.Context) {
 	cutoff := c.now().UTC().Add(-c.cfg.Retention)
-	if c.walk(ctx, NativeObjectPrefix, cleanupRootDepth, cutoff) && ctx.Err() == nil {
+	if c.walk(ctx, ObjectPrefix, cleanupRootDepth, cutoff) && ctx.Err() == nil {
 		c.success.Set(float64(c.now().UnixNano()) / 1e9)
 	}
 }
@@ -112,7 +112,7 @@ func (c *Cleaner) walk(ctx context.Context, prefix string, depth int, cutoff tim
 			}
 			return nil
 		}
-		parsed, err := ParseNativeObjectKey(key)
+		parsed, err := ParseObjectKey(key)
 		if err != nil || !strings.HasPrefix(key, prefix) || !parsed.CaptureTime.Before(cutoff) {
 			return nil
 		}
@@ -147,9 +147,9 @@ func cleanupPartition(prefix, key string, depth int, cutoff time.Time) bool {
 		return false
 	}
 	if depth == cleanupRootDepth {
-		return ValidateNativeTenant(segment) == nil
+		return ValidateTenant(segment) == nil
 	}
-	parts := strings.Split(strings.TrimSuffix(strings.TrimPrefix(key, NativeObjectPrefix), "/"), "/")
+	parts := strings.Split(strings.TrimSuffix(strings.TrimPrefix(key, ObjectPrefix), "/"), "/")
 	date := strings.Join(parts[1:], "/")
 	layout := "2006-01-02"
 	if depth == cleanupDateDepth {

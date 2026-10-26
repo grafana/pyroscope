@@ -2,109 +2,61 @@ package profiledump
 
 import (
 	"context"
-	"encoding/base64"
 	"io"
-	"net/http"
-	"net/http/httptest"
-	"sync/atomic"
+	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/require"
 	thanosobjstore "github.com/thanos-io/objstore"
-	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/s3"
 )
 
-type observedBucket struct {
-	objstore.Bucket
-	closes atomic.Int64
+type tenantEncryption struct{ tenants []string }
+
+func (p *tenantEncryption) S3SSEType(tenant string) string {
+	p.tenants = append(p.tenants, tenant)
+	return s3.SSEKMS
 }
-
-func (b *observedBucket) Close() error {
-	b.closes.Add(1)
-	return b.Bucket.Close()
+func (p *tenantEncryption) S3SSEKMSKeyID(tenant string) string {
+	p.tenants = append(p.tenants, tenant)
+	return "key-" + tenant
 }
-
-type tenantEncryption struct{}
-
-func (tenantEncryption) S3SSEType(string) string            { return s3.SSEKMS }
-func (tenantEncryption) S3SSEKMSKeyID(tenant string) string { return "key-" + tenant }
-func (tenantEncryption) S3SSEKMSEncryptionContext(tenant string) string {
+func (p *tenantEncryption) S3SSEKMSEncryptionContext(tenant string) string {
+	p.tenants = append(p.tenants, tenant)
 	return `{"tenant":"` + tenant + `"}`
 }
 
-func TestRecorderBucketUpload(t *testing.T) {
-	bucket := &observedBucket{Bucket: objstore.NewBucket(thanosobjstore.NewInMemBucket())}
-	t.Cleanup(func() { require.NoError(t, bucket.Close()) })
-	r, _, _ := recorderFixture(t, recorderTestConfig(), BucketUpload(bucket, nil), nil)
-	payload := []byte{0x1f, 0x8b, 0, 0xff, 9}
-	out := r.Capture(context.Background(), "a", candidate(payload))
-	require.True(t, out.Enqueued)
-	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
-	require.Zero(t, bucket.closes.Load(), "recorder must not close shared storage")
-	stored, err := bucket.Get(context.Background(), out.ObjectKey)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, stored.Close()) }()
-	restored, err := io.ReadAll(stored)
-	require.NoError(t, err)
-	keys, err := ParseNativeObjectKey(out.ObjectKey)
-	require.NoError(t, err)
-	sidecar, err := bucket.Get(context.Background(), keys.MetadataKey)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, sidecar.Close()) }()
-	metadata, err := ReadNativeMetadata(sidecar, keys.MetadataKey)
-	require.NoError(t, err)
-	require.Equal(t, payload, restored)
-	require.Equal(t, "a", metadata.TenantID)
-	assertReleased(t, r)
+type recordingUploadBucket struct {
+	thanosobjstore.Bucket
+	keys []string
 }
 
-func TestRecorderTenantEncryptionReachesS3(t *testing.T) {
-	type request struct {
-		header http.Header
-		path   string
-	}
-	requests := make(chan request, 4)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := io.Copy(io.Discard, r.Body)
-		if err != nil {
-			t.Error(err)
-		}
-		requests <- request{r.Header.Clone(), r.URL.Path}
-		w.WriteHeader(http.StatusOK)
-	}))
-	t.Cleanup(server.Close)
-	client, err := s3.NewBucketClient(s3.Config{
-		Endpoint: server.Listener.Addr().String(), Region: "test", BucketName: "customer",
-		SecretAccessKey: flagext.SecretWithValue("test"), AccessKeyID: "test", Insecure: true,
-	}, "test", log.NewNopLogger())
-	require.NoError(t, err)
-	bucket := &observedBucket{Bucket: objstore.NewPrefixedBucket(objstore.NewBucket(client), "customer/prefix")}
-	t.Cleanup(func() { require.NoError(t, bucket.Close()) })
-	r, _, _ := recorderFixture(t, recorderTestConfig(), BucketUpload(bucket, tenantEncryption{}), nil)
+func (b *recordingUploadBucket) Upload(ctx context.Context, key string, body io.Reader, opts ...thanosobjstore.ObjectUploadOption) error {
+	b.keys = append(b.keys, key)
+	return b.Bucket.Upload(ctx, key, body, opts...)
+}
+
+func TestBucketUploadTenantAndPrefix(t *testing.T) {
+	raw := &recordingUploadBucket{Bucket: thanosobjstore.NewInMemBucket()}
+	bucket := objstore.NewPrefixedBucket(objstore.NewBucket(raw), "customer/prefix")
+	provider := &tenantEncryption{}
+	upload := BucketUpload(bucket, provider)
 	for _, tenant := range []string{"a", "b"} {
-		out := r.Capture(context.Background(), tenant, candidate([]byte("native")))
-		require.True(t, out.Enqueued)
-		require.Contains(t, out.spanAttributes(), attribute.String("capture.object_key", out.ObjectKey))
-		require.Contains(t, out.ObjectKey, "__pyroscope_cluster/profile-debug-dumps/native/"+tenant+"/")
-		keys, err := ParseNativeObjectKey(out.ObjectKey)
+		payloadKey, _, err := NewObjectKey(tenant, recorderNow)
 		require.NoError(t, err)
-		for _, key := range []string{keys.PayloadKey, keys.MetadataKey} {
-			got := await(t, requests)
-			require.Equal(t, "/customer/customer/prefix/"+key, got.path)
-			require.Equal(t, "aws:kms", got.header.Get("x-amz-server-side-encryption"))
-			require.Equal(t, "key-"+tenant, got.header.Get("x-amz-server-side-encryption-aws-kms-key-id"))
-			wantContext := base64.StdEncoding.EncodeToString([]byte(tenantEncryption{}.S3SSEKMSEncryptionContext(tenant)))
-			require.Equal(t, wantContext, got.header.Get("x-amz-server-side-encryption-context"))
-			require.Empty(t, got.header.Get("Content-Encoding"))
+		for _, key := range []string{payloadKey, strings.TrimSuffix(payloadKey, ".pprof") + ".json"} {
+			provider.tenants = nil
+			require.NoError(t, upload(context.Background(), tenant, key, strings.NewReader("payload")))
+			require.Equal(t, []string{tenant, tenant, tenant}, provider.tenants)
+			require.Equal(t, "customer/prefix/"+key, raw.keys[len(raw.keys)-1])
+			body, err := raw.Get(context.Background(), "customer/prefix/"+key)
+			require.NoError(t, err)
+			data, err := io.ReadAll(body)
+			require.NoError(t, err)
+			require.NoError(t, body.Close())
+			require.Equal(t, "payload", string(data))
 		}
 	}
-	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
-	require.Zero(t, bucket.closes.Load())
-	assertReleased(t, r)
 }

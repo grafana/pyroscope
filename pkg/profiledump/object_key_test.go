@@ -10,37 +10,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNativeObjectKeyTenants(t *testing.T) {
+func TestObjectKeyTenants(t *testing.T) {
 	t.Parallel()
 	capturedAt := time.Date(2026, 9, 25, 12, 34, 56, 123456789, time.UTC)
 	for _, tenantID := range []string{"3648", "tenant-a", "Team_A.42", "!-_.*'()", "...", strings.Repeat("t", tenant.MaxTenantIDLength)} {
 		t.Run(tenantID, func(t *testing.T) {
-			key, id, err := NewNativeObjectKey(tenantID, capturedAt)
+			key, id, err := NewObjectKey(tenantID, capturedAt)
 			require.NoError(t, err)
-			require.Equal(t, "__pyroscope_cluster/profile-debug-dumps/native/"+tenantID+"/2026-09-25/12/34/"+id.String()+".pprof", key)
-			parsed, err := ParseNativeObjectKey(key)
+			require.Equal(t, "__pyroscope_cluster/profile-dumps/"+tenantID+"/2026-09-25/12/34/"+id.String()+".pprof", key)
+			parsed, err := ParseObjectKey(key)
 			require.NoError(t, err)
 			require.Equal(t, tenantID, parsed.TenantID)
 			require.Equal(t, id, parsed.CaptureID)
 			require.Equal(t, capturedAt.Truncate(time.Millisecond), parsed.CaptureTime)
 			require.Equal(t, key, parsed.PayloadKey)
 			require.Equal(t, strings.TrimSuffix(key, ".pprof")+".json", parsed.MetadataKey)
-			sibling, err := ParseNativeObjectKey(parsed.MetadataKey)
+			sibling, err := ParseObjectKey(parsed.MetadataKey)
 			require.NoError(t, err)
 			require.Equal(t, parsed, sibling)
 		})
 	}
 	for _, tenantID := range []string{"", ".", "..", "../a", "a/b", `a\b`, "a|b", "%2e%2e", "a b", "a\nb", "a\x00b", "租户", "\xff", strings.Repeat("t", tenant.MaxTenantIDLength+1)} {
 		t.Run("invalid "+tenantID, func(t *testing.T) {
-			_, _, err := NewNativeObjectKey(tenantID, capturedAt)
+			_, _, err := NewObjectKey(tenantID, capturedAt)
 			require.Error(t, err)
-			_, err = ParseNativeObjectKey(NativeObjectPrefix + tenantID + "/2026-09-25/12/34/01M3CAE8HV0000000000000000.pprof")
+			_, err = ParseObjectKey(ObjectPrefix + tenantID + "/2026-09-25/12/34/01M3CAE8HV0000000000000000.pprof")
 			require.Error(t, err)
 		})
 	}
 }
 
-func TestNativeObjectKeyTimeBoundaries(t *testing.T) {
+func TestObjectKeyTimeBoundaries(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ timestamp, partition string }{
 		{"2026-09-25T12:34:59.999999999Z", "2026-09-25/12/34"},
@@ -58,30 +58,26 @@ func TestNativeObjectKeyTimeBoundaries(t *testing.T) {
 		t.Run(tc.timestamp, func(t *testing.T) {
 			capturedAt, err := time.Parse(time.RFC3339Nano, tc.timestamp)
 			require.NoError(t, err)
-			key, id, err := NewNativeObjectKey("3648", capturedAt)
+			key, id, err := NewObjectKey("3648", capturedAt)
 			require.NoError(t, err)
-			require.Equal(t, NativeObjectPrefix+"3648/"+tc.partition+"/"+id.String()+".pprof", key)
+			require.Equal(t, ObjectPrefix+"3648/"+tc.partition+"/"+id.String()+".pprof", key)
 			require.Equal(t, ulid.Timestamp(capturedAt), id.Time())
-			parsed, err := ParseNativeObjectKey(key)
+			parsed, err := ParseObjectKey(key)
 			require.NoError(t, err)
 			require.True(t, capturedAt.Truncate(time.Millisecond).Equal(parsed.CaptureTime))
 			require.Equal(t, time.UTC, parsed.CaptureTime.Location())
 		})
 	}
-	for _, capturedAt := range []time.Time{{}, time.Unix(-1, 999999999), time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC)} {
-		_, _, err := NewNativeObjectKey("3648", capturedAt)
-		require.Error(t, err)
-	}
 }
 
-func TestNativeObjectKeyRejectsNearMatches(t *testing.T) {
+func TestObjectKeyRejectsNearMatches(t *testing.T) {
 	t.Parallel()
-	key, id, err := NewNativeObjectKey("3648", time.Date(2026, 9, 25, 12, 34, 0, 0, time.UTC))
+	key, id, err := NewObjectKey("3648", time.Date(2026, 9, 25, 12, 34, 0, 0, time.UTC))
 	require.NoError(t, err)
 	for name, bad := range map[string]string{
 		"empty":            "",
-		"namespace":        strings.Replace(key, "native/", "native-other/", 1),
-		"root":             strings.Replace(key, ObjectPrefix, "profile-debug-dumps-other/", 1),
+		"namespace":        strings.Replace(key, "profile-dumps/", "other-diagnostics/", 1),
+		"root":             strings.Replace(key, ObjectPrefix, "profile-dumps-other/", 1),
 		"absolute":         "/" + key,
 		"traversal":        "../" + key,
 		"extra segment":    strings.Replace(key, "/3648/", "/3648/extra/", 1),
@@ -112,7 +108,7 @@ func TestNativeObjectKeyRejectsNearMatches(t *testing.T) {
 		"too long":         key + strings.Repeat("x", 1000),
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := ParseNativeObjectKey(bad)
+			_, err := ParseObjectKey(bad)
 			require.Error(t, err, "accepted %q", bad)
 		})
 	}

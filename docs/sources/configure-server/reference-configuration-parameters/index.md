@@ -176,38 +176,21 @@ runtime_config:
   # CLI flag: -runtime-config.http-client-disable-keep-alives
   [http_client_disable_keep_alives: <boolean> | default = true]
 
-# Process bounds for Connect pprof capture and admin retention. These bounds do
-# not activate capture. Activation requires a per-tenant runtime policy with an
-# absolute deadline.
 profile_dump:
-  # Capture retention measured from server ULID time. Cleanup runs hourly and
-  # deletes only fully expired hours. Deletion is eventual. Must be positive.
+  # How long to retain captures before they become eligible for cleanup, which
+  # requires an admin target using the same bucket and storage prefix.
   # CLI flag: -profile-dump.retention
   [retention: <duration> | default = 168h]
 
-  # Maximum combined native payload and JSON sidecar bytes. Oversized captures
-  # are dropped.
-  # CLI flag: -profile-dump.max-object-bytes
-  [max_object_bytes: <int> | default = 16777216]
+  # Maximum capture size in bytes of the combined profile and JSON metadata.
+  # Larger captures are dropped.
+  # CLI flag: -profile-dump.max-capture-bytes
+  [max_capture_bytes: <int> | default = 16777216]
 
-  # Per-distributor budget for admitted capture buffers, including owned
-  # payload, JSON capacity, item overhead, queueing and uploads. Initial bounded
-  # metadata marshaling and provider allocations are outside this budget. This
-  # is not an RSS limit.
+  # Total profile and metadata bytes held by queued and uploading captures per
+  # distributor. New captures are dropped when there is insufficient space.
   # CLI flag: -profile-dump.max-retained-bytes
   [max_retained_bytes: <int> | default = 67108864]
-
-  # Aggregate capture admission rate per distributor. Tenant rates may exceed
-  # this rate, but admissions remain constrained by it. Omitted tenant rates
-  # default to min(1, this rate). Must be finite and positive. This is not a
-  # fleet quota.
-  # CLI flag: -profile-dump.process-captures-per-second
-  [process_captures_per_second: <float> | default = 10]
-
-  # One cooperative timeout covering both sequential uploads of a capture.
-  # Providers that ignore cancellation may exceed it.
-  # CLI flag: -profile-dump.upload-timeout
-  [upload_timeout: <duration> | default = 10s]
 
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]

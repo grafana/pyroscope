@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// CleanerConfig contains provisional development defaults, not a production SLA.
+// CleanerConfig controls retention performed by the admin target.
 type CleanerConfig struct {
 	Retention time.Duration `yaml:"retention"`
 }
@@ -17,7 +17,7 @@ func DefaultCleanerConfig() CleanerConfig {
 
 func (c *CleanerConfig) RegisterFlags(f *flag.FlagSet) {
 	d := DefaultCleanerConfig()
-	f.DurationVar(&c.Retention, "profile-dump.retention", d.Retention, "Capture retention measured from server ULID time. Cleanup runs hourly and deletes only fully expired hours. Deletion is eventual. Must be positive.")
+	f.DurationVar(&c.Retention, "profile-dump.retention", d.Retention, "How long to retain captures before they become eligible for cleanup, which requires an admin target using the same bucket and storage prefix.")
 }
 
 func (c CleanerConfig) Validate() error {

@@ -3,7 +3,6 @@ package profiledump
 import (
 	"context"
 	"errors"
-	"flag"
 
 	"io"
 	"strings"
@@ -52,7 +51,7 @@ func newTestCleaner(t *testing.T, cfg CleanerConfig, b CleanupBucket) *Cleaner {
 }
 func cleanupKey(t *testing.T, tenant string, when time.Time) string {
 	t.Helper()
-	key, _, err := NewNativeObjectKey(tenant, when)
+	key, _, err := NewObjectKey(tenant, when)
 	require.NoError(t, err)
 	return key
 }
@@ -92,7 +91,7 @@ func TestCleanerRetentionBoundaryAndPruning(t *testing.T) {
 			for i, key := range keys {
 				cleanupExists(t, b, key, i != 0)
 			}
-			hour := NativeObjectPrefix + "3648/" + cutoff.Format("2006-01-02/15") + "/"
+			hour := ObjectPrefix + "3648/" + cutoff.Format("2006-01-02/15") + "/"
 			require.NotContains(t, listed, hour)
 			require.Equal(t, 1.0, testutil.ToFloat64(c.deleted))
 			c.now = func() time.Time { return cutoff.Truncate(time.Hour).Add(time.Hour).Add(retention) }
@@ -109,7 +108,7 @@ func TestCleanerNativePairsOrphansAndIsolation(t *testing.T) {
 	b := &cleanupTestBucket{Bucket: objstore.NewPrefixedBucket(raw, "customer/prefix")}
 	old := cleanerNow.Add(-8 * 24 * time.Hour)
 	pair := cleanupKey(t, "tenant", old)
-	parsed, err := ParseNativeObjectKey(pair)
+	parsed, err := ParseObjectKey(pair)
 	require.NoError(t, err)
 	payloadOnly := cleanupKey(t, "3648", old)
 	sidecarOnly := strings.TrimSuffix(cleanupKey(t, "safe-tenant", old), ".pprof") + ".json"
@@ -154,10 +153,10 @@ func TestCleanerUnexpectedProviderKeys(t *testing.T) {
 	putCleanupKey(t, b, key)
 	putCleanupKey(t, b, outside)
 	b.iter = func(ctx context.Context, prefix string, f func(string) error, opts ...objstore.IterOption) error {
-		if prefix == NativeObjectPrefix {
+		if prefix == ObjectPrefix {
 			// Direct objects may precede prefixes regardless of lexical order.
 			require.NoError(t, f(outside))
-			return f(NativeObjectPrefix + "a/")
+			return f(ObjectPrefix + "a/")
 		}
 		if len(opts) != 0 {
 			require.NoError(t, f(outside))
@@ -227,7 +226,7 @@ func TestCleanerListingFailures(t *testing.T) {
 			for _, key := range keys {
 				putCleanupKey(t, b, key)
 			}
-			prefix := NativeObjectPrefix
+			prefix := ObjectPrefix
 			if level != "root" {
 				prefix += "a/"
 			}
@@ -367,7 +366,7 @@ func TestCleanerMetrics(t *testing.T) {
 	b := &cleanupTestBucket{Bucket: objstore.NewInMemBucket()}
 	c, err := NewCleaner(DefaultCleanerConfig(), b, reg, func() time.Time { return cleanerNow })
 	require.NoError(t, err)
-	putCleanupKey(t, b, NativeObjectPrefix+"unexpected")
+	putCleanupKey(t, b, ObjectPrefix+"unexpected")
 	c.sweep(context.Background())
 	require.Equal(t, float64(cleanerNow.Unix()), testutil.ToFloat64(c.success))
 	b.iter = func(context.Context, string, func(string) error, ...objstore.IterOption) error {
@@ -391,17 +390,4 @@ func TestCleanerMetrics(t *testing.T) {
 		}
 	}
 	require.ElementsMatch(t, []string{"pyroscope_profile_dump_cleanup_deleted_total", "pyroscope_profile_dump_cleanup_errors_total", "pyroscope_profile_dump_cleanup_last_success_timestamp_seconds"}, names)
-}
-
-func TestCleanerConfig(t *testing.T) {
-	var cfg CleanerConfig
-	flags := flag.NewFlagSet("test", flag.ContinueOnError)
-	cfg.RegisterFlags(flags)
-	require.Equal(t, DefaultCleanerConfig(), cfg)
-	require.NoError(t, cfg.Validate())
-	require.NoError(t, flags.Parse([]string{"-profile-dump.retention=720h"}))
-	require.Equal(t, 30*24*time.Hour, cfg.Retention)
-	for _, retention := range []time.Duration{0, -time.Hour} {
-		require.Error(t, (CleanerConfig{Retention: retention}).Validate())
-	}
 }

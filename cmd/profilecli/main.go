@@ -44,7 +44,13 @@ func main() {
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
 	adminCmd := app.Command("admin", "Administrative tasks for Pyroscope cluster operators.")
-	profileDumpCommands := addProfileDumpCommands(adminCmd)
+	profileDumpsCmd := adminCmd.Command("profile-dumps", "List, inspect, and download captured profiles.")
+	profileDumpsListCmd := profileDumpsCmd.Command(dumpList, "List capture keys, labels, and original profile IDs as JSON for a tenant and time window.")
+	profileDumpsListParams := addProfileDumpListParams(profileDumpsListCmd)
+	profileDumpsInspectCmd := profileDumpsCmd.Command(dumpInspect, "Print capture metadata as JSON without reading the payload.")
+	profileDumpsInspectParams := addProfileDumpInspectParams(profileDumpsInspectCmd)
+	profileDumpsExtractCmd := profileDumpsCmd.Command(dumpExtract, "Download the profile and its JSON metadata.")
+	profileDumpsExtractParams := addProfileDumpExtractParams(profileDumpsExtractCmd)
 
 	blocksCmd := adminCmd.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
 	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/anonymous/local").StringVar(&cfg.blocks.path)
@@ -168,10 +174,13 @@ func main() {
 		logger = level.NewFilter(logger, level.AllowInfo())
 	}
 
-	if p, ok := profileDumpCommands[parsedCmd]; ok {
-		os.Exit(checkError(profileDump(ctx, p)))
-	}
 	switch parsedCmd {
+	case profileDumpsListCmd.FullCommand():
+		os.Exit(checkError(profileDump(ctx, profileDumpsListParams, listProfileDumps)))
+	case profileDumpsInspectCmd.FullCommand():
+		os.Exit(checkError(profileDump(ctx, profileDumpsInspectParams, printProfileDump)))
+	case profileDumpsExtractCmd.FullCommand():
+		os.Exit(checkError(profileDump(ctx, profileDumpsExtractParams, extractProfileDump)))
 	case blocksListCmd.FullCommand():
 		os.Exit(checkError(blocksList(ctx)))
 	case parquetInspectCmd.FullCommand():

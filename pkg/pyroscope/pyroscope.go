@@ -101,7 +101,7 @@ type Config struct {
 	Tracing           tracing.Config          `yaml:"tracing"`
 	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
 	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
-	ProfileDump       profiledump.Config      `yaml:"profile_dump" doc:"description=Process bounds for Connect pprof capture and admin retention. These bounds do not activate capture. Activation requires a per-tenant runtime policy with an absolute deadline."`
+	ProfileDump       profiledump.Config      `yaml:"profile_dump"`
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
@@ -410,10 +410,10 @@ func (c *Config) Validate() error {
 	if err := c.ProfileDump.Recorder.Validate(); err != nil {
 		return fmt.Errorf("profile_dump recorder: %w", err)
 	}
-	if c.LimitsConfig.ProfileDebugDump != nil {
-		return errors.New("profile_debug_dump is only supported in per-tenant runtime overrides")
+	if c.LimitsConfig.ProfileDump != nil {
+		return errors.New("profile_dump is only supported in per-tenant runtime overrides")
 	}
-	if err := c.LimitsConfig.Validate(c.ProfileDump.Recorder.ProcessCapturesPerSecond); err != nil {
+	if err := c.LimitsConfig.Validate(); err != nil {
 		return err
 	}
 

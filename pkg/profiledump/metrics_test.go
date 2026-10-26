@@ -2,45 +2,37 @@ package profiledump
 
 import (
 	"context"
-	"fmt"
 	"testing"
+	"time"
 
-	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
+
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 )
 
 func TestRecorderMetricLabelsAreBounded(t *testing.T) {
 	reg := prometheus.NewRegistry()
-	r, policies, _ := recorderFixture(t, recorderTestConfig(), discardUpload, func(d *Dependencies) { d.Registerer = reg })
-	policy := recorderPolicy(t, "{}", 1, 10)
-	for i := range 100 {
-		tenant := fmt.Sprintf("tenant-%d", i)
+	r, policies, _ := recorderFixture(t, recorderTestConfig(), discardUpload)
+	r.metrics = newRecorderMetrics(reg)
+	policy := recorderPolicy(t, "{}", 1)
+	for _, tenant := range []string{"tenant-a", "tenant-b"} {
 		policies.set(tenant, policy)
-		c := candidate(nil)
-		c.Metadata.SourceProtocol = SourceProtocol(tenant)
-		require.Equal(t, DropInvalid, r.Capture(context.Background(), tenant, c).Reason)
+		r.CaptureSeries(context.Background(), tenant, &pushv1.RawProfileSeries{Samples: []*pushv1.RawSample{{RawProfile: []byte("profile")}}})
 	}
-	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), r))
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(r.metrics.uploads.WithLabelValues("success")) == 2
+	}, time.Second, time.Millisecond)
 	families, err := reg.Gather()
 	require.NoError(t, err)
-	series := 0
+	require.Len(t, families, 2)
 	for _, family := range families {
-		for _, metric := range family.Metric {
-			series++
-			for _, label := range metric.Label {
-				switch label.GetName() {
-				case "source":
-					require.Equal(t, unknownValue, label.GetValue())
-				case "result":
-					require.Equal(t, resultDropped, label.GetValue())
-				case "reason":
-					require.Equal(t, string(DropInvalid), label.GetValue())
-				default:
-					t.Fatalf("unexpected metric dimension %q", label.GetName())
-				}
-			}
-		}
+		require.Contains(t, []string{"pyroscope_profile_dump_captures_total", "pyroscope_profile_dump_uploads_total"}, family.GetName())
+		require.Len(t, family.Metric, 1, "tenants must not create metric series")
+		metric := family.Metric[0]
+		require.Len(t, metric.Label, 1)
+		require.Equal(t, "result", metric.Label[0].GetName())
+		require.Contains(t, []string{resultEnqueued, "success"}, metric.Label[0].GetValue())
 	}
-	require.Equal(t, 6, series, "tenants and unrecognized sources must not create metric series")
 }

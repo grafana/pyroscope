@@ -8,8 +8,10 @@ package exporter
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-kit/log"
@@ -19,10 +21,10 @@ import (
 	"github.com/grafana/dskit/test"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 )
 
@@ -113,8 +115,6 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 	limitsMetrics := `
 # HELP pyroscope_limits_overrides Resource limit overrides applied to tenants
 # TYPE pyroscope_limits_overrides gauge
-pyroscope_limits_overrides{limit_name="profile_debug_dump_active_until_timestamp_seconds",tenant="tenant-a"} 0
-pyroscope_limits_overrides{limit_name="profile_debug_dump_active",tenant="tenant-a"} 0
 pyroscope_limits_overrides{limit_name="ingestion_rate_mb",tenant="tenant-a"} 10
 pyroscope_limits_overrides{limit_name="ingestion_burst_size_mb",tenant="tenant-a"} 11
 pyroscope_limits_overrides{limit_name="max_global_series_per_tenant",tenant="tenant-a"} 12
@@ -239,112 +239,49 @@ func hasOverrideMetrics(e1 prometheus.Collector) bool {
 	return testutil.CollectAndCount(e1, "pyroscope_limits_overrides") > 0
 }
 
-func TestOverridesExporter_ProfileDebugDump(t *testing.T) {
-	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
-	deadline := now.Add(time.Minute + 500*time.Millisecond)
-	cfg, err := validation.LoadRuntimeConfigWithProfileDump(strings.NewReader(`overrides:
-  active:
-    profile_debug_dump:
-      active_until: "2026-09-24T12:01:00.5Z"
-      probability: 1
-  also-active:
-    profile_debug_dump:
-      active_until: "2026-09-24T12:01:00.5Z"
-      probability: 1
-  past:
-    profile_debug_dump:
-      active_until: "0001-01-01T00:00:00Z"
-      probability: 1
-  absent: {}
-  null-policy:
-    profile_debug_dump: null
-`), profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond)
-	require.NoError(t, err)
+func TestOverridesExporter_ProfileDump(t *testing.T) {
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
 	t.Cleanup(func() { require.NoError(t, closer.Close()) })
 	exporterConfig := Config{}
 	exporterConfig.Ring.Ring.KVStore.Mock = ringStore
 	exporterConfig.Ring.Ring.InstanceAddr = "127.0.0.1"
-	e, err := NewOverridesExporter(exporterConfig, &validation.Limits{}, validation.NewMockTenantLimits(cfg.TenantLimits), log.NewNopLogger(), nil)
+	e, err := NewOverridesExporter(exporterConfig, &validation.Limits{}, nil, log.NewNopLogger(), nil)
 	require.NoError(t, err)
 	e.ring = nil
-	calls := 0
-	e.now = func() time.Time {
-		calls++
-		return now
-	}
-	reg := prometheus.NewPedanticRegistry()
-	reg.MustRegister(e)
-	gather := func() map[string]map[string]float64 {
-		t.Helper()
-		before := calls
-		families, err := reg.Gather()
+
+	synctest.Test(t, func(t *testing.T) {
+		now := time.Now().UTC().Truncate(time.Second)
+		deadline := now.Add(time.Minute + 500*time.Millisecond)
+		cfg, err := validation.LoadRuntimeConfig(strings.NewReader(fmt.Sprintf(`overrides:
+  active:
+    profile_dump:
+      active_until: "%s"
+      probability: 1
+  past:
+    profile_dump:
+      active_until: "0001-01-01T00:00:00Z"
+      probability: 1
+  absent: {}
+  null-policy:
+    profile_dump: null
+`, deadline.Format(time.RFC3339Nano))))
 		require.NoError(t, err)
-		require.Equal(t, before+1, calls, "sample time once per collection")
-		values := map[string]map[string]float64{}
-		for _, family := range families {
-			for _, metric := range family.Metric {
-				var tenant, name string
-				for _, label := range metric.Label {
-					switch label.GetName() {
-					case "tenant":
-						tenant = label.GetValue()
-					case "limit_name":
-						name = label.GetValue()
-					}
+		e.tenantLimits = validation.NewMockTenantLimits(cfg.TenantLimits)
+		gather := func() []string {
+			t.Helper()
+			metrics, err := testutil.CollectAndFormat(e, expfmt.TypeTextPlain, "pyroscope_limits_overrides", "pyroscope_limits_defaults")
+			require.NoError(t, err)
+			var lines []string
+			for _, line := range strings.Split(string(metrics), "\n") {
+				if strings.Contains(line, `limit_name="profile_dump_`) {
+					lines = append(lines, line)
 				}
-				if !strings.HasPrefix(name, "profile_debug_dump_") {
-					continue
-				}
-				require.Equal(t, "pyroscope_limits_overrides", family.GetName(), "capture policy is runtime-only")
-				if values[tenant] == nil {
-					values[tenant] = map[string]float64{}
-				}
-				values[tenant][name] = metric.GetGauge().GetValue()
 			}
+			return lines
 		}
-		return values
-	}
-	disabled := map[string]float64{
-		"profile_debug_dump_active_until_timestamp_seconds": 0,
-		"profile_debug_dump_active":                         0,
-	}
-	active := map[string]float64{
-		"profile_debug_dump_active_until_timestamp_seconds": float64(deadline.Unix()) + 0.5,
-		"profile_debug_dump_active":                         1,
-	}
-	require.Equal(t, map[string]map[string]float64{
-		"active": active, "also-active": active, "absent": disabled, "null-policy": disabled,
-		"past": {
-			"profile_debug_dump_active_until_timestamp_seconds": float64(time.Time{}.Unix()),
-			"profile_debug_dump_active":                         0,
-		},
-	}, gather())
+		require.Equal(t, []string{fmt.Sprintf(`pyroscope_limits_overrides{limit_name="profile_dump_active_until_timestamp_seconds",tenant="active"} %g`, float64(deadline.Unix())+0.5)}, gather())
 
-	// Published policy values do not follow mutations of the input configuration.
-	*cfg.TenantLimits["active"].ProfileDebugDump.ActiveUntil = now.Add(-time.Hour)
-	require.Equal(t, active, gather()["active"])
-
-	now = deadline
-	expired := map[string]float64{
-		"profile_debug_dump_active_until_timestamp_seconds": active["profile_debug_dump_active_until_timestamp_seconds"],
-		"profile_debug_dump_active":                         0,
-	}
-	require.Equal(t, expired, gather()["active"])
-	require.Equal(t, expired, gather()["also-active"])
-
-	replacement, err := validation.LoadRuntimeConfigWithProfileDump(strings.NewReader("overrides:\n  active: {}\n"), profiledump.DefaultRecorderConfig().ProcessCapturesPerSecond)
-	require.NoError(t, err)
-	cfg.TenantLimits["active"] = replacement.TenantLimits["active"]
-	require.Equal(t, disabled, gather()["active"])
-	delete(cfg.TenantLimits, "active")
-	require.NotContains(t, gather(), "active")
-
-	e.tenantLimits = nil
-	callsBefore := calls
-	families, err := reg.Gather()
-	require.NoError(t, err)
-	require.Equal(t, callsBefore, calls)
-	require.Len(t, families, 1)
-	require.Equal(t, "pyroscope_limits_defaults", families[0].GetName())
+		time.Sleep(time.Until(deadline))
+		require.Empty(t, gather(), "expired policies stop emitting without a reload")
+	})
 }

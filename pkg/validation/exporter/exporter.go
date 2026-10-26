@@ -45,7 +45,6 @@ type OverridesExporter struct {
 	overrideDescription *prometheus.Desc
 	defaultsDescription *prometheus.Desc
 	logger              log.Logger
-	now                 func() time.Time
 
 	// OverridesExporter can optionally use a ring to uniquely shard tenants to
 	// instances and avoid export of duplicate metrics.
@@ -77,7 +76,6 @@ func NewOverridesExporter(
 			nil,
 		),
 		logger: log,
-		now:    time.Now,
 	}
 	var err error
 	exporter.ring, err = newRing(config.Ring, log, registerer)
@@ -125,19 +123,14 @@ func (oe *OverridesExporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	now := oe.now()
+	now := time.Now()
 	allLimits := oe.tenantLimits.AllByTenantID()
 	for tenant, limits := range allLimits {
-		policy := limits.ProfileDebugDumpPolicy()
-		var deadline, active float64
-		if policy.Probability() > 0 {
-			deadline = float64(policy.ActiveUntil().Unix()) + float64(policy.ActiveUntil().Nanosecond())/1e9
-		}
+		policy := limits.ProfileDumpPolicy()
 		if policy.ActiveAt(now) {
-			active = 1
+			deadline := float64(policy.ActiveUntil().UnixNano()) / 1e9
+			ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, deadline, "profile_dump_active_until_timestamp_seconds", tenant)
 		}
-		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, deadline, "profile_debug_dump_active_until_timestamp_seconds", tenant)
-		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, active, "profile_debug_dump_active", tenant)
 
 		// Write path limits
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, limits.IngestionRateMB, "ingestion_rate_mb", tenant)

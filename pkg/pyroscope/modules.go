@@ -126,7 +126,7 @@ func (f *Pyroscope) initRuntimeConfig() (services.Service, error) {
 	}
 
 	f.Cfg.RuntimeConfig.Loader = func(r io.Reader) (interface{}, error) {
-		return validation.LoadRuntimeConfigWithProfileDump(r, f.Cfg.ProfileDump.Recorder.ProcessCapturesPerSecond)
+		return validation.LoadRuntimeConfig(r)
 	}
 
 	// make sure to set default limits before we start loading configuration into memory
@@ -438,11 +438,8 @@ func (f *Pyroscope) initProfileDumpRecorder() (services.Service, error) {
 	if f.storageBucket == nil {
 		return nil, nil
 	}
-	r, err := profiledump.NewRecorder(f.Cfg.ProfileDump.Recorder, profiledump.Dependencies{
-		Policies: f.Overrides, Registerer: f.reg,
-		DistributorID: f.Cfg.Distributor.DistributorRing.InstanceID,
-		Upload:        profiledump.BucketUpload(f.storageBucket, f.Overrides),
-	})
+	r, err := profiledump.NewRecorder(f.Cfg.ProfileDump.Recorder, f.Overrides,
+		profiledump.BucketUpload(f.storageBucket, f.Overrides), f.Cfg.Distributor.DistributorRing.InstanceID, f.logger, f.reg)
 	if err != nil {
 		return nil, err
 	}

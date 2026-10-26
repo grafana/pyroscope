@@ -3,6 +3,7 @@ package profiledump
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,368 +12,275 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/semaphore"
 	"golang.org/x/time/rate"
+
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
-// itemReservation covers bounded keys, tenant identity and per-item bookkeeping.
-const itemReservation int64 = 4096
-
 const (
-	shutdownDrain            = 15 * time.Second
 	defaultQueueCapacity     = 16
 	defaultWorkers           = 2
-	defaultTenantBurst       = 1
-	defaultProcessBurst      = 2
-	defaultMaxTenantLimiters = 1024
+	defaultProcessBurst      = 10
+	processCapturesPerSecond = 10
+	recorderUploadTimeout    = 10 * time.Second
+)
+
+const (
+	sourceConnect = "connect"
+	formatPprof   = "pprof"
+)
+
+type dropReason string
+
+const (
+	dropSelector    dropReason = "selector"
+	dropSampled     dropReason = "sampled"
+	dropProcessRate dropReason = "process_rate"
+	dropTooLarge    dropReason = "too_large"
+	dropByteBudget  dropReason = "byte_budget"
+	dropInvalid     dropReason = "invalid"
+	dropQueueFull   dropReason = "queue_full"
 )
 
 // PolicyProvider supplies current immutable snapshots to concurrent admissions.
-type PolicyProvider interface{ ProfileDebugDump(tenantID string) Policy }
+type PolicyProvider interface {
+	ProfileDump(tenantID string) Policy
+}
 
 // UploadFunc receives a full capture key and tenant for SSE, without another
 // tenant prefix. The body is borrowed for the duration of the call.
 // The recorder never closes borrowed storage.
 type UploadFunc func(ctx context.Context, tenantID, key string, body io.Reader) error
 
-// Dependencies inject policies, uploads, and test controls. Now is called
-// concurrently. Random calls are serialized, defaulting to rand/v2.
-type Dependencies struct {
-	Policies      PolicyProvider
-	Upload        UploadFunc
-	DistributorID string
-	Registerer    prometheus.Registerer
-	Now           func() time.Time
-	Random        func() float64
-}
-
 type uploadItem struct {
 	payload, metadataJSON    []byte
 	tenant, key, metadataKey string
-	source                   string
 	span                     trace.SpanContext
-	reservation              int64
 }
 
 type Recorder struct {
 	*services.BasicService
-	cfg      RecorderConfig
-	deps     Dependencies
-	metrics  recorderMetrics
-	queue    chan uploadItem
-	mu       sync.Mutex     // admission, accounting, limiter state and queue closure
-	pending  sync.WaitGroup // preparations and upload workers
-	retained int64
-	process  *rate.Limiter
-	tenants  map[string]*rate.Limiter
-
-	// Fixed in production. Package tests adjust these before starting the service.
-	workers, tenantBurst, maxTenantLimiters int
+	cfg           RecorderConfig
+	policies      PolicyProvider
+	uploadFn      UploadFunc
+	distributorID string
+	logger        log.Logger
+	metrics       recorderMetrics
+	queue         chan uploadItem
+	capacity      *semaphore.Weighted
+	process       *rate.Limiter
+	now           func() time.Time
+	random        func() float64
+	workers       int
 }
 
 // NewRecorder validates and allocates without starting background work.
 // Start the service before capture. A nil *Recorder disables capture.
-func NewRecorder(cfg RecorderConfig, deps Dependencies) (*Recorder, error) {
+func NewRecorder(cfg RecorderConfig, policies PolicyProvider, upload UploadFunc, distributorID string, logger log.Logger, reg prometheus.Registerer) (*Recorder, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if deps.Policies == nil || deps.Upload == nil {
+	if policies == nil || upload == nil {
 		return nil, fmt.Errorf("recorder requires policies and upload")
 	}
-	if err := validateText("distributor_id", deps.DistributorID, MaxTextBytes, true); err != nil {
-		// Invalid diagnostic IDs fall back to a bounded placeholder.
-		deps.DistributorID = unknownValue
+	r := &Recorder{
+		cfg: cfg, policies: policies, uploadFn: upload, distributorID: distributorID,
+		logger: logger, now: time.Now, random: rand.Float64,
+		workers: defaultWorkers, queue: make(chan uploadItem, defaultQueueCapacity),
+		capacity: semaphore.NewWeighted(cfg.MaxRetainedBytes),
+		process:  rate.NewLimiter(processCapturesPerSecond, defaultProcessBurst),
 	}
-	if deps.Now == nil {
-		deps.Now = time.Now
-	}
-	if deps.Random == nil {
-		deps.Random = rand.Float64
-	}
-	r := &Recorder{workers: defaultWorkers, tenantBurst: defaultTenantBurst, maxTenantLimiters: defaultMaxTenantLimiters, cfg: cfg, deps: deps, metrics: newRecorderMetrics(deps.Registerer),
-		queue:   make(chan uploadItem, defaultQueueCapacity),
-		process: rate.NewLimiter(rate.Limit(cfg.ProcessCapturesPerSecond), defaultProcessBurst), tenants: make(map[string]*rate.Limiter)}
+	r.metrics = newRecorderMetrics(reg)
 	r.BasicService = services.NewBasicService(nil, r.run, nil)
 	return r, nil
 }
 
 func (r *Recorder) run(ctx context.Context) error {
-	// Uploads carry only trace context from ingestion, and may drain after stop.
-	uploadCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	var workers sync.WaitGroup
 	for range r.workers {
-		r.pending.Add(1)
+		workers.Add(1)
 		go func() {
-			defer r.pending.Done()
-			r.worker(uploadCtx)
+			defer workers.Done()
+			r.worker(ctx)
 		}()
 	}
-	<-ctx.Done()
-	r.mu.Lock()
-	// Admission checks the canceled service context under this same lock.
-	// No preparation can be added or item sent after this barrier.
-	close(r.queue)
-	clear(r.tenants)
-	r.mu.Unlock()
-
-	timer := time.AfterFunc(shutdownDrain, cancel)
-	defer timer.Stop()
-	// Workers alone consume the queue. Noncooperative uploads can delay this
-	// join and retain bounded queued buffers until a worker returns.
-	r.pending.Wait()
+	// Shutdown abandons queued captures, whose buffers remain bounded by max_retained_bytes.
+	workers.Wait()
 	return nil
 }
 
-// accepting requires mu, also used by the queue closure and preparation barrier.
-func (r *Recorder) accepting() bool {
-	return r.State() == services.Running && r.ServiceContext().Err() == nil
-}
-
-// PolicyActive is an allocation-free hint to skip inactive tenants, without
-// admission or metrics. Capture rechecks the policy and deadline.
-func (r *Recorder) PolicyActive(tenant string) bool {
-	return r != nil && r.deps.Policies.ProfileDebugDump(tenant).ActiveAt(r.deps.Now())
-}
-
-// Capture prepares an owned native pair and attempts a nonblocking enqueue.
-// Work uses the recorder lifecycle and carries only request trace context.
-func (r *Recorder) Capture(ctx context.Context, tenant string, c Candidate) (out Outcome) {
-	if r == nil {
-		return Outcome{Reason: DropDisabled}
-	}
-	source := metricSource(c.Metadata.SourceProtocol)
-	defer func() { r.metrics.admission(source, out) }()
-	captureTime := r.deps.Now()
-	p := r.deps.Policies.ProfileDebugDump(tenant)
-	if p.Probability() == 0 {
-		out.Reason = DropDisabled
+// CaptureSeries selects once per incoming series, then attempts each profile
+// independently against resource limits. It borrows the series until returning,
+// by which time accepted asynchronous work owns its payload and metadata bytes.
+func (r *Recorder) CaptureSeries(ctx context.Context, tenant string, series *pushv1.RawProfileSeries) {
+	if r == nil || series == nil || len(series.Samples) == 0 {
 		return
 	}
-	if !p.ActiveAt(captureTime) {
-		out.Reason = DropExpired
+	captureTime := r.now()
+	policy := r.policies.ProfileDump(tenant)
+	if !policy.ActiveAt(captureTime) {
 		return
 	}
-	if !p.Matches(c.SelectorLabels) {
-		out.Reason = DropSelector
+	if r.State() != services.Running || r.ServiceContext().Err() != nil {
 		return
 	}
-	r.mu.Lock()
-	if !r.accepting() {
-		r.mu.Unlock()
-		out.Reason = DropShutdown
-		return
+	reason := r.selectSeries(policy, model.Labels(series.Labels))
+	var labelSize int64
+	if reason == "" {
+		// The enclosing message adds per-entry framing, so nil and empty labels count.
+		labelSize = int64((&pushv1.RawProfileSeries{Labels: series.Labels}).SizeVT())
 	}
-	if p.Probability() < 1 && r.deps.Random() >= p.Probability() {
-		r.mu.Unlock()
-		out.Reason = DropSampled
-		return
-	}
-	// Read time under the admission lock so concurrent captures cannot reorder it.
-	admissionTime := r.deps.Now()
-	out.Reason = r.admitRate(tenant, p, admissionTime)
-	if out.Reason != "" {
-		r.mu.Unlock()
-		return
-	}
-	r.pending.Add(1)
-	r.mu.Unlock()
-	defer r.pending.Done()
-	ctx, finishSpan := startCaptureSpan(ctx)
-	defer func() { finishSpan(out) }()
-	prepared, out := r.prepareCapture(tenant, c, captureTime)
-	if out.Reason != "" {
-		return out
-	}
-	reservation, ok := r.reservationSize(out.PayloadSize, int64(cap(prepared.metadataJSON)))
-	if !ok {
-		out.Reason = DropByteBudget
-		return
-	}
-	r.mu.Lock()
-	if !r.accepting() {
-		r.mu.Unlock()
-		out.Reason = DropShutdown
-		return
-	}
-	if reservation > r.cfg.MaxRetainedBytes-r.retained {
-		r.mu.Unlock()
-		out.Reason = DropByteBudget
-		return
-	}
-	r.retained += reservation
-	r.metrics.retained.Add(float64(reservation))
-	r.mu.Unlock()
-	transferred := false
-	defer func() {
-		if !transferred {
-			r.release(reservation)
+	for _, sample := range series.Samples {
+		if sample == nil {
+			continue
 		}
-	}()
-	item := prepared
-	item.payload = make([]byte, len(c.Payload))
-	copy(item.payload, c.Payload)
-	item.tenant = strings.Clone(tenant)
-	item.source, item.span, item.reservation = source, trace.SpanContextFromContext(ctx), reservation
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if !r.accepting() {
-		out.Reason = DropShutdown
-		return
-	}
-	select {
-	case r.queue <- item:
-		transferred = true
-		r.metrics.queueItems.Inc()
-		r.metrics.queueBytes.Add(float64(out.Size))
-		out.Enqueued = true
-	default:
-		out.Reason = DropQueueFull
-	}
-	return
-}
-
-func (r *Recorder) prepareCapture(tenant string, c Candidate, now time.Time) (uploadItem, Outcome) {
-	var out Outcome
-	out.Format = c.Metadata.NativeFormat
-	out.SourceProtocol = c.Metadata.SourceProtocol
-	out.DistributorID = r.deps.DistributorID
-	size := int64(len(c.Payload))
-	out.PayloadSize = size
-	key, id, err := NewNativeObjectKey(tenant, now)
-	if err != nil {
-		out.Reason = DropInvalid
-		return uploadItem{}, out
-	}
-	out.CaptureID, out.ObjectKey = id.String(), key
-	m := c.Metadata
-	m.SchemaVersion, m.CapturedAt, m.TenantID = NativeSchemaVersion, now.UTC(), tenant
-	m.CaptureID = out.CaptureID
-	m.DistributorID, m.PayloadSize = r.deps.DistributorID, size
-	if err = m.Validate(key); err != nil {
-		out.Reason = DropInvalid
-		return uploadItem{}, out
-	}
-	metadataJSON, err := marshalValidatedNativeMetadata(m)
-	if err != nil {
-		out.Reason = DropTooLarge
-		return uploadItem{}, out
-	}
-	out.Size, err = nativeCaptureSize(size, int64(len(metadataJSON)), r.cfg.MaxObjectBytes)
-	if err != nil {
-		out.Reason = DropTooLarge
-		return uploadItem{}, out
-	}
-	// NewNativeObjectKey constructed and validated this payload key.
-	metadataKey := strings.TrimSuffix(key, ".pprof") + ".json"
-	return uploadItem{key: key, metadataKey: metadataKey, metadataJSON: metadataJSON}, out
-}
-
-// nativeCaptureSize checks the sum without overflowing, including at int64 limits.
-func nativeCaptureSize(payloadSize, metadataSize, limit int64) (int64, error) {
-	if payloadSize < 0 || metadataSize < 0 || metadataSize > limit || payloadSize > limit-metadataSize {
-		return 0, fmt.Errorf("native capture exceeds size limit")
-	}
-	return payloadSize + metadataSize, nil
-}
-
-// reservationSize covers both owned buffers and bounded item overhead.
-func (r *Recorder) reservationSize(payloadSize, metadataCapacity int64) (int64, bool) {
-	remaining := r.cfg.MaxRetainedBytes
-	for _, n := range [...]int64{payloadSize, metadataCapacity, itemReservation} {
-		if n < 0 || n > remaining {
-			return 0, false
+		if reason != "" {
+			r.metrics.admission(reason)
+			continue
 		}
-		remaining -= n
+		// Bound protobuf input size before constructing JSON metadata.
+		// Temporary JSON allocations are not covered by the retained-byte budget.
+		if labelSize > r.cfg.MaxCaptureBytes || int64(sample.SizeVT()) > r.cfg.MaxCaptureBytes-labelSize {
+			r.metrics.admission(dropTooLarge)
+			continue
+		}
+		if drop := r.admitProfile(); drop != "" {
+			r.metrics.admission(drop)
+			continue
+		}
+		r.capture(ctx, tenant, Metadata{
+			SourceProtocol:    sourceConnect,
+			Format:            formatPprof,
+			Labels:            series.Labels,
+			OriginalProfileID: sample.ID,
+		}, sample.RawProfile, captureTime)
 	}
-	return r.cfg.MaxRetainedBytes - remaining, true
 }
 
-// admitRate requires mu and preserves token history across policy changes.
-func (r *Recorder) admitRate(tenant string, p Policy, admissionTime time.Time) DropReason {
-	if ValidateNativeTenant(tenant) != nil {
-		return DropInvalid
+// selectSeries matches and samples an active policy snapshot.
+func (r *Recorder) selectSeries(p Policy, labels model.Labels) dropReason {
+	if !p.Matches(labels) {
+		return dropSelector
 	}
-	l := r.tenants[tenant]
-	if l == nil {
-		if len(r.tenants) >= r.maxTenantLimiters {
-			r.pruneLocked(admissionTime)
-		}
-		if len(r.tenants) >= r.maxTenantLimiters {
-			return DropLimiterCapacity
-		}
-		l = rate.NewLimiter(rate.Limit(p.MaxCapturesPerSecond()), r.tenantBurst)
-		r.tenants[strings.Clone(tenant)] = l
-	} else if l.Limit() != rate.Limit(p.MaxCapturesPerSecond()) {
-		l.SetLimitAt(admissionTime, rate.Limit(p.MaxCapturesPerSecond()))
-	}
-	if !l.AllowN(admissionTime, 1) {
-		return DropTenantRate
-	}
-	if !r.process.AllowN(admissionTime, 1) {
-		return DropProcessRate
+	if p.Probability() < 1 && r.random() >= p.Probability() {
+		return dropSampled
 	}
 	return ""
 }
 
-func (r *Recorder) pruneLocked(now time.Time) {
-	for tenant := range r.tenants {
-		if !r.deps.Policies.ProfileDebugDump(tenant).ActiveAt(now) {
-			delete(r.tenants, tenant)
+// admitProfile checks rate before constructing profile metadata.
+// Out-of-order timestamps from concurrent admissions can cause the limiter to allow extra captures.
+func (r *Recorder) admitProfile() dropReason {
+	admissionTime := r.now()
+	if !r.process.AllowN(admissionTime, 1) {
+		return dropProcessRate
+	}
+	return ""
+}
+
+// capture attempts a nonblocking capture after selection and rate admission.
+// Work uses the recorder lifecycle and carries only request trace context.
+func (r *Recorder) capture(ctx context.Context, tenant string, metadata Metadata, payload []byte, captureTime time.Time) (reason dropReason) {
+	defer func() { r.metrics.admission(reason) }()
+	item, reason := r.prepareCapture(tenant, metadata, payload, captureTime)
+	if reason != "" {
+		return reason
+	}
+	transferred := false
+	defer func() {
+		if !transferred {
+			r.release(item)
 		}
+	}()
+	item.span = trace.SpanContextFromContext(ctx)
+	// Never block ingestion waiting for an upload worker.
+	select {
+	case r.queue <- item:
+		transferred = true
+		return ""
+	default:
+		return dropQueueFull
 	}
 }
-func (r *Recorder) release(n int64) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.retained -= n
-	r.metrics.retained.Sub(float64(n))
+
+// prepareCapture checks the serialized size and acquires capacity before copying the payload.
+func (r *Recorder) prepareCapture(tenant string, m Metadata, payload []byte, now time.Time) (uploadItem, dropReason) {
+	payloadSize := int64(len(payload))
+	key, id, err := NewObjectKey(tenant, now)
+	if err != nil {
+		return uploadItem{}, dropInvalid
+	}
+	m.SchemaVersion, m.CapturedAt, m.TenantID = schemaVersion, now.UTC(), tenant
+	m.CaptureID = id.String()
+	m.DistributorID, m.PayloadSize = r.distributorID, payloadSize
+	metadataJSON, err := json.Marshal(m)
+	if err != nil {
+		return uploadItem{}, dropInvalid
+	}
+	if payloadSize > r.cfg.MaxCaptureBytes || int64(len(metadataJSON)) > r.cfg.MaxCaptureBytes-payloadSize {
+		return uploadItem{}, dropTooLarge
+	}
+	if !r.capacity.TryAcquire(payloadSize + int64(len(metadataJSON))) {
+		return uploadItem{}, dropByteBudget
+	}
+	ownedPayload := make([]byte, len(payload))
+	copy(ownedPayload, payload)
+
+	metadataKey := strings.TrimSuffix(key, ".pprof") + ".json"
+	// Avoid retaining a larger tenant header after metadata stripping.
+	return uploadItem{key: key, metadataKey: metadataKey, metadataJSON: metadataJSON, payload: ownedPayload, tenant: strings.Clone(tenant)}, ""
 }
-func (r *Recorder) dequeued(item uploadItem) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.metrics.queueItems.Dec()
-	r.metrics.queueBytes.Sub(float64(len(item.payload)) + float64(len(item.metadataJSON)))
+
+func (r *Recorder) release(item uploadItem) {
+	size := int64(len(item.payload)) + int64(len(item.metadataJSON))
+	r.capacity.Release(size)
 }
 func (r *Recorder) worker(ctx context.Context) {
-	for item := range r.queue {
-		r.dequeued(item)
-		if ctx.Err() == nil {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case item := <-r.queue:
+			if ctx.Err() != nil {
+				r.release(item)
+				return
+			}
 			r.upload(ctx, item)
-		} else {
-			r.recordShutdownDrop(item)
+			r.release(item)
 		}
-		reservation := item.reservation
-		item = uploadItem{}
-		r.release(reservation)
 	}
 }
 func (r *Recorder) upload(ctx context.Context, item uploadItem) {
-	ctx, cancel := context.WithTimeout(trace.ContextWithSpanContext(ctx, item.span), r.cfg.UploadTimeout)
+	ctx, cancel := context.WithTimeout(trace.ContextWithSpanContext(ctx, item.span), recorderUploadTimeout)
 	defer cancel()
-	started := r.deps.Now()
-	err := r.deps.Upload(ctx, item.tenant, item.key, bytes.NewReader(item.payload))
+	operation, key := "payload", item.key
+	err := r.uploadFn(ctx, item.tenant, key, bytes.NewReader(item.payload))
 	if err == nil && ctx.Err() == nil {
-		err = r.deps.Upload(ctx, item.tenant, item.metadataKey, bytes.NewReader(item.metadataJSON))
+		operation, key = "sidecar", item.metadataKey
+		err = r.uploadFn(ctx, item.tenant, key, bytes.NewReader(item.metadataJSON))
 	}
-	r.metrics.uploadDuration.WithLabelValues(item.source).Observe(r.deps.Now().Sub(started).Seconds())
-	if err != nil || ctx.Err() != nil {
-		result := "error"
-		switch {
-		case errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded):
-			result = "timeout"
-		case errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled):
-			result = "canceled"
-		}
-		r.metrics.uploads.WithLabelValues(item.source, result).Inc()
+	// Only the recorder lifecycle cancels this context before its deadline.
+	if errors.Is(ctx.Err(), context.Canceled) {
 		return
 	}
-	r.metrics.uploads.WithLabelValues(item.source, "success").Inc()
-	r.metrics.bytes.WithLabelValues(item.source, "uploaded").Add(float64(len(item.payload)) + float64(len(item.metadataJSON)))
-}
-
-func (r *Recorder) recordShutdownDrop(item uploadItem) {
-	r.metrics.dropped.WithLabelValues(item.source, string(DropShutdown)).Inc()
-	r.metrics.bytes.WithLabelValues(item.source, "dropped").Add(float64(len(item.payload)) + float64(len(item.metadataJSON)))
+	if err != nil || ctx.Err() != nil {
+		result := "error"
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			result = "timeout"
+		}
+		if err == nil {
+			err = ctx.Err()
+		}
+		level.Error(r.logger).Log("msg", "failed to upload profile dump", "operation", operation, "tenant", item.tenant, "key", key, "err", err)
+		r.metrics.uploads.WithLabelValues(result).Inc()
+		return
+	}
+	r.metrics.uploads.WithLabelValues("success").Inc()
 }
