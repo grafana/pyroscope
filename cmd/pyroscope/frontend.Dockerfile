@@ -2,7 +2,8 @@ FROM node:26.12.1@sha256:a98e6fda54fdbb22d4238054cca9a2a113bcd1191c09193a535aae2
 
 WORKDIR /pyroscope/ui
 COPY ui/package.json ui/yarn.lock ui/.yarnrc.yml ui/.npmrc ./
-RUN npm install --global corepack@0.36.0 && corepack enable && yarn install --immutable
+COPY ui/install-yarn.sh ./
+RUN sh ./install-yarn.sh && yarn install --immutable
 COPY ui/index.html ui/vite.config.ts ./
 COPY ui/tsconfig*.json ./
 COPY ui/src ./src
