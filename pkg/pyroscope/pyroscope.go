@@ -523,9 +523,7 @@ type Pyroscope struct {
 	TenantLimits validation.TenantLimits
 
 	storageBucket       phlareobj.Bucket
-	closeStorageBucket  func() error
 	profileDumpRecorder *profiledump.Recorder
-	profileDumpCleaner  *profiledump.Cleaner
 
 	grpcGatewayMux *grpcgw.ServeMux
 
@@ -720,8 +718,8 @@ func (f *Pyroscope) setupModuleManager() error {
 		deps[All] = slices.DeleteFunc(deps[All], func(s string) bool {
 			return slices.Contains(v2Modules, s)
 		})
-		deps[Admin] = []string{API, Storage, ProfileDumpCleaner}
-		deps[Distributor] = []string{Overrides, API, UsageReport, Storage, IngesterRing, ProfileDumpRecorder}
+		deps[Admin] = []string{API, Storage}
+		deps[Distributor] = []string{Overrides, API, UsageReport, Storage, IngesterRing}
 		deps[QueryFrontend] = []string{OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags}
 	}
 
@@ -750,9 +748,7 @@ var banner = `
  |___/                                 |_|    |___/                        |_|         
  `
 
-func (f *Pyroscope) Run() (runErr error) {
-	// Constructors can acquire storage and workers before a service manager exists.
-	defer func() { runErr = errors.Join(runErr, f.stopStorage()) }()
+func (f *Pyroscope) Run() error {
 	if f.Cfg.ShowBanner {
 		_ = cli.GradientBanner(banner, os.Stderr)
 	}

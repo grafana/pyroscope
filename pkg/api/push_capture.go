@@ -17,7 +17,10 @@ import (
 // registerPusher wraps only the external service. Legacy ingestion retains its
 // direct distributor reference, so converted profiles cannot enter this hook.
 func (a *API) registerPusher(svc pushv1connect.PusherServiceHandler, limits *validation.Overrides, recorder *profiledump.Recorder) {
-	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, &capturePusher{next: svc, recorder: recorder}, a.connectOptionsAuthDelayRecovery(limits)...)
+	if recorder != nil {
+		svc = &capturePusher{next: svc, recorder: recorder}
+	}
+	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, svc, a.connectOptionsAuthDelayRecovery(limits)...)
 }
 
 type capturePusher struct {

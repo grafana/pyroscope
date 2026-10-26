@@ -10,7 +10,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -44,7 +43,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
-	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/operations"
@@ -415,33 +413,14 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialise bucket: %w", err)
 		}
-		f.closeStorageBucket = sync.OnceValue(func() error { return b.Close() })
-		f.storageBucket = objstore.NewBorrowedBucket(b)
+		f.storageBucket = b
 	}
 
 	if !slices.Contains(f.Cfg.Target, All) && f.storageBucket == nil {
 		return nil, errors.New("storage bucket configuration is required when running in microservices mode")
 	}
 
-	return services.NewIdleService(nil, func(error) error { return f.stopStorage() }), nil
-}
-
-// stopStorage also releases resources acquired during partial initialization.
-func (f *Pyroscope) stopStorage() error {
-	if f.profileDumpRecorder != nil {
-		f.profileDumpRecorder.StopAsync()
-		// Service completion joins all buffer and storage owners.
-		_ = f.profileDumpRecorder.AwaitTerminated(context.Background())
-	}
-	if f.profileDumpCleaner != nil {
-		f.profileDumpCleaner.StopAsync()
-		// AwaitTerminated also waits for failed services to finish teardown.
-		_ = f.profileDumpCleaner.AwaitTerminated(context.Background())
-	}
-	if f.closeStorageBucket != nil {
-		return f.closeStorageBucket()
-	}
-	return nil
+	return nil, nil
 }
 
 func (f *Pyroscope) initProfileDumpCleaner() (services.Service, error) {
@@ -452,7 +431,6 @@ func (f *Pyroscope) initProfileDumpCleaner() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.profileDumpCleaner = c
 	return c, nil
 }
 
