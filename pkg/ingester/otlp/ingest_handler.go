@@ -254,7 +254,8 @@ func toGRPCStatus(err error) error {
 }
 
 func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfilesServiceRequest) (*pprofileotlp.ExportProfilesServiceResponse, error) {
-	if _, err := tenant.TenantID(ctx); err != nil {
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
 		return &pprofileotlp.ExportProfilesServiceResponse{}, status.Errorf(codes.Unauthenticated, "failed to extract tenant ID from context: %s", err.Error())
 	}
 
@@ -271,6 +272,10 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 	req := &distributormodel.PushRequest{
 		RawProfileType: distributormodel.RawProfileTypeOTEL,
 	}
+	var (
+		accepted, rejected int64
+		firstRejection     error
+	)
 	for _, rp := range rps {
 		serviceName := getServiceNameFromAttributes(rp.Resource.GetAttributes(), dc)
 		language := getLanguageFromAttributes(rp.Resource.GetAttributes(), dc)
@@ -282,10 +287,18 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 
 				pprofProfiles, err := ConvertOtelToGoogle(p, dc)
 				if err != nil {
-					// validation error, not a raw gRPC status, so the HTTP path classifies it as 400 too.
-					validationErr := validation.NewErrorf(validation.MalformedProfile, "failed to convert otel profile: %s", err.Error())
-					return &pprofileotlp.ExportProfilesServiceResponse{}, connect.NewError(connect.CodeInvalidArgument, validationErr)
+					// Reject only this profile. The rest of the request is still
+					// ingested and the rejection is reported through partial_success.
+					rejected++
+					if firstRejection == nil {
+						firstRejection = err
+					}
+					validation.DiscardedProfiles.WithLabelValues(string(validation.MalformedProfile), tenantID).Add(1)
+					validation.DiscardedBytes.WithLabelValues(string(validation.MalformedProfile), tenantID).Add(float64(sz))
+					level.Warn(h.log).Log("msg", "rejecting malformed otel profile", "err", err)
+					continue
 				}
+				accepted++
 				profileID := otlpProfileID(p.ProfileId)
 
 				for samplesServiceName, pprofProfile := range pprofProfiles {
@@ -317,8 +330,22 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		}
 	}
 
+	resp := &pprofileotlp.ExportProfilesServiceResponse{}
+	if rejected > 0 {
+		msg := fmt.Sprintf("rejected %d malformed profile(s), first error: failed to convert otel profile: %s", rejected, firstRejection.Error())
+		if accepted == 0 {
+			// Nothing in the request could be ingested, so reject it as a client
+			// error. A validation error keeps the HTTP path on 400.
+			return resp, connect.NewError(connect.CodeInvalidArgument, validation.NewErrorf(validation.MalformedProfile, "%s", msg))
+		}
+		resp.PartialSuccess = &pprofileotlp.ExportProfilesPartialSuccess{
+			RejectedProfiles: rejected,
+			ErrorMessage:     msg,
+		}
+	}
+
 	if len(req.Series) == 0 {
-		return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+		return resp, nil
 	}
 
 	if err := h.svc.PushBatch(ctx, req); err != nil {
@@ -328,7 +355,7 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 		return &pprofileotlp.ExportProfilesServiceResponse{}, fmt.Errorf("failed to make a GRPC request: %w", err)
 	}
 
-	return &pprofileotlp.ExportProfilesServiceResponse{}, nil
+	return resp, nil
 }
 
 func otlpProfileID(profileID []byte) string {

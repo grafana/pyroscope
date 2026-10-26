@@ -1777,6 +1777,60 @@ func TestHTTPExport_InvalidSampleAttributeIndex_Returns400(t *testing.T) {
 	svc.AssertNotCalled(t, "PushBatch", mock.Anything, mock.Anything)
 }
 
+// mixedOTLPRequest returns a request with one valid profile followed by one
+// whose sample references an out-of-bounds attribute index.
+func mixedOTLPRequest() *v1experimental2.ExportProfilesServiceRequest {
+	req := createValidOTLPRequest()
+	scope := req.ResourceProfiles[0].ScopeProfiles[0]
+	bad := proto.Clone(scope.Profiles[0]).(*v1experimental.Profile)
+	bad.Samples[0].AttributeIndices = []int32{0}
+	scope.Profiles = append(scope.Profiles, bad)
+	return req
+}
+
+// TestExport_MixedBatch_PushesValidProfilesWithPartialSuccess checks that one
+// malformed profile does not drop the valid profiles sent with it.
+func TestExport_MixedBatch_PushesValidProfilesWithPartialSuccess(t *testing.T) {
+	svc, pushed := recordPushBatch(t)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+	resp, err := h.Export(user.InjectOrgID(context.Background(), tenant.DefaultTenantID), mixedOTLPRequest())
+
+	require.NoError(t, err)
+	require.NotNil(t, resp.PartialSuccess)
+	assert.Equal(t, int64(1), resp.PartialSuccess.RejectedProfiles)
+	assert.Contains(t, resp.PartialSuccess.ErrorMessage, "could not determine service name for sample")
+	require.Len(t, *pushed, 1)
+	assert.Len(t, (*pushed)[0].Series, 1)
+}
+
+// TestHTTPExport_MixedBatch_ReturnsPartialSuccess checks the HTTP path returns
+// 200 with partial_success in the body and still stores the valid profile.
+func TestHTTPExport_MixedBatch_ReturnsPartialSuccess(t *testing.T) {
+	svc, pushed := recordPushBatch(t)
+
+	body, err := proto.Marshal(mixedOTLPRequest())
+	require.NoError(t, err)
+
+	logger := test.NewTestingLogger(t)
+	h := NewOTLPIngestHandler(testConfig(), svc, logger, defaultLimits())
+
+	httpReq := httptest.NewRequest("POST", "/otlp/v1/profiles", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+	httpReq.Header.Set(user.OrgIDHeaderName, "tenant-a")
+
+	w := httptest.NewRecorder()
+	httputil.AuthenticateUser(true).Wrap(h).ServeHTTP(w, httpReq)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp v1experimental2.ExportProfilesServiceResponse
+	require.NoError(t, proto.Unmarshal(w.Body.Bytes(), &resp))
+	require.NotNil(t, resp.PartialSuccess)
+	assert.Equal(t, int64(1), resp.PartialSuccess.RejectedProfiles)
+	require.Len(t, *pushed, 1)
+}
+
 // recordPushBatch wires a mock PushService that records every PushRequest it
 // receives (labels sorted for deterministic comparison).
 func recordPushBatch(t *testing.T) (*mockotlp.MockPushService, *[]*model.PushRequest) {
