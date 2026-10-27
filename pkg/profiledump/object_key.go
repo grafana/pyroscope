@@ -8,12 +8,14 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 	"github.com/oklog/ulid/v2"
+
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucket"
 )
 
 // ObjectPrefix holds captures beneath the configured storage prefix.
 // Keys are <tenant>/YYYY-MM-DD/HH/MM/<capture-id>.pprof with a sibling .json sidecar.
 // The payload preserves original bytes, even when empty or malformed.
-const ObjectPrefix = "__pyroscope_cluster/profile-dumps/"
+const ObjectPrefix = bucket.PyroscopeInternalsPrefix + "/profile-dumps/"
 
 const partitionLayout = "2006-01-02/15/04"
 

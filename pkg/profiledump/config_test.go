@@ -25,9 +25,9 @@ func validConfig() *profiledump.TenantConfig {
 func TestCompile(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		change   func(*profiledump.TenantConfig)
-		disabled bool
+		name    string
+		change  func(*profiledump.TenantConfig)
+		wantErr bool
 	}{
 		{"defaults", func(*profiledump.TenantConfig) {}, false},
 		{"missing deadline", func(c *profiledump.TenantConfig) { c.ActiveUntil = nil }, true},
@@ -53,6 +53,14 @@ func TestCompile(t *testing.T) {
 			c.ActiveUntil = ptr(now.Add(-time.Hour))
 			c.Probability = ptr(0.0)
 		}, true},
+		{"expired invalid selector", func(c *profiledump.TenantConfig) {
+			c.ActiveUntil = ptr(now.Add(-time.Hour))
+			c.Selector = ptr(`{broken`)
+		}, true},
+		{"expired missing probability", func(c *profiledump.TenantConfig) {
+			c.ActiveUntil = ptr(now.Add(-time.Hour))
+			c.Probability = nil
+		}, true},
 		{"empty selector", func(c *profiledump.TenantConfig) { c.Selector = ptr("") }, true},
 		{"invalid regex", func(c *profiledump.TenantConfig) { c.Selector = ptr(`{service_name=~"["}`) }, true},
 	}
@@ -60,25 +68,30 @@ func TestCompile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := validConfig()
 			tt.change(c)
-			p := c.Compile(now)
-			if tt.disabled {
+			p, err := c.Compile(now)
+			if tt.wantErr {
+				require.Error(t, err)
 				require.Equal(t, profiledump.Policy{}, p)
 				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, *c.ActiveUntil, p.ActiveUntil())
 			require.Equal(t, *c.Probability, p.Probability())
 			require.Equal(t, now.Before(*c.ActiveUntil), p.ActiveAt(now))
 		})
 	}
 	var disabled *profiledump.TenantConfig
-	require.Equal(t, profiledump.Policy{}, disabled.Compile(now))
+	p, err := disabled.Compile(now)
+	require.NoError(t, err)
+	require.Equal(t, profiledump.Policy{}, p)
 }
 
 func TestPolicySnapshot(t *testing.T) {
 	t.Parallel()
 	c := validConfig()
 	c.Selector = ptr(`{service_name=~"checkout.*",env!="dev"}`)
-	p := c.Compile(now)
+	p, err := c.Compile(now)
+	require.NoError(t, err)
 	deadline := *c.ActiveUntil
 	require.True(t, p.ActiveAt(deadline.Add(-time.Nanosecond)))
 	require.False(t, p.ActiveAt(deadline))
@@ -116,7 +129,8 @@ func TestPolicyMatches(t *testing.T) {
 		t.Run(tc.selector, func(t *testing.T) {
 			cfg := validConfig()
 			cfg.Selector = &tc.selector
-			policy := cfg.Compile(now)
+			policy, err := cfg.Compile(now)
+			require.NoError(t, err)
 			require.Equal(t, tc.populated, policy.Matches(borrowed))
 			require.Equal(t, tc.empty, policy.Matches(nil))
 		})

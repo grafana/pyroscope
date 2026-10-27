@@ -1,4 +1,4 @@
-package bucket
+package bucket_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	thanos "github.com/thanos-io/objstore"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 )
 
@@ -25,7 +26,7 @@ func TestCaptureNamespaceDiscovery(t *testing.T) {
 	} {
 		require.NoError(t, storage.Upload(ctx, key, strings.NewReader("opaque")))
 	}
-	users, err := ListUsers(ctx, storage)
+	users, err := bucket.ListUsers(ctx, storage)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"regular", "profile-dumps", "profile-dumps-other"}, users)
 }

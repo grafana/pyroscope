@@ -14,10 +14,13 @@ func TestProfileDumpModuleDependencies(t *testing.T) {
 	}{
 		{"v1", Distributor, false, false},
 		{"v1", Admin, false, false},
+		{"v1", All, false, false},
 		{"v2", Distributor, true, false},
 		{"v2", Admin, false, true},
-		{"v1-v2-dual", Distributor, true, false},
-		{"v1-v2-dual", Admin, false, true},
+		{"v2", All, true, true},
+		{"v1-v2-dual", Distributor, false, false},
+		{"v1-v2-dual", Admin, false, false},
+		{"v1-v2-dual", All, false, false},
 	} {
 		t.Run(tc.architecture+"/"+tc.target, func(t *testing.T) {
 			f := &Pyroscope{Cfg: newTestConfig(t, []string{"-architecture.storage=" + tc.architecture})}

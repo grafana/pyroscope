@@ -492,11 +492,61 @@ func TestProfileDumpExtractStorageFailures(t *testing.T) {
 }
 
 func TestProfileDumpExtractOutputCreationFailure(t *testing.T) {
-	b := newDumpTestBucket()
-	key, _, _ := dumpFixture(t, "3648", dumpTestTime, nil)
-	p := &profileDumpParams{key: key, path: filepath.Join(t.TempDir(), "absent", "payload")}
-	require.ErrorContains(t, extractProfileDump(context.Background(), b, p, io.Discard), "open payload output")
-	require.Empty(t, b.gets)
+	for _, closeErr := range []error{nil, errors.New("close failed")} {
+		t.Run(fmt.Sprint(closeErr), func(t *testing.T) {
+			b := newDumpTestBucket()
+			key, _, _ := dumpFixture(t, "3648", dumpTestTime, nil)
+			require.NoError(t, b.Upload(context.Background(), key, strings.NewReader("payload")))
+			b.closeErr = closeErr
+			p := &profileDumpParams{key: key, path: filepath.Join(t.TempDir(), "absent", "payload")}
+			err := extractProfileDump(context.Background(), b, p, io.Discard)
+			require.ErrorContains(t, err, "open payload output")
+			require.ErrorIs(t, err, os.ErrNotExist)
+			if closeErr != nil {
+				require.ErrorIs(t, err, closeErr)
+			}
+			require.Equal(t, []string{key}, b.gets)
+			require.Equal(t, 1, b.opened)
+			require.Equal(t, b.opened, b.closed)
+		})
+	}
+}
+
+func TestProfileDumpExtractFailedGetPreservesDestination(t *testing.T) {
+	for _, sidecar := range []bool{false, true} {
+		for _, force := range []bool{false, true} {
+			t.Run(fmt.Sprintf("sidecar=%t/force=%t", sidecar, force), func(t *testing.T) {
+				b := newDumpTestBucket()
+				key, _, body := dumpFixture(t, "3648", dumpTestTime, []byte("payload"))
+				uploadDumpPair(t, b, key, body, []byte("payload"))
+				p := &profileDumpParams{key: key, path: filepath.Join(t.TempDir(), "payload"), force: force}
+				destination := p.path
+				b.errorKey = key
+				if sidecar {
+					b.errorKey = strings.TrimSuffix(key, ".pprof") + ".json"
+					destination += ".metadata.json"
+				}
+				b.getErr = errors.New("get failed")
+				if force {
+					require.NoError(t, os.WriteFile(destination, []byte("original"), 0600))
+				}
+				require.ErrorIs(t, extractProfileDump(context.Background(), b, p, io.Discard), b.getErr)
+				if force {
+					got, err := os.ReadFile(destination)
+					require.NoError(t, err)
+					require.Equal(t, "original", string(got))
+				} else {
+					require.NoFileExists(t, destination)
+				}
+				if sidecar {
+					got, err := os.ReadFile(p.path)
+					require.NoError(t, err)
+					require.Equal(t, "payload", string(got))
+				}
+				require.Equal(t, b.opened, b.closed)
+			})
+		}
+	}
 }
 
 func TestProfileDumpExtractMissingSidecarPreservesPayload(t *testing.T) {
@@ -508,6 +558,7 @@ func TestProfileDumpExtractMissingSidecarPreservesPayload(t *testing.T) {
 	payload, err := os.ReadFile(p.path)
 	require.NoError(t, err)
 	require.Equal(t, "payload", string(payload))
+	require.NoFileExists(t, p.path+".metadata.json")
 	require.Equal(t, b.opened, b.closed)
 }
 

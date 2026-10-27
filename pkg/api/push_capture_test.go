@@ -54,7 +54,8 @@ func capturePolicy(t *testing.T, selector string) profiledump.Policy {
 	now := time.Now()
 	probability := 1.0
 	deadline := now.Add(time.Hour)
-	p := (&profiledump.TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability}).Compile(now)
+	p, err := (&profiledump.TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability}).Compile(now)
+	require.NoError(t, err)
 	require.True(t, p.ActiveAt(now))
 	return p
 }
@@ -289,13 +290,14 @@ func BenchmarkCapturePusherDisabled(b *testing.B) {
 			var recorder *profiledump.Recorder
 			if state != "nil" {
 				var policy profiledump.Policy
+				var err error
 				if state == "expired" {
 					now := time.Now()
 					deadline := now
 					probability := 1.0
-					policy = (&profiledump.TenantConfig{ActiveUntil: &deadline, Probability: &probability}).Compile(now)
+					policy, err = (&profiledump.TenantConfig{ActiveUntil: &deadline, Probability: &probability}).Compile(now)
+					require.NoError(b, err)
 				}
-				var err error
 				recorder, err = profiledump.NewRecorder(profiledump.DefaultRecorderConfig(),
 					capturePolicyFunc(func(string) profiledump.Policy { return policy }),
 					func(context.Context, string, string, io.Reader) error { return nil },

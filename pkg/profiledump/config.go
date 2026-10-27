@@ -4,6 +4,7 @@ package profiledump
 
 import (
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -28,10 +29,10 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 
 const maxActivationDuration = 24 * time.Hour
 
-// TenantConfig enables capture on the V2 ingestion path. Configure it under
-// overrides.<tenant>.profile_dump in the runtime configuration. Invalid policy
-// values disable capture for that tenant without logging or rejecting the reload.
-// YAML decoding errors still reject the runtime configuration.
+// TenantConfig enables capture when architecture.storage=v2. Configure it under
+// overrides.<tenant>.profile_dump in the runtime configuration. Invalid policies
+// reject the entire reload, preserving the previous configuration, and fail startup
+// on initial load. The runtime-config manager retries failed candidates.
 // ActiveUntil is required and sets when capture stops, at most 24 hours ahead of
 // configuration validation.
 // Probability is the required sampling probability in (0, 1], where 1 selects all
@@ -54,16 +55,22 @@ type Policy struct {
 	probability float64
 }
 
-// Compile creates an immutable policy. Invalid configuration disables capture.
-func (c *TenantConfig) Compile(now time.Time) Policy {
-	if c == nil || c.ActiveUntil == nil || c.Probability == nil {
-		return Policy{}
+// Compile validates all fields, including expired policies. Absence disables capture.
+func (c *TenantConfig) Compile(now time.Time) (Policy, error) {
+	if c == nil {
+		return Policy{}, nil
+	}
+	if c.ActiveUntil == nil {
+		return Policy{}, fmt.Errorf("active_until is required")
+	}
+	if c.Probability == nil {
+		return Policy{}, fmt.Errorf("probability is required")
 	}
 	if !(*c.Probability > 0 && *c.Probability <= 1) {
-		return Policy{}
+		return Policy{}, fmt.Errorf("probability must be in (0, 1]")
 	}
 	if c.ActiveUntil.After(now.Add(maxActivationDuration)) {
-		return Policy{}
+		return Policy{}, fmt.Errorf("active_until must not be more than 24 hours ahead")
 	}
 	selector := "{}"
 	if c.Selector != nil {
@@ -71,11 +78,11 @@ func (c *TenantConfig) Compile(now time.Time) Policy {
 	}
 	matchers, err := model.ParseMetricSelector(selector)
 	if err != nil {
-		return Policy{}
+		return Policy{}, fmt.Errorf("invalid selector: %w", err)
 	}
 	return Policy{
 		activeUntil: *c.ActiveUntil, matchers: matchers, probability: *c.Probability,
-	}
+	}, nil
 }
 
 func (p Policy) ActiveAt(now time.Time) bool { return p.probability > 0 && now.Before(p.activeUntil) }

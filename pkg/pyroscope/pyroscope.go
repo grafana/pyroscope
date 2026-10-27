@@ -659,7 +659,7 @@ func (f *Pyroscope) setupModuleManager() error {
 		API:                   {Server, AdminServer},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
-		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing, ProfileDumpRecorder},
+		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing},
 		PlacementAgent:        {Overrides, API, Storage},
 		PlacementManager:      {Overrides, API, Storage},
 		SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
@@ -679,13 +679,19 @@ func (f *Pyroscope) setupModuleManager() error {
 		RuntimeConfig:         {API},
 		IngesterRing:          {API, MemberlistKV},
 		MemberlistKV:          {API},
-		Admin:                 {API, Storage, MetastoreAdmin, QueryDiagnosticsAdmin, ProfileDumpCleaner},
+		Admin:                 {API, Storage, MetastoreAdmin, QueryDiagnosticsAdmin},
 		Version:               {API, MemberlistKV},
 		TenantSettings:        {API, Overrides, Storage},
 		AdHocProfiles:         {API, Overrides, Storage},
 		EmbeddedGrafana:       {API},
 		FeatureFlags:          {API},
 		AsyncQueryStore:       {Storage},
+	}
+
+	// Profile capture and cleanup both require architecture.storage=v2.
+	if f.Cfg.ArchitectureStorage == V2 {
+		deps[Distributor] = append(deps[Distributor], ProfileDumpRecorder)
+		deps[Admin] = append(deps[Admin], ProfileDumpCleaner)
 	}
 
 	if f.Cfg.ArchitectureStorage == V1V2Dual || f.Cfg.ArchitectureStorage == V1 {

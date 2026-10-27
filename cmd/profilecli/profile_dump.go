@@ -231,16 +231,16 @@ func extractProfileDump(ctx context.Context, b objstore.BucketReader, p *profile
 		{"payload", k.PayloadKey, path},
 		{"metadata", k.MetadataKey, metadataPath},
 	} {
-		file, err := os.OpenFile(object.path, flags, 0600)
-		if errors.Is(err, os.ErrExist) {
-			return fmt.Errorf("output file %s already exists (use --force to overwrite)", object.path)
-		}
-		if err != nil {
-			return fmt.Errorf("open %s output: %w", object.name, err)
-		}
 		rd, err := b.Get(ctx, object.key)
 		if err != nil {
-			return errors.Join(dumpStorageError(b, err), file.Close())
+			return dumpStorageError(b, err)
+		}
+		file, err := os.OpenFile(object.path, flags, 0600)
+		if errors.Is(err, os.ErrExist) {
+			return errors.Join(fmt.Errorf("output file %s already exists (use --force to overwrite): %w", object.path, err), rd.Close())
+		}
+		if err != nil {
+			return errors.Join(fmt.Errorf("open %s output: %w", object.name, err), rd.Close())
 		}
 		_, copyErr := io.Copy(file, rd)
 		if err := errors.Join(copyErr, file.Close(), rd.Close()); err != nil {

@@ -90,18 +90,22 @@ func TestProfileDumpRuntimeReload(t *testing.T) {
 			return false
 		}, 5*time.Second, time.Millisecond)
 	}
-	// Invalid capture policies disable capture while other override updates apply.
-	writeConfig(strings.Replace(strings.Replace(initial, "probability: 1", "probability: 0", 1), "tenant-b: {}", "tenant-b: {ingestion_rate_mb: 17}", 1))
-	waitPolicy(func(p profiledump.Policy) bool { return !p.ActiveAt(now) })
-	require.Equal(t, profiledump.Policy{}, overrides.ProfileDump("tenant-a"))
-	require.Equal(t, float64(17*1024*1024), overrides.IngestionRateBytes("tenant-b"))
-	waitReload(1)
-
-	// A decoding failure preserves the complete previous configuration.
+	// Policy validation and decoding failures both preserve the entire configuration.
 	previous := manager.GetConfig()
-	writeConfig(strings.Replace(initial, deadline.Format(time.RFC3339Nano), "test", 1))
-	waitReload(0)
-	require.Same(t, previous, manager.GetConfig())
+	previousRate := overrides.IngestionRateBytes("tenant-b")
+	for _, invalid := range []string{
+		strings.Replace(initial, "probability: 1", "probability: 0", 1),
+		strings.Replace(initial, deadline.Format(time.RFC3339Nano), now.Add(25*time.Hour).Format(time.RFC3339Nano), 1),
+		strings.Replace(initial, deadline.Format(time.RFC3339Nano), "test", 1),
+	} {
+		writeConfig(strings.Replace(invalid, "tenant-b: {}", "tenant-b: {ingestion_rate_mb: 17}", 1))
+		waitReload(0)
+		require.Same(t, previous, manager.GetConfig())
+		require.Equal(t, 0.5, overrides.ProfileDump("tenant-a").Probability())
+		require.Equal(t, previousRate, overrides.IngestionRateBytes("tenant-b"))
+		writeConfig(updated)
+		waitReload(1)
+	}
 	writeConfig("overrides: {}\n")
 	require.Eventually(t, func() bool { return manager.GetConfig() != previous }, 5*time.Second, time.Millisecond)
 	require.Equal(t, profiledump.Policy{}, overrides.ProfileDump("tenant-a"))
@@ -109,7 +113,27 @@ func TestProfileDumpRuntimeReload(t *testing.T) {
 	require.Equal(t, 1.0, original.Probability()) // Old snapshots remain unchanged.
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), manager))
 	require.NotContains(t, logs.String(), "level=warn")
-	require.NotContains(t, logs.String(), "invalid selector")
+	require.Contains(t, logs.String(), "invalid override for tenant tenant-a: profile_dump:")
+}
+
+func TestProfileDumpInvalidPolicyFailsStartup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "runtime.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("overrides:\n  tenant-a:\n    profile_dump: {}\n"), 0600))
+	appLogger := &logger{Logger: log.NewNopLogger()}
+	appAPI, err := api.New(api.Config{}, &server.Server{HTTP: mux.NewRouter()}, nil, appLogger)
+	require.NoError(t, err)
+	app := &Pyroscope{
+		Cfg: Config{RuntimeConfig: runtimeconfig.Config{
+			LoadPath: []string{path}, ReloadPeriod: time.Second,
+		}},
+		logger: appLogger, reg: prometheus.NewRegistry(), API: appAPI,
+	}
+	_, err = app.initRuntimeConfig()
+	require.NoError(t, err)
+	require.Error(t, services.StartAndAwaitRunning(context.Background(), app.RuntimeConfig))
+	require.Equal(t, services.Failed, app.RuntimeConfig.State())
+	require.ErrorContains(t, app.RuntimeConfig.FailureCase(), "invalid override for tenant tenant-a: profile_dump: active_until is required")
+	require.Nil(t, app.RuntimeConfig.GetConfig())
 }
 
 func TestProfileDumpServerConfig(t *testing.T) {

@@ -50,7 +50,8 @@ func (c *testClock) advance(d time.Duration) { c.nanos.Add(int64(d)) }
 func recorderPolicy(t *testing.T, selector string, probability float64) Policy {
 	t.Helper()
 	deadline := recorderNow.Add(time.Hour)
-	p := (&TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability}).Compile(recorderNow)
+	p, err := (&TenantConfig{ActiveUntil: &deadline, Selector: &selector, Probability: &probability}).Compile(recorderNow)
+	require.NoError(t, err)
 	require.True(t, p.ActiveAt(recorderNow))
 	return p
 }

@@ -282,7 +282,11 @@ func (l *Limits) validate(now time.Time) error {
 		}
 	}
 
-	l.profileDumpPolicy = l.ProfileDump.Compile(now)
+	policy, err := l.ProfileDump.Compile(now)
+	if err != nil {
+		return fmt.Errorf("profile_dump: %w", err)
+	}
+	l.profileDumpPolicy = policy
 
 	return nil
 }
