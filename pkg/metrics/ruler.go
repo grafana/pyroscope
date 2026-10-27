@@ -13,6 +13,7 @@ import (
 
 const (
 	rulesExpiryTime = time.Minute
+	rulesRetryTime  = 10 * time.Second
 )
 
 type StaticRuler struct {
@@ -25,7 +26,7 @@ func NewStaticRulerFromOverrides(overrides *validation.Overrides) Ruler {
 	}
 }
 
-func (ruler StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
+func (ruler StaticRuler) RecordingRules(tenant string) ([]*model.RecordingRule, error) {
 	rules := ruler.overrides.RecordingRules(tenant)
 	rs := make([]*model.RecordingRule, 0, len(rules))
 	for _, rule := range rules {
@@ -33,7 +34,7 @@ func (ruler StaticRuler) RecordingRules(tenant string) []*model.RecordingRule {
 		r, _ := model.NewRecordingRule(rule)
 		rs = append(rs, r)
 	}
-	return rs
+	return rs, nil
 }
 
 // CachedRemoteRuler is a thread-safe ruler that retrieves rules from an external service.
@@ -43,6 +44,9 @@ type CachedRemoteRuler struct {
 	mu             sync.RWMutex
 
 	client RecordingRulesClient
+
+	expiry time.Duration
+	retry  time.Duration
 
 	logger log.Logger
 }
@@ -55,11 +59,13 @@ func NewCachedRemoteRuler(client RecordingRulesClient, logger log.Logger) (Ruler
 	return &CachedRemoteRuler{
 		rulesPerTenant: make(map[string]*tenantCache),
 		client:         client,
+		expiry:         rulesExpiryTime,
+		retry:          rulesRetryTime,
 		logger:         logger,
 	}, nil
 }
 
-func (r *CachedRemoteRuler) RecordingRules(tenant string) []*model.RecordingRule {
+func (r *CachedRemoteRuler) RecordingRules(tenant string) ([]*model.RecordingRule, error) {
 	// get the per-tenant cache
 	r.mu.RLock()
 	cache, ok := r.rulesPerTenant[tenant]
@@ -77,6 +83,8 @@ func (r *CachedRemoteRuler) RecordingRules(tenant string) []*model.RecordingRule
 				initFunc: func() ([]*model.RecordingRule, error) {
 					return r.client.RecordingRules(tenant)
 				},
+				expiry: r.expiry,
+				retry:  r.retry,
 				logger: r.logger,
 			}
 			r.rulesPerTenant[tenant] = cache
@@ -89,38 +97,70 @@ func (r *CachedRemoteRuler) RecordingRules(tenant string) []*model.RecordingRule
 
 // tenantCache is a thread-safe cache that holds an expirable array of rules.
 type tenantCache struct {
-	value    []*model.RecordingRule
-	ttl      time.Time
-	initFunc func() ([]*model.RecordingRule, error)
-	mu       sync.RWMutex
-	logger   log.Logger
+	value      []*model.RecordingRule
+	loaded     bool
+	err        error
+	refreshing bool
+	ttl        time.Time
+	expiry     time.Duration
+	retry      time.Duration
+	initFunc   func() ([]*model.RecordingRule, error)
+	mu         sync.RWMutex
+	logger     log.Logger
 }
 
-// get returns the stored value if present and not expired.
-// Otherwise, a single call to initFunc will be performed to retrieve the value and hold it for future calls within
-// the ttl.
-func (c *tenantCache) get() []*model.RecordingRule {
+// get returns the cached value while it is fresh. Once it expires, the stale
+// value keeps being served while a single background refresh runs. Only the
+// very first load blocks callers, and it is bounded by the client's timeout.
+// A failed fetch is not retried until the retry interval has passed.
+func (c *tenantCache) get() ([]*model.RecordingRule, error) {
 	c.mu.RLock()
-	if c.value != nil && time.Now().Before(c.ttl) {
+	if time.Now().Before(c.ttl) {
 		defer c.mu.RUnlock()
-		// value exists and didn't expired
-		return c.value
+		return c.result()
 	}
 	c.mu.RUnlock()
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// only race-winner will fetch the data
-	if c.value == nil || time.Now().After(c.ttl) {
-		value, err := c.initFunc()
-		if err != nil {
-			// keep old value and ttl, just log an error
-			level.Error(c.logger).Log("msg", "failed to fetch recording rules", "err", err)
-		} else {
-			c.value = value
-			c.ttl = time.Now().Add(rulesExpiryTime)
-		}
+	if time.Now().Before(c.ttl) {
+		return c.result()
 	}
-	return c.value
+	if !c.loaded {
+		c.apply(c.initFunc())
+		return c.result()
+	}
+	if !c.refreshing {
+		c.refreshing = true
+		go c.refresh()
+	}
+	return c.result()
+}
+
+func (c *tenantCache) result() ([]*model.RecordingRule, error) {
+	if !c.loaded {
+		return nil, c.err
+	}
+	return c.value, nil
+}
+
+func (c *tenantCache) refresh() {
+	value, err := c.initFunc()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.refreshing = false
+	c.apply(value, err)
+}
+
+func (c *tenantCache) apply(value []*model.RecordingRule, err error) {
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to fetch recording rules", "err", err)
+		c.err = err
+		c.ttl = time.Now().Add(c.retry)
+		return
+	}
+	c.value = value
+	c.loaded = true
+	c.ttl = time.Now().Add(c.expiry)
 }
