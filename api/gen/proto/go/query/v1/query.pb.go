@@ -341,7 +341,9 @@ type InvokeOptions struct {
 	CollectDiagnostics bool `protobuf:"varint,2,opt,name=collect_diagnostics,json=collectDiagnostics,proto3" json:"collect_diagnostics,omitempty"`
 	// Run final report processing after this invocation completes. Set only for
 	// the root invocation; child invocations must clear this flag.
-	Finalize      bool `protobuf:"varint,3,opt,name=finalize,proto3" json:"finalize,omitempty"`
+	Finalize bool `protobuf:"varint,3,opt,name=finalize,proto3" json:"finalize,omitempty"`
+	// Overrides the client's timeout when positive; child invocations retain it.
+	TimeoutNs     int64 `protobuf:"varint,4,opt,name=timeout_ns,json=timeoutNs,proto3" json:"timeout_ns,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -395,6 +397,13 @@ func (x *InvokeOptions) GetFinalize() bool {
 		return x.Finalize
 	}
 	return false
+}
+
+func (x *InvokeOptions) GetTimeoutNs() int64 {
+	if x != nil {
+		return x.TimeoutNs
+	}
+	return 0
 }
 
 type InvokeRequest struct {
@@ -3009,11 +3018,13 @@ const file_query_v1_query_proto_rawDesc = "" +
 	"\x0elabel_selector\x18\x03 \x01(\tR\rlabelSelector\x12%\n" +
 	"\x05query\x18\x04 \x03(\v2\x0f.query.v1.QueryR\x05query\";\n" +
 	"\rQueryResponse\x12*\n" +
-	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\"\x88\x01\n" +
+	"\areports\x18\x01 \x03(\v2\x10.query.v1.ReportR\areports\"\xa7\x01\n" +
 	"\rInvokeOptions\x12*\n" +
 	"\x11sanitize_on_merge\x18\x01 \x01(\bR\x0fsanitizeOnMerge\x12/\n" +
 	"\x13collect_diagnostics\x18\x02 \x01(\bR\x12collectDiagnostics\x12\x1a\n" +
-	"\bfinalize\x18\x03 \x01(\bR\bfinalize\"\x96\x02\n" +
+	"\bfinalize\x18\x03 \x01(\bR\bfinalize\x12\x1d\n" +
+	"\n" +
+	"timeout_ns\x18\x04 \x01(\x03R\ttimeoutNs\"\x96\x02\n" +
 	"\rInvokeRequest\x12\x16\n" +
 	"\x06tenant\x18\x01 \x03(\tR\x06tenant\x12\x1d\n" +
 	"\n" +

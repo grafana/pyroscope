@@ -25,6 +25,12 @@ The query frontend sends the plan root to a query backend instance. That instanc
 
 This tree-based execution allows queries to fan out across many query backend instances in parallel, with merging happening at each level of the tree rather than in a single aggregation point.
 
+## Query timeouts
+
+`-query-backend.client-timeout` limits synchronous backend requests to `30s` by default. Async requests use the experimental `-query-backend.async-query-timeout`, default `2m`; set it to `0` to use the client timeout.
+
+Each timeout covers execution, retry attempts, and retry backoff together. Retries do not reset it, and an earlier caller deadline still takes precedence.
+
 ## Direct object storage access
 
 Unlike v1 where queries may need to access ingesters for recent data, the v2 query-backend reads directly from object storage:

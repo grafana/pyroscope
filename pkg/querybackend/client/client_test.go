@@ -322,6 +322,11 @@ func TestClient_ClosesConnectionAfterStop(t *testing.T) {
 
 func newTestClient(t *testing.T, backend queryv1.QueryBackendServiceServer, serverOptions ...grpc.ServerOption) *Client {
 	t.Helper()
+	return newTestClientWithTimeout(t, backend, 5*time.Second, serverOptions...)
+}
+
+func newTestClientWithTimeout(t *testing.T, backend queryv1.QueryBackendServiceServer, timeout time.Duration, serverOptions ...grpc.ServerOption) *Client {
+	t.Helper()
 
 	const address = "localhost:10003"
 	listeners, dialOption := test.CreateInMemoryListeners([]string{address})
@@ -334,12 +339,12 @@ func newTestClient(t *testing.T, backend queryv1.QueryBackendServiceServer, serv
 
 	grpcClientConfig := grpcclient.Config{}
 	grpcClientConfig.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
-	conn, err := dial("passthrough:///"+address, grpcClientConfig, 5*time.Second, dialOption)
+	client, err := New("passthrough:///"+address, grpcClientConfig, timeout, dialOption)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, conn.Close())
+		require.NoError(t, client.Close())
 	})
-	return &Client{grpcClient: queryv1.NewQueryBackendServiceClient(conn)}
+	return client
 }
 
 // Test_Concurrency tests the concurrent invocation of queries against multiple backend servers.
@@ -467,10 +472,9 @@ func TestClient_DiscoversNewBackend(t *testing.T) {
 
 	cfg := grpcclient.Config{}
 	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
-	conn, err := dial("dns:///backends.test:9095", cfg, 5*time.Second, dialOption)
+	client, err := New("dns:///backends.test:9095", cfg, 5*time.Second, dialOption)
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, conn.Close()) })
-	client := queryv1.NewQueryBackendServiceClient(conn)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
 
 	_, err = client.Invoke(t.Context(), &queryv1.InvokeRequest{})
 	require.NoError(t, err)

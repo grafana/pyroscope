@@ -851,8 +851,10 @@ Usage of ./pyroscope:
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
   -query-backend.address string
     	 (default "localhost:9095")
+  -query-backend.async-query-timeout duration
+    	[experimental] Timeout for async query-backend requests, including retries. The query-frontend passes it to query-backends. 0 uses query-backend.client-timeout. (default 2m0s)
   -query-backend.client-timeout duration
-    	Timeout for query-backend client requests. (default 30s)
+    	Timeout for query-backend client requests, including retries. (default 30s)
   -query-backend.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-backend.grpc-client-config.backoff-min-period duration

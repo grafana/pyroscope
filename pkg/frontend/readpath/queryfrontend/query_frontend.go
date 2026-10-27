@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
@@ -281,18 +282,23 @@ func (q *QueryFrontend) Query(
 		estimatedBytes: float64(weight.Total()),
 	}
 
+	options := &queryv1.InvokeOptions{
+		SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
+		CollectDiagnostics: collectDiagnostics,
+		Finalize:           true,
+	}
+	if timeout := async.QueryTimeout(ctx); timeout > 0 {
+		options.TimeoutNs = timeout.Nanoseconds()
+	}
+
 	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
 		EndTime:       req.EndTime,
 		LabelSelector: req.LabelSelector,
-		Options: &queryv1.InvokeOptions{
-			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
-			CollectDiagnostics: collectDiagnostics,
-			Finalize:           true,
-		},
-		QueryPlan: p,
-		Query:     req.Query,
+		Options:       options,
+		QueryPlan:     p,
+		Query:         req.Query,
 	})
 	if err != nil {
 		return nil, err

@@ -926,6 +926,13 @@ components:
           description: |-
             Run final report processing after this invocation completes. Set only for
              the root invocation; child invocations must clear this flag.
+        timeoutNs:
+          type:
+            - integer
+            - string
+          title: timeout_ns
+          format: int64
+          description: Overrides the client's timeout when positive; child invocations retain it.
       title: InvokeOptions
       additionalProperties: false
     query.v1.InvokeRequest:

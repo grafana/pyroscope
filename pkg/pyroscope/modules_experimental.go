@@ -109,6 +109,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 			f.asyncQueryStore,
 			f.Overrides,
 			querierHandler,
+			f.Cfg.QueryBackend.AsyncQueryTimeout,
 			f.reg,
 		)
 		f.asyncQueryStore.SetDispatcher(coordinator)

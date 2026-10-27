@@ -22,6 +22,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
@@ -360,6 +361,34 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			// Verify that the label names were filtered correctly before being sent to backend
 			require.Equal(t, tc.expectedQueryRequest, capturedLabelNames,
 				"Expected label names sent to backend to be %v, but got %v", tc.expectedQueryRequest, capturedLabelNames)
+		})
+	}
+}
+
+func TestQueryFrontend_AsyncQueryTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		async   bool
+		timeout time.Duration
+	}{
+		{name: "sync"},
+		{name: "async", async: true, timeout: 7 * time.Minute},
+		{name: "async fallback", async: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			backend := mockqueryfrontend.NewMockQueryBackend(t)
+			backend.On("Invoke", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+				req := args.Get(1).(*queryv1.InvokeRequest)
+				require.Equal(t, tc.timeout.Nanoseconds(), req.GetOptions().GetTimeoutNs())
+			}).Return(&queryv1.InvokeResponse{}, nil).Once()
+			qf := backendWorkFrontend(t, prometheus.NewRegistry(), []*metastorev1.BlockMeta{{Id: "a"}}, backend)
+
+			ctx := tenant.InjectTenantID(t.Context(), "test-tenant")
+			if tc.async {
+				ctx = async.WithQueryTimeout(ctx, tc.timeout)
+			}
+			_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+			require.NoError(t, err)
 		})
 	}
 }
