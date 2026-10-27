@@ -29,7 +29,7 @@ import (
 
 func TestQueryAnomalies_Unconfigured(t *testing.T) {
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -54,7 +54,7 @@ func TestQueryAnomalies_WrongProfileType_ReturnsEmpty(t *testing.T) {
 		new(mockmetastorev1.MockMetadataQueryServiceClient),
 		nil,
 		new(mockqueryfrontend.MockQueryBackend),
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -70,7 +70,7 @@ func TestQueryAnomalies_WrongProfileType_ReturnsEmpty(t *testing.T) {
 
 func TestQueryAnomalies_NoAnomalyTypes(t *testing.T) {
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -130,7 +130,7 @@ func TestQueryAnomalies_ClampsStartToMaxQueryLookback(t *testing.T) {
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -167,7 +167,7 @@ func TestQueryAnomalies_TimeRangeBeforeLookback_ReturnsEmpty(t *testing.T) {
 		new(mockmetastorev1.MockMetadataQueryServiceClient),
 		nil,
 		new(mockqueryfrontend.MockQueryBackend),
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -186,7 +186,7 @@ func TestQueryAnomalies_TimeRangeBeforeLookback_ReturnsEmpty(t *testing.T) {
 
 func TestQueryAnomalies_UnknownType(t *testing.T) {
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -210,7 +210,7 @@ func TestQueryAnomalies_UnknownTypeMixedWithValid_FailsBeforeExecuting(t *testin
 
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t),
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -279,7 +279,7 @@ func TestQueryAnomalies_DuplicateAnomalyType_QueriesOnce(t *testing.T) {
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -324,7 +324,6 @@ func TestQueryAnomalies_NoMatchingServiceName_ReturnsEmpty(t *testing.T) {
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil,
 		nil,
 		nil,
 	)
@@ -400,7 +399,6 @@ func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
 		mockBackend,
 		nil,
 		nil,
-		nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -456,7 +454,7 @@ func TestQueryAnomalies_ResolveServiceNames_ScopesSeriesByProfileType(t *testing
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -512,7 +510,7 @@ func TestQueryAnomalies_TooManyServices_ReturnsInvalidArgument(t *testing.T) {
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -600,7 +598,6 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 		mockBackend,
 		nil,
 		nil,
-		nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -681,7 +678,6 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 		mockBackend,
 		nil,
 		nil,
-		nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -758,7 +754,7 @@ func TestQueryAnomalies_ScoreLookupToleratesUUIDSpelling(t *testing.T) {
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)

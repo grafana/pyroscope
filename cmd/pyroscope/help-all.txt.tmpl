@@ -1783,12 +1783,6 @@ Usage of ./pyroscope:
     	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway and querier when running in microservices mode.
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
-  -symbolizer.debuginfod-url string
-    	URL of the debuginfod server (default "https://debuginfod.elfutils.org")
-  -symbolizer.enabled
-    	[experimental] Enable symbolization for tenants by default.
-  -symbolizer.max-debuginfod-concurrency int
-    	Maximum number of concurrent symbolization requests to debuginfod server. (default 10)
   -target comma-separated-list-of-strings
     	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tenant-settings.recording-rules.enabled
@@ -1799,8 +1793,6 @@ Usage of ./pyroscope:
     	[experimental] Set to true to enable profiling integration.
   -usage-stats.enabled
     	Enable anonymous usage statistics collection. For more details about usage statistics, refer to https://grafana.com/docs/pyroscope/latest/configure-server/anonymous-usage-statistics-reporting/ (default true)
-  -valdation.symbolizer.max-symbol-size-bytes int
-    	Maximum size of a symbol in bytes. This an upper limits to both the compressed and uncompressed size. 0 to disable. (default 536870912)
   -validation.disable-label-sanitization
     	Disable label name sanitization (converting dots to underscores). When disabled, labels with dots are accepted as-is using UTF-8 validation. (default true)
   -validation.enforce-labels-order

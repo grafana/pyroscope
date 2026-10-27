@@ -90,9 +90,6 @@ api:
 # segment-writer (V2).
 [adaptive_placement: <adaptive_placement>]
 
-# The symbolizer block configures the symbolizer (V2).
-[symbolizer: <symbolizer>]
-
 # The frontend_worker block configures the frontend-worker.
 [frontend_worker: <frontend_worker>]
 
@@ -2452,21 +2449,6 @@ The `adaptive_placement` block configures adaptive placement for the segment-wri
 # ownership, are exported as Prometheus metrics.
 # CLI flag: -adaptive-placement.export-shard-usage-breakdown-metrics
 [export_shard_usage_breakdown_metrics: <boolean> | default = false]
-```
-
-### symbolizer
-
-The `symbolizer` block configures the symbolizer (V2).
-
-```yaml
-# (advanced) URL of the debuginfod server
-# CLI flag: -symbolizer.debuginfod-url
-[debuginfod_url: <string> | default = "https://debuginfod.elfutils.org"]
-
-# (advanced) Maximum number of concurrent symbolization requests to debuginfod
-# server.
-# CLI flag: -symbolizer.max-debuginfod-concurrency
-[max_debuginfod_concurrency: <int> | default = 10]
 ```
 
 ### overrides_exporter

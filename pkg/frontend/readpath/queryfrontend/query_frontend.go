@@ -19,7 +19,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -39,10 +38,6 @@ type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
 }
 
-type Symbolizer interface {
-	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
-}
-
 // DiagnosticsStore provides the ability to store query diagnostics.
 type DiagnosticsStore interface {
 	// Add stores diagnostics in memory for later flushing.
@@ -56,7 +51,6 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
-	symbolizer          Symbolizer
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 	queryPlanType       string
@@ -148,7 +142,6 @@ func NewQueryFrontend(
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-	sym Symbolizer,
 	diagnosticsStore DiagnosticsStore,
 	reg prometheus.Registerer,
 ) *QueryFrontend {
@@ -158,7 +151,6 @@ func NewQueryFrontend(
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
-		symbolizer:          sym,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 		queryPlanType:       cfg.QueryPlannerStrategy,
@@ -170,11 +162,6 @@ func NewQueryFrontend(
 
 var xrand = rand.New(rand.NewSource(4349676827832284783))
 var xrandMutex = sync.Mutex{} // todo fix the race properly
-
-// backendCreator allows to modify behavior of a query after more about the dataset is learned from the QueryMetadata call.
-// We currently use this mainly to change backend query, for symbolizing unsymbolized blocks.
-// TODO: Once symbolization moves to the query-backend, the query-backend plan should incorporate the symbolize step
-type backendWrapper = func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend
 
 type measuredQueryBackend struct {
 	upstream       QueryBackend
@@ -195,15 +182,7 @@ func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	return q.doQuery(ctx, req, nil)
-}
-
-func (q *QueryFrontend) doQuery(
-	ctx context.Context,
-	req *queryv1.QueryRequest,
-	backendC backendWrapper,
-) (*queryv1.QueryResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.doQuery")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.Query")
 	defer span.Finish()
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
@@ -295,14 +274,11 @@ func (q *QueryFrontend) doQuery(
 	}
 
 	// Measure only the underlying query backend call
-	var backend QueryBackend = measuredQueryBackend{
+	backend := measuredQueryBackend{
 		upstream:       q.querybackend,
 		metrics:        q.metrics,
 		blocks:         float64(len(blocks)),
 		estimatedBytes: float64(weight.Total()),
-	}
-	if backendC != nil {
-		backend = backendC(ctx, backend, blocks)
 	}
 
 	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
@@ -396,7 +372,6 @@ func (q *QueryFrontend) QueryMetadata(
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
-		Labels:    []string{metadata.LabelNameUnsymbolized},
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
@@ -409,7 +384,7 @@ func (q *QueryFrontend) QueryMetadata(
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
-		query.Labels = append(query.Labels, metadata.LabelNameTenantDataset)
+		query.Labels = []string{metadata.LabelNameTenantDataset}
 		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,

@@ -18,7 +18,6 @@
 
 # area/read-path
 /pkg/querybackend/ @marcsanmi @aleks-p
-/pkg/symbolizer/ @marcsanmi @korniltsev-grafanista
 /pkg/storegateway/ @aleks-p
 /pkg/scheduler/ @korniltsev-grafanista @bryanhuhta
 /pkg/phlaredb/symdb/ @simonswine @korniltsev-grafanista

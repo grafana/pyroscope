@@ -143,7 +143,6 @@ func Test_QueryFrontend_Series_ProfileTypeQueryServedFromMetadata(t *testing.T) 
 				mockQueryBackend,
 				nil,
 				nil,
-				nil,
 			)
 
 			start, end := smpValidTimeRange()

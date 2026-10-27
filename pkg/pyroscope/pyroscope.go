@@ -71,7 +71,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/settings"
 	recordingrulesclient "github.com/grafana/pyroscope/v2/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/v2/pkg/storegateway"
-	"github.com/grafana/pyroscope/v2/pkg/symbolizer"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/tracing"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
@@ -91,7 +90,6 @@ type Config struct {
 	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
 	QueryBackend      querybackend.Config     `yaml:"query_backend"`
 	AdaptivePlacement placement.Config        `yaml:"adaptive_placement"`
-	Symbolizer        symbolizer.Config       `yaml:"symbolizer"`
 	Worker            worker.Config           `yaml:"frontend_worker"`
 	LimitsConfig      validation.Limits       `yaml:"limits"`
 	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"`
@@ -351,8 +349,6 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
 	c.LimitsConfig.Retention.RegisterFlags(throwaway)
 	c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
-	c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
-	c.Symbolizer.RegisterFlags(throwaway)
 	c.DebugInfo.RegisterFlags(throwaway)
 
 	// Legacy modules
@@ -544,7 +540,6 @@ type Pyroscope struct {
 	compactionWorker      *compactionworker.Worker
 	healthServer          *health.Server
 	recordingRulesClient  *recordingrulesclient.Client
-	symbolizer            *symbolizer.Symbolizer
 	queryDiagnosticsStore *diagnostics.Store
 	queryDiagnosticsAdmin *querydiagnostics.Admin
 	asyncQueryStore       *asyncquery.Store
@@ -625,7 +620,6 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryBackend, f.initQueryBackend)
 	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
-	mm.RegisterModule(Symbolizer, f.initSymbolizer)
 	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
@@ -664,11 +658,10 @@ func (f *Pyroscope) setupModuleManager() error {
 		SegmentWriterRing:     {Overrides, API, MemberlistKV},
 		SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
 		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore, AsyncQueryStore},
+		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
 		QueryDiagnosticsStore: {Storage},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
-		Symbolizer:            {Overrides, Storage},
 		UsageReport:           {Storage, MemberlistKV},
 		Overrides:             {RuntimeConfig},
 		OverridesExporter:     {Overrides, MemberlistKV},

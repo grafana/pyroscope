@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -1545,38 +1546,49 @@ func Test_SampleExporter_Partial(t *testing.T) {
 	requireProfilesEqual(t, expected, n)
 }
 
-func Test_Tree_Pprof_conversion(t *testing.T) {
-	// take a real pprof
-	p, err := OpenFile("testdata/go.cpu.labels.pprof")
-	require.NoError(t, err)
-
-	profileType := typesv1.ProfileType{
-		ID:         "",
+func TestFromTree(t *testing.T) {
+	tree := new(model.FunctionNameTree)
+	tree.InsertStack(10, "main", "foo", "bar")
+	tree.InsertStack(5, "main", "baz")
+	tree.InsertStack(2, "main")
+	profileType := &typesv1.ProfileType{
 		Name:       "process_cpu",
 		SampleType: "cpu",
 		SampleUnit: "nanoseconds",
-		PeriodType: "cpu",
-		PeriodUnit: "nanoseconds",
+		PeriodType: "period",
+		PeriodUnit: "count",
 	}
-	maxNodes := int64(1000000)
-	timeNanos := int64(1234)
 
-	// getting tree from pprof - losing data (mappings, lines, inline functions, etc)
-	bytes, err := model.TreeFromBackendProfile(p.Profile, maxNodes)
-	require.NoError(t, err)
-	treeFromPprof, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](bytes)
-	require.NoError(t, err)
-	pprofFromTree := FromTree(treeFromPprof, &profileType, timeNanos)
+	p := FromTree(tree, profileType, 1234)
 
-	// repeat the process
-	bytes, err = model.TreeFromBackendProfile(pprofFromTree, maxNodes)
-	require.NoError(t, err)
-	treeFromPprofFromTree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](bytes)
-	require.NoError(t, err)
-	pprofFromTreeFromTree := FromTree(treeFromPprofFromTree, &profileType, timeNanos)
+	str := func(i int64) string { return p.StringTable[i] }
+	require.Equal(t, int64(1234), p.TimeNanos)
+	require.Len(t, p.SampleType, 1)
+	require.Equal(t, []string{"cpu", "nanoseconds"}, []string{str(p.SampleType[0].Type), str(p.SampleType[0].Unit)})
+	require.Equal(t, []string{"period", "count"}, []string{str(p.PeriodType.Type), str(p.PeriodType.Unit)})
+	require.Len(t, p.Mapping, 1)
+	require.Len(t, p.Location, 4)
+	require.Len(t, p.Function, 4)
 
-	// FromTree <-> model.TreeFromBackendProfile should be immutable:
-	requireProfilesEqual(t, pprofFromTree, pprofFromTreeFromTree)
+	locations := make(map[uint64]*profilev1.Location, len(p.Location))
+	for _, loc := range p.Location {
+		require.Equal(t, p.Mapping[0].Id, loc.MappingId)
+		locations[loc.Id] = loc
+	}
+	functions := make(map[uint64]string, len(p.Function))
+	for _, fn := range p.Function {
+		functions[fn.Id] = str(fn.Name)
+	}
+	// Stacks are leaf first, as in pprof.
+	stacks := make(map[string]int64, len(p.Sample))
+	for _, s := range p.Sample {
+		names := make([]string, 0, len(s.LocationId))
+		for _, id := range s.LocationId {
+			names = append(names, functions[locations[id].Line[0].FunctionId])
+		}
+		stacks[strings.Join(names, ";")] += s.Value[0]
+	}
+	require.Equal(t, map[string]int64{"bar;foo;main": 10, "baz;main": 5, "main": 2}, stacks)
 }
 
 func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
