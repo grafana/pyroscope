@@ -1806,9 +1806,15 @@ The `query_backend` block configures the query-backend (V2 read path).
 # query-backend.grpc-client-config
 [grpc_client_config: <grpc_client>]
 
-# (advanced) Timeout for query-backend client requests.
+# (advanced) Timeout for query-backend client requests, including retries.
 # CLI flag: -query-backend.client-timeout
 [client_timeout: <duration> | default = 30s]
+
+# (experimental) Timeout for async query-backend requests, including retries.
+# The query-frontend passes it to query-backends. 0 uses
+# query-backend.client-timeout.
+# CLI flag: -query-backend.async-query-timeout
+[async_query_timeout: <duration> | default = 2m]
 ```
 
 ### frontend_worker
