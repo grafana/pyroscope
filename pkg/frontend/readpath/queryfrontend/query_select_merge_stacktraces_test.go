@@ -11,10 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -191,14 +189,7 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 	}, nil)
 
 	mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
-	mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).
-		Return(&metastorev1.QueryMetadataResponse{
-			Blocks: []*metastorev1.BlockMeta{{
-				Id:          "block_id",
-				Datasets:    []*metastorev1.Dataset{{Labels: []int32{1, 1, 2}}},
-				StringTable: []string{"", metadata.LabelNameUnsymbolized, "false"},
-			}},
-		}, nil)
+	mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
 
 	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, frontend.Config{}, mockMetadataClient, nil, mockQueryBackend, nil, nil)
 
