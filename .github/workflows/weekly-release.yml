@@ -52,7 +52,7 @@ jobs:
           registry: us-docker.pkg.dev
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 20
+          node-version: 26
           package-manager-cache: false
       - run: make frontend/build
       - uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
