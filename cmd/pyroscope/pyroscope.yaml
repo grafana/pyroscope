@@ -614,6 +614,19 @@ runtime_config:
   # right.
   # file: ""
 
+profile_dump:
+  # How long to retain captures before they become eligible for cleanup, which
+  # requires an admin target using the same bucket and storage prefix.
+  # retention: 168h
+
+  # Maximum capture size in bytes of the combined profile and JSON metadata.
+  # Larger captures are dropped.
+  # max_capture_bytes: 16777216
+
+  # Total profile and metadata bytes held by queued and uploading captures per
+  # distributor. New captures are dropped when there is insufficient space.
+  # max_retained_bytes: 67108864
+
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.

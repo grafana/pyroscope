@@ -155,6 +155,12 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -profile-dump.max-capture-bytes int
+    	Maximum capture size in bytes of the combined profile and JSON metadata. Larger captures are dropped. (default 16777216)
+  -profile-dump.max-retained-bytes int
+    	Total profile and metadata bytes held by queued and uploading captures per distributor. New captures are dropped when there is insufficient space. (default 67108864)
+  -profile-dump.retention duration
+    	How long to retain captures before they become eligible for cleanup, which requires an admin target using the same bucket and storage prefix. (default 168h0m0s)
   -pyroscopedb.data-path string
     	[v1 storage only] Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration

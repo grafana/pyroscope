@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 )
 
@@ -33,6 +34,10 @@ const (
 // NOTE: we use custom `model.Duration` instead of standard `time.Duration` because,
 // to support tenant-friendly duration format (e.g: "1h30m45s") in JSON value.
 type Limits struct {
+	// ProfileDump is runtime-only. Absence or null disables capture.
+	ProfileDump       *profiledump.TenantConfig `yaml:"profile_dump,omitempty" json:"profile_dump,omitempty" doc:"hidden"`
+	profileDumpPolicy profiledump.Policy
+
 	// Distributor enforced limits.
 	IngestionRateMB          float64              `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
 	IngestionBurstSizeMB     float64              `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
@@ -258,8 +263,12 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return unmarshal((*plain)(l))
 }
 
-// Validate validates that this limits config is valid.
+// Validate checks limits and replaces the compiled policy in place, before publication.
 func (l *Limits) Validate() error {
+	return l.validate(time.Now())
+}
+
+func (l *Limits) validate(now time.Time) error {
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
 			return err
@@ -272,6 +281,12 @@ func (l *Limits) Validate() error {
 			return fmt.Errorf("rule at pos %d is not valid: %v", idx, err)
 		}
 	}
+
+	policy, err := l.ProfileDump.Compile(now)
+	if err != nil {
+		return fmt.Errorf("profile_dump: %w", err)
+	}
+	l.profileDumpPolicy = policy
 
 	return nil
 }
@@ -319,6 +334,20 @@ func (o *Overrides) AllByTenantID() map[string]*Limits {
 		return o.tenantLimits.AllByTenantID()
 	}
 	return nil
+}
+
+// ProfileDump returns the tenant's immutable policy. ActiveAt evaluates expiry
+// independently of configuration reloads.
+func (o *Overrides) ProfileDump(tenantID string) profiledump.Policy {
+	return o.getOverridesForTenant(tenantID).ProfileDumpPolicy()
+}
+
+// ProfileDumpPolicy returns the immutable snapshot compiled during validation.
+func (l *Limits) ProfileDumpPolicy() profiledump.Policy {
+	if l == nil {
+		return profiledump.Policy{}
+	}
+	return l.profileDumpPolicy
 }
 
 // IngestionRateBytes returns the limit on ingester rate (MBs per second).

@@ -59,6 +59,7 @@ import (
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend"
@@ -100,6 +101,7 @@ type Config struct {
 	Tracing           tracing.Config          `yaml:"tracing"`
 	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
 	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
+	ProfileDump       profiledump.Config      `yaml:"profile_dump"`
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
@@ -261,6 +263,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.Tracing.RegisterFlags(f)
 	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
+	c.ProfileDump.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
 	c.API.RegisterFlags(f)
@@ -410,6 +413,15 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := c.ProfileDump.Cleaner.Validate(); err != nil {
+		return fmt.Errorf("profile_dump cleaner: %w", err)
+	}
+	if err := c.ProfileDump.Recorder.Validate(); err != nil {
+		return fmt.Errorf("profile_dump recorder: %w", err)
+	}
+	if c.LimitsConfig.ProfileDump != nil {
+		return errors.New("profile_dump is only supported in per-tenant runtime overrides")
+	}
 	if err := c.LimitsConfig.Validate(); err != nil {
 		return err
 	}
@@ -523,7 +535,8 @@ type Pyroscope struct {
 
 	TenantLimits validation.TenantLimits
 
-	storageBucket phlareobj.Bucket
+	storageBucket       phlareobj.Bucket
+	profileDumpRecorder *profiledump.Recorder
 
 	grpcGatewayMux *grpcgw.ServeMux
 
@@ -601,6 +614,8 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileDumpCleaner, f.initProfileDumpCleaner, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileDumpRecorder, f.initProfileDumpRecorder, modules.UserInvisibleModule)
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(IngesterRing, f.initIngesterRing, modules.UserInvisibleModule)
@@ -667,6 +682,8 @@ func (f *Pyroscope) setupModuleManager() error {
 		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
 		QueryDiagnosticsStore: {Storage},
+		ProfileDumpRecorder:   {Storage, Overrides},
+		ProfileDumpCleaner:    {Storage},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
 		Symbolizer:            {Overrides, Storage},
 		UsageReport:           {Storage, MemberlistKV},
@@ -682,6 +699,12 @@ func (f *Pyroscope) setupModuleManager() error {
 		EmbeddedGrafana:       {API},
 		FeatureFlags:          {API},
 		AsyncQueryStore:       {Storage},
+	}
+
+	// Profile capture and cleanup both require architecture.storage=v2.
+	if f.Cfg.ArchitectureStorage == V2 {
+		deps[Distributor] = append(deps[Distributor], ProfileDumpRecorder)
+		deps[Admin] = append(deps[Admin], ProfileDumpCleaner)
 	}
 
 	if f.Cfg.ArchitectureStorage == V1V2Dual || f.Cfg.ArchitectureStorage == V1 {

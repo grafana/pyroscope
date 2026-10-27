@@ -176,6 +176,22 @@ runtime_config:
   # CLI flag: -runtime-config.http-client-disable-keep-alives
   [http_client_disable_keep_alives: <boolean> | default = true]
 
+profile_dump:
+  # How long to retain captures before they become eligible for cleanup, which
+  # requires an admin target using the same bucket and storage prefix.
+  # CLI flag: -profile-dump.retention
+  [retention: <duration> | default = 168h]
+
+  # Maximum capture size in bytes of the combined profile and JSON metadata.
+  # Larger captures are dropped.
+  # CLI flag: -profile-dump.max-capture-bytes
+  [max_capture_bytes: <int> | default = 16777216]
+
+  # Total profile and metadata bytes held by queued and uploading captures per
+  # distributor. New captures are dropped when there is insufficient space.
+  # CLI flag: -profile-dump.max-retained-bytes
+  [max_retained_bytes: <int> | default = 67108864]
+
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]
 
