@@ -72,7 +72,7 @@ func TestQueryBackend_AnalyzeSeriesOnlyAtRoot(t *testing.T) {
 				assert.Len(t, resp.Reports[0].TimeSeriesAnalysis.TimeSeries, 2)
 				return resp, nil
 			}}
-			backend, err := New(Config{}, log.NewNopLogger(), nil, nil, reader)
+			backend, err := New(Config{}, log.NewNopLogger(), nil, nil, reader, nil, nil)
 			require.NoError(t, err)
 			backend.backendClient = &testQueryHandler{invoke: func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 				assert.False(t, req.GetOptions().GetFinalize())
