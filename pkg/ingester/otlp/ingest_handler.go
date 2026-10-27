@@ -294,7 +294,6 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 					}
 					validation.DiscardedProfiles.WithLabelValues(string(validation.MalformedProfile), tenantID).Add(1)
 					validation.DiscardedBytes.WithLabelValues(string(validation.MalformedProfile), tenantID).Add(float64(sz))
-					level.Warn(h.log).Log("msg", "rejecting malformed otel profile", "err", err)
 					continue
 				}
 				accepted++
@@ -334,6 +333,8 @@ func (h *ingestHandler) export(ctx context.Context, er *pprofileotlp.ExportProfi
 	resp := &pprofileotlp.ExportProfilesServiceResponse{}
 	if rejected > 0 {
 		msg := fmt.Sprintf("rejected %d malformed profile(s), first error: failed to convert otel profile: %s", rejected, firstRejection.Error())
+		// Log once per request rather than once per profile to avoid log spam.
+		level.Warn(h.log).Log("msg", "rejecting malformed otel profiles", "tenant", tenantID, "rejected", rejected, "accepted", accepted, "err", firstRejection)
 		if accepted == 0 {
 			// Nothing in the request could be ingested, so reject it as a client
 			// error. A validation error keeps the HTTP path on 400.
