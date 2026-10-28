@@ -15,6 +15,8 @@ services:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     networks:
       - otel-net
+    environment:
+      - KUBECONFIG=/root/.kube/config # scratch image do not set HOME env
 
   # The otel-ebpf-profiler doesnt support adding docker metadata, this shim translates it into kubernetes API and makes it available
   docker-k8sattributesprocessor-shim:
@@ -26,7 +28,7 @@ services:
 
   pyroscope:
     image: grafana/pyroscope:latest
-    command: 
+    command:
       - -self-profiling.disable-push=true
     ports:
       - "4040:4040"
