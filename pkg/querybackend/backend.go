@@ -28,7 +28,7 @@ type Config struct {
 	Address                 string            `yaml:"address" category:"advanced"`
 	GRPCClientConfig        grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
 	ClientTimeout           time.Duration     `yaml:"client_timeout" category:"advanced"`
-	TreeResultCacheMaxBytes int64             `yaml:"tree_result_cache_max_bytes" category:"advanced"`
+	TreeResultCacheMaxBytes int64             `yaml:"tree_result_cache_max_bytes" category:"experimental"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
