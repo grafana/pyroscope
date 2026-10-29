@@ -143,7 +143,7 @@ func NewDataset(meta *metastorev1.Dataset, obj *Object) *Dataset {
 		name:    obj.meta.StringTable[meta.Name],
 		meta:    meta,
 		obj:     obj,
-		memSize: defaultTenantDatasetSizeLoadInMemory,
+		memSize: DefaultTenantDatasetSizeLoadInMemory,
 	}
 }
 
