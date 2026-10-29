@@ -155,7 +155,13 @@ runtime_config:
 
   # Comma separated list of yaml files or URLs with the configuration that can
   # be updated at runtime. Runtime config files will be merged from left to
-  # right.
+  # right. An entry can end with semicolon-separated parameters that say what
+  # happens when it cannot be read: ";optional-on-startup" lets the process
+  # start without it, but a later failure still fails the reload;
+  # ";optional-keep-last-value-on-failure" also lets the process start without
+  # it, and a later failure keeps the value the source supplied last. Without a
+  # parameter, a source that cannot be read fails the load. Quote the value in a
+  # shell, because ";" starts a new command.
   # CLI flag: -runtime-config.file
   [file: <string> | default = ""]
 
@@ -450,6 +456,13 @@ The `server` block configures the HTTP and gRPC server of the launched service(s
 # CLI flag: -server.tls-min-version
 [tls_min_version: <string> | default = ""]
 
+# Comma-separated list of TLS curve/group preferences for key exchange. Allowed
+# values: CurveP256, CurveP384, CurveP521, X25519, X25519MLKEM768,
+# SecP256r1MLKEM768, SecP384r1MLKEM1024. If blank, the default Go curve
+# preferences are used.
+# CLI flag: -server.tls-curve-preferences
+[tls_curve_preferences: <string> | default = ""]
+
 http_tls_config:
   # Server TLS certificate. This configuration parameter is YAML only.
   [cert: <string> | default = ""]
@@ -507,6 +520,13 @@ grpc_tls_config:
 # Register the intrumentation handlers (/metrics etc).
 # CLI flag: -server.register-instrumentation
 [register_instrumentation: <boolean> | default = true]
+
+# Cache successful /metrics responses for this duration. Zero disables caching.
+# Cached metrics may lag behind live values by up to this duration; consider
+# scrape intervals and alerts. Only applies when
+# -server.register-instrumentation is true.
+# CLI flag: -server.metrics-cache-duration
+[metrics_cache_duration: <duration> | default = 0s]
 
 # If set to true, gRPC statuses will be reported in instrumentation labels with
 # their string representations. Otherwise, they will be reported as "error".
@@ -722,6 +742,13 @@ cluster_validation:
 # using Open-Telemetry tracing.
 # CLI flag: -server.create-new-traces
 [create_new_traces: <boolean> | default = false]
+
+# Specifies if this handler should emit start timestamps for counters,
+# histograms and summaries over OpenMetrics 1.0, which are defined as extra
+# series with the same name and "_created" suffix. Only applies if
+# -server.register-instrumentation is set to true.
+# CLI flag: -server.enable-open-metrics-text-created-samples
+[enable_open_metrics_text_created_samples: <boolean> | default = false]
 ```
 
 ### distributor
@@ -2836,6 +2863,18 @@ backoff_config:
 # CLI flag: -<prefix>.connect-backoff-max-delay
 [connect_backoff_max_delay: <duration> | default = 5s]
 
+# (advanced) After a duration of this time if the client doesn't see any
+# activity it pings the server to see if the transport is still alive. This also
+# determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout.
+# CLI flag: -<prefix>.keepalive-time
+[keepalive_time: <duration> | default = 20s]
+
+# (advanced) After having pinged for keepalive check, the client waits for a
+# duration of this time and if no activity is seen even after that the
+# connection is closed.
+# CLI flag: -<prefix>.keepalive-timeout
+[keepalive_timeout: <duration> | default = 10s]
+
 cluster_validation:
   # (experimental) Primary cluster validation label.
   # CLI flag: -<prefix>.cluster-validation.label
@@ -3020,6 +3059,23 @@ The `memberlist` block configures the Gossip memberlist.
 # (advanced) Size of the buffered channel for the WatchPrefix function.
 # CLI flag: -memberlist.watch-prefix-buffer-size
 [watch_prefix_buffer_size: <int> | default = 128]
+
+# (experimental) Minimum delay between CAS retries after a version mismatch. 0
+# disables the delay.
+# CLI flag: -memberlist.cas-retry-min-backoff
+[cas_retry_min_backoff: <duration> | default = 0s]
+
+# (experimental) Maximum delay between CAS retries after a version mismatch.
+# Only takes effect if cas-retry-min-backoff is also set.
+# CLI flag: -memberlist.cas-retry-max-backoff
+[cas_retry_max_backoff: <duration> | default = 10s]
+
+# (experimental) Cache the serialized form of each key, so that push/pull sync
+# doesn't re-encode entries that haven't changed since the last sync. Reduces
+# CPU and lock contention in large clusters, at the cost of memory proportional
+# to the size of the KV store.
+# CLI flag: -memberlist.local-state-cache-enabled
+[local_state_cache_enabled: <boolean> | default = false]
 
 # IP address to listen on for gossip messages. Multiple addresses may be
 # specified. Defaults to 0.0.0.0
