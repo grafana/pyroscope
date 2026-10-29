@@ -120,6 +120,113 @@ func (ExemplarType) EnumDescriptor() ([]byte, []int) {
 	return file_types_v1_types_proto_rawDescGZIP(), []int{1}
 }
 
+type FunctionTreeDirection int32
+
+const (
+	FunctionTreeDirection_FUNCTION_TREE_DIRECTION_UNSPECIFIED FunctionTreeDirection = 0
+	FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLEES     FunctionTreeDirection = 1
+	FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLERS     FunctionTreeDirection = 2
+	FunctionTreeDirection_FUNCTION_TREE_DIRECTION_BOTH        FunctionTreeDirection = 3
+)
+
+// Enum value maps for FunctionTreeDirection.
+var (
+	FunctionTreeDirection_name = map[int32]string{
+		0: "FUNCTION_TREE_DIRECTION_UNSPECIFIED",
+		1: "FUNCTION_TREE_DIRECTION_CALLEES",
+		2: "FUNCTION_TREE_DIRECTION_CALLERS",
+		3: "FUNCTION_TREE_DIRECTION_BOTH",
+	}
+	FunctionTreeDirection_value = map[string]int32{
+		"FUNCTION_TREE_DIRECTION_UNSPECIFIED": 0,
+		"FUNCTION_TREE_DIRECTION_CALLEES":     1,
+		"FUNCTION_TREE_DIRECTION_CALLERS":     2,
+		"FUNCTION_TREE_DIRECTION_BOTH":        3,
+	}
+)
+
+func (x FunctionTreeDirection) Enum() *FunctionTreeDirection {
+	p := new(FunctionTreeDirection)
+	*p = x
+	return p
+}
+
+func (x FunctionTreeDirection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FunctionTreeDirection) Descriptor() protoreflect.EnumDescriptor {
+	return file_types_v1_types_proto_enumTypes[2].Descriptor()
+}
+
+func (FunctionTreeDirection) Type() protoreflect.EnumType {
+	return &file_types_v1_types_proto_enumTypes[2]
+}
+
+func (x FunctionTreeDirection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FunctionTreeDirection.Descriptor instead.
+func (FunctionTreeDirection) EnumDescriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{2}
+}
+
+type FunctionTreeSelection int32
+
+const (
+	FunctionTreeSelection_FUNCTION_TREE_SELECTION_UNSPECIFIED FunctionTreeSelection = 0
+	// Exact root-first call_site prefix; only CALLEES is supported. Empty selects
+	// the synthetic profile root.
+	FunctionTreeSelection_FUNCTION_TREE_SELECTION_ROOT_PATH FunctionTreeSelection = 1
+	// Match every occurrence of the root-first call_site chain: [A, F] means A calls F.
+	// The response root is the first item for CALLERS and the last item for CALLEES.
+	// To refine, prepend callers or append callees to the chain.
+	// BOTH requires exactly one function. Recursive occurrences count separately.
+	FunctionTreeSelection_FUNCTION_TREE_SELECTION_FUNCTION_CHAIN FunctionTreeSelection = 2
+)
+
+// Enum value maps for FunctionTreeSelection.
+var (
+	FunctionTreeSelection_name = map[int32]string{
+		0: "FUNCTION_TREE_SELECTION_UNSPECIFIED",
+		1: "FUNCTION_TREE_SELECTION_ROOT_PATH",
+		2: "FUNCTION_TREE_SELECTION_FUNCTION_CHAIN",
+	}
+	FunctionTreeSelection_value = map[string]int32{
+		"FUNCTION_TREE_SELECTION_UNSPECIFIED":    0,
+		"FUNCTION_TREE_SELECTION_ROOT_PATH":      1,
+		"FUNCTION_TREE_SELECTION_FUNCTION_CHAIN": 2,
+	}
+)
+
+func (x FunctionTreeSelection) Enum() *FunctionTreeSelection {
+	p := new(FunctionTreeSelection)
+	*p = x
+	return p
+}
+
+func (x FunctionTreeSelection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FunctionTreeSelection) Descriptor() protoreflect.EnumDescriptor {
+	return file_types_v1_types_proto_enumTypes[3].Descriptor()
+}
+
+func (FunctionTreeSelection) Type() protoreflect.EnumType {
+	return &file_types_v1_types_proto_enumTypes[3]
+}
+
+func (x FunctionTreeSelection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FunctionTreeSelection.Descriptor instead.
+func (FunctionTreeSelection) EnumDescriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{3}
+}
+
 type LabelPair struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Label name
@@ -1444,6 +1551,246 @@ func (x *FunctionStats) GetSelf() int64 {
 	return 0
 }
 
+// Requested directions are present even when no samples match (root is absent).
+type FunctionTree struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Callers       *CallTree              `protobuf:"bytes,1,opt,name=callers,proto3" json:"callers,omitempty"`
+	Callees       *CallTree              `protobuf:"bytes,2,opt,name=callees,proto3" json:"callees,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FunctionTree) Reset() {
+	*x = FunctionTree{}
+	mi := &file_types_v1_types_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionTree) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionTree) ProtoMessage() {}
+
+func (x *FunctionTree) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionTree.ProtoReflect.Descriptor instead.
+func (*FunctionTree) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *FunctionTree) GetCallers() *CallTree {
+	if x != nil {
+		return x.Callers
+	}
+	return nil
+}
+
+func (x *FunctionTree) GetCallees() *CallTree {
+	if x != nil {
+		return x.Callees
+	}
+	return nil
+}
+
+type CallTree struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Root          *CallTreeNode          `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallTree) Reset() {
+	*x = CallTree{}
+	mi := &file_types_v1_types_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallTree) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallTree) ProtoMessage() {}
+
+func (x *CallTree) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallTree.ProtoReflect.Descriptor instead.
+func (*CallTree) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *CallTree) GetRoot() *CallTreeNode {
+	if x != nil {
+		return x.Root
+	}
+	return nil
+}
+
+type CallTreeNode struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty only for the synthetic profile root. Uses stored function names.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// FUNCTION_CHAIN counts each matching occurrence, including recursion.
+	Total int64 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	// Actual self for callees. For callers, self is only populated at the root of
+	// a single-function selection; caller ancestors have zero self.
+	Self     int64           `protobuf:"varint,3,opt,name=self,proto3" json:"self,omitempty"`
+	Children []*CallTreeNode `protobuf:"bytes,4,rep,name=children,proto3" json:"children,omitempty"`
+	// Further nodes exist in this direction, even when depth stops children.
+	// Values beyond the boundary are included in total, never folded into self.
+	HasChildren   bool `protobuf:"varint,5,opt,name=has_children,json=hasChildren,proto3" json:"has_children,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallTreeNode) Reset() {
+	*x = CallTreeNode{}
+	mi := &file_types_v1_types_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallTreeNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallTreeNode) ProtoMessage() {}
+
+func (x *CallTreeNode) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallTreeNode.ProtoReflect.Descriptor instead.
+func (*CallTreeNode) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CallTreeNode) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CallTreeNode) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *CallTreeNode) GetSelf() int64 {
+	if x != nil {
+		return x.Self
+	}
+	return 0
+}
+
+func (x *CallTreeNode) GetChildren() []*CallTreeNode {
+	if x != nil {
+		return x.Children
+	}
+	return nil
+}
+
+func (x *CallTreeNode) GetHasChildren() bool {
+	if x != nil {
+		return x.HasChildren
+	}
+	return false
+}
+
+type FunctionTreeOptions struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Direction FunctionTreeDirection  `protobuf:"varint,1,opt,name=direction,proto3,enum=types.v1.FunctionTreeDirection" json:"direction,omitempty"`
+	Selection FunctionTreeSelection  `protobuf:"varint,2,opt,name=selection,proto3,enum=types.v1.FunctionTreeSelection" json:"selection,omitempty"`
+	// Edges from the reference node. Omitted defaults to 1; valid range 0..128.
+	MaxDepth      *int32 `protobuf:"varint,3,opt,name=max_depth,json=maxDepth,proto3,oneof" json:"max_depth,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FunctionTreeOptions) Reset() {
+	*x = FunctionTreeOptions{}
+	mi := &file_types_v1_types_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionTreeOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionTreeOptions) ProtoMessage() {}
+
+func (x *FunctionTreeOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionTreeOptions.ProtoReflect.Descriptor instead.
+func (*FunctionTreeOptions) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *FunctionTreeOptions) GetDirection() FunctionTreeDirection {
+	if x != nil {
+		return x.Direction
+	}
+	return FunctionTreeDirection_FUNCTION_TREE_DIRECTION_UNSPECIFIED
+}
+
+func (x *FunctionTreeOptions) GetSelection() FunctionTreeSelection {
+	if x != nil {
+		return x.Selection
+	}
+	return FunctionTreeSelection_FUNCTION_TREE_SELECTION_UNSPECIFIED
+}
+
+func (x *FunctionTreeOptions) GetMaxDepth() int32 {
+	if x != nil && x.MaxDepth != nil {
+		return *x.MaxDepth
+	}
+	return 0
+}
+
 var File_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_types_v1_types_proto_rawDesc = "" +
@@ -1539,7 +1886,24 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\rFunctionStats\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x03R\x05total\x12\x12\n" +
-	"\x04self\x18\x03 \x01(\x03R\x04self*k\n" +
+	"\x04self\x18\x03 \x01(\x03R\x04self\"j\n" +
+	"\fFunctionTree\x12,\n" +
+	"\acallers\x18\x01 \x01(\v2\x12.types.v1.CallTreeR\acallers\x12,\n" +
+	"\acallees\x18\x02 \x01(\v2\x12.types.v1.CallTreeR\acallees\"6\n" +
+	"\bCallTree\x12*\n" +
+	"\x04root\x18\x01 \x01(\v2\x16.types.v1.CallTreeNodeR\x04root\"\xa3\x01\n" +
+	"\fCallTreeNode\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\x12\x12\n" +
+	"\x04self\x18\x03 \x01(\x03R\x04self\x122\n" +
+	"\bchildren\x18\x04 \x03(\v2\x16.types.v1.CallTreeNodeR\bchildren\x12!\n" +
+	"\fhas_children\x18\x05 \x01(\bR\vhasChildren\"\xc3\x01\n" +
+	"\x13FunctionTreeOptions\x12=\n" +
+	"\tdirection\x18\x01 \x01(\x0e2\x1f.types.v1.FunctionTreeDirectionR\tdirection\x12=\n" +
+	"\tselection\x18\x02 \x01(\x0e2\x1f.types.v1.FunctionTreeSelectionR\tselection\x12 \n" +
+	"\tmax_depth\x18\x03 \x01(\x05H\x00R\bmaxDepth\x88\x01\x01B\f\n" +
+	"\n" +
+	"_max_depth*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
 	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01*{\n" +
@@ -1547,7 +1911,16 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\x19EXEMPLAR_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12EXEMPLAR_TYPE_NONE\x10\x01\x12\x1c\n" +
 	"\x18EXEMPLAR_TYPE_INDIVIDUAL\x10\x02\x12\x16\n" +
-	"\x12EXEMPLAR_TYPE_SPAN\x10\x03B\x9b\x01\n" +
+	"\x12EXEMPLAR_TYPE_SPAN\x10\x03*\xac\x01\n" +
+	"\x15FunctionTreeDirection\x12'\n" +
+	"#FUNCTION_TREE_DIRECTION_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fFUNCTION_TREE_DIRECTION_CALLEES\x10\x01\x12#\n" +
+	"\x1fFUNCTION_TREE_DIRECTION_CALLERS\x10\x02\x12 \n" +
+	"\x1cFUNCTION_TREE_DIRECTION_BOTH\x10\x03*\x93\x01\n" +
+	"\x15FunctionTreeSelection\x12'\n" +
+	"#FUNCTION_TREE_SELECTION_UNSPECIFIED\x10\x00\x12%\n" +
+	"!FUNCTION_TREE_SELECTION_ROOT_PATH\x10\x01\x12*\n" +
+	"&FUNCTION_TREE_SELECTION_FUNCTION_CHAIN\x10\x02B\x9b\x01\n" +
 	"\fcom.types.v1B\n" +
 	"TypesProtoP\x01Z>github.com/grafana/pyroscope/api/gen/proto/go/types/v1;typesv1\xa2\x02\x03TXX\xaa\x02\bTypes.V1\xca\x02\bTypes\\V1\xe2\x02\x14Types\\V1\\GPBMetadata\xea\x02\tTypes::V1b\x06proto3"
 
@@ -1563,54 +1936,66 @@ func file_types_v1_types_proto_rawDescGZIP() []byte {
 	return file_types_v1_types_proto_rawDescData
 }
 
-var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_types_v1_types_proto_goTypes = []any{
 	(TimeSeriesAggregationType)(0),  // 0: types.v1.TimeSeriesAggregationType
 	(ExemplarType)(0),               // 1: types.v1.ExemplarType
-	(*LabelPair)(nil),               // 2: types.v1.LabelPair
-	(*ProfileType)(nil),             // 3: types.v1.ProfileType
-	(*Labels)(nil),                  // 4: types.v1.Labels
-	(*Series)(nil),                  // 5: types.v1.Series
-	(*Point)(nil),                   // 6: types.v1.Point
-	(*ProfileAnnotation)(nil),       // 7: types.v1.ProfileAnnotation
-	(*LabelValuesRequest)(nil),      // 8: types.v1.LabelValuesRequest
-	(*LabelValuesResponse)(nil),     // 9: types.v1.LabelValuesResponse
-	(*LabelNamesRequest)(nil),       // 10: types.v1.LabelNamesRequest
-	(*LabelNamesResponse)(nil),      // 11: types.v1.LabelNamesResponse
-	(*BlockInfo)(nil),               // 12: types.v1.BlockInfo
-	(*BlockCompaction)(nil),         // 13: types.v1.BlockCompaction
-	(*StackTraceSelector)(nil),      // 14: types.v1.StackTraceSelector
-	(*Location)(nil),                // 15: types.v1.Location
-	(*GoPGO)(nil),                   // 16: types.v1.GoPGO
-	(*GetProfileStatsRequest)(nil),  // 17: types.v1.GetProfileStatsRequest
-	(*GetProfileStatsResponse)(nil), // 18: types.v1.GetProfileStatsResponse
-	(*Exemplar)(nil),                // 19: types.v1.Exemplar
-	(*HeatmapSeries)(nil),           // 20: types.v1.HeatmapSeries
-	(*HeatmapSlot)(nil),             // 21: types.v1.HeatmapSlot
-	(*FunctionTable)(nil),           // 22: types.v1.FunctionTable
-	(*FunctionStats)(nil),           // 23: types.v1.FunctionStats
+	(FunctionTreeDirection)(0),      // 2: types.v1.FunctionTreeDirection
+	(FunctionTreeSelection)(0),      // 3: types.v1.FunctionTreeSelection
+	(*LabelPair)(nil),               // 4: types.v1.LabelPair
+	(*ProfileType)(nil),             // 5: types.v1.ProfileType
+	(*Labels)(nil),                  // 6: types.v1.Labels
+	(*Series)(nil),                  // 7: types.v1.Series
+	(*Point)(nil),                   // 8: types.v1.Point
+	(*ProfileAnnotation)(nil),       // 9: types.v1.ProfileAnnotation
+	(*LabelValuesRequest)(nil),      // 10: types.v1.LabelValuesRequest
+	(*LabelValuesResponse)(nil),     // 11: types.v1.LabelValuesResponse
+	(*LabelNamesRequest)(nil),       // 12: types.v1.LabelNamesRequest
+	(*LabelNamesResponse)(nil),      // 13: types.v1.LabelNamesResponse
+	(*BlockInfo)(nil),               // 14: types.v1.BlockInfo
+	(*BlockCompaction)(nil),         // 15: types.v1.BlockCompaction
+	(*StackTraceSelector)(nil),      // 16: types.v1.StackTraceSelector
+	(*Location)(nil),                // 17: types.v1.Location
+	(*GoPGO)(nil),                   // 18: types.v1.GoPGO
+	(*GetProfileStatsRequest)(nil),  // 19: types.v1.GetProfileStatsRequest
+	(*GetProfileStatsResponse)(nil), // 20: types.v1.GetProfileStatsResponse
+	(*Exemplar)(nil),                // 21: types.v1.Exemplar
+	(*HeatmapSeries)(nil),           // 22: types.v1.HeatmapSeries
+	(*HeatmapSlot)(nil),             // 23: types.v1.HeatmapSlot
+	(*FunctionTable)(nil),           // 24: types.v1.FunctionTable
+	(*FunctionStats)(nil),           // 25: types.v1.FunctionStats
+	(*FunctionTree)(nil),            // 26: types.v1.FunctionTree
+	(*CallTree)(nil),                // 27: types.v1.CallTree
+	(*CallTreeNode)(nil),            // 28: types.v1.CallTreeNode
+	(*FunctionTreeOptions)(nil),     // 29: types.v1.FunctionTreeOptions
 }
 var file_types_v1_types_proto_depIdxs = []int32{
-	2,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
-	2,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
-	6,  // 2: types.v1.Series.points:type_name -> types.v1.Point
-	7,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
-	19, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
-	13, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
-	2,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
-	15, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
-	16, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
-	2,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
-	2,  // 10: types.v1.HeatmapSeries.labels:type_name -> types.v1.LabelPair
-	21, // 11: types.v1.HeatmapSeries.slots:type_name -> types.v1.HeatmapSlot
-	19, // 12: types.v1.HeatmapSlot.exemplars:type_name -> types.v1.Exemplar
-	23, // 13: types.v1.FunctionTable.functions:type_name -> types.v1.FunctionStats
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	4,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
+	4,  // 1: types.v1.Series.labels:type_name -> types.v1.LabelPair
+	8,  // 2: types.v1.Series.points:type_name -> types.v1.Point
+	9,  // 3: types.v1.Point.annotations:type_name -> types.v1.ProfileAnnotation
+	21, // 4: types.v1.Point.exemplars:type_name -> types.v1.Exemplar
+	15, // 5: types.v1.BlockInfo.compaction:type_name -> types.v1.BlockCompaction
+	4,  // 6: types.v1.BlockInfo.labels:type_name -> types.v1.LabelPair
+	17, // 7: types.v1.StackTraceSelector.call_site:type_name -> types.v1.Location
+	18, // 8: types.v1.StackTraceSelector.go_pgo:type_name -> types.v1.GoPGO
+	4,  // 9: types.v1.Exemplar.labels:type_name -> types.v1.LabelPair
+	4,  // 10: types.v1.HeatmapSeries.labels:type_name -> types.v1.LabelPair
+	23, // 11: types.v1.HeatmapSeries.slots:type_name -> types.v1.HeatmapSlot
+	21, // 12: types.v1.HeatmapSlot.exemplars:type_name -> types.v1.Exemplar
+	25, // 13: types.v1.FunctionTable.functions:type_name -> types.v1.FunctionStats
+	27, // 14: types.v1.FunctionTree.callers:type_name -> types.v1.CallTree
+	27, // 15: types.v1.FunctionTree.callees:type_name -> types.v1.CallTree
+	28, // 16: types.v1.CallTree.root:type_name -> types.v1.CallTreeNode
+	28, // 17: types.v1.CallTreeNode.children:type_name -> types.v1.CallTreeNode
+	2,  // 18: types.v1.FunctionTreeOptions.direction:type_name -> types.v1.FunctionTreeDirection
+	3,  // 19: types.v1.FunctionTreeOptions.selection:type_name -> types.v1.FunctionTreeSelection
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_types_v1_types_proto_init() }
@@ -1618,13 +2003,14 @@ func file_types_v1_types_proto_init() {
 	if File_types_v1_types_proto != nil {
 		return
 	}
+	file_types_v1_types_proto_msgTypes[25].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_types_v1_types_proto_rawDesc), len(file_types_v1_types_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   22,
+			NumEnums:      4,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

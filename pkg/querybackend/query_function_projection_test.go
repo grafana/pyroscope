@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/v2/pkg/model"
 
@@ -54,6 +55,40 @@ func (s *testSuite) Test_QueryFunctionProjection() {
 		}
 	}
 	s.Require().Greater(len(path), 1)
+	for _, direction := range []typesv1.FunctionTreeDirection{typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLEES, typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLERS, typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_BOTH} {
+		selector := []string{path[len(path)-1]}
+		if direction == typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLERS {
+			selector = path[len(path)-2:]
+		}
+		options := &typesv1.FunctionTreeOptions{
+			Direction: direction,
+			Selection: typesv1.FunctionTreeSelection_FUNCTION_TREE_SELECTION_FUNCTION_CHAIN,
+			MaxDepth:  proto.Int32(2),
+		}
+		sts := &typesv1.StackTraceSelector{}
+		for _, name := range selector {
+			sts.CallSite = append(sts.CallSite, &typesv1.Location{Name: name})
+		}
+		got := invoke(&queryv1.Query{
+			QueryType: queryv1.QueryType_QUERY_FUNCTION_TREE,
+			FunctionTree: &queryv1.FunctionTreeQuery{
+				Options:            options,
+				StackTraceSelector: sts,
+			},
+		})
+		s.Require().NotNil(got.FunctionTree)
+		s.Require().Empty(got.Tree)
+		if direction == typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLERS {
+			s.Require().Equal(selector[0], got.FunctionTree.Tree.Callers.Root.Name)
+		}
+		want := model.NewFunctionTreeBuilder(selector, options, func(name string) string {
+			return name
+		})
+		for i, stack := range stacks {
+			want.Insert(stack, values[i])
+		}
+		s.Require().True(want.Tree().EqualVT(got.FunctionTree.Tree), "block projections must equal the untruncated merged profile")
+	}
 	for _, prefix := range [][]string{nil, path[:2], {"missing"}} {
 		selector := &typesv1.StackTraceSelector{}
 		for _, name := range prefix {
@@ -139,7 +174,8 @@ func (s *testSuite) Test_QueryFunctions_SlowFixture() {
 
 func TestProjectionQueryRegistration(t *testing.T) {
 	for query, report := range map[queryv1.QueryType]queryv1.ReportType{
-		queryv1.QueryType_QUERY_FUNCTIONS: queryv1.ReportType_REPORT_FUNCTIONS,
+		queryv1.QueryType_QUERY_FUNCTIONS:     queryv1.ReportType_REPORT_FUNCTIONS,
+		queryv1.QueryType_QUERY_FUNCTION_TREE: queryv1.ReportType_REPORT_FUNCTION_TREE,
 	} {
 		require.Equal(t, report, QueryReportType(query))
 		_, err := getQueryHandler(query)
@@ -155,6 +191,10 @@ func TestProjectionQueriesRejectGoPGO(t *testing.T) {
 		{
 			QueryType: queryv1.QueryType_QUERY_FUNCTIONS,
 			Functions: &queryv1.FunctionsQuery{StackTraceSelector: selector},
+		},
+		{
+			QueryType:    queryv1.QueryType_QUERY_FUNCTION_TREE,
+			FunctionTree: &queryv1.FunctionTreeQuery{StackTraceSelector: selector},
 		},
 	} {
 		t.Run(query.QueryType.String(), func(t *testing.T) {
