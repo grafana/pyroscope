@@ -50,6 +50,7 @@ import (
 
 type Overrides interface {
 	IncludeStrippedProfiles(tenantID string) bool
+	DatasetLookupFromMetadata(tenantID string) bool
 }
 
 type BlockReader struct {
@@ -105,6 +106,7 @@ func (b *BlockReader) Invoke(
 	}
 
 	includeStripped := validationutil.AllTruePerTenant(req.Tenant, b.Overrides.IncludeStrippedProfiles)
+	datasetLookupFromMetadata := validationutil.AllTruePerTenant(req.Tenant, b.Overrides.DatasetLookupFromMetadata)
 
 	var blockExecCollector *blockExecutionCollector
 	if collectDiag {
@@ -133,15 +135,16 @@ func (b *BlockReader) Invoke(
 		datasetsCount += int64(len(md.Datasets))
 		obj := block.NewObject(countingStorage, md)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx:             ctx,
-			log:             b.log,
-			req:             r,
-			agg:             agg,
-			obj:             obj,
-			grp:             g,
-			execCollector:   blockExecCollector,
-			weightCollector: weightCollector,
-			includeStripped: includeStripped,
+			ctx:                       ctx,
+			log:                       b.log,
+			req:                       r,
+			agg:                       agg,
+			obj:                       obj,
+			grp:                       g,
+			execCollector:             blockExecCollector,
+			weightCollector:           weightCollector,
+			includeStripped:           includeStripped,
+			datasetLookupFromMetadata: datasetLookupFromMetadata,
 		}).execute))
 	}
 
