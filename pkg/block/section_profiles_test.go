@@ -9,8 +9,32 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
 
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 )
+
+func TestProfileRowIteratorSnapshotsLabels(t *testing.T) {
+	var it profileRowIterator
+	labels := phlaremodel.LabelsFromStrings("service_name", "original")
+	first := it.snapshotLabels(labels)
+	view := (ProfileEntry{labels: first}).View()
+	w := NewDatasetIndexWriter()
+	t.Cleanup(w.Close)
+	w.addSeries(0, first, 1)
+
+	// Reusing decoded labels and advancing series must not mutate retained
+	// dataset-index labels or observer views.
+	labels[0].Value = "next"
+	second := it.snapshotLabels(labels)
+	require.Equal(t, "original", first[0].value)
+	require.Equal(t, "original", view.Labels.Get("service_name"))
+	require.Equal(t, "original", w.series[0].labels[0].value)
+	require.Equal(t, "next", second[0].value)
+	require.NotSame(t, &first[0], &second[0])
+	// A snapshot must not share an oversized accumulator backing array.
+	require.Equal(t, len(first), cap(first))
+	require.Equal(t, len(second), cap(second))
+}
 
 func createParquetFile[T any](t testing.TB, f io.Writer, rows []T, rowGroups int) {
 	perRG := len(rows) / rowGroups
