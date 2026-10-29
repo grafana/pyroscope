@@ -19,6 +19,7 @@ import (
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 )
 
 // TODO move this to a config.
@@ -41,11 +42,12 @@ type BucketStore struct {
 	blocks   map[ulid.ULID]*Block
 	blockSet *bucketBlockSet
 
-	metrics *Metrics
-	stats   BucketStoreStats
+	metrics     *Metrics
+	stats       BucketStoreStats
+	symbolCache *symdb.SymbolCache
 }
 
-func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, reg prometheus.Registerer) (*BucketStore, error) {
+func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, reg prometheus.Registerer, symbolCache *symdb.SymbolCache) (*BucketStore, error) {
 	s := &BucketStore{
 		fetcher:  fetcher,
 		bucket:   phlareobj.NewTenantBucketClient(tenantID, bucket, nil),
@@ -58,6 +60,7 @@ func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tena
 			prometheus.Labels{"tenant": tenantID},
 			reg,
 		)),
+		symbolCache: symbolCache,
 	}
 
 	if err := os.MkdirAll(syncDir, 0o750); err != nil {

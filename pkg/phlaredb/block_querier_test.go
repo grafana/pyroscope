@@ -12,6 +12,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/oklog/ulid/v2"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,6 +25,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 )
@@ -1405,5 +1407,70 @@ func TestBlockMeta_loadsMetasIndividually(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, meta, singleMeta)
+	}
+}
+
+// BenchmarkSelectMergeByStacktraces_SymbolCache generates a block with MANY
+// symbol partitions (like a real compacted block) and measures
+// SelectMergeByStacktraces with the decoded-symbol cache off vs on. Each
+// synthetic "service" lands in its own symbols partition (the partition key
+// falls back to service_name when a profile has no mapping filename), so a
+// fleet-wide {} query resolves every partition — mirroring the per-query decode
+// volume that makes the cache pay off. The cache variant warms once, so the
+// timed loop measures steady-state warm-hit cost. Runs in CI (no external data).
+func BenchmarkSelectMergeByStacktraces_SymbolCache(b *testing.B) {
+	const (
+		partitions         = 256
+		stacksPerPartition = 400
+		depth              = 6
+	)
+	gen := func() []*testhelper.ProfileBuilder {
+		pbs := make([]*testhelper.ProfileBuilder, partitions)
+		for pi := 0; pi < partitions; pi++ {
+			p := testhelper.NewProfileBuilder(int64(time.Second)).
+				CPUProfile().
+				WithLabels("service_name", fmt.Sprintf("svc%04d", pi))
+			for s := 0; s < stacksPerPartition; s++ {
+				frames := make([]string, depth)
+				for d := range frames {
+					frames[d] = fmt.Sprintf("svc%d/pkg.Func%06d_%d", pi, s, d)
+				}
+				p.ForStacktraceString(frames...).AddSamples(1)
+			}
+			pbs[pi] = p
+		}
+		return pbs
+	}
+	req := &ingesterv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			ID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds", Name: "process_cpu",
+			SampleType: "cpu", SampleUnit: "nanoseconds", PeriodType: "cpu", PeriodUnit: "nanoseconds",
+		},
+		Start: 0,
+		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+	}
+	variants := []struct {
+		name string
+		opts []SingleBlockQuerierOption
+	}{
+		{"nocache", nil},
+		{"cache", []SingleBlockQuerierOption{WithSymbolCache(symdb.NewSymbolCache(8<<30, prometheus.NewRegistry()))}},
+	}
+	for _, v := range variants {
+		q := newBlock(b, gen, v.opts...)
+		b.Run(v.name, func(b *testing.B) {
+			if _, err := q.SelectMergeByStacktraces(context.Background(), req, 16<<10); err != nil {
+				b.Fatal(err) // warm the cache
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if _, err := q.SelectMergeByStacktraces(context.Background(), req, 16<<10); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+		require.NoError(b, q.Close())
 	}
 }
