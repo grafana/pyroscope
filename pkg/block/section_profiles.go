@@ -384,7 +384,6 @@ type profileRowIterator struct {
 	currentRow       ProfileEntry
 	currentSeriesIdx uint32
 	chunks           []index.ChunkMeta
-	labels           immutableLabels
 }
 
 // NewProfileRowIterator takes ownership of one open dataset reference on
@@ -444,11 +443,10 @@ func (p *profileRowIterator) Next() bool {
 }
 
 func (p *profileRowIterator) snapshotLabels(labels phlaremodel.Labels) immutableLabels {
-	start := len(p.labels)
-	for _, label := range labels {
-		p.labels = append(p.labels, immutableLabel{name: label.Name, value: label.Value})
-	}
-	return p.labels[start:]
+	// Snapshots may outlive the current series through the dataset index or
+	// observer views. Give each snapshot its own backing array so retaining
+	// one series does not also retain labels from other input series.
+	return newImmutableLabels(labels)
 }
 
 func (p *profileRowIterator) Err() error {
