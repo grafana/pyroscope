@@ -30,6 +30,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -381,16 +382,20 @@ func (q *QueryFrontend) QueryMetadata(
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
 		return m.Name != model.LabelNameServiceName || m.Type != labels.MatchEqual
 	})
-	if len(matchers) == 0 || q.forceDatasetIndexLookup(tenants) {
+	forceLookup := len(matchers) > 0 && q.forceDatasetIndexLookup(tenants)
+	if len(matchers) == 0 || forceLookup {
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
 		query.Labels = []string{metadata.LabelNameTenantDataset}
-		matchers = []*labels.Matcher{{
+		if !forceLookup || !validationutil.AllTruePerTenant(tenants, q.limits.DatasetIndexShardPruning) {
+			matchers = matchers[:0]
+		}
+		matchers = append(matchers, &labels.Matcher{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,
 			Type:  labels.MatchEqual,
-		}}
+		})
 	}
 
 	query.Query = matchersToLabelSelector(matchers)
