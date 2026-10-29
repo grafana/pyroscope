@@ -399,11 +399,11 @@ func (q *QueryFrontend) QueryMetadata(
 		Labels:    []string{metadata.LabelNameUnsymbolized},
 	}
 
-	// Delete all matchers but service_name with strict match. If no matchers
-	// left, request the dataset index for query backend to lookup block datasets
-	// locally.
+	// Delete all matchers but service_name with strict match or a set of
+	// literal values. If no matchers left, request the dataset index for
+	// query backend to lookup block datasets locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
-		return m.Name != model.LabelNameServiceName || m.Type != labels.MatchEqual
+		return !isServiceNameDatasetMatcher(m)
 	})
 	if len(matchers) == 0 {
 		// We preserve the __tenant_dataset__= label: this is needed for the
@@ -425,4 +425,24 @@ func (q *QueryFrontend) QueryMetadata(
 	span.SetTag("blocks_count", len(md.Blocks))
 
 	return md.Blocks, nil
+}
+
+// isServiceNameDatasetMatcher reports whether the matcher can be used
+// to select datasets by service_name in the metastore: either a strict
+// match, or a regex that is a set of literal values, e.g. "a|b|c".
+// A regex with an empty alternative (e.g. "a|") also matches series
+// without service_name, so it keeps the current behavior.
+func isServiceNameDatasetMatcher(m *labels.Matcher) bool {
+	if m.Name != model.LabelNameServiceName {
+		return false
+	}
+	switch m.Type {
+	case labels.MatchEqual:
+		return true
+	case labels.MatchRegexp:
+		values := m.SetMatches()
+		return len(values) > 0 && !slices.Contains(values, "")
+	default:
+		return false
+	}
 }

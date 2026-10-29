@@ -11,6 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/user"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -79,6 +80,39 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			},
 		},
 		{
+			query: &queryv1.QueryRequest{LabelSelector: `{service_name=~"service-a|service-b", foo="bar"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{service_name=~"service-a|service-b"}`,
+				Labels:   []string{metadata.LabelNameUnsymbolized},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_a"}, {Id: "block_id_b"}},
+			},
+		},
+		{
+			query: &queryv1.QueryRequest{LabelSelector: `{service_name=~"service-a|"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_c"}},
+			},
+		},
+		{
+			query: &queryv1.QueryRequest{LabelSelector: `{service_name=~"service-.*"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_c"}},
+			},
+		},
+		{
 			query: &queryv1.QueryRequest{LabelSelector: `{foo="bar"}`},
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
@@ -112,6 +146,32 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 		blocks, err := f.QueryMetadata(ctx, test.query)
 		assert.NoError(t, err)
 		assert.Equal(t, test.response.Blocks, blocks)
+	}
+}
+
+func Test_isServiceNameDatasetMatcher(t *testing.T) {
+	for _, test := range []struct {
+		matcher *labels.Matcher
+		want    bool
+	}{
+		{labels.MustNewMatcher(labels.MatchEqual, "service_name", "a"), true},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", "a"), true},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", "a|b|c"), true},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", "(a|b)"), true},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", `a\.b|c`), true},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", "a|"), false},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", ""), false},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", ".*"), false},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", "a.*"), false},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", "a|b.*"), false},
+		{labels.MustNewMatcher(labels.MatchRegexp, "service_name", "(?i)a|b"), false},
+		{labels.MustNewMatcher(labels.MatchNotEqual, "service_name", "a"), false},
+		{labels.MustNewMatcher(labels.MatchNotRegexp, "service_name", "a|b"), false},
+		{labels.MustNewMatcher(labels.MatchRegexp, "foo", "a|b"), false},
+	} {
+		t.Run(test.matcher.String(), func(t *testing.T) {
+			assert.Equal(t, test.want, isServiceNameDatasetMatcher(test.matcher))
+		})
 	}
 }
 
