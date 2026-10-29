@@ -177,6 +177,7 @@ type Limits interface {
 	QueryAnalysisEnabled(string) bool
 	QuerySanitizeOnMerge(string) bool
 	QueryTreeEnabled(string) bool
+	ForceDatasetIndexLookup(string) bool
 	validation.FlameGraphLimits
 }
 

@@ -375,12 +375,13 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
-	// left, request the dataset index for query backend to lookup block datasets
+	// left, or all tenants are configured to always use the dataset index,
+	// request the dataset index for query backend to lookup block datasets
 	// locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
 		return m.Name != model.LabelNameServiceName || m.Type != labels.MatchEqual
 	})
-	if len(matchers) == 0 {
+	if len(matchers) == 0 || q.forceDatasetIndexLookup(tenants) {
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
@@ -400,4 +401,13 @@ func (q *QueryFrontend) QueryMetadata(
 	span.SetTag("blocks_count", len(md.Blocks))
 
 	return md.Blocks, nil
+}
+
+func (q *QueryFrontend) forceDatasetIndexLookup(tenants []string) bool {
+	for _, t := range tenants {
+		if !q.limits.ForceDatasetIndexLookup(t) {
+			return false
+		}
+	}
+	return true
 }
