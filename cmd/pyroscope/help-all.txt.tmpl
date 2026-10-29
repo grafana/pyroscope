@@ -441,6 +441,10 @@ Usage of ./pyroscope:
     	Port to listen on for gossip messages. (default 7946)
   -memberlist.broadcast-timeout-for-local-updates-on-shutdown duration
     	Timeout for broadcasting all remaining locally-generated updates to other nodes when shutting down. Only used if there are nodes left in the memberlist cluster, and only applies to locally-generated updates, not to broadcast messages that are result of incoming gossip updates. 0 = no timeout, wait until all locally-generated updates are sent. (default 10s)
+  -memberlist.cas-retry-max-backoff duration
+    	[experimental] Maximum delay between CAS retries after a version mismatch. Only takes effect if cas-retry-min-backoff is also set. (default 10s)
+  -memberlist.cas-retry-min-backoff duration
+    	[experimental] Minimum delay between CAS retries after a version mismatch. 0 disables the delay.
   -memberlist.cluster-label string
     	The cluster label is an optional string to include in outbound packets and gossip streams. Other members in the memberlist cluster will discard any message whose label doesn't match the configured one, unless the 'cluster-label-verification-disabled' configuration option is set to true.
   -memberlist.cluster-label-verification-disabled
@@ -463,6 +467,8 @@ Usage of ./pyroscope:
     	Timeout for leaving memberlist cluster. (default 20s)
   -memberlist.left-ingesters-timeout duration
     	How long to keep LEFT ingesters in the ring. (default 5m0s)
+  -memberlist.local-state-cache-enabled
+    	[experimental] Cache the serialized form of each key, so that push/pull sync doesn't re-encode entries that haven't changed since the last sync. Reduces CPU and lock contention in large clusters, at the cost of memory proportional to the size of the KV store.
   -memberlist.max-concurrent-writes int
     	Maximum number of concurrent writes to other nodes. (default 3)
   -memberlist.max-join-backoff duration
@@ -573,6 +579,10 @@ Usage of ./pyroscope:
     	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
   -metastore.grpc-client-config.initial-stream-window-size value
     	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -metastore.grpc-client-config.keepalive-time duration
+    	After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive. This also determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout. (default 20s)
+  -metastore.grpc-client-config.keepalive-timeout duration
+    	After having pinged for keepalive check, the client waits for a duration of this time and if no activity is seen even after that the connection is closed. (default 10s)
   -metastore.grpc-client-config.tls-ca-path string
     	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -metastore.grpc-client-config.tls-cert-path string
@@ -787,6 +797,10 @@ Usage of ./pyroscope:
     	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
   -querier.frontend-client.initial-stream-window-size value
     	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -querier.frontend-client.keepalive-time duration
+    	After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive. This also determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout. (default 20s)
+  -querier.frontend-client.keepalive-timeout duration
+    	After having pinged for keepalive check, the client waits for a duration of this time and if no activity is seen even after that the connection is closed. (default 10s)
   -querier.frontend-client.tls-ca-path string
     	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -querier.frontend-client.tls-cert-path string
@@ -869,6 +883,10 @@ Usage of ./pyroscope:
     	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
   -query-backend.grpc-client-config.initial-stream-window-size value
     	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -query-backend.grpc-client-config.keepalive-time duration
+    	After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive. This also determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout. (default 20s)
+  -query-backend.grpc-client-config.keepalive-timeout duration
+    	After having pinged for keepalive check, the client waits for a duration of this time and if no activity is seen even after that the connection is closed. (default 10s)
   -query-backend.grpc-client-config.tls-ca-path string
     	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -query-backend.grpc-client-config.tls-cert-path string
@@ -1077,6 +1095,10 @@ Usage of ./pyroscope:
     	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
   -query-frontend.grpc-client-config.initial-stream-window-size value
     	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -query-frontend.grpc-client-config.keepalive-time duration
+    	After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive. This also determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout. (default 20s)
+  -query-frontend.grpc-client-config.keepalive-timeout duration
+    	After having pinged for keepalive check, the client waits for a duration of this time and if no activity is seen even after that the connection is closed. (default 10s)
   -query-frontend.grpc-client-config.tls-ca-path string
     	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -query-frontend.grpc-client-config.tls-cert-path string
@@ -1137,6 +1159,10 @@ Usage of ./pyroscope:
     	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
   -query-scheduler.grpc-client-config.initial-stream-window-size value
     	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -query-scheduler.grpc-client-config.keepalive-time duration
+    	After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive. This also determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout. (default 20s)
+  -query-scheduler.grpc-client-config.keepalive-timeout duration
+    	After having pinged for keepalive check, the client waits for a duration of this time and if no activity is seen even after that the connection is closed. (default 10s)
   -query-scheduler.grpc-client-config.tls-ca-path string
     	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -query-scheduler.grpc-client-config.tls-cert-path string
@@ -1238,7 +1264,7 @@ Usage of ./pyroscope:
   -ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -runtime-config.file comma-separated-list-of-strings
-    	Comma separated list of yaml files or URLs with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
+    	Comma separated list of yaml files or URLs with the configuration that can be updated at runtime. Runtime config files will be merged from left to right. An entry can end with semicolon-separated parameters that say what happens when it cannot be read: ";optional-on-startup" lets the process start without it, but a later failure still fails the reload; ";optional-keep-last-value-on-failure" also lets the process start without it, and a later failure keeps the value the source supplied last. Without a parameter, a source that cannot be read fails the load. Quote the value in a shell, because ";" starts a new command.
   -runtime-config.http-client-cluster-validation.label string
     	[experimental] Primary cluster validation label.
   -runtime-config.http-client-disable-keep-alives
@@ -1337,6 +1363,10 @@ Usage of ./pyroscope:
     	[experimental] Initial connection window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
   -segment-writer.grpc-client-config.initial-stream-window-size value
     	[experimental] Initial stream window size. Values less than the default are not supported and are ignored. Setting this to a value other than the default disables the BDP estimator. (default 63KiB1023B)
+  -segment-writer.grpc-client-config.keepalive-time duration
+    	After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive. This also determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout. (default 20s)
+  -segment-writer.grpc-client-config.keepalive-timeout duration
+    	After having pinged for keepalive check, the client waits for a duration of this time and if no activity is seen even after that the connection is closed. (default 10s)
   -segment-writer.grpc-client-config.tls-ca-path string
     	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -segment-writer.grpc-client-config.tls-cert-path string
@@ -1441,6 +1471,8 @@ Usage of ./pyroscope:
     	[experimental] Primary cluster validation label.
   -server.create-new-traces
     	Creates new traces for each call rather than continuing the existing trace. A span link is used to allow navigation to the parent trace. Only works when using Open-Telemetry tracing.
+  -server.enable-open-metrics-text-created-samples
+    	Specifies if this handler should emit start timestamps for counters, histograms and summaries over OpenMetrics 1.0, which are defined as extra series with the same name and "_created" suffix. Only applies if -server.register-instrumentation is set to true.
   -server.graceful-shutdown-timeout duration
     	Timeout for graceful shutdowns (default 30s)
   -server.grpc-collect-max-streams-by-conn
@@ -1531,6 +1563,8 @@ Usage of ./pyroscope:
     	Header field storing the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
   -server.log-source-ips-regex string
     	Regex for matching the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
+  -server.metrics-cache-duration duration
+    	Cache successful /metrics responses for this duration. Zero disables caching. Cached metrics may lag behind live values by up to this duration; consider scrape intervals and alerts. Only applies when -server.register-instrumentation is true.
   -server.path-prefix string
     	Base path to serve all API routes from (e.g. /v1/)
   -server.proxy-protocol-enabled
@@ -1545,6 +1579,8 @@ Usage of ./pyroscope:
     	Unit of the server throughput metric, for example 'processed_bytes' or 'samples_processed'. Observed values are gathered from the 'Server-Timing' header with the 'val' key. If set, it is appended to the request_server_throughput metric name. (default "samples_processed")
   -server.tls-cipher-suites string
     	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
+  -server.tls-curve-preferences string
+    	Comma-separated list of TLS curve/group preferences for key exchange. Allowed values: CurveP256, CurveP384, CurveP521, X25519, X25519MLKEM768, SecP256r1MLKEM768, SecP384r1MLKEM1024. If blank, the default Go curve preferences are used.
   -server.tls-min-version string
     	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
   -server.trace-request-headers

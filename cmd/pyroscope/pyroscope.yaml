@@ -53,6 +53,12 @@ server:
   # VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
   # tls_min_version: ""
 
+  # Comma-separated list of TLS curve/group preferences for key exchange.
+  # Allowed values: CurveP256, CurveP384, CurveP521, X25519, X25519MLKEM768,
+  # SecP256r1MLKEM768, SecP384r1MLKEM1024. If blank, the default Go curve
+  # preferences are used.
+  # tls_curve_preferences: ""
+
   http_tls_config:
     # Server TLS certificate. This configuration parameter is YAML only.
     # cert: ""
@@ -101,6 +107,12 @@ server:
 
   # Register the intrumentation handlers (/metrics etc).
   # register_instrumentation: true
+
+  # Cache successful /metrics responses for this duration. Zero disables
+  # caching. Cached metrics may lag behind live values by up to this duration;
+  # consider scrape intervals and alerts. Only applies when
+  # -server.register-instrumentation is true.
+  # metrics_cache_duration: 0s
 
   # If set to true, gRPC statuses will be reported in instrumentation labels
   # with their string representations. Otherwise, they will be reported as
@@ -238,6 +250,12 @@ server:
   # A span link is used to allow navigation to the parent trace. Only works when
   # using Open-Telemetry tracing.
   # create_new_traces: false
+
+  # Specifies if this handler should emit start timestamps for counters,
+  # histograms and summaries over OpenMetrics 1.0, which are defined as extra
+  # series with the same name and "_created" suffix. Only applies if
+  # -server.register-instrumentation is set to true.
+  # enable_open_metrics_text_created_samples: false
 
 metastore:
   raft:
@@ -611,7 +629,13 @@ overrides_exporter:
 runtime_config:
   # Comma separated list of yaml files or URLs with the configuration that can
   # be updated at runtime. Runtime config files will be merged from left to
-  # right.
+  # right. An entry can end with semicolon-separated parameters that say what
+  # happens when it cannot be read: ";optional-on-startup" lets the process
+  # start without it, but a later failure still fails the reload;
+  # ";optional-keep-last-value-on-failure" also lets the process start without
+  # it, and a later failure keeps the value the source supplied last. Without a
+  # parameter, a source that cannot be read fails the load. Quote the value in a
+  # shell, because ";" starts a new command.
   # file: ""
 
 profile_dump:
