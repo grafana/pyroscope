@@ -1,7 +1,7 @@
 services:
 
   otel-ebpf-profiler:
-    image: otel/opentelemetry-collector-ebpf-profiler:0.163.2
+    image: otel/opentelemetry-collector-ebpf-profiler:0.164.0
     command:
      - --config=/etc/ebpf-profiler-config.yaml
      - --feature-gates=service.profilesSupport
