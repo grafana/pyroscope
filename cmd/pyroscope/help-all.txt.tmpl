@@ -857,6 +857,8 @@ Usage of ./pyroscope:
     	 (default "localhost:9095")
   -query-backend.client-timeout duration
     	Timeout for query-backend client requests. (default 30s)
+  -query-backend.dataset-lookup-from-metadata
+    	[experimental] Resolve the datasets of service_name queries from the dataset labels in the block metadata instead of the dataset index stored in the block.
   -query-backend.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-backend.grpc-client-config.backoff-min-period duration

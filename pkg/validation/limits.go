@@ -92,6 +92,7 @@ type Limits struct {
 	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
 	IncludeStrippedProfiles    bool           `yaml:"include_stripped_profiles" json:"include_stripped_profiles"`
+	DatasetLookupFromMetadata  bool           `yaml:"dataset_lookup_from_metadata" json:"dataset_lookup_from_metadata" category:"experimental" doc:"hidden"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
@@ -207,6 +208,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.BoolVar(&l.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals as a single sample with stacktraces and sample labels stripped (marked __sampled__) instead of dropping it.")
 	f.BoolVar(&l.IncludeStrippedProfiles, "query-backend.include-stripped-profiles", false, "Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.")
+	f.BoolVar(&l.DatasetLookupFromMetadata, "query-backend.dataset-lookup-from-metadata", false, "Resolve the datasets of service_name queries from the dataset labels in the block metadata instead of the dataset index stored in the block.")
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
 
@@ -375,6 +377,10 @@ func (o *Overrides) KeepStrippedProfiles(tenantID string) bool {
 
 func (o *Overrides) IncludeStrippedProfiles(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).IncludeStrippedProfiles
+}
+
+func (o *Overrides) DatasetLookupFromMetadata(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).DatasetLookupFromMetadata
 }
 
 // IngestionArtificialDelay returns the artificial ingestion latency for a given user.
