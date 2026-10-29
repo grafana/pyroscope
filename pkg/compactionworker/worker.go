@@ -48,6 +48,8 @@ const metadataReadConcurrency = 8
 
 type Config struct {
 	JobConcurrency       int            `yaml:"job_capacity" category:"advanced"`
+	JobByteCapacity      int64          `yaml:"job_byte_capacity" category:"advanced"`
+	MemoryMaxRatio       float64        `yaml:"memory_max_ratio" category:"advanced"`
 	JobPollInterval      time.Duration  `yaml:"job_poll_interval" category:"advanced"`
 	SmallObjectSize      int            `yaml:"small_object_size_bytes" category:"advanced"`
 	TempDir              string         `yaml:"temp_dir" category:"advanced" doc:"default=/tmp"`
@@ -61,6 +63,8 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
 	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 0, "Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.")
+	f.Int64Var(&cfg.JobByteCapacity, prefix+"job-byte-capacity", 0, "Maximum total estimated bytes of compaction jobs running concurrently. When 0, derived from memory-max-ratio of the detected memory limit.")
+	f.Float64Var(&cfg.MemoryMaxRatio, prefix+"memory-max-ratio", defaultMemoryRatio, "Fraction of the detected memory limit (GOMEMLIMIT or cgroup) used as job-byte-capacity when job-byte-capacity is 0.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
@@ -72,6 +76,9 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 }
 
 func (cfg *Config) Validate() error {
+	if cfg.MemoryMaxRatio < 0 || cfg.MemoryMaxRatio > 1 {
+		return fmt.Errorf("invalid compaction-worker.memory-max-ratio %v: must be between 0 and 1", cfg.MemoryMaxRatio)
+	}
 	switch cfg.MetadataSource {
 	case MetadataSourceMetastore, MetadataSourceObjectStorage:
 		return nil
@@ -95,6 +102,7 @@ type Worker struct {
 	queue    chan *compactionJob
 	threads  int
 	capacity atomic.Int32
+	budget   *byteBudget
 
 	deleterPool *deleterPool
 
@@ -156,6 +164,7 @@ func New(
 	w.queue = make(chan *compactionJob, 2*w.threads)
 	w.jobs = make(map[string]*compactionJob, 2*w.threads)
 	w.capacity.Store(int32(w.threads))
+	w.budget = newByteBudget(resolveByteCapacity(config.JobByteCapacity, config.MemoryMaxRatio, detectMemoryLimit))
 	w.deleterPool = newDeleterPool(16 * w.threads)
 	w.service = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -232,11 +241,12 @@ func (w *Worker) poll() {
 			close(w.queue)
 		})
 	} else {
-		// We report the number of free workers in a hope to get more jobs.
+		// We report the number of free workers in a hope to get more jobs,
+		// provided the byte budget still has headroom.
 		// Note that cap(w.queue) - len(w.queue) will only report 0 when all
 		// the workers are busy and the queue is full (in fact, doubling the
 		// reported capacity).
-		if c := w.capacity.Load(); c > 0 {
+		if c := w.capacity.Load(); c > 0 && w.budget.hasHeadroom() {
 			capacity = uint32(c)
 		}
 	}
@@ -482,6 +492,17 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			options = append(options, block.WithSampleObserver(observer))
 		}
 	}
+
+	jobBytes := estimateJobBytes(job.blocks, w.config.SmallObjectSize)
+	releaseBudget, err := w.budget.acquire(ctx, jobBytes, func() {
+		level.Info(logger).Log("msg", "pausing compaction job until byte capacity is available", "estimated_bytes", jobBytes)
+	})
+	if err != nil {
+		level.Warn(logger).Log("msg", "compaction cancelled while paused for byte capacity")
+		statusName = statusCanceled
+		return
+	}
+	defer releaseBudget()
 
 	compacted, err := w.compactFn(ctx, job.blocks, w.storage, options...)
 	defer func() {
