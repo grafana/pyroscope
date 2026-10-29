@@ -8,6 +8,8 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -172,6 +174,21 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		return nil, err
 	}
 
+	entries, supported, err := batchProfileEntryIterator(q, series, opts)
+	if err != nil {
+		return nil, err
+	}
+	if supported {
+		trace.SpanFromContext(q.ctx).SetAttributes(attribute.String("profile_filter.execution", "batch"))
+		return entries, nil
+	}
+	trace.SpanFromContext(q.ctx).SetAttributes(attribute.String("profile_filter.execution", "scalar"))
+	return scalarProfileEntryIterator(q, series, opts), nil
+}
+
+// Retain the ID-first plan and unsupported-schema path, and use it as the
+// reference implementation in differential tests.
+func scalarProfileEntryIterator(q *queryContext, series map[uint32]series, opts iteratorOpts) iter.Iterator[ProfileEntry] {
 	columns := queryColumns{
 		{schemav1.SeriesIndexColumnName, parquetquery.NewMapPredicate(series), 10},
 		{schemav1.TimeNanosColumnName, parquetquery.NewIntBetweenPredicate(q.req.startTime, q.req.endTime), 15},
@@ -236,7 +253,7 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		},
 		func([]ProfileEntry) {},
 	)
-	return entries, nil
+	return entries
 }
 
 type series struct {
