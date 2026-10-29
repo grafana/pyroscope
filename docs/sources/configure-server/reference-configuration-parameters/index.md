@@ -1256,6 +1256,11 @@ lifecycler:
 # (advanced) Timeout for bucket health check operations.
 # CLI flag: -segment-writer.bucket-health-check-timeout
 [bucket_health_check_timeout: <duration> | default = 10s]
+
+# (advanced) Acknowledge push requests once buffered into memory without
+# waiting for segment flush.
+# CLI flag: -segment-writer.async-ingest
+[async_ingest: <boolean> | default = false]
 ```
 
 ### metastore
