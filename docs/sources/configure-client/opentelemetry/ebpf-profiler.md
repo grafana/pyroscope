@@ -15,7 +15,7 @@ The eBPF profiler collects system-wide CPU profiles from all processes on a Linu
 Consider the following limitations:
 
 - **Protocol stability**: The [OpenTelemetry profiles signal](https://github.com/open-telemetry/opentelemetry-proto/tree/main/opentelemetry/proto/profiles) is under active development. Breaking changes have occurred and may continue. Compatibility between the profiler, collector, and Pyroscope requires careful version management.
-- **Symbolization**: Function names may not resolve in flamegraphs for some programs. Symbol resolution is an area of active improvement.
+- **Symbolization**: Function names may not resolve in flamegraphs for some programs. Pyroscope shows only the symbols included in the received profile.
 - **Platform**: The eBPF profiler requires Linux (amd64 or arm64) and privileged access to the host.
 
 This feature is suitable for development and testing. Evaluate carefully before production use.

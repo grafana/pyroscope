@@ -145,9 +145,6 @@ type Limits struct {
 	// MaxRecordingRules is the maximum number of recording rules a tenant can create and store.
 	MaxRecordingRules int `yaml:"max_recording_rules" json:"max_recording_rules"`
 
-	// Symbolizer.
-	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
-
 	// ProfileIDDeterministic enables deterministic profile ID generation.
 	// When enabled, IDs use the tenant ID, profile type, and ingress labels, plus the original timestamp
 	// when present or the trace ID when the timestamp is absent. If neither is present, a random ID is used.

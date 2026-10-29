@@ -111,7 +111,6 @@ const (
 	HealthServer          string = "health-server"
 	AdminServer           string = "admin-server"
 	RecordingRulesClient  string = "recording-rules-client"
-	Symbolizer            string = "symbolizer"
 	QueryDiagnosticsStore string = "query-diagnostics-store"
 	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
 	AsyncQueryStore       string = "async-query-store"

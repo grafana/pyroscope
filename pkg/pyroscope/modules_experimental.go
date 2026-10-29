@@ -38,7 +38,6 @@ import (
 	segmentwriterclient "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client"
 	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 	recordingrulesclient "github.com/grafana/pyroscope/v2/pkg/settings/recording/client"
-	"github.com/grafana/pyroscope/v2/pkg/symbolizer"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/health"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
@@ -92,7 +91,6 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
-		f.symbolizer,
 		f.queryDiagnosticsStore,
 		f.reg,
 	)
@@ -155,7 +153,6 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
-		f.symbolizer,
 		nil,
 		f.reg,
 	)
@@ -440,24 +437,6 @@ func (f *Pyroscope) initRecordingRulesClient() (services.Service, error) {
 	}
 	f.recordingRulesClient = c
 	return c.Service(), nil
-}
-
-func (f *Pyroscope) initSymbolizer() (services.Service, error) {
-
-	sym, err := symbolizer.New(
-		f.logger,
-		f.Cfg.Symbolizer,
-		f.reg,
-		f.storageBucket,
-		f.Overrides,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create symbolizer: %w", err)
-	}
-
-	f.symbolizer = sym
-
-	return nil, nil
 }
 
 func (f *Pyroscope) initQueryDiagnosticsStore() (services.Service, error) {

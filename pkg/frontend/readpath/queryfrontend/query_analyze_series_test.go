@@ -57,7 +57,7 @@ func TestQueryAnomalies_TimeSeriesInvalidSelectorOrProfileType(t *testing.T) {
 			limits.On("MaxQueryLookback", "test").Return(time.Duration(0))
 			limits.On("MaxQueryLength", "test").Return(time.Duration(0))
 
-			qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, nil, nil, nil, nil, nil, nil)
+			qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, nil, nil, nil, nil, nil)
 			_, err := qf.QueryAnomalies(tenant.InjectTenantID(context.Background(), "test"), connect.NewRequest(&querierv1.QueryAnomaliesRequest{
 				AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES},
 				ProfileTypeID: tc.profileTypeID,
@@ -96,7 +96,7 @@ func TestQueryAnomalies_TimeSeriesFinalizesOnQueryBackend(t *testing.T) {
 		TimeSeriesAnalysis: &queryv1.TimeSeriesAnalysisReport{Events: events},
 	}}}, nil).Once()
 
-	qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, nil, nil, nil)
+	qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, nil, nil)
 	resp, err := qf.QueryAnomalies(tenant.InjectTenantID(context.Background(), "test"), connect.NewRequest(&querierv1.QueryAnomaliesRequest{
 		AnomalyTypes:  []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES, querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES},
 		ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",

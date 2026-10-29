@@ -9,7 +9,6 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381
-	github.com/dgraph-io/ristretto/v2 v2.4.0
 	github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c
 	github.com/dolthub/swiss v0.2.1
 	github.com/drone/envsubst v1.0.3
@@ -33,7 +32,6 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
 	github.com/grafana/pyroscope-go/x/k6 v0.0.0-20241003203156-a917cea171d3
 	github.com/grafana/pyroscope/api v1.6.0
-	github.com/grafana/pyroscope/lidia v0.0.2
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.32.0
@@ -332,7 +330,6 @@ require (
 
 replace (
 	github.com/grafana/pyroscope/api => ./api
-	github.com/grafana/pyroscope/lidia => ./lidia
 
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
