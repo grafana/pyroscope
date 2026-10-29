@@ -42,6 +42,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 	for _, test := range []struct {
 		tenantID string
 		force    []string
+		prune    []string
 		query    *queryv1.QueryRequest
 		request  *metastorev1.QueryMetadataRequest
 		response *metastorev1.QueryMetadataResponse
@@ -115,6 +116,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 		{
 			tenantID: "org-1|org-2",
 			force:    []string{"org-1"},
+			prune:    []string{"org-1", "org-2"},
 			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org-1", "org-2"},
@@ -137,6 +139,60 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_g"}},
 			},
 		},
+		{
+			force: []string{"org"},
+			prune: []string{"org"},
+			query: &queryv1.QueryRequest{LabelSelector: `{service_name="service-a",foo="bar"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{service_name="service-a",__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_h"}},
+			},
+		},
+		{
+			force: []string{"org"},
+			prune: []string{"org"},
+			query: &queryv1.QueryRequest{LabelSelector: `{foo="bar"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_i"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1", "org-2"},
+			prune:    []string{"org-1"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org-1", "org-2"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_j"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1", "org-2"},
+			prune:    []string{"org-1", "org-2"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org-1", "org-2"},
+				Query:    `{service_name="service-a",__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_k"}},
+			},
+		},
 	} {
 		mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
 		tenantID := test.tenantID
@@ -147,6 +203,9 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 		mockLimits := mockfrontend.NewMockLimits(t)
 		mockLimits.EXPECT().ForceDatasetIndexLookup(mock.Anything).RunAndReturn(func(tenant string) bool {
 			return slices.Contains(test.force, tenant)
+		}).Maybe()
+		mockLimits.EXPECT().DatasetIndexShardPruning(mock.Anything).RunAndReturn(func(tenant string) bool {
+			return slices.Contains(test.prune, tenant)
 		}).Maybe()
 		f := &QueryFrontend{metadataQueryClient: mockMetadataClient, limits: mockLimits}
 
