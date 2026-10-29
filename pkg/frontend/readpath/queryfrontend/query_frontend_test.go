@@ -40,6 +40,8 @@ func smpValidTimeRange() (int64, int64) {
 
 func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 	for _, test := range []struct {
+		tenantID string
+		force    []string
 		query    *queryv1.QueryRequest
 		request  *metastorev1.QueryMetadataRequest
 		response *metastorev1.QueryMetadataResponse
@@ -98,10 +100,55 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_d"}},
 			},
 		},
+		{
+			force: []string{"org"},
+			query: &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_e"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org-1", "org-2"},
+				Query:    `{service_name="service-a"}`,
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_f"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1", "org-2"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org-1", "org-2"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_g"}},
+			},
+		},
 	} {
 		mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
-		ctx := user.InjectOrgID(context.Background(), "org")
-		f := &QueryFrontend{metadataQueryClient: mockMetadataClient}
+		tenantID := test.tenantID
+		if tenantID == "" {
+			tenantID = "org"
+		}
+		ctx := user.InjectOrgID(context.Background(), tenantID)
+		mockLimits := mockfrontend.NewMockLimits(t)
+		mockLimits.EXPECT().ForceDatasetIndexLookup(mock.Anything).RunAndReturn(func(tenant string) bool {
+			return slices.Contains(test.force, tenant)
+		}).Maybe()
+		f := &QueryFrontend{metadataQueryClient: mockMetadataClient, limits: mockLimits}
 
 		mockMetadataClient.On("QueryMetadata", mock.Anything, test.request).
 			Return(test.response, nil).
@@ -324,6 +371,7 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			mockLimits.On("MaxQueryLookback", "test-tenant").Return(time.Duration(0))
 			mockLimits.On("MaxQueryLength", "test-tenant").Return(time.Duration(0))
 			mockLimits.On("QuerySanitizeOnMerge", "test-tenant").Return(true).Maybe()
+			mockLimits.On("ForceDatasetIndexLookup", "test-tenant").Return(false).Maybe()
 			mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
 			mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).Return(&metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "test-block"}},
