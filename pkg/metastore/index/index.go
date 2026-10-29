@@ -192,10 +192,28 @@ func (i *Index) Partitions(tx *bbolt.Tx) iter.Seq[indexstore.Partition] {
 }
 
 func (i *Index) DeleteShard(tx *bbolt.Tx, key indexstore.Partition, tenant string, shard uint32) error {
+	// The block cache is keyed by block, not by partition shard: collect
+	// the shard's blocks before the bucket is deleted, so their metadata
+	// does not stay in the cache until evicted by the LRU policy.
+	s := indexstore.NewShard(key, tenant, shard)
+	var blocks []string
+	if it := s.Blocks(tx); it != nil {
+		for it.Next() {
+			blocks = append(blocks, string(it.At().Key))
+		}
+		err := it.Err()
+		_ = it.Close()
+		if err != nil {
+			return err
+		}
+	}
 	if err := i.store.DeleteShard(tx, key, tenant, shard); err != nil {
 		return err
 	}
 	i.shards.delete(key, tenant, shard)
+	for _, b := range blocks {
+		i.blocks.delete(s, b)
+	}
 	return nil
 }
 
