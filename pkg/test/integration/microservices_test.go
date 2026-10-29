@@ -80,7 +80,15 @@ func TestMicroServicesIntegrationV1(t *testing.T) {
 }
 
 func TestMicroServicesIntegrationV2(t *testing.T) {
-	c := cluster.NewMicroServiceCluster(cluster.WithV2())
+	testMicroServicesIntegrationV2(t)
+}
+
+func TestMicroServicesIntegrationV2_ForceDatasetIndexLookup(t *testing.T) {
+	testMicroServicesIntegrationV2(t, cluster.WithForceDatasetIndexLookup())
+}
+
+func testMicroServicesIntegrationV2(t *testing.T, opts ...cluster.ClusterOption) {
+	c := cluster.NewMicroServiceCluster(append([]cluster.ClusterOption{cluster.WithV2()}, opts...)...)
 	ctx := context.Background()
 
 	require.NoError(t, c.Prepare(ctx))
@@ -301,7 +309,7 @@ func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 }
 
 func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
-	isV2 := strings.HasSuffix(t.Name(), "V2")
+	isV2 := strings.Contains(t.Name(), "V2")
 	t.Run("QuerySeries", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
@@ -533,6 +541,40 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 					&profilev1.ValueType{Type: 6, Unit: 5},
 					resp.Msg.PeriodType,
 				)
+			})
+		}
+	})
+
+	t.Run("QuerySelectMergeProfileByService", func(t *testing.T) {
+		for tenantID, params := range tc.perTenantData {
+			if params.serviceCount == 0 {
+				continue
+			}
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				for _, i := range []int{0, params.serviceCount - 1} {
+					req := &querierv1.SelectMergeProfileRequest{
+						ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+						LabelSelector: fmt.Sprintf(`{service_name="%s/test-service-%d"}`, tenantID, i),
+						Start:         tc.now.Add(-time.Hour).UnixMilli(),
+						End:           tc.now.Add(time.Hour).UnixMilli(),
+					}
+					resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req)) //nolint:staticcheck // Legacy querier.v1 integration coverage.
+					require.NoError(t, err)
+
+					bozSamples := 0
+					for j := 0; j < params.samples; j++ {
+						if (i+j)%3 == 0 {
+							bozSamples += 3
+						}
+					}
+					assert.Equal(t,
+						[]*profilev1.Sample{
+							{LocationId: []uint64{4, 1, 2}, Value: []int64{1}},
+							{LocationId: []uint64{4, 1, 3}, Value: []int64{int64(bozSamples)}},
+						}, normalizePprof(resp.Msg).Sample, req.LabelSelector,
+					)
+				}
 			})
 		}
 	})

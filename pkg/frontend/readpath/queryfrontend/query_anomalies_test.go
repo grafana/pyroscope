@@ -98,6 +98,7 @@ func TestQueryAnomalies_ClampsStartToMaxQueryLookback(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Hour)
 	mockLimits.On("MaxQueryLength", smpTenant).Return(2 * time.Hour)
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -240,6 +241,7 @@ func TestQueryAnomalies_DuplicateAnomalyType_QueriesOnce(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -549,6 +551,7 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -642,6 +645,7 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -715,6 +719,7 @@ func TestQueryAnomalies_ScoreLookupToleratesUUIDSpelling(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
