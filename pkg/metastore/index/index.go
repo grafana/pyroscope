@@ -34,8 +34,8 @@ type Config struct {
 	Cleaner  cleaner.Config `yaml:",inline"`
 	Recovery dlq.Config     `yaml:",inline"`
 
-	partitionDuration     time.Duration
-	queryLookaroundPeriod time.Duration
+	partitionDuration       time.Duration
+	restoreLookaroundPeriod time.Duration
 }
 
 var DefaultConfig = Config{
@@ -49,15 +49,9 @@ var DefaultConfig = Config{
 	// Partition key MUST be an input parameter.
 	partitionDuration: 6 * time.Hour,
 
-	// FIXME(kolesnikovae): Remove: build an interval tree.
-	//
-	// Currently, we do not use information about the time range of data each
-	// partition refers to. For example, it's possible – though very unlikely
-	// – for data from the past hour to be stored in a partition created a day
-	// ago. We need to be cautious: when querying, we must identify all
-	// partitions that may include the query time range. To ensure we catch
-	// such "misplaced" data, we extend the query time range using this period.
-	queryLookaroundPeriod: 24 * time.Hour,
+	// Only shards in partitions around the current time are restored into the
+	// write cache. Other shards are loaded on demand.
+	restoreLookaroundPeriod: 24 * time.Hour,
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
@@ -67,7 +61,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.IntVar(&cfg.BlockWriteCacheSize, prefix+"block-write-cache-size", DefaultConfig.BlockWriteCacheSize, "Maximum number of written blocks to keep in memory")
 	f.IntVar(&cfg.BlockReadCacheSize, prefix+"block-read-cache-size", DefaultConfig.BlockReadCacheSize, "Maximum number of read blocks to keep in memory")
 	cfg.partitionDuration = DefaultConfig.partitionDuration
-	cfg.queryLookaroundPeriod = DefaultConfig.queryLookaroundPeriod
+	cfg.restoreLookaroundPeriod = DefaultConfig.restoreLookaroundPeriod
 }
 
 type Store interface {
@@ -79,21 +73,25 @@ type Store interface {
 }
 
 type Index struct {
-	logger log.Logger
-	config Config
-	store  Store
-	shards *shardCache
-	blocks *blockCache
+	logger    log.Logger
+	config    Config
+	store     Store
+	shards    *shardCache
+	blocks    *blockCache
+	intervals *shardIntervalIndex
 }
 
 func NewIndex(logger log.Logger, s Store, cfg Config, reg prometheus.Registerer) *Index {
 	m := newMetrics(reg)
+	intervals := newShardIntervalIndex()
+	intervals.disable()
 	return &Index{
-		logger: logger,
-		config: cfg,
-		store:  s,
-		shards: newShardCache(cfg.ShardCacheSize, s, m),
-		blocks: newBlockCache(cfg.BlockReadCacheSize, cfg.BlockWriteCacheSize, m),
+		logger:    logger,
+		config:    cfg,
+		store:     s,
+		shards:    newShardCache(cfg.ShardCacheSize, s, m),
+		blocks:    newBlockCache(cfg.BlockReadCacheSize, cfg.BlockWriteCacheSize, m),
+		intervals: intervals,
 	}
 }
 
@@ -102,21 +100,26 @@ func NewStore() *indexstore.IndexStore { return indexstore.NewIndexStore() }
 func (i *Index) Init(tx *bbolt.Tx) error { return i.store.CreateBuckets(tx) }
 
 func (i *Index) Restore(tx *bbolt.Tx) error {
-	// See comment in DefaultConfig.queryLookaroundPeriod.
+	intervals := newShardIntervalIndex()
+	// See comment in DefaultConfig.restoreLookaroundPeriod.
 	now := time.Now()
-	start := now.Add(-i.config.queryLookaroundPeriod)
-	end := now.Add(i.config.queryLookaroundPeriod)
+	start := now.Add(-i.config.restoreLookaroundPeriod)
+	end := now.Add(i.config.restoreLookaroundPeriod)
 	for p := range i.store.Partitions(tx) {
-		if !p.Overlaps(start, end) {
-			continue
-		}
-		level.Info(i.logger).Log("msg", "loading partition in memory")
 		q := p.Query(tx)
 		if q == nil {
 			continue
 		}
+		loadShard := p.Overlaps(start, end)
+		if loadShard {
+			level.Info(i.logger).Log("msg", "loading partition in memory")
+		}
 		for tenant := range q.Tenants() {
 			for shard := range q.Shards(tenant) {
+				intervals.upsertUnsafe(shard)
+				if !loadShard {
+					continue
+				}
 				if _, err := i.shards.getForWrite(tx, p, tenant, shard.Shard); err != nil {
 					level.Error(i.logger).Log(
 						"msg", "failed to load tenant partition shard",
@@ -130,6 +133,7 @@ func (i *Index) Restore(tx *bbolt.Tx) error {
 			}
 		}
 	}
+	i.intervals.replace(intervals)
 	return nil
 }
 
@@ -140,6 +144,7 @@ func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 			return err
 		}
 		i.blocks.put(s, b)
+		i.intervals.upsert(*s)
 		return nil
 	})
 }
@@ -196,6 +201,7 @@ func (i *Index) DeleteShard(tx *bbolt.Tx, key indexstore.Partition, tenant strin
 		return err
 	}
 	i.shards.delete(key, tenant, shard)
+	i.intervals.remove(tx.ID(), key, tenant, shard)
 	return nil
 }
 
@@ -256,7 +262,7 @@ func (i *Index) QueryMetadata(tx *bbolt.Tx, ctx context.Context, query MetadataQ
 	if err != nil {
 		return nil, err
 	}
-	r, err := newBlockMetadataQuerier(tx, q).queryBlocks(ctx)
+	r, err := newBlockMetadataQuerier(ctx, tx, q).queryBlocks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +274,7 @@ func (i *Index) QueryMetadataLabels(tx *bbolt.Tx, ctx context.Context, query Met
 	if err != nil {
 		return nil, err
 	}
-	c, err := newMetadataLabelQuerier(tx, q).queryLabels(ctx)
+	c, err := newMetadataLabelQuerier(ctx, tx, q).queryLabels(ctx)
 	if err != nil {
 		return nil, err
 	}
