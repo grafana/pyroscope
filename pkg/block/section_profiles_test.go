@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"runtime"
+	"strconv"
 	"testing"
 
 	"github.com/parquet-go/parquet-go"
@@ -34,6 +36,37 @@ func TestProfileRowIteratorSnapshotsLabels(t *testing.T) {
 	// A snapshot must not share an oversized accumulator backing array.
 	require.Equal(t, len(first), cap(first))
 	require.Equal(t, len(second), cap(second))
+}
+
+// BenchmarkProfileRowIteratorSnapshotLabels models merging overlapping series:
+// every input snapshots its labels, but the output index retains only one
+// snapshot per unique series. Keep the iterators alive through the merge, as
+// the real merge tree does. In particular, do not benchmark repeated calls on
+// one iterator across b.Loop iterations: that makes the old accumulator grow
+// without bound rather than modeling independent compaction jobs.
+func BenchmarkProfileRowIteratorSnapshotLabels(b *testing.B) {
+	const seriesPerInput = 1000
+	series := benchSeries(seriesPerInput)
+	for _, inputs := range []int{1, 10} {
+		b.Run("inputs="+strconv.Itoa(inputs), func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				iterators := make([]profileRowIterator, inputs)
+				retained := make([]immutableLabels, seriesPerInput)
+				for s, labels := range series {
+					for i := range iterators {
+						snapshot := iterators[i].snapshotLabels(labels)
+						iterators[i].currentRow.labels = snapshot
+						if i == 0 {
+							retained[s] = snapshot
+						}
+					}
+				}
+				runtime.KeepAlive(retained)
+				runtime.KeepAlive(iterators)
+			}
+		})
+	}
 }
 
 func createParquetFile[T any](t testing.TB, f io.Writer, rows []T, rowGroups int) {
