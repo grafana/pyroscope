@@ -57,7 +57,7 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 		duplicateRowsDropped: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "duplicate_profile_rows_dropped_total",
 			Help: "Total number of duplicate profile rows dropped during compaction.",
-		}, []string{"tenant"}),
+		}, []string{"tenant", "level"}),
 	}
 
 	util.Register(r,

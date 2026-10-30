@@ -487,7 +487,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	options = append(options, block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
 		duplicates += n
 		if n > 0 {
-			w.metrics.duplicateRowsDropped.WithLabelValues(tenant).Add(float64(n))
+			w.metrics.duplicateRowsDropped.WithLabelValues(tenant, strconv.Itoa(int(job.CompactionLevel))).Add(float64(n))
 		}
 	}))
 
