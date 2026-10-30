@@ -651,6 +651,10 @@ func (o *Overrides) ForceDatasetIndexLookup(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides.ForceDatasetIndexLookup
 }
 
+func (o *Overrides) DatasetIndexShardPruning(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ReadPathOverrides.DatasetIndexShardPruning
+}
+
 func (o *Overrides) PlacementLimits(tenantID string) placement.PlacementLimits {
 	// Both limits aimed at the same thing: limit the number of shards tenant's
 	// data is distributed to. The IngestionTenantShardSize specifies the number

@@ -87,11 +87,12 @@ func (svc *QueryService) queryMetadata(
 	}()
 
 	metas, err := svc.index.QueryMetadata(tx, ctx, index.MetadataQuery{
-		Tenant:    req.TenantId,
-		StartTime: time.UnixMilli(req.StartTime),
-		EndTime:   time.UnixMilli(req.EndTime),
-		Expr:      req.Query,
-		Labels:    req.Labels,
+		Tenant:        req.TenantId,
+		StartTime:     time.UnixMilli(req.StartTime),
+		EndTime:       time.UnixMilli(req.EndTime),
+		Expr:          req.Query,
+		ShardSelector: req.ShardSelector,
+		Labels:        req.Labels,
 	})
 	if err == nil {
 		span.SetTag("result_count", len(metas))

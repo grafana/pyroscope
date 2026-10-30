@@ -325,6 +325,96 @@ func TestIndex_Query(t *testing.T) {
 	})
 }
 
+func TestIndex_QueryMetadata_DatasetIndexShardPruning(t *testing.T) {
+	db := test.BoltDB(t)
+	ctx := context.Background()
+
+	minT := test.UnixMilli("2024-09-23T08:00:00.000Z")
+	maxT := test.UnixMilli("2024-09-23T09:00:00.000Z")
+
+	newBlock := func(id string, shard uint32, service string) *metastorev1.BlockMeta {
+		return &metastorev1.BlockMeta{
+			Id:      test.ULID(id),
+			Tenant:  1,
+			Shard:   shard,
+			MinTime: minT,
+			MaxTime: maxT,
+			Datasets: []*metastorev1.Dataset{
+				{Tenant: 1, Name: 2, MinTime: minT, MaxTime: maxT, Labels: []int32{1, 3, 2}},
+				{Format: 1, Tenant: 1, MinTime: minT, MaxTime: maxT, Labels: []int32{1, 4, 5}},
+			},
+			StringTable: []string{
+				"", "tenant-a", service, "service_name", "__tenant_dataset__", "dataset_tsdb_index",
+			},
+		}
+	}
+	a := newBlock("2024-09-23T08:00:00.001Z", 1, "service-a")
+	b := newBlock("2024-09-23T08:00:00.002Z", 2, "service-b")
+
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	tx, err := db.Begin(true)
+	require.NoError(t, err)
+	require.NoError(t, idx.Init(tx))
+	require.NoError(t, idx.InsertBlock(tx, a.CloneVT()))
+	require.NoError(t, idx.InsertBlock(tx, b.CloneVT()))
+	require.NoError(t, tx.Commit())
+
+	tx, err = db.Begin(false)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, tx.Rollback())
+	}()
+
+	query := func(expr, shardSelector string) ([]*metastorev1.BlockMeta, error) {
+		return idx.QueryMetadata(tx, ctx, MetadataQuery{
+			Expr:          expr,
+			ShardSelector: shardSelector,
+			StartTime:     time.UnixMilli(minT),
+			EndTime:       time.UnixMilli(maxT),
+			Tenant:        []string{"tenant-a"},
+			Labels:        []string{"__tenant_dataset__"},
+		})
+	}
+
+	const datasetIndex = `{__tenant_dataset__="dataset_tsdb_index"}`
+
+	t.Run("ServiceShardOnly", func(t *testing.T) {
+		found, err := query(datasetIndex, `{service_name="service-a"}`)
+		require.NoError(t, err)
+		require.Len(t, found, 1)
+		assert.Equal(t, a.Id, found[0].Id)
+		require.Len(t, found[0].Datasets, 1)
+		assert.Equal(t, uint32(1), found[0].Datasets[0].Format)
+	})
+
+	t.Run("UnknownService", func(t *testing.T) {
+		found, err := query(datasetIndex, `{service_name="service-c"}`)
+		require.NoError(t, err)
+		assert.Empty(t, found)
+	})
+
+	t.Run("NoShardSelector", func(t *testing.T) {
+		found, err := query(datasetIndex, "")
+		require.NoError(t, err)
+		assert.Len(t, found, 2)
+	})
+
+	t.Run("ServiceOnly", func(t *testing.T) {
+		found, err := query(`{service_name="service-b"}`, "")
+		require.NoError(t, err)
+		require.Len(t, found, 1)
+		assert.Equal(t, b.Id, found[0].Id)
+		require.Len(t, found[0].Datasets, 1)
+		assert.Equal(t, uint32(0), found[0].Datasets[0].Format)
+	})
+
+	t.Run("InvalidShardSelector", func(t *testing.T) {
+		_, err := query(datasetIndex, `{service_name=}`)
+		var invalid *InvalidQueryError
+		require.ErrorAs(t, err, &invalid)
+	})
+}
+
 func TestIndex_QueryMetadata_StaleReadCacheReloadsShard(t *testing.T) {
 	db := test.BoltDB(t)
 	idxWriter := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)

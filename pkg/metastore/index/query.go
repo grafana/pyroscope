@@ -27,11 +27,12 @@ func (e *InvalidQueryError) Error() string {
 }
 
 type MetadataQuery struct {
-	Expr      string
-	StartTime time.Time
-	EndTime   time.Time
-	Tenant    []string
-	Labels    []string
+	Expr          string
+	ShardSelector string
+	StartTime     time.Time
+	EndTime       time.Time
+	Tenant        []string
+	Labels        []string
 }
 
 func (q *MetadataQuery) String() string {
@@ -43,13 +44,14 @@ func (q *MetadataQuery) String() string {
 }
 
 type metadataQuery struct {
-	startTime time.Time
-	endTime   time.Time
-	tenants   []string
-	tenantMap map[string]struct{}
-	matchers  []*labels.Matcher
-	labels    []string
-	index     *Index
+	startTime     time.Time
+	endTime       time.Time
+	tenants       []string
+	tenantMap     map[string]struct{}
+	matchers      []*labels.Matcher
+	shardMatchers []*labels.Matcher
+	labels        []string
+	index         *Index
 }
 
 func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error) {
@@ -67,8 +69,20 @@ func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error)
 		matchers:  matchers,
 		labels:    query.Labels,
 	}
+	if query.ShardSelector != "" {
+		if q.shardMatchers, err = phlaremodel.ParseMetricSelector(query.ShardSelector); err != nil {
+			return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("failed to parse shard selector: %w", err)}
+		}
+	}
 	q.buildTenantMap(query.Tenant)
 	return q, nil
+}
+
+func (q *metadataQuery) shardMayMatch(s *store.Shard) bool {
+	if len(q.shardMatchers) == 0 {
+		return true
+	}
+	return metadata.NewLabelMatcher(s.StringTable.Strings, q.shardMatchers).IsValid()
 }
 
 func (q *metadataQuery) buildTenantMap(tenants []string) {
@@ -131,6 +145,9 @@ func (q *blockMetadataQuerier) queryBlocks(ctx context.Context) ([]*metastorev1.
 }
 
 func (q *blockMetadataQuerier) collectBlockMetadata(s *store.Shard) error {
+	if !q.query.shardMayMatch(s) {
+		return nil
+	}
 	matcher := metadata.NewLabelMatcher(s.StringTable.Strings, q.query.matchers, q.query.labels...)
 	if !matcher.IsValid() {
 		return nil
