@@ -483,12 +483,9 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}
 	}
 
-	var duplicates uint64
+	duplicates := make(map[string]uint64)
 	options = append(options, block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
-		duplicates += n
-		if n > 0 {
-			w.metrics.duplicateRowsDropped.WithLabelValues(tenant, strconv.Itoa(int(job.CompactionLevel))).Add(float64(n))
-		}
+		duplicates[tenant] += n
 	}))
 
 	compacted, err := w.compactFn(ctx, job.blocks, w.storage, options...)
@@ -500,11 +497,18 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	switch {
 	case err == nil:
+		var totalDuplicates uint64
+		for tenant, n := range duplicates {
+			totalDuplicates += n
+			if n > 0 {
+				w.metrics.duplicateRowsDropped.WithLabelValues(tenant, strconv.Itoa(int(job.CompactionLevel))).Add(float64(n))
+			}
+		}
 		level.Info(logger).Log(
 			"msg", "compaction finished successfully",
 			"input_blocks", len(job.SourceBlocks),
 			"output_blocks", len(compacted),
-			"duplicate_profile_rows_dropped", duplicates,
+			"duplicate_profile_rows_dropped", totalDuplicates,
 		)
 		for _, c := range compacted {
 			level.Debug(logger).Log(
