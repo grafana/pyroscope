@@ -388,14 +388,14 @@ func (q *QueryFrontend) QueryMetadata(
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
 		query.Labels = []string{metadata.LabelNameTenantDataset}
-		if !forceLookup || !validationutil.AllTruePerTenant(tenants, q.limits.DatasetIndexShardPruning) {
-			matchers = matchers[:0]
+		if forceLookup && validationutil.AllTruePerTenant(tenants, q.limits.DatasetIndexShardPruning) {
+			query.ShardSelector = matchersToLabelSelector(matchers)
 		}
-		matchers = append(matchers, &labels.Matcher{
+		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,
 			Type:  labels.MatchEqual,
-		})
+		}}
 	}
 
 	query.Query = matchersToLabelSelector(matchers)

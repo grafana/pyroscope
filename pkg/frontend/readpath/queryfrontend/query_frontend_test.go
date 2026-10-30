@@ -144,9 +144,10 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			prune: []string{"org"},
 			query: &queryv1.QueryRequest{LabelSelector: `{service_name="service-a",foo="bar"}`},
 			request: &metastorev1.QueryMetadataRequest{
-				TenantId: []string{"org"},
-				Query:    `{service_name="service-a",__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{"__tenant_dataset__"},
+				TenantId:      []string{"org"},
+				Query:         `{__tenant_dataset__="dataset_tsdb_index"}`,
+				ShardSelector: `{service_name="service-a"}`,
+				Labels:        []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_h"}},
@@ -185,9 +186,10 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			prune:    []string{"org-1", "org-2"},
 			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
 			request: &metastorev1.QueryMetadataRequest{
-				TenantId: []string{"org-1", "org-2"},
-				Query:    `{service_name="service-a",__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{"__tenant_dataset__"},
+				TenantId:      []string{"org-1", "org-2"},
+				Query:         `{__tenant_dataset__="dataset_tsdb_index"}`,
+				ShardSelector: `{service_name="service-a"}`,
+				Labels:        []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_k"}},

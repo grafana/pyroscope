@@ -16,6 +16,7 @@ message QueryMetadataRequest {
   int64 end_time = 3;
   string query = 4;
   repeated string labels = 5;
+  string shard_selector = 6;
 }
 
 message QueryMetadataResponse {

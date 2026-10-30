@@ -409,6 +409,9 @@ components:
           items:
             type: string
           title: labels
+        shardSelector:
+          type: string
+          title: shard_selector
       title: QueryMetadataRequest
       additionalProperties: false
     metastore.v1.QueryMetadataResponse:

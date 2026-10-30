@@ -768,7 +768,7 @@ Usage of ./pyroscope:
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -querier.dataset-index-shard-pruning
-    	[experimental] When the dataset index lookup is forced, send the service_name matcher to the metastore so that it skips shards that do not contain the service. Requires a metastore that supports it.
+    	[experimental] When the dataset index lookup is forced, send the service_name matcher to the metastore so that it skips shards that do not contain the service.
   -querier.force-dataset-index-lookup
     	[experimental] Resolve the datasets to query from the dataset index stored in each block instead of the dataset entries in the metastore, regardless of the label selector.
   -querier.frontend-client.backoff-max-period duration
