@@ -88,6 +88,7 @@ func (f *Pyroscope) initQueryFrontendV2() (services.Service, error) {
 		queryFrontendLogger,
 		f.Overrides,
 		f.Cfg.Frontend,
+		f.Cfg.QueryBackend.ClientTimeout,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
@@ -151,6 +152,7 @@ func (f *Pyroscope) initQueryFrontendV12() (services.Service, error) {
 		queryFrontendLogger,
 		f.Overrides,
 		f.Cfg.Frontend,
+		f.Cfg.QueryBackend.ClientTimeout,
 		f.metastoreClient,
 		f.metastoreClient,
 		f.queryBackendClient,
@@ -414,7 +416,6 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 	c, err := querybackendclient.New(
 		f.Cfg.QueryBackend.Address,
 		f.Cfg.QueryBackend.GRPCClientConfig,
-		f.Cfg.QueryBackend.ClientTimeout,
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {

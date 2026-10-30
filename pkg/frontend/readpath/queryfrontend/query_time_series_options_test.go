@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -26,7 +27,7 @@ func TestQueryAnomalies_InvalidTimeSeriesOptions(t *testing.T) {
 		{name: "infinite", options: &querierv1.AnomalyTimeSeriesRequest{Step: math.Inf(1)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			qf := NewQueryFrontend(log.NewNopLogger(), nil, frontend.Config{}, nil, nil, nil, nil, nil)
+			qf := NewQueryFrontend(log.NewNopLogger(), nil, frontend.Config{}, 30*time.Second, nil, nil, nil, nil, nil)
 			_, err := qf.QueryAnomalies(context.Background(), connect.NewRequest(&querierv1.QueryAnomaliesRequest{
 				AnomalyTypes: []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES},
 				TimeSeries:   tc.options,

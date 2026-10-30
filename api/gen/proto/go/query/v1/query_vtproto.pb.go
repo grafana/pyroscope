@@ -86,7 +86,6 @@ func (m *InvokeOptions) CloneVT() *InvokeOptions {
 	r.SanitizeOnMerge = m.SanitizeOnMerge
 	r.CollectDiagnostics = m.CollectDiagnostics
 	r.Finalize = m.Finalize
-	r.TimeoutNs = m.TimeoutNs
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -1230,9 +1229,6 @@ func (this *InvokeOptions) EqualVT(that *InvokeOptions) bool {
 		return false
 	}
 	if this.Finalize != that.Finalize {
-		return false
-	}
-	if this.TimeoutNs != that.TimeoutNs {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -3097,11 +3093,6 @@ func (m *InvokeOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
-	}
-	if m.TimeoutNs != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.TimeoutNs))
-		i--
-		dAtA[i] = 0x20
 	}
 	if m.Finalize {
 		i--
@@ -5917,9 +5908,6 @@ func (m *InvokeOptions) SizeVT() (n int) {
 	if m.Finalize {
 		n += 2
 	}
-	if m.TimeoutNs != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.TimeoutNs))
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -7344,25 +7332,6 @@ func (m *InvokeOptions) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.Finalize = bool(v != 0)
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TimeoutNs", wireType)
-			}
-			m.TimeoutNs = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.TimeoutNs |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

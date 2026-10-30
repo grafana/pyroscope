@@ -255,7 +255,7 @@ func TestClient_KeepsInFlightInvokeOnStop(t *testing.T) {
 
 	cfg := grpcclient.Config{}
 	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
-	client, err := New("passthrough:///"+address, cfg, 5*time.Second, dialOption)
+	client, err := New("passthrough:///"+address, cfg, dialOption)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 	require.NoError(t, services.StartAndAwaitRunning(t.Context(), client.Service()))
@@ -302,7 +302,7 @@ func TestClient_ClosesConnectionAfterStop(t *testing.T) {
 
 	cfg := grpcclient.Config{}
 	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
-	client, err := New("dns:///backends.test:9095", cfg, 5*time.Second, dialOption)
+	client, err := New("dns:///backends.test:9095", cfg, dialOption)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(t.Context(), client.Service()))
 
@@ -322,11 +322,6 @@ func TestClient_ClosesConnectionAfterStop(t *testing.T) {
 
 func newTestClient(t *testing.T, backend queryv1.QueryBackendServiceServer, serverOptions ...grpc.ServerOption) *Client {
 	t.Helper()
-	return newTestClientWithTimeout(t, backend, 5*time.Second, serverOptions...)
-}
-
-func newTestClientWithTimeout(t *testing.T, backend queryv1.QueryBackendServiceServer, timeout time.Duration, serverOptions ...grpc.ServerOption) *Client {
-	t.Helper()
 
 	const address = "localhost:10003"
 	listeners, dialOption := test.CreateInMemoryListeners([]string{address})
@@ -339,7 +334,7 @@ func newTestClientWithTimeout(t *testing.T, backend queryv1.QueryBackendServiceS
 
 	grpcClientConfig := grpcclient.Config{}
 	grpcClientConfig.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
-	client, err := New("passthrough:///"+address, grpcClientConfig, timeout, dialOption)
+	client, err := New("passthrough:///"+address, grpcClientConfig, dialOption)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, client.Close())
@@ -367,7 +362,7 @@ func Test_Concurrency(t *testing.T) {
 	resolver.Register(&multiResolverBuilder{targets: addresses})
 	backendAddress := "multi:///"
 
-	cl, err := New(backendAddress, grpcClientCfg, 30*time.Second, dialOpt)
+	cl, err := New(backendAddress, grpcClientCfg, dialOpt)
 	require.NoError(t, err)
 
 	for i := 0; i < nServers; i++ {
@@ -472,7 +467,7 @@ func TestClient_DiscoversNewBackend(t *testing.T) {
 
 	cfg := grpcclient.Config{}
 	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
-	client, err := New("dns:///backends.test:9095", cfg, 5*time.Second, dialOption)
+	client, err := New("dns:///backends.test:9095", cfg, dialOption)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 

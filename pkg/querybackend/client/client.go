@@ -21,17 +21,15 @@ type Client struct {
 	service    services.Service
 	grpcClient queryv1.QueryBackendServiceClient
 	conn       *grpc.ClientConn
-	timeout    time.Duration
 }
 
-func New(address string, grpcClientConfig grpcclient.Config, timeout time.Duration, dialOpts ...grpc.DialOption) (*Client, error) {
+func New(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*Client, error) {
 	conn, err := dial(address, grpcClientConfig, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
 	var c Client
 	c.conn = conn
-	c.timeout = timeout
 	c.grpcClient = queryv1.NewQueryBackendServiceClient(conn)
 	c.service = services.NewIdleService(c.starting, c.stopping)
 	return &c, nil
@@ -60,17 +58,6 @@ func (b *Client) stopping(error) error           { return nil }
 func (b *Client) Close() error                   { return b.conn.Close() }
 
 func (b *Client) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
-	// A service-config timeout would cap longer request overrides.
-	timeout := b.timeout
-	if override := req.GetOptions().GetTimeoutNs(); override > 0 {
-		timeout = time.Duration(override)
-	}
-	// Preserve gRPC's convention that negative timeouts disable the deadline.
-	if timeout >= 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
-	}
 	ctx, tracker := withRetryTracker(ctx)
 	var trailer metadata.MD
 	start := time.Now()

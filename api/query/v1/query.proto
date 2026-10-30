@@ -46,8 +46,6 @@ message InvokeOptions {
   // Run final report processing after this invocation completes. Set only for
   // the root invocation; child invocations must clear this flag.
   bool finalize = 3;
-  // Overrides the client's timeout when positive; child invocations retain it.
-  int64 timeout_ns = 4;
 }
 
 message InvokeRequest {
