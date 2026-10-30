@@ -70,6 +70,12 @@ func WithDatasetIndexShardPruning() ClusterOption {
 	}
 }
 
+func WithDatasetLookupFromMetadata() ClusterOption {
+	return func(c *Cluster) {
+		c.datasetLookupFromMetadata = true
+	}
+}
+
 func (c *Cluster) metastoreConfig() (string, error) {
 	cfgPath := filepath.Join(c.tmpDir, "metastore.yaml")
 
@@ -173,6 +179,9 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 		if c.datasetIndexShardPruning {
 			comp.flags = append(comp.flags, "-querier.dataset-index-shard-pruning=true")
 		}
+	}
+	if comp.Target == "query-backend" && c.datasetLookupFromMetadata {
+		comp.flags = append(comp.flags, "-query-backend.dataset-lookup-from-metadata=true")
 	}
 
 	if comp.Target == "segment-writer" {
