@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -411,4 +412,35 @@ func Test_Compact_PreservesSeriesLabels(t *testing.T) {
 
 	actual := collectSeriesLabels(ctx, t, dst, compacted)
 	require.Equal(t, expected, actual)
+}
+
+func Test_Compact_DuplicateRows(t *testing.T) {
+	ctx := context.Background()
+	bucket, _ := testutil.NewFilesystemBucket(t, ctx, "testdata")
+
+	var resp metastorev1.GetBlockMetadataResponse
+	raw, err := os.ReadFile("testdata/block-metas.json")
+	require.NoError(t, err)
+	require.NoError(t, protojson.Unmarshal(raw, &resp))
+
+	compact := func(t *testing.T, blocks []*metastorev1.BlockMeta) map[string]uint64 {
+		dropped := make(map[string]uint64)
+		dst, tempdir := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
+		_, err := block.Compact(ctx, blocks, bucket,
+			block.WithCompactionDestination(dst),
+			block.WithCompactionTempDir(tempdir),
+			block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
+				dropped[tenant] += n
+			}),
+		)
+		require.NoError(t, err)
+		return dropped
+	}
+
+	baseline := compact(t, resp.Blocks)
+	doubled := compact(t, append(slices.Clone(resp.Blocks), resp.Blocks...))
+	require.NotEmpty(t, doubled)
+	for tenant, n := range doubled {
+		require.Greater(t, n, baseline[tenant], tenant)
+	}
 }
