@@ -9,11 +9,12 @@ import (
 )
 
 type workerMetrics struct {
-	jobsInProgress   *prometheus.GaugeVec
-	jobsCompleted    *prometheus.CounterVec
-	jobDuration      *prometheus.HistogramVec
-	timeToCompaction *prometheus.HistogramVec
-	blocksDeleted    *prometheus.CounterVec
+	jobsInProgress       *prometheus.GaugeVec
+	jobsCompleted        *prometheus.CounterVec
+	jobDuration          *prometheus.HistogramVec
+	timeToCompaction     *prometheus.HistogramVec
+	blocksDeleted        *prometheus.CounterVec
+	duplicateRowsDropped *prometheus.CounterVec
 }
 
 func newMetrics(r prometheus.Registerer) *workerMetrics {
@@ -52,6 +53,11 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 			Name: "blocks_deleted_total",
 			Help: "Total number of block deletion attempts.",
 		}, []string{"status"}),
+
+		duplicateRowsDropped: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "duplicate_profile_rows_dropped_total",
+			Help: "Total number of duplicate profile rows dropped during compaction.",
+		}, []string{"tenant"}),
 	}
 
 	util.Register(r,
@@ -60,6 +66,7 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 		m.jobDuration,
 		m.timeToCompaction,
 		m.blocksDeleted,
+		m.duplicateRowsDropped,
 	)
 
 	return m

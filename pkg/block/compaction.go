@@ -58,6 +58,13 @@ func WithSampleObserver(observer SampleObserver) CompactionOption {
 	}
 }
 
+// WithDuplicateRowsCallback reports duplicate rows dropped per tenant.
+func WithDuplicateRowsCallback(fn func(tenant string, duplicates uint64)) CompactionOption {
+	return func(p *compactionConfig) {
+		p.duplicateRowsFn = fn
+	}
+}
+
 // WithDatasetFilter excludes datasets before any of their sections are opened.
 func WithDatasetFilter(keep func(tenant, serviceName string) bool) CompactionOption {
 	return func(c *compactionConfig) { c.datasetFilter = keep }
@@ -78,6 +85,7 @@ type compactionConfig struct {
 	destination             objstore.Bucket
 	tempdir                 string
 	sampleObserver          SampleObserver
+	duplicateRowsFn         func(tenant string, duplicates uint64)
 }
 
 type SampleObserver interface {
@@ -125,6 +133,13 @@ func Compact(
 		md, compactionErr := p.Compact(ctx, c.destination, c.tempdir, c.sampleObserver)
 		if compactionErr != nil {
 			return nil, compactionErr
+		}
+		if c.duplicateRowsFn != nil {
+			var duplicates uint64
+			for _, d := range p.datasets {
+				duplicates += d.duplicates
+			}
+			c.duplicateRowsFn(p.tenant, duplicates)
 		}
 		compacted = append(compacted, md)
 	}
@@ -359,9 +374,10 @@ type datasetCompaction struct {
 	symbolsRewriter *symbolsRewriter
 	profilesWriter  *profilesWriter
 
-	samples  uint64
-	series   uint64
-	profiles uint64
+	samples    uint64
+	series     uint64
+	profiles   uint64
+	duplicates uint64
 
 	flushOnce sync.Once
 
@@ -489,6 +505,7 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 			return err
 		}
 	}
+	m.duplicates = rows.duplicates
 	return rows.Err()
 }
 
