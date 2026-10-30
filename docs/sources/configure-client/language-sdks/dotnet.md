@@ -60,7 +60,7 @@ The Pyroscope server can be a local server for development or a remote server fo
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/grafana/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.5.1/pyroscope.1.5.1-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.6.0/pyroscope.1.6.0-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 
 `glibc` and `musl` builds are published for both `x86_64` and `aarch64`; pick the tarball that matches your base image.
@@ -86,7 +86,7 @@ The `LD_LIBRARY_PATH` environment variable should point to the directory contain
 1. Obtain `Pyroscope.Profiler.Native.dll` from the [latest release](https://github.com/grafana/pyroscope-dotnet/releases/). The profiler is a single DLL, signed by Grafana Labs. No other native libraries are needed: 
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.3.0/pyroscope.1.3.0-windows-x64.zip -OutFile pyroscope-windows-x64.zip
+Invoke-WebRequest -Uri https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.6.0/pyroscope.1.6.0-windows-x64.zip -OutFile pyroscope-windows-x64.zip
 Expand-Archive pyroscope-windows-x64.zip -DestinationPath C:\pyroscope
 ```
 
@@ -211,7 +211,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_LABELS                       | String       | Static labels to apply to an uploaded profile. Must be a list of key:value separated by commas such as: layer:api or team:intake. |
 | PYROSCOPE_SERVER_ADDRESS               | String       | Address of the Pyroscope Server                                                                                                   |
 | PYROSCOPE_PROFILING_ENABLED            | Boolean      | If set to true, enables the .NET Profiler. Defaults to false.                                                                     |
-| PYROSCOPE_PROFILING_WALLTIME_ENABLED   | Boolean      | If set to false, disables the Wall time profiling. Defaults to false.                                                             |
+| PYROSCOPE_PROFILING_WALLTIME_ENABLED   | Boolean      | If set to true, enables the Wall time profiling. Defaults to false.                                                               |
 | PYROSCOPE_PROFILING_CPU_ENABLED        | Boolean      | If set to false, disables the CPU profiling. Defaults to true.                                                                    |
 | PYROSCOPE_PROFILING_EXCEPTION_ENABLED  | Boolean      | If set to true, enables the Exceptions profiling. Defaults to false.                                                              |
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false.                                                             |
