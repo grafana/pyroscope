@@ -47,7 +47,7 @@ func (q *QueryFrontend) queryTimeSeriesAnomalies(ctx context.Context, req *queri
 			QueryType:          queryv1.QueryType_QUERY_TIME_SERIES_ANALYSIS,
 			TimeSeriesAnalysis: &queryv1.TimeSeriesAnalysisQuery{Step: options.Step, GroupBy: options.GroupBy, Limit: options.GetLimit()},
 		}},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}

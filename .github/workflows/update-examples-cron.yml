@@ -3,13 +3,22 @@ name: Update Examples Cron
 on:
   schedule:
     - cron: '0 */8 * * *'
+  # Test changes after pushing your branch:
+  # gh workflow run update-examples-cron.yml --repo grafana/pyroscope --ref <branch> -f dry_run=true
+  # This runs the full updater and writes its report to the job summary without
+  # modifying the bot branch or PR. Scheduled runs still publish updates.
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run the updater without modifying the bot branch or PR
+        type: boolean
+        default: true
 
 permissions: {}
 
 # Two sweeps at once would both reset the branch and race on the PR.
 concurrency:
-  group: update-examples-cron
+  group: update-examples-cron${{ inputs.dry_run && format('-dry-run-{0}', github.ref_name) || '' }}
   cancel-in-progress: false
 
 env:
@@ -49,7 +58,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Reset branch to the checked out commit
-        if: steps.update.outputs.changed == 'true'
+        if: steps.update.outputs.changed == 'true' && !inputs.dry_run
         env:
           GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
         run: |
@@ -60,7 +69,7 @@ jobs:
             -f "sha=${head_oid}" -F force=true
 
       - name: Commit the update
-        if: steps.update.outputs.changed == 'true'
+        if: steps.update.outputs.changed == 'true' && !inputs.dry_run
         uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # v0.2.22
         with:
           commit_message: ${{ env.TITLE }}
@@ -74,12 +83,20 @@ jobs:
           GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
 
       - name: Open or update the PR
-        if: steps.update.outputs.changed == 'true'
+        if: steps.update.outputs.changed == 'true' && !inputs.dry_run
         env:
           GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
         run: |
           gh pr create --head "$BRANCH" --base main --title "$TITLE" --body-file "$REPORT" \
           || gh pr edit "$BRANCH" --title "$TITLE" --body-file "$REPORT"
+
+      - name: Show dry-run report
+        if: always() && inputs.dry_run
+        run: |
+          if [ -f "$REPORT" ]; then
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          git diff --stat
 
       - name: Report updater failures
         if: steps.update.outputs.rc != '0'

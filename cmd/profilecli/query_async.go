@@ -86,15 +86,18 @@ func runAsyncSelectMergeStacktraces(
 	}
 }
 
-// asyncQueryProfileTree mirrors queryProfileTree but executes via the
-// async query path on SelectMergeStacktraces.
-func asyncQueryProfileTree(ctx context.Context, params *queryProfileParams, from, to time.Time, locations []*typesv1.Location) (*googlev1.Profile, error) {
+// asyncQueryProfile executes via the async path, preserving profile details
+// unless function-names-only was requested.
+func asyncQueryProfile(ctx context.Context, params *queryProfileParams, from, to time.Time, locations []*typesv1.Location, functionNamesOnly bool) (*googlev1.Profile, error) {
 	req := &querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: params.ProfileType,
 		Start:         from.UnixMilli(),
 		End:           to.UnixMilli(),
 		LabelSelector: params.Query,
-		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+	}
+	if functionNamesOnly {
+		req.Format = querierv1.ProfileFormat_PROFILE_FORMAT_TREE
 	}
 	if params.MaxNodes > 0 {
 		req.MaxNodes = &params.MaxNodes
@@ -106,9 +109,20 @@ func asyncQueryProfileTree(ctx context.Context, params *queryProfileParams, from
 		req.ProfileIdSelector = params.ProfileIDs
 	}
 
+	if len(params.TraceIDs) > 0 {
+		req.TraceIdSelector = params.TraceIDs
+	}
+
 	resp, err := runAsyncSelectMergeStacktraces(ctx, params.queryClient(), req)
 	if err != nil {
 		return nil, err
+	}
+
+	if !functionNamesOnly {
+		if profile := resp.GetPprof().GetProfile(); profile != nil {
+			return profile, nil
+		}
+		return nil, fmt.Errorf("async query returned no pprof profile")
 	}
 
 	tree, err := model.UnmarshalTree[model.FunctionName, model.FunctionNameI](resp.Tree)

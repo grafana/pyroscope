@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby "3.3.9"
+ruby "3.3.13"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.2.3", ">= 7.2.3.1"
@@ -20,7 +20,7 @@ gem "sqlite3", "~> 1.4"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", "~> 7.2"
 
-gem 'pyroscope', '= 1.1.4'
+gem 'pyroscope', '= 1.1.7'
 
 gem "pyroscope-otel", "~> 0.2.0"
 gem 'opentelemetry-sdk', "~> 1.2.0"

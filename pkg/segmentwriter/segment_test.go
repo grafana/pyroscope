@@ -31,7 +31,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
-	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/metastore"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/dlq"
 	metastoretest "github.com/grafana/pyroscope/v2/pkg/metastore/test"
@@ -551,61 +550,6 @@ func TestDLQRecovery(t *testing.T) {
 	sw.queryInputs(clients, inputs)
 }
 
-func TestUnsymbolizedLabelIsSet(t *testing.T) {
-	sw := newTestSegmentWriter(t, defaultTestConfig())
-	defer sw.stop()
-	blocks := make(chan *metastorev1.BlockMeta, 1)
-
-	sw.client.On("AddBlock", mock.Anything, mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			blocks <- args.Get(1).(*metastorev1.AddBlockRequest).Block
-		}).Return(new(metastorev1.AddBlockResponse), nil)
-
-	p := pprofth.NewProfileBuilder(time.Now().UnixNano()).
-		CPUProfile().
-		WithLabels(model.LabelNameServiceName, "svc1")
-
-	p.Mapping = []*profilev1.Mapping{
-		{Id: 1, HasFunctions: false},
-	}
-
-	loc := &profilev1.Location{
-		Id:        1,
-		MappingId: 1,
-		Line:      nil,
-	}
-	p.Location = append(p.Location, loc)
-
-	keyIdx := int64(len(p.StringTable))
-	p.StringTable = append(p.StringTable, "foo")
-	valIdx := int64(len(p.StringTable))
-	p.StringTable = append(p.StringTable, "bar")
-
-	sample1 := &profilev1.Sample{
-		LocationId: []uint64{1},
-		Value:      []int64{1},
-		Label: []*profilev1.Label{
-			{Key: keyIdx, Str: valIdx},
-		},
-	}
-	p.Sample = append(p.Sample, sample1)
-
-	sample2 := &profilev1.Sample{
-		LocationId: []uint64{1},
-		Value:      []int64{2},
-		Label:      nil,
-	}
-	p.Sample = append(p.Sample, sample2)
-
-	chunk := inputChunk{
-		{shard: 1, tenant: "t1", profile: p},
-	}
-	_ = sw.ingestChunk(t, chunk, false)
-	block := <-blocks
-
-	require.True(t, hasUnsymbolizedLabel(t, block))
-}
-
 type sw struct {
 	*segmentsWriter
 	bucket  *memory.InMemBucket
@@ -1094,26 +1038,6 @@ func isSegmentPath(p string) bool {
 		fs[0] == block.DirNameSegment &&
 		fs[2] == block.DirNameAnonTenant &&
 		fs[4] == block.FileNameDataObject
-}
-
-func hasUnsymbolizedLabel(t *testing.T, block *metastorev1.BlockMeta) bool {
-	t.Helper()
-	for _, ds := range block.Datasets {
-		i := 0
-		for i < len(ds.Labels) {
-			n := int(ds.Labels[i])
-			i++
-			for j := 0; j < n; j++ {
-				keyIdx := ds.Labels[i]
-				valIdx := ds.Labels[i+1]
-				i += 2
-				if block.StringTable[keyIdx] == metadata.LabelNameUnsymbolized && block.StringTable[valIdx] == "true" {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 type mockBucket struct {

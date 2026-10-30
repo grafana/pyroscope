@@ -59,6 +59,7 @@ import (
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend"
@@ -71,7 +72,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/settings"
 	recordingrulesclient "github.com/grafana/pyroscope/v2/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/v2/pkg/storegateway"
-	"github.com/grafana/pyroscope/v2/pkg/symbolizer"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/tracing"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
@@ -91,7 +91,6 @@ type Config struct {
 	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
 	QueryBackend      querybackend.Config     `yaml:"query_backend"`
 	AdaptivePlacement placement.Config        `yaml:"adaptive_placement"`
-	Symbolizer        symbolizer.Config       `yaml:"symbolizer"`
 	Worker            worker.Config           `yaml:"frontend_worker"`
 	LimitsConfig      validation.Limits       `yaml:"limits"`
 	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"`
@@ -100,6 +99,7 @@ type Config struct {
 	Tracing           tracing.Config          `yaml:"tracing"`
 	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
 	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
+	ProfileDump       profiledump.Config      `yaml:"profile_dump"`
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
@@ -261,6 +261,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.Tracing.RegisterFlags(f)
 	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
+	c.ProfileDump.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
 	c.API.RegisterFlags(f)
@@ -351,8 +352,6 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
 	c.LimitsConfig.Retention.RegisterFlags(throwaway)
 	c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
-	c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
-	c.Symbolizer.RegisterFlags(throwaway)
 	c.DebugInfo.RegisterFlags(throwaway)
 
 	// Legacy modules
@@ -410,6 +409,15 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := c.ProfileDump.Cleaner.Validate(); err != nil {
+		return fmt.Errorf("profile_dump cleaner: %w", err)
+	}
+	if err := c.ProfileDump.Recorder.Validate(); err != nil {
+		return fmt.Errorf("profile_dump recorder: %w", err)
+	}
+	if c.LimitsConfig.ProfileDump != nil {
+		return errors.New("profile_dump is only supported in per-tenant runtime overrides")
+	}
 	if err := c.LimitsConfig.Validate(); err != nil {
 		return err
 	}
@@ -523,7 +531,8 @@ type Pyroscope struct {
 
 	TenantLimits validation.TenantLimits
 
-	storageBucket phlareobj.Bucket
+	storageBucket       phlareobj.Bucket
+	profileDumpRecorder *profiledump.Recorder
 
 	grpcGatewayMux *grpcgw.ServeMux
 
@@ -544,7 +553,6 @@ type Pyroscope struct {
 	compactionWorker      *compactionworker.Worker
 	healthServer          *health.Server
 	recordingRulesClient  *recordingrulesclient.Client
-	symbolizer            *symbolizer.Symbolizer
 	queryDiagnosticsStore *diagnostics.Store
 	queryDiagnosticsAdmin *querydiagnostics.Admin
 	asyncQueryStore       *asyncquery.Store
@@ -601,6 +609,8 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileDumpCleaner, f.initProfileDumpCleaner, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileDumpRecorder, f.initProfileDumpRecorder, modules.UserInvisibleModule)
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(IngesterRing, f.initIngesterRing, modules.UserInvisibleModule)
@@ -625,7 +635,6 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryBackend, f.initQueryBackend)
 	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
-	mm.RegisterModule(Symbolizer, f.initSymbolizer)
 	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
@@ -664,11 +673,12 @@ func (f *Pyroscope) setupModuleManager() error {
 		SegmentWriterRing:     {Overrides, API, MemberlistKV},
 		SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
 		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore, AsyncQueryStore},
+		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
 		QueryDiagnosticsStore: {Storage},
+		ProfileDumpRecorder:   {Storage, Overrides},
+		ProfileDumpCleaner:    {Storage},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
-		Symbolizer:            {Overrides, Storage},
 		UsageReport:           {Storage, MemberlistKV},
 		Overrides:             {RuntimeConfig},
 		OverridesExporter:     {Overrides, MemberlistKV},
@@ -682,6 +692,12 @@ func (f *Pyroscope) setupModuleManager() error {
 		EmbeddedGrafana:       {API},
 		FeatureFlags:          {API},
 		AsyncQueryStore:       {Storage},
+	}
+
+	// Profile capture and cleanup both require architecture.storage=v2.
+	if f.Cfg.ArchitectureStorage == V2 {
+		deps[Distributor] = append(deps[Distributor], ProfileDumpRecorder)
+		deps[Admin] = append(deps[Admin], ProfileDumpCleaner)
 	}
 
 	if f.Cfg.ArchitectureStorage == V1V2Dual || f.Cfg.ArchitectureStorage == V1 {
@@ -859,6 +875,10 @@ func (f *Pyroscope) Run() error {
 		// 1) Signal is received and manager is stopped.
 		// 2) Any service fails.
 		err = sm.AwaitStopped(context.Background())
+		// The server drains requests after other services stop, so close the client after it.
+		if f.queryBackendClient != nil {
+			err = errors.Join(err, f.queryBackendClient.Close())
+		}
 	}
 	if f.versions != nil {
 		f.versions.Shutdown()

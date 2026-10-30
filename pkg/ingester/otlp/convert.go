@@ -35,7 +35,7 @@ func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.Profi
 	for _, sample := range src.Samples {
 		svc, err := serviceNameFromSample(sample, dictionary)
 		if err != nil {
-			return make(map[string]convertedProfile), nil
+			return nil, fmt.Errorf("could not determine service name for sample: %w", err)
 		}
 
 		p, ok := svc2Profile[svc]

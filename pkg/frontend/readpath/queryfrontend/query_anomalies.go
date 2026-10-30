@@ -168,7 +168,7 @@ func (q *QueryFrontend) confirmAnomalies(
 			QueryType:       queryv1.QueryType_QUERY_PROFILE_PRESENCE,
 			ProfilePresence: &queryv1.ProfilePresenceQuery{ProfileIdSelector: allIDs},
 		}},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
