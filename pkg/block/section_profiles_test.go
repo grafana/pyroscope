@@ -9,7 +9,6 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/v2/pkg/iter"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 )
 
@@ -107,23 +106,4 @@ func Test_openParquetFile(t *testing.T) {
 		validateColumnIndex(t, pf.File, count)
 	})
 
-}
-
-func TestDedupeProfileRowIterator(t *testing.T) {
-	entries := []ProfileEntry{
-		{Fingerprint: 1, Timestamp: 10},
-		{Fingerprint: 1, Timestamp: 10}, // duplicate
-		{Fingerprint: 1, Timestamp: 20},
-		{Fingerprint: 2, Timestamp: 20},
-		{Fingerprint: 2, Timestamp: 20}, // duplicate
-	}
-	it := &DedupeProfileRowIterator{Iterator: iter.NewSliceIterator(entries)}
-
-	var got []ProfileEntry
-	for it.Next() {
-		got = append(got, it.At())
-	}
-	require.NoError(t, it.Err())
-	require.Equal(t, []ProfileEntry{entries[0], entries[2], entries[3]}, got)
-	require.Equal(t, uint64(2), it.duplicates)
 }

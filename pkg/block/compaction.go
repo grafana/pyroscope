@@ -487,7 +487,7 @@ func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 }
 
 func (m *datasetCompaction) merge(ctx context.Context) (err error) {
-	rows, err := NewMergeRowProfileIterator(m.datasets)
+	rows, err := NewMergeRowProfileIterator(m.datasets, func() { m.duplicates++ })
 	if err != nil {
 		return err
 	}
@@ -505,7 +505,6 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 			return err
 		}
 	}
-	m.duplicates = rows.duplicates
 	return rows.Err()
 }
 
