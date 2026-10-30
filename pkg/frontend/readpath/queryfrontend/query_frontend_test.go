@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
@@ -22,6 +23,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
@@ -191,6 +193,7 @@ func Test_QueryFrontend_LabelNames_WithFiltering(t *testing.T) {
 				log.NewNopLogger(),
 				mockLimits,
 				frontend.Config{},
+				30*time.Second,
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
@@ -333,6 +336,7 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 				log.NewNopLogger(),
 				mockLimits,
 				frontend.Config{},
+				30*time.Second,
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
@@ -360,6 +364,64 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			// Verify that the label names were filtered correctly before being sent to backend
 			require.Equal(t, tc.expectedQueryRequest, capturedLabelNames,
 				"Expected label names sent to backend to be %v, but got %v", tc.expectedQueryRequest, capturedLabelNames)
+		})
+	}
+}
+
+func TestQueryFrontend_BackendDeadline(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		clientTimeout time.Duration
+		async         bool
+		timeout       time.Duration
+		callerTimeout time.Duration
+		want          time.Duration
+		noDeadline    bool
+		wantErr       error
+	}{
+		{name: "configured sync", clientTimeout: 45 * time.Second, want: 45 * time.Second},
+		{name: "async", clientTimeout: 30 * time.Second, async: true, timeout: 7 * time.Minute, want: 7 * time.Minute},
+		{name: "async fallback", clientTimeout: 45 * time.Second, async: true, want: 45 * time.Second},
+		{name: "earlier caller deadline", clientTimeout: 30 * time.Second, callerTimeout: 25 * time.Second, want: 15 * time.Second},
+		{name: "earlier async caller deadline", clientTimeout: 30 * time.Second, async: true, timeout: 7 * time.Minute, callerTimeout: 25 * time.Second, want: 15 * time.Second},
+		{name: "later caller deadline", clientTimeout: 30 * time.Second, callerTimeout: 10 * time.Minute, want: 30 * time.Second},
+		{name: "zero client timeout", wantErr: context.DeadlineExceeded},
+		{name: "disabled client timeout", clientTimeout: -time.Second, noDeadline: true},
+		{name: "disabled client timeout with caller deadline", clientTimeout: -time.Second, callerTimeout: 25 * time.Second, want: 15 * time.Second},
+		{name: "async overrides disabled client timeout", clientTimeout: -time.Second, async: true, timeout: 7 * time.Minute, want: 7 * time.Minute},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				backend := mockqueryfrontend.NewMockQueryBackend(t)
+				backend.On("Invoke", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					ctx := args.Get(0).(context.Context)
+					deadline, ok := ctx.Deadline()
+					require.Equal(t, !tc.noDeadline, ok)
+					if ok {
+						require.Equal(t, tc.want, time.Until(deadline))
+					}
+					require.ErrorIs(t, ctx.Err(), tc.wantErr)
+				}).Return(&queryv1.InvokeResponse{}, nil).Once()
+				metadata := mockmetastorev1.NewMockMetadataQueryServiceClient(t)
+				metadata.On("QueryMetadata", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+					time.Sleep(10 * time.Second)
+				}).Return(&metastorev1.QueryMetadataResponse{Blocks: []*metastorev1.BlockMeta{{Id: "a"}}}, nil).Once()
+				limits := mockfrontend.NewMockLimits(t)
+				limits.On("QuerySanitizeOnMerge", "test-tenant").Return(false)
+				qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, tc.clientTimeout, metadata, nil, backend, nil, nil)
+
+				ctx := tenant.InjectTenantID(t.Context(), "test-tenant")
+				if tc.async {
+					ctx = async.WithQueryTimeout(ctx, tc.timeout)
+				}
+				if tc.callerTimeout > 0 {
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, tc.callerTimeout)
+					defer cancel()
+				}
+				_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+				require.NoError(t, err)
+			})
 		})
 	}
 }
@@ -432,7 +494,7 @@ func backendWorkFrontend(t *testing.T, reg *prometheus.Registry, blocks []*metas
 		}, nil)
 	limits := mockfrontend.NewMockLimits(t)
 	limits.On("QuerySanitizeOnMerge", "test-tenant").Return(false)
-	return NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, nil, reg)
+	return NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, 30*time.Second, metadata, nil, backend, nil, reg)
 }
 
 func backendWorkGauge(t *testing.T, reg *prometheus.Registry, name string) float64 {

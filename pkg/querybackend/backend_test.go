@@ -178,6 +178,33 @@ func TestQueryBackend_NoRetrySignal_SiblingErrorWins(t *testing.T) {
 	require.True(t, pushback.IsNoRetry(stream.trailer))
 }
 
+func TestConfig_AsyncQueryTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		want    time.Duration
+		wantErr bool
+	}{
+		{name: "default", want: 2 * time.Minute},
+		{name: "override", args: []string{"-query-backend.async-query-timeout=10m"}, want: 10 * time.Minute},
+		{name: "fallback", args: []string{"-query-backend.async-query-timeout=0"}},
+		{name: "negative", args: []string{"-query-backend.async-query-timeout=-1s"}, want: -time.Second, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var cfg Config
+			flags := flag.NewFlagSet("", flag.ContinueOnError)
+			cfg.RegisterFlags(flags)
+			require.NoError(t, flags.Parse(tc.args))
+			require.Equal(t, tc.want, cfg.AsyncQueryTimeout)
+			if tc.wantErr {
+				require.ErrorContains(t, cfg.Validate(), "async-query-timeout")
+			} else {
+				require.NoError(t, cfg.Validate())
+			}
+		})
+	}
+}
+
 func TestConfig_DisableClientRateLimitRetries(t *testing.T) {
 	var cfg Config
 	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))

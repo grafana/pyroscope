@@ -2,6 +2,7 @@ package async
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -28,16 +29,18 @@ type fakeQuerierHandler struct {
 	err   error
 	block <-chan struct{}
 
-	mu    sync.Mutex
-	calls []*querierv1.SelectMergeStacktracesRequest
+	mu       sync.Mutex
+	calls    []*querierv1.SelectMergeStacktracesRequest
+	contexts []context.Context
 }
 
 func (f *fakeQuerierHandler) SelectMergeStacktraces(
-	_ context.Context,
+	ctx context.Context,
 	req *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	f.mu.Lock()
 	f.calls = append(f.calls, req.Msg)
+	f.contexts = append(f.contexts, ctx)
 	f.mu.Unlock()
 
 	if f.block != nil {
@@ -55,6 +58,12 @@ func (f *fakeQuerierHandler) callsSnapshot() []*querierv1.SelectMergeStacktraces
 	return append([]*querierv1.SelectMergeStacktracesRequest(nil), f.calls...)
 }
 
+func (f *fakeQuerierHandler) contextsSnapshot() []context.Context {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.contexts)
+}
+
 // fixedLimits is a Limits fake allowing exactly max concurrent async
 // queries, the same for every tenant.
 type fixedLimits struct {
@@ -69,13 +78,13 @@ type unlimitedLimits struct{}
 func (unlimitedLimits) MaxAsyncQueryConcurrency(string) int { return 1 << 30 }
 
 func TestCoordinatorSubmit_PersistsSpecStripsAsyncAndDispatches(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := log.NewNopLogger()
 	store := NewStore(logger, objstore.NewInMemBucket(), nil)
 
 	want := &querierv1.SelectMergeStacktracesResponse{Tree: []byte("tree")}
 	fakeNext := &fakeQuerierHandler{resp: want}
-	coordinator := NewCoordinator(logger, store, fixedLimits{max: 5}, fakeNext, nil)
+	coordinator := NewCoordinator(logger, store, fixedLimits{max: 5}, fakeNext, 7*time.Minute, nil)
 
 	const tenantID = "tenant-a"
 	req := &querierv1.SelectMergeStacktracesRequest{
@@ -95,6 +104,10 @@ func TestCoordinatorSubmit_PersistsSpecStripsAsyncAndDispatches(t *testing.T) {
 	calls := fakeNext.callsSnapshot()
 	require.Len(t, calls, 1)
 	require.Nil(t, calls[0].GetAsync())
+	queryCtx := fakeNext.contextsSnapshot()[0]
+	require.Equal(t, 7*time.Minute, QueryTimeout(queryCtx))
+	_, hasDeadline := queryCtx.Deadline()
+	require.False(t, hasDeadline)
 
 	result, err := store.get(ctx, tenantID, requestID)
 	require.NoError(t, err)
@@ -109,7 +122,7 @@ func TestCoordinatorSubmit_ConcurrencyLimitRejects(t *testing.T) {
 	block := make(chan struct{})
 	defer close(block)
 	fakeNext := &fakeQuerierHandler{resp: &querierv1.SelectMergeStacktracesResponse{}, block: block}
-	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, nil)
+	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, 5*time.Minute, nil)
 
 	const tenantID = "tenant-a"
 	req := &querierv1.SelectMergeStacktracesRequest{}
@@ -127,7 +140,7 @@ func TestCoordinatorDispatch_ConcurrencyLimitSkipsExecution(t *testing.T) {
 	store := NewStore(logger, objstore.NewInMemBucket(), nil)
 
 	fakeNext := &fakeQuerierHandler{resp: &querierv1.SelectMergeStacktracesResponse{}}
-	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, nil)
+	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, 5*time.Minute, nil)
 
 	const tenantID = "tenant-a"
 	require.NoError(t, coordinator.tryAcquire(tenantID))
@@ -145,7 +158,7 @@ func TestCoordinatorHasCapacity_ReflectsInFlightWithoutMutating(t *testing.T) {
 	logger := log.NewNopLogger()
 	store := NewStore(logger, objstore.NewInMemBucket(), nil)
 	fakeNext := &fakeQuerierHandler{resp: &querierv1.SelectMergeStacktracesResponse{}}
-	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, nil)
+	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, 5*time.Minute, nil)
 
 	const tenantID = "tenant-a"
 	require.True(t, coordinator.HasCapacity(tenantID))
@@ -163,7 +176,7 @@ func TestCoordinatorSubmit_TenantIsolation(t *testing.T) {
 	block := make(chan struct{})
 	defer close(block)
 	fakeNext := &fakeQuerierHandler{resp: &querierv1.SelectMergeStacktracesResponse{}, block: block}
-	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, nil)
+	coordinator := NewCoordinator(logger, store, fixedLimits{max: 1}, fakeNext, 5*time.Minute, nil)
 
 	req := &querierv1.SelectMergeStacktracesRequest{}
 
@@ -183,7 +196,7 @@ func TestAdoption_EndToEnd_ResumesOrphanedQuery(t *testing.T) {
 	store := NewStore(logger, bucket, nil)
 
 	fakeNext := &fakeQuerierHandler{resp: &querierv1.SelectMergeStacktracesResponse{Tree: []byte("t")}}
-	coordinator := NewCoordinator(logger, store, unlimitedLimits{}, fakeNext, nil)
+	coordinator := NewCoordinator(logger, store, unlimitedLimits{}, fakeNext, 9*time.Minute, nil)
 	store.SetDispatcher(coordinator)
 
 	const (
@@ -206,4 +219,5 @@ func TestAdoption_EndToEnd_ResumesOrphanedQuery(t *testing.T) {
 	require.Equal(t, StatusSuccess, result.Metadata.Status)
 	require.True(t, proto.Equal(fakeNext.resp, result.Response))
 	require.Len(t, fakeNext.callsSnapshot(), 1)
+	require.Equal(t, 9*time.Minute, QueryTimeout(fakeNext.contextsSnapshot()[0]))
 }
