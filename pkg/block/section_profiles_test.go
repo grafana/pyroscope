@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/client_golang/prometheus"
+	promtestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -163,4 +165,50 @@ func Test_openParquetFile(t *testing.T) {
 		validateColumnIndex(t, pf.File, count)
 	})
 
+}
+
+type sliceProfileIterator struct {
+	entries []ProfileEntry
+	idx     int
+}
+
+func (s *sliceProfileIterator) Next() bool {
+	s.idx++
+	return s.idx <= len(s.entries)
+}
+
+func (s *sliceProfileIterator) At() ProfileEntry {
+	return s.entries[s.idx-1]
+}
+
+func (s *sliceProfileIterator) Close() error {
+	return nil
+}
+
+func TestDedupeProfileRowIteratorIncrementsDroppedCounter(t *testing.T) {
+	counter := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "test_dedup_dropped_total",
+	})
+
+	entries := []ProfileEntry{
+		{Fingerprint: 1, Timestamp: 100},
+		{Fingerprint: 1, Timestamp: 100}, // duplicate 1
+		{Fingerprint: 1, Timestamp: 200},
+		{Fingerprint: 2, Timestamp: 100},
+		{Fingerprint: 2, Timestamp: 100}, // duplicate 2
+		{Fingerprint: 2, Timestamp: 100}, // duplicate 3
+	}
+
+	it := &DedupeProfileRowIterator{
+		Iterator:     &sliceProfileIterator{entries: entries},
+		droppedTotal: counter,
+	}
+
+	var count int
+	for it.Next() {
+		count++
+	}
+
+	require.Equal(t, 3, count)
+	require.Equal(t, float64(3), promtestutil.ToFloat64(counter))
 }
