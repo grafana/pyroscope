@@ -58,7 +58,7 @@ func WithSampleObserver(observer SampleObserver) CompactionOption {
 	}
 }
 
-// WithDuplicateRowsCallback reports duplicate rows dropped per tenant.
+// WithDuplicateRowsCallback is called once per tenant after its block is compacted.
 func WithDuplicateRowsCallback(fn func(tenant string, duplicates uint64)) CompactionOption {
 	return func(p *compactionConfig) {
 		p.duplicateRowsFn = fn

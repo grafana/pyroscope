@@ -504,7 +504,7 @@ func (w *Worker) runCompaction(job *compactionJob) {
 			"msg", "compaction finished successfully",
 			"input_blocks", len(job.SourceBlocks),
 			"output_blocks", len(compacted),
-			"duplicate_rows_dropped", duplicates,
+			"duplicate_profile_rows_dropped", duplicates,
 		)
 		for _, c := range compacted {
 			level.Debug(logger).Log(
