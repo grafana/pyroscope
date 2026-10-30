@@ -78,7 +78,7 @@ type unlimitedLimits struct{}
 func (unlimitedLimits) MaxAsyncQueryConcurrency(string) int { return 1 << 30 }
 
 func TestCoordinatorSubmit_PersistsSpecStripsAsyncAndDispatches(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := log.NewNopLogger()
 	store := NewStore(logger, objstore.NewInMemBucket(), nil)
 
@@ -104,7 +104,10 @@ func TestCoordinatorSubmit_PersistsSpecStripsAsyncAndDispatches(t *testing.T) {
 	calls := fakeNext.callsSnapshot()
 	require.Len(t, calls, 1)
 	require.Nil(t, calls[0].GetAsync())
-	require.Equal(t, 7*time.Minute, QueryTimeout(fakeNext.contextsSnapshot()[0]))
+	queryCtx := fakeNext.contextsSnapshot()[0]
+	require.Equal(t, 7*time.Minute, QueryTimeout(queryCtx))
+	_, hasDeadline := queryCtx.Deadline()
+	require.False(t, hasDeadline)
 
 	result, err := store.get(ctx, tenantID, requestID)
 	require.NoError(t, err)

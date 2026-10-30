@@ -138,6 +138,7 @@ func Test_QueryFrontend_Series_ProfileTypeQueryServedFromMetadata(t *testing.T) 
 				log.NewNopLogger(),
 				mockLimits,
 				frontend.Config{},
+				30*time.Second,
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,

@@ -29,7 +29,7 @@ This tree-based execution allows queries to fan out across many query backend in
 
 `-query-backend.client-timeout` limits synchronous backend requests to `30s` by default. Async requests use the experimental `-query-backend.async-query-timeout`, default `2m`; set it to `0` to use the client timeout.
 
-Each timeout covers execution, retry attempts, and retry backoff together. Retries do not reset it, and an earlier caller deadline still takes precedence.
+Each timeout covers backend execution, including child queries, retry attempts, and retry backoff. An earlier caller deadline still takes precedence.
 
 ## Direct object storage access
 

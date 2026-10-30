@@ -191,7 +191,7 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 	mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
 
-	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, frontend.Config{}, mockMetadataClient, nil, mockQueryBackend, nil, nil)
+	qf := NewQueryFrontend(log.NewNopLogger(), mockLimits, frontend.Config{}, 30*time.Second, mockMetadataClient, nil, mockQueryBackend, nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), "tenant1")
 	start, end := smpValidTimeRange()

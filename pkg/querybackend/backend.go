@@ -33,8 +33,8 @@ type Config struct {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
-	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for query-backend client requests, including retries.")
-	f.DurationVar(&cfg.AsyncQueryTimeout, "query-backend.async-query-timeout", 2*time.Minute, "Timeout for async query-backend requests, including retries. The query-frontend passes it to query-backends. 0 uses query-backend.client-timeout.")
+	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for synchronous query-backend requests, including retries.")
+	f.DurationVar(&cfg.AsyncQueryTimeout, "query-backend.async-query-timeout", 2*time.Minute, "Timeout for async query-backend requests, including retries. 0 uses query-backend.client-timeout.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
 }
 
