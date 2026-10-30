@@ -27,11 +27,12 @@ func (e *InvalidQueryError) Error() string {
 }
 
 type MetadataQuery struct {
-	Expr      string
-	StartTime time.Time
-	EndTime   time.Time
-	Tenant    []string
-	Labels    []string
+	Expr          string
+	ShardSelector string
+	StartTime     time.Time
+	EndTime       time.Time
+	Tenant        []string
+	Labels        []string
 }
 
 func (q *MetadataQuery) String() string {
@@ -65,25 +66,16 @@ func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error)
 		startTime: query.StartTime,
 		endTime:   query.EndTime,
 		index:     index,
+		matchers:  matchers,
 		labels:    query.Labels,
 	}
-	q.matchers, q.shardMatchers = splitDatasetIndexMatchers(matchers)
-	q.buildTenantMap(query.Tenant)
-	return q, nil
-}
-
-func splitDatasetIndexMatchers(matchers []*labels.Matcher) (dataset, shard []*labels.Matcher) {
-	if len(matchers) < 2 {
-		return matchers, nil
-	}
-	for _, m := range matchers {
-		if m.Type == labels.MatchEqual &&
-			m.Name == metadata.LabelNameTenantDataset &&
-			m.Value == metadata.LabelValueDatasetTSDBIndex {
-			return []*labels.Matcher{m}, matchers
+	if query.ShardSelector != "" {
+		if q.shardMatchers, err = phlaremodel.ParseMetricSelector(query.ShardSelector); err != nil {
+			return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("failed to parse shard selector: %w", err)}
 		}
 	}
-	return matchers, nil
+	q.buildTenantMap(query.Tenant)
+	return q, nil
 }
 
 func (q *metadataQuery) shardMayMatch(s *store.Shard) bool {
@@ -276,9 +268,6 @@ func (q *metadataLabelQuerier) queryLabels(ctx context.Context) (*metadata.Label
 }
 
 func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
-	if !q.query.shardMayMatch(s) {
-		return nil
-	}
 	matcher := metadata.NewLabelMatcher(s.StringTable.Strings, q.query.matchers, q.query.labels...)
 	if !matcher.IsValid() {
 		return nil

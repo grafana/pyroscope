@@ -365,20 +365,22 @@ func TestIndex_QueryMetadata_DatasetIndexShardPruning(t *testing.T) {
 		require.NoError(t, tx.Rollback())
 	}()
 
-	query := func(t *testing.T, expr string) []*metastorev1.BlockMeta {
-		found, err := idx.QueryMetadata(tx, ctx, MetadataQuery{
-			Expr:      expr,
-			StartTime: time.UnixMilli(minT),
-			EndTime:   time.UnixMilli(maxT),
-			Tenant:    []string{"tenant-a"},
-			Labels:    []string{"__tenant_dataset__"},
+	query := func(expr, shardSelector string) ([]*metastorev1.BlockMeta, error) {
+		return idx.QueryMetadata(tx, ctx, MetadataQuery{
+			Expr:          expr,
+			ShardSelector: shardSelector,
+			StartTime:     time.UnixMilli(minT),
+			EndTime:       time.UnixMilli(maxT),
+			Tenant:        []string{"tenant-a"},
+			Labels:        []string{"__tenant_dataset__"},
 		})
-		require.NoError(t, err)
-		return found
 	}
 
+	const datasetIndex = `{__tenant_dataset__="dataset_tsdb_index"}`
+
 	t.Run("ServiceShardOnly", func(t *testing.T) {
-		found := query(t, `{service_name="service-a",__tenant_dataset__="dataset_tsdb_index"}`)
+		found, err := query(datasetIndex, `{service_name="service-a"}`)
+		require.NoError(t, err)
 		require.Len(t, found, 1)
 		assert.Equal(t, a.Id, found[0].Id)
 		require.Len(t, found[0].Datasets, 1)
@@ -386,19 +388,30 @@ func TestIndex_QueryMetadata_DatasetIndexShardPruning(t *testing.T) {
 	})
 
 	t.Run("UnknownService", func(t *testing.T) {
-		assert.Empty(t, query(t, `{service_name="service-c",__tenant_dataset__="dataset_tsdb_index"}`))
+		found, err := query(datasetIndex, `{service_name="service-c"}`)
+		require.NoError(t, err)
+		assert.Empty(t, found)
 	})
 
-	t.Run("DatasetIndexOnly", func(t *testing.T) {
-		assert.Len(t, query(t, `{__tenant_dataset__="dataset_tsdb_index"}`), 2)
+	t.Run("NoShardSelector", func(t *testing.T) {
+		found, err := query(datasetIndex, "")
+		require.NoError(t, err)
+		assert.Len(t, found, 2)
 	})
 
 	t.Run("ServiceOnly", func(t *testing.T) {
-		found := query(t, `{service_name="service-b"}`)
+		found, err := query(`{service_name="service-b"}`, "")
+		require.NoError(t, err)
 		require.Len(t, found, 1)
 		assert.Equal(t, b.Id, found[0].Id)
 		require.Len(t, found[0].Datasets, 1)
 		assert.Equal(t, uint32(0), found[0].Datasets[0].Format)
+	})
+
+	t.Run("InvalidShardSelector", func(t *testing.T) {
+		_, err := query(datasetIndex, `{service_name=}`)
+		var invalid *InvalidQueryError
+		require.ErrorAs(t, err, &invalid)
 	})
 }
 

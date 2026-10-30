@@ -29,6 +29,7 @@ type QueryMetadataRequest struct {
 	EndTime       int64                  `protobuf:"varint,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
 	Query         string                 `protobuf:"bytes,4,opt,name=query,proto3" json:"query,omitempty"`
 	Labels        []string               `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
+	ShardSelector string                 `protobuf:"bytes,6,opt,name=shard_selector,json=shardSelector,proto3" json:"shard_selector,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -96,6 +97,13 @@ func (x *QueryMetadataRequest) GetLabels() []string {
 		return x.Labels
 	}
 	return nil
+}
+
+func (x *QueryMetadataRequest) GetShardSelector() string {
+	if x != nil {
+		return x.ShardSelector
+	}
+	return ""
 }
 
 type QueryMetadataResponse struct {
@@ -266,14 +274,15 @@ var File_metastore_v1_query_proto protoreflect.FileDescriptor
 
 const file_metastore_v1_query_proto_rawDesc = "" +
 	"\n" +
-	"\x18metastore/v1/query.proto\x12\fmetastore.v1\x1a\x18metastore/v1/types.proto\x1a\x14types/v1/types.proto\"\x9b\x01\n" +
+	"\x18metastore/v1/query.proto\x12\fmetastore.v1\x1a\x18metastore/v1/types.proto\x1a\x14types/v1/types.proto\"\xc2\x01\n" +
 	"\x14QueryMetadataRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x03(\tR\btenantId\x12\x1d\n" +
 	"\n" +
 	"start_time\x18\x02 \x01(\x03R\tstartTime\x12\x19\n" +
 	"\bend_time\x18\x03 \x01(\x03R\aendTime\x12\x14\n" +
 	"\x05query\x18\x04 \x01(\tR\x05query\x12\x16\n" +
-	"\x06labels\x18\x05 \x03(\tR\x06labels\"H\n" +
+	"\x06labels\x18\x05 \x03(\tR\x06labels\x12%\n" +
+	"\x0eshard_selector\x18\x06 \x01(\tR\rshardSelector\"H\n" +
 	"\x15QueryMetadataResponse\x12/\n" +
 	"\x06blocks\x18\x01 \x03(\v2\x17.metastore.v1.BlockMetaR\x06blocks\"\xa1\x01\n" +
 	"\x1aQueryMetadataLabelsRequest\x12\x1b\n" +
