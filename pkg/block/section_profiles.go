@@ -9,6 +9,8 @@ import (
 	"math"
 
 	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/v2/pkg/iter"
@@ -348,14 +350,25 @@ func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], er
 			},
 			func(it iter.Iterator[ProfileEntry]) { _ = it.Close() },
 		)),
+		droppedTotal: DeduplicatedProfileRowsTotal,
 	}, nil
 }
+
+var (
+	DeduplicatedProfileRowsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "pyroscope",
+		Subsystem: "compactor",
+		Name:      "deduplicated_profile_rows_total",
+		Help:      "Total number of duplicate profile rows dropped during compaction deduplication.",
+	})
+)
 
 type DedupeProfileRowIterator struct {
 	iter.Iterator[ProfileEntry]
 
 	prevFP        model.Fingerprint
 	prevTimeNanos int64
+	droppedTotal  prometheus.Counter
 }
 
 func (it *DedupeProfileRowIterator) Next() bool {
@@ -366,6 +379,9 @@ func (it *DedupeProfileRowIterator) Next() bool {
 		currentProfile := it.At()
 		if it.prevFP == currentProfile.Fingerprint && it.prevTimeNanos == currentProfile.Timestamp {
 			// skip duplicate profile
+			if it.droppedTotal != nil {
+				it.droppedTotal.Inc()
+			}
 			continue
 		}
 		it.prevFP = currentProfile.Fingerprint
