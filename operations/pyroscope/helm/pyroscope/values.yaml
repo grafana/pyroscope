@@ -542,7 +542,7 @@ httpRoute:
   annotations: {}
   hostnames: []
   # -- Timeout settings to add to each rule in HTTPRoute resource.
-  # https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts.
+  # https://gateway-api.sigs.k8s.io/reference/api-spec/main/spec/#httproutetimeouts.
   timeouts: {}
    # request: 0s
 
@@ -567,13 +567,13 @@ serviceMonitor:
   # -- ServiceMonitor scrape timeout in Go duration format (e.g. 15s)
   scrapeTimeout: null
   # -- ServiceMonitor relabel configs to apply to samples before scraping
-  # https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#relabelconfig
+  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.RelabelConfig
   relabelings: []
   # -- ServiceMonitor metric relabel configs to apply to samples before ingestion
-  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#endpoint
+  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.Endpoint
   metricRelabelings: []
   # --ServiceMonitor will add labels from the service to the Prometheus metric
-  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#servicemonitorspec
+  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api-reference/api.md#monitoring.coreos.com/v1.ServiceMonitorSpec
   targetLabels: []
   # -- ServiceMonitor will use http by default, but you can pick https as well
   scheme: http
