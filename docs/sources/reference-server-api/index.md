@@ -981,7 +981,7 @@ In a Kubernetes environment, a query could also look like:
 `process_cpu:cpu:nanoseconds:cpu:nanoseconds{namespace="dev", container="my_application_name"}`
 
 {{% admonition type="note" %}}
-Refer to the [profiling types documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/profile-types/) for more information and [profile-metrics.json](https://github.com/grafana/pyroscope/blob/main/public/app/constants/profile-metrics.json) for a list of valid profile types.
+Refer to the [profiling types documentation](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/profile-types/) for more information and the [`/querier.v1.QuerierService/ProfileTypes`](#querierv1querierserviceprofiletypes) endpoint for a list of the profile types available on your server.
 {{% /admonition %}}
 
 ##### `from` and `until`
