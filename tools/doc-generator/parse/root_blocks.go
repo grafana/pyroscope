@@ -27,7 +27,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/segmentwriter"
 	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 	"github.com/grafana/pyroscope/v2/pkg/storegateway"
-	"github.com/grafana/pyroscope/v2/pkg/symbolizer"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
@@ -105,11 +104,6 @@ var RootBlocks = []RootBlock{
 		Name:       "adaptive_placement",
 		StructType: reflect.TypeOf(placement.Config{}),
 		Desc:       "The adaptive_placement block configures adaptive placement for the segment-writer (V2).",
-	},
-	{
-		Name:       "symbolizer",
-		StructType: reflect.TypeOf(symbolizer.Config{}),
-		Desc:       "The symbolizer block configures the symbolizer (V2).",
 	},
 	{
 		Name:       "overrides_exporter",

@@ -133,10 +133,6 @@ Commit the generated files with your changes.
 go run ./cmd/pyroscope --target all,embedded-grafana
 # Pyroscope: http://localhost:4040
 # Grafana: http://localhost:4041
-
-# Run with V2 architecture (segment writers, query backend, symbolizer)
-# -symbolizer.enabled=true opts into symbolization (off by default).
-go run ./cmd/pyroscope -symbolizer.enabled=true
 ```
 
 ## Code Style & Conventions

@@ -155,6 +155,12 @@ Usage of ./pyroscope:
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -profile-dump.max-capture-bytes int
+    	Maximum capture size in bytes of the combined profile and JSON metadata. Larger captures are dropped. (default 16777216)
+  -profile-dump.max-retained-bytes int
+    	Total profile and metadata bytes held by queued and uploading captures per distributor. New captures are dropped when there is insufficient space. (default 67108864)
+  -profile-dump.retention duration
+    	How long to retain captures before they become eligible for cleanup, which requires an admin target using the same bucket and storage prefix. (default 168h0m0s)
   -pyroscopedb.data-path string
     	[v1 storage only] Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
@@ -222,7 +228,7 @@ Usage of ./pyroscope:
   -ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -runtime-config.file comma-separated-list-of-strings
-    	Comma separated list of yaml files or URLs with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
+    	Comma separated list of yaml files or URLs with the configuration that can be updated at runtime. Runtime config files will be merged from left to right. An entry can end with semicolon-separated parameters that say what happens when it cannot be read: ";optional-on-startup" lets the process start without it, but a later failure still fails the reload; ";optional-keep-last-value-on-failure" also lets the process start without it, and a later failure keeps the value the source supplied last. Without a parameter, a source that cannot be read fails the load. Quote the value in a shell, because ";" starts a new command.
   -self-profiling.block-profile-rate int
     	 (default 5)
   -self-profiling.disable-push
@@ -235,6 +241,8 @@ Usage of ./pyroscope:
     	Read k6 labels from request headers and set them as dynamic profile tags.
   -server.create-new-traces
     	Creates new traces for each call rather than continuing the existing trace. A span link is used to allow navigation to the parent trace. Only works when using Open-Telemetry tracing.
+  -server.enable-open-metrics-text-created-samples
+    	Specifies if this handler should emit start timestamps for counters, histograms and summaries over OpenMetrics 1.0, which are defined as extra series with the same name and "_created" suffix. Only applies if -server.register-instrumentation is set to true.
   -server.graceful-shutdown-timeout duration
     	Timeout for graceful shutdowns (default 30s)
   -server.grpc-collect-max-streams-by-conn
@@ -325,6 +333,8 @@ Usage of ./pyroscope:
     	Header field storing the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
   -server.log-source-ips-regex string
     	Regex for matching the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
+  -server.metrics-cache-duration duration
+    	Cache successful /metrics responses for this duration. Zero disables caching. Cached metrics may lag behind live values by up to this duration; consider scrape intervals and alerts. Only applies when -server.register-instrumentation is true.
   -server.path-prefix string
     	Base path to serve all API routes from (e.g. /v1/)
   -server.proxy-protocol-enabled
@@ -339,6 +349,8 @@ Usage of ./pyroscope:
     	Unit of the server throughput metric, for example 'processed_bytes' or 'samples_processed'. Observed values are gathered from the 'Server-Timing' header with the 'val' key. If set, it is appended to the request_server_throughput metric name. (default "samples_processed")
   -server.tls-cipher-suites string
     	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
+  -server.tls-curve-preferences string
+    	Comma-separated list of TLS curve/group preferences for key exchange. Allowed values: CurveP256, CurveP384, CurveP521, X25519, X25519MLKEM768, SecP256r1MLKEM768, SecP384r1MLKEM1024. If blank, the default Go curve preferences are used.
   -server.tls-min-version string
     	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
   -server.trace-request-headers

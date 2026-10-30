@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
+	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -224,6 +225,101 @@ func TestClient_RetriesRetryableStatus(t *testing.T) {
 	}
 }
 
+func TestClient_KeepsInFlightInvokeOnStop(t *testing.T) {
+	const address = "localhost:10034"
+	listeners, dialOption := test.CreateInMemoryListeners([]string{address})
+	started := make(chan struct{})
+	release := make(chan struct{})
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+
+	server := grpc.NewServer()
+	queryv1.RegisterQueryBackendServiceServer(server, &testQueryBackendServer{
+		invoke: func(ctx context.Context, _ int32) (*queryv1.InvokeResponse, error) {
+			close(started)
+			select {
+			case <-release:
+				return &queryv1.InvokeResponse{}, nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		},
+	})
+	go func() { _ = server.Serve(listeners[address]) }()
+	t.Cleanup(server.Stop)
+
+	cfg := grpcclient.Config{}
+	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	client, err := New("passthrough:///"+address, cfg, 5*time.Second, dialOption)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+	require.NoError(t, services.StartAndAwaitRunning(t.Context(), client.Service()))
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	result := make(chan error, 1)
+	go func() {
+		_, err := client.Invoke(ctx, &queryv1.InvokeRequest{})
+		result <- err
+	}()
+
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	require.NoError(t, services.StopAndAwaitTerminated(ctx, client.Service()))
+	select {
+	case err := <-result:
+		t.Fatalf("invoke returned before release: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(release)
+	require.NoError(t, <-result)
+}
+
+func TestClient_ClosesConnectionAfterStop(t *testing.T) {
+	const address = "localhost:10033"
+	listeners, dialOption := test.CreateInMemoryListeners([]string{address})
+	server := grpc.NewServer()
+	queryv1.RegisterQueryBackendServiceServer(server, &testQueryBackendServer{
+		invoke: func(context.Context, int32) (*queryv1.InvokeResponse, error) {
+			return &queryv1.InvokeResponse{}, nil
+		},
+	})
+	go func() { _ = server.Serve(listeners[address]) }()
+	t.Cleanup(server.Stop)
+
+	builder := &changingDNSBuilder{initial: address}
+	original := resolver.Get("dns")
+	resolver.Register(builder)
+	t.Cleanup(func() { resolver.Register(original) })
+
+	cfg := grpcclient.Config{}
+	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	client, err := New("dns:///backends.test:9095", cfg, 5*time.Second, dialOption)
+	require.NoError(t, err)
+	require.NoError(t, services.StartAndAwaitRunning(t.Context(), client.Service()))
+
+	_, err = client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+	require.NoError(t, err)
+	require.NoError(t, services.StopAndAwaitTerminated(t.Context(), client.Service()))
+	_, err = client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+	require.NoError(t, err)
+	require.NoError(t, client.Close())
+	require.Eventually(t, builder.closed.Load, time.Second, 10*time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	_, err = client.Invoke(ctx, &queryv1.InvokeRequest{})
+	require.Equal(t, codes.Canceled, status.Code(err))
+}
+
 func newTestClient(t *testing.T, backend queryv1.QueryBackendServiceServer, serverOptions ...grpc.ServerOption) *Client {
 	t.Helper()
 
@@ -312,4 +408,77 @@ func Test_Concurrency(t *testing.T) {
 	}
 	err = g.Wait()
 	require.NoError(t, err)
+}
+
+type changingDNSBuilder struct {
+	initial string
+	added   string
+	ready   atomic.Bool
+	closed  atomic.Bool
+}
+
+func (b *changingDNSBuilder) Scheme() string { return "dns" }
+
+func (b *changingDNSBuilder) Build(_ resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions) (resolver.Resolver, error) {
+	err := cc.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: b.initial}}})
+	if err != nil {
+		return nil, err
+	}
+	return &changingDNSResolver{builder: b, cc: cc}, nil
+}
+
+type changingDNSResolver struct {
+	builder *changingDNSBuilder
+	cc      resolver.ClientConn
+}
+
+func (r *changingDNSResolver) ResolveNow(resolver.ResolveNowOptions) {
+	if r.builder.ready.Load() {
+		_ = r.cc.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: r.builder.initial}, {Addr: r.builder.added}}})
+	}
+}
+
+func (r *changingDNSResolver) Close() { r.builder.closed.Store(true) }
+
+func TestClient_DiscoversNewBackend(t *testing.T) {
+	const (
+		initial = "localhost:10031"
+		added   = "localhost:10032"
+	)
+	listeners, dialOption := test.CreateInMemoryListeners([]string{initial, added})
+	var newBackendCalls atomic.Int32
+	for _, addr := range []string{initial, added} {
+		serv := grpc.NewServer()
+		backend := &testQueryBackendServer{invoke: func(context.Context, int32) (*queryv1.InvokeResponse, error) {
+			if addr == added {
+				newBackendCalls.Add(1)
+			}
+			return &queryv1.InvokeResponse{}, nil
+		}}
+		queryv1.RegisterQueryBackendServiceServer(serv, backend)
+		go func() { _ = serv.Serve(listeners[addr]) }()
+		t.Cleanup(serv.Stop)
+	}
+
+	builder := &changingDNSBuilder{initial: initial, added: added}
+	original := resolver.Get("dns")
+	resolver.Register(builder)
+	t.Cleanup(func() { resolver.Register(original) })
+
+	cfg := grpcclient.Config{}
+	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	conn, err := dial("dns:///backends.test:9095", cfg, 5*time.Second, dialOption)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, conn.Close()) })
+	client := queryv1.NewQueryBackendServiceClient(conn)
+
+	_, err = client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+	require.NoError(t, err)
+	require.Zero(t, newBackendCalls.Load())
+	builder.ready.Store(true)
+
+	require.Eventually(t, func() bool {
+		_, err := client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+		return err == nil && newBackendCalls.Load() > 0
+	}, 45*time.Second, 100*time.Millisecond)
 }

@@ -14,7 +14,7 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@pyroscope/nodejs": "v0.6.5",
+    "@pyroscope/nodejs": "v0.7.0",
     "@tinyhttp/app": "^2.4.0",
     "@tinyhttp/logger": "^2.0.0"
   }

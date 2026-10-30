@@ -20,7 +20,6 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -50,7 +49,6 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{service_name="service-a"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_a"}},
@@ -61,7 +59,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_a"}},
@@ -72,7 +70,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_c"}},
@@ -83,7 +81,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_b"}},
@@ -94,7 +92,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_d"}},
@@ -196,7 +194,6 @@ func Test_QueryFrontend_LabelNames_WithFiltering(t *testing.T) {
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
-				nil,
 				nil,
 				nil,
 			)
@@ -341,7 +338,6 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 				mockQueryBackend,
 				nil,
 				nil,
-				nil,
 			)
 
 			ctx := tenant.InjectTenantID(context.Background(), "test-tenant")
@@ -436,7 +432,7 @@ func backendWorkFrontend(t *testing.T, reg *prometheus.Registry, blocks []*metas
 		}, nil)
 	limits := mockfrontend.NewMockLimits(t)
 	limits.On("QuerySanitizeOnMerge", "test-tenant").Return(false)
-	return NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, nil, nil, reg)
+	return NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, metadata, nil, backend, nil, reg)
 }
 
 func backendWorkGauge(t *testing.T, reg *prometheus.Registry, name string) float64 {

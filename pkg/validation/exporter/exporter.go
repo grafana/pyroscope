@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -122,8 +123,15 @@ func (oe *OverridesExporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	now := time.Now()
 	allLimits := oe.tenantLimits.AllByTenantID()
 	for tenant, limits := range allLimits {
+		policy := limits.ProfileDumpPolicy()
+		if policy.ActiveAt(now) {
+			deadline := float64(policy.ActiveUntil().UnixNano()) / 1e9
+			ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, deadline, "profile_dump_active_until_timestamp_seconds", tenant)
+		}
+
 		// Write path limits
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, limits.IngestionRateMB, "ingestion_rate_mb", tenant)
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, limits.IngestionBurstSizeMB, "ingestion_burst_size_mb", tenant)

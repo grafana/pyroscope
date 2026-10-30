@@ -8,7 +8,10 @@ package exporter
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-kit/log"
@@ -18,6 +21,7 @@ import (
 	"github.com/grafana/dskit/test"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -233,4 +237,51 @@ func TestOverridesExporter_withRing(t *testing.T) {
 
 func hasOverrideMetrics(e1 prometheus.Collector) bool {
 	return testutil.CollectAndCount(e1, "pyroscope_limits_overrides") > 0
+}
+
+func TestOverridesExporter_ProfileDump(t *testing.T) {
+	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
+	t.Cleanup(func() { require.NoError(t, closer.Close()) })
+	exporterConfig := Config{}
+	exporterConfig.Ring.Ring.KVStore.Mock = ringStore
+	exporterConfig.Ring.Ring.InstanceAddr = "127.0.0.1"
+	e, err := NewOverridesExporter(exporterConfig, &validation.Limits{}, nil, log.NewNopLogger(), nil)
+	require.NoError(t, err)
+	e.ring = nil
+
+	synctest.Test(t, func(t *testing.T) {
+		now := time.Now().UTC().Truncate(time.Second)
+		deadline := now.Add(time.Minute + 500*time.Millisecond)
+		cfg, err := validation.LoadRuntimeConfig(strings.NewReader(fmt.Sprintf(`overrides:
+  active:
+    profile_dump:
+      active_until: "%s"
+      probability: 1
+  past:
+    profile_dump:
+      active_until: "0001-01-01T00:00:00Z"
+      probability: 1
+  absent: {}
+  null-policy:
+    profile_dump: null
+`, deadline.Format(time.RFC3339Nano))), log.NewNopLogger())
+		require.NoError(t, err)
+		e.tenantLimits = validation.NewMockTenantLimits(cfg.TenantLimits)
+		gather := func() []string {
+			t.Helper()
+			metrics, err := testutil.CollectAndFormat(e, expfmt.TypeTextPlain, "pyroscope_limits_overrides", "pyroscope_limits_defaults")
+			require.NoError(t, err)
+			var lines []string
+			for _, line := range strings.Split(string(metrics), "\n") {
+				if strings.Contains(line, `limit_name="profile_dump_`) {
+					lines = append(lines, line)
+				}
+			}
+			return lines
+		}
+		require.Equal(t, []string{fmt.Sprintf(`pyroscope_limits_overrides{limit_name="profile_dump_active_until_timestamp_seconds",tenant="active"} %g`, float64(deadline.Unix())+0.5)}, gather())
+
+		time.Sleep(time.Until(deadline))
+		require.Empty(t, gather(), "expired policies stop emitting without a reload")
+	})
 }

@@ -47,6 +47,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/operations"
 	blocksv2 "github.com/grafana/pyroscope/v2/pkg/operations/v2/blocks"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
@@ -66,6 +67,9 @@ import (
 
 // The various modules that make up Pyroscope.
 const (
+	ProfileDumpRecorder string = "profile-dump-recorder"
+	ProfileDumpCleaner  string = "profile-dump-cleaner"
+
 	All               string = "all"
 	API               string = "api"
 	Version           string = "version"
@@ -107,7 +111,6 @@ const (
 	HealthServer          string = "health-server"
 	AdminServer           string = "admin-server"
 	RecordingRulesClient  string = "recording-rules-client"
-	Symbolizer            string = "symbolizer"
 	QueryDiagnosticsStore string = "query-diagnostics-store"
 	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
 	AsyncQueryStore       string = "async-query-store"
@@ -335,7 +338,7 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 	f.distributor = d
-	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server, f.profileDumpRecorder)
 
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
 		return nil, err
@@ -417,6 +420,30 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 	}
 
 	return nil, nil
+}
+
+func (f *Pyroscope) initProfileDumpCleaner() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	c, err := profiledump.NewCleaner(f.Cfg.ProfileDump.Cleaner, f.storageBucket, f.logger, f.reg, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (f *Pyroscope) initProfileDumpRecorder() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	r, err := profiledump.NewRecorder(f.Cfg.ProfileDump.Recorder, f.Overrides,
+		profiledump.BucketUpload(f.storageBucket, f.Overrides), f.Cfg.Distributor.DistributorRing.InstanceID, f.logger, f.reg)
+	if err != nil {
+		return nil, err
+	}
+	f.profileDumpRecorder = r
+	return r, nil
 }
 
 // TODO: This should be passed to all other services and could also be used to signal shutdown

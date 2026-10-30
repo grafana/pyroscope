@@ -90,9 +90,6 @@ api:
 # segment-writer (V2).
 [adaptive_placement: <adaptive_placement>]
 
-# The symbolizer block configures the symbolizer (V2).
-[symbolizer: <symbolizer>]
-
 # The frontend_worker block configures the frontend-worker.
 [frontend_worker: <frontend_worker>]
 
@@ -155,7 +152,13 @@ runtime_config:
 
   # Comma separated list of yaml files or URLs with the configuration that can
   # be updated at runtime. Runtime config files will be merged from left to
-  # right.
+  # right. An entry can end with semicolon-separated parameters that say what
+  # happens when it cannot be read: ";optional-on-startup" lets the process
+  # start without it, but a later failure still fails the reload;
+  # ";optional-keep-last-value-on-failure" also lets the process start without
+  # it, and a later failure keeps the value the source supplied last. Without a
+  # parameter, a source that cannot be read fails the load. Quote the value in a
+  # shell, because ";" starts a new command.
   # CLI flag: -runtime-config.file
   [file: <string> | default = ""]
 
@@ -175,6 +178,22 @@ runtime_config:
   # balancer, such as a Kubernetes Service.
   # CLI flag: -runtime-config.http-client-disable-keep-alives
   [http_client_disable_keep_alives: <boolean> | default = true]
+
+profile_dump:
+  # How long to retain captures before they become eligible for cleanup, which
+  # requires an admin target using the same bucket and storage prefix.
+  # CLI flag: -profile-dump.retention
+  [retention: <duration> | default = 168h]
+
+  # Maximum capture size in bytes of the combined profile and JSON metadata.
+  # Larger captures are dropped.
+  # CLI flag: -profile-dump.max-capture-bytes
+  [max_capture_bytes: <int> | default = 16777216]
+
+  # Total profile and metadata bytes held by queued and uploading captures per
+  # distributor. New captures are dropped when there is insufficient space.
+  # CLI flag: -profile-dump.max-retained-bytes
+  [max_retained_bytes: <int> | default = 67108864]
 
 # The compaction_worker block configures the compaction-worker (V2).
 [compaction_worker: <compaction_worker>]
@@ -434,6 +453,13 @@ The `server` block configures the HTTP and gRPC server of the launched service(s
 # CLI flag: -server.tls-min-version
 [tls_min_version: <string> | default = ""]
 
+# Comma-separated list of TLS curve/group preferences for key exchange. Allowed
+# values: CurveP256, CurveP384, CurveP521, X25519, X25519MLKEM768,
+# SecP256r1MLKEM768, SecP384r1MLKEM1024. If blank, the default Go curve
+# preferences are used.
+# CLI flag: -server.tls-curve-preferences
+[tls_curve_preferences: <string> | default = ""]
+
 http_tls_config:
   # Server TLS certificate. This configuration parameter is YAML only.
   [cert: <string> | default = ""]
@@ -491,6 +517,13 @@ grpc_tls_config:
 # Register the intrumentation handlers (/metrics etc).
 # CLI flag: -server.register-instrumentation
 [register_instrumentation: <boolean> | default = true]
+
+# Cache successful /metrics responses for this duration. Zero disables caching.
+# Cached metrics may lag behind live values by up to this duration; consider
+# scrape intervals and alerts. Only applies when
+# -server.register-instrumentation is true.
+# CLI flag: -server.metrics-cache-duration
+[metrics_cache_duration: <duration> | default = 0s]
 
 # If set to true, gRPC statuses will be reported in instrumentation labels with
 # their string representations. Otherwise, they will be reported as "error".
@@ -706,6 +739,13 @@ cluster_validation:
 # using Open-Telemetry tracing.
 # CLI flag: -server.create-new-traces
 [create_new_traces: <boolean> | default = false]
+
+# Specifies if this handler should emit start timestamps for counters,
+# histograms and summaries over OpenMetrics 1.0, which are defined as extra
+# series with the same name and "_created" suffix. Only applies if
+# -server.register-instrumentation is set to true.
+# CLI flag: -server.enable-open-metrics-text-created-samples
+[enable_open_metrics_text_created_samples: <boolean> | default = false]
 ```
 
 ### distributor
@@ -2454,21 +2494,6 @@ The `adaptive_placement` block configures adaptive placement for the segment-wri
 [export_shard_usage_breakdown_metrics: <boolean> | default = false]
 ```
 
-### symbolizer
-
-The `symbolizer` block configures the symbolizer (V2).
-
-```yaml
-# (advanced) URL of the debuginfod server
-# CLI flag: -symbolizer.debuginfod-url
-[debuginfod_url: <string> | default = "https://debuginfod.elfutils.org"]
-
-# (advanced) Maximum number of concurrent symbolization requests to debuginfod
-# server.
-# CLI flag: -symbolizer.max-debuginfod-concurrency
-[max_debuginfod_concurrency: <int> | default = 10]
-```
-
 ### overrides_exporter
 
 The `overrides_exporter` block configures the overrides exporter.
@@ -2820,6 +2845,18 @@ backoff_config:
 # CLI flag: -<prefix>.connect-backoff-max-delay
 [connect_backoff_max_delay: <duration> | default = 5s]
 
+# (advanced) After a duration of this time if the client doesn't see any
+# activity it pings the server to see if the transport is still alive. This also
+# determines the socket's TCP_USER_TIMEOUT together with keepalive-timeout.
+# CLI flag: -<prefix>.keepalive-time
+[keepalive_time: <duration> | default = 20s]
+
+# (advanced) After having pinged for keepalive check, the client waits for a
+# duration of this time and if no activity is seen even after that the
+# connection is closed.
+# CLI flag: -<prefix>.keepalive-timeout
+[keepalive_timeout: <duration> | default = 10s]
+
 cluster_validation:
   # (experimental) Primary cluster validation label.
   # CLI flag: -<prefix>.cluster-validation.label
@@ -3004,6 +3041,23 @@ The `memberlist` block configures the Gossip memberlist.
 # (advanced) Size of the buffered channel for the WatchPrefix function.
 # CLI flag: -memberlist.watch-prefix-buffer-size
 [watch_prefix_buffer_size: <int> | default = 128]
+
+# (experimental) Minimum delay between CAS retries after a version mismatch. 0
+# disables the delay.
+# CLI flag: -memberlist.cas-retry-min-backoff
+[cas_retry_min_backoff: <duration> | default = 0s]
+
+# (experimental) Maximum delay between CAS retries after a version mismatch.
+# Only takes effect if cas-retry-min-backoff is also set.
+# CLI flag: -memberlist.cas-retry-max-backoff
+[cas_retry_max_backoff: <duration> | default = 10s]
+
+# (experimental) Cache the serialized form of each key, so that push/pull sync
+# doesn't re-encode entries that haven't changed since the last sync. Reduces
+# CPU and lock contention in large clusters, at the cost of memory proportional
+# to the size of the KV store.
+# CLI flag: -memberlist.local-state-cache-enabled
+[local_state_cache_enabled: <boolean> | default = false]
 
 # IP address to listen on for gossip messages. Multiple addresses may be
 # specified. Defaults to 0.0.0.0
