@@ -23,13 +23,17 @@ const (
 )
 
 type QueryMetadataRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      []string               `protobuf:"bytes,1,rep,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	StartTime     int64                  `protobuf:"varint,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       int64                  `protobuf:"varint,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	Query         string                 `protobuf:"bytes,4,opt,name=query,proto3" json:"query,omitempty"`
-	Labels        []string               `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
-	ShardSelector string                 `protobuf:"bytes,6,opt,name=shard_selector,json=shardSelector,proto3" json:"shard_selector,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	TenantId  []string               `protobuf:"bytes,1,rep,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	StartTime int64                  `protobuf:"varint,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	EndTime   int64                  `protobuf:"varint,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	Query     string                 `protobuf:"bytes,4,opt,name=query,proto3" json:"query,omitempty"`
+	Labels    []string               `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
+	// Optional pruning hint, not a filter: the metastore may skip shards whose
+	// string table lacks a name or value of an equality matcher. Returned blocks
+	// and datasets are selected by query alone and may not match the selector;
+	// metastores that predate the field ignore it.
+	ShardSelector string `protobuf:"bytes,6,opt,name=shard_selector,json=shardSelector,proto3" json:"shard_selector,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
