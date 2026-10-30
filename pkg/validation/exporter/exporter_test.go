@@ -264,7 +264,7 @@ func TestOverridesExporter_ProfileDump(t *testing.T) {
   absent: {}
   null-policy:
     profile_dump: null
-`, deadline.Format(time.RFC3339Nano))))
+`, deadline.Format(time.RFC3339Nano))), log.NewNopLogger())
 		require.NoError(t, err)
 		e.tenantLimits = validation.NewMockTenantLimits(cfg.TenantLimits)
 		gather := func() []string {

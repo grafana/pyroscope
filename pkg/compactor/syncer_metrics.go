@@ -6,17 +6,17 @@
 package compactor
 
 import (
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	dskit_metrics "github.com/grafana/dskit/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-
-	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // Copied from Mimir.
 // Here we aggregate metrics from all finished syncers.
 type aggregatedSyncerMetrics struct {
+	logger                    log.Logger
 	metaSync                  prometheus.Counter
 	metaSyncFailures          prometheus.Counter
 	metaSyncDuration          *dskit_metrics.HistogramDataCollector // was prometheus.Histogram before
@@ -27,8 +27,9 @@ type aggregatedSyncerMetrics struct {
 
 // Copied (and modified with Pyroscope prefix) from Mimir.
 // We also ignore "group" label, since we only use a single group.
-func newAggregatedSyncerMetrics(reg prometheus.Registerer) *aggregatedSyncerMetrics {
+func newAggregatedSyncerMetrics(reg prometheus.Registerer, logger log.Logger) *aggregatedSyncerMetrics {
 	var m aggregatedSyncerMetrics
+	m.logger = logger
 
 	m.metaSync = promauto.With(reg).NewCounter(prometheus.CounterOpts{
 		Name: "pyroscope_compactor_meta_syncs_total",
@@ -70,13 +71,13 @@ func (m *aggregatedSyncerMetrics) gatherThanosSyncerMetrics(reg *prometheus.Regi
 
 	mf, err := reg.Gather()
 	if err != nil {
-		level.Warn(util_log.Logger).Log("msg", "failed to gather metrics from syncer registry after compaction", "err", err)
+		level.Warn(m.logger).Log("msg", "failed to gather metrics from syncer registry after compaction", "err", err)
 		return
 	}
 
 	mfm, err := dskit_metrics.NewMetricFamilyMap(mf)
 	if err != nil {
-		level.Warn(util_log.Logger).Log("msg", "failed to gather metrics from syncer registry after compaction", "err", err)
+		level.Warn(m.logger).Log("msg", "failed to gather metrics from syncer registry after compaction", "err", err)
 		return
 	}
 

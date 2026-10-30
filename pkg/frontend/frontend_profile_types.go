@@ -27,7 +27,7 @@ func (f *Frontend) ProfileTypes(
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 
-		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
+		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now(), f.log)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}

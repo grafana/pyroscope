@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -33,7 +34,7 @@ func TestProfileDumpRuntimeConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := loadRuntimeConfig(strings.NewReader("overrides:\n  tenant-a:\n    "+tt.block+"\n  tenant-b: {}\n"), now)
+			cfg, err := loadRuntimeConfig(strings.NewReader("overrides:\n  tenant-a:\n    "+tt.block+"\n  tenant-b: {}\n"), now, log.NewNopLogger())
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				require.Nil(t, cfg)
@@ -66,7 +67,7 @@ func TestProfileDumpTenantIsolation(t *testing.T) {
       probability: 0.5
       selector: '{service_name="payments"}'
 `
-	cfg, err := loadRuntimeConfig(strings.NewReader(input), now)
+	cfg, err := loadRuntimeConfig(strings.NewReader(input), now, log.NewNopLogger())
 	require.NoError(t, err)
 	o, err := NewOverrides(Limits{}, NewMockTenantLimits(cfg.TenantLimits))
 	require.NoError(t, err)
@@ -90,11 +91,11 @@ func TestProfileDumpDeadlineRevalidation(t *testing.T) {
 	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
 	deadline := now.Add(25 * time.Hour)
 	input := fmt.Sprintf("overrides:\n  tenant-a:\n    profile_dump: {active_until: %q, probability: 1}\n", deadline.Format(time.RFC3339))
-	cfg, err := loadRuntimeConfig(strings.NewReader(input), now)
+	cfg, err := loadRuntimeConfig(strings.NewReader(input), now, log.NewNopLogger())
 	require.ErrorContains(t, err, "invalid override for tenant tenant-a: profile_dump: active_until")
 	require.Nil(t, cfg)
 	for _, at := range []time.Time{now.Add(time.Hour), deadline} {
-		reloaded, err := loadRuntimeConfig(strings.NewReader(input), at)
+		reloaded, err := loadRuntimeConfig(strings.NewReader(input), at, log.NewNopLogger())
 		require.NoError(t, err)
 		p := reloaded.TenantLimits["tenant-a"].profileDumpPolicy
 		require.Equal(t, deadline, p.ActiveUntil())

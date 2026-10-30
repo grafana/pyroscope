@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/go-kit/log"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/test"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 const benchmarkOutOfRangeBlocks = 1000
@@ -50,7 +50,7 @@ func benchmarkLargeOutOfRangeQuery(b *testing.B, query func(*Index, *bbolt.Tx, M
 	config := DefaultConfig
 	config.BlockReadCacheSize = benchmarkOutOfRangeBlocks + 1
 	config.BlockWriteCacheSize = benchmarkOutOfRangeBlocks + 1
-	writer := NewIndex(util.Logger, NewStore(), config, nil)
+	writer := NewIndex(log.NewNopLogger(), NewStore(), config, nil)
 	requireNoError(b, db.Update(writer.Init))
 
 	queryStart := time.Date(2024, 9, 23, 8, 0, 0, 0, time.UTC)
@@ -79,7 +79,7 @@ func benchmarkLargeOutOfRangeQuery(b *testing.B, query func(*Index, *bbolt.Tx, M
 	for range b.N {
 		b.StopTimer()
 		// Recreate the index to measure a cold block cache every iteration.
-		reader := NewIndex(util.Logger, NewStore(), config, nil)
+		reader := NewIndex(log.NewNopLogger(), NewStore(), config, nil)
 		requireNoError(b, db.Update(reader.Init))
 		b.StartTimer()
 		requireNoError(b, db.View(func(tx *bbolt.Tx) error {
