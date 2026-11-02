@@ -26,7 +26,7 @@ require (
 	github.com/google/pprof v0.0.0-20261026192309-dbd0ed30aa88
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/grafana/alloy/syntax v0.1.0
+	github.com/grafana/alloy/syntax v0.1.2
 	github.com/grafana/dskit v0.0.0-20261028011436-73f7c7c8d3ac
 	github.com/grafana/pyroscope-go v1.2.8
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
