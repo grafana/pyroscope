@@ -1,4 +1,4 @@
-FROM node:26.12.1@sha256:a98e6fda54fdbb22d4238054cca9a2a113bcd1191c09193a535aae22f400aa8e AS builder
+FROM node:26.12.1@sha256:97fa0f1b59035c6072721a88d55be1371c7cb1cc942b521e1cc5c72ec87655f4 AS builder
 
 WORKDIR /pyroscope/ui
 COPY ui/package.json ui/yarn.lock ui/.yarnrc.yml ui/.npmrc ./
