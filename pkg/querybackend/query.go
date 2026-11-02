@@ -83,15 +83,18 @@ func registerQueryType(
 }
 
 type blockContext struct {
-	ctx             context.Context
-	log             log.Logger
-	req             *request
-	agg             *reportAggregator
-	obj             *block.Object
-	grp             *errgroup.Group
-	execCollector   *blockExecutionCollector
-	weightCollector *queryWeightCollector
-	includeStripped bool
+	ctx               context.Context
+	log               log.Logger
+	req               *request
+	agg               *reportAggregator
+	obj               *block.Object
+	grp               *errgroup.Group
+	execCollector     *blockExecutionCollector
+	weightCollector   *queryWeightCollector
+	includeStripped   bool
+	readAheadOpts     block.ReadAheadOptions
+	readAheadDatasets int
+	datasetOptions    []block.DatasetOption
 }
 
 func (b *blockContext) execute() error {
@@ -115,16 +118,8 @@ func (b *blockContext) execute() error {
 	}
 
 	md := b.obj.Metadata()
-	for _, ds := range md.Datasets {
-		q := b.newQueryContext(ds)
-		for _, query := range b.req.src.Query {
-			q.grp.Go(util.RecoverPanic(func() error {
-				return q.execute(query)
-			}))
-		}
-		if err := q.grp.Wait(); err != nil {
-			return err
-		}
+	if err := b.executeDatasets(md.Datasets); err != nil {
+		return err
 	}
 
 	if b.execCollector != nil {
@@ -179,7 +174,7 @@ func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 	// If the query only requires TSDB data, we can serve it directly
 	// from each Format1 dataset's TSDB section (which is aliased to the
 	// dataset_index) without resolving real datasets.
-	s := (&queryContext{blockContext: b}).sections()
+	s := b.sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
 	if indexOnly {
 		oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
@@ -251,8 +246,8 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	return nil
 }
 
-func (b *blockContext) newQueryContext(ds *metastorev1.Dataset) *queryContext {
-	q := &queryContext{blockContext: b, ds: block.NewDataset(ds, b.obj)}
+func (b *blockContext) newQueryContext(ds *block.Dataset) *queryContext {
+	q := &queryContext{blockContext: b, ds: ds}
 	q.grp, q.ctx = errgroup.WithContext(b.ctx)
 	return q
 }
@@ -296,9 +291,9 @@ func (q *queryContext) execute(query *queryv1.Query) error {
 	return nil
 }
 
-func (q *queryContext) sections() []block.Section {
+func (b *blockContext) sections() []block.Section {
 	sections := make(map[block.Section]struct{}, 3)
-	for _, qt := range q.req.src.Query {
+	for _, qt := range b.req.src.Query {
 		for _, s := range queryDependencies[qt.QueryType] {
 			sections[s] = struct{}{}
 		}
@@ -308,4 +303,52 @@ func (q *queryContext) sections() []block.Section {
 		unique = append(unique, s)
 	}
 	return unique
+}
+
+func (b *blockContext) executeDatasets(datasets []*metastorev1.Dataset) error {
+	if b.readAheadDatasets <= 0 || len(datasets) < 2 {
+		for _, ds := range datasets {
+			if err := b.executeDataset(block.NewDataset(ds, b.obj, b.datasetOptions...)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	// The datasets opened ahead share the object: it must not be released
+	// (and loaded again, if it's small) when a dataset is closed.
+	if err := b.obj.Open(b.ctx); err != nil {
+		if b.obj.IsNotExists(err) {
+			level.Warn(b.log).Log("msg", "object not found", "err", err)
+			return nil
+		}
+		return fmt.Errorf("failed to open object: %w", err)
+	}
+	defer func() {
+		_ = b.obj.Close()
+	}()
+	ds := make([]*block.Dataset, len(datasets))
+	for i, d := range datasets {
+		ds[i] = block.NewDataset(d, b.obj, b.datasetOptions...)
+	}
+	readAhead := newDatasetReadAhead(b.ctx, ds, b.sections(), b.readAheadDatasets)
+	defer readAhead.close()
+	for i, d := range ds {
+		readAhead.acquire(i)
+		err := b.executeDataset(d)
+		readAhead.release()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *blockContext) executeDataset(ds *block.Dataset) error {
+	q := b.newQueryContext(ds)
+	for _, query := range b.req.src.Query {
+		q.grp.Go(util.RecoverPanic(func() error {
+			return q.execute(query)
+		}))
+	}
+	return q.grp.Wait()
 }

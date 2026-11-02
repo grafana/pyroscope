@@ -28,12 +28,19 @@ type Config struct {
 	Address          string            `yaml:"address" category:"advanced"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
 	ClientTimeout    time.Duration     `yaml:"client_timeout" category:"advanced"`
+
+	ReadAheadRowGroups int `yaml:"read_ahead_row_groups" category:"experimental"`
+	ReadAheadMaxBytes  int `yaml:"read_ahead_max_bytes" category:"experimental"`
+	ReadAheadDatasets  int `yaml:"read_ahead_datasets" category:"experimental"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
 	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for query-backend client requests.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)
+	f.IntVar(&cfg.ReadAheadRowGroups, "query-backend.read-ahead-row-groups", 0, "Number of profile table row groups whose column chunks a query fetches concurrently, ahead of reading them. 0 to disable.")
+	f.IntVar(&cfg.ReadAheadMaxBytes, "query-backend.read-ahead-max-bytes", 32<<20, "Maximum size of the column chunks a query fetches ahead and has not read yet. Larger column chunks are not fetched ahead.")
+	f.IntVar(&cfg.ReadAheadDatasets, "query-backend.read-ahead-datasets", 0, "Number of datasets of a block a query opens ahead of processing them. 0 to disable.")
 }
 
 func (cfg *Config) Validate() error {

@@ -1809,6 +1809,21 @@ The `query_backend` block configures the query-backend (V2 read path).
 # (advanced) Timeout for query-backend client requests.
 # CLI flag: -query-backend.client-timeout
 [client_timeout: <duration> | default = 30s]
+
+# (experimental) Number of profile table row groups whose column chunks a query
+# fetches concurrently, ahead of reading them. 0 to disable.
+# CLI flag: -query-backend.read-ahead-row-groups
+[read_ahead_row_groups: <int> | default = 0]
+
+# (experimental) Maximum size of the column chunks a query fetches ahead and has
+# not read yet. Larger column chunks are not fetched ahead.
+# CLI flag: -query-backend.read-ahead-max-bytes
+[read_ahead_max_bytes: <int> | default = 33554432]
+
+# (experimental) Number of datasets of a block a query opens ahead of processing
+# them. 0 to disable.
+# CLI flag: -query-backend.read-ahead-datasets
+[read_ahead_datasets: <int> | default = 0]
 ```
 
 ### frontend_worker

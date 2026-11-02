@@ -40,9 +40,11 @@ type testSuite struct {
 	blocks []*metastorev1.BlockMeta
 
 	reader *BlockReader
-	meta   []*metastorev1.BlockMeta
-	plan   *queryv1.QueryPlan
-	tenant []string
+	// configure, if set, is applied to the reader of each test.
+	configure func(*BlockReader)
+	meta      []*metastorev1.BlockMeta
+	plan      *queryv1.QueryPlan
+	tenant    []string
 }
 
 func (s *testSuite) SetupSuite() {
@@ -54,6 +56,9 @@ func (s *testSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.logger = test.NewTestingLogger(s.T())
 	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket}, nil, validation.MockDefaultOverrides())
+	if s.configure != nil {
+		s.configure(s.reader)
+	}
 	s.meta = make([]*metastorev1.BlockMeta, len(s.blocks))
 	for i, b := range s.blocks {
 		s.meta[i] = b.CloneVT()
