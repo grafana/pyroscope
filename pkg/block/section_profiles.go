@@ -313,7 +313,8 @@ func (e ProfileEntry) View() ProfileEntryView {
 	}
 }
 
-func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], error) {
+// onDuplicate, if non-nil, is called for every dropped duplicate row.
+func NewMergeRowProfileIterator(src []*Dataset, onDuplicate func()) (iter.Iterator[ProfileEntry], error) {
 	its := make([]iter.Iterator[ProfileEntry], len(src))
 	for i, s := range src {
 		it, err := NewProfileRowIterator(s)
@@ -348,6 +349,7 @@ func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], er
 			},
 			func(it iter.Iterator[ProfileEntry]) { _ = it.Close() },
 		)),
+		onDuplicate: onDuplicate,
 	}, nil
 }
 
@@ -356,6 +358,7 @@ type DedupeProfileRowIterator struct {
 
 	prevFP        model.Fingerprint
 	prevTimeNanos int64
+	onDuplicate   func()
 }
 
 func (it *DedupeProfileRowIterator) Next() bool {
@@ -366,6 +369,9 @@ func (it *DedupeProfileRowIterator) Next() bool {
 		currentProfile := it.At()
 		if it.prevFP == currentProfile.Fingerprint && it.prevTimeNanos == currentProfile.Timestamp {
 			// skip duplicate profile
+			if it.onDuplicate != nil {
+				it.onDuplicate()
+			}
 			continue
 		}
 		it.prevFP = currentProfile.Fingerprint
