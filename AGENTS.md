@@ -368,6 +368,7 @@ make docker-image/pyroscope/build  # Build Docker image
 - **Commit Messages**: Focus on "why" not just "what"
 - **Generated Code**: Include generated files in the same commit as source changes
 - **Format**: Follow existing commit message style (see `git log --oneline -20`)
+- **Protected Branches**: `main`, `weekly/*` and `release/*` are protected; direct pushes are rejected, so changes require a PR
 
 ## Additional Notes for AI Agents
 
