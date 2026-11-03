@@ -1,6 +1,7 @@
 package querybackend
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
+	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
@@ -130,7 +132,7 @@ func (c queryColumns) names() []string {
 	return result
 }
 
-func (c queryColumns) join(q *queryContext) parquetquery.Iterator {
+func (c queryColumns) join(q *queryContext, rowGroups []parquet.RowGroup) parquetquery.Iterator {
 	var result parquetquery.Iterator
 
 	// sort columns by priority, without modifying queryColumn slice
@@ -146,7 +148,7 @@ func (c queryColumns) join(q *queryContext) parquetquery.Iterator {
 	})
 
 	for _, idx := range order {
-		it := q.ds.Profiles().Column(q.ctx, c[idx].name, c[idx].predicate)
+		it := q.ds.Profiles().ColumnOf(q.ctx, rowGroups, c[idx].name, c[idx].predicate)
 		if result == nil {
 			result = it
 			continue
@@ -159,7 +161,7 @@ func (c queryColumns) join(q *queryContext) parquetquery.Iterator {
 	return result
 }
 
-func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (iter.Iterator[ProfileEntry], error) {
+func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (*profileEntries, error) {
 	opts := iteratorOptsFromOptions(options)
 
 	matchers := q.req.matchers
@@ -218,8 +220,13 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 	buf := make([][]parquet.Value, len(columns))
 	columnNames := columns.names()
 
+	readAhead, err := columns.readAhead(q)
+	if err != nil {
+		return nil, err
+	}
+
 	entries := iter.NewAsyncBatchIterator[*parquetquery.IteratorResult, ProfileEntry](
-		columns.join(q), bigBatchSize,
+		columns.join(q, readAhead.RowGroups()), bigBatchSize,
 		func(r *parquetquery.IteratorResult) ProfileEntry {
 			buf = r.Columns(buf, columnNames...)
 			x := series[buf[0][0].Uint32()]
@@ -236,7 +243,64 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		},
 		func([]ProfileEntry) {},
 	)
-	return entries, nil
+	return &profileEntries{Iterator: entries, readAhead: readAhead}, nil
+}
+
+// profileEntries is the iterator of the profile entries that also provides
+// the row groups to read other columns of the profiles from.
+type profileEntries struct {
+	iter.Iterator[ProfileEntry]
+	readAhead *block.ReadAhead
+}
+
+// rowGroups returns the row groups to read the given columns from, and
+// starts fetching the columns ahead.
+func (e *profileEntries) rowGroups(columns ...int) []parquet.RowGroup {
+	return e.readAhead.AddColumns(columns...).RowGroups()
+}
+
+func (e *profileEntries) Close() error {
+	err := e.Iterator.Close()
+	e.readAhead.Close()
+	return err
+}
+
+// readAhead starts fetching the columns of the row groups the query reads.
+// A row group is read if its column chunks may match all the predicates.
+func (c queryColumns) readAhead(q *queryContext) (*block.ReadAhead, error) {
+	profiles := q.ds.Profiles()
+	if q.readAheadOpts.RowGroups <= 0 {
+		return profiles.ReadAhead(q.ctx, nil, q.readAheadOpts), nil
+	}
+	indices := make([]int, len(c))
+	for i, col := range c {
+		idx, _ := parquetquery.GetColumnIndexByPath(profiles.Root(), col.name)
+		if idx == -1 {
+			return nil, fmt.Errorf("column '%s' not found in parquet table", col.name)
+		}
+		indices[i] = idx
+	}
+	var selected []int
+	for i, rg := range profiles.RowGroups() {
+		keep := true
+		for j, col := range c {
+			if col.predicate == nil {
+				continue
+			}
+			ci, err := rg.ColumnChunks()[indices[j]].ColumnIndex()
+			if err != nil {
+				continue
+			}
+			if !col.predicate.KeepColumnChunk(ci) {
+				keep = false
+				break
+			}
+		}
+		if keep {
+			selected = append(selected, i)
+		}
+	}
+	return profiles.ReadAhead(q.ctx, selected, q.readAheadOpts).AddColumns(indices...), nil
 }
 
 type series struct {

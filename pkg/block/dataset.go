@@ -137,14 +137,18 @@ type Dataset struct {
 	memSize int
 }
 
-func NewDataset(meta *metastorev1.Dataset, obj *Object) *Dataset {
-	return &Dataset{
+func NewDataset(meta *metastorev1.Dataset, obj *Object, opts ...DatasetOption) *Dataset {
+	s := &Dataset{
 		tenant:  obj.meta.StringTable[meta.Tenant],
 		name:    obj.meta.StringTable[meta.Name],
 		meta:    meta,
 		obj:     obj,
 		memSize: defaultTenantDatasetSizeLoadInMemory,
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 type DatasetOption func(*Dataset)

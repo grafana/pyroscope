@@ -905,6 +905,12 @@ Usage of ./pyroscope:
     	Override the expected name on the server certificate.
   -query-backend.include-stripped-profiles
     	Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.
+  -query-backend.read-ahead-datasets int
+    	[experimental] Number of datasets of a block a query opens ahead of processing them. 0 to disable.
+  -query-backend.read-ahead-max-bytes int
+    	[experimental] Maximum size of the column chunks a query fetches ahead and has not read yet. Larger column chunks are not fetched ahead. (default 33554432)
+  -query-backend.read-ahead-row-groups int
+    	[experimental] Number of profile table row groups whose column chunks a query fetches concurrently, ahead of reading them. 0 to disable.
   -query-frontend.anomaly-api.url string
     	[experimental] Base URL of an externally configured anomaly source, used for the "stacktrace" anomaly query type. Leave empty to disable.
   -query-frontend.async-queries-enabled value

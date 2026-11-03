@@ -96,7 +96,7 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		indices = append(indices, columns.TraceID.ColumnIndex)
 	}
 
-	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
+	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, entries.rowGroups(indices...), indices...)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	resolverOptions := make([]symdb.ResolverOption, 0)

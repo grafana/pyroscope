@@ -18,6 +18,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/compactionworker"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	asyncquery "github.com/grafana/pyroscope/v2/pkg/frontend/async"
@@ -390,6 +391,11 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 	}
 	logger := log.With(f.logger, "component", "query-backend")
 	blockReader := querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg, f.Overrides)
+	blockReader.ReadAhead = block.ReadAheadOptions{
+		RowGroups: f.Cfg.QueryBackend.ReadAheadRowGroups,
+		MaxBytes:  int64(f.Cfg.QueryBackend.ReadAheadMaxBytes),
+	}
+	blockReader.DatasetReadAhead = f.Cfg.QueryBackend.ReadAheadDatasets
 	b, err := querybackend.New(
 		f.Cfg.QueryBackend,
 		logger,

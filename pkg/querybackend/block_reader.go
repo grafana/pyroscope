@@ -61,6 +61,14 @@ type BlockReader struct {
 
 	Overrides Overrides
 
+	// ReadAhead configures the read-ahead of profile table column chunks.
+	ReadAhead block.ReadAheadOptions
+	// DatasetReadAhead is the number of datasets of a block opened ahead.
+	DatasetReadAhead int
+
+	objectOptions  []block.ObjectOption
+	datasetOptions []block.DatasetOption
+
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
 	//  - Reusable query context.
@@ -131,17 +139,20 @@ func (b *BlockReader) Invoke(
 		}
 		blocksCount++
 		datasetsCount += int64(len(md.Datasets))
-		obj := block.NewObject(countingStorage, md)
+		obj := block.NewObject(countingStorage, md, b.objectOptions...)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx:             ctx,
-			log:             b.log,
-			req:             r,
-			agg:             agg,
-			obj:             obj,
-			grp:             g,
-			execCollector:   blockExecCollector,
-			weightCollector: weightCollector,
-			includeStripped: includeStripped,
+			ctx:               ctx,
+			log:               b.log,
+			req:               r,
+			agg:               agg,
+			obj:               obj,
+			grp:               g,
+			execCollector:     blockExecCollector,
+			weightCollector:   weightCollector,
+			includeStripped:   includeStripped,
+			readAheadOpts:     b.ReadAhead,
+			readAheadDatasets: b.DatasetReadAhead,
+			datasetOptions:    b.datasetOptions,
 		}).execute))
 	}
 

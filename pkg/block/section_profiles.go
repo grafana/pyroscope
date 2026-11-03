@@ -24,12 +24,12 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/loser"
 )
 
-func openProfileTable(_ context.Context, s *Dataset) (err error) {
+func openProfileTable(ctx context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionProfiles)
 	size := s.sectionSize(SectionProfiles)
 	if buf := s.inMemoryBuffer(); buf != nil {
 		offset -= int64(s.offset())
-		s.profiles, err = openParquetFile(
+		s.profiles, err = openParquetFile(ctx,
 			s.inMemoryBucket(buf), s.obj.path, offset, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
@@ -38,19 +38,22 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 	} else if s.obj.local != nil {
 		// A downloaded object is read from local disk, where read-ahead
 		// and large buffers only hold more memory per column.
-		s.profiles, err = openParquetFile(
+		s.profiles, err = openParquetFile(ctx,
 			s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(localReadBufferSize))
 	} else {
-		s.profiles, err = openParquetFile(
+		s.profiles, err = openParquetFile(ctx,
 			s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
 			parquet.ReadBufferSize(estimateReadBufferSize(size)))
+		if s.profiles != nil {
+			s.profiles.remote = true
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("opening profile parquet table: %w", err)
@@ -68,17 +71,20 @@ type ParquetFile struct {
 	path    string
 	off     int64
 	size    int64
+	remote  bool
 }
 
 func openParquetFile(
+	ctx context.Context,
 	storage objstore.BucketReader,
 	path string,
 	offset, size, footerSize int64,
 	options ...parquet.FileOption,
 ) (p *ParquetFile, err error) {
-	// The context is used for GetRange calls and should not
-	// be canceled until the parquet file is closed.
-	ctx, cancel := context.WithCancel(context.Background())
+	// The context is used for GetRange calls and should not be canceled
+	// until the parquet file is closed. It keeps the values of the parent
+	// context, so the calls are traced as part of the query.
+	ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	defer func() {
 		if err != nil {
 			cancel()
@@ -179,11 +185,16 @@ func (f *ParquetFile) Close() error {
 }
 
 func (f *ParquetFile) Column(ctx context.Context, columnName string, predicate query.Predicate) query.Iterator {
+	return f.ColumnOf(ctx, f.RowGroups(), columnName, predicate)
+}
+
+// ColumnOf is like Column, but reads the given row groups of the table.
+func (f *ParquetFile) ColumnOf(ctx context.Context, rowGroups []parquet.RowGroup, columnName string, predicate query.Predicate) query.Iterator {
 	idx, _ := query.GetColumnIndexByPath(f.Root(), columnName)
 	if idx == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet table", columnName))
 	}
-	return query.NewSyncIterator(ctx, f.RowGroups(), idx, columnName, 1<<10, predicate, columnName)
+	return query.NewSyncIterator(ctx, rowGroups, idx, columnName, 1<<10, predicate, columnName)
 }
 
 type profilesWriter struct {

@@ -101,7 +101,7 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		resolverOptions = append(resolverOptions, symdb.WithResolverStackTraceSelector(query.Tree.StackTraceSelector))
 	}
 
-	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
+	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, entries.rowGroups(indices...), indices...)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)

@@ -48,7 +48,7 @@ func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
 		entries,
-		q.ds.Profiles().RowGroups(),
+		entries.rowGroups(totalValue.ColumnIndex),
 		bigBatchSize,
 		totalValue.ColumnIndex,
 	)
@@ -101,7 +101,7 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
 		entries,
-		q.ds.Profiles().RowGroups(),
+		entries.rowGroups(indices...),
 		bigBatchSize,
 		indices...,
 	)
