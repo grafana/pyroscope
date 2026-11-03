@@ -70,6 +70,8 @@ Partition (6h window)
 
 Metadata entries are stored in shard buckets as key-value pairs, where the key is the block ID (ULID) and the value is the serialized block metadata. The block identifier is a ULID, where the timestamp represents the block's creation time. However, blocks span data ranges defined by the actual timestamps of the data they contain (specified in the block metadata). When blocks are compacted together (merged), the output block identifier uses the timestamp of the oldest block in the input set and reflects the actual time range of the compacted data.
 
+Because the partition key represents block creation time, it does not necessarily overlap the contained data time. Historical imports are one example. Metadata queries inspect the requested tenant shards across partitions and filter them using the actual data range stored in each `ShardIndex`.
+
 Every block is assigned to a shard at [data distribution](../../ingester/client/distributor/README.md) time, and this assignment never changes. The assigned shard identifier is stored in the block metadata entry and is used to locate the block within the tenant bucket.
 
 Shard-level structures:
