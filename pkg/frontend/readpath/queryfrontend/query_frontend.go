@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
@@ -52,6 +53,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
+	queryBackendTimeout time.Duration
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 	queryPlanType       string
@@ -140,6 +142,7 @@ func NewQueryFrontend(
 	logger log.Logger,
 	limits frontend.Limits,
 	cfg frontend.Config,
+	queryBackendTimeout time.Duration,
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
@@ -152,6 +155,7 @@ func NewQueryFrontend(
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
+		queryBackendTimeout: queryBackendTimeout,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 		queryPlanType:       cfg.QueryPlannerStrategy,
@@ -280,6 +284,17 @@ func (q *QueryFrontend) Query(
 		metrics:        q.metrics,
 		blocks:         float64(len(blocks)),
 		estimatedBytes: float64(weight.Total()),
+	}
+
+	timeout := q.queryBackendTimeout
+	if asyncTimeout := async.QueryTimeout(ctx); asyncTimeout > 0 {
+		timeout = asyncTimeout
+	}
+	// Preserve legacy behavior: negative timeouts disable the deadline.
+	if timeout >= 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
 	}
 
 	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
