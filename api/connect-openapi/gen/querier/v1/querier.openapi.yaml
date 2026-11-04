@@ -235,10 +235,10 @@ paths:
       tags:
         - scope/internal
         - querier.v1.QuerierService
-      summary: (Experimental) QueryAnomalies returns stacktrace anomalies and detected  time-series changes for matching profiles, according to anomaly_types.
+      summary: (Experimental) QueryAnomalies returns detected time-series changes for  matching profiles, according to anomaly_types.
       description: |-
-        (Experimental) QueryAnomalies returns stacktrace anomalies and detected
-         time-series changes for matching profiles, according to anomaly_types.
+        (Experimental) QueryAnomalies returns detected time-series changes for
+         matching profiles, according to anomaly_types.
       operationId: querier.v1.QuerierService.QueryAnomalies
       parameters:
         - name: Connect-Protocol-Version
@@ -1062,7 +1062,6 @@ components:
       title: AnomalyType
       enum:
         - ANOMALY_TYPE_UNSPECIFIED
-        - ANOMALY_TYPE_STACKTRACE
         - ANOMALY_TYPE_TIME_SERIES
     querier.v1.AsyncQueryRequest:
       type: object
@@ -1322,14 +1321,6 @@ components:
     querier.v1.QueryAnomaliesResponse:
       type: object
       properties:
-        stacktraceAnomalies:
-          type: array
-          items:
-            $ref: '#/components/schemas/querier.v1.StacktraceAnomaly'
-          title: stacktrace_anomalies
-          description: |-
-            Profiles flagged by the stacktrace anomaly source and confirmed present for the given
-             label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
         timeSeriesAnomalies:
           type: array
           items:
@@ -1903,37 +1894,6 @@ components:
             $ref: '#/components/schemas/types.v1.Labels'
           title: labels_set
       title: SeriesResponse
-      additionalProperties: false
-    querier.v1.StacktraceAnomaly:
-      type: object
-      properties:
-        profileId:
-          type: string
-          title: profile_id
-          description: Profile ID (UUID).
-        timestamp:
-          type:
-            - integer
-            - string
-          examples:
-            - "1676282400000"
-          title: timestamp
-          format: int64
-          description: 'Milliseconds since epoch: the profile''s own timestamp.'
-        labels:
-          type: array
-          items:
-            $ref: '#/components/schemas/types.v1.LabelPair'
-          title: labels
-          description: |-
-            The profile's own labels (e.g. pod, instance), same convention as
-             types.v1.Exemplar.labels.
-        score:
-          type: number
-          title: score
-          format: double
-          description: The anomaly source's score for this profile.
-      title: StacktraceAnomaly
       additionalProperties: false
     querier.v1.TimeSeriesAnomaly:
       type: object

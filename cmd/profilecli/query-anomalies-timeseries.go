@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/v2/pkg/model"
@@ -12,7 +15,17 @@ import (
 
 func outputSeriesAnalysis(ctx context.Context, response *querierv1.QueryAnomaliesResponse, format string) error {
 	if format == outputJSON {
-		return outputAnomalies(ctx, response, []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES}, outputJSON)
+		data, err := (protojson.MarshalOptions{EmitUnpopulated: true}).Marshal(response)
+		if err != nil {
+			return err
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(data, &fields); err != nil {
+			return err
+		}
+		enc := json.NewEncoder(output(ctx))
+		enc.SetIndent("", "  ")
+		return enc.Encode(fields)
 	}
 	table := newTableWriter(output(ctx))
 	table.SetHeader([]string{"Labels", "Type", "Start", "End", "Peak time", "Baseline", "Peak value", "Change", "Score", "Priority score"})

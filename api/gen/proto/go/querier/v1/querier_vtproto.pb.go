@@ -717,13 +717,6 @@ func (m *QueryAnomaliesResponse) CloneVT() *QueryAnomaliesResponse {
 		return (*QueryAnomaliesResponse)(nil)
 	}
 	r := new(QueryAnomaliesResponse)
-	if rhs := m.StacktraceAnomalies; rhs != nil {
-		tmpContainer := make([]*StacktraceAnomaly, len(rhs))
-		for k, v := range rhs {
-			tmpContainer[k] = v.CloneVT()
-		}
-		r.StacktraceAnomalies = tmpContainer
-	}
 	if rhs := m.TimeSeriesAnomalies; rhs != nil {
 		tmpContainer := make([]*TimeSeriesAnomaly, len(rhs))
 		for k, v := range rhs {
@@ -739,36 +732,6 @@ func (m *QueryAnomaliesResponse) CloneVT() *QueryAnomaliesResponse {
 }
 
 func (m *QueryAnomaliesResponse) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
-func (m *StacktraceAnomaly) CloneVT() *StacktraceAnomaly {
-	if m == nil {
-		return (*StacktraceAnomaly)(nil)
-	}
-	r := new(StacktraceAnomaly)
-	r.ProfileId = m.ProfileId
-	r.Timestamp = m.Timestamp
-	r.Score = m.Score
-	if rhs := m.Labels; rhs != nil {
-		tmpContainer := make([]*v1.LabelPair, len(rhs))
-		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v1.LabelPair }); ok {
-				tmpContainer[k] = vtpb.CloneVT()
-			} else {
-				tmpContainer[k] = proto.Clone(v).(*v1.LabelPair)
-			}
-		}
-		r.Labels = tmpContainer
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *StacktraceAnomaly) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -1791,23 +1754,6 @@ func (this *QueryAnomaliesResponse) EqualVT(that *QueryAnomaliesResponse) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if len(this.StacktraceAnomalies) != len(that.StacktraceAnomalies) {
-		return false
-	}
-	for i, vx := range this.StacktraceAnomalies {
-		vy := that.StacktraceAnomalies[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &StacktraceAnomaly{}
-			}
-			if q == nil {
-				q = &StacktraceAnomaly{}
-			}
-			if !p.EqualVT(q) {
-				return false
-			}
-		}
-	}
 	if len(this.TimeSeriesAnomalies) != len(that.TimeSeriesAnomalies) {
 		return false
 	}
@@ -1830,52 +1776,6 @@ func (this *QueryAnomaliesResponse) EqualVT(that *QueryAnomaliesResponse) bool {
 
 func (this *QueryAnomaliesResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*QueryAnomaliesResponse)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
-func (this *StacktraceAnomaly) EqualVT(that *StacktraceAnomaly) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if this.ProfileId != that.ProfileId {
-		return false
-	}
-	if this.Timestamp != that.Timestamp {
-		return false
-	}
-	if len(this.Labels) != len(that.Labels) {
-		return false
-	}
-	for i, vx := range this.Labels {
-		vy := that.Labels[i]
-		if p, q := vx, vy; p != q {
-			if p == nil {
-				p = &v1.LabelPair{}
-			}
-			if q == nil {
-				q = &v1.LabelPair{}
-			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.LabelPair) bool }); ok {
-				if !equal.EqualVT(q) {
-					return false
-				}
-			} else if !proto.Equal(p, q) {
-				return false
-			}
-		}
-	}
-	if this.Score != that.Score {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *StacktraceAnomaly) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*StacktraceAnomaly)
 	if !ok {
 		return false
 	}
@@ -2024,8 +1924,8 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(ctx context.Context, in *AnalyzeQueryRequest, opts ...grpc.CallOption) (*AnalyzeQueryResponse, error)
-	// (Experimental) QueryAnomalies returns stacktrace anomalies and detected
-	// time-series changes for matching profiles, according to anomaly_types.
+	// (Experimental) QueryAnomalies returns detected time-series changes for
+	// matching profiles, according to anomaly_types.
 	QueryAnomalies(ctx context.Context, in *QueryAnomaliesRequest, opts ...grpc.CallOption) (*QueryAnomaliesResponse, error)
 }
 
@@ -2196,8 +2096,8 @@ type QuerierServiceServer interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	AnalyzeQuery(context.Context, *AnalyzeQueryRequest) (*AnalyzeQueryResponse, error)
-	// (Experimental) QueryAnomalies returns stacktrace anomalies and detected
-	// time-series changes for matching profiles, according to anomaly_types.
+	// (Experimental) QueryAnomalies returns detected time-series changes for
+	// matching profiles, according to anomaly_types.
 	QueryAnomalies(context.Context, *QueryAnomaliesRequest) (*QueryAnomaliesResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
 }
@@ -4323,93 +4223,6 @@ func (m *QueryAnomaliesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error
 			dAtA[i] = 0x12
 		}
 	}
-	if len(m.StacktraceAnomalies) > 0 {
-		for iNdEx := len(m.StacktraceAnomalies) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.StacktraceAnomalies[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0xa
-		}
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *StacktraceAnomaly) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *StacktraceAnomaly) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *StacktraceAnomaly) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if m.Score != 0 {
-		i -= 8
-		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Score))))
-		i--
-		dAtA[i] = 0x21
-	}
-	if len(m.Labels) > 0 {
-		for iNdEx := len(m.Labels) - 1; iNdEx >= 0; iNdEx-- {
-			if vtmsg, ok := interface{}(m.Labels[iNdEx]).(interface {
-				MarshalToSizedBufferVT([]byte) (int, error)
-			}); ok {
-				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
-			} else {
-				encoded, err := proto.Marshal(m.Labels[iNdEx])
-				if err != nil {
-					return 0, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
-			}
-			i--
-			dAtA[i] = 0x1a
-		}
-	}
-	if m.Timestamp != 0 {
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Timestamp))
-		i--
-		dAtA[i] = 0x10
-	}
-	if len(m.ProfileId) > 0 {
-		i -= len(m.ProfileId)
-		copy(dAtA[i:], m.ProfileId)
-		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ProfileId)))
-		i--
-		dAtA[i] = 0xa
-	}
 	return len(dAtA) - i, nil
 }
 
@@ -5301,49 +5114,11 @@ func (m *QueryAnomaliesResponse) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.StacktraceAnomalies) > 0 {
-		for _, e := range m.StacktraceAnomalies {
-			l = e.SizeVT()
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
 	if len(m.TimeSeriesAnomalies) > 0 {
 		for _, e := range m.TimeSeriesAnomalies {
 			l = e.SizeVT()
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
-func (m *StacktraceAnomaly) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.ProfileId)
-	if l > 0 {
-		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-	}
-	if m.Timestamp != 0 {
-		n += 1 + protohelpers.SizeOfVarint(uint64(m.Timestamp))
-	}
-	if len(m.Labels) > 0 {
-		for _, e := range m.Labels {
-			if size, ok := interface{}(e).(interface {
-				SizeVT() int
-			}); ok {
-				l = size.SizeVT()
-			} else {
-				l = proto.Size(e)
-			}
-			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
-		}
-	}
-	if m.Score != 0 {
-		n += 9
 	}
 	n += len(m.unknownFields)
 	return n
@@ -9695,40 +9470,6 @@ func (m *QueryAnomaliesResponse) UnmarshalVT(dAtA []byte) error {
 			return fmt.Errorf("proto: QueryAnomaliesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StacktraceAnomalies", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.StacktraceAnomalies = append(m.StacktraceAnomalies, &StacktraceAnomaly{})
-			if err := m.StacktraceAnomalies[len(m.StacktraceAnomalies)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TimeSeriesAnomalies", wireType)
@@ -9763,161 +9504,6 @@ func (m *QueryAnomaliesResponse) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *StacktraceAnomaly) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return protohelpers.ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: StacktraceAnomaly: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: StacktraceAnomaly: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProfileId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
-			}
-			m.Timestamp = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Timestamp |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protohelpers.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return protohelpers.ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Labels = append(m.Labels, &v1.LabelPair{})
-			if unmarshal, ok := interface{}(m.Labels[len(m.Labels)-1]).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Labels[len(m.Labels)-1]); err != nil {
-					return err
-				}
-			}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 1 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Score", wireType)
-			}
-			var v uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
-			iNdEx += 8
-			m.Score = float64(math.Float64frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

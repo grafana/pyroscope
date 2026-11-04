@@ -107,5 +107,4 @@ func TestQueryAnomalies_TimeSeriesFinalizesOnQueryBackend(t *testing.T) {
 	// The frontend forwards final events; it needs no source series and does
 	// not rerun detection.
 	require.Equal(t, events, resp.Msg.TimeSeriesAnomalies)
-	require.Empty(t, resp.Msg.StacktraceAnomalies)
 }

@@ -1783,12 +1783,6 @@ The `query_frontend` block configures the query-frontend.
 # -server.http-listen-port).
 # CLI flag: -query-frontend.instance-port
 [instance_port: <int> | default = 0]
-
-anomaly_api:
-  # (experimental) Base URL of an externally configured anomaly source, used for
-  # the "stacktrace" anomaly query type. Leave empty to disable.
-  # CLI flag: -query-frontend.anomaly-api.url
-  [url: <string> | default = ""]
 ```
 
 ### query_backend

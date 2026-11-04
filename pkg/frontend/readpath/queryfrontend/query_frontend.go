@@ -22,7 +22,6 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
-	"github.com/grafana/pyroscope/v2/pkg/anomalyapi"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
@@ -54,9 +53,6 @@ type QueryFrontend struct {
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 	queryPlanType       string
-
-	// anomalyAPI is nil when unconfigured.
-	anomalyAPI *anomalyapi.Client
 
 	metrics *queryFrontendMetrics
 }
@@ -154,7 +150,6 @@ func NewQueryFrontend(
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 		queryPlanType:       cfg.QueryPlannerStrategy,
-		anomalyAPI:          anomalyapi.New(cfg.AnomalyAPI, nil),
 		metrics:             newQueryFrontendMetrics(reg),
 	}
 	return qf

@@ -74,8 +74,8 @@ service QuerierService {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
 
-  // (Experimental) QueryAnomalies returns stacktrace anomalies and detected
-  // time-series changes for matching profiles, according to anomaly_types.
+  // (Experimental) QueryAnomalies returns detected time-series changes for
+  // matching profiles, according to anomaly_types.
   rpc QueryAnomalies(QueryAnomaliesRequest) returns (QueryAnomaliesResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/internal";
   }
@@ -377,7 +377,8 @@ message QueryImpact {
 
 enum AnomalyType {
   ANOMALY_TYPE_UNSPECIFIED = 0;
-  ANOMALY_TYPE_STACKTRACE = 1;
+  reserved 1;
+  reserved "ANOMALY_TYPE_STACKTRACE";
   ANOMALY_TYPE_TIME_SERIES = 2;
 }
 
@@ -399,23 +400,10 @@ message QueryAnomaliesRequest {
 }
 
 message QueryAnomaliesResponse {
-  // Profiles flagged by the stacktrace anomaly source and confirmed present for the given
-  // label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
-  repeated StacktraceAnomaly stacktrace_anomalies = 1;
+  reserved 1;
+  reserved "stacktrace_anomalies";
   // Detected time-series changes, populated when ANOMALY_TYPE_TIME_SERIES is requested.
   repeated TimeSeriesAnomaly time_series_anomalies = 2;
-}
-
-message StacktraceAnomaly {
-  // Profile ID (UUID).
-  string profile_id = 1;
-  // Milliseconds since epoch: the profile's own timestamp.
-  int64 timestamp = 2 [(gnostic.openapi.v3.property).example = {yaml: "1676282400000"}];
-  // The profile's own labels (e.g. pod, instance), same convention as
-  // types.v1.Exemplar.labels.
-  repeated types.v1.LabelPair labels = 3;
-  // The anomaly source's score for this profile.
-  double score = 4;
 }
 
 message AnomalyTimeSeriesRequest {
