@@ -36,11 +36,12 @@ type MetadataQuery struct {
 }
 
 func (q *MetadataQuery) String() string {
-	return fmt.Sprintf("start: %v, end: %v, tenants: %v, expr: %v",
+	return fmt.Sprintf("start: %v, end: %v, tenants: %v, expr: %v, shard_selector: %v",
 		q.StartTime,
 		q.EndTime,
 		strings.Join(q.Tenant, ","),
-		q.Expr)
+		q.Expr,
+		q.ShardSelector)
 }
 
 type metadataQuery struct {
