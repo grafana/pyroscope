@@ -135,8 +135,9 @@ type Cluster struct {
 	v2                 bool     // is this a v2 cluster
 	expectedComponents []string // number of expected components
 
-	forceDatasetIndexLookup  bool
-	datasetIndexShardPruning bool
+	forceDatasetIndexLookup   bool
+	datasetIndexShardPruning  bool
+	datasetLookupFromMetadata bool
 
 	tmpDir     string
 	httpClient *http.Client
