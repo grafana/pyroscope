@@ -297,18 +297,22 @@ func (b *blockContext) lookupDatasetsInMetadata(indices []*metastorev1.Dataset, 
 		return err
 	}
 
-	m := metadata.NewLabelMatcher(md.StringTable, matchers)
 	var j int
-	for _, ds := range md.Datasets {
-		if block.DatasetFormat(ds.Format) != block.DatasetFormat0 {
-			continue
-		}
-		if _, ok := tenants[md.StringTable[ds.Tenant]]; !ok {
-			continue
-		}
-		if m.IsValid() && m.Matches(ds.Labels) {
-			md.Datasets[j] = ds
-			j++
+	if m := metadata.NewLabelMatcher(md.StringTable, matchers); m.IsValid() {
+		for _, ds := range md.Datasets {
+			if block.DatasetFormat(ds.Format) != block.DatasetFormat0 {
+				continue
+			}
+			if _, ok := tenants[md.StringTable[ds.Tenant]]; !ok {
+				continue
+			}
+			if ds.MaxTime < b.req.src.StartTime || ds.MinTime > b.req.src.EndTime {
+				continue
+			}
+			if m.Matches(ds.Labels) {
+				md.Datasets[j] = ds
+				j++
+			}
 		}
 	}
 	md.Datasets = md.Datasets[:j]

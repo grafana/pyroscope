@@ -27,19 +27,29 @@ func TestBlockContext_LookupDatasetsInMetadata_SharedSegment(t *testing.T) {
 	footer := uploadSharedSegment(t, bucket)
 
 	for _, tc := range []struct {
-		name     string
-		tenants  []string
-		expected []string
+		name       string
+		tenants    []string
+		start, end int64
+		expected   []string
 	}{
 		{
 			name:     "single tenant",
 			tenants:  []string{"tenant-b"},
+			end:      5000,
 			expected: []string{"tenant-b/shared"},
 		},
 		{
 			name:     "federated",
 			tenants:  []string{"tenant-a", "tenant-b"},
+			end:      5000,
 			expected: []string{"tenant-a/shared", "tenant-b/shared"},
+		},
+		{
+			name:     "federated, partial time range",
+			tenants:  []string{"tenant-a", "tenant-b"},
+			start:    2500,
+			end:      5000,
+			expected: []string{"tenant-b/shared"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -49,7 +59,11 @@ func TestBlockContext_LookupDatasetsInMetadata_SharedSegment(t *testing.T) {
 			b := &blockContext{
 				ctx: ctx,
 				req: &request{
-					src: &queryv1.InvokeRequest{Query: []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_TREE}}},
+					src: &queryv1.InvokeRequest{
+						StartTime: tc.start,
+						EndTime:   tc.end,
+						Query:     []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_TREE}},
+					},
 					matchers: []*labels.Matcher{
 						labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameServiceName, "shared"),
 						labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameProfileType, cpuProfileType),
@@ -80,16 +94,24 @@ func uploadSharedSegment(t *testing.T, bucket *memory.InMemBucket) *metastorev1.
 		Shard:         1,
 		CreatedBy:     st.Put("segment-writer-0"),
 	}
-	for _, d := range []struct{ tenant, service string }{
-		{"tenant-a", "only-a"},
-		{"tenant-a", "shared"},
-		{"tenant-a", ""},
-		{"tenant-b", "shared"},
-		{"tenant-b", ""},
-		{"tenant-c", "shared"},
-		{"tenant-c", ""},
+	for _, d := range []struct {
+		tenant, service  string
+		minTime, maxTime int64
+	}{
+		{"tenant-a", "only-a", 1000, 4000},
+		{"tenant-a", "shared", 1000, 2000},
+		{"tenant-a", "", 1000, 4000},
+		{"tenant-b", "shared", 3000, 4000},
+		{"tenant-b", "", 3000, 4000},
+		{"tenant-c", "shared", 1000, 4000},
+		{"tenant-c", "", 1000, 4000},
 	} {
-		ds := &metastorev1.Dataset{Tenant: st.Put(d.tenant), Name: st.Put(d.service)}
+		ds := &metastorev1.Dataset{
+			Tenant:  st.Put(d.tenant),
+			Name:    st.Put(d.service),
+			MinTime: d.minTime,
+			MaxTime: d.maxTime,
+		}
 		if d.service == "" {
 			ds.Format = uint32(block.DatasetFormat1)
 			ds.Labels = metadata.NewLabelBuilder(st).
