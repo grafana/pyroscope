@@ -186,7 +186,7 @@ func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 	// dataset_index) without resolving real datasets.
 	s := (&queryContext{blockContext: b}).sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
-	if indexOnly {
+	if indexOnly && b.metadataLookupMatchers() == nil {
 		oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
 		return nil
 	}
@@ -198,10 +198,8 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
 	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Int("dataset_index_count", len(indices)))
 
-	if b.datasetLookupFromMetadata {
-		if matchers := datasetLabelMatchers(b.req.matchers); matchers != nil {
-			return b.lookupDatasetsInMetadata(indices, matchers)
-		}
+	if matchers := b.metadataLookupMatchers(); matchers != nil {
+		return b.lookupDatasetsInMetadata(indices, matchers)
 	}
 
 	// As query execution has not started yet,
@@ -260,6 +258,13 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	oteltrace.SpanFromContext(b.ctx).AddEvent("dataset tsdb index lookup complete")
 
 	return nil
+}
+
+func (b *blockContext) metadataLookupMatchers() []*labels.Matcher {
+	if !b.datasetLookupFromMetadata {
+		return nil
+	}
+	return datasetLabelMatchers(b.req.matchers)
 }
 
 func datasetLabelMatchers(matchers []*labels.Matcher) []*labels.Matcher {

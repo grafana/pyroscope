@@ -28,26 +28,37 @@ func TestBlockContext_LookupDatasetsInMetadata_SharedSegment(t *testing.T) {
 
 	for _, tc := range []struct {
 		name       string
+		query      queryv1.QueryType
 		tenants    []string
 		start, end int64
 		expected   []string
 	}{
 		{
 			name:     "single tenant",
+			query:    queryv1.QueryType_QUERY_TREE,
 			tenants:  []string{"tenant-b"},
 			end:      5000,
 			expected: []string{"tenant-b/shared"},
 		},
 		{
 			name:     "federated",
+			query:    queryv1.QueryType_QUERY_TREE,
 			tenants:  []string{"tenant-a", "tenant-b"},
 			end:      5000,
 			expected: []string{"tenant-a/shared", "tenant-b/shared"},
 		},
 		{
 			name:     "federated, partial time range",
+			query:    queryv1.QueryType_QUERY_TREE,
 			tenants:  []string{"tenant-a", "tenant-b"},
 			start:    2500,
+			end:      5000,
+			expected: []string{"tenant-b/shared"},
+		},
+		{
+			name:     "index-only query",
+			query:    queryv1.QueryType_QUERY_LABEL_NAMES,
+			tenants:  []string{"tenant-b"},
 			end:      5000,
 			expected: []string{"tenant-b/shared"},
 		},
@@ -62,7 +73,7 @@ func TestBlockContext_LookupDatasetsInMetadata_SharedSegment(t *testing.T) {
 					src: &queryv1.InvokeRequest{
 						StartTime: tc.start,
 						EndTime:   tc.end,
-						Query:     []*queryv1.Query{{QueryType: queryv1.QueryType_QUERY_TREE}},
+						Query:     []*queryv1.Query{{QueryType: tc.query}},
 					},
 					matchers: []*labels.Matcher{
 						labels.MustNewMatcher(labels.MatchEqual, phlaremodel.LabelNameServiceName, "shared"),
