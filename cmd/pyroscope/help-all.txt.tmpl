@@ -767,6 +767,8 @@ Usage of ./pyroscope:
     	[v1 storage only] Specifies the dimension by which symbols are partitioned. By default, the partitioning is determined automatically.
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
+  -querier.force-dataset-index-lookup
+    	[experimental] Resolve the datasets to query from the dataset index stored in each block instead of the dataset entries in the metastore, regardless of the label selector.
   -querier.frontend-client.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -querier.frontend-client.backoff-min-period duration

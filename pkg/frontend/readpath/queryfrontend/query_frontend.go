@@ -30,6 +30,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -375,12 +376,13 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
-	// left, request the dataset index for query backend to lookup block datasets
+	// left, or all tenants are configured to always use the dataset index,
+	// request the dataset index for query backend to lookup block datasets
 	// locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
 		return m.Name != model.LabelNameServiceName || m.Type != labels.MatchEqual
 	})
-	if len(matchers) == 0 {
+	if len(matchers) == 0 || validationutil.AllTruePerTenant(tenants, q.limits.ForceDatasetIndexLookup) {
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.

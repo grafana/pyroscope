@@ -58,6 +58,12 @@ func WithV2Federated() ClusterOption {
 	}
 }
 
+func WithForceDatasetIndexLookup() ClusterOption {
+	return func(c *Cluster) {
+		c.forceDatasetIndexLookup = true
+	}
+}
+
 func (c *Cluster) metastoreConfig() (string, error) {
 	cfgPath := filepath.Join(c.tmpDir, "metastore.yaml")
 
@@ -153,6 +159,10 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 		"-metastore.min-ready-duration=0",
 		fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
 	)
+
+	if comp.Target == "query-frontend" && c.forceDatasetIndexLookup {
+		comp.flags = append(comp.flags, "-querier.force-dataset-index-lookup=true")
+	}
 
 	if comp.Target == "segment-writer" {
 		comp.flags = append(comp.flags,

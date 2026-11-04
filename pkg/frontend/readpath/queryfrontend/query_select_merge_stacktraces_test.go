@@ -176,6 +176,7 @@ func TestSelectMergeStacktraces_DotFormat(t *testing.T) {
 	mockLimits.On("MaxFlameGraphNodesOnSelectMergeProfile", "tenant1").Return(false)
 	mockLimits.On("QueryTreeEnabled", "tenant1").Return(false)
 	mockLimits.On("QuerySanitizeOnMerge", "tenant1").Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", "tenant1").Return(false)
 
 	mockQueryBackend := mockqueryfrontend.NewMockQueryBackend(t)
 	mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {

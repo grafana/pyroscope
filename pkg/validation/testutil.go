@@ -35,7 +35,8 @@ type MockLimits struct {
 
 	MaxQueriersPerTenantValue int
 
-	QueryTreeEnabledValue bool
+	QueryTreeEnabledValue        bool
+	ForceDatasetIndexLookupValue bool
 
 	MaxAsyncQueryConcurrencyValue int
 
@@ -107,6 +108,7 @@ func (m MockLimits) RejectNewerThan(userID string) time.Duration {
 }
 
 func (m MockLimits) QueryTreeEnabled(s string) bool        { return m.QueryTreeEnabledValue }
+func (m MockLimits) ForceDatasetIndexLookup(s string) bool { return m.ForceDatasetIndexLookupValue }
 func (m MockLimits) MaxAsyncQueryConcurrency(s string) int { return m.MaxAsyncQueryConcurrencyValue }
 
 func (m MockLimits) IngestionBodyLimitBytes(tenantID string) int64 {
