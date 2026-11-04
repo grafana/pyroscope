@@ -87,6 +87,10 @@ func TestMicroServicesIntegrationV2_ForceDatasetIndexLookup(t *testing.T) {
 	testMicroServicesIntegrationV2(t, cluster.WithForceDatasetIndexLookup())
 }
 
+func TestMicroServicesIntegrationV2_DatasetIndexShardPruning(t *testing.T) {
+	testMicroServicesIntegrationV2(t, cluster.WithForceDatasetIndexLookup(), cluster.WithDatasetIndexShardPruning())
+}
+
 func testMicroServicesIntegrationV2(t *testing.T, opts ...cluster.ClusterOption) {
 	c := cluster.NewMicroServiceCluster(append([]cluster.ClusterOption{cluster.WithV2()}, opts...)...)
 	ctx := context.Background()
