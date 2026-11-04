@@ -537,6 +537,40 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		}
 	})
 
+	t.Run("QuerySelectMergeProfileServiceNameSet", func(t *testing.T) {
+		const tenantID = "tenant-a"
+		ctx := tenant.InjectTenantID(ctx, tenantID)
+		services := []int{0, 1, 2}
+		names := make([]string, len(services))
+		for i, s := range services {
+			names[i] = fmt.Sprintf("%s/test-service-%d", tenantID, s)
+		}
+		req := &querierv1.SelectMergeProfileRequest{
+			ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			LabelSelector: fmt.Sprintf(`{service_name=~"%s"}`, strings.Join(names, "|")),
+			Start:         tc.now.Add(-time.Hour).UnixMilli(),
+			End:           tc.now.Add(time.Hour).UnixMilli(),
+		}
+		resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req)) //nolint:staticcheck // Legacy querier.v1 integration coverage.
+		require.NoError(t, err)
+
+		bozSamples := 0
+		for _, i := range services {
+			for j := 0; j < tc.perTenantData[tenantID].samples; j++ {
+				if (i+j)%3 == 0 {
+					bozSamples += 3
+				}
+			}
+		}
+		normalized := normalizePprof(resp.Msg)
+		assert.Equal(t,
+			[]*profilev1.Sample{
+				{LocationId: []uint64{4, 1, 2}, Value: []int64{int64(len(services))}},
+				{LocationId: []uint64{4, 1, 3}, Value: []int64{int64(bozSamples)}},
+			}, normalized.Sample, "Samples",
+		)
+	})
+
 	t.Run("QuerierServiceAsync", func(t *testing.T) {
 		if !isV2 {
 			t.Skip("Async queries require query-frontend which is not present in V1 microservices cluster")
