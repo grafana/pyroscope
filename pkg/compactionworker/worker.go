@@ -110,9 +110,12 @@ type Worker struct {
 
 	deleterPool *deleterPool
 
-	stopped   atomic.Bool
-	closeOnce sync.Once
-	wg        sync.WaitGroup
+	// admissionMu serializes shutdown with the transition into execution.
+	admissionMu sync.Mutex
+	pending     map[*compactionJob]struct{}
+	stopped     atomic.Bool
+	closeOnce   sync.Once
+	wg          sync.WaitGroup
 
 	exporter metrics.Exporter
 	ruler    metrics.Ruler
@@ -216,10 +219,10 @@ func (w *Worker) running(ctx context.Context) error {
 	}
 
 	<-ctx.Done()
-	// Wait for all threads to finish their work, continuing to report status
-	// updates about the in-progress jobs. First, signal to the poll loop that
-	// we're done with new jobs.
-	w.stopped.Store(true)
+	// Abandon queued/preparing/budget-waiting jobs and stop accepting work.
+	// Already executing jobs retain their contexts and leases until completion;
+	// the poll loop continues reporting their status while threads drain.
+	w.stopAdmission()
 	level.Info(w.logger).Log("msg", "waiting for all jobs to finish")
 	w.wg.Wait()
 
@@ -234,6 +237,44 @@ func (w *Worker) running(ctx context.Context) error {
 	}
 	w.deleterPool.close()
 	return nil
+}
+
+// stopAdmission cancels only work that has not crossed the execution boundary.
+// The poll loop remains the sole owner of the job map and queue closure.
+func (w *Worker) stopAdmission() {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	w.stopped.Store(true)
+	for job := range w.pending {
+		job.cancel()
+	}
+}
+
+func (w *Worker) prepareJob(job *compactionJob) bool {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	if w.stopped.Load() {
+		job.cancel()
+		return false
+	}
+	if w.pending == nil {
+		w.pending = make(map[*compactionJob]struct{})
+	}
+	w.pending[job] = struct{}{}
+	return true
+}
+
+func (w *Worker) finishPreparation(job *compactionJob) {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	delete(w.pending, job)
+}
+
+func (w *Worker) beginExecution(job *compactionJob) bool {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	delete(w.pending, job)
+	return !w.stopped.Load() && job.ctx.Err() == nil
 }
 
 func (w *Worker) poll() {
@@ -277,6 +318,10 @@ func (w *Worker) poll() {
 	w.cleanup(updates)
 	newJobs := w.handleResponse(resp)
 	for _, job := range newJobs {
+		if w.stopped.Load() {
+			w.remove(job)
+			continue
+		}
 		select {
 		case w.queue <- job:
 		default:
@@ -401,6 +446,10 @@ const (
 )
 
 func (w *Worker) runCompaction(job *compactionJob) {
+	if !w.prepareJob(job) {
+		return
+	}
+	defer w.finishPreparation(job)
 	start := time.Now()
 	metricLabels := []string{job.Tenant, strconv.Itoa(int(job.CompactionLevel))}
 	statusName := statusFailure
@@ -425,6 +474,9 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	level.Info(logger).Log("msg", "starting compaction job", "source_blocks", strings.Join(job.SourceBlocks, " "))
 
 	if err := w.getBlockMetadata(logger, job); err != nil {
+		if job.ctx.Err() != nil {
+			statusName = statusCanceled
+		}
 		// The error is likely to be transient, therefore the job is not failed,
 		// but just abandoned – another worker will pick it up and try again.
 		return
@@ -490,14 +542,6 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}))
 	}
 
-	// Deletion rewrites must not export surviving L0 samples a second time.
-	if job.GetDeleteFilter() == nil {
-		if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
-			defer observer.Close()
-			options = append(options, block.WithSampleObserver(observer))
-		}
-	}
-
 	duplicates := make(map[string]uint64)
 	options = append(options, block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
 		duplicates[tenant] += n
@@ -525,6 +569,18 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		return
 	}
 	defer releaseBudget()
+	if !w.beginExecution(job) {
+		statusName = statusCanceled
+		return
+	}
+
+	// Deletion rewrites must not export surviving L0 samples a second time.
+	if job.GetDeleteFilter() == nil {
+		if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
+			defer observer.Close()
+			options = append(options, block.WithSampleObserver(observer))
+		}
+	}
 
 	if w.budget.limit > 0 && jobBytes > w.budget.limit {
 		w.metrics.oversizedJobs.WithLabelValues(jobLevel).Inc()

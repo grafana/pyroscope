@@ -534,13 +534,8 @@ func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
 
 	var once sync.Once
 	done := make(chan struct{})
-	triggerShutdown := func(context.Context, *metastorev1.PollCompactionJobsRequest, ...grpc.CallOption) {
-		once.Do(func() { close(done) })
-	}
-
 	compactionClient.EXPECT().
 		PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).
-		Run(triggerShutdown).
 		Return(&metastorev1.PollCompactionJobsResponse{
 			CompactionJobs: []*metastorev1.CompactionJob{job},
 			Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
@@ -556,6 +551,7 @@ func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
 		Delete(mock.Anything, mock.Anything).
 		Run(func(context.Context, string) {
 			blocksDeleted.Add(1)
+			once.Do(func() { close(done) })
 			time.Sleep(100 * time.Millisecond)
 		}).Return(nil).Times(2)
 
@@ -570,7 +566,7 @@ func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
 	assert.NoError(t, svc.StartAsync(ctx))
 	assert.NoError(t, svc.AwaitRunning(ctx))
 
-	// Wait for the job to be polled and shutdown immediately.
+	// Wait until cleanup starts: shutdown no longer drains unstarted jobs.
 	select {
 	case <-done:
 	case <-ctx.Done():
