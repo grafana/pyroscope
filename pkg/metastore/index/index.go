@@ -2,6 +2,7 @@ package index
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"iter"
@@ -136,6 +137,9 @@ func (i *Index) Restore(tx *bbolt.Tx) error {
 func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 	p := i.partitionKeyForBlock(b.Id)
 	return i.shards.update(tx, p, metadata.Tenant(b), b.Shard, func(s *indexstore.Shard) error {
+		if len(s.Find(tx, b.Id)) > 0 {
+			return ErrBlockExists
+		}
 		if err := s.Store(tx, b); err != nil {
 			return err
 		}
@@ -146,7 +150,7 @@ func (i *Index) InsertBlock(tx *bbolt.Tx, b *metastorev1.BlockMeta) error {
 
 func (i *Index) ReplaceBlocks(tx *bbolt.Tx, compacted *metastorev1.CompactedBlocks) error {
 	for _, b := range compacted.NewBlocks {
-		if err := i.InsertBlock(tx, b); err != nil {
+		if err := i.InsertBlock(tx, b); err != nil && !errors.Is(err, ErrBlockExists) {
 			return err
 		}
 	}
