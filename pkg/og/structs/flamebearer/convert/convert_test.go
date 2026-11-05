@@ -160,4 +160,39 @@ func TestConvert(t *testing.T) {
 
 		require.Len(t, b[0].FlamebearerProfileV1.Flamebearer.Levels, 2)
 	})
+
+	t.Run("delta heap profile with negative samples does not corrupt flame graph", func(t *testing.T) {
+		p := &profilev1.Profile{
+			SampleType: []*profilev1.ValueType{
+				{Type: 1, Unit: 2},
+			},
+			Sample: []*profilev1.Sample{
+				// Positive sample
+				{LocationId: []uint64{1}, Value: []int64{100}},
+				// Negative sample from delta heap deallocations
+				{LocationId: []uint64{1}, Value: []int64{-50}},
+				// Zero sample
+				{LocationId: []uint64{1}, Value: []int64{0}},
+			},
+			Location: []*profilev1.Location{
+				{Id: 1, Address: 0x1000, Line: []*profilev1.Line{{FunctionId: 1, Line: 10}}},
+			},
+			Function: []*profilev1.Function{
+				{Id: 1, Name: 3},
+			},
+			PeriodType:  &profilev1.ValueType{Type: 1, Unit: 2},
+			StringTable: []string{"", "inuse_space", "bytes", "main"},
+		}
+
+		data, err := proto.Marshal(p)
+		require.NoError(t, err)
+
+		b, err := PprofToProfile(data, "delta-heap", Limits{MaxNodes: 1024})
+		require.NoError(t, err)
+		require.Len(t, b, 1)
+
+		fb := b[0].FlamebearerProfileV1.Flamebearer
+		// Flamebearer numTicks should reflect only positive sample values (100), not reduced by -50
+		require.Equal(t, 100, fb.NumTicks)
+	})
 }

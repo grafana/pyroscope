@@ -1546,6 +1546,12 @@ func sanitizeProfile(p *profilev1.Profile, stats *sanitizeStats) {
 			stats.sampleValueMismatch++
 			return true
 		}
+		for i := range x.Value {
+			if x.Value[i] < 0 {
+				stats.sampleValueNegative++
+				x.Value[i] = 0
+			}
+		}
 		for i := range x.LocationId {
 			if x.LocationId[i] = t[x.LocationId[i]]; x.LocationId[i] == 0 {
 				stats.sampleLocationInvalid++
