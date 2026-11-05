@@ -2,7 +2,6 @@ package queryfrontend
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -18,10 +17,9 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	"github.com/grafana/pyroscope/v2/pkg/frontend"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
-	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
@@ -41,11 +39,13 @@ func newSMPQueryFrontend(
 	return NewQueryFrontend(
 		log.NewNopLogger(),
 		limits,
+		frontend.Config{},
+		30*time.Second,
 		metaClient,
 		nil, // tenantServiceClient
 		backend,
-		nil, // symbolizer
 		nil, // diagnosticsStore
+		nil, // reg
 	)
 }
 
@@ -196,12 +196,14 @@ func TestSelectMergeProfile_PprofPath_SendsQueryPprof(t *testing.T) {
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
 
 	var observedQueryType queryv1.QueryType
+	var observedTraceIDSelector []string
 	mockBackend := mockqueryfrontend.NewMockQueryBackend(t)
 	mockBackend.On("Invoke", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			req := args.Get(1).(*queryv1.InvokeRequest)
 			if len(req.Query) > 0 {
 				observedQueryType = req.Query[0].QueryType
+				observedTraceIDSelector = req.Query[0].Pprof.GetTraceIdSelector()
 			}
 		}).
 		Return(&queryv1.InvokeResponse{
@@ -215,15 +217,20 @@ func TestSelectMergeProfile_PprofPath_SendsQueryPprof(t *testing.T) {
 	ctx := user.InjectOrgID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 
+	traceID := "0123456789abcdef0123456789abcdef"
 	_, err := qf.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: smpProfileType,
-		LabelSelector: "{}",
-		Start:         start,
-		End:           end,
+		ProfileTypeID:   smpProfileType,
+		LabelSelector:   "{}",
+		Start:           start,
+		End:             end,
+		TraceIdSelector: []string{traceID},
 	}))
 
 	require.NoError(t, err)
 	assert.Equal(t, queryv1.QueryType_QUERY_PPROF, observedQueryType)
+	// The trace_id selector must reach the backend query plan; dropping it here
+	// would silently return an unfiltered profile.
+	assert.Equal(t, []string{traceID}, observedTraceIDSelector)
 }
 
 func TestSelectMergeProfile_TreePath_NoBlocks(t *testing.T) {
@@ -328,8 +335,9 @@ func TestSelectMergeProfile_TreePath_ReconstructsProfile(t *testing.T) {
 	require.NotNil(t, resp.Msg.PeriodType)
 }
 
-func TestSelectMergeProfile_TreePath_SendsQueryTreeWithFullSymbols(t *testing.T) {
-	// Ensure the tree path sends QUERY_TREE with FullSymbols=true to the backend.
+func TestSelectMergeStacktraces_PprofTreePathForwardsSpanSelector(t *testing.T) {
+	// Ensure the tree-backed pprof path requests full symbols and forwards spans.
+	spanSelector := []string{"0000000000000001"}
 	mockLimits := mockfrontend.NewMockLimits(t)
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
@@ -371,17 +379,21 @@ func TestSelectMergeProfile_TreePath_SendsQueryTreeWithFullSymbols(t *testing.T)
 	ctx := user.InjectOrgID(context.Background(), smpTenant)
 	start, end := smpValidTimeRange()
 
-	_, err := qf.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	resp, err := qf.SelectMergeStacktraces(ctx, connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID: smpProfileType,
 		LabelSelector: "{}",
 		Start:         start,
 		End:           end,
+		Format:        querierv1.ProfileFormat_PROFILE_FORMAT_PPROF,
+		SpanSelector:  spanSelector,
 	}))
 
 	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.GetPprof().GetProfile())
 	require.NotNil(t, capturedQuery)
 	assert.Equal(t, queryv1.QueryType_QUERY_TREE, capturedQuery.QueryType)
 	assert.True(t, capturedQuery.Tree.GetFullSymbols(), "tree path must request full symbols")
+	assert.Equal(t, spanSelector, capturedQuery.Tree.GetSpanSelector())
 }
 
 func TestSelectMergeProfile_TreePath_OtherLocationRef(t *testing.T) {
@@ -522,174 +534,4 @@ func TestSelectMergeProfile_PGOBypassesTreePath(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, queryv1.QueryType_QUERY_PPROF, observedQueryType,
 		"GoPGO selector must bypass the tree path and use QUERY_PPROF")
-}
-
-func TestSelectMergeProfiles_Symbolization(t *testing.T) {
-	// Backend response for the pprof path.
-	pprofBackendResp := &queryv1.InvokeResponse{
-		Reports: []*queryv1.Report{{
-			ReportType: queryv1.ReportType_REPORT_PPROF,
-			Pprof:      &queryv1.PprofReport{Pprof: createProfile(t)},
-		}},
-	}
-
-	// Backend response for the tree path.
-	lrTree := new(phlaremodel.LocationRefNameTree)
-	lrTree.InsertStack(10, phlaremodel.LocationRefName(1))
-	treeBytes := lrTree.Bytes(-1, func(n phlaremodel.LocationRefName) phlaremodel.LocationRefName { return n })
-	treeBackendResp := &queryv1.InvokeResponse{
-		Reports: []*queryv1.Report{{
-			ReportType: queryv1.ReportType_REPORT_TREE,
-			Tree: &queryv1.TreeReport{
-				Tree: treeBytes,
-				Symbols: &queryv1.TreeSymbols{
-					Strings:   []string{"", "funcname"},
-					Mappings:  []*profilev1.Mapping{{Id: 0}, {Id: 1, HasFunctions: false}},
-					Locations: []*profilev1.Location{{Id: 0}, {Id: 1, MappingId: 1}},
-					Functions: []*profilev1.Function{{Id: 0}},
-				},
-			},
-		}},
-	}
-
-	tests := []struct {
-		name            string
-		tenantID        string
-		useTree         bool
-		hasUnsymbolized bool
-		setupMocks      func(*mockfrontend.MockLimits, *mockqueryfrontend.MockSymbolizer)
-		verifyResult    func(*testing.T, *mockqueryfrontend.MockSymbolizer, *connect.Response[profilev1.Profile])
-	}{
-		{
-			name:            "pprof: enabled with unsymbolized profiles",
-			tenantID:        "tenant1",
-			hasUnsymbolized: true,
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant1").Return(true)
-				l.On("QuerySanitizeOnMerge", "tenant1").Return(false)
-				s.On("SymbolizePprof", mock.Anything, mock.Anything).
-					Run(func(args mock.Arguments) {
-						p := args.Get(1).(*profilev1.Profile)
-						p.StringTable = append(p.StringTable, "symbolized")
-					}).
-					Return(nil).Once()
-			},
-			verifyResult: func(t *testing.T, _ *mockqueryfrontend.MockSymbolizer, resp *connect.Response[profilev1.Profile]) {
-				require.Contains(t, resp.Msg.StringTable, "symbolized")
-			},
-		},
-		{
-			name:            "pprof: disabled",
-			tenantID:        "tenant2",
-			hasUnsymbolized: true,
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant2").Return(false)
-				l.On("QuerySanitizeOnMerge", "tenant2").Return(false)
-			},
-			verifyResult: func(t *testing.T, _ *mockqueryfrontend.MockSymbolizer, resp *connect.Response[profilev1.Profile]) {
-				require.NotContains(t, resp.Msg.StringTable, "symbolized")
-			},
-		},
-		{
-			name:            "pprof: enabled but no unsymbolized profiles",
-			tenantID:        "tenant3",
-			hasUnsymbolized: false,
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant3").Return(true)
-				l.On("QuerySanitizeOnMerge", "tenant3").Return(false)
-			},
-			verifyResult: func(t *testing.T, _ *mockqueryfrontend.MockSymbolizer, resp *connect.Response[profilev1.Profile]) {
-				require.NotContains(t, resp.Msg.StringTable, "symbolized")
-			},
-		},
-		{
-			name:            "tree: enabled with unsymbolized profiles",
-			tenantID:        "tenant4",
-			useTree:         true,
-			hasUnsymbolized: true,
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant4").Return(true)
-				l.On("QuerySanitizeOnMerge", "tenant4").Return(false)
-				s.On("SymbolizePprof", mock.Anything, mock.Anything).Return(nil).Once()
-			},
-			verifyResult: func(t *testing.T, s *mockqueryfrontend.MockSymbolizer, _ *connect.Response[profilev1.Profile]) {
-				s.AssertCalled(t, "SymbolizePprof", mock.Anything, mock.Anything)
-			},
-		},
-		{
-			name:            "tree: disabled",
-			tenantID:        "tenant5",
-			useTree:         true,
-			hasUnsymbolized: true,
-			setupMocks: func(l *mockfrontend.MockLimits, s *mockqueryfrontend.MockSymbolizer) {
-				l.On("SymbolizerEnabled", "tenant5").Return(false)
-				l.On("QuerySanitizeOnMerge", "tenant5").Return(false)
-			},
-			verifyResult: func(t *testing.T, s *mockqueryfrontend.MockSymbolizer, _ *connect.Response[profilev1.Profile]) {
-				s.AssertNotCalled(t, "SymbolizePprof", mock.Anything, mock.Anything)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockLimits := mockfrontend.NewMockLimits(t)
-			mockLimits.On("MaxQueryLookback", tt.tenantID).Return(time.Duration(0))
-			mockLimits.On("MaxQueryLength", tt.tenantID).Return(time.Duration(0))
-			mockLimits.On("MaxFlameGraphNodesOnSelectMergeProfile", tt.tenantID).Return(false)
-			mockLimits.On("QueryTreeEnabled", tt.tenantID).Return(tt.useTree)
-			mockSymbolizer := mockqueryfrontend.NewMockSymbolizer(t)
-			tt.setupMocks(mockLimits, mockSymbolizer)
-
-			backendResp := pprofBackendResp
-			if tt.useTree {
-				backendResp = treeBackendResp
-			}
-			mockQueryBackend := mockqueryfrontend.NewMockQueryBackend(t)
-			mockQueryBackend.On("Invoke", mock.Anything, mock.Anything).Return(backendResp, nil)
-
-			unsymbolizedValue := fmt.Sprintf("%v", tt.hasUnsymbolized)
-			mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
-			mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).
-				Return(&metastorev1.QueryMetadataResponse{
-					Blocks: []*metastorev1.BlockMeta{{
-						Id: "block_id",
-						Datasets: []*metastorev1.Dataset{{
-							Labels: []int32{1, 1, 2},
-						}},
-						StringTable: []string{
-							"", // First string is always empty by convention
-							metadata.LabelNameUnsymbolized,
-							unsymbolizedValue,
-						},
-					}},
-				}, nil).
-				Once()
-
-			qf := NewQueryFrontend(
-				log.NewNopLogger(),
-				mockLimits,
-				mockMetadataClient,
-				nil,
-				mockQueryBackend,
-				mockSymbolizer,
-				nil,
-			)
-
-			ctx := tenant.InjectTenantID(context.Background(), tt.tenantID)
-			start, end := smpValidTimeRange()
-			resp, err := qf.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-				ProfileTypeID: smpProfileType,
-				LabelSelector: `{service_name="test-service"}`,
-				Start:         start,
-				End:           end,
-			}))
-
-			require.NoError(t, err)
-			tt.verifyResult(t, mockSymbolizer, resp)
-
-			mockMetadataClient.AssertExpectations(t)
-			mockQueryBackend.AssertExpectations(t)
-		})
-	}
 }

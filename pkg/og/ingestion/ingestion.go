@@ -35,11 +35,13 @@ const (
 )
 
 type RawProfile interface {
-	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata) error
+	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata, Limits) error
 }
 
 type Limits interface {
 	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
 }
 
 type ParseableToPprof interface {
@@ -47,6 +49,10 @@ type ParseableToPprof interface {
 }
 
 type Metadata struct {
+	// OriginalStartTimeNanos is the caller-supplied start time, before defaults
+	// are applied. Zero means no timestamp is available for profile identity.
+	OriginalStartTimeNanos int64
+
 	StartTime       time.Time
 	EndTime         time.Time
 	LabelSet        *labelset.LabelSet

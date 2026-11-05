@@ -21,6 +21,33 @@ func TestRangeHeatmap_EmptyReport(t *testing.T) {
 	assert.Nil(t, series)
 }
 
+func TestRangeHeatmap_SpanExemplarIncludesTraceID(t *testing.T) {
+	traceID := []byte{0x4b, 0xf9, 0x2f, 0x35, 0x77, 0xb3, 0x4d, 0xa6, 0xa3, 0xce, 0x92, 0x9d, 0x0e, 0x0e, 0x47, 0x36}
+	reports := []*queryv1.HeatmapReport{{
+		AttributeTable: &queryv1.AttributeTable{
+			Keys:   []string{""},
+			Values: []string{"profile-id"},
+		},
+		HeatmapSeries: []*queryv1.HeatmapSeries{{
+			Points: []*queryv1.HeatmapPoint{{
+				Timestamp: 500,
+				ProfileId: 0,
+				SpanId:    0x0102030405060708,
+				TraceId:   traceID,
+				Value:     1000,
+			}},
+		}},
+	}}
+
+	series := RangeHeatmap(reports, 0, 1000, 100, typesv1.ExemplarType_EXEMPLAR_TYPE_SPAN)
+	require.Len(t, series, 1)
+	require.Len(t, series[0].Slots, 1)
+	require.Len(t, series[0].Slots[0].Exemplars, 1)
+	exemplar := series[0].Slots[0].Exemplars[0]
+	assert.Equal(t, "4bf92f3577b34da6a3ce929d0e0e4736", exemplar.TraceId)
+	assert.Equal(t, "0807060504030201", exemplar.SpanId)
+}
+
 func TestRangeHeatmap_SinglePoint(t *testing.T) {
 	reports := []*queryv1.HeatmapReport{
 		{

@@ -1,3 +1,4 @@
+import { CLIENT_CAPABILITIES_ACCEPT_HEADER } from './clientCapabilities';
 import registry from './profileTypes.json';
 
 export interface Service {
@@ -32,15 +33,21 @@ export async function checkMultitenancy(): Promise<
   'single_tenant' | 'multi_tenant' | 'error'
 > {
   try {
+    // /LabelNames requires a time range; the backend returns 400 without
+    // one regardless of auth state. We send a short recent window so the
+    // auth-vs-no-auth distinction (401 vs 200) is the only signal we read.
+    const end = Date.now();
+    const start = end - 5 * 60_000;
     const res = await fetch(
       `${getBasePath()}/querier.v1.QuerierService/LabelNames`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Accept: CLIENT_CAPABILITIES_ACCEPT_HEADER,
           'X-Scope-OrgID': '',
         },
-        body: JSON.stringify({ matchers: [] }),
+        body: JSON.stringify({ matchers: [], start, end }),
       },
     );
     if (res.ok) return 'single_tenant';
@@ -51,18 +58,57 @@ export async function checkMultitenancy(): Promise<
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Accept: CLIENT_CAPABILITIES_ACCEPT_HEADER,
   };
   if (orgID) headers['X-Scope-OrgID'] = orgID;
   const res = await fetch(getBasePath() + path, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
   if (!res.ok) throw new Error(`${path} ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
+}
+
+interface NamesResponse {
+  names?: string[];
+}
+
+export async function fetchLabelNames(
+  matchers: string[],
+  start: number,
+  end: number,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const data = await post<NamesResponse>(
+    '/querier.v1.QuerierService/LabelNames',
+    { matchers, start, end },
+    signal,
+  );
+  return data.names ?? [];
+}
+
+export async function fetchLabelValues(
+  name: string,
+  matchers: string[],
+  start: number,
+  end: number,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const data = await post<NamesResponse>(
+    '/querier.v1.QuerierService/LabelValues',
+    { name, matchers, start, end },
+    signal,
+  );
+  return data.names ?? [];
 }
 
 interface LabelSet {

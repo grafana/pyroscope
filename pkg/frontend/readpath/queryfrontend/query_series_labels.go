@@ -72,19 +72,26 @@ func (q *QueryFrontend) Series(
 		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 	}
 
-	if q.isProfileTypeQuery(c.Msg.LabelNames, c.Msg.Matchers) {
-		level.Debug(q.logger).Log("msg", "listing profile types from metadata as series labels")
-		return q.queryProfileTypeMetadataLabels(ctx, tenantIDs, c.Msg.Start, c.Msg.End, c.Msg.LabelNames)
-	}
-
-	labelSelector, err := buildLabelSelectorFromMatchers(c.Msg.Matchers)
+	matchers, err := parseMatchers(c.Msg.Matchers)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if q.isProfileTypeQuery(c.Msg.LabelNames, matchers) {
+		level.Debug(q.logger).Log("msg", "listing profile types from metadata as series labels")
+		return q.queryProfileTypeMetadataLabels(ctx, tenantIDs, c.Msg.Start, c.Msg.End, c.Msg.LabelNames)
+	}
+
+	labelSelector := matchersToLabelSelector(matchers)
+
 	labelNames, err := q.filterLabelNames(ctx, c, c.Msg.LabelNames, c.Msg.Matchers)
 	if err != nil {
 		return nil, err
+	}
+	if len(c.Msg.LabelNames) > 0 && len(labelNames) == 0 {
+		// Every requested label name was filtered out. Querying with no label
+		// names would return all labels, including the filtered ones.
+		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 	}
 
 	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
@@ -97,7 +104,7 @@ func (q *QueryFrontend) Series(
 				LabelNames: labelNames,
 			},
 		}},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}

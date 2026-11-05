@@ -2,11 +2,11 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 
-	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/dot"
@@ -18,8 +18,21 @@ func (q *QueryFrontend) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
-	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_DOT {
+	if len(c.Msg.SpanSelector) > 0 && len(c.Msg.TraceIdSelector) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("span_selector and trace_id_selector cannot be combined"))
+	}
+
+	switch c.Msg.Format {
+	case querierv1.ProfileFormat_PROFILE_FORMAT_DOT:
 		return q.selectMergeStacktracesDot(ctx, c)
+	case querierv1.ProfileFormat_PROFILE_FORMAT_PPROF:
+		p, err := q.selectMergeStacktracesPprof(ctx, c.Msg)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+			Pprof: &querierv1.PprofProfile{Profile: p},
+		}), nil
 	}
 
 	b, err := q.selectMergeStacktracesTree(ctx, c)
@@ -58,7 +71,7 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 		}
 	}
 
-	pprofResp, err := q.SelectMergeProfile(ctx, connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	profile, err := q.selectMergeStacktracesPprof(ctx, &querierv1.SelectMergeStacktracesRequest{
 		ProfileTypeID:      c.Msg.ProfileTypeID,
 		LabelSelector:      c.Msg.LabelSelector,
 		Start:              c.Msg.Start,
@@ -66,15 +79,17 @@ func (q *QueryFrontend) selectMergeStacktracesDot(
 		MaxNodes:           &sourceMaxNodes,
 		StackTraceSelector: c.Msg.StackTraceSelector,
 		ProfileIdSelector:  c.Msg.ProfileIdSelector,
-	}))
+		TraceIdSelector:    c.Msg.TraceIdSelector,
+		SpanSelector:       c.Msg.SpanSelector,
+	})
 	if err != nil {
 		return nil, err
 	}
-	if pprofResp.Msg == nil || len(pprofResp.Msg.Sample) == 0 {
+	if profile == nil || len(profile.Sample) == 0 {
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
 	}
 
-	d, err := dot.FromProfile(pprofResp.Msg, int(dotMaxNodes))
+	d, err := dot.FromProfile(profile, int(dotMaxNodes))
 	if err != nil {
 		return nil, err
 	}
@@ -111,31 +126,21 @@ func (q *QueryFrontend) selectMergeStacktracesTree(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	report, err := q.querySingle(ctx,
-		&queryv1.QueryRequest{
-			StartTime:     c.Msg.Start,
-			EndTime:       c.Msg.End,
-			LabelSelector: labelSelector,
-			Query: []*queryv1.Query{{
-				QueryType: queryv1.QueryType_QUERY_TREE,
-				Tree: &queryv1.TreeQuery{
-					MaxNodes:           maxNodes,
-					StackTraceSelector: c.Msg.StackTraceSelector,
-					ProfileIdSelector:  c.Msg.ProfileIdSelector,
-				},
-			}},
-		},
-		func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend {
-			shouldSymbolize := q.shouldSymbolize(ctx, tenantIDs, blocks)
-			if !shouldSymbolize {
-				return upstream
-			}
-			return &backendTreeSymbolizer{
-				upstream:   upstream,
-				symbolizer: q.symbolizer,
-			}
-		},
-	)
+	report, err := q.querySingle(ctx, &queryv1.QueryRequest{
+		StartTime:     c.Msg.Start,
+		EndTime:       c.Msg.End,
+		LabelSelector: labelSelector,
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TREE,
+			Tree: &queryv1.TreeQuery{
+				MaxNodes:           maxNodes,
+				StackTraceSelector: c.Msg.StackTraceSelector,
+				ProfileIdSelector:  c.Msg.ProfileIdSelector,
+				TraceIdSelector:    c.Msg.TraceIdSelector,
+				SpanSelector:       c.Msg.SpanSelector,
+			},
+		}},
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -29,7 +29,6 @@ type HeadMetrics struct {
 	blockDurationSeconds        prometheus.Histogram
 	flushedBlocks               *prometheus.CounterVec
 	//flushedBlocksReasons        *prometheus.CounterVec
-	flushedBlocksUnsymbolized   *prometheus.CounterVec
 	writtenProfileSegments      *prometheus.CounterVec
 	writtenProfileSegmentsBytes prometheus.Histogram
 }
@@ -147,10 +146,6 @@ func NewHeadMetricsWithPrefix(reg prometheus.Registerer, prefix string) *HeadMet
 		//	Name: prefix + "_head_flushed_reason_total",
 		//	Help: "Total count of reasons why block has been flushed.",
 		//}, []string{"reason"}),
-		flushedBlocksUnsymbolized: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: prefix + "_head_flushed_blocks_unsymbolized_total",
-			Help: "Total number of blocks flushed, labeled by unsymbolized status (unsymbolized=true means at least one profile lacks symbols, false means all profiles are symbolized)",
-		}, []string{"unsymbolized"}),
 		writtenProfileSegments: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: prefix + "_head_written_profile_segments_total",
 			Help: "Total number and status of profile row groups segments written.",
@@ -195,7 +190,6 @@ func (m *HeadMetrics) register(reg prometheus.Registerer) {
 	reg.MustRegister(m.blockDurationSeconds)
 	reg.MustRegister(m.flushedBlocks)
 	//reg.MustRegister(m.flushedBlocksReasons)
-	reg.MustRegister(m.flushedBlocksUnsymbolized)
 	reg.MustRegister(m.writtenProfileSegments)
 	reg.MustRegister(m.writtenProfileSegmentsBytes)
 }

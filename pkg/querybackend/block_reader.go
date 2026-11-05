@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -26,6 +27,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 // BlockReader reads blocks from object storage. Each block is represented by
@@ -46,12 +48,19 @@ import (
 //                         query-b
 //
 
+type Overrides interface {
+	IncludeStrippedProfiles(tenantID string) bool
+	DatasetLookupFromMetadata(tenantID string) bool
+}
+
 type BlockReader struct {
 	log     log.Logger
 	storage objstore.Bucket
 
 	metrics  *metrics
 	hostname string
+
+	Overrides Overrides
 
 	// TODO:
 	//  - Use a worker pool instead of the errgroup.
@@ -61,13 +70,14 @@ type BlockReader struct {
 	//    Instead, they should share the processing pipeline, if possible.
 }
 
-func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer) *BlockReader {
+func NewBlockReader(logger log.Logger, storage objstore.Bucket, reg prometheus.Registerer, overrides Overrides) *BlockReader {
 	hostname, _ := os.Hostname()
 	return &BlockReader{
-		log:      logger,
-		storage:  storage,
-		metrics:  newMetrics(reg),
-		hostname: hostname,
+		log:       logger,
+		storage:   storage,
+		metrics:   newMetrics(reg),
+		hostname:  hostname,
+		Overrides: overrides,
 	}
 }
 
@@ -95,12 +105,20 @@ func (b *BlockReader) Invoke(
 		tenantMap[tenant] = struct{}{}
 	}
 
+	includeStripped := validationutil.AllTruePerTenant(req.Tenant, b.Overrides.IncludeStrippedProfiles)
+	datasetLookupFromMetadata := validationutil.AllTruePerTenant(req.Tenant, b.Overrides.DatasetLookupFromMetadata)
+
 	var blockExecCollector *blockExecutionCollector
 	if collectDiag {
 		blockExecCollector = &blockExecutionCollector{}
 	}
 
 	weightCollector := &queryWeightCollector{}
+
+	// Per-invocation byte counter: only the successful response carries the
+	// total, so retried calls from the query-frontend never double-count.
+	var fetchedBytes atomic.Uint64
+	countingStorage := objstore.NewCountingBucket(b.storage, &fetchedBytes)
 
 	var blocksCount, datasetsCount int64
 	for _, md := range req.QueryPlan.Root.Blocks {
@@ -115,22 +133,29 @@ func (b *BlockReader) Invoke(
 		}
 		blocksCount++
 		datasetsCount += int64(len(md.Datasets))
-		obj := block.NewObject(b.storage, md)
+		obj := block.NewObject(countingStorage, md)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx:             ctx,
-			log:             b.log,
-			req:             r,
-			agg:             agg,
-			obj:             obj,
-			grp:             g,
-			execCollector:   blockExecCollector,
-			weightCollector: weightCollector,
+			ctx:                       ctx,
+			log:                       b.log,
+			req:                       r,
+			agg:                       agg,
+			obj:                       obj,
+			grp:                       g,
+			execCollector:             blockExecCollector,
+			weightCollector:           weightCollector,
+			includeStripped:           includeStripped,
+			datasetLookupFromMetadata: datasetLookupFromMetadata,
 		}).execute))
 	}
 
 	if err = g.Wait(); err != nil {
 		return nil, err
 	}
+
+	// Wait for any async readers (e.g. parquet ReadModeAsync goroutines) that
+	// may still be draining a GetRange reader after the errgroup returned.
+	// This ensures fetchedBytes is stable before we sample it below.
+	countingStorage.Wait()
 
 	if weightCollector.datasetsCount > 0 {
 		traceID, _ := tracing.ExtractTraceID(ctx)
@@ -155,20 +180,28 @@ func (b *BlockReader) Invoke(
 
 	resp := agg.response()
 
+	if resp.Diagnostics == nil {
+		resp.Diagnostics = &queryv1.Diagnostics{}
+	}
+	endTime := time.Now()
+	stats := &queryv1.ExecutionStats{
+		BytesFetched:         fetchedBytes.Load(),
+		ProcessingDurationNs: endTime.Sub(startTime).Nanoseconds(),
+	}
 	if collectDiag {
-		if resp.Diagnostics == nil {
-			resp.Diagnostics = &queryv1.Diagnostics{}
-		}
+		stats.BlocksRead = blocksCount
+		stats.DatasetsProcessed = datasetsCount
+		stats.BlockExecutions = blockExecCollector.collect()
 		resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
 			Type:        queryv1.QueryNode_READ,
 			Executor:    b.hostname,
 			StartTimeNs: startTime.UnixNano(),
-			EndTimeNs:   time.Now().UnixNano(),
-			Stats: &queryv1.ExecutionStats{
-				BlocksRead:        blocksCount,
-				DatasetsProcessed: datasetsCount,
-				BlockExecutions:   blockExecCollector.collect(),
-			},
+			EndTimeNs:   endTime.UnixNano(),
+			Stats:       stats,
+		}
+	} else {
+		resp.Diagnostics.ExecutionNode = &queryv1.ExecutionNode{
+			Stats: stats,
 		}
 	}
 

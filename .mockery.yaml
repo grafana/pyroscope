@@ -27,7 +27,6 @@ packages:
   github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend:
     interfaces:
       QueryBackend:
-      Symbolizer:
   github.com/grafana/pyroscope/v2/pkg/ingester/otlp:
     interfaces:
       PushService:
@@ -71,7 +70,3 @@ packages:
   github.com/grafana/pyroscope/v2/pkg/frontend/vcs/client:
     interfaces:
       repositoryService:
-  github.com/grafana/pyroscope/v2/pkg/symbolizer:
-    interfaces:
-      DebuginfodClient:
-      DebugInfoStore:

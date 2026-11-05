@@ -21,11 +21,10 @@ import (
 )
 
 type FlushedHead struct {
-	Index        []byte
-	Profiles     []byte
-	Symbols      []byte
-	Unsymbolized bool
-	Meta         struct {
+	Index    []byte
+	Profiles []byte
+	Symbols  []byte
+	Meta     struct {
 		ProfileTypeNames []string
 		MinTimeNanos     int64
 		MaxTimeNanos     int64
@@ -147,13 +146,6 @@ func (h *Head) Flush(ctx context.Context) (res *FlushedHead, err error) {
 
 	blockSize := len(res.Index) + len(res.Profiles) + len(res.Symbols)
 	h.metrics.flushedBlocks.WithLabelValues("success").Inc()
-
-	unsymbolized := "false"
-	if res.Unsymbolized {
-		unsymbolized = "true"
-	}
-
-	h.metrics.flushedBlocksUnsymbolized.WithLabelValues(unsymbolized).Inc()
 	h.metrics.flushedBlockSamples.Observe(float64(res.Meta.NumSamples))
 	h.metrics.flusehdBlockProfiles.Observe(float64(res.Meta.NumProfiles))
 	h.metrics.flushedBlockSeries.Observe(float64(res.Meta.NumSeries))
@@ -179,8 +171,6 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return res, nil
 	}
 
-	res.Unsymbolized = HasUnsymbolizedProfiles(h.symbols.Symbols())
-
 	symbolsBuffer := bytes.NewBuffer(nil)
 	if err := symdb.WritePartition(h.symbols, symbolsBuffer); err != nil {
 		return nil, err
@@ -200,16 +190,4 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return nil, fmt.Errorf("failed to write profiles parquet: %w", err)
 	}
 	return res, nil
-}
-
-// TODO: move into the symbolizer package when available
-func HasUnsymbolizedProfiles(symbols *symdb.Symbols) bool {
-	locations := symbols.Locations
-	mappings := symbols.Mappings
-	for _, loc := range locations {
-		if !mappings[loc.MappingId].HasFunctions {
-			return true
-		}
-	}
-	return false
 }

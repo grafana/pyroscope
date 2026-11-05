@@ -55,23 +55,24 @@ func createTestWorker(t *testing.T, client MetastoreClient, compactFn compactFun
 	return worker
 }
 
-func runWorker(w *Worker) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func runWorker(t *testing.T, w *Worker, done <-chan struct{}) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		svc := w.Service()
-		_ = svc.StartAsync(ctx)
-		_ = svc.AwaitRunning(ctx)
-		time.Sleep(500 * time.Millisecond)
-		svc.StopAsync()
-		_ = svc.AwaitTerminated(ctx)
-	}()
+	svc := w.Service()
+	require.NoError(t, svc.StartAsync(ctx))
+	require.NoError(t, svc.AwaitRunning(ctx))
 
-	wg.Wait()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		require.NoError(t, ctx.Err(), "timed out waiting for worker completion")
+	}
+
+	svc.StopAsync()
+	require.NoError(t, svc.AwaitTerminated(ctx))
 }
 
 func TestWorker_SuccessfulCompaction(t *testing.T) {
@@ -87,7 +88,15 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 	block2ID := test.ULID("2024-01-01T11:00:00Z")
 	compactedBlockID := test.ULID("2024-01-01T12:00:00Z")
 
+	// Force an in-progress poll before compaction finishes, rather than
+	// assuming compaction always completes within one polling interval.
+	resumeCompaction := make(chan struct{})
 	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+		select {
+		case <-resumeCompaction:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 		require.Len(t, blocks, 2)
 		assert.Equal(t, block1ID, blocks[0].Id)
 		assert.Equal(t, block2ID, blocks[1].Id)
@@ -112,6 +121,7 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 		{Id: block1ID, Tenant: 1, Shard: 1},
 		{Id: block2ID, Tenant: 1, Shard: 1},
 	}
+	done := make(chan struct{})
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return req.JobCapacity > 0
 	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{
@@ -124,13 +134,42 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 	}, nil).Once()
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
-		return len(req.StatusUpdates) > 0 && req.StatusUpdates[0].Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS
-	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
+		if len(req.StatusUpdates) != 1 {
+			return false
+		}
+		update := req.StatusUpdates[0]
+		return update.Name == job.Name &&
+			update.Token == assignment.Token &&
+			update.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS &&
+			update.CompactedBlocks != nil &&
+			len(update.CompactedBlocks.NewBlocks) == 1 &&
+			update.CompactedBlocks.NewBlocks[0].Id == compactedBlockID &&
+			update.CompactedBlocks.SourceBlocks != nil &&
+			update.CompactedBlocks.SourceBlocks.Tenant == job.Tenant &&
+			update.CompactedBlocks.SourceBlocks.Shard == job.Shard &&
+			assert.Equal(t, job.SourceBlocks, update.CompactedBlocks.SourceBlocks.Blocks)
+	}), mock.Anything).Run(func(context.Context, *metastorev1.PollCompactionJobsRequest, ...grpc.CallOption) {
+		close(done)
+	}).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
 
-	// Additional polls should return empty responses.
-	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
+	var resumeOnce sync.Once
+	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
+		return len(req.StatusUpdates) == 1 &&
+			req.StatusUpdates[0].Name == job.Name &&
+			req.StatusUpdates[0].Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS
+	}), mock.Anything).Run(func(context.Context, *metastorev1.PollCompactionJobsRequest, ...grpc.CallOption) {
+		resumeOnce.Do(func() { close(resumeCompaction) })
+	}).Return(&metastorev1.PollCompactionJobsResponse{
+		// Missing assignments revoke the lease and remove the running job.
+		Assignments: []*metastorev1.CompactionJobAssignment{assignment},
+	}, nil).Maybe()
 
-	runWorker(w)
+	// Additional polls without active jobs should return empty responses.
+	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
+		return len(req.StatusUpdates) == 0
+	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
+
+	runWorker(t, w, done)
 }
 
 func TestWorker_CompactionFailure(t *testing.T) {
@@ -144,7 +183,9 @@ func TestWorker_CompactionFailure(t *testing.T) {
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
 
+	done := make(chan struct{})
 	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+		close(done)
 		return nil, errors.New("compaction failed")
 	}
 
@@ -179,7 +220,7 @@ func TestWorker_CompactionFailure(t *testing.T) {
 	bucket.EXPECT().IsObjNotFoundErr(mock.Anything).Return(false).Maybe()
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
-	runWorker(w)
+	runWorker(t, w, done)
 }
 
 func TestWorker_JobCancellation(t *testing.T) {
@@ -193,7 +234,9 @@ func TestWorker_JobCancellation(t *testing.T) {
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
 
+	done := make(chan struct{})
 	compactFn := func(ctx context.Context, blocks []*metastorev1.BlockMeta, storage objstore.Bucket, options ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
+		close(done)
 		return nil, context.Canceled
 	}
 
@@ -224,7 +267,7 @@ func TestWorker_JobCancellation(t *testing.T) {
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
-	runWorker(w)
+	runWorker(t, w, done)
 }
 
 func TestWorker_TombstoneHandling(t *testing.T) {
@@ -273,6 +316,7 @@ func TestWorker_TombstoneHandling(t *testing.T) {
 	metadata := []*metastorev1.BlockMeta{
 		{Id: sourceBlockID, Tenant: 1, Shard: 1},
 	}
+	done := make(chan struct{})
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return req.JobCapacity > 0
@@ -292,11 +336,13 @@ func TestWorker_TombstoneHandling(t *testing.T) {
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return len(req.StatusUpdates) > 0 && req.StatusUpdates[0].Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS
-	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
+	}), mock.Anything).Run(func(context.Context, *metastorev1.PollCompactionJobsRequest, ...grpc.CallOption) {
+		close(done)
+	}).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
-	runWorker(w)
+	runWorker(t, w, done)
 }
 
 func TestWorker_MetadataNotFound(t *testing.T) {
@@ -328,6 +374,7 @@ func TestWorker_MetadataNotFound(t *testing.T) {
 		Name:  "test-job",
 		Token: 12345,
 	}
+	done := make(chan struct{})
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return req.JobCapacity > 0
@@ -336,11 +383,13 @@ func TestWorker_MetadataNotFound(t *testing.T) {
 		Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 	}, nil).Once()
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Return((*metastorev1.GetBlockMetadataResponse)(nil), errors.New("metadata not found")).Once()
+	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Run(func(context.Context, *metastorev1.GetBlockMetadataRequest, ...grpc.CallOption) {
+		close(done)
+	}).Return((*metastorev1.GetBlockMetadataResponse)(nil), errors.New("metadata not found")).Once()
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
-	runWorker(w)
+	runWorker(t, w, done)
 }
 
 func TestWorker_ShardTombstoneHandling(t *testing.T) {
@@ -395,6 +444,7 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 	metadata := []*metastorev1.BlockMeta{
 		{Id: sourceBlockID, Tenant: 1, Shard: 1},
 	}
+	done := make(chan struct{})
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return req.JobCapacity > 0
@@ -428,11 +478,13 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 	bucket.EXPECT().Delete(mock.Anything, block.BuildObjectPath("test-tenant", 1, 1, oldBlock2ID)).Return(nil).Once()
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return len(req.StatusUpdates) > 0 && req.StatusUpdates[0].Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_SUCCESS
-	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
+	}), mock.Anything).Run(func(context.Context, *metastorev1.PollCompactionJobsRequest, ...grpc.CallOption) {
+		close(done)
+	}).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Once()
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
-	runWorker(w)
+	runWorker(t, w, done)
 }
 
 var skipCompactionFn = func(context.Context, []*metastorev1.BlockMeta, objstore.Bucket, ...block.CompactionOption) ([]*metastorev1.BlockMeta, error) {
@@ -519,7 +571,11 @@ func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
 	assert.NoError(t, svc.AwaitRunning(ctx))
 
 	// Wait for the job to be polled and shutdown immediately.
-	<-done
+	select {
+	case <-done:
+	case <-ctx.Done():
+		require.NoError(t, ctx.Err(), "timed out waiting for worker completion")
+	}
 	svc.StopAsync()
 	assert.NoError(t, svc.AwaitTerminated(ctx))
 

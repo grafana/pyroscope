@@ -173,7 +173,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -181,7 +180,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (tenant) (rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))",
+          "expr": "sum by (tenant) (histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])))",
           "hide": false,
           "legendFormat": "__auto",
           "range": true,
@@ -271,7 +270,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -279,7 +277,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (tenant) (rate(pyroscope_distributor_received_decompressed_bytes_count{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))",
+          "expr": "sum by (tenant) (histogram_count(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -369,7 +367,6 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -434,7 +431,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -503,7 +499,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -632,7 +627,6 @@
           }
         ]
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -641,7 +635,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "\nsum by (tenant, slug, org_name, environment) (\n  rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval])\n)\n",
+          "expr": "\nsum by (tenant, slug, org_name, environment) (\n  histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\",namespace=~\"$namespace\"}[$__rate_interval]))\n)\n",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -802,14 +796,13 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (\nlabel_replace(\n  label_replace(\n        rate(pyroscope_request_duration_seconds_count{cluster=~\"$cluster\", container=~\"pyroscope|distributor|query-frontend\", namespace=~\"$namespace\", route=~\".*ingest.*|.*pusher.*\"}[$__rate_interval]),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
+          "expr": "sum by (status) (\nlabel_replace(\n  label_replace(\n        histogram_count(rate(pyroscope_request_duration_seconds{cluster=~\"$cluster\", container=~\"pyroscope|distributor|query-frontend\", namespace=~\"$namespace\", route=~\".*ingest.*|.*pusher.*\"}[$__rate_interval])),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
           "legendFormat": "{{status}} ",
           "range": true,
           "refId": "A"
@@ -898,7 +891,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -995,7 +987,6 @@
         "showRowNums": false,
         "sortBy": []
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1165,14 +1156,13 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (\nlabel_replace(\n  label_replace(\n        rate(pyroscope_request_duration_seconds_count{cluster=~\"$cluster\", container=~\"pyroscope|distributor|query-frontend\", namespace=~\"$namespace\", route=~\".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*\"}[$__rate_interval]),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
+          "expr": "sum by (status) (\nlabel_replace(\n  label_replace(\n        histogram_count(rate(pyroscope_request_duration_seconds{cluster=~\"$cluster\", container=~\"pyroscope|distributor|query-frontend\", namespace=~\"$namespace\", route=~\".*pyroscope_render.*|.*pyroscope_label.*|.*querierservice.*\"}[$__rate_interval])),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
           "legendFormat": "{{status}} ",
           "range": true,
           "refId": "A"
@@ -1261,7 +1251,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1382,7 +1371,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1425,7 +1413,6 @@
         "sortOrder": "Descending",
         "wrapLogMessage": true
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -1603,7 +1590,6 @@
           }
         ]
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -2524,7 +2510,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum by (status) (\nlabel_replace(\n  label_replace(\n        rate(pyroscope_request_duration_seconds_count{cluster=~\"$cluster\", job=~\"$namespace/ingester\", route=~\".*push.*\"}[$__rate_interval]),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
+              "expr": "sum by (status) (\nlabel_replace(\n  label_replace(\n        histogram_count(rate(pyroscope_request_duration_seconds{cluster=~\"$cluster\", job=~\"$namespace/ingester\", route=~\".*push.*\"}[$__rate_interval])),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
               "legendFormat": "{{status}} ",
               "range": true,
               "refId": "A"
@@ -2887,7 +2873,6 @@
             "showHeader": true,
             "showRowNums": false
           },
-          "pluginVersion": "9.5.0-53857pre",
           "targets": [
             {
               "datasource": {
@@ -3593,7 +3578,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (type) (rate(pyroscope_distributor_received_compressed_bytes_count{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (type) (histogram_count(rate(pyroscope_distributor_received_compressed_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -3690,7 +3675,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (type) (rate(pyroscope_distributor_received_samples_sum{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (type) (histogram_sum(rate(pyroscope_distributor_received_samples{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -3788,7 +3773,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (type) (rate(pyroscope_distributor_received_decompressed_bytes_sum{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (type) (histogram_sum(rate(pyroscope_distributor_received_decompressed_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -3886,7 +3871,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (type) (rate(pyroscope_distributor_received_samples_bytes_sum{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (type) (histogram_sum(rate(pyroscope_distributor_received_samples_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -3984,7 +3969,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (type) (rate(pyroscope_distributor_received_symbols_bytes_sum{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval]))",
+              "expr": "sum by (type) (histogram_sum(rate(pyroscope_distributor_received_symbols_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\"}[$__rate_interval])))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -4256,7 +4241,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum by (status,route) (\nlabel_replace(\n  label_replace(\n        rate(pyroscope_request_duration_seconds_count{cluster=~\"$cluster\", job=~\"$namespace/query-frontend\", route=~\".*render.*|.*querier.*\"}[$__rate_interval]),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
+              "expr": "sum by (status,route) (\nlabel_replace(\n  label_replace(\n        histogram_count(rate(pyroscope_request_duration_seconds{cluster=~\"$cluster\", job=~\"$namespace/query-frontend\", route=~\".*render.*|.*querier.*\"}[$__rate_interval])),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
               "legendFormat": "{{status}}  {{route}}",
               "range": true,
               "refId": "A"
@@ -6218,7 +6203,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum by (status,route) (\nlabel_replace(\n  label_replace(\n        rate(pyroscope_request_duration_seconds_count{cluster=~\"$cluster\", job=~\"$namespace/store-gateway\", route=~\".*store.*\"}[$__rate_interval]),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
+              "expr": "sum by (status,route) (\nlabel_replace(\n  label_replace(\n        histogram_count(rate(pyroscope_request_duration_seconds{cluster=~\"$cluster\", job=~\"$namespace/store-gateway\", route=~\".*store.*\"}[$__rate_interval])),\n  \"status\", \"${1}xx\", \"status_code\", \"([0-9])..\"),\n\"status\", \"${1}\", \"status_code\", \"([a-z]+)\")\n)",
               "legendFormat": "{{status}}  {{route}}",
               "range": true,
               "refId": "A"
@@ -7047,7 +7032,7 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, sum(rate(objstore_bucket_operation_duration_seconds_bucket{namespace=~\"$namespace\",cluster=~\"$cluster\"}[$__rate_interval])) by (le,operation))",
+              "expr": "histogram_quantile(0.95, sum(rate(objstore_bucket_operation_duration_seconds{namespace=~\"$namespace\",cluster=~\"$cluster\"}[$__rate_interval])) by (operation))",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -7154,7 +7139,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -7164,7 +7148,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "histogram_quantile(0.99, sum by (le, route) (rate(pyroscope_vcs_github_request_duration_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", container=\"querier\"} [$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (route) (rate(pyroscope_vcs_github_request_duration{cluster=~\"$cluster\", namespace=~\"$namespace\", container=\"querier\"} [$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -7258,7 +7242,6 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0-88106",
       "targets": [
         {
           "datasource": {
@@ -7268,7 +7251,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum by (le, route, status_code) (rate(pyroscope_vcs_github_request_duration_count{cluster=~\"$cluster\", namespace=~\"$namespace\", container=\"querier\"} [$__rate_interval]))",
+          "expr": "sum by (route, status_code) (histogram_count(rate(pyroscope_vcs_github_request_duration{cluster=~\"$cluster\", namespace=~\"$namespace\", container=\"querier\"} [$__rate_interval])))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,

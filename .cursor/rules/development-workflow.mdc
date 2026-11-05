@@ -8,10 +8,9 @@ alwaysApply: false
 
 ## Prerequisites
 
-- Go 1.24+
+- Go 1.25 (see `go.mod`)
 - Docker
-- Node v18
-- Yarn v1.22
+- Node.js (recent LTS) + Yarn 4 (Berry) — only needed for frontend work in `ui/`
 - All other tools auto-download to `.tmp/bin/`
 
 ## Build Commands
@@ -23,12 +22,10 @@ make go/bin
 # Run Go tests
 make go/test
 
-# Build frontend
-yarn install
-yarn dev          # Dev server on :4041
-
-# Run backend for frontend development
-yarn backend:dev  # Runs Pyroscope server
+# Frontend dev (run from ui/): Vite dev server on :5173, proxies API to :4040
+cd ui && yarn install && yarn dev
+# Production frontend build (Docker -> ui/dist; required before `make build`)
+make frontend/build
 
 # Docker image
 make GOOS=linux GOARCH=amd64 docker-image/pyroscope/build

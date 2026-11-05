@@ -129,6 +129,14 @@ func (q *compactionQueue) reset() {
 	}
 	clear(q.levels)
 	q.levels = q.levels[:0]
+	q.globalStats.reset()
+}
+
+func (q *compactionQueue) lookupStaged(k compactionKey) *stagedBlocks {
+	if int(k.level) >= len(q.levels) || q.levels[k.level] == nil {
+		return nil
+	}
+	return q.levels[k.level].staged[k]
 }
 
 func (q *compactionQueue) push(e compaction.BlockEntry) bool {

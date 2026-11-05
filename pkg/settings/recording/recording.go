@@ -126,10 +126,11 @@ func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid request: %v", err))
 	}
 
-	s, err := r.storeFromContext(ctx)
+	tenantID, err := r.tenantOrError(ctx)
 	if err != nil {
 		return nil, err
 	}
+	s := r.storeForTenant(tenantID)
 
 	newRule := &settingsv1.RecordingRuleStore{
 		Id:               req.Msg.Id,
@@ -140,11 +141,15 @@ func (r *RecordingRules) UpsertRecordingRule(ctx context.Context, req *connect.R
 		Generation:       req.Msg.Generation,
 		StacktraceFilter: req.Msg.StacktraceFilter,
 	}
-	newRule, err = s.Upsert(ctx, newRule)
+	newRule, err = s.Upsert(ctx, newRule, r.overrides.MaxRecordingRules(tenantID))
 	if err != nil {
 		var cErr *store.ErrConflictGeneration
 		if errors.As(err, &cErr) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("conflicting update, please try again"))
+		}
+		var mErr *store.ErrMaxElementsExceeded
+		if errors.As(err, &mErr) {
+			return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("recording rules limit (%d) exceeded for this tenant", mErr.Max))
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

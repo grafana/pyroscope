@@ -94,6 +94,18 @@ func (g *globalQueueStats) AddBatches(key compactionKey, delta int32) {
 	g.batchesPerLevel[key.level].Add(delta)
 }
 
+func (g *globalQueueStats) reset() {
+	resetAtomicSlice(g.blocksPerLevel)
+	resetAtomicSlice(g.queuesPerLevel)
+	resetAtomicSlice(g.batchesPerLevel)
+}
+
+func resetAtomicSlice(s []atomic.Int32) {
+	for i := range s {
+		s[i].Store(0)
+	}
+}
+
 type globalQueueStatsCollector struct {
 	compactionQueue *compactionQueue
 

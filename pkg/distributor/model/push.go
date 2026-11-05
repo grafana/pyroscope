@@ -29,15 +29,20 @@ type PushRequest struct {
 // todo better name
 type ProfileSeries struct {
 	// Caller provided, modified during processing
-	Labels     []*v1.LabelPair
-	Profile    *pprof.Profile
-	RawProfile []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
-	ID         string
+	Labels            []*v1.LabelPair
+	Profile           *pprof.Profile
+	RawProfile        []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
+	ID                string
+	OriginalTimeNanos int64 // timestamp supplied by the client, before normalisation
 
 	// todo split
 	// Transient state
 	TenantID string
 	Language string
+	// EncodedSize is the encoded size of Profile as received. Computing it
+	// walks the whole profile, so it is measured once, before the profile is
+	// first modified, and is not updated afterwards. Zero if not measured.
+	EncodedSize int
 
 	Annotations []*v1.ProfileAnnotation
 
@@ -91,6 +96,7 @@ func (req *ProfileSeries) Clone() *ProfileSeries {
 		Profile:                &pprof.Profile{Profile: req.Profile.CloneVT()},
 		RawProfile:             nil,
 		ID:                     req.ID,
+		OriginalTimeNanos:      req.OriginalTimeNanos,
 		Language:               req.Language,
 		Annotations:            req.Annotations,
 	}

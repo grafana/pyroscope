@@ -9,6 +9,7 @@ from lib.scooter.scooter import order_scooter
 pyroscope.configure(
 	application_name = "ride-sharing-app",
 	server_address   = "http://pyroscope:4040",
+    mem_enabled = True,
 	tags             = {
         "region":   f'{os.getenv("REGION")}',
 	}

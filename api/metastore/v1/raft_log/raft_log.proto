@@ -33,6 +33,11 @@ message CompactionJobStatusUpdate {
   string name = 1;
   uint64 token = 2;
   metastore.v1.CompactionJobStatus status = 3;
+  // Reserved field represents `compacted_blocks`. The message must remain
+  // wire-compatible with metastore.v1.CompactionJobStatusUpdate: raft log
+  // entries written by older versions may erroneously contain field data for
+  // metastore.v1.CompactionJobStatusUpdate#compacted_blocks.
+  reserved 4;
 }
 
 // GetCompactionPlanUpdateResponse includes the planned change.
@@ -87,6 +92,7 @@ message CompactionJobState {
   int64 lease_expires_at = 5;
   int64 added_at = 6;
   uint32 failures = 7;
+  bool dataset_deletion = 8;
 }
 
 message CompactionJobPlan {
@@ -98,6 +104,7 @@ message CompactionJobPlan {
   repeated string source_blocks = 5;
   // Objects to be deleted.
   repeated metastore.v1.Tombstones tombstones = 6;
+  metastore.v1.DeleteFilter delete_filter = 7;
 }
 
 // UpdateCompactionPlanRequest proposes compaction plan changes.

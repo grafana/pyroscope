@@ -1,9 +1,15 @@
 package symdb
 
 import (
+	"context"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
 func Test_lookupTable(t *testing.T) {
@@ -97,4 +103,167 @@ func Test_lookupTable(t *testing.T) {
 
 	assert.Len(t, dst, 7)
 	assert.NotContains(t, dst, "seven")
+}
+
+// Location addresses must survive the rewrite: a partition with an empty
+// functions table — a native profile that has not been symbolized, where
+// every location is line-less — used to have all its locations rewritten
+// as zero values, permanently losing the addresses at compaction.
+func Test_Rewriter_location_addresses(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		profile     *profilev1.Profile
+		expected    []uint64
+	}{
+		{
+			description: "partition without functions",
+			profile:     linelessLocationsProfile(),
+			expected:    []uint64{0x1500, 0x3c5a},
+		},
+		{
+			description: "line-less location in a partition with functions",
+			profile:     mixedLocationsProfile(),
+			expected:    []uint64{0x3c5a},
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			src := newMemSuite(t, nil)
+			indexed := src.db.WriteProfileSymbols(0, tc.profile)
+			require.NotEmpty(t, indexed)
+
+			dst := NewSymDB(nil)
+			rw := NewRewriter(dst, src.db, nil)
+			for _, p := range indexed {
+				ids := slices.Clone(p.Samples.StacktraceIDs)
+				require.NoError(t, rw.Rewrite(0, ids))
+			}
+
+			pr, err := dst.Partition(context.Background(), 0)
+			require.NoError(t, err)
+			addresses := make([]uint64, 0, len(pr.Symbols().Locations))
+			for _, loc := range pr.Symbols().Locations {
+				addresses = append(addresses, loc.Address)
+			}
+			for _, addr := range tc.expected {
+				assert.Contains(t, addresses, addr)
+			}
+		})
+	}
+}
+
+func linelessLocationsProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		StringTable: []string{"", "libfoo.so", "build-id-f00"},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, MemoryLimit: 0x1000000, Filename: 1, BuildId: 2},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Address: 0x1500},
+			{Id: 2, MappingId: 1, Address: 0x3c5a},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1}, Value: []int64{100}},
+			{LocationId: []uint64{2}, Value: []int64{200}},
+			{LocationId: []uint64{1, 2}, Value: []int64{3}},
+		},
+		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
+	}
+}
+
+func mixedLocationsProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		StringTable: []string{"", "libfoo.so", "build-id-f00", "main", "main.go"},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, MemoryLimit: 0x1000000, Filename: 1, BuildId: 2},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 3, Filename: 4},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 5}}},
+			{Id: 2, MappingId: 1, Address: 0x3c5a},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{77}},
+		},
+		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
+	}
+}
+
+// The rewriter reads the source symbols in place, so it must not modify them
+// while translating references to the destination.
+func Test_Rewriter_does_not_modify_source(t *testing.T) {
+	src := newMemSuite(t, nil)
+	indexed := src.db.WriteProfileSymbols(0, mixedLocationsProfile())
+	require.NotEmpty(t, indexed)
+	sp, err := src.db.Partition(context.Background(), 0)
+	require.NoError(t, err)
+	before := cloneLocations(sp.Symbols().Locations)
+
+	// Symbols already in the destination shift the IDs the source maps to.
+	dst := NewSymDB(nil)
+	dst.WriteProfileSymbols(0, otherFunctionsProfile())
+	rw := NewRewriter(dst, src.db, nil)
+	for _, p := range indexed {
+		require.NoError(t, rw.Rewrite(0, slices.Clone(p.Samples.StacktraceIDs)))
+	}
+
+	assert.Equal(t, before, sp.Symbols().Locations)
+
+	dp, err := dst.Partition(context.Background(), 0)
+	require.NoError(t, err)
+	sym := dp.Symbols()
+	var names []string
+	for _, loc := range sym.Locations {
+		for _, line := range loc.Line {
+			names = append(names, sym.Strings[sym.Functions[line.FunctionId].Name])
+		}
+	}
+	assert.Contains(t, names, "main")
+}
+
+func cloneLocations(locs []schemav1.InMemoryLocation) []schemav1.InMemoryLocation {
+	out := make([]schemav1.InMemoryLocation, len(locs))
+	for i, l := range locs {
+		out[i] = l.Clone()
+	}
+	return out
+}
+
+func otherFunctionsProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		StringTable: []string{"", "libbar.so", "foo", "bar", "bar.go"},
+		Mapping: []*profilev1.Mapping{
+			{Id: 1, MemoryLimit: 0x1000000, Filename: 1},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 2, Filename: 4},
+			{Id: 2, Name: 3, Filename: 4},
+		},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 2}}},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{1}},
+		},
+		SampleType: []*profilev1.ValueType{{Type: 0, Unit: 0}},
+	}
+}
+
+func Test_PartitionWriter_location_ownership(t *testing.T) {
+	newLocation := func(fn uint32) []schemav1.InMemoryLocation {
+		return []schemav1.InMemoryLocation{{MappingId: 1, Line: []schemav1.InMemoryLine{{FunctionId: fn, Line: 1}}}}
+	}
+	w := NewSymDB(nil).PartitionWriter(0)
+	dst := make([]uint32, 1)
+
+	copied := newLocation(1)
+	w.AppendLocations(dst, copied)
+	copied[0].Line[0].FunctionId = 100
+	assert.Equal(t, uint32(1), w.locations.slice[dst[0]].Line[0].FunctionId)
+
+	owned := newLocation(2)
+	w.appendOwnedLocations(dst, owned)
+	assert.Same(t, &owned[0].Line[0], &w.locations.slice[dst[0]].Line[0])
 }

@@ -67,7 +67,7 @@ func NewObjectFromPath(ctx context.Context, storage objstore.Bucket, path string
 		return nil, err
 	}
 
-	defaultSize := int64(1 << 8) // 18)
+	defaultSize := int64(1 << 18)
 	offset := attrs.Size - defaultSize
 	if offset < 0 {
 		offset = 0
@@ -75,6 +75,7 @@ func NewObjectFromPath(ctx context.Context, storage objstore.Bucket, path string
 	size := attrs.Size - offset
 
 	buf := bufferpool.GetBuffer(int(size))
+	defer func() { bufferpool.Put(buf) }()
 	if err := objstore.ReadRange(ctx, buf, path, storage, offset, size); err != nil {
 		return nil, err
 	}
@@ -88,11 +89,12 @@ func NewObjectFromPath(ctx context.Context, storage objstore.Bucket, path string
 
 		bufNew := bufferpool.GetBuffer(int(metaSize))
 		if err := objstore.ReadRange(ctx, bufNew, path, storage, offset, metaSize-size); err != nil {
+			bufferpool.Put(bufNew)
 			return nil, err
 		}
 		bufNew.B = append(bufNew.B, buf.B...)
+		bufferpool.Put(buf)
 		buf = bufNew
-
 	}
 
 	var meta metastorev1.BlockMeta

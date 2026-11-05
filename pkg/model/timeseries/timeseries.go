@@ -7,7 +7,8 @@
 package timeseries
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
@@ -43,7 +44,6 @@ func (s *Builder) Init(by ...string) {
 // The series is grouped by the 'by' labels, but exemplars retain full labels.
 func (s *Builder) Add(fp model.Fingerprint, lbs phlaremodel.Labels, ts int64, value float64, annotations schemav1.Annotations, profileID string) {
 	s.labelBuf = lbs.BytesWithLabels(s.labelBuf, s.by...)
-	seriesKey := string(s.labelBuf)
 
 	pAnnotations := make([]*typesv1.ProfileAnnotation, 0, len(annotations.Keys))
 	for i := range len(annotations.Keys) {
@@ -53,13 +53,14 @@ func (s *Builder) Add(fp model.Fingerprint, lbs phlaremodel.Labels, ts int64, va
 		})
 	}
 
-	series, exists := s.series[seriesKey]
+	// Inline string(s.labelBuf) map lookups do not allocate; the key is only materialized on insert.
+	series, exists := s.series[string(s.labelBuf)]
 	if !exists {
 		series = &typesv1.Series{
 			Labels: lbs.WithLabels(s.by...),
 			Points: make([]*typesv1.Point, 0),
 		}
-		s.series[seriesKey] = series
+		s.series[string(s.labelBuf)] = series
 	}
 
 	series.Points = append(series.Points, &typesv1.Point{
@@ -69,11 +70,13 @@ func (s *Builder) Add(fp model.Fingerprint, lbs phlaremodel.Labels, ts int64, va
 	})
 
 	if profileID != "" {
-		if s.exemplarBuilders[seriesKey] == nil {
-			s.exemplarBuilders[seriesKey] = newExemplarBuilder()
+		eb := s.exemplarBuilders[string(s.labelBuf)]
+		if eb == nil {
+			eb = newExemplarBuilder()
+			s.exemplarBuilders[string(s.labelBuf)] = eb
 		}
 		exemplarLabels := lbs.WithoutLabels(s.by...)
-		s.exemplarBuilders[seriesKey].Add(fp, exemplarLabels, ts, profileID, int64(value))
+		eb.Add(fp, exemplarLabels, ts, profileID, int64(value))
 	}
 }
 
@@ -144,12 +147,12 @@ type seriesByLabels map[string]*typesv1.Series
 
 func (m seriesByLabels) normalize() []*typesv1.Series {
 	result := lo.Values(m)
-	sort.Slice(result, func(i, j int) bool {
-		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+	slices.SortFunc(result, func(a, b *typesv1.Series) int {
+		return phlaremodel.CompareLabelPairs(a.Labels, b.Labels)
 	})
 	for _, s := range result {
-		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].Timestamp < s.Points[j].Timestamp
+		slices.SortFunc(s.Points, func(a, b *typesv1.Point) int {
+			return cmp.Compare(a.Timestamp, b.Timestamp)
 		})
 	}
 	return result

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -21,16 +22,19 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -43,6 +47,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/profileid"
 	pprof2 "github.com/grafana/pyroscope/v2/pkg/pprof"
 	pproftesthelper "github.com/grafana/pyroscope/v2/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
@@ -163,6 +168,118 @@ func Test_Replication(t *testing.T) {
 	resp, err = d.Push(ctx, req)
 	require.Error(t, err)
 	require.Nil(t, resp)
+}
+
+func TestPush_DeterministicProfileIDs(t *testing.T) {
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.ProfileIDDeterministic = true
+	})
+	d, ing, err := newTestDistributor(t, log.NewNopLogger(), overrides)
+	require.NoError(t, err)
+
+	profile := collectTestProfileBytes(t)
+	parsed, err := pprof2.RawFromBytes(profile)
+	require.NoError(t, err)
+	labels := []*typesv1.LabelPair{
+		{Name: "__name__", Value: "cpu"},
+		{Name: phlaremodel.LabelNameServiceName, Value: "service"},
+	}
+	ctx := trace.ContextWithSpanContext(
+		tenant.InjectTenantID(context.Background(), "tenant"),
+		trace.NewSpanContext(trace.SpanContextConfig{
+			TraceID: trace.TraceID{15: 1},
+			SpanID:  trace.SpanID{7: 1},
+		}),
+	)
+	_, err = d.Push(ctx, connect.NewRequest(&pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
+		Labels:  labels,
+		Samples: []*pushv1.RawSample{{RawProfile: profile}, {RawProfile: profile}},
+	}}}))
+	require.NoError(t, err)
+
+	ids := make(map[string]struct{})
+	for _, request := range ing.requests {
+		for _, series := range request.Series {
+			for _, sample := range series.Samples {
+				ids[sample.ID] = struct{}{}
+			}
+		}
+	}
+	expectedID, source := profileid.Generate("tenant", "cpu", labels, parsed.TimeNanos, "00000000000000000000000000000001")
+	require.Equal(t, profileid.SourceTimestamp, source)
+	require.Equal(t, map[string]struct{}{expectedID.String(): {}}, ids)
+}
+
+func TestEnsureProfileIDs_Metrics(t *testing.T) {
+	metrics := newMetrics(prometheus.NewRegistry())
+	d := &Distributor{
+		limits: validation.MockOverrides(func(defaults *validation.Limits, _ map[string]*validation.Limits) {
+			defaults.ProfileIDDeterministic = true
+		}),
+		metrics: metrics,
+	}
+	labels := []*typesv1.LabelPair{{Name: ProfileName, Value: "cpu"}}
+	withTimestamp := &distributormodel.ProfileSeries{Labels: labels, OriginalTimeNanos: 1000}
+	withTraceID := &distributormodel.ProfileSeries{Labels: labels}
+	withoutTimestampOrTraceID := &distributormodel.ProfileSeries{Labels: labels}
+	userSupplied := &distributormodel.ProfileSeries{Labels: labels, ID: uuid.NewString()}
+
+	d.ensureProfileIDs("tenant", "00000000000000000000000000000001", []*distributormodel.ProfileSeries{withTimestamp, withTraceID, userSupplied})
+	d.ensureProfileIDs("tenant", "", []*distributormodel.ProfileSeries{withoutTimestampOrTraceID})
+
+	assert.NotEmpty(t, withTimestamp.ID)
+	assert.NotEmpty(t, withTraceID.ID)
+	assert.NotEmpty(t, withoutTimestampOrTraceID.ID)
+	assert.NotEmpty(t, userSupplied.ID)
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceUserSupplied))))
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceTimestamp))))
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceTraceID))))
+	assert.Equal(t, 1.0, testutil.ToFloat64(metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceRandom))))
+}
+
+func TestPushBatch_NoUpstreamTraceUsesRandomID(t *testing.T) {
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		defaults.ProfileIDDeterministic = true
+	})
+	d, _, err := newTestDistributor(t, log.NewNopLogger(), overrides)
+	require.NoError(t, err)
+
+	series := &distributormodel.ProfileSeries{Labels: []*typesv1.LabelPair{{Name: ProfileName, Value: "cpu"}}}
+	localTraceCtx := trace.ContextWithSpanContext(tenant.InjectTenantID(context.Background(), "tenant"), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: trace.TraceID{15: 1},
+		SpanID:  trace.SpanID{7: 1},
+	}))
+	err = d.PushBatch(localTraceCtx, &distributormodel.PushRequest{Series: []*distributormodel.ProfileSeries{series}})
+	require.Error(t, err) // The profile is intentionally incomplete.
+
+	assert.NotEmpty(t, series.ID)
+	assert.Equal(t, 1.0, testutil.ToFloat64(d.metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceRandom))))
+	assert.Zero(t, testutil.ToFloat64(d.metrics.profileIDGeneration.WithLabelValues(string(profileid.SourceTraceID))))
+}
+
+func TestPush_InvalidProfileIDIsNormalized(t *testing.T) {
+	d, ing, err := newTestDistributor(t, log.NewNopLogger(), newOverrides(t))
+	require.NoError(t, err)
+
+	_, err = d.Push(tenant.InjectTenantID(context.Background(), "tenant"), connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{{
+			Labels:  []*typesv1.LabelPair{{Name: "__name__", Value: "cpu"}},
+			Samples: []*pushv1.RawSample{{RawProfile: collectTestProfileBytes(t), ID: "not-a-uuid"}},
+		}},
+	}))
+	require.NoError(t, err)
+	require.Len(t, ing.requests, 1)
+	_, err = uuid.Parse(ing.requests[0].Series[0].Samples[0].ID)
+	assert.NoError(t, err)
+}
+
+func TestAggregate_IdentifiedProfileIsNotAggregated(t *testing.T) {
+	d, _, err := newTestDistributor(t, log.NewNopLogger(), newOverrides(t))
+	require.NoError(t, err)
+
+	aggregated, err := d.aggregate(context.Background(), &distributormodel.ProfileSeries{ID: uuid.NewString()})
+	require.NoError(t, err)
+	assert.False(t, aggregated)
 }
 
 func Test_Subservices(t *testing.T) {
@@ -2098,6 +2215,61 @@ func TestPush_Aggregation(t *testing.T) {
 	assert.Equal(t, len(sessions), maxSessions)
 }
 
+func TestPushBatch_SeriesHistogram(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	ing := newFakeIngester(t, false)
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		tenantLimits["user-1"] = validation.MockDefaultLimits()
+	})
+	d, err := New(
+		Config{DistributorRing: ringConfig},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{func(addr string) (client.PoolClient, error) { return ing, nil }},
+		overrides,
+		reg,
+		log.NewLogfmtLogger(os.Stdout),
+		nil,
+	)
+	require.NoError(t, err)
+
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+
+	// makeRequest builds a push request carrying the given number of series.
+	makeRequest := func(series int) *distributormodel.PushRequest {
+		req := &distributormodel.PushRequest{RawProfileType: distributormodel.RawProfileTypePPROF}
+		for i := 0; i < series; i++ {
+			req.Series = append(req.Series, &distributormodel.ProfileSeries{
+				Labels: []*typesv1.LabelPair{
+					{Name: "cluster", Value: "us-central1"},
+					{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+					{Name: "__name__", Value: "cpu"},
+					{Name: "series", Value: strconv.Itoa(i)},
+				},
+				Profile: &pprof2.Profile{Profile: testProfile(0)},
+			})
+		}
+		return req
+	}
+
+	// Two non-empty calls: the histogram observes N per call, so sum = 3 + 1
+	// and count = 2 (one observation per PushBatch call).
+	require.NoError(t, d.PushBatch(ctx, makeRequest(3)))
+	require.NoError(t, d.PushBatch(ctx, makeRequest(1)))
+
+	// An empty request returns before the observation, so it is not counted.
+	require.Error(t, d.PushBatch(ctx, makeRequest(0)))
+
+	bs, err := testutil.CollectAndFormat(reg, expfmt.TypeTextPlain, "pyroscope_distributor_push_batch_series")
+	require.NoError(t, err)
+
+	got := regexp.MustCompile(`pyroscope_distributor_push_batch_series_(sum|count).*`).
+		FindAllString(string(bs), -1)
+	assert.Equal(t, []string{
+		`pyroscope_distributor_push_batch_series_sum{tenant="user-1"} 4`,
+		`pyroscope_distributor_push_batch_series_count{tenant="user-1"} 2`,
+	}, got)
+}
+
 func testProfile(t int64) *profilev1.Profile {
 	return &profilev1.Profile{
 		SampleType: []*profilev1.ValueType{
@@ -2575,4 +2747,174 @@ func TestDistributor_shouldSample_Probability(t *testing.T) {
 			t.Logf("Expected: %.3f, Actual: %.3f, Deviation: %.3f", expectedRate, actualRate, deviation)
 		})
 	}
+}
+
+// stripTestProfile returns a deterministic profile without sample labels,
+// so it maps to a single series. The "app.py" filename makes language
+// detection resolve to "python" while the symbols are present.
+func stripTestProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+			{Type: 3, Unit: 4},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{1, 2}, Value: []int64{10, 1000}},
+			{LocationId: []uint64{2}, Value: []int64{5, 500}},
+			// Dropped by Normalize (negative value): must not count towards totals.
+			{LocationId: []uint64{1}, Value: []int64{-1, 100}},
+			// Dropped by sanitization (value length mismatch): must not count either.
+			{LocationId: []uint64{1}, Value: []int64{7}},
+		},
+		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2}}},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 5, SystemName: 5, Filename: 6},
+			{Id: 2, Name: 7, SystemName: 7, Filename: 8},
+		},
+		StringTable: []string{
+			"",
+			"samples",
+			"count",
+			"cpu",
+			"nanoseconds",
+			"func-a",
+			"app.py",
+			"func-b",
+			"path-b",
+		},
+		TimeNanos:     1000000000,
+		DurationNanos: 10000000000,
+		PeriodType:    &profilev1.ValueType{Type: 3, Unit: 4},
+		Period:        10000000,
+	}
+}
+
+// strippedTestProfile is what stripTestProfile must be reduced to when it
+// is sampled out: a single sample with the totals and a string table that
+// holds only the sample type units.
+func strippedTestProfile() *profilev1.Profile {
+	return &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+			{Type: 3, Unit: 4},
+		},
+		Sample:        []*profilev1.Sample{{Value: []int64{15, 1500}}},
+		StringTable:   []string{"", "samples", "count", "cpu", "nanoseconds"},
+		TimeNanos:     1000000000,
+		DurationNanos: 10000000000,
+		PeriodType:    &profilev1.ValueType{Type: 3, Unit: 4},
+		Period:        10000000,
+	}
+}
+
+func newStripTestDistributor(t *testing.T, keepStrippedProfiles bool) (*Distributor, *fakeIngester) {
+	t.Helper()
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		l := validation.MockDefaultLimits()
+		usageGroups, err := validation.NewUsageGroupConfig(map[string]string{
+			"svc": `{service_name="svc"}`,
+		})
+		require.NoError(t, err)
+		l.DistributorUsageGroups = usageGroups
+		l.DistributorSampling = &sampling.Config{
+			UsageGroups: map[string]sampling.UsageGroupSampling{
+				"svc": {Probability: 0},
+			},
+		}
+		l.KeepStrippedProfiles = keepStrippedProfiles
+		tenantLimits["user-1"] = l
+	})
+	ing := newFakeIngester(t, false)
+	d, err := New(Config{
+		DistributorRing: ringConfig,
+	}, testhelper.NewMockRing([]ring.InstanceDesc{
+		{Addr: "foo"},
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+		return ing, nil
+	}}, overrides, nil, log.NewLogfmtLogger(os.Stdout), nil)
+	require.NoError(t, err)
+	return d, ing
+}
+
+func TestPushSeries_KeepStrippedProfiles(t *testing.T) {
+	d, ing := newStripTestDistributor(t, true)
+
+	prof := stripTestProfile()
+	originalSize := prof.SizeVT()
+	keptSize := strippedTestProfile().SizeVT()
+
+	req := &distributormodel.ProfileSeries{
+		Labels: []*typesv1.LabelPair{
+			{Name: "__name__", Value: "cpu"},
+			{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+		},
+		Profile: pprof2.RawFromProto(prof),
+	}
+
+	expectedMetricDelta := map[prometheus.Collector]float64{
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"):    float64(originalSize - keptSize),
+		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"): 1,
+	}
+	before := metricsDump(expectedMetricDelta)
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	// The stripped part is discarded, the kept part continues as a regular profile.
+	expectMetricsChange(t, before, metricsDump(expectedMetricDelta), expectedMetricDelta)
+
+	// Language detection ran before the symbols were stripped.
+	assert.Equal(t, "python", req.Language)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	require.Len(t, ing.requests, 1)
+	require.NotEmpty(t, ing.requests[0].Series)
+	series := ing.requests[0].Series[0]
+	assert.Equal(t, "true", phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameSampled))
+
+	received, err := pprof2.RawFromBytes(series.Samples[0].RawProfile)
+	require.NoError(t, err)
+	want := strippedTestProfile()
+	require.Len(t, received.Sample, 1)
+	assert.Equal(t, want.Sample[0].Value, received.Sample[0].Value)
+	assert.Empty(t, received.Sample[0].LocationId)
+	assert.Empty(t, received.Location)
+	assert.Empty(t, received.Function)
+	assert.Empty(t, received.Mapping)
+	assert.Equal(t, want.StringTable, received.StringTable)
+	assert.Equal(t, keptSize, received.SizeVT())
+}
+
+func TestPushSeries_DropSampledOutProfiles(t *testing.T) {
+	d, ing := newStripTestDistributor(t, false)
+
+	prof := stripTestProfile()
+	labels := []*typesv1.LabelPair{
+		{Name: "__name__", Value: "cpu"},
+		{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+	}
+	req := &distributormodel.ProfileSeries{
+		Labels:  labels,
+		Profile: pprof2.RawFromProto(prof),
+	}
+
+	expectedMetricDelta := map[prometheus.Collector]float64{
+		validation.DiscardedBytes.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"):    float64(labelsSize(labels) + int64(prof.SizeVT())),
+		validation.DiscardedProfiles.WithLabelValues(string(validation.SkippedBySamplingRules), "user-1"): 1,
+	}
+	before := metricsDump(expectedMetricDelta)
+
+	err := d.pushSeries(context.Background(), req, distributormodel.RawProfileTypePPROF, "user-1", 0)
+	require.NoError(t, err)
+
+	expectMetricsChange(t, before, metricsDump(expectedMetricDelta), expectedMetricDelta)
+
+	ing.mtx.Lock()
+	defer ing.mtx.Unlock()
+	assert.Empty(t, ing.requests)
 }

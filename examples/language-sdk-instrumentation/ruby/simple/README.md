@@ -13,4 +13,4 @@ docker compose up --build
 docker compose down
 ```
 
-Navigate to [Grafana](http://localhost:3000/a/grafana-pyroscope-app/profiles-explorer?explorationType=flame-graph&var-serviceName=test.ruby.app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds) to Explore Profiles.
+Navigate to [Grafana](http://localhost:3000/a/grafana-pyroscope-app/explore?explorationType=flame-graph&var-serviceName=test.ruby.app&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds) to explore profiles.

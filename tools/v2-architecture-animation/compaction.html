@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pyroscope v2 — compaction</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #f7f7f7; }
+  #stage { display: block; }
+  text { font-family: "DejaVu Sans Mono", "Menlo", "Consolas", "Courier New", monospace; }
+</style>
+</head>
+<body>
+<svg id="stage" width="1180" height="540" viewBox="0 0 1180 540" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="1180" height="540" fill="#f7f7f7"/>
+  <g id="static"></g>
+  <g id="dynamic"></g>
+  <g id="markers"></g>
+</svg>
+<script src="lib.js"></script>
+<script>
+const sroot = document.getElementById("static");
+const droot = document.getElementById("dynamic");
+const mroot = document.getElementById("markers");
+
+const boxes = {
+  metastore:  { x: 250, y: 96,  w: 220, h: 84,  fill: "#ffe3e3" },
+  compaction: { x: 250, y: 224, w: 240, h: 120, fill: "#fff3bf" },
+  segwriter:  { x: 250, y: 392, w: 240, h: 80,  fill: "#ffe8cc" },
+  objstore:   { x: 560, y: 96,  w: 600, h: 416, fill: "#ebfbee" },
+};
+const WCX = 370, WCY = 284;   // compaction-worker centre
+const SWX = 470, SWY = 432;   // segment-writer source (new L0 segments)
+
+// ---- per-level geometry (object storage columns), top-aligned ----
+const LV = {
+  0: { h: 10, pitch: 13, max: 24, cx: 632,  w: 66 },
+  1: { h: 20, pitch: 24, max: 5,  cx: 778,  w: 66 },
+  2: { h: 32, pitch: 37, max: 2,  cx: 924,  w: 66 },
+  3: { h: 44, pitch: 48, max: 1,  cx: 1070, w: 66 },
+};
+const TOP = 170;
+const slotY = (l, i) => TOP + i * LV[l].pitch + LV[l].h / 2;
+const blockFill = (l, i) => FLAME[(i * 2 + Number(l) * 3) % FLAME.length];
+
+// ---- static scene ----
+el("text", { x: 40, y: 54, "font-size": 30, "font-weight": 700, fill: INK }, sroot).textContent = "Compaction";
+el("text", { x: 40, y: 82, "font-size": 16, "font-weight": 500, fill: MUT }, sroot)
+  .textContent = "small segments are merged into progressively larger blocks";
+
+conn(sroot, [[360, 180], [366, 224]], { dash: "5 5" });
+el("text", { x: 374, y: 208, "font-size": 12, fill: MUT }, sroot).textContent = "job";
+conn(sroot, [[490, 266], [560, 260]]);
+conn(sroot, [[560, 300], [490, 294]]);
+el("text", { x: 500, y: 254, "font-size": 11, fill: MUT }, sroot).textContent = "read";
+el("text", { x: 500, y: 314, "font-size": 11, fill: MUT }, sroot).textContent = "write";
+
+drawBox(sroot, boxes.metastore, [
+  { t: "Metastore", bold: true, size: 18 },
+  { t: "coordinates compaction", size: 13, fill: SUB },
+], { accent: "#e64980" });
+drawBox(sroot, boxes.compaction, [
+  { t: "Compaction-Worker", bold: true, size: 17 },
+  { t: "merge segments", size: 14, fill: SUB, gap: 19 },
+  { t: "→ bigger blocks", size: 14, fill: SUB },
+], { accent: "#f59f00" });
+drawBox(sroot, boxes.objstore, [
+  { t: "Object Storage", bold: true, size: 21 },
+], { accent: "#37b24d", titleOffset: 30 });
+
+// segment-writer: dimmed, it is what produces the new L0 segments
+const dimG = el("g", { opacity: 0.4 }, sroot);
+drawBox(dimG, boxes.segwriter, [
+  { t: "Segment-Writer", bold: true, size: 16 },
+  { t: "creates L0 segments", size: 13, fill: SUB },
+], { accent: "#e8590c" });
+conn(dimG, [[490, 432], [560, 420]], { dash: "6 5" });
+
+// column headers
+for (const l in LV)
+  el("text", { x: LV[l].cx, y: 152, "text-anchor": "middle", "font-size": 16, "font-weight": 700, fill: "#2b8a3e" }, sroot)
+    .textContent = "L" + l;
+
+// ---- stacks (repositioned + revealed each frame) ----
+const stack = {};
+for (const l in LV) {
+  stack[l] = [];
+  for (let i = 0; i < LV[l].max; i++)
+    stack[l].push(el("rect", { x: LV[l].cx - LV[l].w / 2, width: LV[l].w, height: LV[l].h, rx: 2,
+      fill: blockFill(l, i), stroke: "#00000022", "stroke-width": 0.6, opacity: 0 }, droot));
+}
+function setStacks(c, shift) {
+  for (const l in LV) {
+    const m = LV[l], sh = (shift && shift[l]) || 0;
+    stack[l].forEach((r, i) => {
+      if (i < c[l]) { r.setAttribute("y", slotY(l, i + sh) - m.h / 2); r.setAttribute("opacity", 1); }
+      else r.setAttribute("opacity", 0);
+    });
+  }
+}
+
+// ---- flyers ----
+function flyer(parent) {
+  const r = el("rect", { x: -200, y: -200, width: 10, height: 10, rx: 2,
+    stroke: "#00000022", "stroke-width": 0.6, opacity: 0 }, parent);
+  return {
+    show(x, y, w, h, fill) {
+      r.setAttribute("width", w); r.setAttribute("height", h);
+      r.setAttribute("x", x - w / 2); r.setAttribute("y", y - h / 2);
+      if (fill) r.setAttribute("fill", fill); r.setAttribute("opacity", 1);
+    },
+    hide() { r.setAttribute("opacity", 0); },
+  };
+}
+const SETS = 3;                                   // concurrent compaction jobs
+const cset = Array.from({ length: SETS }, () => ({ src: Array.from({ length: 5 }, () => flyer(mroot)), merged: flyer(mroot) }));
+const jobMark = Array.from({ length: SETS }, () => marker(mroot, "#4263eb", 12));
+const fIngest = Array.from({ length: 4 }, () => flyer(mroot));
+const JOB = [[360, 180], [366, 224]];
+
+// ---- timeline ----
+const T0 = 0.05, T1 = 0.92, RATE = 0.019, TRAVEL = 0.04;
+// compaction jobs (overlapping): L0->L1 keeps running while 5 L1 -> 1 L2 happens
+const JOBS = [
+  { src: 0, dst: 1, start: 0.080, dur: 0.078 },
+  { src: 0, dst: 1, start: 0.165, dur: 0.078 },
+  { src: 0, dst: 1, start: 0.250, dur: 0.078 },
+  { src: 0, dst: 1, start: 0.335, dur: 0.078 },
+  { src: 0, dst: 1, start: 0.420, dur: 0.078 },   // L1 reaches 5
+  { src: 1, dst: 2, start: 0.490, dur: 0.100 },   // 5 L1 -> 1 L2 ...
+  { src: 0, dst: 1, start: 0.505, dur: 0.078 },   // ... in parallel with more L0 compaction
+  { src: 0, dst: 1, start: 0.590, dur: 0.078 },
+  { src: 0, dst: 1, start: 0.675, dur: 0.078 },
+  { src: 0, dst: 1, start: 0.760, dur: 0.078 },
+];
+
+function counts(t) {
+  const c = [20, 0, 0, 0];
+  if (t >= T0) c[0] += Math.floor((t - T0) / RATE);   // constant-rate ingestion into L0
+  for (const j of JOBS) {
+    if (t >= j.start) c[j.src] -= 5;
+    if (t >= j.start + 0.70 * j.dur) c[j.dst] += 1;
+  }
+  return c;
+}
+
+function seek(t) {
+  t = clamp(t, 0, 1);
+  const fade = t < 0.04 ? seg(t, 0, 0.04, false) : (t > 0.93 ? 1 - seg(t, 0.93, 1, false) : 1);
+  cset.forEach(s => { s.src.forEach(f => f.hide()); s.merged.hide(); });
+  jobMark.forEach(m => m.hide());
+  fIngest.forEach(f => f.hide());
+
+  const c = counts(t);
+  const shift = {};
+
+  // active compaction jobs, rendered in parallel across flyer sets
+  const active = JOBS.filter(j => t >= j.start && t < j.start + j.dur);
+  active.slice(0, SETS).forEach((j, si) => {
+    const set = cset[si];
+    const detach = j.start, merge = j.start + 0.45 * j.dur, land = j.start + 0.70 * j.dur;
+    const sm = LV[j.src], dm = LV[j.dst];
+    if (t < merge) {
+      const p = seg(t, detach, merge, false);
+      shift[j.src] = lerp(5, 0, p);                 // survivors slide up to the top
+      for (let i = 0; i < 5; i++)
+        set.src[i].show(lerp(sm.cx, WCX, p), lerp(slotY(j.src, i), WCY, p), sm.w, sm.h, blockFill(j.src, i));
+    } else if (t < land) {
+      const p = seg(t, merge, land, false);
+      const di = c[j.dst];
+      set.merged.show(lerp(WCX, dm.cx, p), lerp(WCY, slotY(j.dst, di), p), dm.w, dm.h, blockFill(j.dst, di));
+    }
+    if (t < detach + 0.4 * j.dur) jobMark[si].at(...pointAt(JOB, seg(t, detach, detach + 0.4 * j.dur, false)));
+  });
+
+  // constant-rate ingestion: new segments stream into the bottom of L0
+  const nIng = Math.max(0, Math.floor((t - T0) / RATE));
+  for (let k = 0; k < fIngest.length; k++) {
+    const li = T0 + (nIng + 1 + k) * RATE;          // land time of the (k+1)-th in-flight segment
+    if (li <= T1 && t >= li - TRAVEL && t < li) {
+      const p = seg(t, li - TRAVEL, li, false);
+      const idx = Math.min(c[0] + k + (shift[0] || 0), LV[0].max - 1);
+      fIngest[k].show(lerp(SWX, LV[0].cx, p), lerp(SWY, slotY(0, idx), p), LV[0].w, LV[0].h, blockFill(0, Math.min(c[0] + k, LV[0].max - 1)));
+    }
+  }
+
+  setStacks(c, shift);
+  droot.setAttribute("opacity", fade);
+  mroot.setAttribute("opacity", fade);
+}
+
+mount(seek, 14000);
+</script>
+</body>
+</html>

@@ -57,31 +57,30 @@ export function QueryForm({
     [params, onParamsChange],
   );
 
-  const loadProfileTypes = useCallback(async () => {
-    if (!params.tenantId) {
-      setProfileTypes([]);
-      return;
-    }
-    setProfileTypesLoading(true);
-    setProfileTypesError(null);
-    try {
-      const startMs = parseTimeForApi(params.startTime);
-      const endMs = parseTimeForApi(params.endTime);
-      const types = await fetchProfileTypes(params.tenantId, startMs, endMs);
-      setProfileTypes(types);
-    } catch (err) {
-      setProfileTypesError(
-        err instanceof Error ? err.message : 'Failed to load profile types',
-      );
-      setProfileTypes([]);
-    } finally {
-      setProfileTypesLoading(false);
-    }
-  }, [params.tenantId, params.startTime, params.endTime]);
-
   useEffect(() => {
+    async function loadProfileTypes() {
+      if (!params.tenantId) {
+        setProfileTypes([]);
+        return;
+      }
+      setProfileTypesLoading(true);
+      setProfileTypesError(null);
+      try {
+        const startMs = parseTimeForApi(params.startTime);
+        const endMs = parseTimeForApi(params.endTime);
+        const types = await fetchProfileTypes(params.tenantId, startMs, endMs);
+        setProfileTypes(types);
+      } catch (err) {
+        setProfileTypesError(
+          err instanceof Error ? err.message : 'Failed to load profile types',
+        );
+        setProfileTypes([]);
+      } finally {
+        setProfileTypesLoading(false);
+      }
+    }
     loadProfileTypes();
-  }, [loadProfileTypes]);
+  }, [params.tenantId, params.startTime, params.endTime]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

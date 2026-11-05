@@ -5,12 +5,8 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"strconv"
 	"strings"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-
-	dvarint "github.com/dennwc/varint"
 	"github.com/xlab/treeprint"
 
 	"github.com/grafana/pyroscope/v2/pkg/og/util/varint"
@@ -45,7 +41,7 @@ func (FunctionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[Function
 }
 
 func (FunctionNameI) unmarshalNode(b []byte, offset int) (FunctionName, int64, int, error) { //nolint:unused
-	nameLen, o := dvarint.Uvarint(b[offset:])
+	nameLen, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return "", 0, 0, errMalformedTreeBytes
 	}
@@ -53,7 +49,7 @@ func (FunctionNameI) unmarshalNode(b []byte, offset int) (FunctionName, int64, i
 	// Note that we allocate a string, instead of referencing b's capacity.
 	name := FunctionName(b[offset : offset+int(nameLen)])
 	offset += int(nameLen)
-	value, o := dvarint.Uvarint(b[offset:])
+	value, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return "", 0, 0, errMalformedTreeBytes
 	}
@@ -85,13 +81,13 @@ func (LocationRefNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[Locat
 }
 
 func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, int64, int, error) { //nolint:unused
-	name, o := dvarint.Uvarint(b[offset:])
+	name, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return 0, 0, 0, errMalformedTreeBytes
 	}
 	offset += o
 
-	value, o := dvarint.Uvarint(b[offset:])
+	value, o := varint.Uvarint(b[offset:])
 	if o < 0 {
 		return 0, 0, 0, errMalformedTreeBytes
 	}
@@ -551,7 +547,7 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 		offset = o
 
 		// specific end
-		childrenLen, o := dvarint.Uvarint(b[offset:])
+		childrenLen, o := varint.Uvarint(b[offset:])
 		if o < 0 {
 			return nil, errMalformedTreeBytes
 		}
@@ -576,52 +572,4 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 	t.root = root.children[0].children
 
 	return t, nil
-}
-
-// TreeFromBackendProfile is a wrapper...
-func TreeFromBackendProfile(profile *profilev1.Profile, maxNodes int64) ([]byte, error) {
-	return TreeFromBackendProfileSampleType(profile, maxNodes, 0)
-}
-
-// TreeFromBackendProfileSampleType converts a pprof profile to a tree format with maxNodes limit
-func TreeFromBackendProfileSampleType(profile *profilev1.Profile, maxNodes int64, sampleType int) ([]byte, error) {
-	t := NewStacktraceTree(int(maxNodes * 2))
-	stack := make([]int32, 0, 64)
-	m := make(map[uint64]int32)
-
-	for i := range profile.Sample {
-		stack = stack[:0]
-		for j := range profile.Sample[i].LocationId {
-			locIdx := int(profile.Sample[i].LocationId[j]) - 1
-			if locIdx < 0 || len(profile.Location) <= locIdx {
-				return nil, fmt.Errorf("invalid location ID %d in sample %d", profile.Sample[i].LocationId[j], i)
-			}
-
-			loc := profile.Location[locIdx]
-			if len(loc.Line) > 0 {
-				for l := range loc.Line {
-					stack = append(stack, int32(profile.Function[loc.Line[l].FunctionId-1].Name))
-				}
-				continue
-			}
-			addr, ok := m[loc.Address]
-			if !ok {
-				addr = int32(len(profile.StringTable))
-				profile.StringTable = append(profile.StringTable, strconv.FormatInt(int64(loc.Address), 16))
-				m[loc.Address] = addr
-			}
-			stack = append(stack, addr)
-		}
-
-		if sampleType < 0 || sampleType >= len(profile.Sample[i].Value) {
-			return nil, fmt.Errorf("invalid sampleType index %d for sample %d (len=%d)", sampleType, i, len(profile.Sample[i].Value))
-		}
-
-		t.Insert(stack, profile.Sample[i].Value[sampleType])
-	}
-
-	b := bytes.NewBuffer(nil)
-	b.Grow(100 << 10)
-	t.Bytes(b, maxNodes, profile.StringTable)
-	return b.Bytes(), nil
 }

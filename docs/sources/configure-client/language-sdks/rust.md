@@ -61,8 +61,8 @@ use pyroscope::pyroscope::PyroscopeAgentBuilder;
 use pyroscope::backend::{pprof_backend, PprofConfig, BackendConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let user = std::env::var("USER").unwrap();
-    let password = std::env::var("PASSWORD").unwrap();
+    let user = std::env::var("PYROSCOPE_BASIC_AUTH_USER").unwrap();
+    let password = std::env::var("PYROSCOPE_BASIC_AUTH_PASSWORD").unwrap();
     let url = std::env::var("PYROSCOPE_URL").unwrap();
 
     let agent = PyroscopeAgentBuilder::new(
@@ -76,6 +76,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .basic_auth(user, password)
     .tags(vec![("app", "Rust"), ("TagB", "ValueB")])
     .build()?;
+
+    Ok(())
+}
 ```
 
 You can start profiling by invoking the following code:
@@ -84,7 +87,71 @@ You can start profiling by invoking the following code:
 let agent_running = agent.start().unwrap();
 ```
 
-The agent can be stopped at any point, and it'll send a last report to the server. The agent can be restarted at a later point.
+## Add memory profiling with jemalloc
+
+The Pyroscope Rust SDK supports memory profiling through the [jemalloc](https://jemalloc.net/) allocator.
+With jemalloc memory profiling, you can see which code paths hold the most live heap memory, which helps you find memory leaks and track heap growth in your Rust applications.
+
+### Before you begin
+
+Memory profiling requires:
+
+- The `jemalloc` allocator configured as the global allocator in your application
+- The `tikv-jemallocator` crate with the `profiling` feature enabled
+- jemalloc profiling activated at runtime through environment variables
+
+### Configure jemalloc memory profiling
+
+1. Add the required dependencies to your `Cargo.toml`:
+
+   ```toml
+   [dependencies]
+   pyroscope = { version = "2.0.0", features = ["backend-jemalloc"] }
+   tikv-jemallocator = { version = "0.7", features = ["profiling"] }
+   ```
+
+1. Set jemalloc as the global allocator in your application:
+
+   ```rust
+   #[global_allocator]
+   static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+   ```
+
+1. Configure the Pyroscope agent to use the jemalloc backend:
+
+   ```rust
+   use pyroscope::pyroscope::PyroscopeAgentBuilder;
+   use pyroscope::backend::jemalloc::jemalloc_backend;
+
+   let agent = PyroscopeAgentBuilder::new(
+       "http://localhost:4040",
+       "myapp",
+       100,
+       "pyroscope-rs",
+       env!("CARGO_PKG_VERSION"),
+       jemalloc_backend(),
+   )
+   .build()?;
+
+   let agent_running = agent.start()?;
+   ```
+
+1. Enable jemalloc profiling at runtime. Set the `_RJEM_MALLOC_CONF` environment variable before starting your application:
+
+   ```bash
+   _RJEM_MALLOC_CONF=prof:true,prof_active:true,lg_prof_sample:19 \
+       cargo run
+   ```
+
+   - `prof:true` enables the profiling infrastructure.
+   - `prof_active:true` starts collecting allocation samples immediately.
+   - `lg_prof_sample:19` sets the sampling interval to every 512 KB (2^19 bytes). Lower values produce more detailed profiles but increase overhead.
+
+The jemalloc backend reports one `memory` profile type, `inuse_space`: an estimate of the live heap in bytes, based on sampled allocations, at the time each profile is collected. It doesn't report `inuse_objects`, `alloc_space`, or `alloc_objects`, so allocations that are freed between profiles don't appear.
+
+## Stop profiling
+
+The agent can be stopped at any point, and it sends a last report to the server. The agent can be restarted at a later point.
 
 ```rust
 let agent_ready = agent_running.stop().unwrap();

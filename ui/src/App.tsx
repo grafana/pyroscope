@@ -7,13 +7,18 @@ import { QueryBar } from '@components/QueryBar';
 import { TimeSeries } from '@components/TimeSeries';
 import { Panel } from '@components/Panel';
 import { TenantDialog } from '@components/TenantDialog';
-import { usePyroscopeQuery, type ProfileType } from '@hooks/usePyroscopeQuery';
+import {
+  parseTimeRange,
+  usePyroscopeQuery,
+  type ProfileType,
+} from '@hooks/usePyroscopeQuery';
 import { useTenant } from '@hooks/useTenant';
 import {
   profileTypeLabel,
   profileTypeRateLabel,
   sortProfileTypes,
 } from '@api/client';
+import { buildQuery, parseQuery } from './queryLang';
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -24,19 +29,6 @@ function useTheme() {
     else document.documentElement.removeAttribute('data-theme');
   };
   return { theme, setTheme: setAndApply };
-}
-
-function buildQuery(service: string, pt: ProfileType): string {
-  return `{service_name="${service}", profile_type="${pt}"}`;
-}
-
-function parseQuery(
-  q: string,
-): { service: string; profileType: string } | null {
-  const service = q.match(/service_name\s*=\s*"([^"]+)"/)?.[1];
-  const profileType = q.match(/profile_type\s*=\s*"([^"]+)"/)?.[1];
-  if (!service || !profileType) return null;
-  return { service, profileType };
 }
 
 export default function App() {
@@ -53,13 +45,16 @@ export default function App() {
     | undefined
   >(undefined);
   const [queryUserInput, setQueryUserInput] = useState<string | null>(null);
-  const queryInput =
-    queryUserInput ??
-    (service || profileType ? buildQuery(service, profileType) : '');
+  const [activeLabelSelector, setActiveLabelSelector] = useState<
+    string | undefined
+  >(undefined);
+
+  const queryInput = queryUserInput ?? (service ? buildQuery(service) : '');
 
   const query = usePyroscopeQuery({
     service,
     profileType,
+    labelSelector: activeLabelSelector,
     timeRange,
     absoluteRange,
     tenantID: tenant.tenantID,
@@ -82,11 +77,17 @@ export default function App() {
     setService(s);
     setProfileType(pt);
     setQueryUserInput(null);
+    setActiveLabelSelector(undefined);
   };
 
   const queryDirty =
-    !!service && queryInput !== buildQuery(service, profileType);
-  const handleReset = () => setQueryUserInput(null);
+    !!service && queryInput !== (activeLabelSelector ?? buildQuery(service));
+  const handleReset = () => {
+    setQueryUserInput(null);
+    setActiveLabelSelector(undefined);
+  };
+
+  const timeWindow = absoluteRange ?? parseTimeRange(timeRange);
 
   if (tenant.status === 'loading') return null;
 
@@ -129,10 +130,20 @@ export default function App() {
         onQueryChange={setQueryUserInput}
         onRun={(q) => {
           const parsed = parseQuery(q);
-          if (parsed) {
-            query.execute(parsed.service, parsed.profileType, timeRange);
+          if (!parsed) return;
+          if (
+            parsed.service === service &&
+            parsed.labelSelector === activeLabelSelector
+          ) {
+            query.run();
+          } else {
+            setService(parsed.service);
+            setActiveLabelSelector(parsed.labelSelector);
           }
         }}
+        start={timeWindow.start}
+        end={timeWindow.end}
+        tenantID={tenant.tenantID}
       />
 
       {query.error && (

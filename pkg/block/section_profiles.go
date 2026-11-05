@@ -35,6 +35,15 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
+	} else if s.obj.local != nil {
+		// A downloaded object is read from local disk, where read-ahead
+		// and large buffers only hold more memory per column.
+		s.profiles, err = openParquetFile(
+			s.obj.storage, s.obj.path, offset, size,
+			estimateFooterSize(size),
+			parquet.SkipBloomFilters(true),
+			parquet.FileReadMode(parquet.ReadModeSync),
+			parquet.ReadBufferSize(localReadBufferSize))
 	} else {
 		s.profiles, err = openParquetFile(
 			s.obj.storage, s.obj.path, offset, size,
@@ -256,9 +265,56 @@ type ProfileEntry struct {
 	Fingerprint model.Fingerprint
 	Labels      phlaremodel.Labels
 	Row         schemav1.ProfileRow
+
+	labels immutableLabels
 }
 
-func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], error) {
+// ProfileEntryView exposes a compaction row to observers without granting
+// access to the mutable label pairs used by the iterator.
+type ProfileEntryView struct {
+	Dataset     *Dataset
+	Timestamp   int64
+	Fingerprint model.Fingerprint
+	Labels      LabelsView
+	Row         schemav1.ProfileRow
+}
+
+// LabelsView is an immutable view of a profile's labels.
+type LabelsView struct{ labels immutableLabels }
+
+func (v LabelsView) Len() int { return len(v.labels) }
+
+func (v LabelsView) Get(name string) string {
+	for _, label := range v.labels {
+		if label.name == name {
+			return label.value
+		}
+	}
+	return ""
+}
+
+func (v LabelsView) Range(f func(name, value string)) {
+	for _, label := range v.labels {
+		f(label.name, label.value)
+	}
+}
+
+func (e ProfileEntry) View() ProfileEntryView {
+	labels := e.labels
+	if labels == nil {
+		labels = newImmutableLabels(e.Labels)
+	}
+	return ProfileEntryView{
+		Dataset:     e.Dataset,
+		Timestamp:   e.Timestamp,
+		Fingerprint: e.Fingerprint,
+		Labels:      LabelsView{labels: labels},
+		Row:         e.Row,
+	}
+}
+
+// onDuplicate, if non-nil, is called for every dropped duplicate row.
+func NewMergeRowProfileIterator(src []*Dataset, onDuplicate func()) (iter.Iterator[ProfileEntry], error) {
 	its := make([]iter.Iterator[ProfileEntry], len(src))
 	for i, s := range src {
 		it, err := NewProfileRowIterator(s)
@@ -293,6 +349,7 @@ func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], er
 			},
 			func(it iter.Iterator[ProfileEntry]) { _ = it.Close() },
 		)),
+		onDuplicate: onDuplicate,
 	}, nil
 }
 
@@ -301,6 +358,7 @@ type DedupeProfileRowIterator struct {
 
 	prevFP        model.Fingerprint
 	prevTimeNanos int64
+	onDuplicate   func()
 }
 
 func (it *DedupeProfileRowIterator) Next() bool {
@@ -311,6 +369,9 @@ func (it *DedupeProfileRowIterator) Next() bool {
 		currentProfile := it.At()
 		if it.prevFP == currentProfile.Fingerprint && it.prevTimeNanos == currentProfile.Timestamp {
 			// skip duplicate profile
+			if it.onDuplicate != nil {
+				it.onDuplicate()
+			}
 			continue
 		}
 		it.prevFP = currentProfile.Fingerprint
@@ -331,6 +392,9 @@ type profileRowIterator struct {
 	chunks           []index.ChunkMeta
 }
 
+// NewProfileRowIterator takes ownership of one open dataset reference on
+// success. Closing the iterator releases that reference. On error, ownership
+// remains with the caller.
 func NewProfileRowIterator(s *Dataset) (iter.Iterator[ProfileEntry], error) {
 	k, v := index.AllPostingsKey()
 	tsdb := s.Index()
@@ -380,7 +444,15 @@ func (p *profileRowIterator) Next() bool {
 		return false
 	}
 	p.currentRow.Fingerprint = model.Fingerprint(fp)
+	p.currentRow.labels = p.snapshotLabels(p.currentRow.Labels)
 	return true
+}
+
+func (p *profileRowIterator) snapshotLabels(labels phlaremodel.Labels) immutableLabels {
+	// Snapshots may outlive the current series through the dataset index or
+	// observer views. Give each snapshot its own backing array so retaining
+	// one series does not also retain labels from other input series.
+	return newImmutableLabels(labels)
 }
 
 func (p *profileRowIterator) Err() error {

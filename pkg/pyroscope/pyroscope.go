@@ -48,6 +48,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
 	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	asyncquery "github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
@@ -58,6 +59,7 @@ import (
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/operations/v2/querydiagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend"
@@ -70,7 +72,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/settings"
 	recordingrulesclient "github.com/grafana/pyroscope/v2/pkg/settings/recording/client"
 	"github.com/grafana/pyroscope/v2/pkg/storegateway"
-	"github.com/grafana/pyroscope/v2/pkg/symbolizer"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/tracing"
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
@@ -90,7 +91,6 @@ type Config struct {
 	Frontend          frontend.Config         `yaml:"frontend,omitempty"`
 	QueryBackend      querybackend.Config     `yaml:"query_backend"`
 	AdaptivePlacement placement.Config        `yaml:"adaptive_placement"`
-	Symbolizer        symbolizer.Config       `yaml:"symbolizer"`
 	Worker            worker.Config           `yaml:"frontend_worker"`
 	LimitsConfig      validation.Limits       `yaml:"limits"`
 	SegmentWriter     segmentwriter.Config    `yaml:"segment_writer"`
@@ -99,6 +99,7 @@ type Config struct {
 	Tracing           tracing.Config          `yaml:"tracing"`
 	OverridesExporter exporter.Config         `yaml:"overrides_exporter"`
 	RuntimeConfig     runtimeconfig.Config    `yaml:"runtime_config"`
+	ProfileDump       profiledump.Config      `yaml:"profile_dump"`
 	CompactionWorker  compactionworker.Config `yaml:"compaction_worker"`
 	TenantSettings    settings.Config         `yaml:"tenant_settings"`
 
@@ -111,12 +112,14 @@ type Config struct {
 	ShutdownDelay       time.Duration     `yaml:"shutdown_delay,omitempty"`
 	ArchitectureStorage StorageLayer      `yaml:"architecture_storage,omitempty"`
 
-	EmbeddedGrafana grafana.Config `yaml:"embedded_grafana,omitempty"`
+	AdminServer     AdminServerConfig `yaml:"admin_server,omitempty"`
+	EmbeddedGrafana grafana.Config    `yaml:"embedded_grafana,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
 
-	DebugInfo debuginfo.Config `yaml:"-"`
+	DebugInfo debuginfo.Config    `yaml:"-"`
+	SetFlags  map[string]struct{} `yaml:"-"`
 
 	// Legacy v1
 	Querier        querier.Config      `yaml:"querier,omitempty"`
@@ -139,6 +142,57 @@ type StorageConfig struct {
 
 func (c *StorageConfig) RegisterFlags(f *flag.FlagSet) {
 	c.Bucket.RegisterFlagsWithPrefix("storage.", f)
+}
+
+// AdminServerMode controls how the optional admin HTTP server behaves.
+type AdminServerMode string
+
+const (
+	// AdminServerDisabled is the default: no secondary server, all routes on the main port.
+	AdminServerDisabled AdminServerMode = "disabled"
+	// AdminServerAdditional starts the admin server and registers operational
+	// routes on both ports (main port keeps them too).
+	AdminServerAdditional AdminServerMode = "additional"
+	// AdminServerExclusive starts the admin server and moves operational routes
+	// exclusively to it, removing them from the main port.
+	AdminServerExclusive AdminServerMode = "exclusive"
+)
+
+func (m AdminServerMode) IsEnabled() bool {
+	return m == AdminServerAdditional || m == AdminServerExclusive
+}
+
+func (m *AdminServerMode) String() string { return string(*m) }
+func (m *AdminServerMode) Set(v string) error {
+	switch AdminServerMode(v) {
+	case AdminServerDisabled, AdminServerAdditional, AdminServerExclusive:
+		*m = AdminServerMode(v)
+		return nil
+	default:
+		return fmt.Errorf("invalid admin-server mode %q: must be disabled, additional, or exclusive", v)
+	}
+}
+
+// AdminServerConfig configures an optional secondary HTTP server that exposes
+// metrics, pprof/debug and admin/ops endpoints on a separate port so they can be
+// firewalled independently from the public-facing API port.
+type AdminServerConfig struct {
+	Mode        AdminServerMode `yaml:"mode"`
+	HTTPAddress string          `yaml:"http_listen_address"`
+	HTTPPort    int             `yaml:"http_listen_port"`
+}
+
+func (c *AdminServerConfig) RegisterFlags(f *flag.FlagSet) {
+	c.Mode = AdminServerDisabled
+	f.Var(&c.Mode, "admin-server.mode",
+		"Controls the admin server for metrics, pprof and admin endpoints. "+
+			"'disabled': all routes on the main port (default). "+
+			"'additional': admin server started, operational routes served on both ports. "+
+			"'exclusive': admin server started, operational routes removed from main port.")
+	f.StringVar(&c.HTTPAddress, "admin-server.http-listen-address", "localhost",
+		"Address for the admin HTTP server. Defaults to localhost so the port is not exposed externally. Use :: or 0.0.0.0 to listen on all interfaces.")
+	f.IntVar(&c.HTTPPort, "admin-server.http-listen-port", 4042,
+		"Port for the admin HTTP server (metrics, pprof, admin).")
 }
 
 type SelfProfilingConfig struct {
@@ -207,9 +261,11 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.Tracing.RegisterFlags(f)
 	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
+	c.ProfileDump.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
 	c.API.RegisterFlags(f)
+	c.AdminServer.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
 
@@ -217,6 +273,61 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.StoreGateway.RegisterFlags(f, util.Logger)
 	c.Querier.RegisterFlags(f)
 	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
+	markV1StorageOnlyFlagUsage(f)
+}
+
+const v1StorageOnlyFlagUsagePrefix = "[v1 storage only] "
+
+var v1StorageOnlyFlagPrefixes = []string{
+	"compactor.",
+	"ingester.",
+	"pyroscopedb.",
+}
+
+func markV1StorageOnlyFlagUsage(f *flag.FlagSet) {
+	f.VisitAll(func(flag *flag.Flag) {
+		for _, prefix := range v1StorageOnlyFlagPrefixes {
+			if strings.HasPrefix(flag.Name, prefix) {
+				if !strings.HasPrefix(flag.Usage, v1StorageOnlyFlagUsagePrefix) {
+					flag.Usage = v1StorageOnlyFlagUsagePrefix + flag.Usage
+				}
+				return
+			}
+		}
+	})
+}
+
+func (c *Config) RecordSetFlag(name string) {
+	if c.SetFlags == nil {
+		c.SetFlags = map[string]struct{}{}
+	}
+	c.SetFlags[name] = struct{}{}
+}
+
+func (c *Config) setV1StorageOnlyFlags() []string {
+	var flags []string
+	for flagName := range c.SetFlags {
+		for _, prefix := range v1StorageOnlyFlagPrefixes {
+			if strings.HasPrefix(flagName, prefix) {
+				flags = append(flags, flagName)
+				break
+			}
+		}
+	}
+	sort.Strings(flags)
+	return flags
+}
+
+func (c *Config) warnAboutV1StorageOnlyFlags(logger log.Logger) {
+	if c.ArchitectureStorage != V2 {
+		return
+	}
+	for _, flagName := range c.setV1StorageOnlyFlags() {
+		level.Warn(logger).Log(
+			"msg", "v1 storage only flag is set while using v2 storage architecture; flag has no effect",
+			"flag", flagName,
+		)
+	}
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the dskit package.
@@ -241,8 +352,6 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	c.LimitsConfig.AdaptivePlacementLimits.RegisterFlags(throwaway)
 	c.LimitsConfig.Retention.RegisterFlags(throwaway)
 	c.LimitsConfig.RecordingRules.RegisterFlags(throwaway)
-	c.LimitsConfig.Symbolizer.RegisterFlags(throwaway)
-	c.Symbolizer.RegisterFlags(throwaway)
 	c.DebugInfo.RegisterFlags(throwaway)
 
 	// Legacy modules
@@ -254,19 +363,28 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		"server.grpc-max-recv-msg-size-bytes":                    "104857600",
 		"server.grpc-max-send-msg-size-bytes":                    "104857600",
 		"server.grpc.keepalive.min-time-between-pings":           "1s",
+		"server.grpc.keepalive.ping-without-stream-allowed":      "true",
 		"segment-writer.grpc-client-config.connect-timeout":      "1s",
 		"segment-writer.num-tokens":                              "4",
 		"segment-writer.heartbeat-timeout":                       "1m",
 		"segment-writer.unregister-on-shutdown":                  "false",
 		"segment-writer.min-ready-duration":                      "30s",
-		"storage.s3.http.idle-conn-timeout":                      "10m",
-		"storage.s3.max-idle-connections-per-host":               "1000",
-		"storage.gcs.http.idle-conn-timeout":                     "10m",
-		"storage.gcs.max-idle-connections-per-host":              "1000",
 		"compaction-worker.metrics-exporter.rules-source.static": "[]",
 		// Legacy overrides
 		"distributor.replication-factor":         "1",
 		"query-scheduler.service-discovery-mode": schedulerdiscovery.ModeRing,
+	}
+
+	// Keep primary and dedicated async-query storage HTTP defaults consistent.
+	for _, prefix := range []string{"storage.", "query-frontend.async-queries.storage."} {
+		for name, value := range map[string]string{
+			"s3.http.idle-conn-timeout":         "10m",
+			"s3.max-idle-connections-per-host":  "1000",
+			"gcs.http.idle-conn-timeout":        "10m",
+			"gcs.max-idle-connections-per-host": "1000",
+		} {
+			overrides[prefix+name] = value
+		}
 	}
 
 	throwaway.VisitAll(func(f *flag.Flag) {
@@ -291,6 +409,15 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := c.ProfileDump.Cleaner.Validate(); err != nil {
+		return fmt.Errorf("profile_dump cleaner: %w", err)
+	}
+	if err := c.ProfileDump.Recorder.Validate(); err != nil {
+		return fmt.Errorf("profile_dump recorder: %w", err)
+	}
+	if c.LimitsConfig.ProfileDump != nil {
+		return errors.New("profile_dump is only supported in per-tenant runtime overrides")
+	}
 	if err := c.LimitsConfig.Validate(); err != nil {
 		return err
 	}
@@ -311,12 +438,22 @@ func (c *Config) Validate() error {
 		return err
 	}
 
-	if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
+	if err := c.CompactionWorker.Validate(); err != nil {
 		return err
+	}
+
+	if c.usesV1Storage() {
+		if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
+			return err
+		}
 	}
 
 	if err := c.Storage.Bucket.Validate(util.Logger); err != nil {
 		return err
+	}
+
+	if err := c.Frontend.AsyncQueries.Storage.Validate(util.Logger); err != nil {
+		return fmt.Errorf("invalid async query storage configuration: %w", err)
 	}
 
 	if err := c.TenantSettings.Validate(); err != nil {
@@ -340,6 +477,10 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *Config) usesV1Storage() bool {
+	return c.ArchitectureStorage == V1 || c.ArchitectureStorage == V1V2Dual
 }
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
@@ -376,6 +517,7 @@ type Pyroscope struct {
 
 	API            *api.API
 	Server         *server.Server
+	adminRouter    *mux.Router
 	SignalHandler  *signals.Handler
 	MemberlistKV   *memberlist.KVInitService
 	ingesterRing   *ring.Ring
@@ -389,7 +531,8 @@ type Pyroscope struct {
 
 	TenantLimits validation.TenantLimits
 
-	storageBucket phlareobj.Bucket
+	storageBucket       phlareobj.Bucket
+	profileDumpRecorder *profiledump.Recorder
 
 	grpcGatewayMux *grpcgw.ServeMux
 
@@ -410,9 +553,9 @@ type Pyroscope struct {
 	compactionWorker      *compactionworker.Worker
 	healthServer          *health.Server
 	recordingRulesClient  *recordingrulesclient.Client
-	symbolizer            *symbolizer.Symbolizer
 	queryDiagnosticsStore *diagnostics.Store
 	queryDiagnosticsAdmin *querydiagnostics.Admin
+	asyncQueryStore       *asyncquery.Store
 
 	// legacy modules.
 	ingester *ingester.Ingester
@@ -421,6 +564,7 @@ type Pyroscope struct {
 func New(cfg Config) (*Pyroscope, error) {
 	logger := initLogger(cfg.Server.LogFormat, cfg.Server.LogLevel)
 	cfg.Server.Log = logger
+	cfg.warnAboutV1StorageOnlyFlags(logger)
 	usagestats.Edition("oss")
 
 	phlare := &Pyroscope{
@@ -438,6 +582,7 @@ func New(cfg Config) (*Pyroscope, error) {
 	runtime.SetMutexProfileFraction(cfg.SelfProfiling.MutexProfileFraction)
 	runtime.SetBlockProfileRate(cfg.SelfProfiling.BlockProfileRate)
 
+	initTracePropagation()
 	if cfg.Tracing.Enabled {
 		name := os.Getenv("OTEL_SERVICE_NAME")
 		if name == "" {
@@ -464,6 +609,8 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm := modules.NewManager(f.logger)
 
 	mm.RegisterModule(Storage, f.initStorage, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileDumpCleaner, f.initProfileDumpCleaner, modules.UserInvisibleModule)
+	mm.RegisterModule(ProfileDumpRecorder, f.initProfileDumpRecorder, modules.UserInvisibleModule)
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(IngesterRing, f.initIngesterRing, modules.UserInvisibleModule)
@@ -471,6 +618,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(Overrides, f.initOverrides, modules.UserInvisibleModule)
 	mm.RegisterModule(OverridesExporter, f.initOverridesExporter)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
+	mm.RegisterModule(AdminServer, f.initAdminServer, modules.UserInvisibleModule)
 	mm.RegisterModule(API, f.initAPI, modules.UserInvisibleModule)
 	mm.RegisterModule(Version, f.initVersion, modules.UserInvisibleModule)
 	mm.RegisterModule(Metastore, f.initMetastore)
@@ -487,7 +635,6 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryBackend, f.initQueryBackend)
 	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
-	mm.RegisterModule(Symbolizer, f.initSymbolizer)
 	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
@@ -498,6 +645,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
+	mm.RegisterModule(AsyncQueryStore, f.initAsyncQueryStore, modules.UserInvisibleModule)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -514,7 +662,8 @@ func (f *Pyroscope) setupModuleManager() error {
 		},
 
 		Server:                {GRPCGateway, HealthServer},
-		API:                   {Server},
+		AdminServer:           {},
+		API:                   {Server, AdminServer},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
 		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing},
@@ -524,11 +673,12 @@ func (f *Pyroscope) setupModuleManager() error {
 		SegmentWriterRing:     {Overrides, API, MemberlistKV},
 		SegmentWriterClient:   {Overrides, API, SegmentWriterRing, PlacementAgent},
 		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
-		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, Symbolizer, QueryDiagnosticsStore},
+		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
 		QueryDiagnosticsStore: {Storage},
+		ProfileDumpRecorder:   {Storage, Overrides},
+		ProfileDumpCleaner:    {Storage},
 		QueryDiagnosticsAdmin: {QueryDiagnosticsStore, API, MetastoreClient},
-		Symbolizer:            {Overrides, Storage},
 		UsageReport:           {Storage, MemberlistKV},
 		Overrides:             {RuntimeConfig},
 		OverridesExporter:     {Overrides, MemberlistKV},
@@ -541,6 +691,13 @@ func (f *Pyroscope) setupModuleManager() error {
 		AdHocProfiles:         {API, Overrides, Storage},
 		EmbeddedGrafana:       {API},
 		FeatureFlags:          {API},
+		AsyncQueryStore:       {Storage},
+	}
+
+	// Profile capture and cleanup both require architecture.storage=v2.
+	if f.Cfg.ArchitectureStorage == V2 {
+		deps[Distributor] = append(deps[Distributor], ProfileDumpRecorder)
+		deps[Admin] = append(deps[Admin], ProfileDumpCleaner)
 	}
 
 	if f.Cfg.ArchitectureStorage == V1V2Dual || f.Cfg.ArchitectureStorage == V1 {
@@ -718,6 +875,10 @@ func (f *Pyroscope) Run() error {
 		// 1) Signal is received and manager is stopped.
 		// 2) Any service fails.
 		err = sm.AwaitStopped(context.Background())
+		// The server drains requests after other services stop, so close the client after it.
+		if f.queryBackendClient != nil {
+			err = errors.Join(err, f.queryBackendClient.Close())
+		}
 	}
 	if f.versions != nil {
 		f.versions.Shutdown()
@@ -848,6 +1009,9 @@ func (f *Pyroscope) initAPI() (services.Service, error) {
 	a, err := api.New(f.Cfg.API, f.Server, f.grpcGatewayMux, f.Server.Log)
 	if err != nil {
 		return nil, err
+	}
+	if f.adminRouter != nil {
+		a.SetAdminRouter(f.adminRouter, string(f.Cfg.AdminServer.Mode))
 	}
 	f.API = a
 

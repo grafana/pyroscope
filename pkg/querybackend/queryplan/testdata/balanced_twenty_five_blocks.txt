@@ -1,0 +1,46 @@
+MERGE {children: 2, blocks: 0}
+	MERGE {children: 3, blocks: 0}
+		MERGE {children: 3, blocks: 0}
+			READ {children: 0, blocks: 1}
+				id:"1"
+			READ {children: 0, blocks: 2}
+				id:"2"
+				id:"3"
+			READ {children: 0, blocks: 2}
+				id:"4"
+				id:"5"
+		MERGE {children: 2, blocks: 0}
+			READ {children: 0, blocks: 2}
+				id:"6"
+				id:"7"
+			READ {children: 0, blocks: 2}
+				id:"8"
+				id:"9"
+		MERGE {children: 2, blocks: 0}
+			READ {children: 0, blocks: 2}
+				id:"10"
+				id:"11"
+			READ {children: 0, blocks: 2}
+				id:"12"
+				id:"13"
+	MERGE {children: 2, blocks: 0}
+		MERGE {children: 3, blocks: 0}
+			READ {children: 0, blocks: 2}
+				id:"14"
+				id:"15"
+			READ {children: 0, blocks: 2}
+				id:"16"
+				id:"17"
+			READ {children: 0, blocks: 2}
+				id:"18"
+				id:"19"
+		MERGE {children: 3, blocks: 0}
+			READ {children: 0, blocks: 2}
+				id:"20"
+				id:"21"
+			READ {children: 0, blocks: 2}
+				id:"22"
+				id:"23"
+			READ {children: 0, blocks: 2}
+				id:"24"
+				id:"25"

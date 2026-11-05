@@ -1,8 +1,9 @@
 package flamebearer
 
 import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/v2/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/og/storage/segment"
@@ -20,213 +21,159 @@ var (
 	units         = metadata.Units("units")
 )
 
-var _ = Describe("FlamebearerProfile", func() {
-	Context("single", func() {
-		It("sets all attributes correctly", func() {
-			// taken from tree package tests
-			tree := tree.New()
-			tree.Insert([]byte("a;b"), uint64(1))
-			tree.Insert([]byte("a;c"), uint64(2))
+func TestFlamebearerProfile(t *testing.T) {
+	t.Run("single sets all attributes correctly", func(t *testing.T) {
+		tr := tree.New()
+		tr.Insert([]byte("a;b"), uint64(1))
+		tr.Insert([]byte("a;c"), uint64(2))
 
-			timeline := &segment.Timeline{
-				StartTime:               startTime,
-				Samples:                 samples,
-				DurationDeltaNormalized: durationDelta,
-				Watermarks:              watermarks,
-			}
+		timeline := &segment.Timeline{
+			StartTime:               startTime,
+			Samples:                 samples,
+			DurationDeltaNormalized: durationDelta,
+			Watermarks:              watermarks,
+		}
 
-			p := NewProfile(ProfileConfig{
-				Name:     "name",
-				Tree:     tree,
-				MaxNodes: maxNodes,
-				Timeline: timeline,
-				Metadata: metadata.Metadata{
-					SpyName:    spyName,
-					SampleRate: sampleRate,
-					Units:      units,
-				},
-			})
-
-			// Flamebearer
-			Expect(p.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
-			Expect(p.Flamebearer.Levels).To(Equal([][]int{
-				{0, 3, 0, 0},
-				{0, 3, 0, 1},
-				{0, 1, 1, 3, 0, 2, 2, 2},
-			}))
-			Expect(p.Flamebearer.NumTicks).To(Equal(3))
-			Expect(p.Flamebearer.MaxSelf).To(Equal(2))
-
-			// Metadata
-			Expect(p.Metadata.Name).To(Equal("name"))
-			Expect(p.Metadata.Format).To(Equal("single"))
-			Expect(p.Metadata.SpyName).To(Equal(spyName))
-			Expect(p.Metadata.SampleRate).To(Equal(sampleRate))
-			Expect(p.Metadata.Units).To(Equal(units))
-
-			// Timeline
-			Expect(p.Timeline.StartTime).To(Equal(startTime))
-			Expect(p.Timeline.Samples).To(Equal(samples))
-			Expect(p.Timeline.DurationDelta).To(Equal(durationDelta))
-			Expect(p.Timeline.Watermarks).To(Equal(watermarks))
-
-			// Ticks
-			Expect(p.LeftTicks).To(BeZero())
-			Expect(p.RightTicks).To(BeZero())
-
-			// Validate
-			Expect(p.Validate()).To(BeNil())
+		p := NewProfile(ProfileConfig{
+			Name:     "name",
+			Tree:     tr,
+			MaxNodes: maxNodes,
+			Timeline: timeline,
+			Metadata: metadata.Metadata{
+				SpyName:    spyName,
+				SampleRate: sampleRate,
+				Units:      units,
+			},
 		})
+
+		require.Equal(t, []string{"total", "a", "c", "b"}, p.Flamebearer.Names)
+		require.Equal(t, [][]int{
+			{0, 3, 0, 0},
+			{0, 3, 0, 1},
+			{0, 1, 1, 3, 0, 2, 2, 2},
+		}, p.Flamebearer.Levels)
+		require.Equal(t, 3, p.Flamebearer.NumTicks)
+		require.Equal(t, 2, p.Flamebearer.MaxSelf)
+
+		require.Equal(t, "name", p.Metadata.Name)
+		require.Equal(t, "single", p.Metadata.Format)
+		require.Equal(t, spyName, p.Metadata.SpyName)
+		require.Equal(t, sampleRate, p.Metadata.SampleRate)
+		require.Equal(t, units, p.Metadata.Units)
+
+		require.Equal(t, startTime, p.Timeline.StartTime)
+		require.Equal(t, samples, p.Timeline.Samples)
+		require.Equal(t, durationDelta, p.Timeline.DurationDelta)
+		require.Equal(t, watermarks, p.Timeline.Watermarks)
+
+		require.Zero(t, p.LeftTicks)
+		require.Zero(t, p.RightTicks)
+
+		require.NoError(t, p.Validate())
 	})
-})
+}
 
-var _ = Describe("Checking profile validation", func() {
-	When("the version is invalid", func() {
-		var fb FlamebearerProfile
-		BeforeEach(func() {
-			fb.Version = 2
-		})
-
-		Context("and we validate the profile", func() {
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("unsupported version 2"))
-			})
-		})
-	})
-
-	When("the format is unsupported", func() {
-		var fb FlamebearerProfile
-
-		Context("and we validate the profile", func() {
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("unsupported format "))
-			})
-		})
-	})
-
-	When("there are no names", func() {
-		var fb FlamebearerProfile
-		BeforeEach(func() {
-			fb.Metadata.Format = "single"
-		})
-
-		Context("and we validate the profile", func() {
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("a profile must have at least one symbol name"))
-			})
-		})
-	})
-
-	When("there are no levels", func() {
-		var fb FlamebearerProfile
-		BeforeEach(func() {
-			fb.Metadata.Format = "single"
-			fb.Flamebearer.Names = []string{"name"}
-		})
-
-		Context("and we validate the profile", func() {
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("a profile must have at least one profiling level"))
-			})
-		})
-	})
-
-	When("the level size is invalid for the profile format", func() {
-		Context("and we validate a single profile", func() {
-			var fb FlamebearerProfile
-			BeforeEach(func() {
+func TestFlamebearerProfileValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(*FlamebearerProfile)
+		wantErr string
+	}{
+		{
+			name: "unsupported version",
+			setup: func(fb *FlamebearerProfile) {
+				fb.Version = 2
+			},
+			wantErr: "unsupported version 2",
+		},
+		{
+			name:    "unsupported format",
+			setup:   func(_ *FlamebearerProfile) {},
+			wantErr: "unsupported format ",
+		},
+		{
+			name: "no names",
+			setup: func(fb *FlamebearerProfile) {
+				fb.Metadata.Format = "single"
+			},
+			wantErr: "a profile must have at least one symbol name",
+		},
+		{
+			name: "no levels",
+			setup: func(fb *FlamebearerProfile) {
+				fb.Metadata.Format = "single"
+				fb.Flamebearer.Names = []string{"name"}
+			},
+			wantErr: "a profile must have at least one profiling level",
+		},
+		{
+			name: "invalid level size for single",
+			setup: func(fb *FlamebearerProfile) {
 				fb.Metadata.Format = "single"
 				fb.Flamebearer.Names = []string{"name"}
 				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0, 0, 0, 0}}
-			})
-
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("a profile level should have a multiple of 4 values, but there's a level with 7 values"))
-			})
-		})
-
-		Context("and we validate a double profile", func() {
-			var fb FlamebearerProfile
-			BeforeEach(func() {
+			},
+			wantErr: "a profile level should have a multiple of 4 values, but there's a level with 7 values",
+		},
+		{
+			name: "invalid level size for double",
+			setup: func(fb *FlamebearerProfile) {
 				fb.Metadata.Format = "double"
 				fb.Flamebearer.Names = []string{"name"}
 				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0}}
-			})
-
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("a profile level should have a multiple of 7 values, but there's a level with 4 values"))
-			})
-		})
-	})
-
-	When("the name index is invalid", func() {
-		Context("and we validate a single profile", func() {
-			var fb FlamebearerProfile
-			BeforeEach(func() {
+			},
+			wantErr: "a profile level should have a multiple of 7 values, but there's a level with 4 values",
+		},
+		{
+			name: "invalid name index single",
+			setup: func(fb *FlamebearerProfile) {
 				fb.Metadata.Format = "single"
 				fb.Flamebearer.Names = []string{"name"}
 				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 1}}
-			})
-
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("invalid name index 1, it should be smaller than 1"))
-			})
-		})
-
-		Context("and we validate a double profile", func() {
-			var fb FlamebearerProfile
-			BeforeEach(func() {
+			},
+			wantErr: "invalid name index 1, it should be smaller than 1",
+		},
+		{
+			name: "invalid name index double",
+			setup: func(fb *FlamebearerProfile) {
 				fb.Metadata.Format = "double"
 				fb.Flamebearer.Names = []string{"name"}
 				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0, 0, 0, 1}}
-			})
-
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("invalid name index 1, it should be smaller than 1"))
-			})
-		})
-	})
-
-	When("the name index is negative", func() {
-		Context("and we validate a single profile", func() {
-			var fb FlamebearerProfile
-			BeforeEach(func() {
+			},
+			wantErr: "invalid name index 1, it should be smaller than 1",
+		},
+		{
+			name: "negative name index",
+			setup: func(fb *FlamebearerProfile) {
 				fb.Metadata.Format = "single"
 				fb.Flamebearer.Names = []string{"name"}
 				fb.Flamebearer.Levels = [][]int{{0, 0, 0, -1}}
-			})
+			},
+			wantErr: "invalid name index -1, it should be a non-negative value",
+		},
+	}
 
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(MatchError("invalid name index -1, it should be a non-negative value"))
-			})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var fb FlamebearerProfile
+			tt.setup(&fb)
+			require.EqualError(t, fb.Validate(), tt.wantErr)
 		})
+	}
+
+	t.Run("valid single profile", func(t *testing.T) {
+		var fb FlamebearerProfile
+		fb.Metadata.Format = "single"
+		fb.Flamebearer.Names = []string{"name"}
+		fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0}}
+		require.NoError(t, fb.Validate())
 	})
 
-	When("everything is valid", func() {
-		Context("and we validate a single profile", func() {
-			var fb FlamebearerProfile
-			BeforeEach(func() {
-				fb.Metadata.Format = "single"
-				fb.Flamebearer.Names = []string{"name"}
-				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0}}
-			})
-
-			It("returns no error", func() {
-				Expect(fb.Validate()).To(BeNil())
-			})
-		})
-
-		Context("and we validate a double profile", func() {
-			var fb FlamebearerProfile
-			BeforeEach(func() {
-				fb.Metadata.Format = "double"
-				fb.Flamebearer.Names = []string{"name"}
-				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0, 0, 0, 0}}
-			})
-
-			It("returns an error", func() {
-				Expect(fb.Validate()).To(BeNil())
-			})
-		})
+	t.Run("valid double profile", func(t *testing.T) {
+		var fb FlamebearerProfile
+		fb.Metadata.Format = "double"
+		fb.Flamebearer.Names = []string{"name"}
+		fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0, 0, 0, 0}}
+		require.NoError(t, fb.Validate())
 	})
-})
+}

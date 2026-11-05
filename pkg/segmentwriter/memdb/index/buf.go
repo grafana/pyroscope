@@ -12,6 +12,9 @@ type BufferWriter struct {
 	pos uint64
 }
 
+// Limit retained capacity per buffer, not total pool memory.
+const maxPooledBufferCapacity = 16 << 20
+
 var pool = sync.Pool{
 	New: func() interface{} {
 		return NewBufferWriter()
@@ -25,6 +28,9 @@ func GetBufferWriterFromPool() *BufferWriter {
 }
 
 func PutBufferWriterToPool(fw *BufferWriter) {
+	if fw.buf.Cap() > maxPooledBufferCapacity {
+		return
+	}
 	fw.Reset()
 	pool.Put(fw)
 }

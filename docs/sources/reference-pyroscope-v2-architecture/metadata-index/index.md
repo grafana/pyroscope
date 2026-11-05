@@ -145,7 +145,7 @@ Retention policies delete entire partitions based on:
 - **Block creation time**: Primary retention criteria
 - **Data timestamps**: Blocks are only deleted if data is also past retention
 
-Retention policies are tenant-specific and configurable per tenant.
+Retention policies are tenant-specific and configurable per tenant with the [`retention_period`](../../configure-server/reference-configuration-parameters/#limits) limit.
 
 ## Cleanup process
 

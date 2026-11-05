@@ -58,12 +58,34 @@ func WithSampleObserver(observer SampleObserver) CompactionOption {
 	}
 }
 
+// WithDuplicateRowsCallback is called once per tenant after its block is compacted.
+func WithDuplicateRowsCallback(fn func(tenant string, duplicates uint64)) CompactionOption {
+	return func(p *compactionConfig) {
+		p.duplicateRowsFn = fn
+	}
+}
+
+// WithDatasetFilter excludes datasets before any of their sections are opened.
+func WithDatasetFilter(keep func(tenant, serviceName string) bool) CompactionOption {
+	return func(c *compactionConfig) { c.datasetFilter = keep }
+}
+
+// WithPreserveCompactionLevel rewrites blocks without promoting them.
+// All input blocks must be single-tenant blocks (CompactionLevel > 0 && Tenant != 0)
+// at the same compaction level.
+func WithPreserveCompactionLevel() CompactionOption {
+	return func(c *compactionConfig) { c.preserveCompactionLevel = true }
+}
+
 type compactionConfig struct {
-	objectOptions  []ObjectOption
-	source         objstore.BucketReader
-	destination    objstore.Bucket
-	tempdir        string
-	sampleObserver SampleObserver
+	datasetFilter           func(string, string) bool
+	preserveCompactionLevel bool
+	objectOptions           []ObjectOption
+	source                  objstore.BucketReader
+	destination             objstore.Bucket
+	tempdir                 string
+	sampleObserver          SampleObserver
+	duplicateRowsFn         func(tenant string, duplicates uint64)
 }
 
 type SampleObserver interface {
@@ -71,8 +93,7 @@ type SampleObserver interface {
 
 	// Evaluate is called before the compactor rewrites any symbols.
 	// An "observe" callback function is returned to be called after writing the resulting blocks.
-	// This method must not modify the entry.
-	Evaluate(ProfileEntry) (observe func())
+	Evaluate(ProfileEntryView) (observe func())
 }
 
 func Compact(
@@ -91,9 +112,13 @@ func Compact(
 	}
 
 	objects := ObjectsFromMetas(storage, blocks, c.objectOptions...)
-	plan, err := PlanCompaction(objects)
+	plan, err := planCompaction(objects, c)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(plan) == 0 {
+		return nil, nil
 	}
 
 	if err = objects.Open(ctx); err != nil {
@@ -109,13 +134,28 @@ func Compact(
 		if compactionErr != nil {
 			return nil, compactionErr
 		}
+		if c.duplicateRowsFn != nil {
+			var duplicates uint64
+			for _, d := range p.datasets {
+				duplicates += d.duplicates
+			}
+			c.duplicateRowsFn(p.tenant, duplicates)
+		}
 		compacted = append(compacted, md)
 	}
 
 	return compacted, nil
 }
 
-func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
+func PlanCompaction(objects Objects, options ...CompactionOption) ([]*CompactionPlan, error) {
+	var c compactionConfig
+	for _, option := range options {
+		option(&c)
+	}
+	return planCompaction(objects, &c)
+}
+
+func planCompaction(objects Objects, c *compactionConfig) ([]*CompactionPlan, error) {
 	if len(objects) == 0 {
 		// Even if there's just a single object, we still need to rewrite it.
 		return nil, ErrNoBlocksToMerge
@@ -127,28 +167,42 @@ func PlanCompaction(objects Objects) ([]*CompactionPlan, error) {
 		if r.meta.Shard != obj.meta.Shard {
 			return nil, ErrShardMergeMismatch
 		}
+		if c.preserveCompactionLevel {
+			if obj.meta.CompactionLevel == 0 || obj.meta.Tenant == 0 {
+				return nil, fmt.Errorf("cannot preserve compaction level on segments")
+			}
+			if obj.meta.CompactionLevel != r.meta.CompactionLevel {
+				return nil, fmt.Errorf("cannot preserve different compaction levels")
+			}
+		}
 		level = max(level, obj.meta.CompactionLevel)
 	}
-	level++
+	if !c.preserveCompactionLevel {
+		level++
+	}
 
 	g := NewULIDGenerator(objects)
 	m := make(map[string]*CompactionPlan)
 	for _, obj := range objects {
 		for _, ds := range obj.meta.Datasets {
-			if ds.Name == 0 {
+			if ds.Name == 0 || ds.Format != 0 {
 				// Anonymous dataset is never compacted:
 				// it is rebuilt based on the actual block contents.
 				continue
 			}
-			tm, ok := m[obj.meta.StringTable[ds.Tenant]]
+			tenant, service := obj.meta.StringTable[ds.Tenant], obj.meta.StringTable[ds.Name]
+			if c.datasetFilter != nil && !c.datasetFilter(tenant, service) {
+				continue
+			}
+			tm, ok := m[tenant]
 			if !ok {
 				tm = newBlockCompaction(
 					g.ULID().String(),
-					obj.meta.StringTable[ds.Tenant],
+					tenant,
 					r.meta.Shard,
 					level,
 				)
-				m[obj.meta.StringTable[ds.Tenant]] = tm
+				m[tenant] = tm
 			}
 			// Bind objects to datasets.
 			sm := tm.addDataset(obj.meta, ds)
@@ -255,7 +309,7 @@ func (b *CompactionPlan) Compact(
 // matching fingerprints belong to the same series.
 func (b *CompactionPlan) addRowToDatasetIndex(r ProfileEntry) {
 	if b.lastDatasetIndexFP != r.Fingerprint || b.datasetIndex.Empty() {
-		b.datasetIndex.AddSeries(b.currentDatasetIdx, r.Labels, r.Fingerprint)
+		b.datasetIndex.addSeries(b.currentDatasetIdx, r.labels, r.Fingerprint)
 		b.lastDatasetIndexFP = r.Fingerprint
 	}
 }
@@ -320,9 +374,10 @@ type datasetCompaction struct {
 	symbolsRewriter *symbolsRewriter
 	profilesWriter  *profilesWriter
 
-	samples  uint64
-	series   uint64
-	profiles uint64
+	samples    uint64
+	series     uint64
+	profiles   uint64
+	duplicates uint64
 
 	flushOnce sync.Once
 
@@ -432,7 +487,7 @@ func (m *datasetCompaction) open(ctx context.Context, w io.Writer) (err error) {
 }
 
 func (m *datasetCompaction) merge(ctx context.Context) (err error) {
-	rows, err := NewMergeRowProfileIterator(m.datasets)
+	rows, err := NewMergeRowProfileIterator(m.datasets, func() { m.duplicates++ })
 	if err != nil {
 		return err
 	}
@@ -455,7 +510,7 @@ func (m *datasetCompaction) merge(ctx context.Context) (err error) {
 
 func (m *datasetCompaction) writeRow(r ProfileEntry) (err error) {
 	if m.observer != nil {
-		observe := m.observer.Evaluate(r)
+		observe := m.observer.Evaluate(r.View())
 		defer observe()
 	}
 	m.parent.addRowToDatasetIndex(r)
@@ -504,19 +559,39 @@ type indexRewriter struct {
 }
 
 type seriesLabels struct {
-	labels      phlaremodel.Labels
+	labels      immutableLabels
 	fingerprint model.Fingerprint
+}
+
+type immutableLabel struct {
+	name  string
+	value string
+}
+
+type immutableLabels []immutableLabel
+
+func newImmutableLabels(labels phlaremodel.Labels) immutableLabels {
+	snapshot := make(immutableLabels, len(labels))
+	for i, label := range labels {
+		snapshot[i] = immutableLabel{name: label.Name, value: label.Value}
+	}
+	return snapshot
+}
+
+func (labels immutableLabels) Len() int { return len(labels) }
+
+func (labels immutableLabels) At(i int) (name, value string) {
+	return labels[i].name, labels[i].value
 }
 
 func (rw *indexRewriter) rewriteRow(e ProfileEntry) {
 	if rw.previousFp != e.Fingerprint || len(rw.series) == 0 {
-		series := e.Labels.Clone()
-		for _, l := range series {
-			rw.symbols[l.Name] = struct{}{}
-			rw.symbols[l.Value] = struct{}{}
+		for _, label := range e.labels {
+			rw.symbols[label.name] = struct{}{}
+			rw.symbols[label.value] = struct{}{}
 		}
 		rw.series = append(rw.series, seriesLabels{
-			labels:      series,
+			labels:      e.labels,
 			fingerprint: e.Fingerprint,
 		})
 		rw.chunks = append(rw.chunks, index.ChunkMeta{
@@ -622,7 +697,7 @@ func (s *symbolsRewriter) rewriterFor(x *Dataset) *symdb.Rewriter {
 }
 
 func (s *symbolsRewriter) loadStacktraceIDs(values []parquet.Value) {
-	s.stacktraces = slices.Grow(s.stacktraces[0:], len(values))[:len(values)]
+	s.stacktraces = slices.Grow(s.stacktraces[:0], len(values))[:len(values)]
 	for i := range values {
 		s.stacktraces[i] = values[i].Uint32()
 	}

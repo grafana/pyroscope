@@ -90,7 +90,7 @@ func Test_GenericStore(t *testing.T) {
 	})
 
 	t.Run("one element", func(t *testing.T) {
-		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a"}, nil))
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a"}, nil, 0))
 		result, err := s.Get(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []*testObj{
@@ -99,7 +99,7 @@ func Test_GenericStore(t *testing.T) {
 	})
 
 	t.Run("second element", func(t *testing.T) {
-		require.NoError(t, s.Upsert(ctx, &testObj{Name: "b", Data: "data-b"}, nil))
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "b", Data: "data-b"}, nil, 0))
 		result, err := s.Get(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []*testObj{
@@ -109,7 +109,7 @@ func Test_GenericStore(t *testing.T) {
 	})
 
 	t.Run("update without generation", func(t *testing.T) {
-		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a-v2"}, nil))
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a-v2"}, nil, 0))
 		result, err := s.Get(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []*testObj{
@@ -120,7 +120,7 @@ func Test_GenericStore(t *testing.T) {
 
 	t.Run("update with generation", func(t *testing.T) {
 		observedGeneration := int64(2)
-		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a-v3"}, &observedGeneration))
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a-v3"}, &observedGeneration, 0))
 		result, err := s.Get(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []*testObj{
@@ -155,7 +155,7 @@ func Test_GenericStore(t *testing.T) {
 
 	t.Run("update with wrong generation", func(t *testing.T) {
 		observedGeneration := int64(2)
-		require.ErrorContains(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a-v4"}, &observedGeneration), "conflicting update, please try again: observed_generation=2, store_generation=3")
+		require.ErrorContains(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a-v4"}, &observedGeneration, 0), "conflicting update, please try again: observed_generation=2, store_generation=3")
 		result, err := s.Get(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []*testObj{
@@ -179,5 +179,42 @@ func Test_GenericStore(t *testing.T) {
 		require.Equal(t, []*testObj{
 			{Name: "b", Data: "data-b", Generation: 1},
 		}, result.Elements)
+	})
+}
+
+func Test_GenericStore_Upsert_MaxElements(t *testing.T) {
+	s := newTestStore(t, "user-a")
+	ctx := context.Background()
+	const max = 2
+
+	t.Run("insert up to the limit", func(t *testing.T) {
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a"}, nil, max))
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "b", Data: "data-b"}, nil, max))
+	})
+
+	t.Run("inserting beyond the limit is rejected", func(t *testing.T) {
+		err := s.Upsert(ctx, &testObj{Name: "c", Data: "data-c"}, nil, max)
+		var mErr *ErrMaxElementsExceeded
+		require.ErrorAs(t, err, &mErr)
+		require.Equal(t, max, mErr.Max)
+
+		// the rejected element was not stored
+		result, err := s.Get(ctx)
+		require.NoError(t, err)
+		require.Len(t, result.Elements, max)
+	})
+
+	t.Run("updating an existing element is allowed at the limit", func(t *testing.T) {
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "a", Data: "data-a-v2"}, nil, max))
+		result, err := s.Get(ctx)
+		require.NoError(t, err)
+		require.Len(t, result.Elements, max)
+	})
+
+	t.Run("0 disables the limit", func(t *testing.T) {
+		require.NoError(t, s.Upsert(ctx, &testObj{Name: "c", Data: "data-c"}, nil, 0))
+		result, err := s.Get(ctx)
+		require.NoError(t, err)
+		require.Len(t, result.Elements, 3)
 	})
 }

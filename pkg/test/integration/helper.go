@@ -32,12 +32,6 @@ import (
 
 	profilesv1 "go.opentelemetry.io/proto/otlp/collector/profiles/v1development"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	connectapi "github.com/grafana/pyroscope/v2/pkg/api/connect"
 	"github.com/grafana/pyroscope/v2/pkg/cfg"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
@@ -45,7 +39,15 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 	"github.com/grafana/pyroscope/v2/pkg/pyroscope"
+	"github.com/grafana/pyroscope/v2/pkg/test"
 	"github.com/grafana/pyroscope/v2/pkg/util/connectgrpc"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func EachPyroscopeTest(t *testing.T, f func(p *PyroscopeTest, t *testing.T)) {
@@ -112,7 +114,7 @@ func (p *PyroscopeTest) start(t *testing.T) {
 }
 
 func (p *PyroscopeTest) Configure(t *testing.T, v2 bool) *PyroscopeTest {
-	ports, err := GetFreePorts(4)
+	ports, err := test.GetFreePorts(4)
 	require.NoError(t, err)
 	p.httpPort = ports[0]
 	p.memberlistPort = ports[1]
@@ -511,7 +513,7 @@ func (b *RequestBuilder) SelectMergeProfile(metric string, query map[string]stri
 	}
 	selector.WriteString("}")
 	qc := b.QueryClient()
-	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{ //nolint:staticcheck // Legacy querier.v1 integration coverage.
 		ProfileTypeID: metric,
 		Start:         time.Unix(1, 0).UnixMilli(),
 		End:           time.Now().UnixMilli(),

@@ -17,3 +17,10 @@ func (f *Frontend) SelectHeatmap(
 ) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
 	return nil, errNotAvailableInV1Frontend
 }
+
+func (f *Frontend) QueryAnomalies(
+	ctx context.Context,
+	c *connect.Request[querierv1.QueryAnomaliesRequest],
+) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	return nil, errNotAvailableInV1Frontend
+}

@@ -178,6 +178,27 @@ func (r *Resolver) AddSamplesWithSpanSelectorFromParquetRow(partition uint64, st
 	})
 }
 
+func (r *Resolver) AddSamplesWithTraceSelectorFromParquetRow(partition uint64, stacktraces, values, traces []parquet.Value, traceSelector model.TraceSelector) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
+		for i, sid := range stacktraces {
+			stackID := sid.Uint32()
+			if stackID == 0 {
+				continue
+			}
+			b := traces[i].ByteArray()
+			if len(b) != len(model.TraceID{}) {
+				// Null (no trace id on this sample): cannot match.
+				continue
+			}
+			var t model.TraceID
+			copy(t[:], b)
+			if _, ok := traceSelector[t]; ok {
+				samples.Append(stackID, values[i].Uint64())
+			}
+		}
+	})
+}
+
 func (r *Resolver) withPartitionSamples(partition uint64, fn func(*SampleAppender)) {
 	p := r.partition(partition)
 	p.m.Lock()

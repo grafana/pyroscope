@@ -133,8 +133,11 @@ type Cluster struct {
 	wg sync.WaitGroup // components wait group
 
 	v2                 bool     // is this a v2 cluster
-	debuginfodURL      string   // debuginfod URL for symbolization
 	expectedComponents []string // number of expected components
+
+	forceDatasetIndexLookup   bool
+	datasetIndexShardPruning  bool
+	datasetLookupFromMetadata bool
 
 	tmpDir     string
 	httpClient *http.Client
@@ -167,6 +170,7 @@ func (c *Cluster) commonFlags(comp *Component) []string {
 		"-overrides-exporter.ring.instance-id=" + nodeName,
 		"-overrides-exporter.ring.heartbeat-period=1s",
 		"-query-frontend.instance-addr=" + listenAddr,
+		"-query-frontend.async-queries.enabled=true",
 	}
 }
 

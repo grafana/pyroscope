@@ -37,3 +37,21 @@ This is helpful if you want to change a parameter that's specific to a certain c
 
 The most common use case for CLI flags is to use the `-target` flag to run Pyroscope as microservices.
 By setting the `-target` CLI flag, all Pyroscope components share the same configuration file, but you can make them behave as a given component by specifying a `-target` command-line value, such as `-target=ingester` or `-target=querier`.
+
+## Runtime configuration and per-tenant overrides
+
+Some parameters can change while Pyroscope runs, without a restart. These parameters make up the runtime configuration. The most common use is per-tenant overrides, which apply different limits to individual tenants than the cluster defaults.
+
+To enable runtime configuration, set the `-runtime-config.file` CLI flag, or the `runtime_config` block, to one or more YAML files. Pyroscope reloads these files on an interval that you set with `-runtime-config.reload-period`, which defaults to `10s`.
+
+Per-tenant overrides use a top-level `overrides` key that maps each tenant ID to the limits you want to change for that tenant:
+
+```yaml
+overrides:
+  "tenant-a":
+    ingestion_rate_mb: 8
+  "tenant-b":
+    ingestion_rate_mb: 4
+```
+
+Any tenant that you don't list uses the cluster default. For the full list of parameters that you can set per tenant, refer to the `limits` block in the [Configuration reference](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/reference-configuration-parameters/#limits).

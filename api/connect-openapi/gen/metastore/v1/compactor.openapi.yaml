@@ -9,6 +9,78 @@ tags:
     description: This operation is considered part of the interal API scope. There are no stability guaraentees when using those APIs.
   - name: metastore.v1.CompactionService
 paths:
+  /metastore.v1.CompactionService/DeleteDatasets:
+    post:
+      tags:
+        - metastore.v1.CompactionService
+      summary: Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
+      description: Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
+      operationId: metastore.v1.CompactionService.DeleteDatasets
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.DeleteDatasetsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.DeleteDatasetsResponse'
+  /metastore.v1.CompactionService/ListCompactionJobs:
+    post:
+      tags:
+        - metastore.v1.CompactionService
+      summary: Read-only snapshot of queued and assigned jobs.
+      description: Read-only snapshot of queued and assigned jobs.
+      operationId: metastore.v1.CompactionService.ListCompactionJobs
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.ListCompactionJobsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.ListCompactionJobsResponse'
   /metastore.v1.CompactionService/PollCompactionJobs:
     post:
       tags:
@@ -116,6 +188,71 @@ components:
           description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    metastore.v1.BlockDeletionSummary:
+      type: object
+      properties:
+        blockId:
+          type: string
+          title: block_id
+        tenant:
+          type: string
+          title: tenant
+        shard:
+          type: integer
+          title: shard
+        compactionLevel:
+          type: integer
+          title: compaction_level
+        blockMinTime:
+          type:
+            - integer
+            - string
+          title: block_min_time
+          format: int64
+          description: Full block bounds in Unix nanoseconds.
+        blockMaxTime:
+          type:
+            - integer
+            - string
+          title: block_max_time
+          format: int64
+        matchedMinTime:
+          type:
+            - integer
+            - string
+          title: matched_min_time
+          format: int64
+          description: Matched dataset bounds in Unix nanoseconds, potentially outside the request.
+        matchedMaxTime:
+          type:
+            - integer
+            - string
+          title: matched_max_time
+          format: int64
+        fullBlockPlanned:
+          type: boolean
+          title: full_block_planned
+          description: True when all service datasets match and the whole block will be removed.
+        matchedDatasetsCount:
+          type: integer
+          title: matched_datasets_count
+        remainingDatasetsCount:
+          type: integer
+          title: remaining_datasets_count
+        matchedServices:
+          type: array
+          items:
+            type: string
+          title: matched_services
+        matchedBytes:
+          type:
+            - integer
+            - string
+          title: matched_bytes
+          format: int64
+          description: Sum of matched dataset sizes, not reclaimed object-storage bytes.
+      title: BlockDeletionSummary
+      additionalProperties: false
     metastore.v1.BlockList:
       type: object
       properties:
@@ -268,6 +405,9 @@ components:
           items:
             $ref: '#/components/schemas/metastore.v1.Tombstones'
           title: tombstones
+        deleteFilter:
+          title: delete_filter
+          $ref: '#/components/schemas/metastore.v1.DeleteFilter'
       title: CompactionJob
       additionalProperties: false
     metastore.v1.CompactionJobAssignment:
@@ -289,6 +429,34 @@ components:
           title: lease_expires_at
           format: int64
       title: CompactionJobAssignment
+      additionalProperties: false
+    metastore.v1.CompactionJobInfo:
+      type: object
+      properties:
+        job:
+          title: job
+          $ref: '#/components/schemas/metastore.v1.CompactionJob'
+        status:
+          title: status
+          $ref: '#/components/schemas/metastore.v1.CompactionJobStatus'
+        addedAt:
+          type:
+            - integer
+            - string
+          title: added_at
+          format: int64
+          description: Unix nanoseconds.
+        leaseExpiresAt:
+          type:
+            - integer
+            - string
+          title: lease_expires_at
+          format: int64
+          description: Unix nanoseconds; zero when not leased.
+        failures:
+          type: integer
+          title: failures
+      title: CompactionJobInfo
       additionalProperties: false
     metastore.v1.CompactionJobStatus:
       type: string
@@ -432,6 +600,131 @@ components:
              representation. Since entries are supposed to be indexed, the redundancy of
              denormalized relationships is not a concern.
       title: Dataset
+      additionalProperties: false
+    metastore.v1.DeleteDatasetsRequest:
+      type: object
+      properties:
+        tenant:
+          type: string
+          title: tenant
+          description: Required, non-blank tenant. Cross-tenant deletion is not supported.
+        minTime:
+          type:
+            - integer
+            - string
+          title: min_time
+          format: int64
+          description: |-
+            Inclusive Unix nanosecond time window. Entire matching datasets in
+             overlapping blocks are removed, including data outside this window.
+             min_time must not exceed max_time; zero is the Unix epoch.
+        maxTime:
+          type:
+            - integer
+            - string
+          title: max_time
+          format: int64
+        filter:
+          title: filter
+          description: Required selection filter.
+          $ref: '#/components/schemas/metastore.v1.DeleteFilter'
+        dryRun:
+          type: boolean
+          title: dry_run
+          description: Report planned work without scheduling jobs or changing state.
+        minCompactionLevel:
+          type: integer
+          title: min_compaction_level
+          description: |-
+            Minimum compaction level of blocks to consider (0 by default).
+             Note that L0 multi-tenant segments are never eligible.
+      title: DeleteDatasetsRequest
+      additionalProperties: false
+    metastore.v1.DeleteDatasetsResponse:
+      type: object
+      properties:
+        dryRun:
+          type: boolean
+          title: dry_run
+        matchedBlocksCount:
+          type: integer
+          title: matched_blocks_count
+        plannedFullBlockDeletionsCount:
+          type: integer
+          title: planned_full_block_deletions_count
+        plannedBlockRewritesCount:
+          type: integer
+          title: planned_block_rewrites_count
+        matchedDatasetsCount:
+          type: integer
+          title: matched_datasets_count
+        matchedBytes:
+          type:
+            - integer
+            - string
+          title: matched_bytes
+          format: int64
+          description: Sum of matched dataset sizes, not reclaimed object-storage bytes.
+        effectiveMatchedMinTime:
+          type:
+            - integer
+            - string
+          title: effective_matched_min_time
+          format: int64
+          description: Overall matched dataset bounds in Unix nanoseconds; both zero if no matches.
+        effectiveMatchedMaxTime:
+          type:
+            - integer
+            - string
+          title: effective_matched_max_time
+          format: int64
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.BlockDeletionSummary'
+          title: blocks
+        scheduledJobNames:
+          type: array
+          items:
+            type: string
+          title: scheduled_job_names
+          description: Non-dry-run jobs are asynchronous; this is not a completion acknowledgement.
+      title: DeleteDatasetsResponse
+      additionalProperties: false
+      description: |-
+        Impact plan, not a completion acknowledgement. Counts describe selected work
+         for both dry runs and scheduled deletions. Only single-tenant compacted blocks
+         are eligible; L0/multi-tenant blocks and already tombstoned blocks are skipped.
+    metastore.v1.DeleteFilter:
+      type: object
+      properties:
+        serviceNameRegex:
+          type: string
+          title: service_name_regex
+      title: DeleteFilter
+      additionalProperties: false
+      description: |-
+        Go/RE2 regular expression, matched against the entire dataset service_name.
+         An empty regex matches only an empty service name, not all services.
+         Use ".*" to match all services. Datasets without a service name are skipped.
+    metastore.v1.ListCompactionJobsRequest:
+      type: object
+      properties:
+        tenant:
+          type: string
+          title: tenant
+          description: Empty selects all tenants.
+      title: ListCompactionJobsRequest
+      additionalProperties: false
+    metastore.v1.ListCompactionJobsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/metastore.v1.CompactionJobInfo'
+          title: jobs
+      title: ListCompactionJobsResponse
       additionalProperties: false
     metastore.v1.PollCompactionJobsRequest:
       type: object

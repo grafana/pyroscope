@@ -49,14 +49,14 @@ pyroscope:
           cpu: 100m
       initContainers:
         - name: create-bucket
-          image: minio/mc:RELEASE.2025-04-08T15-39-49Z
+          image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
           command:
             - /bin/sh
             - -c
             - |
               export MC_CONFIG_DIR="/tmp/mc"
               mkdir -p "$MC_CONFIG_DIR"
-              until mc config host add myminio http://$MINIO_ENDPOINT:9000 grafana-pyroscope supersecret; do
+              until mc alias set myminio "http://${MINIO_ENDPOINT}:9000" grafana-pyroscope supersecret; do
                 echo "Waiting for Minio to be available..."
                 sleep 5
               done

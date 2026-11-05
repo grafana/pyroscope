@@ -33,6 +33,7 @@ pyroscope.configure(
 	server_address   = server_addr,
     basic_auth_username = basic_auth_username, # for grafana cloud
     basic_auth_password = basic_auth_password, # for grafana cloud
+    mem_enabled = True,
 	tags             = {
         "region":   f'{os.getenv("REGION")}',
 	}

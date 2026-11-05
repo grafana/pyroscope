@@ -25,6 +25,12 @@ The query frontend sends the plan root to a query backend instance. That instanc
 
 This tree-based execution allows queries to fan out across many query backend instances in parallel, with merging happening at each level of the tree rather than in a single aggregation point.
 
+## Query timeouts
+
+`-query-backend.client-timeout` limits synchronous backend requests to `30s` by default. Async requests use the experimental `-query-backend.async-query-timeout`, default `2m`; set it to `0` to use the client timeout.
+
+Each timeout covers backend execution, including child queries, retry attempts, and retry backoff. An earlier caller deadline still takes precedence.
+
 ## Direct object storage access
 
 Unlike v1 where queries may need to access ingesters for recent data, the v2 query-backend reads directly from object storage:
@@ -33,6 +39,12 @@ Unlike v1 where queries may need to access ingesters for recent data, the v2 que
 - Simplified query execution
 - Better isolation between read and write paths
 - Easier horizontal scaling
+
+## Sampled-out profiles
+
+When the distributor retains sampled-out profiles, they're stored as totals-only series marked with `__sampled__="true"`. The query-backend excludes those series from stack-based queries. Time-series queries include them only when `include_stripped_profiles` is enabled.
+
+For how sampling works and how to configure the limits, refer to [Write-path sampling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/reference-pyroscope-v2-architecture/sampling/).
 
 ## Stateless design
 

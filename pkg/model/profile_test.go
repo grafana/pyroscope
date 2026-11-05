@@ -130,6 +130,30 @@ func TestDecodeTraceID(t *testing.T) {
 	}
 }
 
+func TestNewTraceSelector(t *testing.T) {
+	t.Run("decodes and dedups trace ids", func(t *testing.T) {
+		id := "0123456789abcdef0123456789abcdef"
+		sel, err := NewTraceSelector([]string{id, id})
+		require.NoError(t, err)
+		require.Len(t, sel, 1)
+		want, err := DecodeTraceID(id)
+		require.NoError(t, err)
+		_, ok := sel[want]
+		assert.True(t, ok)
+	})
+
+	t.Run("empty input yields empty selector", func(t *testing.T) {
+		sel, err := NewTraceSelector(nil)
+		require.NoError(t, err)
+		assert.Empty(t, sel)
+	})
+
+	t.Run("invalid trace id returns error", func(t *testing.T) {
+		_, err := NewTraceSelector([]string{"tooshort"})
+		require.Error(t, err)
+	})
+}
+
 func Test_ParseProfileTypeSelector(t *testing.T) {
 	tests := []struct {
 		Name    string

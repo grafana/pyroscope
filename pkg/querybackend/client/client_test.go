@@ -4,15 +4,21 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcclient"
+	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/status"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
@@ -35,6 +41,16 @@ type QueryHandler struct {
 func (q QueryHandler) Invoke(ctx context.Context, request *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 	time.Sleep(nServerResponseTime)
 	return &queryv1.InvokeResponse{}, nil
+}
+
+type testQueryBackendServer struct {
+	queryv1.UnimplementedQueryBackendServiceServer
+	invoke func(context.Context, int32) (*queryv1.InvokeResponse, error)
+	calls  atomic.Int32
+}
+
+func (s *testQueryBackendServer) Invoke(ctx context.Context, _ *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+	return s.invoke(ctx, s.calls.Add(1))
 }
 
 type multiResolverBuilder struct {
@@ -74,6 +90,258 @@ func (r *multiResolver) ResolveNow(resolver.ResolveNowOptions) {}
 
 func (r *multiResolver) Close() {}
 
+// oversizedReader answers the first query with a response too large to send and
+// any retry with an empty one, so a retry would look like a success.
+func oversizedReader(size int) *testQueryBackendServer {
+	return &testQueryBackendServer{
+		invoke: func(ctx context.Context, call int32) (*queryv1.InvokeResponse, error) {
+			if call > 1 {
+				return &queryv1.InvokeResponse{}, nil
+			}
+			return &queryv1.InvokeResponse{
+				Reports: []*queryv1.Report{{
+					ReportType: queryv1.ReportType_REPORT_PPROF,
+					Pprof: &queryv1.PprofReport{
+						Pprof: make([]byte, size),
+					},
+				}},
+			}, nil
+		},
+	}
+}
+
+func TestClient_DoesNotRetryOversizedResponse(t *testing.T) {
+	const maxSendMessageSize = 1024
+
+	reader := oversizedReader(2 * maxSendMessageSize)
+	backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+	require.NoError(t, err)
+	client := newTestClient(t, backend, grpc.MaxSendMsgSize(maxSendMessageSize))
+
+	_, err = client.Invoke(context.Background(), &queryv1.InvokeRequest{
+		QueryPlan: &queryv1.QueryPlan{
+			Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ},
+		},
+	})
+	require.Equal(t, codes.ResourceExhausted, status.Code(err))
+	require.ErrorContains(t, err, "trying to send message larger than max")
+	require.Equal(t, int32(1), reader.calls.Load())
+}
+
+func TestClient_DoesNotRetryOversizedChildResponse(t *testing.T) {
+	const maxSendMessageSize = 1024
+
+	reader := oversizedReader(2 * maxSendMessageSize)
+	leafBackend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+	require.NoError(t, err)
+	leafClient := newTestClient(t, leafBackend, grpc.MaxSendMsgSize(maxSendMessageSize))
+	rootBackend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, leafClient, nil)
+	require.NoError(t, err)
+	client := newTestClient(t, rootBackend)
+
+	_, err = client.Invoke(context.Background(), &queryv1.InvokeRequest{
+		QueryPlan: &queryv1.QueryPlan{
+			Root: &queryv1.QueryNode{
+				Type: queryv1.QueryNode_MERGE,
+				Children: []*queryv1.QueryNode{{
+					Type: queryv1.QueryNode_READ,
+				}},
+			},
+		},
+	})
+	require.Equal(t, codes.ResourceExhausted, status.Code(err))
+	require.ErrorContains(t, err, "trying to send message larger than max")
+	require.Equal(t, int32(1), reader.calls.Load())
+}
+
+// The concurrency limiter rejects with the status an undeliverable response
+// also carries, and no pushback.
+func TestClient_RetriesLoadShedding(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		reader := &testQueryBackendServer{
+			invoke: func(ctx context.Context, call int32) (*queryv1.InvokeResponse, error) {
+				if call == 1 {
+					return nil, status.Error(codes.ResourceExhausted, "concurrency limit exceeded")
+				}
+				time.Sleep(10 * time.Millisecond)
+				return &queryv1.InvokeResponse{
+					Diagnostics: &queryv1.Diagnostics{
+						ExecutionNode: &queryv1.ExecutionNode{
+							Stats: &queryv1.ExecutionStats{
+								ProcessingDurationNs: int64(10 * time.Millisecond),
+							},
+						},
+					},
+				}, nil
+			},
+		}
+		backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+		require.NoError(t, err)
+		client := newTestClient(t, backend)
+
+		resp, err := client.Invoke(context.Background(), &queryv1.InvokeRequest{
+			QueryPlan: &queryv1.QueryPlan{
+				Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, int32(2), reader.calls.Load())
+		stats := resp.GetDiagnostics().GetExecutionNode().GetStats()
+		require.NotNil(t, stats)
+		require.Equal(t, int64(10*time.Millisecond), stats.GetProcessingDurationNs())
+		require.Greater(t, stats.GetBackoffDurationNs(), int64(500*time.Millisecond))
+		require.Zero(t, stats.GetUnaccountedDurationNs())
+	})
+}
+
+func TestClient_RetriesRetryableStatus(t *testing.T) {
+	for _, code := range []codes.Code{codes.Unavailable, codes.ResourceExhausted} {
+		t.Run(code.String(), func(t *testing.T) {
+			reader := &testQueryBackendServer{
+				invoke: func(ctx context.Context, call int32) (*queryv1.InvokeResponse, error) {
+					if call == 1 {
+						if err := grpc.SetTrailer(ctx, metadata.Pairs("grpc-retry-pushback-ms", "0")); err != nil {
+							return nil, status.Error(codes.Internal, err.Error())
+						}
+						return nil, status.Error(code, "try again")
+					}
+					return &queryv1.InvokeResponse{}, nil
+				},
+			}
+			backend, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, reader)
+			require.NoError(t, err)
+			client := newTestClient(t, backend)
+
+			resp, err := client.Invoke(context.Background(), &queryv1.InvokeRequest{
+				QueryPlan: &queryv1.QueryPlan{
+					Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ},
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.Equal(t, int32(2), reader.calls.Load())
+		})
+	}
+}
+
+func TestClient_KeepsInFlightInvokeOnStop(t *testing.T) {
+	const address = "localhost:10034"
+	listeners, dialOption := test.CreateInMemoryListeners([]string{address})
+	started := make(chan struct{})
+	release := make(chan struct{})
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+
+	server := grpc.NewServer()
+	queryv1.RegisterQueryBackendServiceServer(server, &testQueryBackendServer{
+		invoke: func(ctx context.Context, _ int32) (*queryv1.InvokeResponse, error) {
+			close(started)
+			select {
+			case <-release:
+				return &queryv1.InvokeResponse{}, nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		},
+	})
+	go func() { _ = server.Serve(listeners[address]) }()
+	t.Cleanup(server.Stop)
+
+	cfg := grpcclient.Config{}
+	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	client, err := New("passthrough:///"+address, cfg, dialOption)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+	require.NoError(t, services.StartAndAwaitRunning(t.Context(), client.Service()))
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	result := make(chan error, 1)
+	go func() {
+		_, err := client.Invoke(ctx, &queryv1.InvokeRequest{})
+		result <- err
+	}()
+
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	require.NoError(t, services.StopAndAwaitTerminated(ctx, client.Service()))
+	select {
+	case err := <-result:
+		t.Fatalf("invoke returned before release: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(release)
+	require.NoError(t, <-result)
+}
+
+func TestClient_ClosesConnectionAfterStop(t *testing.T) {
+	const address = "localhost:10033"
+	listeners, dialOption := test.CreateInMemoryListeners([]string{address})
+	server := grpc.NewServer()
+	queryv1.RegisterQueryBackendServiceServer(server, &testQueryBackendServer{
+		invoke: func(context.Context, int32) (*queryv1.InvokeResponse, error) {
+			return &queryv1.InvokeResponse{}, nil
+		},
+	})
+	go func() { _ = server.Serve(listeners[address]) }()
+	t.Cleanup(server.Stop)
+
+	builder := &changingDNSBuilder{initial: address}
+	original := resolver.Get("dns")
+	resolver.Register(builder)
+	t.Cleanup(func() { resolver.Register(original) })
+
+	cfg := grpcclient.Config{}
+	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	client, err := New("dns:///backends.test:9095", cfg, dialOption)
+	require.NoError(t, err)
+	require.NoError(t, services.StartAndAwaitRunning(t.Context(), client.Service()))
+
+	_, err = client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+	require.NoError(t, err)
+	require.NoError(t, services.StopAndAwaitTerminated(t.Context(), client.Service()))
+	_, err = client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+	require.NoError(t, err)
+	require.NoError(t, client.Close())
+	require.Eventually(t, builder.closed.Load, time.Second, 10*time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	_, err = client.Invoke(ctx, &queryv1.InvokeRequest{})
+	require.Equal(t, codes.Canceled, status.Code(err))
+}
+
+func newTestClient(t *testing.T, backend queryv1.QueryBackendServiceServer, serverOptions ...grpc.ServerOption) *Client {
+	t.Helper()
+
+	const address = "localhost:10003"
+	listeners, dialOption := test.CreateInMemoryListeners([]string{address})
+	server := grpc.NewServer(serverOptions...)
+	queryv1.RegisterQueryBackendServiceServer(server, backend)
+	go func() {
+		_ = server.Serve(listeners[address])
+	}()
+	t.Cleanup(server.Stop)
+
+	grpcClientConfig := grpcclient.Config{}
+	grpcClientConfig.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	client, err := New("passthrough:///"+address, grpcClientConfig, dialOption)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, client.Close())
+	})
+	return client
+}
+
 // Test_Concurrency tests the concurrent invocation of queries against multiple backend servers.
 //
 // This test sets up a simulated environment with `nServers` gRPC servers, each acting as a
@@ -94,7 +362,7 @@ func Test_Concurrency(t *testing.T) {
 	resolver.Register(&multiResolverBuilder{targets: addresses})
 	backendAddress := "multi:///"
 
-	cl, err := New(backendAddress, grpcClientCfg, 30*time.Second, dialOpt)
+	cl, err := New(backendAddress, grpcClientCfg, dialOpt)
 	require.NoError(t, err)
 
 	for i := 0; i < nServers; i++ {
@@ -140,4 +408,76 @@ func Test_Concurrency(t *testing.T) {
 	}
 	err = g.Wait()
 	require.NoError(t, err)
+}
+
+type changingDNSBuilder struct {
+	initial string
+	added   string
+	ready   atomic.Bool
+	closed  atomic.Bool
+}
+
+func (b *changingDNSBuilder) Scheme() string { return "dns" }
+
+func (b *changingDNSBuilder) Build(_ resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions) (resolver.Resolver, error) {
+	err := cc.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: b.initial}}})
+	if err != nil {
+		return nil, err
+	}
+	return &changingDNSResolver{builder: b, cc: cc}, nil
+}
+
+type changingDNSResolver struct {
+	builder *changingDNSBuilder
+	cc      resolver.ClientConn
+}
+
+func (r *changingDNSResolver) ResolveNow(resolver.ResolveNowOptions) {
+	if r.builder.ready.Load() {
+		_ = r.cc.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: r.builder.initial}, {Addr: r.builder.added}}})
+	}
+}
+
+func (r *changingDNSResolver) Close() { r.builder.closed.Store(true) }
+
+func TestClient_DiscoversNewBackend(t *testing.T) {
+	const (
+		initial = "localhost:10031"
+		added   = "localhost:10032"
+	)
+	listeners, dialOption := test.CreateInMemoryListeners([]string{initial, added})
+	var newBackendCalls atomic.Int32
+	for _, addr := range []string{initial, added} {
+		serv := grpc.NewServer()
+		backend := &testQueryBackendServer{invoke: func(context.Context, int32) (*queryv1.InvokeResponse, error) {
+			if addr == added {
+				newBackendCalls.Add(1)
+			}
+			return &queryv1.InvokeResponse{}, nil
+		}}
+		queryv1.RegisterQueryBackendServiceServer(serv, backend)
+		go func() { _ = serv.Serve(listeners[addr]) }()
+		t.Cleanup(serv.Stop)
+	}
+
+	builder := &changingDNSBuilder{initial: initial, added: added}
+	original := resolver.Get("dns")
+	resolver.Register(builder)
+	t.Cleanup(func() { resolver.Register(original) })
+
+	cfg := grpcclient.Config{}
+	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
+	client, err := New("dns:///backends.test:9095", cfg, dialOption)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+
+	_, err = client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+	require.NoError(t, err)
+	require.Zero(t, newBackendCalls.Load())
+	builder.ready.Store(true)
+
+	require.Eventually(t, func() bool {
+		_, err := client.Invoke(t.Context(), &queryv1.InvokeRequest{})
+		return err == nil && newBackendCalls.Load() > 0
+	}, 45*time.Second, 100*time.Millisecond)
 }

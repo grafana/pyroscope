@@ -312,6 +312,16 @@ func (s *deduplicatingSlice[M, K, H]) ingest(elems []M, rewriter *rewriter) {
 }
 
 func (s *deduplicatingSlice[M, K, H]) append(dst []uint32, elems []M) {
+	s.appendElems(dst, elems, true)
+}
+
+// appendOwned is like append, but stores new elements as is: the caller hands
+// over ownership and must not modify them afterwards.
+func (s *deduplicatingSlice[M, K, H]) appendOwned(dst []uint32, elems []M) {
+	s.appendElems(dst, elems, false)
+}
+
+func (s *deduplicatingSlice[M, K, H]) appendElems(dst []uint32, elems []M, clone bool) {
 	missing := int64SlicePool.Get()[:0]
 	s.lock.RLock()
 	for i, v := range elems {
@@ -335,7 +345,10 @@ func (s *deduplicatingSlice[M, K, H]) append(dst []uint32, elems []M) {
 				continue
 			}
 			s.size.Add(s.helper.size(e))
-			s.slice = append(s.slice, s.helper.clone(e))
+			if clone {
+				e = s.helper.clone(e)
+			}
+			s.slice = append(s.slice, e)
 			s.lookup[k] = int64(p)
 			dst[i] = p
 			p++

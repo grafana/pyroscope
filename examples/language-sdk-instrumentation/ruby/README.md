@@ -8,7 +8,7 @@ Note: For documentation on the Pyroscope ruby gem visit [our website](https://gr
 
 ## Live Demo
 
-Feel free to check out the [live demo](https://play.grafana.org/a/grafana-pyroscope-app/profiles-explorer?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-ruby&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) of this example on our demo page.
+Feel free to check out the [live demo](https://play.grafana.org/a/grafana-pyroscope-app/explore?searchText=&panelType=time-series&layout=grid&hideNoData=off&explorationType=flame-graph&var-serviceName=pyroscope-rideshare-ruby&var-profileMetricId=process_cpu:cpu:nanoseconds:cpu:nanoseconds&var-dataSource=grafanacloud-profiles) of this example on our demo page.
 
 ## Background
 
@@ -80,6 +80,8 @@ docker compose down
 ```
 
 The Rails version of the example is available in the `raidshare_rails` directory.
+
+If you serve Rails with Puma in clustered mode (`workers` plus `preload_app!`), see the `rails_puma_cluster` directory. It shows where `Pyroscope.configure` has to go so that the forked workers are profiled instead of the Puma master.
 
 What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app` from the dropdown, you should see a flame graph that looks like this. After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 

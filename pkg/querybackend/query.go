@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tracing"
+	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -16,6 +17,8 @@ import (
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -91,6 +94,9 @@ type blockContext struct {
 	grp             *errgroup.Group
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
+	includeStripped bool
+
+	datasetLookupFromMetadata bool
 }
 
 func (b *blockContext) execute() error {
@@ -180,7 +186,7 @@ func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 	// dataset_index) without resolving real datasets.
 	s := (&queryContext{blockContext: b}).sections()
 	indexOnly := len(s) == 1 && s[0] == block.SectionTSDB
-	if indexOnly {
+	if indexOnly && b.metadataLookupMatchers() == nil {
 		oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query_index_only", indexOnly))
 		return nil
 	}
@@ -191,6 +197,10 @@ func (b *blockContext) datasetIndices() []*metastorev1.Dataset {
 func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_index_query", true))
 	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Int("dataset_index_count", len(indices)))
+
+	if matchers := b.metadataLookupMatchers(); matchers != nil {
+		return b.lookupDatasetsInMetadata(indices, matchers)
+	}
 
 	// As query execution has not started yet,
 	// we can safely open datasets.
@@ -246,6 +256,74 @@ func (b *blockContext) lookupDatasets(indices []*metastorev1.Dataset) error {
 	b.obj.SetMetadata(md)
 
 	oteltrace.SpanFromContext(b.ctx).AddEvent("dataset tsdb index lookup complete")
+
+	return nil
+}
+
+func (b *blockContext) metadataLookupMatchers() []*labels.Matcher {
+	if !b.datasetLookupFromMetadata {
+		return nil
+	}
+	return datasetLabelMatchers(b.req.matchers)
+}
+
+func datasetLabelMatchers(matchers []*labels.Matcher) []*labels.Matcher {
+	var hasServiceName bool
+	var dst []*labels.Matcher
+	for _, m := range matchers {
+		if m.Type != labels.MatchEqual {
+			continue
+		}
+		switch m.Name {
+		case phlaremodel.LabelNameServiceName:
+			hasServiceName = true
+			dst = append(dst, m)
+		case phlaremodel.LabelNameProfileType:
+			dst = append(dst, m)
+		}
+	}
+	if !hasServiceName {
+		return nil
+	}
+	return dst
+}
+
+func (b *blockContext) lookupDatasetsInMetadata(indices []*metastorev1.Dataset, matchers []*labels.Matcher) error {
+	oteltrace.SpanFromContext(b.ctx).SetAttributes(attribute.Bool("dataset_metadata_lookup", true))
+
+	stringTable := b.obj.Metadata().StringTable
+	tenants := make(map[string]struct{}, len(indices))
+	for _, ds := range indices {
+		tenants[stringTable[ds.Tenant]] = struct{}{}
+	}
+
+	md, err := b.obj.ReadMetadata(b.ctx)
+	if err != nil {
+		return err
+	}
+
+	var j int
+	if m := metadata.NewLabelMatcher(md.StringTable, matchers); m.IsValid() {
+		for _, ds := range md.Datasets {
+			if block.DatasetFormat(ds.Format) != block.DatasetFormat0 {
+				continue
+			}
+			if _, ok := tenants[md.StringTable[ds.Tenant]]; !ok {
+				continue
+			}
+			if ds.MaxTime < b.req.src.StartTime || ds.MinTime > b.req.src.EndTime {
+				continue
+			}
+			if m.Matches(ds.Labels) {
+				md.Datasets[j] = ds
+				j++
+			}
+		}
+	}
+	md.Datasets = md.Datasets[:j]
+	b.obj.SetMetadata(md)
+
+	oteltrace.SpanFromContext(b.ctx).AddEvent("dataset metadata lookup complete")
 
 	return nil
 }

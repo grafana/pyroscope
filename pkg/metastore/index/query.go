@@ -27,29 +27,32 @@ func (e *InvalidQueryError) Error() string {
 }
 
 type MetadataQuery struct {
-	Expr      string
-	StartTime time.Time
-	EndTime   time.Time
-	Tenant    []string
-	Labels    []string
+	Expr          string
+	ShardSelector string
+	StartTime     time.Time
+	EndTime       time.Time
+	Tenant        []string
+	Labels        []string
 }
 
 func (q *MetadataQuery) String() string {
-	return fmt.Sprintf("start: %v, end: %v, tenants: %v, expr: %v",
+	return fmt.Sprintf("start: %v, end: %v, tenants: %v, expr: %v, shard_selector: %v",
 		q.StartTime,
 		q.EndTime,
 		strings.Join(q.Tenant, ","),
-		q.Expr)
+		q.Expr,
+		q.ShardSelector)
 }
 
 type metadataQuery struct {
-	startTime time.Time
-	endTime   time.Time
-	tenants   []string
-	tenantMap map[string]struct{}
-	matchers  []*labels.Matcher
-	labels    []string
-	index     *Index
+	startTime     time.Time
+	endTime       time.Time
+	tenants       []string
+	tenantMap     map[string]struct{}
+	matchers      []*labels.Matcher
+	shardMatchers []*labels.Matcher
+	labels        []string
+	index         *Index
 }
 
 func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error) {
@@ -67,8 +70,20 @@ func newMetadataQuery(index *Index, query MetadataQuery) (*metadataQuery, error)
 		matchers:  matchers,
 		labels:    query.Labels,
 	}
+	if query.ShardSelector != "" {
+		if q.shardMatchers, err = phlaremodel.ParseMetricSelector(query.ShardSelector); err != nil {
+			return nil, &InvalidQueryError{Query: query, Err: fmt.Errorf("failed to parse shard selector: %w", err)}
+		}
+	}
 	q.buildTenantMap(query.Tenant)
 	return q, nil
+}
+
+func (q *metadataQuery) shardMayMatch(s *store.Shard) bool {
+	if len(q.shardMatchers) == 0 {
+		return true
+	}
+	return metadata.NewLabelMatcher(s.StringTable.Strings, q.shardMatchers).IsValid()
 }
 
 func (q *metadataQuery) buildTenantMap(tenants []string) {
@@ -131,6 +146,9 @@ func (q *blockMetadataQuerier) queryBlocks(ctx context.Context) ([]*metastorev1.
 }
 
 func (q *blockMetadataQuerier) collectBlockMetadata(s *store.Shard) error {
+	if !q.query.shardMayMatch(s) {
+		return nil
+	}
 	matcher := metadata.NewLabelMatcher(s.StringTable.Strings, q.query.matchers, q.query.labels...)
 	if !matcher.IsValid() {
 		return nil
@@ -140,7 +158,11 @@ func (q *blockMetadataQuerier) collectBlockMetadata(s *store.Shard) error {
 		return nil
 	}
 	for blocks.Next() {
-		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
+		kv := blocks.At()
+		if minTime, maxTime, err := blockMetaTimeBounds(kv.Value); err == nil && !q.query.overlapsUnixMilli(minTime, maxTime) {
+			continue
+		}
+		md := q.shards.index.blocks.getOrCreate(s, kv)
 		if m := q.collectMatched(s.StringTable, matcher, md); m != nil {
 			q.metas = append(q.metas, m)
 		}
@@ -256,15 +278,17 @@ func (q *metadataLabelQuerier) collectLabels(s *store.Shard) error {
 		return nil
 	}
 	for blocks.Next() {
-		md := q.shards.index.blocks.getOrCreate(s, blocks.At())
-		if q.query.overlapsUnixMilli(md.MinTime, md.MaxTime) {
-			for _, ds := range md.Datasets {
-				if _, ok := q.query.tenantMap[s.StringTable.Lookup(ds.Tenant)]; !ok {
-					continue
-				}
-				if q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
-					matcher.Matches(ds.Labels)
-				}
+		kv := blocks.At()
+		if minTime, maxTime, err := blockMetaTimeBounds(kv.Value); err == nil && !q.query.overlapsUnixMilli(minTime, maxTime) {
+			continue
+		}
+		md := q.shards.index.blocks.getOrCreate(s, kv)
+		for _, ds := range md.Datasets {
+			if _, ok := q.query.tenantMap[s.StringTable.Lookup(ds.Tenant)]; !ok {
+				continue
+			}
+			if q.query.overlapsUnixMilli(ds.MinTime, ds.MaxTime) {
+				matcher.Matches(ds.Labels)
 			}
 		}
 	}

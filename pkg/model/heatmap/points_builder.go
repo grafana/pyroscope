@@ -1,6 +1,7 @@
 package heatmap
 
 import (
+	"bytes"
 	"slices"
 	"strings"
 
@@ -20,6 +21,7 @@ type exemplar struct {
 	timestamp   int64
 	profileID   string
 	spanID      uint64
+	traceID     model.TraceID
 	labelSetRef int
 	value       int64
 }
@@ -34,7 +36,7 @@ func newPointsBuilder() *pointsBuilder {
 }
 
 // Add adds an exemplar with its full labels.
-func (pb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts int64, profileID string, spanID uint64, value int64) {
+func (pb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts int64, profileID string, spanID uint64, traceID model.TraceID, value int64) {
 	if profileID == "" && spanID == 0 {
 		return
 	}
@@ -43,6 +45,7 @@ func (pb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts i
 		timestamp: ts,
 		profileID: profileID,
 		spanID:    spanID,
+		traceID:   traceID,
 		value:     value,
 	}
 
@@ -95,12 +98,15 @@ func cmpExemplar(a, b exemplar) int {
 	if a.spanID > b.spanID {
 		return 1
 	}
+	if c := bytes.Compare(a.traceID[:], b.traceID[:]); c != 0 {
+		return c
+	}
 	return strings.Compare(a.profileID, b.profileID)
 }
 
-func (pb *pointsBuilder) forEach(f func(labels model.Labels, ts int64, profileID string, spanID uint64, value int64)) {
+func (pb *pointsBuilder) forEach(f func(labels model.Labels, ts int64, profileID string, spanID uint64, traceID model.TraceID, value int64)) {
 	for _, exemplar := range pb.exemplars {
-		f(pb.labelSets[exemplar.labelSetRef], exemplar.timestamp, exemplar.profileID, exemplar.spanID, exemplar.value)
+		f(pb.labelSets[exemplar.labelSetRef], exemplar.timestamp, exemplar.profileID, exemplar.spanID, exemplar.traceID, exemplar.value)
 	}
 }
 

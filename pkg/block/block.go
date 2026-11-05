@@ -21,6 +21,7 @@ const (
 
 	maxRowsPerRowGroup  = 10 << 10
 	symbolsPrefetchSize = 32 << 10
+	localReadBufferSize = 64 << 10
 )
 
 func estimateReadBufferSize(s int64) int {

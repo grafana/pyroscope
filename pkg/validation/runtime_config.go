@@ -3,6 +3,7 @@ package validation
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/go-kit/log/level"
 	"go.yaml.in/yaml/v3"
@@ -14,14 +15,14 @@ type RuntimeConfigValues struct {
 	TenantLimits map[string]*Limits `yaml:"overrides"`
 }
 
-func (r RuntimeConfigValues) validate() error {
+func (r RuntimeConfigValues) validate(now time.Time) error {
 	for t, c := range r.TenantLimits {
 		if c == nil {
 			level.Warn(util.Logger).Log("msg", "skipping empty tenant limit definition", "tenant", t)
 			continue
 		}
 
-		if err := c.Validate(); err != nil {
+		if err := c.validate(now); err != nil {
 			return fmt.Errorf("invalid override for tenant %s: %w", t, err)
 		}
 	}
@@ -29,7 +30,12 @@ func (r RuntimeConfigValues) validate() error {
 	return nil
 }
 
+// LoadRuntimeConfig validates a complete reload before publication.
 func LoadRuntimeConfig(r io.Reader) (*RuntimeConfigValues, error) {
+	return loadRuntimeConfig(r, time.Now())
+}
+
+func loadRuntimeConfig(r io.Reader, now time.Time) (*RuntimeConfigValues, error) {
 	overrides := &RuntimeConfigValues{}
 
 	decoder := yaml.NewDecoder(r)
@@ -37,7 +43,7 @@ func LoadRuntimeConfig(r io.Reader) (*RuntimeConfigValues, error) {
 	if err := decoder.Decode(&overrides); err != nil {
 		return nil, err
 	}
-	if err := overrides.validate(); err != nil {
+	if err := overrides.validate(now); err != nil {
 		return nil, err
 	}
 	return overrides, nil

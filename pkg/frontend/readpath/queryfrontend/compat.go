@@ -21,14 +21,13 @@ import (
 func (q *QueryFrontend) querySingle(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
-	backendF backendWrapper,
 ) (*queryv1.Report, error) {
 	if len(req.Query) != 1 {
 		// Nil report is a valid response.
 		return nil, nil
 	}
 	t := querybackend.QueryReportType(req.Query[0].QueryType)
-	resp, err := q.doQuery(ctx, req, backendF)
+	resp, err := q.Query(ctx, req)
 	if err != nil {
 		code, sanitized := http.ClientHTTPStatusAndError(err)
 		return nil, connect.NewError(connectgrpc.HTTPToCode(int32(code)), sanitized)
@@ -69,7 +68,7 @@ func parseMatchers(matchers []string) ([]*labels.Matcher, error) {
 	for _, m := range matchers {
 		s, err := phlaremodel.ParseMetricSelector(m)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse label selector %q: %w", s, err)
+			return nil, fmt.Errorf("failed to parse label selector %q: %w", m, err)
 		}
 		parsed = append(parsed, s...)
 	}

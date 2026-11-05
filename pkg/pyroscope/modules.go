@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	gorillaMux "github.com/gorilla/mux"
 	"github.com/grafana/dskit/dns"
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
@@ -25,6 +28,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.yaml.in/yaml/v3"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -43,6 +47,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/operations"
 	blocksv2 "github.com/grafana/pyroscope/v2/pkg/operations/v2/blocks"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	phlarecontext "github.com/grafana/pyroscope/v2/pkg/pyroscope/context"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/querier/worker"
@@ -55,12 +60,16 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util/build"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	httpserver "github.com/grafana/pyroscope/v2/pkg/util/http/server"
+	"github.com/grafana/pyroscope/v2/pkg/util/tracecontext"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
 
 // The various modules that make up Pyroscope.
 const (
+	ProfileDumpRecorder string = "profile-dump-recorder"
+	ProfileDumpCleaner  string = "profile-dump-cleaner"
+
 	All               string = "all"
 	API               string = "api"
 	Version           string = "version"
@@ -100,10 +109,11 @@ const (
 	PlacementAgent        string = "placement-agent"
 	PlacementManager      string = "placement-manager"
 	HealthServer          string = "health-server"
+	AdminServer           string = "admin-server"
 	RecordingRulesClient  string = "recording-rules-client"
-	Symbolizer            string = "symbolizer"
 	QueryDiagnosticsStore string = "query-diagnostics-store"
 	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
+	AsyncQueryStore       string = "async-query-store"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -328,7 +338,7 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 	f.distributor = d
-	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server)
+	f.API.RegisterDistributor(d, f.Overrides, f.Cfg.Server, f.profileDumpRecorder)
 
 	if store, err := debuginfo.NewStore(f.logger, f.storageBucket, f.Cfg.DebugInfo); err != nil {
 		return nil, err
@@ -352,7 +362,7 @@ func (f *Pyroscope) initMemberlistKV() (services.Service, error) {
 			f.reg,
 		),
 	)
-	dnsProvider := dns.NewProvider(f.logger, dnsProviderReg, dns.GolangResolverType)
+	dnsProvider := dns.NewProvider(dns.GolangResolverType, 2, f.logger, dnsProviderReg)
 
 	f.Cfg.MemberlistKV.MetricsNamespace = "pyroscope"
 	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, f.reg)
@@ -400,7 +410,7 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 			"storage",
 		)
 		if err != nil {
-			return nil, fmt.Errorf("unable to initialise bucket: %w", err)
+			return nil, fmt.Errorf("unable to initialize bucket: %w", err)
 		}
 		f.storageBucket = b
 	}
@@ -410,6 +420,30 @@ func (f *Pyroscope) initStorage() (_ services.Service, err error) {
 	}
 
 	return nil, nil
+}
+
+func (f *Pyroscope) initProfileDumpCleaner() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	c, err := profiledump.NewCleaner(f.Cfg.ProfileDump.Cleaner, f.storageBucket, f.logger, f.reg, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func (f *Pyroscope) initProfileDumpRecorder() (services.Service, error) {
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+	r, err := profiledump.NewRecorder(f.Cfg.ProfileDump.Recorder, f.Overrides,
+		profiledump.BucketUpload(f.storageBucket, f.Overrides), f.Cfg.Distributor.DistributorRing.InstanceID, f.logger, f.reg)
+	if err != nil {
+		return nil, err
+	}
+	f.profileDumpRecorder = r
+	return r, nil
 }
 
 // TODO: This should be passed to all other services and could also be used to signal shutdown
@@ -468,6 +502,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	f.Cfg.Server.ExcludeRequestInLog = true // gRPC-specific.
 	f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware,
 		util.RecoveryInterceptorGRPC,
+		tracecontext.UnaryServerInterceptor,
 		featureflags.ClientCapabilitiesGRPCMiddleware(),
 	)
 
@@ -480,6 +515,12 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 			}
 			f.Cfg.Server.GRPCMiddleware = append(f.Cfg.Server.GRPCMiddleware, concurrencyInterceptor)
 		}
+	}
+
+	// In exclusive mode, operational endpoints (/metrics, /debug/pprof) move to the
+	// admin server only; remove them from the main port.
+	if f.Cfg.AdminServer.Mode == AdminServerExclusive {
+		f.Cfg.Server.RegisterInstrumentation = false
 	}
 
 	f.setupWorkerTimeout()
@@ -513,6 +554,7 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 		return nil, err
 	}
 	defaultHTTPMiddleware := []middleware.Interface{
+		tracecontext.HTTPMiddleware(),
 		middleware.Tracer{},
 		// https://github.com/grafana/dskit/pull/527
 		middleware.RouteInjector{
@@ -541,15 +583,58 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 	return s, nil
 }
 
+func (f *Pyroscope) initAdminServer() (services.Service, error) {
+	// Always create the router so route-registration calls in API are safe to call
+	// regardless of mode; they just won't be reachable if no listener is started.
+	router := gorillaMux.NewRouter()
+	f.adminRouter = router
+
+	if !f.Cfg.AdminServer.Mode.IsEnabled() {
+		return nil, nil
+	}
+
+	// /metrics
+	router.Handle("/metrics", promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		EnableOpenMetrics: true,
+	})).Methods("GET")
+	// /debug/pprof — net/http/pprof registers its handlers on http.DefaultServeMux,
+	// so we just forward the whole prefix there.
+	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	router.Handle("/debug/pprof", http.DefaultServeMux)
+
+	addr := net.JoinHostPort(f.Cfg.AdminServer.HTTPAddress, fmt.Sprintf("%d", f.Cfg.AdminServer.HTTPPort))
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("admin server: listen %s: %w", addr, err)
+	}
+
+	srv := &http.Server{
+		Handler: router,
+	}
+
+	return services.NewIdleService(
+		func(_ context.Context) error {
+			level.Info(f.logger).Log("msg", "admin server listening on addresses", "http", addr)
+			go func() {
+				if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+					level.Error(f.logger).Log("msg", "admin server error", "err", err)
+				}
+			}()
+			return nil
+		},
+		func(_ error) error {
+			return srv.Shutdown(context.Background())
+		},
+	), nil
+}
+
 func (f *Pyroscope) initUsageReport() (services.Service, error) {
 	if !f.Cfg.Analytics.Enabled {
 		return nil, nil
 	}
-	f.Cfg.Analytics.Leader = false
-	// ingester is the only component that can be a leader
-	if f.isModuleActive(Ingester) {
-		f.Cfg.Analytics.Leader = true
-	}
+	// Only the write path component creates the cluster seed: ingester on v1, segment writer on v2.
+	f.Cfg.Analytics.Leader = f.isModuleActive(Ingester) || f.isModuleActive(SegmentWriter)
 
 	usagestats.Target(f.Cfg.Target.String())
 

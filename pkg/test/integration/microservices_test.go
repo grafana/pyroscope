@@ -80,7 +80,27 @@ func TestMicroServicesIntegrationV1(t *testing.T) {
 }
 
 func TestMicroServicesIntegrationV2(t *testing.T) {
-	c := cluster.NewMicroServiceCluster(cluster.WithV2())
+	testMicroServicesIntegrationV2(t)
+}
+
+func TestMicroServicesIntegrationV2_ForceDatasetIndexLookup(t *testing.T) {
+	testMicroServicesIntegrationV2(t, cluster.WithForceDatasetIndexLookup())
+}
+
+func TestMicroServicesIntegrationV2_DatasetIndexShardPruning(t *testing.T) {
+	testMicroServicesIntegrationV2(t, cluster.WithForceDatasetIndexLookup(), cluster.WithDatasetIndexShardPruning())
+}
+
+func TestMicroServicesIntegrationV2_DatasetLookupFromMetadata(t *testing.T) {
+	testMicroServicesIntegrationV2(t,
+		cluster.WithForceDatasetIndexLookup(),
+		cluster.WithDatasetIndexShardPruning(),
+		cluster.WithDatasetLookupFromMetadata(),
+	)
+}
+
+func testMicroServicesIntegrationV2(t *testing.T, opts ...cluster.ClusterOption) {
+	c := cluster.NewMicroServiceCluster(append([]cluster.ClusterOption{cluster.WithV2()}, opts...)...)
 	ctx := context.Background()
 
 	require.NoError(t, c.Prepare(ctx))
@@ -301,7 +321,7 @@ func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
 }
 
 func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
-	isV2 := strings.HasSuffix(t.Name(), "V2")
+	isV2 := strings.Contains(t.Name(), "V2")
 	t.Run("QuerySeries", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
 			t.Run(tenantID, func(t *testing.T) {
@@ -411,7 +431,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		}
 	})
 
-	// Note: Some ProfileTypes API clients rely on the ablility to call it without start/end.
+	// Note: Some ProfileTypes API clients rely on the ability to call it without start/end.
 	// See https://github.com/grafana/grafana/issues/110211
 	t.Run("QueryProfileTypesWithoutTimeRange", func(t *testing.T) {
 		for tenantID, params := range tc.perTenantData {
@@ -465,7 +485,7 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 					Start:         tc.now.Add(-time.Hour).UnixMilli(),
 					End:           tc.now.Add(time.Hour).UnixMilli(),
 				}
-				resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req))
+				resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req)) //nolint:staticcheck // Legacy querier.v1 integration coverage.
 				require.NoError(t, err)
 
 				// no services, no samples profile
@@ -537,6 +557,98 @@ func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
 		}
 	})
 
+	t.Run("QuerySelectMergeProfileByService", func(t *testing.T) {
+		for tenantID, params := range tc.perTenantData {
+			if params.serviceCount == 0 {
+				continue
+			}
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				for _, i := range []int{0, params.serviceCount - 1} {
+					req := &querierv1.SelectMergeProfileRequest{
+						ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+						LabelSelector: fmt.Sprintf(`{service_name="%s/test-service-%d"}`, tenantID, i),
+						Start:         tc.now.Add(-time.Hour).UnixMilli(),
+						End:           tc.now.Add(time.Hour).UnixMilli(),
+					}
+					resp, err := tc.querier.SelectMergeProfile(ctx, connect.NewRequest(req)) //nolint:staticcheck // Legacy querier.v1 integration coverage.
+					require.NoError(t, err)
+
+					bozSamples := 0
+					for j := 0; j < params.samples; j++ {
+						if (i+j)%3 == 0 {
+							bozSamples += 3
+						}
+					}
+					assert.Equal(t,
+						[]*profilev1.Sample{
+							{LocationId: []uint64{4, 1, 2}, Value: []int64{1}},
+							{LocationId: []uint64{4, 1, 3}, Value: []int64{int64(bozSamples)}},
+						}, normalizePprof(resp.Msg).Sample, req.LabelSelector,
+					)
+				}
+			})
+		}
+	})
+
+	t.Run("QuerierServiceAsync", func(t *testing.T) {
+		if !isV2 {
+			t.Skip("Async queries require query-frontend which is not present in V1 microservices cluster")
+		}
+		for tenantID, params := range tc.perTenantData {
+			t.Run(tenantID, func(t *testing.T) {
+				ctx := tenant.InjectTenantID(ctx, tenantID)
+				submitReq := &querierv1.SelectMergeStacktracesRequest{
+					ProfileTypeID: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					Start:         tc.now.Add(-time.Hour).UnixMilli(),
+					End:           tc.now.Add(time.Hour).UnixMilli(),
+					LabelSelector: `{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
+					Format:        querierv1.ProfileFormat_PROFILE_FORMAT_TREE,
+					Async:         &querierv1.AsyncQueryRequest{Type: querierv1.AsyncQueryType_ASYNC_QUERY_TYPE_FORCE},
+				}
+
+				// Submit async query.
+				resp, err := tc.querier.SelectMergeStacktraces(ctx, connect.NewRequest(submitReq))
+				require.NoError(t, err)
+				require.NotNil(t, resp.Msg.Async, "expected async metadata on submit response")
+				require.NotEmpty(t, resp.Msg.Async.RequestId)
+				assert.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Async.Status)
+
+				// Poll until done.
+				pollReq := &querierv1.SelectMergeStacktracesRequest{
+					Async: &querierv1.AsyncQueryRequest{
+						Type:      querierv1.AsyncQueryType_ASYNC_QUERY_TYPE_FORCE,
+						RequestId: resp.Msg.Async.RequestId,
+					},
+				}
+				require.Eventually(t, func() bool {
+					pollResp, err := tc.querier.SelectMergeStacktraces(ctx, connect.NewRequest(pollReq))
+					if err != nil {
+						return false
+					}
+					if pollResp.Msg.GetAsync() == nil {
+						return false
+					}
+					if pollResp.Msg.Async.Status == querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS {
+						return false
+					}
+					resp = pollResp
+					return true
+				}, 30*time.Second, 500*time.Millisecond)
+
+				require.NotNil(t, resp.Msg.Async)
+
+				// No services means no profile data.
+				if params.serviceCount == 0 {
+					assert.NotEqual(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_IN_PROGRESS, resp.Msg.Async.Status)
+					return
+				}
+
+				require.Equal(t, querierv1.AsyncQueryStatus_ASYNC_QUERY_STATUS_SUCCESS, resp.Msg.Async.Status, "error: %s", resp.Msg.Async.ErrorMessage)
+				require.NotEmpty(t, resp.Msg.Tree, "expected a tree payload")
+			})
+		}
+	})
 }
 
 // runFederatedQueryTest exercises queries that span multiple tenants by
@@ -600,7 +712,7 @@ func (tc *testCtx) runFederatedQueryTest(ctx context.Context, t *testing.T) {
 		End:           tc.now.Add(time.Hour).UnixMilli(),
 	})
 	smpReq.Header().Set("X-Scope-OrgID", orgID)
-	resp, err := tc.querier.SelectMergeProfile(ctx, smpReq)
+	resp, err := tc.querier.SelectMergeProfile(ctx, smpReq) //nolint:staticcheck // Legacy querier.v1 integration coverage.
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg)
 	assert.NotEmpty(t, resp.Msg.Sample, "federated profile must contain samples")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -120,6 +121,39 @@ func Test_StackTraceFilter(t *testing.T) {
 		selection.CallSiteValues(&values, w[0].Samples)
 		assert.Equal(t, tc.expected, values, "selector: %+v", tc.selector)
 	}
+}
+
+func TestStackTraceSelection_LineLessLeaf(t *testing.T) {
+	db := NewSymDB(DefaultConfig().WithDirectory(t.TempDir()))
+	indexed := db.WriteProfileSymbols(0, mixedLocationsProfile())
+
+	p, err := db.Partition(context.Background(), 0)
+	require.NoError(t, err)
+	selector := &typesv1.StackTraceSelector{
+		CallSite: []*typesv1.Location{{Name: "main"}},
+	}
+	want := CallSiteValues{Total: 77, LocationTotal: 77}
+
+	t.Run("samples", func(t *testing.T) {
+		var values CallSiteValues
+		selection := SelectStackTraces(p.Symbols(), selector)
+		selection.CallSiteValues(&values, indexed[0].Samples)
+		assert.Equal(t, want, values)
+	})
+
+	t.Run("parquet", func(t *testing.T) {
+		var stats CallSiteValues
+		samples := indexed[0].Samples
+		stacktraceIDs := make([]parquet.Value, len(samples.StacktraceIDs))
+		parquetValues := make([]parquet.Value, len(samples.Values))
+		for i, id := range samples.StacktraceIDs {
+			stacktraceIDs[i] = parquet.Int32Value(int32(id))
+			parquetValues[i] = parquet.Int64Value(int64(samples.Values[i]))
+		}
+		selection := SelectStackTraces(p.Symbols(), selector)
+		selection.CallSiteValuesParquet(&stats, stacktraceIDs, parquetValues)
+		assert.Equal(t, want, stats)
+	})
 }
 
 func Benchmark_StackTraceFilter(b *testing.B) {
