@@ -169,6 +169,7 @@ func New(
 	w.jobs = make(map[string]*compactionJob, 2*w.threads)
 	w.capacity.Store(int32(w.threads))
 	w.budget = newByteBudget(resolveByteCapacity(config.JobByteCapacity, config.MemoryMaxRatio, detectMemoryLimit))
+	util.Register(reg, newBudgetCollector(w.budget))
 	w.deleterPool = newDeleterPool(16 * w.threads)
 	w.service = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -504,6 +505,8 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	estimate := estimateJobMemory(job.blocks, w.config.SmallObjectSize)
 	jobBytes := estimate.total()
+	jobLevel := metricLabels[1]
+	w.metrics.estimatedMemory.WithLabelValues(jobLevel).Observe(float64(jobBytes))
 	level.Info(logger).Log(
 		"msg", "estimated compaction job memory",
 		"buffered_objects", humanize.IBytes(estimate.BufferedObjects),
@@ -511,8 +514,10 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		"dataset_working_set", humanize.IBytes(estimate.DatasetWorkingSet),
 		"estimated_memory", humanize.IBytes(uint64(jobBytes)),
 	)
-	releaseBudget, err := w.budget.acquire(ctx, jobBytes, func() {
+	releaseBudget, err := w.budget.acquireObserved(ctx, jobBytes, func() {
 		level.Info(logger).Log("msg", "pausing compaction job until byte capacity is available", "estimated_memory", humanize.IBytes(uint64(jobBytes)))
+	}, func(d time.Duration, outcome string) {
+		w.metrics.budgetWait.WithLabelValues(jobLevel, outcome).Observe(d.Seconds())
 	})
 	if err != nil {
 		level.Warn(logger).Log("msg", "compaction cancelled while paused for byte capacity")
@@ -521,7 +526,29 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	}
 	defer releaseBudget()
 
-	compacted, err := w.compactFn(ctx, job.blocks, w.storage, options...)
+	if w.budget.limit > 0 && jobBytes > w.budget.limit {
+		w.metrics.oversizedJobs.WithLabelValues(jobLevel).Inc()
+	}
+	// Keep execution timing separate from job-attempt timing and budget waits.
+	compacted, err := func() (result []*metastorev1.BlockMeta, compactErr error) {
+		started := time.Now()
+		executionStatus := statusFailure
+		w.metrics.jobsCompacting.WithLabelValues(jobLevel).Inc()
+		defer func() {
+			w.metrics.jobsCompacting.WithLabelValues(jobLevel).Dec()
+			w.metrics.compactionDuration.WithLabelValues(jobLevel, string(executionStatus)).Observe(time.Since(started).Seconds())
+		}()
+		result, compactErr = w.compactFn(ctx, job.blocks, w.storage, options...)
+		switch {
+		case compactErr == nil:
+			executionStatus = statusSuccess
+		case errors.Is(compactErr, context.Canceled):
+			executionStatus = statusCanceled
+		case objstore.IsNotExist(w.storage, compactErr):
+			executionStatus = statusBlockNotFound
+		}
+		return result, compactErr
+	}()
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
 			level.Warn(logger).Log("msg", "failed to remove compaction directory", "path", tempdir, "err", err)

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
@@ -174,8 +175,10 @@ func estimateJobMemory(blocks []*metastorev1.BlockMeta, smallObjectSize int) job
 }
 
 type budgetWaiter struct {
-	n     int64
-	ready chan struct{}
+	n       int64
+	ready   chan struct{}
+	started time.Time
+	observe func(time.Duration, string)
 }
 
 // byteBudget coordinates memory-bounded execution of compaction jobs.
@@ -215,6 +218,14 @@ func (b *byteBudget) acquire(ctx context.Context, n int64, onPause func()) (rele
 		return func() {}, nil
 	}
 
+	return b.acquireObserved(ctx, n, onPause, nil)
+}
+
+// acquireObserved reports completed waits at the admission/cancellation transition.
+func (b *byteBudget) acquireObserved(ctx context.Context, n int64, onPause func(), observe func(time.Duration, string)) (release func(), err error) {
+	if b == nil || b.limit <= 0 || n <= 0 {
+		return func() {}, nil
+	}
 	b.mu.Lock()
 	if b.waiters.Len() == 0 && b.canFit(n) {
 		b.inUse += n
@@ -223,8 +234,10 @@ func (b *byteBudget) acquire(ctx context.Context, n int64, onPause func()) (rele
 	}
 
 	w := &budgetWaiter{
-		n:     n,
-		ready: make(chan struct{}),
+		n:       n,
+		ready:   make(chan struct{}),
+		started: time.Now(),
+		observe: observe,
 	}
 	elem := b.waiters.PushBack(w)
 	b.waiting += n
@@ -246,6 +259,9 @@ func (b *byteBudget) acquire(ctx context.Context, n int64, onPause func()) (rele
 			b.release(n)
 		default:
 			b.waiters.Remove(elem)
+			if w.observe != nil {
+				w.observe(time.Since(w.started), "canceled")
+			}
 			b.waiting -= n
 			b.notifyLocked()
 			b.mu.Unlock()
@@ -274,6 +290,9 @@ func (b *byteBudget) notifyLocked() {
 		b.waiters.Remove(front)
 		b.waiting -= w.n
 		b.inUse += w.n
+		if w.observe != nil {
+			w.observe(time.Since(w.started), "admitted")
+		}
 		close(w.ready)
 	}
 }
