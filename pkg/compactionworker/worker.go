@@ -66,7 +66,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
-	f.StringVar(&cfg.MetadataSource, prefix+"metadata-source", MetadataSourceMetastore, "Source of the compaction job source block metadata. Supported values: metastore, object-storage.")
+	f.StringVar(&cfg.MetadataSource, prefix+"metadata-source", MetadataSourceObjectStorage, "Source of the compaction job source block metadata. Supported values: metastore, object-storage.")
 	f.DurationVar(&cfg.MetadataFetchTimeout, prefix+"metadata-fetch-timeout", 30*time.Second, "Timeout for reading the metadata of a single block from object storage. Only effective when metadata-source is object-storage. 0 disables the timeout.")
 	cfg.MetricsExporter.RegisterFlags(f)
 }

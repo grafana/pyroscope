@@ -1443,7 +1443,7 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # (advanced) Source of the compaction job source block metadata. Supported
 # values: metastore, object-storage.
 # CLI flag: -compaction-worker.metadata-source
-[metadata_source: <string> | default = "metastore"]
+[metadata_source: <string> | default = "object-storage"]
 
 # (advanced) Timeout for reading the metadata of a single block from object
 # storage. Only effective when metadata-source is object-storage. 0 disables the
