@@ -19,27 +19,25 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
+	"github.com/grafana/pyroscope/v2/pkg/anomalyapi"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
 
 type QueryBackend interface {
 	Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error)
-}
-
-type Symbolizer interface {
-	SymbolizePprof(ctx context.Context, profile *googlev1.Profile) error
 }
 
 // DiagnosticsStore provides the ability to store query diagnostics.
@@ -55,21 +53,39 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
-	symbolizer          Symbolizer
+	queryBackendTimeout time.Duration
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 	queryPlanType       string
+
+	// anomalyAPI is nil when unconfigured.
+	anomalyAPI *anomalyapi.Client
 
 	metrics *queryFrontendMetrics
 }
 
 type queryFrontendMetrics struct {
-	fetchedBytesTotal       *prometheus.CounterVec
-	estimationAccuracyRatio prometheus.Histogram
+	fetchedBytesTotal             *prometheus.CounterVec
+	backendDurationSecondsTotal   *prometheus.CounterVec
+	estimationAccuracyRatio       prometheus.Histogram
+	backendInflightBlocks         prometheus.Gauge
+	backendInflightEstimatedBytes prometheus.Gauge
 }
 
 func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 	m := &queryFrontendMetrics{
+		backendInflightBlocks: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Subsystem: "query_frontend",
+			Name:      "backend_inflight_blocks",
+			Help:      "Number of blocks in frontend queries awaiting a query-backend response.",
+		}),
+		backendInflightEstimatedBytes: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Subsystem: "query_frontend",
+			Name:      "backend_inflight_estimated_bytes",
+			Help:      "Estimated dataset bytes in queries awaiting a query-backend response.",
+		}),
 		fetchedBytesTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "pyroscope",
@@ -78,6 +94,15 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 				Help:      "Total bytes fetched per tenant per source (object_storage, metastore).",
 			},
 			[]string{"tenant", "kind"},
+		),
+		backendDurationSecondsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Subsystem: "query_frontend",
+				Name:      "backend_duration_seconds_total",
+				Help:      "Total critical-path query-backend latency in seconds for successful queries, broken down by phase (processing, backoff, unaccounted).",
+			},
+			[]string{"phase"},
 		),
 		// estimationAccuracyRatio records the ratio of the pre-execution
 		// metadata size estimate (weight.Total()) to the actual object-storage
@@ -94,7 +119,7 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 			Namespace:                       "pyroscope",
 			Subsystem:                       "query_frontend",
 			Name:                            "estimation_accuracy_ratio",
-			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = over-estimated; >1.0 = under-estimated.",
+			Help:                            "Ratio of the pre-execution metadata size estimate to actual object-storage bytes fetched per query (estimate / actual). 1.0 = perfect estimate; <1.0 = under-estimated; >1.0 = over-estimated.",
 			Buckets:                         []float64{0.1, 0.25, 0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2, 5, 10},
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
@@ -102,7 +127,13 @@ func newQueryFrontendMetrics(reg prometheus.Registerer) *queryFrontendMetrics {
 		}),
 	}
 	if reg != nil {
-		reg.MustRegister(m.fetchedBytesTotal, m.estimationAccuracyRatio)
+		reg.MustRegister(
+			m.fetchedBytesTotal,
+			m.backendDurationSecondsTotal,
+			m.estimationAccuracyRatio,
+			m.backendInflightBlocks,
+			m.backendInflightEstimatedBytes,
+		)
 	}
 	return m
 }
@@ -111,10 +142,10 @@ func NewQueryFrontend(
 	logger log.Logger,
 	limits frontend.Limits,
 	cfg frontend.Config,
+	queryBackendTimeout time.Duration,
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
-	sym Symbolizer,
 	diagnosticsStore DiagnosticsStore,
 	reg prometheus.Registerer,
 ) *QueryFrontend {
@@ -124,10 +155,11 @@ func NewQueryFrontend(
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
-		symbolizer:          sym,
+		queryBackendTimeout: queryBackendTimeout,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 		queryPlanType:       cfg.QueryPlannerStrategy,
+		anomalyAPI:          anomalyapi.New(cfg.AnomalyAPI, nil),
 		metrics:             newQueryFrontendMetrics(reg),
 	}
 	return qf
@@ -136,24 +168,26 @@ func NewQueryFrontend(
 var xrand = rand.New(rand.NewSource(4349676827832284783))
 var xrandMutex = sync.Mutex{} // todo fix the race properly
 
-// backendCreator allows to modify behavior of a query after more about the dataset is learned from the QueryMetadata call.
-// We currently use this mainly to change backend query, for symbolizing unsymbolized blocks.
-// TODO: Once symbolization moves to the query-backend, the query-backend plan should incorporate the symbolize step
-type backendWrapper = func(ctx context.Context, upstream QueryBackend, blocks []*metastorev1.BlockMeta) QueryBackend
+type measuredQueryBackend struct {
+	upstream       QueryBackend
+	metrics        *queryFrontendMetrics
+	blocks         float64
+	estimatedBytes float64
+}
+
+func (b measuredQueryBackend) Invoke(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+	b.metrics.backendInflightBlocks.Add(b.blocks)
+	b.metrics.backendInflightEstimatedBytes.Add(b.estimatedBytes)
+	defer b.metrics.backendInflightBlocks.Sub(b.blocks)
+	defer b.metrics.backendInflightEstimatedBytes.Sub(b.estimatedBytes)
+	return b.upstream.Invoke(ctx, req)
+}
 
 func (q *QueryFrontend) Query(
 	ctx context.Context,
 	req *queryv1.QueryRequest,
 ) (*queryv1.QueryResponse, error) {
-	return q.doQuery(ctx, req, nil)
-}
-
-func (q *QueryFrontend) doQuery(
-	ctx context.Context,
-	req *queryv1.QueryRequest,
-	backendC backendWrapper,
-) (*queryv1.QueryResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.doQuery")
+	span, ctx := tracing.StartSpanFromContext(ctx, "QueryFrontend.Query")
 	defer span.Finish()
 	span.SetTag("start_time", req.StartTime)
 	span.SetTag("end_time", req.EndTime)
@@ -244,10 +278,25 @@ func (q *QueryFrontend) doQuery(
 		p = queryplan.Build(blocks, 4, 20)
 	}
 
-	backend := q.querybackend
-	if backendC != nil {
-		backend = backendC(ctx, backend, blocks)
+	// Measure only the underlying query backend call
+	backend := measuredQueryBackend{
+		upstream:       q.querybackend,
+		metrics:        q.metrics,
+		blocks:         float64(len(blocks)),
+		estimatedBytes: float64(weight.Total()),
 	}
+
+	timeout := q.queryBackendTimeout
+	if asyncTimeout := async.QueryTimeout(ctx); asyncTimeout > 0 {
+		timeout = asyncTimeout
+	}
+	// Preserve legacy behavior: negative timeouts disable the deadline.
+	if timeout >= 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
 	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
@@ -256,6 +305,7 @@ func (q *QueryFrontend) doQuery(
 		Options: &queryv1.InvokeOptions{
 			SanitizeOnMerge:    q.limits.QuerySanitizeOnMerge(tenants[0]),
 			CollectDiagnostics: collectDiagnostics,
+			Finalize:           true,
 		},
 		QueryPlan: p,
 		Query:     req.Query,
@@ -269,9 +319,16 @@ func (q *QueryFrontend) doQuery(
 	// Use dskit's JoinTenantIDs so the label matches the standard |-separated
 	// org ID format used elsewhere in the Grafana stack.
 	tenantLabel := tenant.JoinTenantIDs(tenants)
-	objectBytes := resp.GetDiagnostics().GetExecutionNode().GetStats().GetBytesFetched()
+	execStats := resp.GetDiagnostics().GetExecutionNode().GetStats()
+	objectBytes := execStats.GetBytesFetched()
+	processingDuration := time.Duration(execStats.GetProcessingDurationNs())
+	backoffDuration := time.Duration(execStats.GetBackoffDurationNs())
+	unaccountedDuration := time.Duration(execStats.GetUnaccountedDurationNs())
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "object_storage").Add(float64(objectBytes))
 	q.metrics.fetchedBytesTotal.WithLabelValues(tenantLabel, "metastore").Add(float64(metastoreBytes))
+	q.metrics.backendDurationSecondsTotal.WithLabelValues("processing").Add(processingDuration.Seconds())
+	q.metrics.backendDurationSecondsTotal.WithLabelValues("backoff").Add(backoffDuration.Seconds())
+	q.metrics.backendDurationSecondsTotal.WithLabelValues("unaccounted").Add(unaccountedDuration.Seconds())
 	// Record estimation accuracy: ratio of pre-execution weight to actual bytes
 	// fetched. Only observed when the backend fetched bytes to avoid division
 	// by zero (e.g. empty result sets).
@@ -282,6 +339,9 @@ func (q *QueryFrontend) doQuery(
 		qs.ObjectStorageBytes += objectBytes
 		qs.MetastoreBytes += metastoreBytes
 		qs.EstimatedBytes += weight.Total()
+		qs.ProcessingDuration += processingDuration
+		qs.BackoffDuration += backoffDuration
+		qs.UnaccountedDuration += unaccountedDuration
 	}
 
 	if resp.Diagnostics == nil {
@@ -328,20 +388,24 @@ func (q *QueryFrontend) QueryMetadata(
 		TenantId:  tenants,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
-		Labels:    []string{metadata.LabelNameUnsymbolized},
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
-	// left, request the dataset index for query backend to lookup block datasets
+	// left, or all tenants are configured to always use the dataset index,
+	// request the dataset index for query backend to lookup block datasets
 	// locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
 		return m.Name != model.LabelNameServiceName || m.Type != labels.MatchEqual
 	})
-	if len(matchers) == 0 {
+	forceLookup := len(matchers) > 0 && validationutil.AllTruePerTenant(tenants, q.limits.ForceDatasetIndexLookup)
+	if len(matchers) == 0 || forceLookup {
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
-		query.Labels = append(query.Labels, metadata.LabelNameTenantDataset)
+		query.Labels = []string{metadata.LabelNameTenantDataset}
+		if forceLookup && validationutil.AllTruePerTenant(tenants, q.limits.DatasetIndexShardPruning) {
+			query.ShardSelector = matchersToLabelSelector(matchers)
+		}
 		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,

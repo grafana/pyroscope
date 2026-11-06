@@ -177,7 +177,7 @@ func queryProfile(ctx context.Context, params *queryProfileParams, outputFlag st
 				locations = append(locations, &typesv1.Location{Name: cs})
 			}
 		}
-		profile, err = asyncQueryProfileTree(ctx, params, from, to, locations)
+		profile, err = asyncQueryProfile(ctx, params, from, to, locations, profileTree)
 	} else if len(params.SpanSelector) > 0 {
 		level.Info(logger).Log("msg", "selecting with span selector", "spans", fmt.Sprintf("%v", params.SpanSelector))
 		profile, err = querySpanProfile(ctx, params, from, to)

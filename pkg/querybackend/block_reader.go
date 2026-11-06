@@ -50,6 +50,7 @@ import (
 
 type Overrides interface {
 	IncludeStrippedProfiles(tenantID string) bool
+	DatasetLookupFromMetadata(tenantID string) bool
 }
 
 type BlockReader struct {
@@ -105,6 +106,7 @@ func (b *BlockReader) Invoke(
 	}
 
 	includeStripped := validationutil.AllTruePerTenant(req.Tenant, b.Overrides.IncludeStrippedProfiles)
+	datasetLookupFromMetadata := validationutil.AllTruePerTenant(req.Tenant, b.Overrides.DatasetLookupFromMetadata)
 
 	var blockExecCollector *blockExecutionCollector
 	if collectDiag {
@@ -133,15 +135,16 @@ func (b *BlockReader) Invoke(
 		datasetsCount += int64(len(md.Datasets))
 		obj := block.NewObject(countingStorage, md)
 		g.Go(util.RecoverPanic((&blockContext{
-			ctx:             ctx,
-			log:             b.log,
-			req:             r,
-			agg:             agg,
-			obj:             obj,
-			grp:             g,
-			execCollector:   blockExecCollector,
-			weightCollector: weightCollector,
-			includeStripped: includeStripped,
+			ctx:                       ctx,
+			log:                       b.log,
+			req:                       r,
+			agg:                       agg,
+			obj:                       obj,
+			grp:                       g,
+			execCollector:             blockExecCollector,
+			weightCollector:           weightCollector,
+			includeStripped:           includeStripped,
+			datasetLookupFromMetadata: datasetLookupFromMetadata,
 		}).execute))
 	}
 
@@ -180,8 +183,10 @@ func (b *BlockReader) Invoke(
 	if resp.Diagnostics == nil {
 		resp.Diagnostics = &queryv1.Diagnostics{}
 	}
+	endTime := time.Now()
 	stats := &queryv1.ExecutionStats{
-		BytesFetched: fetchedBytes.Load(),
+		BytesFetched:         fetchedBytes.Load(),
+		ProcessingDurationNs: endTime.Sub(startTime).Nanoseconds(),
 	}
 	if collectDiag {
 		stats.BlocksRead = blocksCount
@@ -191,7 +196,7 @@ func (b *BlockReader) Invoke(
 			Type:        queryv1.QueryNode_READ,
 			Executor:    b.hostname,
 			StartTimeNs: startTime.UnixNano(),
-			EndTimeNs:   time.Now().UnixNano(),
+			EndTimeNs:   endTime.UnixNano(),
 			Stats:       stats,
 		}
 	} else {

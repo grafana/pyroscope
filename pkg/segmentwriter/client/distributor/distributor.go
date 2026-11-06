@@ -278,7 +278,7 @@ func (i *iterator) Next() bool {
 	if i.lim > 0 {
 		i.lim--
 	} else {
-		for i.lim <= 0 {
+		for {
 			// We have exhausted the subring.
 			// Navigate to the parent ring.
 			if i.ring.n == i.ring.size() {
@@ -289,9 +289,13 @@ func (i *iterator) Next() bool {
 			size := i.ring.size()
 			i.off = i.ring.offset() + size
 			p := i.ring.pop() // Load parent.
-			// How many items remain in the ring.
-			i.lim = p.size() - size - 1
 			i.ring = p
+			// How many items remain in the ring. One of them
+			// is consumed right away, below.
+			if remaining := p.size() - size; remaining > 0 {
+				i.lim = remaining - 1
+				break
+			}
 		}
 	}
 	i.off++

@@ -35,7 +35,7 @@ func ConvertOtelToGoogle(src *otelProfile.Profile, dictionary *otelProfile.Profi
 	for _, sample := range src.Samples {
 		svc, err := serviceNameFromSample(sample, dictionary)
 		if err != nil {
-			return make(map[string]convertedProfile), nil
+			return nil, fmt.Errorf("could not determine service name for sample: %w", err)
 		}
 
 		p, ok := svc2Profile[svc]
@@ -401,7 +401,7 @@ func (p *profileBuilder) convertSampleAttributesToLabelsBack(os *otelProfile.Sam
 		if keyStr, err := at(dictionary.StringTable, attribute.KeyStrindex); err == nil && keyStr == serviceNameKey {
 			continue
 		}
-		if sv := stringValueFromAnyValue(attribute.Value); sv != "" {
+		if sv := stringValueFromAnyValue(attribute.Value, dictionary); sv != "" {
 			keyStr, err := at(dictionary.StringTable, attribute.KeyStrindex)
 			if err != nil {
 				return fmt.Errorf("could not access attribute key: %w", err)
@@ -510,7 +510,7 @@ func getAttributeValueByKeyOrEmpty(attributeIndices []int32, dictionary *otelPro
 			return "", fmt.Errorf("attribute key string not found %d: %w", i, err)
 		}
 		if keyStr == key {
-			return stringValueFromAnyValue(attr.Value), nil
+			return stringValueFromAnyValue(attr.Value, dictionary), nil
 		}
 	}
 	return "", nil

@@ -3,17 +3,28 @@ name: Update Examples Cron
 on:
   schedule:
     - cron: '0 */8 * * *'
+  # Test changes after pushing your branch:
+  # gh workflow run update-examples-cron.yml --repo grafana/pyroscope --ref <branch> -f dry_run=true
+  # This runs the full updater and writes its report to the job summary without
+  # modifying the bot branch or PR. Scheduled runs still publish updates.
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run the updater without modifying the bot branch or PR
+        type: boolean
+        default: true
 
 permissions: {}
 
 # Two sweeps at once would both reset the branch and race on the PR.
 concurrency:
-  group: update-examples-cron
+  group: update-examples-cron${{ inputs.dry_run && format('-dry-run-{0}', github.ref_name) || '' }}
   cancel-in-progress: false
 
 env:
   BRANCH: gh_bot_examples_update
+  # Resetting the PR branch to main would auto-close its PR.
+  STAGING_BRANCH: gh_bot_examples_update_staging
   REPORT: .tmp/update_examples_report.md
   TITLE: 'chore(examples): update examples'
 
@@ -48,24 +59,25 @@ jobs:
             echo "changed=$(git status --porcelain | grep -q . && echo true || echo false)"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Reset branch to the checked out commit
-        if: steps.update.outputs.changed == 'true'
+      - name: Reset staging branch to the checked out commit
+        if: steps.update.outputs.changed == 'true' && !inputs.dry_run
         env:
           GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
         run: |
           head_oid="$(git rev-parse HEAD)"
           gh api "repos/${GITHUB_REPOSITORY}/git/refs" --method POST \
-            -f "ref=refs/heads/${BRANCH}" -f "sha=${head_oid}" \
-          || gh api "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCH}" --method PATCH \
+            -f "ref=refs/heads/${STAGING_BRANCH}" -f "sha=${head_oid}" \
+          || gh api "repos/${GITHUB_REPOSITORY}/git/refs/heads/${STAGING_BRANCH}" --method PATCH \
             -f "sha=${head_oid}" -F force=true
 
       - name: Commit the update
-        if: steps.update.outputs.changed == 'true'
+        id: commit
+        if: steps.update.outputs.changed == 'true' && !inputs.dry_run
         uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # v0.2.22
         with:
           commit_message: ${{ env.TITLE }}
           repo: ${{ github.repository }}
-          branch: ${{ env.BRANCH }}
+          branch: ${{ env.STAGING_BRANCH }}
           # Everything the updater writes, and nothing else.
           file_pattern: >-
             examples docs/sources/configure-client go.mod go.sum
@@ -74,12 +86,26 @@ jobs:
           GITHUB_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
 
       - name: Open or update the PR
-        if: steps.update.outputs.changed == 'true'
+        if: steps.update.outputs.changed == 'true' && !inputs.dry_run
         env:
           GH_TOKEN: ${{ steps.get-github-app-token.outputs.token }}
+          COMMIT: ${{ steps.commit.outputs.commit-hash }}
         run: |
+          gh api "repos/${GITHUB_REPOSITORY}/git/refs" --method POST \
+            -f "ref=refs/heads/${BRANCH}" -f "sha=${COMMIT}" \
+          || gh api "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCH}" --method PATCH \
+            -f "sha=${COMMIT}" -F force=true
+
           gh pr create --head "$BRANCH" --base main --title "$TITLE" --body-file "$REPORT" \
           || gh pr edit "$BRANCH" --title "$TITLE" --body-file "$REPORT"
+
+      - name: Show dry-run report
+        if: always() && inputs.dry_run
+        run: |
+          if [ -f "$REPORT" ]; then
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          git diff --stat
 
       - name: Report updater failures
         if: steps.update.outputs.rc != '0'

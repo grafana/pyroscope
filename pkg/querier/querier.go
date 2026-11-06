@@ -455,6 +455,11 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	if err != nil {
 		return nil, err
 	}
+	if len(req.Msg.LabelNames) > 0 && len(filteredLabelNames) == 0 {
+		// Every requested label name was filtered out. Querying with no label
+		// names would return all labels, including the filtered ones.
+		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
+	}
 	req.Msg.LabelNames = filteredLabelNames
 
 	// no store gateways configured so just query the ingesters
@@ -1110,6 +1115,10 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 
 func (q *Querier) SelectHeatmap(ctx context.Context, req *connect.Request[querierv1.SelectHeatmapRequest]) (*connect.Response[querierv1.SelectHeatmapResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SelectHeatmap not implemented in old querier"))
+}
+
+func (q *Querier) QueryAnomalies(ctx context.Context, req *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("QueryAnomalies is only supported with the v2 query backend"))
 }
 
 func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*blockPlanEntry) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {

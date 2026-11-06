@@ -32,7 +32,8 @@ import (
 
 type testSuite struct {
 	suite.Suite
-	dir string
+	dir       string
+	overrides *validation.Overrides
 
 	ctx    context.Context
 	logger *test.TestingLogger
@@ -53,7 +54,11 @@ func (s *testSuite) SetupSuite() {
 func (s *testSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.logger = test.NewTestingLogger(s.T())
-	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket}, nil, validation.MockDefaultOverrides())
+	overrides := s.overrides
+	if overrides == nil {
+		overrides = validation.MockDefaultOverrides()
+	}
+	s.reader = NewBlockReader(s.logger, &objstore.ReaderAtBucket{Bucket: s.bucket}, nil, overrides)
 	s.meta = make([]*metastorev1.BlockMeta, len(s.blocks))
 	for i, b := range s.blocks {
 		s.meta[i] = b.CloneVT()
@@ -117,6 +122,15 @@ func (s *testSuite) BeforeTest(_, _ string) {}
 func (s *testSuite) AfterTest(_, _ string) {}
 
 func TestSuite(t *testing.T) { suite.Run(t, &testSuite{dir: "testdata/samples"}) }
+
+func TestSuite_DatasetLookupFromMetadata(t *testing.T) {
+	suite.Run(t, &testSuite{
+		dir: "testdata/samples",
+		overrides: validation.MockOverrides(func(defaults *validation.Limits, _ map[string]*validation.Limits) {
+			defaults.DatasetLookupFromMetadata = true
+		}),
+	})
+}
 
 func (s *testSuite) Test_QueryTree_All() {
 

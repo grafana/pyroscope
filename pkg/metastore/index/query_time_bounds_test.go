@@ -227,3 +227,93 @@ func TestQueryMetadata_TimeFilterSkipsDecode(t *testing.T) {
 	assert.True(t, cached(inRange))
 	assert.False(t, cached(outOfRange))
 }
+
+func TestDeletionCandidates_TimeFilterSkipsDecodeAndShards(t *testing.T) {
+	db := test.BoltDB(t)
+
+	inRange := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-23T08:00:00.001Z"),
+		Tenant:          1,
+		Shard:           1,
+		CompactionLevel: 1,
+		MinTime:         test.UnixMilli("2024-09-23T08:00:00.000Z"),
+		MaxTime:         test.UnixMilli("2024-09-23T08:15:00.000Z"),
+		Datasets: []*metastorev1.Dataset{{
+			Tenant:  1,
+			Name:    2,
+			MinTime: test.UnixMilli("2024-09-23T08:00:00.000Z"),
+			MaxTime: test.UnixMilli("2024-09-23T08:15:00.000Z"),
+		}},
+		StringTable: []string{"", "tenant-a", "svc-a"},
+	}
+	outOfRangeSameShard := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-23T10:30:00.002Z"),
+		Tenant:          1,
+		Shard:           1,
+		CompactionLevel: 1,
+		MinTime:         test.UnixMilli("2024-09-23T10:30:00.000Z"),
+		MaxTime:         test.UnixMilli("2024-09-23T10:45:00.000Z"),
+		Datasets: []*metastorev1.Dataset{{
+			Tenant:  1,
+			Name:    2,
+			MinTime: test.UnixMilli("2024-09-23T10:30:00.000Z"),
+			MaxTime: test.UnixMilli("2024-09-23T10:45:00.000Z"),
+		}},
+		StringTable: []string{"", "tenant-a", "svc-a"},
+	}
+	outOfRangeOtherShard := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-23T11:00:00.003Z"),
+		Tenant:          1,
+		Shard:           2,
+		CompactionLevel: 1,
+		MinTime:         test.UnixMilli("2024-09-23T11:00:00.000Z"),
+		MaxTime:         test.UnixMilli("2024-09-23T11:15:00.000Z"),
+		Datasets: []*metastorev1.Dataset{{
+			Tenant:  1,
+			Name:    2,
+			MinTime: test.UnixMilli("2024-09-23T11:00:00.000Z"),
+			MaxTime: test.UnixMilli("2024-09-23T11:15:00.000Z"),
+		}},
+		StringTable: []string{"", "tenant-a", "svc-a"},
+	}
+
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		if err := idx.Init(tx); err != nil {
+			return err
+		}
+		for _, b := range []*metastorev1.BlockMeta{inRange, outOfRangeSameShard, outOfRangeOtherShard} {
+			if err := idx.InsertBlock(tx, b.CloneVT()); err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+
+	// Fresh index with cold caches.
+	idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(idx.Init))
+
+	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+		found, err := idx.DeletionCandidates(
+			t.Context(),
+			tx,
+			"tenant-a",
+			time.UnixMilli(test.UnixMilli("2024-09-23T08:00:00.000Z")).UnixNano(),
+			time.UnixMilli(test.UnixMilli("2024-09-23T09:00:00.000Z")).UnixNano(),
+		)
+		require.NoError(t, err)
+		require.Len(t, found, 1)
+		require.Equal(t, inRange.Id, found[0].Id)
+		return nil
+	}))
+
+	cached := func(md *metastorev1.BlockMeta) bool {
+		return idx.blocks.read.Contains(blockCacheKey{tenant: "tenant-a", shard: md.Shard, block: md.Id})
+	}
+	assert.True(t, cached(inRange))
+	assert.False(t, cached(outOfRangeSameShard), "out-of-range block in same shard must not be decoded into block cache")
+	assert.False(t, cached(outOfRangeOtherShard), "out-of-range shard must not be decoded into block cache")
+	p := idx.partitionKeyForBlock(outOfRangeOtherShard.Id)
+	assert.False(t, idx.shards.cache.Contains(shardCacheKey{partition: p, tenant: "tenant-a", shard: 2}), "out-of-range shard must not be loaded into shard cache")
+}

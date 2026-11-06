@@ -70,6 +70,173 @@ func (CompactionJobStatus) EnumDescriptor() ([]byte, []int) {
 	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{0}
 }
 
+type ListCompactionJobsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty selects all tenants.
+	Tenant        string `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCompactionJobsRequest) Reset() {
+	*x = ListCompactionJobsRequest{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCompactionJobsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCompactionJobsRequest) ProtoMessage() {}
+
+func (x *ListCompactionJobsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCompactionJobsRequest.ProtoReflect.Descriptor instead.
+func (*ListCompactionJobsRequest) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ListCompactionJobsRequest) GetTenant() string {
+	if x != nil {
+		return x.Tenant
+	}
+	return ""
+}
+
+type ListCompactionJobsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Jobs          []*CompactionJobInfo   `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCompactionJobsResponse) Reset() {
+	*x = ListCompactionJobsResponse{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCompactionJobsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCompactionJobsResponse) ProtoMessage() {}
+
+func (x *ListCompactionJobsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCompactionJobsResponse.ProtoReflect.Descriptor instead.
+func (*ListCompactionJobsResponse) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ListCompactionJobsResponse) GetJobs() []*CompactionJobInfo {
+	if x != nil {
+		return x.Jobs
+	}
+	return nil
+}
+
+type CompactionJobInfo struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Job    *CompactionJob         `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
+	Status CompactionJobStatus    `protobuf:"varint,2,opt,name=status,proto3,enum=metastore.v1.CompactionJobStatus" json:"status,omitempty"`
+	// Unix nanoseconds.
+	AddedAt int64 `protobuf:"varint,3,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
+	// Unix nanoseconds; zero when not leased.
+	LeaseExpiresAt int64  `protobuf:"varint,4,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
+	Failures       uint32 `protobuf:"varint,5,opt,name=failures,proto3" json:"failures,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CompactionJobInfo) Reset() {
+	*x = CompactionJobInfo{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompactionJobInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompactionJobInfo) ProtoMessage() {}
+
+func (x *CompactionJobInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompactionJobInfo.ProtoReflect.Descriptor instead.
+func (*CompactionJobInfo) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CompactionJobInfo) GetJob() *CompactionJob {
+	if x != nil {
+		return x.Job
+	}
+	return nil
+}
+
+func (x *CompactionJobInfo) GetStatus() CompactionJobStatus {
+	if x != nil {
+		return x.Status
+	}
+	return CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED
+}
+
+func (x *CompactionJobInfo) GetAddedAt() int64 {
+	if x != nil {
+		return x.AddedAt
+	}
+	return 0
+}
+
+func (x *CompactionJobInfo) GetLeaseExpiresAt() int64 {
+	if x != nil {
+		return x.LeaseExpiresAt
+	}
+	return 0
+}
+
+func (x *CompactionJobInfo) GetFailures() uint32 {
+	if x != nil {
+		return x.Failures
+	}
+	return 0
+}
+
 type PollCompactionJobsRequest struct {
 	state         protoimpl.MessageState       `protogen:"open.v1"`
 	StatusUpdates []*CompactionJobStatusUpdate `protobuf:"bytes,1,rep,name=status_updates,json=statusUpdates,proto3" json:"status_updates,omitempty"`
@@ -81,7 +248,7 @@ type PollCompactionJobsRequest struct {
 
 func (x *PollCompactionJobsRequest) Reset() {
 	*x = PollCompactionJobsRequest{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[0]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -93,7 +260,7 @@ func (x *PollCompactionJobsRequest) String() string {
 func (*PollCompactionJobsRequest) ProtoMessage() {}
 
 func (x *PollCompactionJobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[0]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -106,7 +273,7 @@ func (x *PollCompactionJobsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollCompactionJobsRequest.ProtoReflect.Descriptor instead.
 func (*PollCompactionJobsRequest) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{0}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *PollCompactionJobsRequest) GetStatusUpdates() []*CompactionJobStatusUpdate {
@@ -133,7 +300,7 @@ type PollCompactionJobsResponse struct {
 
 func (x *PollCompactionJobsResponse) Reset() {
 	*x = PollCompactionJobsResponse{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[1]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -145,7 +312,7 @@ func (x *PollCompactionJobsResponse) String() string {
 func (*PollCompactionJobsResponse) ProtoMessage() {}
 
 func (x *PollCompactionJobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[1]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -158,7 +325,7 @@ func (x *PollCompactionJobsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollCompactionJobsResponse.ProtoReflect.Descriptor instead.
 func (*PollCompactionJobsResponse) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{1}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PollCompactionJobsResponse) GetCompactionJobs() []*CompactionJob {
@@ -183,13 +350,14 @@ type CompactionJob struct {
 	CompactionLevel uint32                 `protobuf:"varint,4,opt,name=compaction_level,json=compactionLevel,proto3" json:"compaction_level,omitempty"`
 	SourceBlocks    []string               `protobuf:"bytes,5,rep,name=source_blocks,json=sourceBlocks,proto3" json:"source_blocks,omitempty"`
 	Tombstones      []*Tombstones          `protobuf:"bytes,6,rep,name=tombstones,proto3" json:"tombstones,omitempty"`
+	DeleteFilter    *DeleteFilter          `protobuf:"bytes,7,opt,name=delete_filter,json=deleteFilter,proto3" json:"delete_filter,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CompactionJob) Reset() {
 	*x = CompactionJob{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[2]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -201,7 +369,7 @@ func (x *CompactionJob) String() string {
 func (*CompactionJob) ProtoMessage() {}
 
 func (x *CompactionJob) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[2]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -214,7 +382,7 @@ func (x *CompactionJob) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJob.ProtoReflect.Descriptor instead.
 func (*CompactionJob) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{2}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CompactionJob) GetName() string {
@@ -259,6 +427,13 @@ func (x *CompactionJob) GetTombstones() []*Tombstones {
 	return nil
 }
 
+func (x *CompactionJob) GetDeleteFilter() *DeleteFilter {
+	if x != nil {
+		return x.DeleteFilter
+	}
+	return nil
+}
+
 // Tombstones represent objects removed from the index but still stored.
 type Tombstones struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -270,7 +445,7 @@ type Tombstones struct {
 
 func (x *Tombstones) Reset() {
 	*x = Tombstones{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[3]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -282,7 +457,7 @@ func (x *Tombstones) String() string {
 func (*Tombstones) ProtoMessage() {}
 
 func (x *Tombstones) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[3]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -295,7 +470,7 @@ func (x *Tombstones) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Tombstones.ProtoReflect.Descriptor instead.
 func (*Tombstones) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{3}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Tombstones) GetBlocks() *BlockTombstones {
@@ -325,7 +500,7 @@ type BlockTombstones struct {
 
 func (x *BlockTombstones) Reset() {
 	*x = BlockTombstones{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[4]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -337,7 +512,7 @@ func (x *BlockTombstones) String() string {
 func (*BlockTombstones) ProtoMessage() {}
 
 func (x *BlockTombstones) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[4]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -350,7 +525,7 @@ func (x *BlockTombstones) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockTombstones.ProtoReflect.Descriptor instead.
 func (*BlockTombstones) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{4}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *BlockTombstones) GetName() string {
@@ -402,7 +577,7 @@ type ShardTombstone struct {
 
 func (x *ShardTombstone) Reset() {
 	*x = ShardTombstone{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[5]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -414,7 +589,7 @@ func (x *ShardTombstone) String() string {
 func (*ShardTombstone) ProtoMessage() {}
 
 func (x *ShardTombstone) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[5]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -427,7 +602,7 @@ func (x *ShardTombstone) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShardTombstone.ProtoReflect.Descriptor instead.
 func (*ShardTombstone) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{5}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ShardTombstone) GetName() string {
@@ -476,7 +651,7 @@ type CompactionJobAssignment struct {
 
 func (x *CompactionJobAssignment) Reset() {
 	*x = CompactionJobAssignment{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[6]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -488,7 +663,7 @@ func (x *CompactionJobAssignment) String() string {
 func (*CompactionJobAssignment) ProtoMessage() {}
 
 func (x *CompactionJobAssignment) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[6]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -501,7 +676,7 @@ func (x *CompactionJobAssignment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJobAssignment.ProtoReflect.Descriptor instead.
 func (*CompactionJobAssignment) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{6}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CompactionJobAssignment) GetName() string {
@@ -538,7 +713,7 @@ type CompactionJobStatusUpdate struct {
 
 func (x *CompactionJobStatusUpdate) Reset() {
 	*x = CompactionJobStatusUpdate{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[7]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -550,7 +725,7 @@ func (x *CompactionJobStatusUpdate) String() string {
 func (*CompactionJobStatusUpdate) ProtoMessage() {}
 
 func (x *CompactionJobStatusUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[7]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -563,7 +738,7 @@ func (x *CompactionJobStatusUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactionJobStatusUpdate.ProtoReflect.Descriptor instead.
 func (*CompactionJobStatusUpdate) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{7}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CompactionJobStatusUpdate) GetName() string {
@@ -604,7 +779,7 @@ type CompactedBlocks struct {
 
 func (x *CompactedBlocks) Reset() {
 	*x = CompactedBlocks{}
-	mi := &file_metastore_v1_compactor_proto_msgTypes[8]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -616,7 +791,7 @@ func (x *CompactedBlocks) String() string {
 func (*CompactedBlocks) ProtoMessage() {}
 
 func (x *CompactedBlocks) ProtoReflect() protoreflect.Message {
-	mi := &file_metastore_v1_compactor_proto_msgTypes[8]
+	mi := &file_metastore_v1_compactor_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -629,7 +804,7 @@ func (x *CompactedBlocks) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompactedBlocks.ProtoReflect.Descriptor instead.
 func (*CompactedBlocks) Descriptor() ([]byte, []int) {
-	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{8}
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CompactedBlocks) GetSourceBlocks() *BlockList {
@@ -646,17 +821,432 @@ func (x *CompactedBlocks) GetNewBlocks() []*BlockMeta {
 	return nil
 }
 
+// Go/RE2 regular expression, matched against the entire dataset service_name.
+// An empty regex matches only an empty service name, not all services.
+// Use ".*" to match all services. Datasets without a service name are skipped.
+type DeleteFilter struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ServiceNameRegex string                 `protobuf:"bytes,1,opt,name=service_name_regex,json=serviceNameRegex,proto3" json:"service_name_regex,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DeleteFilter) Reset() {
+	*x = DeleteFilter{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteFilter) ProtoMessage() {}
+
+func (x *DeleteFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteFilter.ProtoReflect.Descriptor instead.
+func (*DeleteFilter) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DeleteFilter) GetServiceNameRegex() string {
+	if x != nil {
+		return x.ServiceNameRegex
+	}
+	return ""
+}
+
+type DeleteDatasetsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required, non-blank tenant. Cross-tenant deletion is not supported.
+	Tenant string `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// Inclusive Unix nanosecond time window. Entire matching datasets in
+	// overlapping blocks are removed, including data outside this window.
+	// min_time must not exceed max_time; zero is the Unix epoch.
+	MinTime int64 `protobuf:"varint,2,opt,name=min_time,json=minTime,proto3" json:"min_time,omitempty"`
+	MaxTime int64 `protobuf:"varint,3,opt,name=max_time,json=maxTime,proto3" json:"max_time,omitempty"`
+	// Required selection filter.
+	Filter *DeleteFilter `protobuf:"bytes,4,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Report planned work without scheduling jobs or changing state.
+	DryRun bool `protobuf:"varint,5,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
+	// Minimum compaction level of blocks to consider (0 by default).
+	// Note that L0 multi-tenant segments are never eligible.
+	MinCompactionLevel uint32 `protobuf:"varint,6,opt,name=min_compaction_level,json=minCompactionLevel,proto3" json:"min_compaction_level,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *DeleteDatasetsRequest) Reset() {
+	*x = DeleteDatasetsRequest{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDatasetsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDatasetsRequest) ProtoMessage() {}
+
+func (x *DeleteDatasetsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDatasetsRequest.ProtoReflect.Descriptor instead.
+func (*DeleteDatasetsRequest) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *DeleteDatasetsRequest) GetTenant() string {
+	if x != nil {
+		return x.Tenant
+	}
+	return ""
+}
+
+func (x *DeleteDatasetsRequest) GetMinTime() int64 {
+	if x != nil {
+		return x.MinTime
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsRequest) GetMaxTime() int64 {
+	if x != nil {
+		return x.MaxTime
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsRequest) GetFilter() *DeleteFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *DeleteDatasetsRequest) GetDryRun() bool {
+	if x != nil {
+		return x.DryRun
+	}
+	return false
+}
+
+func (x *DeleteDatasetsRequest) GetMinCompactionLevel() uint32 {
+	if x != nil {
+		return x.MinCompactionLevel
+	}
+	return 0
+}
+
+type BlockDeletionSummary struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	BlockId         string                 `protobuf:"bytes,1,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
+	Tenant          string                 `protobuf:"bytes,2,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Shard           uint32                 `protobuf:"varint,3,opt,name=shard,proto3" json:"shard,omitempty"`
+	CompactionLevel uint32                 `protobuf:"varint,4,opt,name=compaction_level,json=compactionLevel,proto3" json:"compaction_level,omitempty"`
+	// Full block bounds in Unix nanoseconds.
+	BlockMinTime int64 `protobuf:"varint,5,opt,name=block_min_time,json=blockMinTime,proto3" json:"block_min_time,omitempty"`
+	BlockMaxTime int64 `protobuf:"varint,6,opt,name=block_max_time,json=blockMaxTime,proto3" json:"block_max_time,omitempty"`
+	// Matched dataset bounds in Unix nanoseconds, potentially outside the request.
+	MatchedMinTime int64 `protobuf:"varint,7,opt,name=matched_min_time,json=matchedMinTime,proto3" json:"matched_min_time,omitempty"`
+	MatchedMaxTime int64 `protobuf:"varint,8,opt,name=matched_max_time,json=matchedMaxTime,proto3" json:"matched_max_time,omitempty"`
+	// True when all service datasets match and the whole block will be removed.
+	FullBlockPlanned       bool     `protobuf:"varint,9,opt,name=full_block_planned,json=fullBlockPlanned,proto3" json:"full_block_planned,omitempty"`
+	MatchedDatasetsCount   uint32   `protobuf:"varint,10,opt,name=matched_datasets_count,json=matchedDatasetsCount,proto3" json:"matched_datasets_count,omitempty"`
+	RemainingDatasetsCount uint32   `protobuf:"varint,11,opt,name=remaining_datasets_count,json=remainingDatasetsCount,proto3" json:"remaining_datasets_count,omitempty"`
+	MatchedServices        []string `protobuf:"bytes,12,rep,name=matched_services,json=matchedServices,proto3" json:"matched_services,omitempty"`
+	// Sum of matched dataset sizes, not reclaimed object-storage bytes.
+	MatchedBytes  uint64 `protobuf:"varint,13,opt,name=matched_bytes,json=matchedBytes,proto3" json:"matched_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlockDeletionSummary) Reset() {
+	*x = BlockDeletionSummary{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlockDeletionSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockDeletionSummary) ProtoMessage() {}
+
+func (x *BlockDeletionSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockDeletionSummary.ProtoReflect.Descriptor instead.
+func (*BlockDeletionSummary) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *BlockDeletionSummary) GetBlockId() string {
+	if x != nil {
+		return x.BlockId
+	}
+	return ""
+}
+
+func (x *BlockDeletionSummary) GetTenant() string {
+	if x != nil {
+		return x.Tenant
+	}
+	return ""
+}
+
+func (x *BlockDeletionSummary) GetShard() uint32 {
+	if x != nil {
+		return x.Shard
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetCompactionLevel() uint32 {
+	if x != nil {
+		return x.CompactionLevel
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetBlockMinTime() int64 {
+	if x != nil {
+		return x.BlockMinTime
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetBlockMaxTime() int64 {
+	if x != nil {
+		return x.BlockMaxTime
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetMatchedMinTime() int64 {
+	if x != nil {
+		return x.MatchedMinTime
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetMatchedMaxTime() int64 {
+	if x != nil {
+		return x.MatchedMaxTime
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetFullBlockPlanned() bool {
+	if x != nil {
+		return x.FullBlockPlanned
+	}
+	return false
+}
+
+func (x *BlockDeletionSummary) GetMatchedDatasetsCount() uint32 {
+	if x != nil {
+		return x.MatchedDatasetsCount
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetRemainingDatasetsCount() uint32 {
+	if x != nil {
+		return x.RemainingDatasetsCount
+	}
+	return 0
+}
+
+func (x *BlockDeletionSummary) GetMatchedServices() []string {
+	if x != nil {
+		return x.MatchedServices
+	}
+	return nil
+}
+
+func (x *BlockDeletionSummary) GetMatchedBytes() uint64 {
+	if x != nil {
+		return x.MatchedBytes
+	}
+	return 0
+}
+
+// Impact plan, not a completion acknowledgement. Counts describe selected work
+// for both dry runs and scheduled deletions. Only single-tenant compacted blocks
+// are eligible; L0/multi-tenant blocks and already tombstoned blocks are skipped.
+type DeleteDatasetsResponse struct {
+	state                          protoimpl.MessageState `protogen:"open.v1"`
+	DryRun                         bool                   `protobuf:"varint,1,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
+	MatchedBlocksCount             uint32                 `protobuf:"varint,2,opt,name=matched_blocks_count,json=matchedBlocksCount,proto3" json:"matched_blocks_count,omitempty"`
+	PlannedFullBlockDeletionsCount uint32                 `protobuf:"varint,3,opt,name=planned_full_block_deletions_count,json=plannedFullBlockDeletionsCount,proto3" json:"planned_full_block_deletions_count,omitempty"`
+	PlannedBlockRewritesCount      uint32                 `protobuf:"varint,4,opt,name=planned_block_rewrites_count,json=plannedBlockRewritesCount,proto3" json:"planned_block_rewrites_count,omitempty"`
+	MatchedDatasetsCount           uint32                 `protobuf:"varint,5,opt,name=matched_datasets_count,json=matchedDatasetsCount,proto3" json:"matched_datasets_count,omitempty"`
+	// Sum of matched dataset sizes, not reclaimed object-storage bytes.
+	MatchedBytes uint64 `protobuf:"varint,6,opt,name=matched_bytes,json=matchedBytes,proto3" json:"matched_bytes,omitempty"`
+	// Overall matched dataset bounds in Unix nanoseconds; both zero if no matches.
+	EffectiveMatchedMinTime int64                   `protobuf:"varint,7,opt,name=effective_matched_min_time,json=effectiveMatchedMinTime,proto3" json:"effective_matched_min_time,omitempty"`
+	EffectiveMatchedMaxTime int64                   `protobuf:"varint,8,opt,name=effective_matched_max_time,json=effectiveMatchedMaxTime,proto3" json:"effective_matched_max_time,omitempty"`
+	Blocks                  []*BlockDeletionSummary `protobuf:"bytes,9,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	// Non-dry-run jobs are asynchronous; this is not a completion acknowledgement.
+	ScheduledJobNames []string `protobuf:"bytes,10,rep,name=scheduled_job_names,json=scheduledJobNames,proto3" json:"scheduled_job_names,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DeleteDatasetsResponse) Reset() {
+	*x = DeleteDatasetsResponse{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDatasetsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDatasetsResponse) ProtoMessage() {}
+
+func (x *DeleteDatasetsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDatasetsResponse.ProtoReflect.Descriptor instead.
+func (*DeleteDatasetsResponse) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DeleteDatasetsResponse) GetDryRun() bool {
+	if x != nil {
+		return x.DryRun
+	}
+	return false
+}
+
+func (x *DeleteDatasetsResponse) GetMatchedBlocksCount() uint32 {
+	if x != nil {
+		return x.MatchedBlocksCount
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsResponse) GetPlannedFullBlockDeletionsCount() uint32 {
+	if x != nil {
+		return x.PlannedFullBlockDeletionsCount
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsResponse) GetPlannedBlockRewritesCount() uint32 {
+	if x != nil {
+		return x.PlannedBlockRewritesCount
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsResponse) GetMatchedDatasetsCount() uint32 {
+	if x != nil {
+		return x.MatchedDatasetsCount
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsResponse) GetMatchedBytes() uint64 {
+	if x != nil {
+		return x.MatchedBytes
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsResponse) GetEffectiveMatchedMinTime() int64 {
+	if x != nil {
+		return x.EffectiveMatchedMinTime
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsResponse) GetEffectiveMatchedMaxTime() int64 {
+	if x != nil {
+		return x.EffectiveMatchedMaxTime
+	}
+	return 0
+}
+
+func (x *DeleteDatasetsResponse) GetBlocks() []*BlockDeletionSummary {
+	if x != nil {
+		return x.Blocks
+	}
+	return nil
+}
+
+func (x *DeleteDatasetsResponse) GetScheduledJobNames() []string {
+	if x != nil {
+		return x.ScheduledJobNames
+	}
+	return nil
+}
+
 var File_metastore_v1_compactor_proto protoreflect.FileDescriptor
 
 const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\n" +
-	"\x1cmetastore/v1/compactor.proto\x12\fmetastore.v1\x1a\x18metastore/v1/types.proto\"\x8e\x01\n" +
+	"\x1cmetastore/v1/compactor.proto\x12\fmetastore.v1\x1a\x18metastore/v1/types.proto\"3\n" +
+	"\x19ListCompactionJobsRequest\x12\x16\n" +
+	"\x06tenant\x18\x01 \x01(\tR\x06tenant\"Q\n" +
+	"\x1aListCompactionJobsResponse\x123\n" +
+	"\x04jobs\x18\x01 \x03(\v2\x1f.metastore.v1.CompactionJobInfoR\x04jobs\"\xde\x01\n" +
+	"\x11CompactionJobInfo\x12-\n" +
+	"\x03job\x18\x01 \x01(\v2\x1b.metastore.v1.CompactionJobR\x03job\x129\n" +
+	"\x06status\x18\x02 \x01(\x0e2!.metastore.v1.CompactionJobStatusR\x06status\x12\x19\n" +
+	"\badded_at\x18\x03 \x01(\x03R\aaddedAt\x12(\n" +
+	"\x10lease_expires_at\x18\x04 \x01(\x03R\x0eleaseExpiresAt\x12\x1a\n" +
+	"\bfailures\x18\x05 \x01(\rR\bfailures\"\x8e\x01\n" +
 	"\x19PollCompactionJobsRequest\x12N\n" +
 	"\x0estatus_updates\x18\x01 \x03(\v2'.metastore.v1.CompactionJobStatusUpdateR\rstatusUpdates\x12!\n" +
 	"\fjob_capacity\x18\x02 \x01(\rR\vjobCapacity\"\xab\x01\n" +
 	"\x1aPollCompactionJobsResponse\x12D\n" +
 	"\x0fcompaction_jobs\x18\x01 \x03(\v2\x1b.metastore.v1.CompactionJobR\x0ecompactionJobs\x12G\n" +
-	"\vassignments\x18\x02 \x03(\v2%.metastore.v1.CompactionJobAssignmentR\vassignments\"\xdb\x01\n" +
+	"\vassignments\x18\x02 \x03(\v2%.metastore.v1.CompactionJobAssignmentR\vassignments\"\x9c\x02\n" +
 	"\rCompactionJob\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05shard\x18\x02 \x01(\rR\x05shard\x12\x16\n" +
@@ -665,7 +1255,8 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\rsource_blocks\x18\x05 \x03(\tR\fsourceBlocks\x128\n" +
 	"\n" +
 	"tombstones\x18\x06 \x03(\v2\x18.metastore.v1.TombstonesR\n" +
-	"tombstones\"w\n" +
+	"tombstones\x12?\n" +
+	"\rdelete_filter\x18\a \x01(\v2\x1a.metastore.v1.DeleteFilterR\fdeleteFilter\"w\n" +
 	"\n" +
 	"Tombstones\x125\n" +
 	"\x06blocks\x18\x01 \x01(\v2\x1d.metastore.v1.BlockTombstonesR\x06blocks\x122\n" +
@@ -694,12 +1285,50 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\x0fCompactedBlocks\x12<\n" +
 	"\rsource_blocks\x18\x01 \x01(\v2\x17.metastore.v1.BlockListR\fsourceBlocks\x126\n" +
 	"\n" +
-	"new_blocks\x18\x02 \x03(\v2\x17.metastore.v1.BlockMetaR\tnewBlocks*z\n" +
+	"new_blocks\x18\x02 \x03(\v2\x17.metastore.v1.BlockMetaR\tnewBlocks\"<\n" +
+	"\fDeleteFilter\x12,\n" +
+	"\x12service_name_regex\x18\x01 \x01(\tR\x10serviceNameRegex\"\xe4\x01\n" +
+	"\x15DeleteDatasetsRequest\x12\x16\n" +
+	"\x06tenant\x18\x01 \x01(\tR\x06tenant\x12\x19\n" +
+	"\bmin_time\x18\x02 \x01(\x03R\aminTime\x12\x19\n" +
+	"\bmax_time\x18\x03 \x01(\x03R\amaxTime\x122\n" +
+	"\x06filter\x18\x04 \x01(\v2\x1a.metastore.v1.DeleteFilterR\x06filter\x12\x17\n" +
+	"\adry_run\x18\x05 \x01(\bR\x06dryRun\x120\n" +
+	"\x14min_compaction_level\x18\x06 \x01(\rR\x12minCompactionLevel\"\x98\x04\n" +
+	"\x14BlockDeletionSummary\x12\x19\n" +
+	"\bblock_id\x18\x01 \x01(\tR\ablockId\x12\x16\n" +
+	"\x06tenant\x18\x02 \x01(\tR\x06tenant\x12\x14\n" +
+	"\x05shard\x18\x03 \x01(\rR\x05shard\x12)\n" +
+	"\x10compaction_level\x18\x04 \x01(\rR\x0fcompactionLevel\x12$\n" +
+	"\x0eblock_min_time\x18\x05 \x01(\x03R\fblockMinTime\x12$\n" +
+	"\x0eblock_max_time\x18\x06 \x01(\x03R\fblockMaxTime\x12(\n" +
+	"\x10matched_min_time\x18\a \x01(\x03R\x0ematchedMinTime\x12(\n" +
+	"\x10matched_max_time\x18\b \x01(\x03R\x0ematchedMaxTime\x12,\n" +
+	"\x12full_block_planned\x18\t \x01(\bR\x10fullBlockPlanned\x124\n" +
+	"\x16matched_datasets_count\x18\n" +
+	" \x01(\rR\x14matchedDatasetsCount\x128\n" +
+	"\x18remaining_datasets_count\x18\v \x01(\rR\x16remainingDatasetsCount\x12)\n" +
+	"\x10matched_services\x18\f \x03(\tR\x0fmatchedServices\x12#\n" +
+	"\rmatched_bytes\x18\r \x01(\x04R\fmatchedBytes\"\xb1\x04\n" +
+	"\x16DeleteDatasetsResponse\x12\x17\n" +
+	"\adry_run\x18\x01 \x01(\bR\x06dryRun\x120\n" +
+	"\x14matched_blocks_count\x18\x02 \x01(\rR\x12matchedBlocksCount\x12J\n" +
+	"\"planned_full_block_deletions_count\x18\x03 \x01(\rR\x1eplannedFullBlockDeletionsCount\x12?\n" +
+	"\x1cplanned_block_rewrites_count\x18\x04 \x01(\rR\x19plannedBlockRewritesCount\x124\n" +
+	"\x16matched_datasets_count\x18\x05 \x01(\rR\x14matchedDatasetsCount\x12#\n" +
+	"\rmatched_bytes\x18\x06 \x01(\x04R\fmatchedBytes\x12;\n" +
+	"\x1aeffective_matched_min_time\x18\a \x01(\x03R\x17effectiveMatchedMinTime\x12;\n" +
+	"\x1aeffective_matched_max_time\x18\b \x01(\x03R\x17effectiveMatchedMaxTime\x12:\n" +
+	"\x06blocks\x18\t \x03(\v2\".metastore.v1.BlockDeletionSummaryR\x06blocks\x12.\n" +
+	"\x13scheduled_job_names\x18\n" +
+	" \x03(\tR\x11scheduledJobNames*z\n" +
 	"\x13CompactionJobStatus\x12!\n" +
 	"\x1dCOMPACTION_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dCOMPACTION_STATUS_IN_PROGRESS\x10\x01\x12\x1d\n" +
-	"\x19COMPACTION_STATUS_SUCCESS\x10\x022~\n" +
+	"\x19COMPACTION_STATUS_SUCCESS\x10\x022\xc8\x02\n" +
 	"\x11CompactionService\x12i\n" +
+	"\x12ListCompactionJobs\x12'.metastore.v1.ListCompactionJobsRequest\x1a(.metastore.v1.ListCompactionJobsResponse\"\x00\x12]\n" +
+	"\x0eDeleteDatasets\x12#.metastore.v1.DeleteDatasetsRequest\x1a$.metastore.v1.DeleteDatasetsResponse\"\x00\x12i\n" +
 	"\x12PollCompactionJobs\x12'.metastore.v1.PollCompactionJobsRequest\x1a(.metastore.v1.PollCompactionJobsResponse\"\x00B\xbb\x01\n" +
 	"\x10com.metastore.v1B\x0eCompactorProtoP\x01ZFgithub.com/grafana/pyroscope/api/gen/proto/go/metastore/v1;metastorev1\xa2\x02\x03MXX\xaa\x02\fMetastore.V1\xca\x02\fMetastore\\V1\xe2\x02\x18Metastore\\V1\\GPBMetadata\xea\x02\rMetastore::V1b\x06proto3"
 
@@ -716,39 +1345,56 @@ func file_metastore_v1_compactor_proto_rawDescGZIP() []byte {
 }
 
 var file_metastore_v1_compactor_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_metastore_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_metastore_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_metastore_v1_compactor_proto_goTypes = []any{
 	(CompactionJobStatus)(0),           // 0: metastore.v1.CompactionJobStatus
-	(*PollCompactionJobsRequest)(nil),  // 1: metastore.v1.PollCompactionJobsRequest
-	(*PollCompactionJobsResponse)(nil), // 2: metastore.v1.PollCompactionJobsResponse
-	(*CompactionJob)(nil),              // 3: metastore.v1.CompactionJob
-	(*Tombstones)(nil),                 // 4: metastore.v1.Tombstones
-	(*BlockTombstones)(nil),            // 5: metastore.v1.BlockTombstones
-	(*ShardTombstone)(nil),             // 6: metastore.v1.ShardTombstone
-	(*CompactionJobAssignment)(nil),    // 7: metastore.v1.CompactionJobAssignment
-	(*CompactionJobStatusUpdate)(nil),  // 8: metastore.v1.CompactionJobStatusUpdate
-	(*CompactedBlocks)(nil),            // 9: metastore.v1.CompactedBlocks
-	(*BlockList)(nil),                  // 10: metastore.v1.BlockList
-	(*BlockMeta)(nil),                  // 11: metastore.v1.BlockMeta
+	(*ListCompactionJobsRequest)(nil),  // 1: metastore.v1.ListCompactionJobsRequest
+	(*ListCompactionJobsResponse)(nil), // 2: metastore.v1.ListCompactionJobsResponse
+	(*CompactionJobInfo)(nil),          // 3: metastore.v1.CompactionJobInfo
+	(*PollCompactionJobsRequest)(nil),  // 4: metastore.v1.PollCompactionJobsRequest
+	(*PollCompactionJobsResponse)(nil), // 5: metastore.v1.PollCompactionJobsResponse
+	(*CompactionJob)(nil),              // 6: metastore.v1.CompactionJob
+	(*Tombstones)(nil),                 // 7: metastore.v1.Tombstones
+	(*BlockTombstones)(nil),            // 8: metastore.v1.BlockTombstones
+	(*ShardTombstone)(nil),             // 9: metastore.v1.ShardTombstone
+	(*CompactionJobAssignment)(nil),    // 10: metastore.v1.CompactionJobAssignment
+	(*CompactionJobStatusUpdate)(nil),  // 11: metastore.v1.CompactionJobStatusUpdate
+	(*CompactedBlocks)(nil),            // 12: metastore.v1.CompactedBlocks
+	(*DeleteFilter)(nil),               // 13: metastore.v1.DeleteFilter
+	(*DeleteDatasetsRequest)(nil),      // 14: metastore.v1.DeleteDatasetsRequest
+	(*BlockDeletionSummary)(nil),       // 15: metastore.v1.BlockDeletionSummary
+	(*DeleteDatasetsResponse)(nil),     // 16: metastore.v1.DeleteDatasetsResponse
+	(*BlockList)(nil),                  // 17: metastore.v1.BlockList
+	(*BlockMeta)(nil),                  // 18: metastore.v1.BlockMeta
 }
 var file_metastore_v1_compactor_proto_depIdxs = []int32{
-	8,  // 0: metastore.v1.PollCompactionJobsRequest.status_updates:type_name -> metastore.v1.CompactionJobStatusUpdate
-	3,  // 1: metastore.v1.PollCompactionJobsResponse.compaction_jobs:type_name -> metastore.v1.CompactionJob
-	7,  // 2: metastore.v1.PollCompactionJobsResponse.assignments:type_name -> metastore.v1.CompactionJobAssignment
-	4,  // 3: metastore.v1.CompactionJob.tombstones:type_name -> metastore.v1.Tombstones
-	5,  // 4: metastore.v1.Tombstones.blocks:type_name -> metastore.v1.BlockTombstones
-	6,  // 5: metastore.v1.Tombstones.shard:type_name -> metastore.v1.ShardTombstone
-	0,  // 6: metastore.v1.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
-	9,  // 7: metastore.v1.CompactionJobStatusUpdate.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
-	10, // 8: metastore.v1.CompactedBlocks.source_blocks:type_name -> metastore.v1.BlockList
-	11, // 9: metastore.v1.CompactedBlocks.new_blocks:type_name -> metastore.v1.BlockMeta
-	1,  // 10: metastore.v1.CompactionService.PollCompactionJobs:input_type -> metastore.v1.PollCompactionJobsRequest
-	2,  // 11: metastore.v1.CompactionService.PollCompactionJobs:output_type -> metastore.v1.PollCompactionJobsResponse
-	11, // [11:12] is the sub-list for method output_type
-	10, // [10:11] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	3,  // 0: metastore.v1.ListCompactionJobsResponse.jobs:type_name -> metastore.v1.CompactionJobInfo
+	6,  // 1: metastore.v1.CompactionJobInfo.job:type_name -> metastore.v1.CompactionJob
+	0,  // 2: metastore.v1.CompactionJobInfo.status:type_name -> metastore.v1.CompactionJobStatus
+	11, // 3: metastore.v1.PollCompactionJobsRequest.status_updates:type_name -> metastore.v1.CompactionJobStatusUpdate
+	6,  // 4: metastore.v1.PollCompactionJobsResponse.compaction_jobs:type_name -> metastore.v1.CompactionJob
+	10, // 5: metastore.v1.PollCompactionJobsResponse.assignments:type_name -> metastore.v1.CompactionJobAssignment
+	7,  // 6: metastore.v1.CompactionJob.tombstones:type_name -> metastore.v1.Tombstones
+	13, // 7: metastore.v1.CompactionJob.delete_filter:type_name -> metastore.v1.DeleteFilter
+	8,  // 8: metastore.v1.Tombstones.blocks:type_name -> metastore.v1.BlockTombstones
+	9,  // 9: metastore.v1.Tombstones.shard:type_name -> metastore.v1.ShardTombstone
+	0,  // 10: metastore.v1.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
+	12, // 11: metastore.v1.CompactionJobStatusUpdate.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
+	17, // 12: metastore.v1.CompactedBlocks.source_blocks:type_name -> metastore.v1.BlockList
+	18, // 13: metastore.v1.CompactedBlocks.new_blocks:type_name -> metastore.v1.BlockMeta
+	13, // 14: metastore.v1.DeleteDatasetsRequest.filter:type_name -> metastore.v1.DeleteFilter
+	15, // 15: metastore.v1.DeleteDatasetsResponse.blocks:type_name -> metastore.v1.BlockDeletionSummary
+	1,  // 16: metastore.v1.CompactionService.ListCompactionJobs:input_type -> metastore.v1.ListCompactionJobsRequest
+	14, // 17: metastore.v1.CompactionService.DeleteDatasets:input_type -> metastore.v1.DeleteDatasetsRequest
+	4,  // 18: metastore.v1.CompactionService.PollCompactionJobs:input_type -> metastore.v1.PollCompactionJobsRequest
+	2,  // 19: metastore.v1.CompactionService.ListCompactionJobs:output_type -> metastore.v1.ListCompactionJobsResponse
+	16, // 20: metastore.v1.CompactionService.DeleteDatasets:output_type -> metastore.v1.DeleteDatasetsResponse
+	5,  // 21: metastore.v1.CompactionService.PollCompactionJobs:output_type -> metastore.v1.PollCompactionJobsResponse
+	19, // [19:22] is the sub-list for method output_type
+	16, // [16:19] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_metastore_v1_compactor_proto_init() }
@@ -763,7 +1409,7 @@ func file_metastore_v1_compactor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_metastore_v1_compactor_proto_rawDesc), len(file_metastore_v1_compactor_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

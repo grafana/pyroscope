@@ -105,9 +105,12 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			sp.LogError(err)
 			sp.SetError()
 			otelSpan.AddEvent(msg)
-			if connect.CodeOf(err) == connect.CodeResourceExhausted {
+			switch connect.CodeOf(err) {
+			case connect.CodeResourceExhausted:
 				httputil.ErrorWithStatus(w, err, http.StatusTooManyRequests)
-			} else {
+			case connect.CodeUnavailable:
+				httputil.ErrorWithStatus(w, err, http.StatusServiceUnavailable)
+			default:
 				httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
 			}
 		}

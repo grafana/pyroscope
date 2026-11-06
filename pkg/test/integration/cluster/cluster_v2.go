@@ -58,6 +58,24 @@ func WithV2Federated() ClusterOption {
 	}
 }
 
+func WithForceDatasetIndexLookup() ClusterOption {
+	return func(c *Cluster) {
+		c.forceDatasetIndexLookup = true
+	}
+}
+
+func WithDatasetIndexShardPruning() ClusterOption {
+	return func(c *Cluster) {
+		c.datasetIndexShardPruning = true
+	}
+}
+
+func WithDatasetLookupFromMetadata() ClusterOption {
+	return func(c *Cluster) {
+		c.datasetLookupFromMetadata = true
+	}
+}
+
 func (c *Cluster) metastoreConfig() (string, error) {
 	cfgPath := filepath.Join(c.tmpDir, "metastore.yaml")
 
@@ -154,11 +172,16 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 		fmt.Sprintf("-metastore.address=%s:%d/%s", listenAddr, metastoreLeader.grpcPort, metastoreLeader.nodeName()),
 	)
 
-	if c.debuginfodURL != "" && comp.Target == "query-frontend" {
-		comp.flags = append(comp.flags,
-			fmt.Sprintf("-symbolizer.debuginfod-url=%s", c.debuginfodURL),
-			"-symbolizer.enabled=true",
-		)
+	if comp.Target == "query-frontend" {
+		if c.forceDatasetIndexLookup {
+			comp.flags = append(comp.flags, "-querier.force-dataset-index-lookup=true")
+		}
+		if c.datasetIndexShardPruning {
+			comp.flags = append(comp.flags, "-querier.dataset-index-shard-pruning=true")
+		}
+	}
+	if comp.Target == "query-backend" && c.datasetLookupFromMetadata {
+		comp.flags = append(comp.flags, "-query-backend.dataset-lookup-from-metadata=true")
 	}
 
 	if comp.Target == "segment-writer" {

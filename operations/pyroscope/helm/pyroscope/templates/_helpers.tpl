@@ -55,11 +55,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Template labels
+Pod template labels. extraLabels is pyroscope.extraLabels merged with the
+component's own extraLabels, so a component can add or override labels.
 */}}
 {{- define "pyroscope.templateLabels" -}}
-{{ include "pyroscope.selectorLabels" . }}
-{{- range $k, $v := .Values.pyroscope.extraLabels }}
+{{ include "pyroscope.selectorLabels" .ctx }}
+{{- range $k, $v := .extraLabels }}
 {{$k}}: {{ $v | quote }}
 {{- end }}
 {{- end }}
@@ -132,7 +133,7 @@ Return the URL for querying profiles from Pyroscope.
 {{- $components := (fromYaml (include "pyroscope.components" .)) -}}
 {{- if .Values.architecture.deployUnifiedServices -}}
 http://{{ include "pyroscope.fullname" . }}-read.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}
-{{- else if hasKey $components "query-frontend" -}}A
+{{- else if hasKey $components "query-frontend" -}}
 {{- $port := ((index $components "query-frontend").service).port | default .Values.pyroscope.service.port }}
 http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ $port }}
 {{- else -}}

@@ -225,9 +225,9 @@ go/mod_tidy/%: go/mod_tidy_root
 	cd "$*" && GO111MODULE=on go mod tidy
 
 .PHONY: fmt
-fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
+fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Format Go, protobuf and jsonnet code
 	git ls-files '*.go' | grep -v 'vendor/' | grep -v 'og/' | xargs gofmt -s -w
-	$(BIN)/golangci-lint run --fix
+	$(BIN)/golangci-lint fmt ./...
 	cd api/ && $(BIN)/buf format -w .
 	cd pkg && $(BIN)/buf format -w .
 	$(BIN)/tk fmt ./operations/pyroscope/jsonnet/
@@ -447,6 +447,7 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency update ./operations/monitoring/helm/pyroscope-monitoring/
 	$(BIN)/helm dependency build ./operations/monitoring/helm/pyroscope-monitoring/
+	PATH="$(BIN):$(PATH)" $(GO) test -tags=helm_unit ./operations/pyroscope/helm/pyroscope/unit -count=1
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V1) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \

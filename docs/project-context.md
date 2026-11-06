@@ -17,7 +17,6 @@ This file contains context about the project. The Docs AI skills library loads i
 - **Grafana Agent was replaced by Grafana Alloy in the Helm chart defaults.** Legacy `agent.enabled` and `values-micro-services.yaml` paths still exist in the repo; default install behavior is in `operations/pyroscope/helm/pyroscope/values.yaml`.
 - **`docs/sources/reference-pyroscope-architecture/` is the V1 (legacy) architecture tree.** Current architecture docs live under `docs/sources/reference-pyroscope-v2-architecture/`. Keep V1 and V2 pages distinct; do not merge their write/read paths in new prose.
 - **`docs/sources/get-started/_index.md` still links to V1 deployment modes.** That page describes monolith startup and points at `reference-pyroscope-architecture/deployment-modes/`. For current install defaults and V2 architecture, use `docs/sources/deploy-kubernetes/` and `docs/sources/reference-pyroscope-v2-architecture/`.
-- **Symbolizer is opt-in and not in the V2 component doc tree.** `-symbolizer.enabled` defaults to `false` (`pkg/validation/symbolizer.go`). Symbolizer options appear in the generated configuration reference and release notes, but there is no component page under `reference-pyroscope-v2-architecture/components/`.
 - **`docs/sources/shared/use-explore-profiles.md` may lag the Profiles Drilldown app.** For UI behavior and terminology, cross-check `[upstream]` [grafana/profiles-drilldown](https://github.com/grafana/profiles-drilldown) (`docs/sources/` there) when validating explore/drilldown claims.
 
 ## Do-not-edit paths
@@ -54,7 +53,6 @@ This file contains context about the project. The Docs AI skills library loads i
 | --------- | ------------------- |
 | `pkg/` V2 components | `docs/sources/reference-pyroscope-v2-architecture/components/` |
 | `pkg/` V1 components | `docs/sources/reference-pyroscope-architecture/components/` |
-| `pkg/symbolizer/` | `docs/sources/configure-server/reference-configuration-parameters/` (no V2 component page) |
 | `cmd/pyroscope/`, server `Config` under `pkg/` | `docs/sources/configure-server/` |
 | `cmd/profilecli/` | `docs/sources/view-and-analyze-profile-data/profile-cli.md` |
 | Client SDKs, Alloy, examples under `examples/` | `docs/sources/configure-client/` |

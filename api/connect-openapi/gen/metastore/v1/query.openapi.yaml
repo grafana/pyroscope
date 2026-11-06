@@ -409,6 +409,14 @@ components:
           items:
             type: string
           title: labels
+        shardSelector:
+          type: string
+          title: shard_selector
+          description: |-
+            Optional pruning hint, not a filter: the metastore may skip shards whose
+             string table lacks a name or value of an equality matcher. Returned blocks
+             and datasets are selected by query alone and may not match the selector;
+             metastores that predate the field ignore it.
       title: QueryMetadataRequest
       additionalProperties: false
     metastore.v1.QueryMetadataResponse:

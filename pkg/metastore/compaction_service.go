@@ -19,18 +19,24 @@ import (
 type CompactionService struct {
 	metastorev1.CompactionServiceServer
 
-	logger log.Logger
-	mu     sync.Mutex
-	raft   Raft
+	logger          log.Logger
+	mu              sync.Mutex
+	raft            Raft
+	state           State
+	deletionHandler *CompactionCommandHandler
 }
 
 func NewCompactionService(
 	logger log.Logger,
 	raft Raft,
+	state State,
+	deletionHandler *CompactionCommandHandler,
 ) *CompactionService {
 	return &CompactionService{
-		logger: logger,
-		raft:   raft,
+		logger:          logger,
+		raft:            raft,
+		state:           state,
+		deletionHandler: deletionHandler,
 	}
 }
 
@@ -129,6 +135,7 @@ func (svc *CompactionService) PollCompactionJobs(
 			CompactionLevel: job.CompactionLevel,
 			SourceBlocks:    job.SourceBlocks,
 			Tombstones:      job.Tombstones,
+			DeleteFilter:    job.DeleteFilter,
 		})
 		// Assigned jobs are not written to the raft log (only the assignments):
 		// from our perspective (scheduler and planner) these are just job updates.

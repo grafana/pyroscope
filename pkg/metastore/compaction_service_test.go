@@ -46,7 +46,7 @@ func TestCompactionService_PollCompactionJobs_proposals(t *testing.T) {
 		CompletedJobs: []*raft_log.CompletedCompactionJob{{State: completed}},
 		AssignedJobs: []*raft_log.AssignedCompactionJob{{
 			State: assigned,
-			Plan:  &raft_log.CompactionJobPlan{Name: "job-new", Tenant: "tenant-a"},
+			Plan:  &raft_log.CompactionJobPlan{Name: "job-new", Tenant: "tenant-a", DeleteFilter: &metastorev1.DeleteFilter{ServiceNameRegex: "svc"}},
 		}},
 	}
 	raft := &proposalRecorder{responses: []proto.Message{
@@ -54,7 +54,7 @@ func TestCompactionService_PollCompactionJobs_proposals(t *testing.T) {
 		&raft_log.UpdateCompactionPlanResponse{PlanUpdate: planUpdate},
 	}}
 
-	svc := NewCompactionService(log.NewNopLogger(), raft)
+	svc := NewCompactionService(log.NewNopLogger(), raft, nil, nil)
 	compactedBlocks := &metastorev1.CompactedBlocks{
 		SourceBlocks: &metastorev1.BlockList{Tenant: "tenant-a", Blocks: []string{"b1"}},
 		NewBlocks:    []*metastorev1.BlockMeta{{Id: "b2"}},
@@ -89,6 +89,7 @@ func TestCompactionService_PollCompactionJobs_proposals(t *testing.T) {
 	// The worker response includes the new assignment and its plan.
 	require.Len(t, resp.CompactionJobs, 1)
 	assert.Equal(t, "job-new", resp.CompactionJobs[0].Name)
+	assert.Equal(t, "svc", resp.CompactionJobs[0].DeleteFilter.ServiceNameRegex)
 	require.Len(t, resp.Assignments, 1)
 	assert.Equal(t, uint64(41), resp.Assignments[0].Token)
 }

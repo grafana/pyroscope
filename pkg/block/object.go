@@ -67,7 +67,7 @@ func NewObjectFromPath(ctx context.Context, storage objstore.Bucket, path string
 		return nil, err
 	}
 
-	defaultSize := int64(1 << 8) // 18)
+	defaultSize := int64(1 << 18)
 	offset := attrs.Size - defaultSize
 	if offset < 0 {
 		offset = 0

@@ -44,6 +44,13 @@ func main() {
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
 	adminCmd := app.Command("admin", "Administrative tasks for Pyroscope cluster operators.")
+	profileDumpsCmd := adminCmd.Command("profile-dumps", "List, inspect, and download captured profiles.")
+	profileDumpsListCmd := profileDumpsCmd.Command(dumpList, "List capture keys, labels, and original profile IDs as JSON for a tenant and time window.")
+	profileDumpsListParams := addProfileDumpListParams(profileDumpsListCmd)
+	profileDumpsInspectCmd := profileDumpsCmd.Command(dumpInspect, "Print capture metadata as JSON without reading the payload.")
+	profileDumpsInspectParams := addProfileDumpInspectParams(profileDumpsInspectCmd)
+	profileDumpsExtractCmd := profileDumpsCmd.Command(dumpExtract, "Download the profile and its JSON metadata.")
+	profileDumpsExtractParams := addProfileDumpExtractParams(profileDumpsExtractCmd)
 
 	blocksCmd := adminCmd.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
 	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/anonymous/local").StringVar(&cfg.blocks.path)
@@ -85,10 +92,13 @@ func main() {
 	queryGoPGOParams := addQueryGoPGOParams(queryGoPGOCmd)
 	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
 	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
+
 	queryLabelValuesCardinalityCmd := queryCmd.Command("label-values-cardinality", "Request label values cardinality.")
 	queryLabelValuesCardinalityParams := addQueryLabelValuesCardinalityParams(queryLabelValuesCardinalityCmd)
 	queryTopCmd := queryCmd.Command("top", "List top N label values by total value for a time window.")
 	queryTopParams := addQueryTopParams(queryTopCmd)
+	queryAnomaliesCmd := queryCmd.Command("anomalies", "List profile anomalies. Experimental.")
+	queryAnomaliesParams := addQueryAnomaliesParams(queryAnomaliesCmd)
 	queryExemplarsCmd := queryCmd.Command("exemplars", "Query exemplars from profile data. V2 only.")
 	queryExemplarsProfileCmd := queryExemplarsCmd.Command("profile", "List profile exemplars for a time window.")
 	queryExemplarsParams := addQueryExemplarsParams(queryExemplarsProfileCmd)
@@ -130,6 +140,12 @@ func main() {
 	v2MigrationBucketCleanupCmd := v2MigrationCmd.Command("bucket-cleanup", "Clean up v1 artificats from data bucket.")
 	v2MigrationBucketCleanupParams := addV2MigrationBackupCleanupParam(v2MigrationBucketCleanupCmd)
 
+	compactionCmd := adminCmd.Command("compaction", "Inspect and manage V2 compaction.")
+	listJobsCmd := compactionCmd.Command("list-jobs", "List queued and assigned compaction jobs without claiming them.")
+	listJobsParams := addListCompactionJobsParams(listJobsCmd)
+	deleteDatasetsCmd := compactionCmd.Command("delete-datasets", "Delete service datasets and symbols from V2 single-tenant blocks overlapping a time window, and wait for completion. Dry-run by default.")
+	deleteDatasetsParams := addDeleteDatasetsParams(deleteDatasetsCmd)
+
 	kubeProxyCmd := adminCmd.Command("kube-proxy", "Start a reverse proxy unifying all the micro services in a single endpoint.")
 	kubeProxyParams := addKubeProxyParams(kubeProxyCmd)
 
@@ -168,6 +184,12 @@ func main() {
 	}
 
 	switch parsedCmd {
+	case profileDumpsListCmd.FullCommand():
+		os.Exit(checkError(profileDump(ctx, profileDumpsListParams, listProfileDumps)))
+	case profileDumpsInspectCmd.FullCommand():
+		os.Exit(checkError(profileDump(ctx, profileDumpsInspectParams, printProfileDump)))
+	case profileDumpsExtractCmd.FullCommand():
+		os.Exit(checkError(profileDump(ctx, profileDumpsExtractParams, extractProfileDump)))
 	case blocksListCmd.FullCommand():
 		os.Exit(checkError(blocksList(ctx)))
 	case parquetInspectCmd.FullCommand():
@@ -210,6 +232,10 @@ func main() {
 		}
 	case queryTopCmd.FullCommand():
 		if err := queryTop(ctx, queryTopParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case queryAnomaliesCmd.FullCommand():
+		if err := queryAnomalies(ctx, queryAnomaliesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case queryExemplarsProfileCmd.FullCommand():
@@ -264,6 +290,14 @@ func main() {
 		}
 	case v2MigrationBucketCleanupCmd.FullCommand():
 		if err := v2MigrationBucketCleanup(ctx, v2MigrationBucketCleanupParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case listJobsCmd.FullCommand():
+		if err := listCompactionJobs(ctx, listJobsParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case deleteDatasetsCmd.FullCommand():
+		if err := deleteDatasets(ctx, deleteDatasetsParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case kubeProxyCmd.FullCommand():

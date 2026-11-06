@@ -54,8 +54,8 @@ type stacktraces struct {
 
 func (p *stacktraces) size() uint64 {
 	p.m.RLock()
-	// TODO: map footprint isn't accounted
-	v := stacktraceTreeNodeSize * cap(p.tree.nodes)
+	// TODO: the hashToIdx map footprint isn't accounted
+	v := stacktraceTreeNodeSize*cap(p.tree.nodes) + p.tree.wideIndexSize()
 	p.m.RUnlock()
 	return uint64(v)
 }
@@ -155,6 +155,12 @@ func (p *stacktraces) WriteTo(dst io.Writer) (int64, error) {
 
 func (p *PartitionWriter) AppendLocations(dst []uint32, locations []schemav1.InMemoryLocation) {
 	p.locations.append(dst, locations)
+}
+
+// appendOwnedLocations is like AppendLocations, but takes ownership of the
+// locations' Line slices instead of copying them.
+func (p *PartitionWriter) appendOwnedLocations(dst []uint32, locations []schemav1.InMemoryLocation) {
+	p.locations.appendOwned(dst, locations)
 }
 
 func (p *PartitionWriter) AppendMappings(dst []uint32, mappings []schemav1.InMemoryMapping) {

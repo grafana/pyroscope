@@ -170,5 +170,13 @@ func (w *Wrapper) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	return resp, err
 }
 
+func (w *Wrapper) QueryAnomalies(ctx context.Context, req *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
+	resp, err := w.client.QueryAnomalies(ctx, req)
+	if resp != nil {
+		flushDiagnostics(w, ctx, "QueryAnomalies", req, resp)
+	}
+	return resp, err
+}
+
 // Ensure Wrapper implements the interface
 var _ querierv1connect.QuerierServiceClient = (*Wrapper)(nil)

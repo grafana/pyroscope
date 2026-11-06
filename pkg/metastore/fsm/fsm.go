@@ -254,6 +254,9 @@ func (fsm *FSM) applyCommand(cmd *raft.Log) any {
 		}
 	}
 
+	// A committed command must be applied regardless of the originating
+	// request's cancellation or deadline. Preserve its tracing values only.
+	ctx = context.WithoutCancel(ctx)
 	span, ctx := tracing.StartSpanFromContext(ctx, "fsm.applyCommand")
 	defer span.Finish()
 

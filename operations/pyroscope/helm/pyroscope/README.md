@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 2.3.1](https://img.shields.io/badge/Version-2.3.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.3.1](https://img.shields.io/badge/AppVersion-2.3.1-informational?style=flat-square)
+![Version: 2.4.3](https://img.shields.io/badge/Version-2.4.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.4.3](https://img.shields.io/badge/AppVersion-2.4.3-informational?style=flat-square)
 
 A horizontally scalable, highly available, multi-tenant continuous profiling database.
 
@@ -16,7 +16,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | Repository | Name | Version |
 |------------|------|---------|
 | https://charts.min.io/ | minio(minio) | 5.4.0 |
-| https://grafana.github.io/helm-charts | alloy(alloy) | 1.5.2 |
+| https://grafana.github.io/helm-charts | alloy(alloy) | 1.12.1 |
 | https://grafana.github.io/helm-charts | agent(grafana-agent) | 0.44.2 |
 
 ## Values
@@ -24,7 +24,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | agent | object | `{"agent":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"grafana-agent-config-pyroscope"}},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":false}` | ----------------------------------- |
-| alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true","profiles.grafana.com/service_git_ref":"v1.8.1","profiles.grafana.com/service_repository":"https://github.com/grafana/alloy"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
+| alloy | object | `{"alloy":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"alloy-config-pyroscope"},"stabilityLevel":"public-preview"},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true","profiles.grafana.com/service_git_ref":"v1.19.2","profiles.grafana.com/service_repository":"https://github.com/grafana/alloy"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
 | architecture.deployUnifiedServices | bool | `false` | Deploy unified write/read services. These endpoints will can be used no matter if the helm chart is configured as single-binary or microservices |
 | architecture.microservices.clusterLabelSuffix | string | `"-micro-services"` | Memberlist cluster label that will be used for all members of this cluster |
 | architecture.microservices.enabled | bool | `false` | Enable micro-services deployment mode. This is recommend for larger scale deployment and allow right size each aspect of Pyroscope. |
@@ -56,12 +56,12 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Pyroscope's configuration as a string. |
 | pyroscope.disableSelfProfile | bool | `true` | Enable or disable Self profile push, useful to test |
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
-| pyroscope.extraArgs."log.level" | string | `"debug"` |  |
+| pyroscope.extraArgs | object | `{"log.level":"debug"}` | Additional command-line arguments. Set these under pyroscope.extraArgs, not pyroscope.resources. |
 | pyroscope.extraContainers | list | `[]` |  |
 | pyroscope.extraCustomEnvVars | object | `{}` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | pyroscope.extraEnvVars | object | `{}` |  |
-| pyroscope.extraLabels | object | `{}` |  |
+| pyroscope.extraLabels | object | `{}` | Labels added to every pyroscope pod. A component can set its own `extraLabels` under `pyroscope.components.<name>` to add or override labels. |
 | pyroscope.extraVolumeMounts | list | `[]` |  |
 | pyroscope.extraVolumes | list | `[]` |  |
 | pyroscope.fullnameOverride | string | `""` |  |

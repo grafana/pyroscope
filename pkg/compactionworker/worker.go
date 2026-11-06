@@ -66,7 +66,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
-	f.StringVar(&cfg.MetadataSource, prefix+"metadata-source", MetadataSourceMetastore, "Source of the compaction job source block metadata. Supported values: metastore, object-storage.")
+	f.StringVar(&cfg.MetadataSource, prefix+"metadata-source", MetadataSourceObjectStorage, "Source of the compaction job source block metadata. Supported values: metastore, object-storage.")
 	f.DurationVar(&cfg.MetadataFetchTimeout, prefix+"metadata-fetch-timeout", 30*time.Second, "Timeout for reading the metadata of a single block from object storage. Only effective when metadata-source is object-storage. 0 disables the timeout.")
 	cfg.MetricsExporter.RegisterFlags(f)
 }
@@ -458,10 +458,35 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		),
 	}
 
-	if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
-		defer observer.Close()
-		options = append(options, block.WithSampleObserver(observer))
+	if filter := job.GetDeleteFilter(); filter != nil {
+		if job.CompactionLevel == 0 || job.Tenant == "" {
+			level.Error(logger).Log("msg", "dataset deletion requires a single-tenant compacted block")
+			statusName = statusFailure
+			return
+		}
+		re, err := block.CompileServiceNameRegex(filter.ServiceNameRegex)
+		if err != nil {
+			level.Error(logger).Log("msg", "invalid dataset deletion filter", "err", err)
+			statusName = statusFailure
+			return
+		}
+		options = append(options, block.WithPreserveCompactionLevel(), block.WithDatasetFilter(func(tenant, service string) bool {
+			return tenant != job.Tenant || !re.MatchString(service)
+		}))
 	}
+
+	// Deletion rewrites must not export surviving L0 samples a second time.
+	if job.GetDeleteFilter() == nil {
+		if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
+			defer observer.Close()
+			options = append(options, block.WithSampleObserver(observer))
+		}
+	}
+
+	duplicates := make(map[string]uint64)
+	options = append(options, block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
+		duplicates[tenant] += n
+	}))
 
 	compacted, err := w.compactFn(ctx, job.blocks, w.storage, options...)
 	defer func() {
@@ -472,10 +497,18 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	switch {
 	case err == nil:
+		var totalDuplicates uint64
+		for tenant, n := range duplicates {
+			totalDuplicates += n
+			if n > 0 {
+				w.metrics.duplicateRowsDropped.WithLabelValues(tenant, strconv.Itoa(int(job.CompactionLevel))).Add(float64(n))
+			}
+		}
 		level.Info(logger).Log(
 			"msg", "compaction finished successfully",
 			"input_blocks", len(job.SourceBlocks),
 			"output_blocks", len(compacted),
+			"duplicate_profile_rows_dropped", totalDuplicates,
 		)
 		for _, c := range compacted {
 			level.Debug(logger).Log(

@@ -39,6 +39,10 @@ type ProfileSeries struct {
 	// Transient state
 	TenantID string
 	Language string
+	// EncodedSize is the encoded size of Profile as received. Computing it
+	// walks the whole profile, so it is measured once, before the profile is
+	// first modified, and is not updated afterwards. Zero if not measured.
+	EncodedSize int
 
 	Annotations []*v1.ProfileAnnotation
 

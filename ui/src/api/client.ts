@@ -1,3 +1,4 @@
+import { CLIENT_CAPABILITIES_ACCEPT_HEADER } from './clientCapabilities';
 import registry from './profileTypes.json';
 
 export interface Service {
@@ -43,6 +44,7 @@ export async function checkMultitenancy(): Promise<
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Accept: CLIENT_CAPABILITIES_ACCEPT_HEADER,
           'X-Scope-OrgID': '',
         },
         body: JSON.stringify({ matchers: [], start, end }),
@@ -63,6 +65,7 @@ async function post<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Accept: CLIENT_CAPABILITIES_ACCEPT_HEADER,
   };
   if (orgID) headers['X-Scope-OrgID'] = orgID;
   const res = await fetch(getBasePath() + path, {

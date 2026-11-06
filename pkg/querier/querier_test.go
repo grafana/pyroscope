@@ -421,7 +421,7 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 		allowUtf8LabelNames bool
 		setCapabilities     bool
 		requestLabelNames   []string
-		expectedLabelNames  []string
+		expectedLabelNames  []string // nil means ingesters are not queried
 	}{
 		{
 			name:                "all label names pass through when UTF8 enabled",
@@ -463,6 +463,12 @@ func Test_Series_WithLabelNameFiltering(t *testing.T) {
 			setCapabilities:     true,
 			requestLabelNames:   []string{"service.name", "app.version", "foo"},
 			expectedLabelNames:  []string{"foo"},
+		},
+		{
+			name:                "only labels with dots returns no series",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"service.name", "app.version"},
 		},
 		{
 			name:                "empty label names with UTF8 disabled queries all labels and filters",

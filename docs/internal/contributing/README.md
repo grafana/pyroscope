@@ -121,11 +121,17 @@ of the older `public/app` UI. See [`ui/CLAUDE.md`](../../../ui/CLAUDE.md) and
 [`ui/DESIGN.md`](../../../ui/DESIGN.md) for the authoritative frontend guide.
 
 The frontend uses **Yarn 4 (Berry)** and its `package.json` lives in `ui/` (not at the repository root).
+Use Node.js 24 or newer. The installer uses npm to install `@yarnpkg/cli-dist` globally
+at the version pinned in `ui/package.json`, without Corepack. It requires a writable npm
+global prefix and replaces existing Yarn binaries or Corepack shims. Docker and frontend
+CI use the same installer.
+
 To run it in development mode:
 
 ```sh
 cd ui
-yarn install
+sh ./install-yarn.sh
+yarn install --immutable
 yarn dev
 ```
 

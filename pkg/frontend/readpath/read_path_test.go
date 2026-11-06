@@ -378,6 +378,42 @@ func (s *routerTestSuite) Test_TimeSeries_NoLimit() {
 	s.Assert().Equal(expected, resp)
 }
 
+func (s *routerTestSuite) TestTimeSeriesAnomalies_V2Only() {
+	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{EnableQueryBackend: true})
+	req := connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+		Start: 10000, End: 20000,
+		AnomalyTypes: []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES},
+		TimeSeries:   &querierv1.AnomalyTimeSeriesRequest{Step: 1},
+	})
+	expected := connect.NewResponse(&querierv1.QueryAnomaliesResponse{})
+	s.newFrontend.On("QueryAnomalies", mock.Anything, req).Return(expected, nil).Once()
+
+	resp, err := s.router.QueryAnomalies(s.ctx, req)
+	s.Require().NoError(err)
+	s.Equal(expected, resp)
+}
+
+func (s *routerTestSuite) TestTimeSeriesAnomalies_RejectsV1AndHybridRanges() {
+	for _, tc := range []struct {
+		name   string
+		config Config
+	}{
+		{name: "v1"},
+		{name: "hybrid", config: Config{EnableQueryBackend: true, EnableQueryBackendFrom: QueryBackendFrom{Time: time.Unix(15, 0)}}},
+	} {
+		s.Run(tc.name, func() {
+			s.overrides.On("ReadPathOverrides", "tenant-a").Return(tc.config)
+			_, err := s.router.QueryAnomalies(s.ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
+				Start: 10000, End: 20000,
+				AnomalyTypes: []querierv1.AnomalyType{querierv1.AnomalyType_ANOMALY_TYPE_TIME_SERIES},
+				TimeSeries:   &querierv1.AnomalyTimeSeriesRequest{Step: 1},
+			}))
+			s.Require().Error(err)
+			s.Equal(connect.CodeUnimplemented, connect.CodeOf(err))
+		})
+	}
+}
+
 func (s *routerTestSuite) Test_Auto_ResolvesFromMetastore() {
 	s.overrides.On("ReadPathOverrides", "tenant-a").Return(Config{
 		EnableQueryBackend:     true,

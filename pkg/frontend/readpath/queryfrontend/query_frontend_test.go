@@ -2,27 +2,33 @@ package queryfrontend
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/user"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockfrontend"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockqueryfrontend"
+	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
 )
 
 const (
@@ -36,6 +42,9 @@ func smpValidTimeRange() (int64, int64) {
 
 func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 	for _, test := range []struct {
+		tenantID string
+		force    []string
+		prune    []string
 		query    *queryv1.QueryRequest
 		request  *metastorev1.QueryMetadataRequest
 		response *metastorev1.QueryMetadataResponse
@@ -45,7 +54,6 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{service_name="service-a"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_a"}},
@@ -56,7 +64,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_a"}},
@@ -67,7 +75,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_c"}},
@@ -78,7 +86,7 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_b"}},
@@ -89,16 +97,121 @@ func Test_QueryFrontend_QueryMetadata(t *testing.T) {
 			request: &metastorev1.QueryMetadataRequest{
 				TenantId: []string{"org"},
 				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
-				Labels:   []string{metadata.LabelNameUnsymbolized, "__tenant_dataset__"},
+				Labels:   []string{"__tenant_dataset__"},
 			},
 			response: &metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_d"}},
 			},
 		},
+		{
+			force: []string{"org"},
+			query: &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_e"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1"},
+			prune:    []string{"org-1", "org-2"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org-1", "org-2"},
+				Query:    `{service_name="service-a"}`,
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_f"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1", "org-2"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org-1", "org-2"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_g"}},
+			},
+		},
+		{
+			force: []string{"org"},
+			prune: []string{"org"},
+			query: &queryv1.QueryRequest{LabelSelector: `{service_name="service-a",foo="bar"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId:      []string{"org"},
+				Query:         `{__tenant_dataset__="dataset_tsdb_index"}`,
+				ShardSelector: `{service_name="service-a"}`,
+				Labels:        []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_h"}},
+			},
+		},
+		{
+			force: []string{"org"},
+			prune: []string{"org"},
+			query: &queryv1.QueryRequest{LabelSelector: `{foo="bar"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_i"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1", "org-2"},
+			prune:    []string{"org-1"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId: []string{"org-1", "org-2"},
+				Query:    `{__tenant_dataset__="dataset_tsdb_index"}`,
+				Labels:   []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_j"}},
+			},
+		},
+		{
+			tenantID: "org-1|org-2",
+			force:    []string{"org-1", "org-2"},
+			prune:    []string{"org-1", "org-2"},
+			query:    &queryv1.QueryRequest{LabelSelector: `{service_name="service-a"}`},
+			request: &metastorev1.QueryMetadataRequest{
+				TenantId:      []string{"org-1", "org-2"},
+				Query:         `{__tenant_dataset__="dataset_tsdb_index"}`,
+				ShardSelector: `{service_name="service-a"}`,
+				Labels:        []string{"__tenant_dataset__"},
+			},
+			response: &metastorev1.QueryMetadataResponse{
+				Blocks: []*metastorev1.BlockMeta{{Id: "block_id_k"}},
+			},
+		},
 	} {
 		mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
-		ctx := user.InjectOrgID(context.Background(), "org")
-		f := &QueryFrontend{metadataQueryClient: mockMetadataClient}
+		tenantID := test.tenantID
+		if tenantID == "" {
+			tenantID = "org"
+		}
+		ctx := user.InjectOrgID(context.Background(), tenantID)
+		mockLimits := mockfrontend.NewMockLimits(t)
+		mockLimits.EXPECT().ForceDatasetIndexLookup(mock.Anything).RunAndReturn(func(tenant string) bool {
+			return slices.Contains(test.force, tenant)
+		}).Maybe()
+		mockLimits.EXPECT().DatasetIndexShardPruning(mock.Anything).RunAndReturn(func(tenant string) bool {
+			return slices.Contains(test.prune, tenant)
+		}).Maybe()
+		f := &QueryFrontend{metadataQueryClient: mockMetadataClient, limits: mockLimits}
 
 		mockMetadataClient.On("QueryMetadata", mock.Anything, test.request).
 			Return(test.response, nil).
@@ -188,10 +301,10 @@ func Test_QueryFrontend_LabelNames_WithFiltering(t *testing.T) {
 				log.NewNopLogger(),
 				mockLimits,
 				frontend.Config{},
+				30*time.Second,
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
-				nil,
 				nil,
 				nil,
 			)
@@ -222,7 +335,7 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 		setCapabilities      bool
 		requestLabelNames    []string
 		backendLabelNames    []string // For empty request case
-		expectedQueryRequest []string // What should be passed to backend
+		expectedQueryRequest []string // What should be passed to backend; nil means the backend is not queried
 	}{
 		{
 			name:                 "all label names pass through when UTF8 enabled",
@@ -259,11 +372,10 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 			expectedQueryRequest: []string{"foo", "bar", "service_name"},
 		},
 		{
-			name:                 "labels with dots do not pass through",
-			allowUtf8LabelNames:  false,
-			setCapabilities:      true,
-			requestLabelNames:    []string{"service.name", "app.version"},
-			expectedQueryRequest: []string{},
+			name:                "only labels with dots returns no series",
+			allowUtf8LabelNames: false,
+			setCapabilities:     true,
+			requestLabelNames:   []string{"service.name", "app.version"},
 		},
 		{
 			name:                 "empty label names with UTF8 disabled queries and filters all labels",
@@ -317,12 +429,13 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 						},
 					},
 				},
-			}, nil).Once()
+			}, nil).Maybe()
 
 			mockLimits := mockfrontend.NewMockLimits(t)
 			mockLimits.On("MaxQueryLookback", "test-tenant").Return(time.Duration(0))
 			mockLimits.On("MaxQueryLength", "test-tenant").Return(time.Duration(0))
-			mockLimits.On("QuerySanitizeOnMerge", "test-tenant").Return(true)
+			mockLimits.On("QuerySanitizeOnMerge", "test-tenant").Return(true).Maybe()
+			mockLimits.On("ForceDatasetIndexLookup", "test-tenant").Return(false).Maybe()
 			mockMetadataClient := new(mockmetastorev1.MockMetadataQueryServiceClient)
 			mockMetadataClient.On("QueryMetadata", mock.Anything, mock.Anything).Return(&metastorev1.QueryMetadataResponse{
 				Blocks: []*metastorev1.BlockMeta{{Id: "test-block"}},
@@ -332,10 +445,10 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 				log.NewNopLogger(),
 				mockLimits,
 				frontend.Config{},
+				30*time.Second,
 				mockMetadataClient,
 				nil,
 				mockQueryBackend,
-				nil,
 				nil,
 				nil,
 			)
@@ -362,4 +475,191 @@ func Test_QueryFrontend_Series_WithLabelNameFiltering(t *testing.T) {
 				"Expected label names sent to backend to be %v, but got %v", tc.expectedQueryRequest, capturedLabelNames)
 		})
 	}
+}
+
+func TestQueryFrontend_BackendDeadline(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		clientTimeout time.Duration
+		async         bool
+		timeout       time.Duration
+		callerTimeout time.Duration
+		want          time.Duration
+		noDeadline    bool
+		wantErr       error
+	}{
+		{name: "configured sync", clientTimeout: 45 * time.Second, want: 45 * time.Second},
+		{name: "async", clientTimeout: 30 * time.Second, async: true, timeout: 7 * time.Minute, want: 7 * time.Minute},
+		{name: "async fallback", clientTimeout: 45 * time.Second, async: true, want: 45 * time.Second},
+		{name: "earlier caller deadline", clientTimeout: 30 * time.Second, callerTimeout: 25 * time.Second, want: 15 * time.Second},
+		{name: "earlier async caller deadline", clientTimeout: 30 * time.Second, async: true, timeout: 7 * time.Minute, callerTimeout: 25 * time.Second, want: 15 * time.Second},
+		{name: "later caller deadline", clientTimeout: 30 * time.Second, callerTimeout: 10 * time.Minute, want: 30 * time.Second},
+		{name: "zero client timeout", wantErr: context.DeadlineExceeded},
+		{name: "disabled client timeout", clientTimeout: -time.Second, noDeadline: true},
+		{name: "disabled client timeout with caller deadline", clientTimeout: -time.Second, callerTimeout: 25 * time.Second, want: 15 * time.Second},
+		{name: "async overrides disabled client timeout", clientTimeout: -time.Second, async: true, timeout: 7 * time.Minute, want: 7 * time.Minute},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				backend := mockqueryfrontend.NewMockQueryBackend(t)
+				backend.On("Invoke", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+					ctx := args.Get(0).(context.Context)
+					deadline, ok := ctx.Deadline()
+					require.Equal(t, !tc.noDeadline, ok)
+					if ok {
+						require.Equal(t, tc.want, time.Until(deadline))
+					}
+					require.ErrorIs(t, ctx.Err(), tc.wantErr)
+				}).Return(&queryv1.InvokeResponse{}, nil).Once()
+				metadata := mockmetastorev1.NewMockMetadataQueryServiceClient(t)
+				metadata.On("QueryMetadata", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+					time.Sleep(10 * time.Second)
+				}).Return(&metastorev1.QueryMetadataResponse{Blocks: []*metastorev1.BlockMeta{{Id: "a"}}}, nil).Once()
+				limits := mockfrontend.NewMockLimits(t)
+				limits.On("QuerySanitizeOnMerge", "test-tenant").Return(false)
+				qf := NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, tc.clientTimeout, metadata, nil, backend, nil, nil)
+
+				ctx := tenant.InjectTenantID(t.Context(), "test-tenant")
+				if tc.async {
+					ctx = async.WithQueryTimeout(ctx, tc.timeout)
+				}
+				if tc.callerTimeout > 0 {
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, tc.callerTimeout)
+					defer cancel()
+				}
+				_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+				require.NoError(t, err)
+			})
+		})
+	}
+}
+
+func TestQueryFrontend_BackendInflightWork(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	blocks := []*metastorev1.BlockMeta{
+		{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+		{Id: "b", Datasets: []*metastorev1.Dataset{{Size: 250, TableOfContents: []uint64{0, 50, 100}}}},
+	}
+	backend := mockqueryfrontend.NewMockQueryBackend(t)
+	backend.On("Invoke", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+		require.Equal(t, float64(2), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+		require.Equal(t, float64(350), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+	}).Return(&queryv1.InvokeResponse{}, nil).Once()
+	qf := backendWorkFrontend(t, reg, blocks, backend)
+
+	ctx := tenant.InjectTenantID(t.Context(), "test-tenant")
+	_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+	require.NoError(t, err)
+	require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+	require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+}
+
+func TestQueryFrontend_BackendInflightWorkClearedOnFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		cancel    bool
+		returnErr error
+	}{
+		{name: "backend error", returnErr: errors.New("backend failed")},
+		{name: "cancellation", cancel: true, returnErr: context.Canceled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reg := prometheus.NewRegistry()
+			backend := mockqueryfrontend.NewMockQueryBackend(t)
+			qf := backendWorkFrontend(t, reg, []*metastorev1.BlockMeta{
+				{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+			}, backend)
+
+			ctx, cancel := context.WithCancel(tenant.InjectTenantID(t.Context(), "test-tenant"))
+			defer cancel()
+			backend.On("Invoke", mock.Anything, mock.Anything).Run(func(mock.Arguments) {
+				require.Equal(t, float64(1), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+				require.Equal(t, float64(100), backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+				if tc.cancel {
+					cancel()
+				}
+			}).Return(nil, func(ctx context.Context, _ *queryv1.InvokeRequest) error {
+				if tc.cancel {
+					return ctx.Err()
+				}
+				return tc.returnErr
+			}).Once()
+
+			_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+			require.ErrorIs(t, err, tc.returnErr)
+			require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_blocks"))
+			require.Zero(t, backendWorkGauge(t, reg, "pyroscope_query_frontend_backend_inflight_estimated_bytes"))
+		})
+	}
+}
+
+func backendWorkFrontend(t *testing.T, reg *prometheus.Registry, blocks []*metastorev1.BlockMeta, backend QueryBackend) *QueryFrontend {
+	t.Helper()
+	metadata := mockmetastorev1.NewMockMetadataQueryServiceClient(t)
+	metadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(
+		func(context.Context, *metastorev1.QueryMetadataRequest, ...grpc.CallOption) *metastorev1.QueryMetadataResponse {
+			return &metastorev1.QueryMetadataResponse{Blocks: slices.Clone(blocks)}
+		}, nil)
+	limits := mockfrontend.NewMockLimits(t)
+	limits.On("QuerySanitizeOnMerge", "test-tenant").Return(false)
+	return NewQueryFrontend(log.NewNopLogger(), limits, frontend.Config{}, 30*time.Second, metadata, nil, backend, nil, reg)
+}
+
+func backendWorkGauge(t *testing.T, reg *prometheus.Registry, name string) float64 {
+	t.Helper()
+	families, err := reg.Gather()
+	require.NoError(t, err)
+	for _, family := range families {
+		if family.GetName() == name {
+			require.Len(t, family.GetMetric(), 1)
+			require.Empty(t, family.GetMetric()[0].GetLabel())
+			return family.GetMetric()[0].GetGauge().GetValue()
+		}
+	}
+	t.Fatalf("metric %s not found", name)
+	return 0
+}
+
+func TestQueryFrontend_BackendDurationMetrics(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	blocks := []*metastorev1.BlockMeta{
+		{Id: "a", Datasets: []*metastorev1.Dataset{{Size: 100, TableOfContents: []uint64{0, 20, 60}}}},
+	}
+	backend := mockqueryfrontend.NewMockQueryBackend(t)
+	backend.On("Invoke", mock.Anything, mock.Anything).Return(&queryv1.InvokeResponse{
+		Diagnostics: &queryv1.Diagnostics{
+			ExecutionNode: &queryv1.ExecutionNode{
+				Stats: &queryv1.ExecutionStats{
+					ProcessingDurationNs:  int64(250 * time.Millisecond),
+					BackoffDurationNs:     int64(1500 * time.Millisecond),
+					UnaccountedDurationNs: int64(50 * time.Millisecond),
+				},
+			},
+		},
+	}, nil).Once()
+	qf := backendWorkFrontend(t, reg, blocks, backend)
+
+	ctx, stats := spanlogger.ContextWithQueryStats(tenant.InjectTenantID(t.Context(), "test-tenant"))
+	_, err := qf.Query(ctx, &queryv1.QueryRequest{LabelSelector: "{}"})
+	require.NoError(t, err)
+	require.Equal(t, 250*time.Millisecond, stats.ProcessingDuration)
+	require.Equal(t, 1500*time.Millisecond, stats.BackoffDuration)
+	require.Equal(t, 50*time.Millisecond, stats.UnaccountedDuration)
+
+	families, err := reg.Gather()
+	require.NoError(t, err)
+	got := map[string]float64{}
+	for _, family := range families {
+		if family.GetName() == "pyroscope_query_frontend_backend_duration_seconds_total" {
+			for _, m := range family.GetMetric() {
+				require.Len(t, m.GetLabel(), 1)
+				require.Equal(t, "phase", m.GetLabel()[0].GetName())
+				got[m.GetLabel()[0].GetValue()] = m.GetCounter().GetValue()
+			}
+		}
+	}
+	require.InDelta(t, 0.25, got["processing"], 1e-6)
+	require.InDelta(t, 1.5, got["backoff"], 1e-6)
+	require.InDelta(t, 0.05, got["unaccounted"], 1e-6)
 }

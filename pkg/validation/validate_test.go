@@ -767,6 +767,48 @@ func TestValidateProfile(t *testing.T) {
 			},
 		},
 		{
+			"truncate symbols on rune boundaries",
+			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{"", "éxx", "x€x", "€€", "😀", "a😀", "abcd"},
+			},
+			0,
+			MockLimits{
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			nil,
+			func(t *testing.T, profile *googlev1.Profile) {
+				t.Helper()
+				require.Equal(t, []string{"", "xx", "x", "€", "", "", "bcd"}, profile.StringTable)
+			},
+		},
+		{
+			"reject invalid utf8 in truncated prefix",
+			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{"", "\xffabc"},
+			},
+			0,
+			MockLimits{
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			NewErrorf(MalformedProfile, "invalid utf8 string"),
+			nil,
+		},
+		{
+			"reject invalid utf8 in kept suffix",
+			&googlev1.Profile{
+				SampleType:  []*googlev1.ValueType{{}},
+				StringTable: []string{"", "abc\xff"},
+			},
+			0,
+			MockLimits{
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			NewErrorf(MalformedProfile, "invalid utf8 string"),
+			nil,
+		},
+		{
 			name: "newer than ingestion window",
 			profile: &googlev1.Profile{
 				SampleType: []*googlev1.ValueType{{}},
