@@ -88,7 +88,7 @@ spec:
           {{- /* v2 specific options for all components */}}
           {{- if $hasV2 }}
           {{-  if (not (hasKey $extraArgs "query-backend.address"))  }}
-            - "-query-backend.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" . }}{{ if $hasQueryBackend }}-query-backend{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
+            - "-query-backend.address=dns:///{{ include "pyroscope.fullname" . }}{{ if $hasQueryBackend }}-query-backend{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
           {{- end }}
           {{-  if (not (hasKey $extraArgs "metastore.address"))  }}
             - "-metastore.address=kubernetes:///{{ include "pyroscope.fullname" . }}{{ if $hasMetastore }}-metastore{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
