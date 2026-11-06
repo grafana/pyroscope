@@ -76,7 +76,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    {{% /admonition %}}
 
    {{% admonition type="note" %}}
-   Option A uses the filesystem storage backend with no persistent volume by default. This setup suits trying Pyroscope locally, but data is lost when the pod is recreated. For production, configure object storage using `pyroscope.structuredConfig`. Refer to [Configure object storage backend](../configure-server/storage/configure-object-storage-backend/).
+   Option A uses the filesystem storage backend with no persistent volume by default. This suits trying Pyroscope locally, but data is lost when the pod is recreated. For production, configure object storage for long-term profile data using `pyroscope.structuredConfig`, and give the metastore a persistent volume so block metadata survives pod restarts. Refer to [Configure object storage backend](../configure-server/storage/configure-object-storage-backend/).
    {{% /admonition %}}
 
    - Option B: Install Pyroscope as multiple microservices. In this mode, as you scale out the number of instances, they share a singular backend for storage and querying. This option enables the bundled MinIO object store for local development and testing.
