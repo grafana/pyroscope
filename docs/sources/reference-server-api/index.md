@@ -156,7 +156,8 @@ A request body with the following fields is required:
 |`left.end` | Milliseconds since epoch. | `1676289600000` |
 |`left.async.requestId` | If set, this is a polling request. |  |
 |`left.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`left.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
+|`left.formatOptions.functions.limit` | Zero or omitted returns every function. Applied only after global merging,  sorted by self descending, then total descending, then name. |  |
 |`left.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`left.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`left.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
@@ -170,7 +171,8 @@ A request body with the following fields is required:
 |`right.end` | Milliseconds since epoch. | `1676289600000` |
 |`right.async.requestId` | If set, this is a polling request. |  |
 |`right.async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`right.format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
+|`right.formatOptions.functions.limit` | Zero or omitted returns every function. Applied only after global merging,  sorted by self descending, then total descending, then name. |  |
 |`right.labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`right.maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`right.profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
@@ -517,7 +519,7 @@ A request body with the following fields is required:
 |:-----|:------------|:--------|
 |`start` | Milliseconds since epoch. | `1676282400000` |
 |`end` | Milliseconds since epoch. | `1676289600000` |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileTypeID` | Profile Type ID string in the form  <name>:<type>:<unit>:<period_type>:<period_unit>. | `process_cpu:cpu:nanoseconds:cpu:nanoseconds` |
@@ -574,7 +576,8 @@ A request body with the following fields is required:
 |`end` | Milliseconds since epoch. | `1676289600000` |
 |`async.requestId` | If set, this is a polling request. |  |
 |`async.type` | Sets the kind of async query.. Possible values: `ASYNC_QUERY_TYPE_DISABLED`, `ASYNC_QUERY_TYPE_FORCE` |  |
-|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF` |  |
+|`format` | Profile format specifies the format of profile to be returned.  If not specified, the profile will be returned in flame graph format.. Possible values: `PROFILE_FORMAT_UNSPECIFIED`, `PROFILE_FORMAT_FLAMEGRAPH`, `PROFILE_FORMAT_TREE`, `PROFILE_FORMAT_DOT`, `PROFILE_FORMAT_PPROF`, `PROFILE_FORMAT_FUNCTIONS` |  |
+|`formatOptions.functions.limit` | Zero or omitted returns every function. Applied only after global merging,  sorted by self descending, then total descending, then name. |  |
 |`labelSelector` | Label selector string | `{namespace="my-namespace"}` |
 |`maxNodes` | Limit the nodes returned to only show the node with the max_node's biggest  total |  |
 |`profileIdSelector` | List of Profile UUIDs to query | `["7c9e6679-7425-40de-944b-e07fc1f90ae7"]` |
