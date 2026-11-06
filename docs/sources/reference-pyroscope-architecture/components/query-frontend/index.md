@@ -7,6 +7,11 @@ weight: 60
 
 # Pyroscope query-frontend
 
+{{< admonition type="note" >}}
+This page describes the query frontend in the legacy v1 architecture.
+In v2, the [query frontend](../../../reference-pyroscope-v2-architecture/components/query-frontend/) plans queries and sends them to [query backends](../../../reference-pyroscope-v2-architecture/components/query-backend/) without a query scheduler.
+{{< /admonition >}}
+
 The query-frontend is a stateless component that provides the same API as the [querier](../querier/) and can be used to accelerate the read path and ensure fair scheduling between tenants using the [query-scheduler](../query-scheduler/).
 
 In this situation, queriers act as workers that pull jobs from the queue, execute them, and return the results to the query-frontend for aggregation.

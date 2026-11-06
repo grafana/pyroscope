@@ -10,7 +10,9 @@ aliases:
 # Configure object storage backend
 
 Grafana Pyroscope can use different object storage services to persist blocks containing the profiles data.
-Blocks are flushed by ingesters [on disk](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-disk-storage/) first then are uploaded to the object store.
+In the v2 architecture, [segment writers](../../../reference-pyroscope-v2-architecture/components/segment-writer/) accumulate profiles in memory and write segments directly to object storage, without first persisting them to local disk.
+In the legacy v1 architecture, ingesters first flush blocks [to disk](../configure-disk-storage/) and then upload them to object storage.
+Use the `storage` configuration below to select the primary object storage backend for either architecture.
 
 The supported backends are:
 
