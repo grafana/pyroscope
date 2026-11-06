@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/grafana/dskit/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -107,6 +108,9 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	resolver := symdb.NewResolver(q.ctx, q.ds.Symbols(), resolverOptions...)
 	defer resolver.Release()
 
+	// One elapsed-time span for the entire scan, not one span per sample.
+	// This includes iterator waits, decoding, filtering, and accumulation.
+	scanSpan, _ := tracing.StartSpanFromContext(q.ctx, "queryTree.scanSamples")
 	switch {
 	case len(spanSelector) > 0:
 		for profiles.Next() {
@@ -136,6 +140,8 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 			resolver.AddSamplesFromParquetRow(p.Row.Partition, p.Values[0], p.Values[1])
 		}
 	}
+
+	scanSpan.Finish()
 
 	if err = profiles.Err(); err != nil {
 		return nil, err
