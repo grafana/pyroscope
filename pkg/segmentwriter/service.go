@@ -66,6 +66,7 @@ type Config struct {
 	MetadataUpdateTimeout      time.Duration         `yaml:"metadata_update_timeout,omitempty" category:"advanced"`
 	BucketHealthCheckEnabled   bool                  `yaml:"bucket_health_check_enabled,omitempty" category:"advanced"`
 	BucketHealthCheckTimeout   time.Duration         `yaml:"bucket_health_check_timeout,omitempty" category:"advanced"`
+	AsyncIngest                bool                  `yaml:"async_ingest,omitempty" category:"advanced"`
 }
 
 func (cfg *Config) Validate() error {
@@ -107,6 +108,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.MetadataUpdateTimeout, prefix+".metadata-update-timeout", 2*time.Second, "Timeout for metadata update requests.")
 	f.BoolVar(&cfg.BucketHealthCheckEnabled, prefix+".bucket-health-check-enabled", true, "Uploads a small object at startup to verify bucket write access. Startup fails if the upload fails. Removal of the object is best effort: it is skipped on filesystem storage, which keeps one object per startup, and a failed removal is only logged.")
 	f.DurationVar(&cfg.BucketHealthCheckTimeout, prefix+".bucket-health-check-timeout", 10*time.Second, "Timeout for bucket health check operations.")
+	f.BoolVar(&cfg.AsyncIngest, prefix+".async-ingest", false, "Acknowledge push requests once buffered into memory without waiting for segment flush.")
 }
 
 type Limits interface {
@@ -319,6 +321,11 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	if req.TenantId == "" {
 		return nil, status.Error(codes.InvalidArgument, tenant.ErrNoTenantID.Error())
 	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, status.FromContextError(err).Err()
+	}
+
 	var id uuid.UUID
 	if err := id.UnmarshalBinary(req.ProfileId); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -335,6 +342,16 @@ func (i *SegmentWriterService) Push(ctx context.Context, req *segmentwriterv1.Pu
 	wait := i.segmentWriter.ingest(shard, func(segment segmentIngest) {
 		segment.ingest(req.TenantId, p.Profile, id, req.Labels, req.Annotations)
 	})
+
+	if i.config.AsyncIngest {
+		// If the context is canceled after ingestion, the caller receives Canceled while
+		// the profile remains buffered for asynchronous flushing. This mirrors the synchronous
+		// path behavior where callers cancel during the flush wait.
+		if err := ctx.Err(); err != nil {
+			return nil, status.FromContextError(err).Err()
+		}
+		return &segmentwriterv1.PushResponse{}, nil
+	}
 
 	flushStarted := time.Now()
 	defer func() {
