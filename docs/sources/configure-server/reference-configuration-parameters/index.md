@@ -1420,6 +1420,17 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # CLI flag: -compaction-worker.job-concurrency
 [job_capacity: <int> | default = 0]
 
+# (advanced) Maximum total estimated bytes of compaction jobs running
+# concurrently. -1 disables byte budgeting. When 0, derived from
+# memory-max-ratio of the detected memory limit.
+# CLI flag: -compaction-worker.job-byte-capacity
+[job_byte_capacity: <int> | default = -1]
+
+# (advanced) Fraction of the detected memory limit (GOMEMLIMIT or cgroup) used
+# as job-byte-capacity when job-byte-capacity is 0.
+# CLI flag: -compaction-worker.memory-max-ratio
+[memory_max_ratio: <float> | default = 0.25]
+
 # (advanced) Interval between job requests
 # CLI flag: -compaction-worker.job-poll-interval
 [job_poll_interval: <duration> | default = 5s]

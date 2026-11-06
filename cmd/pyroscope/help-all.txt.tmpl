@@ -59,10 +59,14 @@ Usage of ./pyroscope:
     	Maximum number of concurrent tenants synching blocks. (default 10)
   -compaction-worker.cleanup-max-duration duration
     	Maximum duration of the cleanup operations. (default 15s)
+  -compaction-worker.job-byte-capacity int
+    	Maximum total estimated bytes of compaction jobs running concurrently. -1 disables byte budgeting. When 0, derived from memory-max-ratio of the detected memory limit. (default -1)
   -compaction-worker.job-concurrency int
     	Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.
   -compaction-worker.job-poll-interval duration
     	Interval between job requests (default 5s)
+  -compaction-worker.memory-max-ratio float
+    	Fraction of the detected memory limit (GOMEMLIMIT or cgroup) used as job-byte-capacity when job-byte-capacity is 0. (default 0.25)
   -compaction-worker.metadata-fetch-timeout duration
     	Timeout for reading the metadata of a single block from object storage. Only effective when metadata-source is object-storage. 0 disables the timeout. (default 30s)
   -compaction-worker.metadata-source string

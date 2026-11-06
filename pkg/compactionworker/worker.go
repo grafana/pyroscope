@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
@@ -48,6 +49,8 @@ const metadataReadConcurrency = 8
 
 type Config struct {
 	JobConcurrency       int            `yaml:"job_capacity" category:"advanced"`
+	JobByteCapacity      int64          `yaml:"job_byte_capacity" category:"advanced"`
+	MemoryMaxRatio       float64        `yaml:"memory_max_ratio" category:"advanced"`
 	JobPollInterval      time.Duration  `yaml:"job_poll_interval" category:"advanced"`
 	SmallObjectSize      int            `yaml:"small_object_size_bytes" category:"advanced"`
 	TempDir              string         `yaml:"temp_dir" category:"advanced" doc:"default=/tmp"`
@@ -61,6 +64,8 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	const prefix = "compaction-worker."
 	f.IntVar(&cfg.JobConcurrency, prefix+"job-concurrency", 0, "Number of concurrent jobs compaction worker will run. Defaults to the number of CPU cores.")
+	f.Int64Var(&cfg.JobByteCapacity, prefix+"job-byte-capacity", -1, "Maximum total estimated bytes of compaction jobs running concurrently. -1 disables byte budgeting. When 0, derived from memory-max-ratio of the detected memory limit.")
+	f.Float64Var(&cfg.MemoryMaxRatio, prefix+"memory-max-ratio", defaultMemoryRatio, "Fraction of the detected memory limit (GOMEMLIMIT or cgroup) used as job-byte-capacity when job-byte-capacity is 0.")
 	f.DurationVar(&cfg.JobPollInterval, prefix+"job-poll-interval", 5*time.Second, "Interval between job requests")
 	f.DurationVar(&cfg.RequestTimeout, prefix+"request-timeout", 5*time.Second, "Job request timeout.")
 	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
@@ -72,6 +77,12 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 }
 
 func (cfg *Config) Validate() error {
+	if cfg.JobByteCapacity < -1 {
+		return fmt.Errorf("invalid compaction-worker.job-byte-capacity %v: must be -1, 0, or positive", cfg.JobByteCapacity)
+	}
+	if cfg.MemoryMaxRatio < 0 || cfg.MemoryMaxRatio > 1 {
+		return fmt.Errorf("invalid compaction-worker.memory-max-ratio %v: must be between 0 and 1", cfg.MemoryMaxRatio)
+	}
 	switch cfg.MetadataSource {
 	case MetadataSourceMetastore, MetadataSourceObjectStorage:
 		return nil
@@ -95,12 +106,16 @@ type Worker struct {
 	queue    chan *compactionJob
 	threads  int
 	capacity atomic.Int32
+	budget   *byteBudget
 
 	deleterPool *deleterPool
 
-	stopped   atomic.Bool
-	closeOnce sync.Once
-	wg        sync.WaitGroup
+	// admissionMu serializes shutdown with the transition into execution.
+	admissionMu sync.Mutex
+	pending     map[*compactionJob]struct{}
+	stopped     atomic.Bool
+	closeOnce   sync.Once
+	wg          sync.WaitGroup
 
 	exporter metrics.Exporter
 	ruler    metrics.Ruler
@@ -156,6 +171,8 @@ func New(
 	w.queue = make(chan *compactionJob, 2*w.threads)
 	w.jobs = make(map[string]*compactionJob, 2*w.threads)
 	w.capacity.Store(int32(w.threads))
+	w.budget = newByteBudget(resolveByteCapacity(config.JobByteCapacity, config.MemoryMaxRatio, detectMemoryLimit))
+	util.Register(reg, newBudgetCollector(w.budget))
 	w.deleterPool = newDeleterPool(16 * w.threads)
 	w.service = services.NewBasicService(w.starting, w.running, w.stopping)
 	return w, nil
@@ -202,10 +219,10 @@ func (w *Worker) running(ctx context.Context) error {
 	}
 
 	<-ctx.Done()
-	// Wait for all threads to finish their work, continuing to report status
-	// updates about the in-progress jobs. First, signal to the poll loop that
-	// we're done with new jobs.
-	w.stopped.Store(true)
+	// Abandon queued/preparing/budget-waiting jobs and stop accepting work.
+	// Already executing jobs retain their contexts and leases until completion;
+	// the poll loop continues reporting their status while threads drain.
+	w.stopAdmission()
 	level.Info(w.logger).Log("msg", "waiting for all jobs to finish")
 	w.wg.Wait()
 
@@ -222,6 +239,44 @@ func (w *Worker) running(ctx context.Context) error {
 	return nil
 }
 
+// stopAdmission cancels only work that has not crossed the execution boundary.
+// The poll loop remains the sole owner of the job map and queue closure.
+func (w *Worker) stopAdmission() {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	w.stopped.Store(true)
+	for job := range w.pending {
+		job.cancel()
+	}
+}
+
+func (w *Worker) prepareJob(job *compactionJob) bool {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	if w.stopped.Load() {
+		job.cancel()
+		return false
+	}
+	if w.pending == nil {
+		w.pending = make(map[*compactionJob]struct{})
+	}
+	w.pending[job] = struct{}{}
+	return true
+}
+
+func (w *Worker) finishPreparation(job *compactionJob) {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	delete(w.pending, job)
+}
+
+func (w *Worker) beginExecution(job *compactionJob) bool {
+	w.admissionMu.Lock()
+	defer w.admissionMu.Unlock()
+	delete(w.pending, job)
+	return !w.stopped.Load() && job.ctx.Err() == nil
+}
+
 func (w *Worker) poll() {
 	// Check if we want to stop polling for new jobs.
 	// Close the queue if this is not the case.
@@ -232,11 +287,12 @@ func (w *Worker) poll() {
 			close(w.queue)
 		})
 	} else {
-		// We report the number of free workers in a hope to get more jobs.
+		// We report the number of free workers in a hope to get more jobs,
+		// provided the byte budget still has headroom.
 		// Note that cap(w.queue) - len(w.queue) will only report 0 when all
 		// the workers are busy and the queue is full (in fact, doubling the
 		// reported capacity).
-		if c := w.capacity.Load(); c > 0 {
+		if c := w.capacity.Load(); c > 0 && w.budget.hasHeadroom() {
 			capacity = uint32(c)
 		}
 	}
@@ -262,6 +318,10 @@ func (w *Worker) poll() {
 	w.cleanup(updates)
 	newJobs := w.handleResponse(resp)
 	for _, job := range newJobs {
+		if w.stopped.Load() {
+			w.remove(job)
+			continue
+		}
 		select {
 		case w.queue <- job:
 		default:
@@ -386,6 +446,10 @@ const (
 )
 
 func (w *Worker) runCompaction(job *compactionJob) {
+	if !w.prepareJob(job) {
+		return
+	}
+	defer w.finishPreparation(job)
 	start := time.Now()
 	metricLabels := []string{job.Tenant, strconv.Itoa(int(job.CompactionLevel))}
 	statusName := statusFailure
@@ -410,6 +474,9 @@ func (w *Worker) runCompaction(job *compactionJob) {
 	level.Info(logger).Log("msg", "starting compaction job", "source_blocks", strings.Join(job.SourceBlocks, " "))
 
 	if err := w.getBlockMetadata(logger, job); err != nil {
+		if job.ctx.Err() != nil {
+			statusName = statusCanceled
+		}
 		// The error is likely to be transient, therefore the job is not failed,
 		// but just abandoned – another worker will pick it up and try again.
 		return
@@ -475,6 +542,38 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}))
 	}
 
+	duplicates := make(map[string]uint64)
+	options = append(options, block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
+		duplicates[tenant] += n
+	}))
+
+	estimate := estimateJobMemory(job.blocks, w.config.SmallObjectSize)
+	jobBytes := estimate.total()
+	jobLevel := metricLabels[1]
+	w.metrics.estimatedMemory.WithLabelValues(jobLevel).Observe(float64(jobBytes))
+	level.Info(logger).Log(
+		"msg", "estimated compaction job memory",
+		"buffered_objects", humanize.IBytes(estimate.BufferedObjects),
+		"persistent_index", humanize.IBytes(estimate.PersistentIndex),
+		"dataset_working_set", humanize.IBytes(estimate.DatasetWorkingSet),
+		"estimated_memory", humanize.IBytes(uint64(jobBytes)),
+	)
+	releaseBudget, err := w.budget.acquireObserved(ctx, jobBytes, func() {
+		level.Info(logger).Log("msg", "pausing compaction job until byte capacity is available", "estimated_memory", humanize.IBytes(uint64(jobBytes)))
+	}, func(d time.Duration, outcome string) {
+		w.metrics.budgetWait.WithLabelValues(jobLevel, outcome).Observe(d.Seconds())
+	})
+	if err != nil {
+		level.Warn(logger).Log("msg", "compaction cancelled while paused for byte capacity")
+		statusName = statusCanceled
+		return
+	}
+	defer releaseBudget()
+	if !w.beginExecution(job) {
+		statusName = statusCanceled
+		return
+	}
+
 	// Deletion rewrites must not export surviving L0 samples a second time.
 	if job.GetDeleteFilter() == nil {
 		if observer := w.buildSampleObserver(job.blocks[0]); observer != nil {
@@ -483,12 +582,29 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}
 	}
 
-	duplicates := make(map[string]uint64)
-	options = append(options, block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
-		duplicates[tenant] += n
-	}))
-
-	compacted, err := w.compactFn(ctx, job.blocks, w.storage, options...)
+	if w.budget.limit > 0 && jobBytes > w.budget.limit {
+		w.metrics.oversizedJobs.WithLabelValues(jobLevel).Inc()
+	}
+	// Keep execution timing separate from job-attempt timing and budget waits.
+	compacted, err := func() (result []*metastorev1.BlockMeta, compactErr error) {
+		started := time.Now()
+		executionStatus := statusFailure
+		w.metrics.jobsCompacting.WithLabelValues(jobLevel).Inc()
+		defer func() {
+			w.metrics.jobsCompacting.WithLabelValues(jobLevel).Dec()
+			w.metrics.compactionDuration.WithLabelValues(jobLevel, string(executionStatus)).Observe(time.Since(started).Seconds())
+		}()
+		result, compactErr = w.compactFn(ctx, job.blocks, w.storage, options...)
+		switch {
+		case compactErr == nil:
+			executionStatus = statusSuccess
+		case errors.Is(compactErr, context.Canceled):
+			executionStatus = statusCanceled
+		case objstore.IsNotExist(w.storage, compactErr):
+			executionStatus = statusBlockNotFound
+		}
+		return result, compactErr
+	}()
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
 			level.Warn(logger).Log("msg", "failed to remove compaction directory", "path", tempdir, "err", err)
