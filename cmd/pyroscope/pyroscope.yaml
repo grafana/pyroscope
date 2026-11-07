@@ -5,6 +5,12 @@
 # For the full reference see:
 #   https://grafana.com/docs/pyroscope/latest/configure-server/reference-configuration-parameters/
 
+compression:
+  # Minimum uncompressed message size in bytes for parallel gzip in internal
+  # pprof serialization and Connect RPC compression. Smaller messages use serial
+  # gzip. Zero always uses parallel gzip.
+  # parallel_gzip_min_size: 1048576
+
 # Comma-separated list of Pyroscope modules to load. The alias 'all' can be used
 # in the list to load a number of core modules and will enable single-binary
 # mode.

@@ -77,12 +77,14 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/usagestats"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 	"github.com/grafana/pyroscope/v2/pkg/util/cli"
+	"github.com/grafana/pyroscope/v2/pkg/util/gzipwriter"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
 	"github.com/grafana/pyroscope/v2/pkg/validation/exporter"
 )
 
 type Config struct {
+	Compression       gzipwriter.Config       `yaml:"compression"`
 	Target            flagext.StringSliceCSV  `yaml:"target,omitempty"`
 	API               api.Config              `yaml:"api"`
 	Server            server.Config           `yaml:"server,omitempty"`
@@ -268,6 +270,7 @@ func (c *Config) RegisterFlagsWithContext(f *flag.FlagSet) {
 	c.AdminServer.RegisterFlags(f)
 	c.EmbeddedGrafana.RegisterFlags(f)
 	c.TenantSettings.RegisterFlags(f)
+	c.Compression.RegisterFlags(f)
 
 	// Legacy flags
 	c.StoreGateway.RegisterFlags(f, util.Logger)
@@ -397,6 +400,9 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 }
 
 func (c *Config) Validate() error {
+	if err := c.Compression.Validate(); err != nil {
+		return err
+	}
 	if len(c.Target) == 0 {
 		return errors.New("no modules specified")
 	}
@@ -573,6 +579,9 @@ func New(cfg Config) (*Pyroscope, error) {
 		reg:    prometheus.DefaultRegisterer,
 	}
 	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	if err := gzipwriter.Configure(cfg.Compression); err != nil {
 		return nil, err
 	}
 	if err := phlare.setupModuleManager(); err != nil {
