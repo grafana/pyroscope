@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/dolthub/swiss"
@@ -44,6 +45,11 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	return m.mergeLocked(p, sanitize, false, false)
+}
+
+func (m *ProfileMerge) mergeLocked(p *profilev1.Profile, sanitize, owned, detachStrings bool) error {
+
 	if p == nil || len(p.Sample) == 0 || len(p.StringTable) < 2 {
 		return nil
 	}
@@ -61,7 +67,11 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
 	// We rewrite strings first in order to compare
 	// sample types and period type.
 	m.tmp = slices.GrowLen(m.tmp, len(p.StringTable))
-	m.stringTable.Index(m.tmp, p.StringTable)
+	if detachStrings {
+		indexDetachedStrings(&m.stringTable, m.tmp, p.StringTable)
+	} else {
+		m.stringTable.Index(m.tmp, p.StringTable)
+	}
 	RewriteStrings(p, m.tmp)
 	if initial {
 		// Right after initialisation we need to make
@@ -75,25 +85,50 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile, sanitize bool) error {
 	}
 
 	m.tmp = slices.GrowLen(m.tmp, len(p.Function))
-	m.functionTable.Index(m.tmp, p.Function)
+	if owned {
+		indexOwned(&m.functionTable, m.tmp, p.Function)
+		p.Function = nil
+	} else {
+		m.functionTable.Index(m.tmp, p.Function)
+	}
 	RewriteFunctions(p, m.tmp)
 
 	m.tmp = slices.GrowLen(m.tmp, len(p.Mapping))
-	m.mappingTable.Index(m.tmp, p.Mapping)
+	if owned {
+		indexOwned(&m.mappingTable, m.tmp, p.Mapping)
+		p.Mapping = nil
+	} else {
+		m.mappingTable.Index(m.tmp, p.Mapping)
+	}
 	RewriteMappings(p, m.tmp)
 
 	m.tmp = slices.GrowLen(m.tmp, len(p.Location))
-	m.locationTable.Index(m.tmp, p.Location)
+	if owned {
+		indexOwned(&m.locationTable, m.tmp, p.Location)
+		p.Location = nil
+	} else {
+		m.locationTable.Index(m.tmp, p.Location)
+	}
 	RewriteLocations(p, m.tmp)
 
 	m.tmp = slices.GrowLen(m.tmp, len(p.Sample))
-	m.sampleTable.Index(m.tmp, p.Sample)
+	if owned {
+		indexOwned(&m.sampleTable, m.tmp, p.Sample)
+	} else {
+		m.sampleTable.Index(m.tmp, p.Sample)
+	}
 
 	for i, idx := range m.tmp {
-		dst := m.sampleTable.s[idx].Value
-		src := p.Sample[i].Value
-		for j, v := range src {
-			dst[j] += v
+		dst := m.sampleTable.s[idx]
+		src := p.Sample[i]
+		// Newly adopted samples already contain their values.
+		if !owned || dst != src {
+			for j, v := range src.Value {
+				dst.Value[j] += v
+			}
+		}
+		if owned {
+			p.Sample[i] = nil
 		}
 	}
 
@@ -105,7 +140,9 @@ func (m *ProfileMerge) MergeBytes(b []byte, sanitize bool) error {
 	if err := Unmarshal(b, &p); err != nil {
 		return err
 	}
-	return m.Merge(&p, sanitize)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.mergeLocked(&p, sanitize, true, false)
 }
 
 func (m *ProfileMerge) Profile() *profilev1.Profile {
@@ -131,6 +168,23 @@ func (m *ProfileMerge) Profile() *profilev1.Profile {
 		m.profile.Mapping[i].Id = uint64(i + 1)
 	}
 	return m.profile
+}
+
+// TakeProfile transfers the finished profile and releases the auxiliary merge
+// indexes before serialization. The caller must finish all merging first.
+// The returned profile remains valid if the merger is subsequently reused.
+func (m *ProfileMerge) TakeProfile() *profilev1.Profile {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p := m.Profile()
+	m.profile = nil
+	m.tmp = nil
+	m.stringTable = RewriteTable[string, string, string]{}
+	m.functionTable = RewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function]{}
+	m.mappingTable = RewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping]{}
+	m.locationTable = RewriteTable[LocationKey, *profilev1.Location, *profilev1.Location]{}
+	m.sampleTable = RewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample]{}
+	return p
 }
 
 func (m *ProfileMerge) init(x *profilev1.Profile) {
@@ -447,3 +501,42 @@ func (t *RewriteTable[K, V, M]) Append(values []V) {
 }
 
 func (t *RewriteTable[K, V, M]) Values() []M { return t.s }
+
+// indexOwned transfers newly decoded objects to the merger without cloning.
+// MergeBytes and MergeOwned supply private input that is never reused.
+// Callers must drop consumed input references after the remaining rewrites.
+func indexOwned[K comparable, V any](t *RewriteTable[K, V, V], dst []uint32, values []V) {
+	for i, value := range values {
+		k := t.k(value)
+		n, found := t.t.Get(k)
+		if !found {
+			n = uint32(len(t.s))
+			t.s = append(t.s, value)
+			t.t.Put(k, n)
+		}
+		dst[i] = n
+	}
+}
+
+// MergeOwned consumes a private profile. The caller must not reuse any part
+// of it after this call, including on error.
+func (m *ProfileMerge) MergeOwned(p *profilev1.Profile, sanitize bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.mergeLocked(p, sanitize, true, true)
+}
+
+// Symbol strings may refer to shared block buffers. Detach only newly retained
+// strings, and use that same detached string in both the table and its key map.
+func indexDetachedStrings(t *RewriteTable[string, string, string], dst []uint32, values []string) {
+	for i, value := range values {
+		n, found := t.t.Get(value)
+		if !found {
+			n = uint32(len(t.s))
+			retained := strings.Clone(value)
+			t.s = append(t.s, retained)
+			t.t.Put(retained, n)
+		}
+		dst[i] = n
+	}
+}
