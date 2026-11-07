@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	kgzip "github.com/klauspost/compress/gzip"
 	"github.com/stretchr/testify/require"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
 
 func TestMarshalParallelGzipCompatibilityAndReuse(t *testing.T) {
@@ -44,5 +45,39 @@ func TestMarshalParallelGzipCompatibilityAndReuse(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.Close())
 		require.Equal(t, raw, decoded)
+	}
+}
+
+// BenchmarkMarshalGzipFixtures measures the complete protobuf+gzip encoding
+// path using only repository fixtures. Profile decoding is outside timing.
+func BenchmarkMarshalGzipFixtures(b *testing.B) {
+	for _, fixture := range []string{
+		"go.cpu.labels.pprof",
+		"dotnet.labels.pprof",
+		"gotruncatefix/heap_go_truncated_3.pb.gz.fixed",
+	} {
+		b.Run(fixture, func(b *testing.B) {
+			data, err := os.ReadFile("testdata/" + fixture)
+			require.NoError(b, err)
+			var p profilev1.Profile
+			require.NoError(b, Unmarshal(data, &p))
+			b.SetBytes(int64(p.SizeVT()))
+			b.ReportAllocs()
+			var encoded []byte
+			for b.Loop() {
+				encoded, err = Marshal(&p, true)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+			r, err := gzip.NewReader(bytes.NewReader(encoded))
+			require.NoError(b, err)
+			got, err := io.ReadAll(r)
+			require.NoError(b, err)
+			require.NoError(b, r.Close())
+			want, err := p.MarshalVT()
+			require.NoError(b, err)
+			require.Equal(b, want, got)
+		})
 	}
 }
