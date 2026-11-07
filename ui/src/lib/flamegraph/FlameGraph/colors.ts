@@ -1,6 +1,7 @@
 import color from 'tinycolor2';
 
 import murmurhash3_32_gc from './murmur3';
+import { getPackageName } from './packageName';
 
 // Colors taken from pyroscope, they should be from Grafana originally, but I didn't find from where exactly.
 const packageColors = [
@@ -62,44 +63,4 @@ export function getBarColorByPackage(label: string, isLight: boolean) {
     packageColor = packageColor.brighten(15);
   }
   return packageColor;
-}
-
-// Different regexes to get the package name and function name from the label. We may at some point get an info about
-// the language from the backend and use the right regex but right now we just try all of them from most to least
-// specific.
-const matchers = [
-  [
-    'phpspy',
-    /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
-  ],
-  [
-    'pyspy',
-    /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
-  ],
-  [
-    'rbspy',
-    /^(?<packageName>([^\/]*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
-  ],
-  [
-    'nodespy',
-    /^(\.\/node_modules\/)?(?<packageName>[^/]*)(?<filename>.*\.?(jsx?|tsx?)?):(?<functionName>.*):(?<line_info>.*)$/,
-  ],
-  ['gospy', /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/], // also 'scrape'
-  ['javaspy', /^(?<packageName>.+\/)(?<filename>.+\.)(?<functionName>.+)$/],
-  ['dotnetspy', /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/],
-  ['tracing', /^(?<packageName>.+?):.*$/],
-  ['pyroscope-rs', /^(?<packageName>[^::]+)/],
-  ['ebpfspy', /^(?<packageName>.+)$/],
-  ['unknown', /^(?<packageName>.+)$/],
-];
-
-// Get the package name from the symbol. Try matchers from the list and return first one that matches.
-function getPackageName(name: string): string | undefined {
-  for (const [_, matcher] of matchers) {
-    const match = name.match(matcher);
-    if (match) {
-      return match.groups?.packageName || '';
-    }
-  }
-  return undefined;
 }

@@ -27,6 +27,9 @@ Local modifications from the upstream tag:
   `getBarColorByDiff` + diff color gradients, the diff-mode tooltip table,
   the diff-mode top-table columns (Baseline/Comparison/Diff), and the
   `isDiffMode` prop chain are all gone. `d3` is no longer required.
+- Package coloring was extended for C++/Rust and unsymbolized
+  (`binary+0x...`) frames. The symbol-to-package logic now lives in
+  `FlameGraph/packageName.ts`.
 
 To diff against upstream:
 
