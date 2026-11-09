@@ -14,11 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/pyroscope/v2/pkg/util/build"
-
 	"github.com/cespare/xxhash/v2"
-	prom "github.com/prometheus/prometheus/web/api/v1"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/pyroscope/v2/pkg/util/build"
 )
 
 var (
@@ -33,16 +32,16 @@ var (
 
 // Report is the JSON object sent to the stats server
 type Report struct {
-	ClusterID              string    `json:"clusterID"`
-	CreatedAt              time.Time `json:"createdAt"`
-	Interval               time.Time `json:"interval"`
-	IntervalPeriod         float64   `json:"intervalPeriod"`
-	Target                 string    `json:"target"`
-	prom.PrometheusVersion `json:"version"`
-	Os                     string                 `json:"os"`
-	Arch                   string                 `json:"arch"`
-	Edition                string                 `json:"edition"`
-	Metrics                map[string]interface{} `json:"metrics"`
+	ClusterID               string    `json:"clusterID"`
+	CreatedAt               time.Time `json:"createdAt"`
+	Interval                time.Time `json:"interval"`
+	IntervalPeriod          float64   `json:"intervalPeriod"`
+	Target                  string    `json:"target"`
+	build.PrometheusVersion `json:"version"`
+	Os                      string                 `json:"os"`
+	Arch                    string                 `json:"arch"`
+	Edition                 string                 `json:"edition"`
+	Metrics                 map[string]interface{} `json:"metrics"`
 }
 
 // sendReport sends the report to the stats server

@@ -83,23 +83,10 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.8 // indirect
-	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/basgys/goxml2json v1.1.1-0.20231018121955-e66ee54ceaad // indirect
-	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
-	github.com/go-openapi/swag/cmdutils v0.29.2 // indirect
-	github.com/go-openapi/swag/conv v0.29.2 // indirect
-	github.com/go-openapi/swag/fileutils v0.29.2 // indirect
-	github.com/go-openapi/swag/jsonutils v0.29.2 // indirect
-	github.com/go-openapi/swag/loading v0.29.2 // indirect
-	github.com/go-openapi/swag/mangling v0.29.2 // indirect
-	github.com/go-openapi/swag/netutils v0.29.2 // indirect
-	github.com/go-openapi/swag/pools v0.29.2 // indirect
-	github.com/go-openapi/swag/stringutils v0.29.2 // indirect
-	github.com/go-openapi/swag/typeutils v0.29.2 // indirect
-	github.com/go-openapi/swag/yamlutils v0.29.2 // indirect
 	github.com/gogo/status v1.1.1 // indirect
 	github.com/hashicorp/consul/api/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -110,11 +97,6 @@ require (
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/parquet-go/bitpack v1.0.0 // indirect
 	github.com/parquet-go/jsonlite v1.0.0 // indirect
-	github.com/pb33f/go-yaml v0.1.0 // indirect
-	github.com/pb33f/jsonpath v0.8.1 // indirect
-	github.com/pb33f/libopenapi v0.34.3 // indirect
-	github.com/pb33f/libopenapi-validator v0.13.3 // indirect
-	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang/exp v0.0.0-20261014095535-2b01b52f0c18 // indirect
 	github.com/puzpuzpuz/xsync/v4 v4.4.0 // indirect
@@ -126,7 +108,6 @@ require (
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/collector/internal/componentalias v0.148.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	sigs.k8s.io/json v0.0.0-20260909141634-11ed52e25bc5 // indirect
@@ -180,26 +161,17 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dolthub/maphash v0.1.0 // indirect
-	github.com/edsrzf/mmap-go v1.2.0 // indirect
 	github.com/efficientgo/core v1.0.0-rc.2 // indirect
 	github.com/efficientgo/e2e v0.14.1-0.20230710114240-c316eb95ae5b // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
-	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-openapi/analysis v1.0.1 // indirect
-	github.com/go-openapi/errors v0.22.9 // indirect
 	github.com/go-openapi/jsonpointer v1.0.2 // indirect
 	github.com/go-openapi/jsonreference v1.0.3 // indirect
-	github.com/go-openapi/loads v0.25.3 // indirect
-	github.com/go-openapi/spec v1.0.1 // indirect
-	github.com/go-openapi/strfmt v0.27.4 // indirect
-	github.com/go-openapi/swag v0.29.2 // indirect
-	github.com/go-openapi/validate v1.0.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
@@ -230,7 +202,6 @@ require (
 	github.com/hashicorp/serf v0.11.0 // indirect
 	github.com/jaegertracing/jaeger-idl v0.13.2 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.1 // indirect
@@ -264,7 +235,6 @@ require (
 	github.com/pires/go-proxyproto v0.16.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/alertmanager v0.31.1 // indirect
 	github.com/prometheus/exporter-toolkit v0.19.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.23.0 // indirect
