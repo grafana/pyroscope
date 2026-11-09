@@ -6,12 +6,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/suite"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -558,6 +562,82 @@ func (s *testSuite) Test_BytesFetched_ConsistentAcrossInvocations() {
 	s.Assert().Greater(first, uint64(0))
 	// Two identical queries must fetch a similar number of bytes (within 10%).
 	s.Assert().InEpsilon(float64(first), float64(second), 0.10)
+}
+
+func (s *testSuite) Test_InflightEstimatedBytes() {
+	for _, tt := range []struct {
+		name    string
+		failing bool
+	}{
+		{name: "success"},
+		{name: "read error", failing: true},
+	} {
+		s.Run(tt.name, func() {
+			bucket := &inflightSamplingBucket{
+				Bucket:  &objstore.ReaderAtBucket{Bucket: s.bucket},
+				failing: tt.failing,
+			}
+			reader := NewBlockReader(s.logger, bucket, nil, s.reader.Overrides)
+			bucket.gauge = reader.metrics.inflightEstimatedBytes
+
+			_, err := reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+				EndTime:       time.Now().UnixMilli(),
+				LabelSelector: "{}",
+				QueryPlan:     s.plan.CloneVT(),
+				Query: []*queryv1.Query{{
+					QueryType: queryv1.QueryType_QUERY_TREE,
+					Tree:      &queryv1.TreeQuery{MaxNodes: 16},
+				}},
+				Tenant: s.tenant,
+			})
+			if tt.failing {
+				s.Require().ErrorIs(err, errInjectedRead)
+			} else {
+				s.Require().NoError(err)
+			}
+			s.Assert().Greater(bucket.peak(), float64(0))
+			s.Assert().Zero(testutil.ToFloat64(bucket.gauge))
+		})
+	}
+}
+
+var errInjectedRead = errors.New("injected read error")
+
+type inflightSamplingBucket struct {
+	objstore.Bucket
+	gauge   prometheus.Gauge
+	failing bool
+
+	mu        sync.Mutex
+	peakValue float64
+}
+
+func (b *inflightSamplingBucket) sample() float64 {
+	v := testutil.ToFloat64(b.gauge)
+	b.mu.Lock()
+	b.peakValue = max(b.peakValue, v)
+	b.mu.Unlock()
+	return v
+}
+
+func (b *inflightSamplingBucket) peak() float64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.peakValue
+}
+
+func (b *inflightSamplingBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
+	if b.sample() > 0 && b.failing {
+		return nil, errInjectedRead
+	}
+	return b.Bucket.Get(ctx, name)
+}
+
+func (b *inflightSamplingBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	if b.sample() > 0 && b.failing {
+		return nil, errInjectedRead
+	}
+	return b.Bucket.GetRange(ctx, name, off, length)
 }
 
 func (s *testSuite) Test_SpanAndTraceSelector_Combined_Errors() {
