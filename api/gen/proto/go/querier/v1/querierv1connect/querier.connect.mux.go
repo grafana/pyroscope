@@ -64,6 +64,11 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.SelectHeatmap,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/SelectSpanPresence", connect.NewUnaryHandler(
+		"/querier.v1.QuerierService/SelectSpanPresence",
+		svc.SelectSpanPresence,
+		opts...,
+	))
 	mux.Handle("/querier.v1.QuerierService/Diff", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/Diff",
 		svc.Diff,

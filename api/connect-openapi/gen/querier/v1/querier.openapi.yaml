@@ -473,6 +473,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/querier.v1.SelectSeriesResponse'
+  /querier.v1.QuerierService/SelectSpanPresence:
+    post:
+      tags:
+        - scope/internal
+        - querier.v1.QuerierService
+      summary: SelectSpanPresence returns spans with stored profiling samples and their  total sample values, grouped by trace ID, span ID, and profile type.
+      description: |-
+        SelectSpanPresence returns spans with stored profiling samples and their
+         total sample values, grouped by trace ID, span ID, and profile type.
+      operationId: querier.v1.QuerierService.SelectSpanPresence
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/querier.v1.SelectSpanPresenceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/querier.v1.SelectSpanPresenceResponse'
   /querier.v1.QuerierService/Series:
     post:
       tags:
@@ -1851,6 +1890,73 @@ components:
           title: series
       title: SelectSeriesResponse
       additionalProperties: false
+    querier.v1.SelectSpanPresenceRequest:
+      type: object
+      properties:
+        start:
+          type:
+            - integer
+            - string
+          title: start
+          format: int64
+          description: Milliseconds since epoch.
+        end:
+          type:
+            - integer
+            - string
+          title: end
+          format: int64
+          description: Milliseconds since epoch.
+        labelSelector:
+          type: string
+          title: label_selector
+          description: Label selector restricting the profiles searched.
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+          description: Candidate span IDs (16 hex characters). Empty means no span restriction.
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
+          description: |-
+            Trace IDs (32 hex characters). Empty means no trace restriction.
+             Samples without a stored trace ID cannot match a nonempty trace selector.
+      title: SelectSpanPresenceRequest
+      additionalProperties: false
+      description: |-
+        SelectSpanPresenceRequest restricts the search by time and profile labels.
+         At least one of span_selector or trace_id_selector must be nonempty.
+         IDs within each selector are alternatives (OR). When both selectors are
+         supplied, the same sample must match one ID from each selector (AND).
+         The lists are not paired by position.
+
+         Examples (all within the requested time range and label selector):
+           span_selector = ["0000000000000001", "0000000000000002"]
+             Matches samples for either span, regardless of trace ID.
+           trace_id_selector = ["0000000000000000000000000000000a"]
+             Discovers all profiled spans belonging to trace A.
+           span_selector = ["0000000000000001", "0000000000000002"]
+           trace_id_selector = ["0000000000000000000000000000000a",
+                                "0000000000000000000000000000000b"]
+             Matches (span 1, trace A), (span 1, trace B), (span 2, trace A),
+             or (span 2, trace B), if those pairs occur on stored samples.
+             Excludes span 3 in trace A and span 1 in trace C.
+             A span match on one sample and a trace match on another do not qualify.
+    querier.v1.SelectSpanPresenceResponse:
+      type: object
+      properties:
+        spans:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.SpanPresence'
+          title: spans
+          description: Only spans with matching stored samples are returned.
+      title: SelectSpanPresenceResponse
+      additionalProperties: false
     querier.v1.SeriesRequest:
       type: object
       properties:
@@ -1903,6 +2009,44 @@ components:
             $ref: '#/components/schemas/types.v1.Labels'
           title: labels_set
       title: SeriesResponse
+      additionalProperties: false
+    querier.v1.SpanPresence:
+      type: object
+      properties:
+        traceId:
+          type: string
+          title: trace_id
+          description: |-
+            Empty if matching samples have no stored trace ID. Such samples can only
+             match requests with an empty trace_id_selector.
+        spanId:
+          type: string
+          title: span_id
+        totals:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.SpanProfileTotal'
+          title: totals
+          description: Totals are separated by profile type because their units may differ.
+      title: SpanPresence
+      additionalProperties: false
+    querier.v1.SpanProfileTotal:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          title: profile_typeID
+          description: Profile type identifying the sample type and unit.
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: |-
+            Sum of matching sample values for this trace, span, and profile type.
+             A zero total still indicates presence if matching samples exist.
+      title: SpanProfileTotal
       additionalProperties: false
     querier.v1.StacktraceAnomaly:
       type: object

@@ -25,8 +25,10 @@ type RepeatedRow[T any] struct {
 }
 
 type repeatedRowIterator[T any] struct {
-	columns iter.Iterator[[][]parquet.Value]
-	rows    iter.Iterator[T]
+	columns     iter.Iterator[[][]parquet.Value]
+	rows        iter.Iterator[T]
+	predicate   func([][]parquet.Value, int) bool
+	closeProbes func() error
 }
 
 const (
@@ -71,23 +73,104 @@ func NewRepeatedRowIteratorBatchSize[T any](
 	batchSize int64,
 	columns ...int,
 ) iter.Iterator[RepeatedRow[T]] {
-	rows, rowNumbers := iter.Tee(rows)
+	return NewRepeatedRowIteratorWithOptions(ctx, rows, rowGroups, columns, WithRepeatedRowBatchSize(batchSize))
+}
+
+type repeatedRowOptions struct {
+	batchSize int
+	pages     map[int]Predicate
+	sample    func([][]parquet.Value, int) bool
+}
+
+// RepeatedRowOption configures a repeated-row iterator.
+type RepeatedRowOption func(*repeatedRowOptions)
+
+// WithRepeatedRowBatchSize sets the number of rows buffered per column.
+func WithRepeatedRowBatchSize(size int64) RepeatedRowOption {
+	return func(o *repeatedRowOptions) { o.batchSize = int(size) }
+}
+
+// WithPagePredicate rejects pages in the specified parquet column before value
+// decoding. It does not filter individual values in accepted pages.
+func WithPagePredicate(column int, predicate Predicate) RepeatedRowOption {
+	return func(o *repeatedRowOptions) { o.pages[column] = predicate }
+}
+
+// WithSamplePredicate filters aligned samples in decoded rows. The callback
+// receives columns in the order supplied to the constructor and a sample index.
+func WithSamplePredicate(predicate func([][]parquet.Value, int) bool) RepeatedRowOption {
+	return func(o *repeatedRowOptions) { o.sample = predicate }
+}
+
+// NewRepeatedRowIteratorWithOptions is the configurable constructor. The original
+// constructors remain wrappers so existing callers need not change.
+func NewRepeatedRowIteratorWithOptions[T any](ctx context.Context, rows iter.Iterator[T], rowGroups []parquet.RowGroup, columns []int, options ...RepeatedRowOption) iter.Iterator[RepeatedRow[T]] {
+	o := repeatedRowOptions{batchSize: defaultBatchSize, pages: make(map[int]Predicate)}
+	for _, option := range options {
+		option(&o)
+	}
+	if o.sample == nil && len(o.pages) > 0 {
+		o.sample = func([][]parquet.Value, int) bool { return true }
+	}
+	var closeProbes func() error
+	if len(o.pages) > 0 {
+		gate := &pageFilteredRows[T]{rows: rows, numbers: WrapWithRowNumber(rows)}
+		for column, predicate := range o.pages {
+			if predicate == nil {
+				continue
+			}
+			probe := newRepeatedRowColumnIterator(ctx, &gate.rowNumber, rowGroups, column, predicate)
+			if p, ok := probe.(*repeatedRowColumnIterator); ok {
+				p.probeOnly = true
+			}
+			gate.probes = append(gate.probes, probe)
+		}
+		rows = gate
+		closeProbes = gate.closeProbes
+	}
+	rows, numbers := iter.Tee(rows)
 	return &repeatedRowIterator[T]{
-		rows: rows,
-		columns: NewMultiColumnIterator(ctx,
-			WrapWithRowNumber(rowNumbers),
-			int(batchSize),
-			rowGroups,
-			columns...,
-		),
+		rows:        rows,
+		columns:     NewMultiColumnIterator(ctx, WrapWithRowNumber(numbers), o.batchSize, rowGroups, columns...),
+		predicate:   o.sample,
+		closeProbes: closeProbes,
 	}
 }
 
 func (x *repeatedRowIterator[T]) Next() bool {
-	if !x.rows.Next() {
-		return false
+	for x.rows.Next() && x.columns.Next() {
+		values := x.columns.At()
+		empty := len(values) == 0
+		for _, column := range values {
+			empty = empty || len(column) == 0
+		}
+		if empty {
+			// Without filtering, preserve the original empty-row behavior.
+			if x.predicate == nil {
+				return true
+			}
+			continue
+		}
+		if x.predicate == nil {
+			return true
+		}
+		n := 0
+		for i := range values[0] {
+			if x.predicate(values, i) {
+				for _, column := range values {
+					column[n] = column[i]
+				}
+				n++
+			}
+		}
+		for i := range values {
+			values[i] = values[i][:n]
+		}
+		if n > 0 {
+			return true
+		}
 	}
-	return x.columns.Next()
+	return false
 }
 
 func (x *repeatedRowIterator[T]) At() RepeatedRow[T] {
@@ -102,7 +185,70 @@ func (x *repeatedRowIterator[T]) Err() error {
 }
 
 func (x *repeatedRowIterator[T]) Close() error {
-	return x.columns.Close()
+	var err multierror.MultiError
+	err.Add(x.columns.Close())
+	if x.closeProbes != nil {
+		err.Add(x.closeProbes())
+		x.closeProbes = nil
+	}
+	return err.Err()
+}
+
+// pageFilteredRows checks selector pages before any sample column sees a row.
+// Probes retain their page boundaries, so subsequent rows in a rejected page
+// require neither another page read nor any sample-value decoding.
+type pageFilteredRows[T any] struct {
+	rows      iter.Iterator[T]
+	numbers   iter.Iterator[int64]
+	rowNumber probeRowNumber
+	probes    []iter.Iterator[[]parquet.Value]
+	err       error
+}
+
+type probeRowNumber struct{ value int64 }
+
+func (p *probeRowNumber) Next() bool   { return true }
+func (p *probeRowNumber) At() int64    { return p.value }
+func (p *probeRowNumber) Err() error   { return nil }
+func (p *probeRowNumber) Close() error { return nil }
+
+func (g *pageFilteredRows[T]) Next() bool {
+	if g.err != nil {
+		return false
+	}
+	for g.numbers.Next() {
+		g.rowNumber.value = g.numbers.At()
+		keep := true
+		for _, probe := range g.probes {
+			if !probe.Next() {
+				g.err = probe.Err()
+				if g.err == nil {
+					g.err = ErrSeekOutOfRange
+				}
+				return false
+			}
+			if probe.At() == nil {
+				keep = false
+				break
+			}
+		}
+		if keep {
+			return true
+		}
+	}
+	g.err = g.rows.Err()
+	return false
+}
+func (g *pageFilteredRows[T]) At() T        { return g.rows.At() }
+func (g *pageFilteredRows[T]) Err() error   { return g.err }
+func (g *pageFilteredRows[T]) Close() error { return g.closeProbes() }
+func (g *pageFilteredRows[T]) closeProbes() error {
+	var err multierror.MultiError
+	for _, probe := range g.probes {
+		err.Add(probe.Close())
+	}
+	g.probes = nil
+	return err.Err()
 }
 
 type rowNumberIterator[T any] struct{ it iter.Iterator[T] }
@@ -197,10 +343,13 @@ type repeatedRowColumnIterator struct {
 	ctx  context.Context
 	span oteltrace.Span
 
-	rows     iter.Iterator[int64]
-	rgs      []parquet.RowGroup
-	column   int
-	readSize int
+	rows      iter.Iterator[int64]
+	rgs       []parquet.RowGroup
+	column    int
+	readSize  int
+	predicate Predicate
+	rejected  bool
+	probeOnly bool
 
 	pages parquet.Pages
 	page  parquet.Page
@@ -221,12 +370,17 @@ type repeatedRowColumnIterator struct {
 }
 
 func NewRepeatedRowColumnIterator(ctx context.Context, rows iter.Iterator[int64], rgs []parquet.RowGroup, column int) iter.Iterator[[]parquet.Value] {
+	return newRepeatedRowColumnIterator(ctx, rows, rgs, column, nil)
+}
+
+func newRepeatedRowColumnIterator(ctx context.Context, rows iter.Iterator[int64], rgs []parquet.RowGroup, column int, predicate Predicate) iter.Iterator[[]parquet.Value] {
 	r := repeatedRowColumnIterator{
-		rows:     rows,
-		rgs:      rgs,
-		column:   column,
-		vit:      getRepeatedValuePageIteratorFromPool(),
-		readSize: repeatedRowColumnIteratorReadSize,
+		predicate: predicate,
+		rows:      rows,
+		rgs:       rgs,
+		column:    column,
+		vit:       getRepeatedValuePageIteratorFromPool(),
+		readSize:  repeatedRowColumnIteratorReadSize,
 	}
 	if len(rgs) == 0 {
 		return iter.NewEmptyIterator[[]parquet.Value]()
@@ -270,6 +424,9 @@ func (x *repeatedRowColumnIterator) Next() bool {
 		// page matches rn, therefore we don't need to
 		// skip anything.
 		x.prev = rn - 1
+	}
+	if x.rejected || x.probeOnly {
+		return true
 	}
 	// Skip rows to the rn.
 	next := int(rn - x.prev)
@@ -340,7 +497,12 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 	x.pageBytes += x.page.Size()
 	x.maxPageRowNum = rn + pageNumRows
 	x.rowsFetched += pageNumRows
-	x.vit.reset(x.page, x.readSize)
+	x.rejected = x.predicate != nil && !x.predicate.KeepPage(x.page)
+	if x.rejected || x.probeOnly {
+		x.vit.reset(nil, 0)
+	} else {
+		x.vit.reset(x.page, x.readSize)
+	}
 	if x.span.IsRecording() {
 		x.span.AddEvent("Page read", oteltrace.WithAttributes(
 			attribute.Int64("min_rg_row", x.minRGRowNum),
@@ -353,8 +515,20 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 	return true
 }
 
-func (x *repeatedRowColumnIterator) At() []parquet.Value { return x.vit.At() }
-func (x *repeatedRowColumnIterator) Err() error          { return x.err }
+func (x *repeatedRowColumnIterator) At() []parquet.Value {
+	if x.rejected {
+		return nil
+	}
+	if x.probeOnly {
+		return acceptedProbePage
+	}
+	return x.vit.At()
+}
+
+// Non-nil sentinel: probes report page acceptance without decoding values.
+var acceptedProbePage = []parquet.Value{{}}
+
+func (x *repeatedRowColumnIterator) Err() error { return x.err }
 func (x *repeatedRowColumnIterator) Close() (err error) {
 	putRepeatedValuePageIteratorToPool(x.vit)
 	if x.pages != nil {
