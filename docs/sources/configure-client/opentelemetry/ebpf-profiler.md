@@ -123,7 +123,7 @@ A minimal Docker Compose setup runs the profiler, Pyroscope, and Grafana:
 ```yaml
 services:
   otel-ebpf-profiler:
-    image: otel/opentelemetry-collector-ebpf-profiler:0.164.0
+    image: otel/opentelemetry-collector-ebpf-profiler:0.165.0
     command:
       - --config=/etc/ebpf-profiler-config.yaml
       - --feature-gates=service.profilesSupport
@@ -178,7 +178,7 @@ spec:
       serviceAccountName: otel-ebpf-profiler
       containers:
         - name: profiler
-          image: otel/opentelemetry-collector-ebpf-profiler:0.164.0
+          image: otel/opentelemetry-collector-ebpf-profiler:0.165.0
           args:
             - "--config=/etc/otel/config.yaml"
             - "--feature-gates=+service.profilesSupport"
