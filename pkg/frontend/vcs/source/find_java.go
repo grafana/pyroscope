@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	ExtJava = ".java"
+	ExtJava   = ".java"
+	ExtKotlin = ".kt"
 )
 
 func convertJavaFunctionNameToPath(functionName string) string {
@@ -47,24 +48,28 @@ func convertJavaFunctionNameToPath(functionName string) string {
 	return strings.Join(pathSegments, "/")
 }
 
-// findJavaFile finds a java file in a vcs repository.
+// findJavaFile finds a java or kotlin file in a vcs repository.
 func (ff FileFinder) findJavaFile(ctx context.Context, mappings ...*config.MappingConfig) (*vcsv1.GetFileResponse, error) {
 	sp, ctx := tracing.StartSpanFromContext(ctx, "findJavaFile")
 	defer sp.Finish()
 	sp.SetTag("file.function_name", ff.file.FunctionName)
 	sp.SetTag("file.path", ff.file.Path)
 
+	// Kotlin shares the JVM naming scheme, so try .kt once no .java file is found.
 	javaPath := convertJavaFunctionNameToPath(ff.file.FunctionName)
-	for _, m := range mappings {
-		resp, err := ff.fetchMappingFile(ctx, m, javaPath)
-		if err != nil {
-			if errors.Is(err, client.ErrNotFound) {
+	kotlinPath := strings.TrimSuffix(javaPath, ExtJava) + ExtKotlin
+	for _, path := range []string{javaPath, kotlinPath} {
+		for _, m := range mappings {
+			resp, err := ff.fetchMappingFile(ctx, m, path)
+			if err != nil {
+				if errors.Is(err, client.ErrNotFound) {
+					continue
+				}
+				level.Warn(ff.logger).Log("msg", "failed to fetch mapping file", "err", err)
 				continue
 			}
-			level.Warn(ff.logger).Log("msg", "failed to fetch mapping file", "err", err)
-			continue
+			return resp, nil
 		}
-		return resp, nil
 	}
 
 	return nil, connect.NewError(connect.CodeNotFound, errors.New("no mappings provided, file not resolvable"))
