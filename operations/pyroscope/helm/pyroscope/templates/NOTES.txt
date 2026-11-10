@@ -53,7 +53,3 @@ Write traffic will be written to:
 
 Read traffic is served from v2 read path from {{if eq $storage.migration.queryBackendFrom "auto"}}as soon as data was first ingested to v2{{else}}{{$storage.migration.queryBackendFrom}}{{end}}.
 {{- end }}
-
-{{- if and (not $storage.v1) (not $storage.v2) }}
-{{- fail "you need to set at least one of .Values.architecture.storage.v1, .Values.architecture.storage.v2 to true" }}
-{{- end }}
