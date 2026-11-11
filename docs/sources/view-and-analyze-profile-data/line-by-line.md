@@ -230,7 +230,7 @@ source_code:
         - prefix: another/path
       function_name:           # Match by function name prefix (optional if path is specified)
         - prefix: function/prefix
-      language: go             # Required: "go", "java", "python", or "javascript"
+      language: go             # Required: "go", "java", "python", "javascript", or "dotnet"
       source:                  # Define where to fetch the source code
         local:
           path: src/main/java  # Path relative to the location of the .pyroscope.yaml file
