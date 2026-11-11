@@ -58,6 +58,30 @@ func WithV2Federated() ClusterOption {
 	}
 }
 
+// WithV2LeafNodes configures a V2 cluster that splits the combined
+// query-backend into the query-backend-merger and query-backend-reader roles.
+// It exercises the cross-process merge -> read dispatch: the query-frontend and
+// merger dial the merger pool, and the merger dials the reader pool for READ
+// nodes.
+func WithV2LeafNodes() ClusterOption {
+	return func(c *Cluster) {
+		c.v2 = true
+		c.expectedComponents = []string{
+			"distributor",
+			"distributor",
+			"segment-writer",
+			"segment-writer",
+			"metastore",
+			"metastore",
+			"metastore",
+			"query-frontend",
+			"query-backend-merger",
+			"query-backend-reader",
+			"compaction-worker",
+		}
+	}
+}
+
 func WithForceDatasetIndexLookup() ClusterOption {
 	return func(c *Cluster) {
 		c.forceDatasetIndexLookup = true
@@ -180,7 +204,7 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 			comp.flags = append(comp.flags, "-querier.dataset-index-shard-pruning=true")
 		}
 	}
-	if comp.Target == "query-backend" && c.datasetLookupFromMetadata {
+	if (comp.Target == "query-backend" || comp.Target == "query-backend-reader") && c.datasetLookupFromMetadata {
 		comp.flags = append(comp.flags, "-query-backend.dataset-lookup-from-metadata=true")
 	}
 
@@ -201,11 +225,29 @@ func (c *Cluster) v2PrepareComponent(comp *Component, metastoreLeader *Component
 		)
 	}
 
-	// register query-backends in the frontend and themselves
+	// Combined query-backend: the frontend and the backends themselves dial the
+	// shared pool.
 	if comp.Target == "query-frontend" || comp.Target == "query-backend" {
 		for _, compidx := range c.perTarget["query-backend"] {
 			comp.flags = append(comp.flags,
 				fmt.Sprintf("-query-backend.address=%s:%d", listenAddr, c.Components[compidx].grpcPort),
+			)
+		}
+	}
+
+	// Split query-backend: the frontend and mergers dial the merger pool; mergers
+	// additionally dial the reader pool for READ nodes.
+	if comp.Target == "query-frontend" || comp.Target == "query-backend-merger" {
+		for _, compidx := range c.perTarget["query-backend-merger"] {
+			comp.flags = append(comp.flags,
+				fmt.Sprintf("-query-backend.address=%s:%d", listenAddr, c.Components[compidx].grpcPort),
+			)
+		}
+	}
+	if comp.Target == "query-backend-merger" {
+		for _, compidx := range c.perTarget["query-backend-reader"] {
+			comp.flags = append(comp.flags,
+				fmt.Sprintf("-query-backend.reader-address=%s:%d", listenAddr, c.Components[compidx].grpcPort),
 			)
 		}
 	}

@@ -193,9 +193,38 @@ reproduces every committed fixture byte-for-byte before and after this change.
   `query-backend` key would otherwise be ignored by the `hasKey` gate), the
   monitoring dashboards, and regenerate all fixtures + `values.json`.
 
-## Stage 4 — integration test (planned)
+## Stage 4 — integration test
 
-- Add a split variant to `pkg/test/integration/cluster/cluster_v2.go`.
+Commit: `test(integration): cover the query-backend merger/reader split`
+
+### What changed
+
+- `WithV2LeafNodes()` cluster option
+  (`pkg/test/integration/cluster/cluster_v2.go`): a V2 topology with
+  `query-backend-merger` + `query-backend-reader` instead of the combined
+  `query-backend`.
+- `v2PrepareComponent` wires the split: the frontend and mergers dial the merger
+  pool (`-query-backend.address`), mergers dial the reader pool
+  (`-query-backend.reader-address`). The combined wiring is untouched (verified
+  the combined `TestMicroServicesIntegrationV2` still passes). The
+  `dataset-lookup-from-metadata` flag now also targets `query-backend-reader`,
+  since the reader is what performs the block reads.
+- `TestMicroServicesIntegrationV2_LeafNodes` runs the full V2 query suite over
+  the split; passes end to end (push + series/labels/profiles/merge/async).
+  Because the harness threads `WithV2LeafNodes()` after the hardcoded
+  `WithV2()`, the trailing option wins and swaps `expectedComponents`.
+
+### Decisions / gotchas
+
+- **Single reader on purpose**: `v2PrepareComponent` passes one
+  `-query-backend.reader-address` flag per reader, and a plain `host:port`
+  address is a single `StringVar` (last value wins, no DNS round-robin like
+  production). Multiple readers would leave all but the last idle, which would
+  be misleading. One merger + one reader already exercises the cross-process
+  merge -> read dispatch and the READ-root forwarding branch. Multi-reader
+  fan-out in the harness needs DNS-style resolution; left as a follow-up.
+- Integration tests here are not build-tag gated; they run via `make
+  go/test-integration` (the normal `go/test` excludes `./pkg/test/integration`).
 
 ## Selection strategy (future)
 

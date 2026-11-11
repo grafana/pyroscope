@@ -87,6 +87,13 @@ func TestMicroServicesIntegrationV2_ForceDatasetIndexLookup(t *testing.T) {
 	testMicroServicesIntegrationV2(t, cluster.WithForceDatasetIndexLookup())
 }
 
+// TestMicroServicesIntegrationV2_LeafNodes runs the V2 integration suite with
+// the query-backend split into query-backend-merger and query-backend-reader,
+// exercising the cross-process merge -> read dispatch end to end.
+func TestMicroServicesIntegrationV2_LeafNodes(t *testing.T) {
+	testMicroServicesIntegrationV2(t, cluster.WithV2LeafNodes())
+}
+
 func TestMicroServicesIntegrationV2_DatasetIndexShardPruning(t *testing.T) {
 	testMicroServicesIntegrationV2(t, cluster.WithForceDatasetIndexLookup(), cluster.WithDatasetIndexShardPruning())
 }
