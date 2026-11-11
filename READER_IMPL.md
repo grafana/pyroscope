@@ -140,14 +140,58 @@ Commit: `feat(querybackend): add query-backend-merger and -reader targets`
   under `architecture.storage=v1` is an operator error, same as the combined
   target today.
 
-## Stage 3 — helm chart (planned)
+## Stage 3 — helm chart
 
-- Add `query-backend-merger` (low memory) and `query-backend-reader` (high
-  memory, more replicas) under `architecture.microservices.v2`.
-- Point `-query-backend.address` at the merger headless service and
-  `-query-backend.reader-address` at the reader headless service; the
-  query-frontend targets the merger pool.
-- Regenerate `operations/pyroscope/helm/pyroscope/rendered/*`.
+Commit: `feat(helm): support splitting query-backend into merger and reader`
+
+### What changed
+
+- `templates/deployments-statefulsets.yaml` is now split-aware. New vars
+  `$hasQueryBackendMerger` / `$hasQueryBackendReader`. When a merger component
+  exists, `-query-backend.address` points at the merger headless service; when a
+  reader component exists, `-query-backend.reader-address` is added pointing at
+  the reader headless service. Both additions are guarded, so a chart without
+  the split renders byte-for-byte identically (verified: all existing
+  `rendered/*` fixtures are unchanged).
+- New opt-in values file `values-micro-services-leaf-nodes.yaml` plus rendered
+  fixture `rendered/micro-services-v2-leaf-nodes.yaml`, wired into `make
+  helm/check` and validated with kubeconform (61/61) and `helm lint`.
+
+### Why opt-in instead of changing the default v2 topology
+
+The `pyroscope.components` helper only merges component keys that already exist
+in `architecture.microservices.v2` (`hasKey $components $k`), so the deployed
+component set is driven entirely by that map. Making the split real therefore
+means editing that map. We do it in a *separate values file* (via
+`query-backend: null` + the two new components) rather than in the chart's
+default `values.yaml` because:
+
+- It keeps `values.yaml` — and hence the generated `jsonnet/values*.json` and the
+  primary `rendered/micro-services-v2.yaml` — unchanged (no default behavior
+  change, no fixture churn, nothing for existing users to notice).
+- `query-backend: null` relies on helm removing null-valued keys when coalescing
+  user values over chart defaults; verified in the rendered output (no
+  `query-backend` workload, merger+reader present, addresses wired).
+
+### Reproducing fixtures
+
+CI runs `make helm/check check/unstaged-changes` with helm pinned to v3.19.2
+(`go install helm.sh/helm/v3/cmd/helm@v3.19.2`). Rendering with any other helm
+version (e.g. a local helm v4) will drift. Confirmed locally that v3.19.2
+reproduces every committed fixture byte-for-byte before and after this change.
+
+### Known follow-ups (intentionally out of scope here)
+
+- **Monitoring**: `operations/monitoring/dashboards/v2-read-path.json` selects
+  `container="query-backend"` / `workload=~".*-query-backend"`. PromQL matchers
+  are fully anchored, so these panels match neither `query-backend-merger` nor
+  `query-backend-reader`. Default (combined) deployments are unaffected because
+  the split is opt-in; operators enabling it need the dashboards/alerts widened
+  to `query-backend.*`. Not changed here to keep the commit focused.
+- **Flipping the default**: if the split later becomes the default v2 topology,
+  update `values.yaml`, the `ci/*micro-services*` override files (their
+  `query-backend` key would otherwise be ignored by the `hasKey` gate), the
+  monitoring dashboards, and regenerate all fixtures + `values.json`.
 
 ## Stage 4 — integration test (planned)
 

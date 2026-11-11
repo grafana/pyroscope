@@ -462,6 +462,9 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ $(HELM_FLAGS_V2_MICROSERVICES) \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-v2.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
+	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services-leaf-nodes.yaml \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services-v2-leaf-nodes.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0
 	$(BIN)/helm template -n default --kube-version "1.23.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/legacy-micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.23.0

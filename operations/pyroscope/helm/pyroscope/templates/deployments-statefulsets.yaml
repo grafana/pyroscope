@@ -4,6 +4,8 @@
 {{- $hasV2 := $global.Values.architecture.storage.v2 }}
 {{- $hasMetastore := hasKey $components "metastore" }}
 {{- $hasQueryBackend := hasKey $components "query-backend" }}
+{{- $hasQueryBackendMerger := hasKey $components "query-backend-merger" }}
+{{- $hasQueryBackendReader := hasKey $components "query-backend-reader" }}
 {{- range $component, $cfg := $components }}
 {{- with $global }}
 {{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
@@ -88,7 +90,14 @@ spec:
           {{- /* v2 specific options for all components */}}
           {{- if $hasV2 }}
           {{-  if (not (hasKey $extraArgs "query-backend.address"))  }}
+          {{-   if $hasQueryBackendMerger }}
+            - "-query-backend.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" . }}-query-backend-merger-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
+          {{-   else }}
             - "-query-backend.address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" . }}{{ if $hasQueryBackend }}-query-backend{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
+          {{-   end }}
+          {{- end }}
+          {{-  if and $hasQueryBackendReader (not (hasKey $extraArgs "query-backend.reader-address"))  }}
+            - "-query-backend.reader-address=dns:///_grpc._tcp.{{ include "pyroscope.fullname" . }}-query-backend-reader-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"
           {{- end }}
           {{-  if (not (hasKey $extraArgs "metastore.address"))  }}
             - "-metastore.address=kubernetes:///{{ include "pyroscope.fullname" . }}{{ if $hasMetastore }}-metastore{{ end }}-headless.$(NAMESPACE_FQDN):{{ .Values.pyroscope.grpc.port }}"

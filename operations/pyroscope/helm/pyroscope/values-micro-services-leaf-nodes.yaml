@@ -1,0 +1,37 @@
+# Microservices (v2) deployment that splits the combined query-backend into the
+# two leaf-node roles: query-backend-merger and query-backend-reader.
+#
+# Usage:
+#   helm template pyroscope ./operations/pyroscope/helm/pyroscope \
+#     --values operations/pyroscope/helm/pyroscope/values-micro-services-leaf-nodes.yaml
+#
+# Readers stream blocks from object storage and are given more memory so they
+# can buffer data; mergers only coalesce child responses and run leaner.
+architecture:
+  microservices:
+    enabled: true
+    v2:
+      # Remove the combined query-backend; its roles are served by the two
+      # components below.
+      query-backend: null
+      query-backend-merger:
+        kind: Deployment
+        replicaCount: 3
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+            cpu: 1
+      query-backend-reader:
+        kind: Deployment
+        replicaCount: 6
+        resources:
+          limits:
+            memory: 8Gi
+          requests:
+            memory: 2Gi
+            cpu: 1
+
+minio:
+  enabled: true
