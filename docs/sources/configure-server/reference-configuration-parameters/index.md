@@ -1811,6 +1811,12 @@ The `query_backend` block configures the query-backend (V2 read path).
 # CLI flag: -query-backend.address
 [address: <string> | default = "localhost:9095"]
 
+# (experimental) Address of the query-backend-reader pool that
+# query-backend-merger dispatches READ nodes to. If empty, reads are sent to
+# query-backend.address.
+# CLI flag: -query-backend.reader-address
+[reader_address: <string> | default = ""]
+
 # Configures the gRPC client used to communicate with query-backends.
 # backoff_on_ratelimits is ignored: its retries ignore the server's pushback.
 # The CLI flags prefix for this block configuration is:

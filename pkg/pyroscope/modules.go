@@ -97,23 +97,26 @@ const (
 
 	// V2 modules.
 
-	Metastore             string = "metastore"
-	MetastoreClient       string = "metastore-client"
-	MetastoreAdmin        string = "metastore-admin"
-	SegmentWriter         string = "segment-writer"
-	SegmentWriterRing     string = "segment-writer-ring"
-	SegmentWriterClient   string = "segment-writer-client"
-	QueryBackend          string = "query-backend"
-	QueryBackendClient    string = "query-backend-client"
-	CompactionWorker      string = "compaction-worker"
-	PlacementAgent        string = "placement-agent"
-	PlacementManager      string = "placement-manager"
-	HealthServer          string = "health-server"
-	AdminServer           string = "admin-server"
-	RecordingRulesClient  string = "recording-rules-client"
-	QueryDiagnosticsStore string = "query-diagnostics-store"
-	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
-	AsyncQueryStore       string = "async-query-store"
+	Metastore                string = "metastore"
+	MetastoreClient          string = "metastore-client"
+	MetastoreAdmin           string = "metastore-admin"
+	SegmentWriter            string = "segment-writer"
+	SegmentWriterRing        string = "segment-writer-ring"
+	SegmentWriterClient      string = "segment-writer-client"
+	QueryBackend             string = "query-backend"
+	QueryBackendClient       string = "query-backend-client"
+	QueryBackendMerger       string = "query-backend-merger"
+	QueryBackendReader       string = "query-backend-reader"
+	QueryBackendReaderClient string = "query-backend-reader-client"
+	CompactionWorker         string = "compaction-worker"
+	PlacementAgent           string = "placement-agent"
+	PlacementManager         string = "placement-manager"
+	HealthServer             string = "health-server"
+	AdminServer              string = "admin-server"
+	RecordingRulesClient     string = "recording-rules-client"
+	QueryDiagnosticsStore    string = "query-diagnostics-store"
+	QueryDiagnosticsAdmin    string = "query-diagnostics-admin"
+	AsyncQueryStore          string = "async-query-store"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
@@ -508,7 +511,9 @@ func (f *Pyroscope) initServer() (services.Service, error) {
 
 	if f.Cfg.ArchitectureStorage != V1 {
 		f.Cfg.Server.MetricsNativeHistogramFactor = 1.1 // 10% increase from bucket to bucket
-		if slices.Contains(f.Cfg.Target, QueryBackend) {
+		if slices.Contains(f.Cfg.Target, QueryBackend) ||
+			slices.Contains(f.Cfg.Target, QueryBackendMerger) ||
+			slices.Contains(f.Cfg.Target, QueryBackendReader) {
 			concurrencyInterceptor, err := querybackend.CreateConcurrencyInterceptor(f.logger)
 			if err != nil {
 				return nil, err

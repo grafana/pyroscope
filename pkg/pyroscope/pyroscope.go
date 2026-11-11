@@ -540,22 +540,23 @@ type Pyroscope struct {
 	frontend    *frontend.Frontend
 	distributor *distributor.Distributor
 
-	segmentWriter         *segmentwriter.SegmentWriterService
-	segmentWriterClient   *segmentwriterclient.Client
-	segmentWriterRing     *ring.Ring
-	placementAgent        *placement.Agent
-	placementManager      *placement.Manager
-	metastore             *metastore.Metastore
-	metastoreClient       *metastoreclient.Client
-	metastoreAdmin        *metastoreadmin.Admin
-	queryFrontend         *queryfrontend.QueryFrontend
-	queryBackendClient    *querybackendclient.Client
-	compactionWorker      *compactionworker.Worker
-	healthServer          *health.Server
-	recordingRulesClient  *recordingrulesclient.Client
-	queryDiagnosticsStore *diagnostics.Store
-	queryDiagnosticsAdmin *querydiagnostics.Admin
-	asyncQueryStore       *asyncquery.Store
+	segmentWriter            *segmentwriter.SegmentWriterService
+	segmentWriterClient      *segmentwriterclient.Client
+	segmentWriterRing        *ring.Ring
+	placementAgent           *placement.Agent
+	placementManager         *placement.Manager
+	metastore                *metastore.Metastore
+	metastoreClient          *metastoreclient.Client
+	metastoreAdmin           *metastoreadmin.Admin
+	queryFrontend            *queryfrontend.QueryFrontend
+	queryBackendClient       *querybackendclient.Client
+	queryBackendReaderClient *querybackendclient.Client
+	compactionWorker         *compactionworker.Worker
+	healthServer             *health.Server
+	recordingRulesClient     *recordingrulesclient.Client
+	queryDiagnosticsStore    *diagnostics.Store
+	queryDiagnosticsAdmin    *querydiagnostics.Admin
+	asyncQueryStore          *asyncquery.Store
 
 	// legacy modules.
 	ingester *ingester.Ingester
@@ -635,6 +636,9 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryBackend, f.initQueryBackend)
 	mm.RegisterModule(QueryBackendClient, f.initQueryBackendClient, modules.UserInvisibleModule)
+	mm.RegisterModule(QueryBackendMerger, f.initQueryBackendMerger)
+	mm.RegisterModule(QueryBackendReader, f.initQueryBackendReader)
+	mm.RegisterModule(QueryBackendReaderClient, f.initQueryBackendReaderClient, modules.UserInvisibleModule)
 	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
@@ -675,6 +679,8 @@ func (f *Pyroscope) setupModuleManager() error {
 		CompactionWorker:      {Overrides, API, Storage, MetastoreClient, RecordingRulesClient},
 		QueryFrontend:         {OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags, MetastoreClient, QueryBackendClient, QueryDiagnosticsStore, AsyncQueryStore},
 		QueryBackend:          {Overrides, API, Storage, QueryBackendClient},
+		QueryBackendMerger:    {API, QueryBackendClient, QueryBackendReaderClient},
+		QueryBackendReader:    {Overrides, API, Storage},
 		QueryDiagnosticsStore: {Storage},
 		ProfileDumpRecorder:   {Storage, Overrides},
 		ProfileDumpCleaner:    {Storage},

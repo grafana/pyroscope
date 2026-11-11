@@ -88,21 +88,57 @@ delegating to a "leaf" backend), so updates were mechanical:
 
 ---
 
-## Stage 2 — config + new targets/modules (planned)
+## Stage 2 — config + new targets/modules
 
-Planned commit: `feat(querybackend): add query-backend-merger and -reader targets`
+Commit: `feat(querybackend): add query-backend-merger and -reader targets`
 
-- Add `query-backend.reader-address` to `Config`
-  (`pkg/querybackend/backend.go`); default empty => reader client reuses
-  `query-backend.address` (combined, back-compat).
-- New targets `query-backend-merger` and `query-backend-reader`; keep
-  `query-backend` as the combined back-compat target and for `-target=all`.
-- Merger deps: no `Storage`/`Overrides`; two clients (merger pool + reader pool).
-- Reader deps: `{Overrides, API, Storage}`; `blockReader` set, no outbound
-  clients.
-- Extend the concurrency-interceptor target check in
-  `pkg/pyroscope/modules.go` and the UI-registration check in
-  `pkg/pyroscope/pyroscope.go` to the new targets.
+### What changed
+
+- `query-backend.reader-address` added to `Config` (`pkg/querybackend/backend.go`);
+  default empty => the reader client reuses `query-backend.address`
+  (combined/back-compat). Regenerated the config reference via
+  `go run ./tools/doc-generator/ ...` (Makefile lines 79-80).
+- New targets registered in `pkg/pyroscope/pyroscope.go`:
+  - `query-backend-merger` (`initQueryBackendMerger`): `blockReader == nil`,
+    `mergerClient = queryBackendClient` (peer merger pool),
+    `readerClient = queryBackendReaderClient` (reader pool).
+  - `query-backend-reader` (`initQueryBackendReader`): `blockReader` set, both
+    outbound clients nil (a reader is a leaf and never delegates).
+  - `query-backend-reader-client` (invisible): dials `reader-address`, or
+    `address` when `reader-address` is empty.
+- `query-backend` (combined) and `-target=all` are unchanged: `all` still pulls
+  in `query-backend`, not the split targets.
+- Deps: `QueryBackendMerger: {API, QueryBackendClient, QueryBackendReaderClient}`
+  (deliberately no `Storage`/`Overrides` — see stage 1 rationale);
+  `QueryBackendReader: {Overrides, API, Storage}`.
+- Concurrency interceptor (`pkg/pyroscope/modules.go`) now also fires for the
+  merger and reader targets.
+
+### Decisions / gotchas
+
+- **Reader-client config copy**: `initQueryBackendReaderClient` copies
+  `GRPCClientConfig` by value before setting `.Middleware`, so it does not stomp
+  the merger client's config when both init in one process.
+- **UI catch-all not extended**: the merger/reader are microservice-only and the
+  query-frontend already serves the UI, so they are intentionally left out of
+  the `RegisterCatchAll` list in `pkg/pyroscope/pyroscope.go`. The combined
+  `query-backend` keeps registering it (single-binary/debug convenience).
+- **Do not co-locate roles in one process**: both init paths call
+  `API.RegisterQueryBackend`, which registers the gRPC service. Running e.g.
+  `-target=query-backend-merger,query-backend-reader` (or either alongside
+  `query-backend`) would double-register and panic. Use the combined
+  `query-backend` for a single process; the split targets are for separate
+  deployments. Mirrors the existing single-registration assumption.
+- **Reader receiving a MERGE node** would hit a nil `mergerClient`. By design a
+  reader only ever receives `READ` nodes (frontend -> merger -> reader), so this
+  is left as an invariant rather than a guarded error for the POC.
+- **`query-backend.address` in split mode** = the merger pool (the frontend and
+  mergers both dial it); `query-backend.reader-address` = the reader pool. Set
+  by helm in stage 3.
+- **v1 storage**: the split targets are not added to the `v2Modules`/`All`
+  pruning logic because they are never in `All`; a `-target=query-backend-*`
+  under `architecture.storage=v1` is an operator error, same as the combined
+  target today.
 
 ## Stage 3 — helm chart (planned)
 

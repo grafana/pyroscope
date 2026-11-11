@@ -26,6 +26,7 @@ import (
 
 type Config struct {
 	Address           string            `yaml:"address" category:"advanced"`
+	ReaderAddress     string            `yaml:"reader_address" category:"experimental"`
 	GRPCClientConfig  grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate with query-backends. backoff_on_ratelimits is ignored: its retries ignore the server's pushback."`
 	ClientTimeout     time.Duration     `yaml:"client_timeout" category:"advanced"`
 	AsyncQueryTimeout time.Duration     `yaml:"async_query_timeout" category:"experimental"`
@@ -33,6 +34,7 @@ type Config struct {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.Address, "query-backend.address", "localhost:9095", "")
+	f.StringVar(&cfg.ReaderAddress, "query-backend.reader-address", "", "Address of the query-backend-reader pool that query-backend-merger dispatches READ nodes to. If empty, reads are sent to query-backend.address.")
 	f.DurationVar(&cfg.ClientTimeout, "query-backend.client-timeout", 30*time.Second, "Timeout for synchronous query-backend requests, including retries.")
 	f.DurationVar(&cfg.AsyncQueryTimeout, "query-backend.async-query-timeout", 2*time.Minute, "Timeout for async query-backend requests, including retries. 0 uses query-backend.client-timeout.")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-backend.grpc-client-config", f)

@@ -408,6 +408,47 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 	return b.Service(), nil
 }
 
+func (f *Pyroscope) initQueryBackendMerger() (services.Service, error) {
+	if err := f.Cfg.QueryBackend.Validate(); err != nil {
+		return nil, err
+	}
+	logger := log.With(f.logger, "component", "query-backend-merger")
+	b, err := querybackend.New(
+		f.Cfg.QueryBackend,
+		logger,
+		f.reg,
+		f.queryBackendClient,
+		f.queryBackendReaderClient,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterQueryBackend(b)
+	return b.Service(), nil
+}
+
+func (f *Pyroscope) initQueryBackendReader() (services.Service, error) {
+	if err := f.Cfg.QueryBackend.Validate(); err != nil {
+		return nil, err
+	}
+	logger := log.With(f.logger, "component", "query-backend-reader")
+	blockReader := querybackend.NewBlockReader(f.logger, f.storageBucket, f.reg, f.Overrides)
+	b, err := querybackend.New(
+		f.Cfg.QueryBackend,
+		logger,
+		f.reg,
+		nil,
+		nil,
+		blockReader,
+	)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterQueryBackend(b)
+	return b.Service(), nil
+}
+
 func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 	if err := f.Cfg.QueryBackend.Validate(); err != nil {
 		return nil, err
@@ -423,6 +464,29 @@ func (f *Pyroscope) initQueryBackendClient() (services.Service, error) {
 		return nil, err
 	}
 	f.queryBackendClient = c
+	return c.Service(), nil
+}
+
+func (f *Pyroscope) initQueryBackendReaderClient() (services.Service, error) {
+	if err := f.Cfg.QueryBackend.Validate(); err != nil {
+		return nil, err
+	}
+	address := f.Cfg.QueryBackend.ReaderAddress
+	if address == "" {
+		address = f.Cfg.QueryBackend.Address
+	}
+	f.Cfg.QueryBackend.DisableClientRateLimitRetries(f.logger)
+	grpcClientConfig := f.Cfg.QueryBackend.GRPCClientConfig
+	grpcClientConfig.Middleware = f.grpcClientInterceptors()
+	c, err := querybackendclient.New(
+		address,
+		grpcClientConfig,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	)
+	if err != nil {
+		return nil, err
+	}
+	f.queryBackendReaderClient = c
 	return c.Service(), nil
 }
 
