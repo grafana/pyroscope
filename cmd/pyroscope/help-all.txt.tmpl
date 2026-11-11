@@ -45,6 +45,8 @@ Usage of ./pyroscope:
     	If true, the write path doesn't wait for the segment-writer to durably store and index the profile before responding. This reduces ingestion latency and allows a larger -segment-writer.segment-duration, but removes the read-after-write consistency and synchronous durability guarantee. Writes to the ingester are always synchronous.
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
+  -blocks-storage.bucket-store.block-idle-timeout duration
+    	How long an opened block can stay unused before the store-gateway closes it to free memory. The block is opened again on the next query. 0 disables closing idle blocks. (default 5m0s)
   -blocks-storage.bucket-store.ignore-blocks-within duration
     	Blocks with minimum time within this duration are ignored, and not loaded by store-gateway. Useful when used together with -querier.query-store-after to prevent loading young blocks, because there are usually many of them (depending on number of ingesters) and they are not yet compacted. Negative values or 0 disable the filter. (default 3h0m0s)
   -blocks-storage.bucket-store.ignore-deletion-marks-delay duration

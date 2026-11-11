@@ -314,6 +314,8 @@ type singleBlockQuerier struct {
 	queries  sync.WaitGroup
 	openLock sync.Mutex
 	opened   bool
+	refs     int       // holders from Retain, guarded by openLock
+	lastUsed time.Time // last open or release, guarded by openLock
 	index    *index.Reader
 	profiles map[profileTableKey]*parquetReader[*schemav1.ProfilePersister]
 	symbols  symbolsResolver
@@ -528,11 +530,25 @@ func (b *singleBlockQuerier) BlockID() string {
 
 func (b *singleBlockQuerier) Close() error {
 	b.openLock.Lock()
-	defer func() {
-		b.openLock.Unlock()
-		b.metrics.blockOpened.Dec()
-	}()
+	defer b.openLock.Unlock()
+	return b.closeLocked()
+}
 
+// CloseIfIdle closes the block if it is open, has no references from Retain
+// and was last used before cutoff. It reports whether the block was closed.
+func (b *singleBlockQuerier) CloseIfIdle(cutoff time.Time) (bool, error) {
+	if !b.openLock.TryLock() {
+		// Busy opening or closing, so not idle.
+		return false, nil
+	}
+	defer b.openLock.Unlock()
+	if !b.opened || b.refs > 0 || b.lastUsed.After(cutoff) {
+		return false, nil
+	}
+	return true, b.closeLocked()
+}
+
+func (b *singleBlockQuerier) closeLocked() error {
 	if !b.opened {
 		return nil
 	}
@@ -557,6 +573,7 @@ func (b *singleBlockQuerier) Close() error {
 		}
 	}
 	b.opened = false
+	b.metrics.blockOpened.Dec()
 	return errs.Err()
 }
 
@@ -2071,13 +2088,38 @@ func (q *singleBlockQuerier) openTSDBIndex(ctx context.Context) error {
 func (q *singleBlockQuerier) Open(ctx context.Context) error {
 	q.openLock.Lock()
 	defer q.openLock.Unlock()
+	return q.openLocked(ctx)
+}
+
+// Retain opens the block if needed and keeps it open until release is
+// called: CloseIfIdle skips blocks with references.
+func (q *singleBlockQuerier) Retain(ctx context.Context) (release func(), err error) {
+	q.openLock.Lock()
+	defer q.openLock.Unlock()
+	if err = q.openLocked(ctx); err != nil {
+		return nil, err
+	}
+	q.refs++
+	var once sync.Once
+	return func() { once.Do(q.release) }, nil
+}
+
+func (q *singleBlockQuerier) release() {
+	q.openLock.Lock()
+	defer q.openLock.Unlock()
+	q.refs--
+	q.lastUsed = time.Now()
+}
+
+func (q *singleBlockQuerier) openLocked(ctx context.Context) error {
 	if !q.opened {
 		if err := q.openFiles(ctx); err != nil {
 			return err
 		}
+		q.opened = true
+		q.metrics.blockOpened.Inc()
 	}
-	q.metrics.blockOpened.Inc()
-	q.opened = true
+	q.lastUsed = time.Now()
 	return nil
 }
 

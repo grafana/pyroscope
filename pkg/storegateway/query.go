@@ -5,9 +5,11 @@ import (
 	"errors"
 	"io"
 	"slices"
+	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/prometheus/common/model"
+	"golang.org/x/sync/errgroup"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -48,13 +50,14 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 func (s *StoreGateway) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
 	var res *ingestv1.ProfileTypesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
-		var err error
-		result, err := phlaredb.ProfileTypes(ctx, req, bs.openBlocksForReading)
-		if err != nil {
-			return err
-		}
-		res = result.Msg
-		return nil
+		return bs.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+			result, err := phlaredb.ProfileTypes(ctx, req, getBlocks)
+			if err != nil {
+				return err
+			}
+			res = result.Msg
+			return nil
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -66,12 +69,11 @@ func (s *StoreGateway) ProfileTypes(ctx context.Context, req *connect.Request[in
 func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	var res *typesv1.LabelValuesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
-		var err error
-		res, err = phlaredb.LabelValues(ctx, req, bs.openBlocksForReading)
-		if err != nil {
+		return bs.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+			var err error
+			res, err = phlaredb.LabelValues(ctx, req, getBlocks)
 			return err
-		}
-		return nil
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -83,12 +85,11 @@ func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typ
 func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	var res *typesv1.LabelNamesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
-		var err error
-		res, err = phlaredb.LabelNames(ctx, req, bs.openBlocksForReading)
-		if err != nil {
+		return bs.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+			var err error
+			res, err = phlaredb.LabelNames(ctx, req, getBlocks)
 			return err
-		}
-		return nil
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -100,12 +101,11 @@ func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[type
 func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
 	var res *ingestv1.SeriesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
-		var err error
-		res, err = phlaredb.Series(ctx, req.Msg, bs.openBlocksForReading)
-		if err != nil {
+		return bs.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+			var err error
+			res, err = phlaredb.Series(ctx, req.Msg, getBlocks)
 			return err
-		}
-		return nil
+		})
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -186,36 +186,84 @@ func (s *StoreGateway) forBucketStore(ctx context.Context, f func(*BucketStore) 
 	return false, nil
 }
 
-func (s *BucketStore) openBlocksForReading(ctx context.Context, minT, maxT model.Time, hints *ingestv1.Hints) (phlaredb.Queriers, error) {
+// withBlocks runs f with a block getter whose blocks stay open until f returns.
+func (s *BucketStore) withBlocks(f func(phlaredb.BlockGetter) error) error {
+	var refs blockRefs
+	defer refs.releaseAll()
+	return f(func(ctx context.Context, minT, maxT model.Time, hints *ingestv1.Hints) (phlaredb.Queriers, error) {
+		return s.openBlocksForReading(ctx, minT, maxT, hints, &refs)
+	})
+}
+
+func (s *BucketStore) openBlocksForReading(ctx context.Context, minT, maxT model.Time, hints *ingestv1.Hints, refs *blockRefs) (phlaredb.Queriers, error) {
 	skipBlock := phlaredb.HintsToBlockSkipper(hints)
 	blks := s.blockSet.getFor(minT, maxT)
 	querier := make(phlaredb.Queriers, 0, len(blks))
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(128)
 	for _, b := range blks {
 		if skipBlock(b.BlockID()) {
 			continue
 		}
 		querier = append(querier, b)
+		g.Go(func() error {
+			release, err := b.Retain(ctx)
+			if err != nil {
+				return err
+			}
+			refs.add(release)
+			return nil
+		})
 	}
-	if err := querier.Open(ctx); err != nil {
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 	return querier, nil
 }
 
+// blockRefs holds the block references taken by one request.
+type blockRefs struct {
+	mu      sync.Mutex
+	release []func()
+}
+
+func (r *blockRefs) add(release func()) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.release = append(r.release, release)
+}
+
+func (r *blockRefs) releaseAll() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, release := range r.release {
+		release()
+	}
+	r.release = nil
+}
+
 func (store *BucketStore) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return phlaredb.MergeProfilesStacktraces(ctx, stream, store.openBlocksForReading)
+	return store.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+		return phlaredb.MergeProfilesStacktraces(ctx, stream, getBlocks)
+	})
 }
 
 func (store *BucketStore) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
-	return phlaredb.MergeProfilesLabels(ctx, stream, store.openBlocksForReading)
+	return store.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+		return phlaredb.MergeProfilesLabels(ctx, stream, getBlocks)
+	})
 }
 
 func (store *BucketStore) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
-	return phlaredb.MergeProfilesPprof(ctx, stream, store.openBlocksForReading)
+	return store.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+		return phlaredb.MergeProfilesPprof(ctx, stream, getBlocks)
+	})
 }
 
 func (store *BucketStore) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
-	return phlaredb.MergeSpanProfile(ctx, stream, store.openBlocksForReading)
+	return store.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+		return phlaredb.MergeSpanProfile(ctx, stream, getBlocks)
+	})
 }
 
 func (s *BucketStore) BlockMetadata(ctx context.Context, req *ingestv1.BlockMetadataRequest) (*ingestv1.BlockMetadataResponse, error) {

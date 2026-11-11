@@ -2139,6 +2139,12 @@ bucket_store:
   # have a replacement yet.
   # CLI flag: -blocks-storage.bucket-store.ignore-deletion-marks-delay
   [ignore_deletion_mark_delay: <duration> | default = 30m]
+
+  # (advanced) How long an opened block can stay unused before the store-gateway
+  # closes it to free memory. The block is opened again on the next query. 0
+  # disables closing idle blocks.
+  # CLI flag: -blocks-storage.bucket-store.block-idle-timeout
+  [block_idle_timeout: <duration> | default = 5m]
 ```
 
 ### compactor

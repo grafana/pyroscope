@@ -3,12 +3,14 @@ package storegateway
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/oklog/ulid/v2"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,6 +22,7 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/v2/pkg/phlaredb"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/v2/pkg/test"
 	"github.com/grafana/pyroscope/v2/pkg/validation"
@@ -135,4 +138,69 @@ func assertMetricsGathered(tb testing.TB, reg prometheus.Gatherer, gathered bool
 	if tb.Failed() {
 		tb.Logf("gathered metrics:\n%s\n", strings.Join(actual, "\n\n"))
 	}
+}
+
+func TestBucketStores_CloseIdleBlocks(t *testing.T) {
+	ctx := context.Background()
+
+	bucketDir := filepath.Join(t.TempDir(), "bucket")
+	tenantDir := filepath.Join(bucketDir, "tenant-1")
+	require.NoError(t, os.MkdirAll(tenantDir, 0755))
+	test.Copy(t, "../phlaredb/testdata", filepath.Join(tenantDir, "phlaredb"))
+
+	bucket, err := filesystem.NewBucket(bucketDir)
+	require.NoError(t, err)
+	limits, err := validation.NewOverrides(*validation.MockDefaultLimits(), nil)
+	require.NoError(t, err)
+	reg := prometheus.NewRegistry()
+	config := BucketStoreConfig{
+		SyncDir:               filepath.Join(t.TempDir(), "sync-dir"),
+		TenantSyncConcurrency: 1,
+		MetaSyncConcurrency:   1,
+	}
+	stores, err := NewBucketStores(config, new(mockShardingStrategy), bucket, limits, log.NewNopLogger(), reg)
+	require.NoError(t, err)
+	require.NoError(t, stores.SyncBlocks(ctx))
+	t.Cleanup(func() { assert.NoError(t, stores.closeBucketStore("tenant-1")) })
+
+	store := stores.getStore("tenant-1")
+	require.NotNil(t, store)
+	require.Len(t, store.blockSet.blocks, 3)
+
+	openBlocks := func(n int) string {
+		return fmt.Sprintf(`
+# HELP pyroscopedb_blocks_currently_open Number of blocks opened
+# TYPE pyroscopedb_blocks_currently_open gauge
+pyroscopedb_blocks_currently_open{tenant="tenant-1"} %d
+`, n)
+	}
+	query := func(getBlocks phlaredb.BlockGetter) error {
+		_, err := phlaredb.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+			Start: 0,
+			End:   time.Now().UnixMilli(),
+		}), getBlocks)
+		return err
+	}
+	future := time.Now().Add(time.Hour)
+
+	// Blocks used by an ongoing request are never closed.
+	require.NoError(t, store.withBlocks(func(getBlocks phlaredb.BlockGetter) error {
+		require.NoError(t, query(getBlocks))
+		assertMetricsGathered(t, reg, true, []string{openBlocks(3)})
+		stores.CloseIdleBlocks(future)
+		assertMetricsGathered(t, reg, true, []string{openBlocks(3)})
+		return query(getBlocks)
+	}))
+
+	// Released but used after the cutoff: kept open.
+	stores.CloseIdleBlocks(time.Now().Add(-time.Hour))
+	assertMetricsGathered(t, reg, true, []string{openBlocks(3)})
+
+	// Idle and released: closed.
+	stores.CloseIdleBlocks(future)
+	assertMetricsGathered(t, reg, true, []string{openBlocks(0)})
+
+	// The next request opens them again.
+	require.NoError(t, store.withBlocks(query))
+	assertMetricsGathered(t, reg, true, []string{openBlocks(3)})
 }

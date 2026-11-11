@@ -1407,3 +1407,136 @@ func TestBlockMeta_loadsMetasIndividually(t *testing.T) {
 		require.Equal(t, meta, singleMeta)
 	}
 }
+
+func newTestSingleBlockQuerier(t *testing.T) *singleBlockQuerier {
+	t.Helper()
+	bucket, err := filesystem.NewBucket(testDataPath)
+	require.NoError(t, err)
+	ctx := context.Background()
+	metas, err := NewBlockQuerier(ctx, bucket).BlockMetas(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, metas)
+	q := NewSingleBlockQuerierFromMeta(ctx, bucket, metas[0])
+	t.Cleanup(func() { require.NoError(t, q.Close()) })
+	return q
+}
+
+func TestSingleBlockQuerier_CloseIfIdle(t *testing.T) {
+	ctx := context.Background()
+	q := newTestSingleBlockQuerier(t)
+	future := time.Now().Add(time.Hour)
+	past := time.Now().Add(-time.Hour)
+
+	// A closed block is not closed again.
+	closed, err := q.CloseIfIdle(future)
+	require.NoError(t, err)
+	require.False(t, closed)
+
+	// A block with a reference stays open.
+	release, err := q.Retain(ctx)
+	require.NoError(t, err)
+	closed, err = q.CloseIfIdle(future)
+	require.NoError(t, err)
+	require.False(t, closed)
+	require.True(t, q.opened)
+
+	// Released twice: the second call is a no-op.
+	release()
+	release()
+	require.Equal(t, 0, q.refs)
+
+	// Used after the cutoff, so not idle yet.
+	closed, err = q.CloseIfIdle(past)
+	require.NoError(t, err)
+	require.False(t, closed)
+	require.True(t, q.opened)
+
+	// Idle and unreferenced: closed.
+	closed, err = q.CloseIfIdle(future)
+	require.NoError(t, err)
+	require.True(t, closed)
+	require.False(t, q.opened)
+	require.Nil(t, q.index)
+
+	// The next query opens it again.
+	release, err = q.Retain(ctx)
+	require.NoError(t, err)
+	defer release()
+	require.True(t, q.opened)
+	_, err = q.index.LabelValues("__profile_type__")
+	require.NoError(t, err)
+}
+
+func TestSingleBlockQuerier_RetainRacesCloseIfIdle(t *testing.T) {
+	ctx := context.Background()
+	q := newTestSingleBlockQuerier(t)
+	future := time.Now().Add(time.Hour)
+
+	done := make(chan struct{})
+	var sweeper sync.WaitGroup
+	sweeper.Add(1)
+	go func() {
+		defer sweeper.Done()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_, err := q.CloseIfIdle(future)
+				assert.NoError(t, err)
+			}
+		}
+	}()
+
+	g, ctx := errgroup.WithContext(ctx)
+	for i := 0; i < 8; i++ {
+		g.Go(func() error {
+			for j := 0; j < 20; j++ {
+				release, err := q.Retain(ctx)
+				if err != nil {
+					return err
+				}
+				// The block must stay open while the reference is held.
+				err = selectAllProfiles(ctx, q)
+				release()
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	require.NoError(t, g.Wait())
+	close(done)
+	sweeper.Wait()
+}
+
+func selectAllProfiles(ctx context.Context, q *singleBlockQuerier) error {
+	types, err := q.index.LabelValues("__profile_type__")
+	if err != nil {
+		return err
+	}
+	for _, t := range types {
+		pt, err := phlaremodel.ParseProfileTypeSelector(t)
+		if err != nil {
+			return err
+		}
+		it, err := q.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
+			LabelSelector: "{}",
+			Type:          pt,
+			End:           time.Now().UnixMilli(),
+		})
+		if err != nil {
+			return err
+		}
+		for it.Next() {
+		}
+		if err = it.Err(); err != nil {
+			return err
+		}
+		if err = it.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -248,6 +248,27 @@ func (s *BucketStore) removeBlock(id ulid.ULID) (returnErr error) {
 	return nil
 }
 
+// closeIdleBlocks closes the blocks that have no ongoing queries and have not been used since cutoff.
+func (s *BucketStore) closeIdleBlocks(cutoff time.Time) {
+	s.blocksMx.RLock()
+	blocks := make([]*Block, 0, len(s.blocks))
+	for _, b := range s.blocks {
+		blocks = append(blocks, b)
+	}
+	s.blocksMx.RUnlock()
+
+	for _, b := range blocks {
+		closed, err := b.CloseIfIdle(cutoff)
+		if err != nil {
+			level.Warn(s.logger).Log("msg", "failed to close idle block", "block", b.BlockID(), "err", err)
+			continue
+		}
+		if closed {
+			level.Debug(s.logger).Log("msg", "closed idle block", "block", b.BlockID())
+		}
+	}
+}
+
 func (s *BucketStore) localPath(id string) string {
 	return filepath.Join(s.syncDir, id)
 }

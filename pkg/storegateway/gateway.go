@@ -241,10 +241,19 @@ func (g *StoreGateway) running(ctx context.Context) error {
 	ringTicker := time.NewTicker(util.DurationWithJitter(g.gatewayCfg.ShardingRing.RingCheckPeriod, 0.2))
 	defer ringTicker.Stop()
 
+	var idleBlocksC <-chan time.Time
+	if idleTimeout := g.gatewayCfg.BucketStoreConfig.BlockIdleTimeout; idleTimeout > 0 {
+		idleBlocksTicker := time.NewTicker(idleTimeout / 2)
+		defer idleBlocksTicker.Stop()
+		idleBlocksC = idleBlocksTicker.C
+	}
+
 	for {
 		select {
 		case <-syncTicker.C:
 			g.syncStores(ctx, syncReasonPeriodic)
+		case now := <-idleBlocksC:
+			g.stores.CloseIdleBlocks(now.Add(-g.gatewayCfg.BucketStoreConfig.BlockIdleTimeout))
 		case <-ringTicker.C:
 			// We ignore the error because in case of error it will return an empty
 			// replication set which we use to compare with the previous state.

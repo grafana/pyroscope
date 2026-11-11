@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/go-kit/log"
 
@@ -17,6 +18,8 @@ import (
 type BlockCloser interface {
 	phlaredb.Querier
 	Close() error
+	Retain(ctx context.Context) (release func(), err error)
+	CloseIfIdle(cutoff time.Time) (bool, error)
 }
 
 type Block struct {

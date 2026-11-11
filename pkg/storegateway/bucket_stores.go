@@ -33,6 +33,7 @@ type BucketStoreConfig struct {
 	IgnoreBlocksWithin       time.Duration `yaml:"ignore_blocks_within" category:"advanced"`
 	MetaSyncConcurrency      int           `yaml:"meta_sync_concurrency" category:"advanced"`
 	IgnoreDeletionMarksDelay time.Duration `yaml:"ignore_deletion_mark_delay" category:"advanced"`
+	BlockIdleTimeout         time.Duration `yaml:"block_idle_timeout" category:"advanced"`
 }
 
 // RegisterFlags registers the BucketStore flags
@@ -58,6 +59,7 @@ func (cfg *BucketStoreConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) 
 	// f.DurationVar(&cfg.DeprecatedConsistencyDelay, consistencyDelayFlag, 0, "Minimum age of a block before it's being read. Set it to safe value (e.g 30m) if your object storage is eventually consistent. GCS and S3 are (roughly) strongly consistent.")
 	f.DurationVar(&cfg.IgnoreDeletionMarksDelay, "blocks-storage.bucket-store.ignore-deletion-marks-delay", 30*time.Minute, "Duration after which the blocks marked for deletion will be filtered out while fetching blocks. "+
 		"The idea of ignore-deletion-marks-delay is to ignore blocks that are marked for deletion with some delay. This ensures store can still serve blocks that are meant to be deleted but do not have a replacement yet.")
+	f.DurationVar(&cfg.BlockIdleTimeout, "blocks-storage.bucket-store.block-idle-timeout", 5*time.Minute, "How long an opened block can stay unused before the store-gateway closes it to free memory. The block is opened again on the next query. 0 disables closing idle blocks.")
 	// f.IntVar(&cfg.PostingOffsetsInMemSampling, "blocks-storage.bucket-store.posting-offsets-in-mem-sampling", DefaultPostingOffsetInMemorySampling, "Controls what is the ratio of postings offsets that the store will hold in memory.")
 	// f.BoolVar(&cfg.IndexHeaderLazyLoadingEnabled, "blocks-storage.bucket-store.index-header-lazy-loading-enabled", true, "If enabled, store-gateway will lazy load an index-header only once required by a query.")
 	// f.DurationVar(&cfg.IndexHeaderLazyLoadingIdleTimeout, "blocks-storage.bucket-store.index-header-lazy-loading-idle-timeout", 60*time.Minute, "If index-header lazy loading is enabled and this setting is > 0, the store-gateway will offload unused index-headers after 'idle timeout' inactivity.")
@@ -296,6 +298,20 @@ func (bs *BucketStores) syncUsersBlocks(ctx context.Context, f func(context.Cont
 	bs.closeBucketStoreAndDeleteLocalFilesForExcludedTenants(includeUserIDs)
 
 	return errs.Err()
+}
+
+// CloseIdleBlocks closes the blocks of every tenant that have not been used since cutoff.
+func (bs *BucketStores) CloseIdleBlocks(cutoff time.Time) {
+	bs.storesMu.RLock()
+	stores := make([]*BucketStore, 0, len(bs.stores))
+	for _, s := range bs.stores {
+		stores = append(stores, s)
+	}
+	bs.storesMu.RUnlock()
+
+	for _, s := range stores {
+		s.closeIdleBlocks(cutoff)
+	}
 }
 
 func (bs *BucketStores) getStore(userID string) *BucketStore {
