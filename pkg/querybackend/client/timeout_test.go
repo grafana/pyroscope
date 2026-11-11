@@ -98,7 +98,7 @@ func TestClient_ChildInheritsQueryDeadline(t *testing.T) {
 			return nil, ctx.Err()
 		}}
 		leafClient := newTestClient(t, reader)
-		root, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, timingHandler(func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+		root, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, timingHandler(func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 			time.Sleep(time.Second)
 			return leafClient.Invoke(ctx, req)
 		}), nil)

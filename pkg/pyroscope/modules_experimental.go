@@ -398,6 +398,7 @@ func (f *Pyroscope) initQueryBackend() (services.Service, error) {
 		logger,
 		f.reg,
 		f.queryBackendClient,
+		f.queryBackendClient,
 		blockReader,
 	)
 	if err != nil {

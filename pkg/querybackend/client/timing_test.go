@@ -80,7 +80,7 @@ func TestClient_NestedBackoffIsNotDoubleCounted(t *testing.T) {
 	}}
 	leafClient := newTestClient(t, reader)
 	leafStatsCh := make(chan *queryv1.ExecutionStats, 1)
-	root, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, timingHandler(func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+	root, err := querybackend.New(querybackend.Config{}, log.NewNopLogger(), nil, nil, timingHandler(func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 		resp, err := leafClient.Invoke(ctx, req)
 		if err == nil {
 			leafStatsCh <- resp.GetDiagnostics().GetExecutionNode().GetStats().CloneVT()

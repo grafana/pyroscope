@@ -59,7 +59,7 @@ func TestQueryBackend_ReadProcessingIncludesFinalization(t *testing.T) {
 						}}},
 					}, nil
 				}}
-				q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler)
+				q, err := New(Config{}, log.NewNopLogger(), nil, nil, nil, handler)
 				require.NoError(t, err)
 				resp, err := q.Invoke(context.Background(), &queryv1.InvokeRequest{
 					QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ}},
@@ -129,11 +129,11 @@ func TestQueryBackend_NoRetrySignal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := &testQueryHandler{invoke: tt.invoke}
-			var backendClient, blockReader QueryHandler = nil, handler
+			var mergerClient, readerClient, blockReader QueryHandler = nil, nil, handler
 			if tt.merge {
-				backendClient, blockReader = handler, nil
+				mergerClient, readerClient, blockReader = handler, handler, nil
 			}
-			q, err := New(Config{}, log.NewNopLogger(), nil, backendClient, blockReader)
+			q, err := New(Config{}, log.NewNopLogger(), nil, mergerClient, readerClient, blockReader)
 			require.NoError(t, err)
 
 			stream := &testServerStream{}
@@ -162,7 +162,7 @@ func TestQueryBackend_NoRetrySignal_SiblingErrorWins(t *testing.T) {
 			}
 		},
 	}
-	q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil)
+	q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler, nil)
 	require.NoError(t, err)
 
 	stream := &testServerStream{}
@@ -250,7 +250,7 @@ func TestQueryBackend_MergeCriticalPathStats(t *testing.T) {
 					ExecutionNode: &queryv1.ExecutionNode{Stats: stats},
 				}}, nil
 			}}
-			q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil)
+			q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler, nil)
 			require.NoError(t, err)
 			go func() {
 				<-started

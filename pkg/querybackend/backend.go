@@ -69,26 +69,29 @@ type QueryBackend struct {
 	logger log.Logger
 	reg    prometheus.Registerer
 
-	backendClient QueryHandler
-	blockReader   QueryHandler
-	hostname      string
+	mergerClient QueryHandler
+	readerClient QueryHandler
+	blockReader  QueryHandler
+	hostname     string
 }
 
 func New(
 	config Config,
 	logger log.Logger,
 	reg prometheus.Registerer,
-	backendClient QueryHandler,
+	mergerClient QueryHandler,
+	readerClient QueryHandler,
 	blockReader QueryHandler,
 ) (*QueryBackend, error) {
 	hostname, _ := os.Hostname()
 	q := QueryBackend{
-		config:        config,
-		logger:        logger,
-		reg:           reg,
-		backendClient: backendClient,
-		blockReader:   blockReader,
-		hostname:      hostname,
+		config:       config,
+		logger:       logger,
+		reg:          reg,
+		mergerClient: mergerClient,
+		readerClient: readerClient,
+		blockReader:  blockReader,
+		hostname:     hostname,
 	}
 	q.service = services.NewIdleService(q.starting, q.stopping)
 	return &q, nil
@@ -225,10 +228,11 @@ func (q *QueryBackend) merge(
 		req.QueryPlan = &queryv1.QueryPlan{
 			Root: child,
 		}
+		client := q.clientForNode(child)
 		g.Go(util.RecoverPanic(func() error {
 			// TODO: Speculative retry.
 			childStart := time.Now()
-			resp, err := q.backendClient.Invoke(ctx, req)
+			resp, err := client.Invoke(ctx, req)
 			if err != nil {
 				if pushback.IsMarked(err) {
 					noRetry.Store(true)
@@ -295,10 +299,27 @@ func (q *QueryBackend) read(
 	request *queryv1.InvokeRequest,
 	blocks []*metastorev1.BlockMeta,
 ) (*queryv1.InvokeResponse, error) {
+	if q.blockReader == nil {
+		// A merger has no local storage: delegate the read to the reader pool.
+		request.QueryPlan = &queryv1.QueryPlan{
+			Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ, Blocks: blocks},
+		}
+		return q.readerClient.Invoke(ctx, request)
+	}
 	request.QueryPlan = &queryv1.QueryPlan{
 		Root: &queryv1.QueryNode{
 			Blocks: blocks,
 		},
 	}
 	return q.blockReader.Invoke(ctx, request)
+}
+
+// clientForNode routes a child node to its pool: READ nodes to the reader pool,
+// MERGE nodes to the merger pool. In a combined query-backend both point at the
+// same client, preserving the single-pool behavior.
+func (q *QueryBackend) clientForNode(node *queryv1.QueryNode) QueryHandler {
+	if node.Type == queryv1.QueryNode_READ {
+		return q.readerClient
+	}
+	return q.mergerClient
 }

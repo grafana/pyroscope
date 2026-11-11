@@ -72,9 +72,9 @@ func TestQueryBackend_AnalyzeSeriesOnlyAtRoot(t *testing.T) {
 				assert.Len(t, resp.Reports[0].TimeSeriesAnalysis.TimeSeries, 2)
 				return resp, nil
 			}}
-			backend, err := New(Config{}, log.NewNopLogger(), nil, nil, reader)
+			backend, err := New(Config{}, log.NewNopLogger(), nil, nil, nil, reader)
 			require.NoError(t, err)
-			backend.backendClient = &testQueryHandler{invoke: func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+			delegate := &testQueryHandler{invoke: func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
 				assert.False(t, req.GetOptions().GetFinalize())
 				// Other options must survive propagation to child invocations.
 				assert.True(t, req.GetOptions().GetCollectDiagnostics())
@@ -85,6 +85,8 @@ func TestQueryBackend_AnalyzeSeriesOnlyAtRoot(t *testing.T) {
 				}
 				return resp, err
 			}}
+			backend.mergerClient = delegate
+			backend.readerClient = delegate
 			resp, err := backend.Invoke(context.Background(), &queryv1.InvokeRequest{
 				StartTime: 0, EndTime: 21000,
 				QueryPlan: &queryv1.QueryPlan{Root: root},
