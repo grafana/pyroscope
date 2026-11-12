@@ -143,6 +143,7 @@ func (b *BlockReader) Invoke(
 			grp:                       g,
 			execCollector:             blockExecCollector,
 			weightCollector:           weightCollector,
+			inflightBytes:             b.metrics.inflightEstimatedBytes,
 			includeStripped:           includeStripped,
 			datasetLookupFromMetadata: datasetLookupFromMetadata,
 		}).execute))
@@ -281,14 +282,19 @@ type queryWeightCollector struct {
 }
 
 func (c *queryWeightCollector) addDatasets(datasets []*metastorev1.Dataset) {
-	var w block.DatasetWeight
-	for _, ds := range datasets {
-		w.Add(block.WeightOf(ds))
-	}
+	w := datasetsWeight(datasets)
 	c.mu.Lock()
 	c.weight.Add(w)
 	c.datasetsCount += int64(len(datasets))
 	c.mu.Unlock()
+}
+
+func datasetsWeight(datasets []*metastorev1.Dataset) block.DatasetWeight {
+	var w block.DatasetWeight
+	for _, ds := range datasets {
+		w.Add(block.WeightOf(ds))
+	}
+	return w
 }
 
 // blockExecutionCollector collects per-block execution stats in a thread-safe manner.

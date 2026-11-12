@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/tracing"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -94,6 +95,7 @@ type blockContext struct {
 	grp             *errgroup.Group
 	execCollector   *blockExecutionCollector
 	weightCollector *queryWeightCollector
+	inflightBytes   prometheus.Gauge
 	includeStripped bool
 
 	datasetLookupFromMetadata bool
@@ -120,6 +122,10 @@ func (b *blockContext) execute() error {
 	}
 
 	md := b.obj.Metadata()
+	inflight := float64(datasetsWeight(md.Datasets).Total())
+	b.inflightBytes.Add(inflight)
+	defer b.inflightBytes.Sub(inflight)
+
 	for _, ds := range md.Datasets {
 		q := b.newQueryContext(ds)
 		for _, query := range b.req.src.Query {
