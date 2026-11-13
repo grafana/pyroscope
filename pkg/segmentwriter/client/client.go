@@ -120,7 +120,13 @@ var circuitBreakerConfig = gobreaker.Settings{
 // Next, ResourceExhausted also excluded from the list: as the error is
 // tenant-request-specific, and the circuit breaker operates connection-wise.
 func shouldBeHandledByCaller(err error) bool {
-	if errors.Is(err, os.ErrDeadlineExceeded) {
+	// A gRPC status error never matches os.ErrDeadlineExceeded,
+	// so the status code has to be checked as well: an instance
+	// that does not respond in a timely fashion must count
+	// towards tripping the circuit.
+	if errors.Is(err, os.ErrDeadlineExceeded) ||
+		errors.Is(err, context.DeadlineExceeded) ||
+		status.Code(err) == codes.DeadlineExceeded {
 		return false
 	}
 	if status.Code(err) == codes.Unavailable {
