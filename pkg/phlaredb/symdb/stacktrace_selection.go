@@ -1,10 +1,13 @@
 package symdb
 
 import (
+	"slices"
+
 	"github.com/parquet-go/parquet-go"
 
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
+
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 // CallSiteValues represents statistics associated with a call tree node.
@@ -147,19 +150,13 @@ func (x *SelectedStackTraces) appendStackTrace(locations []uint64) stackTraceLoc
 		return 0
 	}
 	var n uint32 // Number of times callSite root function seen.
-	var pos uint32
-	var l uint32
-	for i := len(locations) - 1; i >= 0; i-- {
-		lines := x.symbols.Locations[locations[i]].Line
-		for j := len(lines) - 1; j >= 0; j-- {
-			f := lines[j].FunctionId
+	for _, location := range slices.Backward(locations) {
+		lines := x.symbols.Locations[location].Line
+		for _, line := range slices.Backward(lines) {
+			f := line.FunctionId
 			if x.location == x.funcNames[f] {
 				n++
 			}
-			if pos < x.depth && pos == l && x.callSite[pos] == x.funcNames[f] {
-				pos++
-			}
-			l++
 		}
 	}
 	if n == 0 {
@@ -171,10 +168,32 @@ func (x *SelectedStackTraces) appendStackTrace(locations []uint64) stackTraceLoc
 		isLeaf = 1
 	}
 	var inSubtree uint32
-	if pos >= x.depth {
+	if matchesCallSite(x.symbols, locations, x.funcNames, x.callSite) {
 		inSubtree = 1
 	}
 	return stackTraceLocationRelation(inSubtree | isLeaf<<1 | (1-isLeaf)<<2)
+}
+
+// Locations and inline frames are leaf-first; call sites are root-first.
+// Names may be strings or canonical IDs, depending on the resolver.
+func matchesCallSite[L int32 | uint64, N comparable](symbols *Symbols, locations []L, functionNames []N, callSite []N) bool {
+	if len(callSite) == 0 {
+		return true
+	}
+	next := 0
+	for _, location := range slices.Backward(locations) {
+		lines := symbols.Locations[location].Line
+		for _, line := range slices.Backward(lines) {
+			if functionNames[line.FunctionId] != callSite[next] {
+				return false
+			}
+			next++
+			if next == len(callSite) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func callSiteFunctions(locations []*typesv1.Location) []string {
