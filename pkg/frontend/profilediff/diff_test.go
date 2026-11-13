@@ -24,7 +24,7 @@ func TestDiffJoinsBeforeLimiting(t *testing.T) {
 		Right: &querierv1.SelectMergeStacktracesRequest{
 			ProfileTypeID: "cpu",
 			LabelSelector: "right",
-			Format:        querierv1.ProfileFormat_PROFILE_FORMAT_FLAMEGRAPH,
+			Format:        querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTION_TREE,
 			FormatOptions: &querierv1.ProfileFormatOptions{
 				Functions: &querierv1.FunctionsOptions{Limit: -1},
 			},
@@ -73,6 +73,43 @@ func TestDiffJoinsBeforeLimiting(t *testing.T) {
 	require.Equal(t, int64(40), resp.Msg.Functions.Left.Functions[0].Self)
 	require.Equal(t, int64(80), resp.Msg.Functions.Right.Functions[0].Self)
 	require.True(t, original.EqualVT(req))
+}
+
+func TestDiffPreservesEmptyTreeSide(t *testing.T) {
+	req := &querierv1.DiffRequest{
+		Left: &querierv1.SelectMergeStacktracesRequest{
+			ProfileTypeID: "cpu",
+			LabelSelector: "left",
+			Format:        querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTION_TREE,
+			FormatOptions: &querierv1.ProfileFormatOptions{
+				FunctionTree: &typesv1.FunctionTreeOptions{
+					Direction: typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLEES,
+					Selection: typesv1.FunctionTreeSelection_FUNCTION_TREE_SELECTION_ROOT_PATH,
+				},
+			},
+		},
+		Right: &querierv1.SelectMergeStacktracesRequest{
+			ProfileTypeID: "cpu",
+			LabelSelector: "right",
+		},
+	}
+	resp, err := Diff(context.Background(), req, func(_ context.Context, r *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+		require.Equal(t, req.Left.Format, r.Msg.Format)
+		require.True(t, req.Left.GetFormatOptions().GetFunctionTree().EqualVT(r.Msg.GetFormatOptions().GetFunctionTree()))
+		tree := &typesv1.FunctionTree{
+			Callees: &typesv1.CallTree{},
+		}
+		if r.Msg.LabelSelector == "right" {
+			tree.Callees.Root = &typesv1.CallTreeNode{
+				Total:       10,
+				HasChildren: true,
+			}
+		}
+		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{FunctionTree: tree}), nil
+	})
+	require.NoError(t, err)
+	require.Nil(t, resp.Msg.FunctionTree.Left.Callees.Root)
+	require.Equal(t, int64(10), resp.Msg.FunctionTree.Right.Callees.Root.Total)
 }
 
 func TestJoinFunctionsNilTables(t *testing.T) {
@@ -171,10 +208,16 @@ func TestJoinFunctionsReusesRowsWithoutMutatingInputs(t *testing.T) {
 }
 
 func TestDiffValidatesProjectionResponses(t *testing.T) {
-	for _, format := range []querierv1.ProfileFormat{querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS} {
+	for _, format := range []querierv1.ProfileFormat{querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS, querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTION_TREE} {
 		t.Run(format.String(), func(t *testing.T) {
 			valid := connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{})
-			valid.Msg.Functions = &typesv1.FunctionTable{}
+			if format == querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS {
+				valid.Msg.Functions = &typesv1.FunctionTable{}
+			} else {
+				valid.Msg.FunctionTree = &typesv1.FunctionTree{
+					Callees: &typesv1.CallTree{},
+				}
+			}
 			missing := connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{})
 			for _, tc := range []struct {
 				name      string

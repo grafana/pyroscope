@@ -48,6 +48,14 @@ func Diff(ctx context.Context, req *querierv1.DiffRequest, selectProfile SelectF
 	}
 	resp := new(querierv1.DiffResponse)
 	switch req.Left.Format {
+	case querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTION_TREE:
+		if results[0].FunctionTree == nil || results[1].FunctionTree == nil {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("profile selection returned no function tree"))
+		}
+		resp.FunctionTree = &querierv1.FunctionTreeDiff{
+			Left:  results[0].FunctionTree,
+			Right: results[1].FunctionTree,
+		}
 	case querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS:
 		if results[0].Functions == nil || results[1].Functions == nil {
 			return nil, connect.NewError(connect.CodeInternal, errors.New("profile selection returned no function table"))
