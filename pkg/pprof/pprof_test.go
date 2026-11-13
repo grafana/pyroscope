@@ -570,6 +570,23 @@ func Test_sanitizeReferences(t *testing.T) {
 				StringTable: []string{""},
 			},
 		},
+		{
+			name: "negative_sample_value",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{-10}}},
+				Location:   []*profilev1.Location{{Id: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:   []*profilev1.Function{{Id: 1}},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{0}}},
+				Location:    []*profilev1.Location{{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:    []*profilev1.Function{{Id: 1}},
+				Mapping:     []*profilev1.Mapping{{Id: 1}},
+				StringTable: []string{""},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

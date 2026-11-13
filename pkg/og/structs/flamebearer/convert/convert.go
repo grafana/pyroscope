@@ -277,7 +277,12 @@ func PprofToProfile(b []byte, name string, limits Limits) ([]*flamebearer.Flameb
 				return nil, fmt.Errorf("invalid sampleType index %d for sample %d (len=%d)", sampleType, i, len(p.Sample[i].Value))
 			}
 
-			t.Insert(stack, p.Sample[i].Value[sampleType])
+			val := p.Sample[i].Value[sampleType]
+			if val <= 0 {
+				continue
+			}
+
+			t.Insert(stack, val)
 		}
 
 		tp, err := getProfileType(name, sampleType, p)
