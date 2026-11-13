@@ -213,6 +213,17 @@ The Java integration supports JFR format to be able to support multiple events (
 | `PYROSCOPE_ALLOC_LIVE`                      | Retain allocation samples with live objects only (objects that have not been collected by the end of profiling session). Useful for finding Java heap memory leaks. The default value is `false`                                                                                                                                                                                                                                 |
 | `PYROSCOPE_GC_BEFORE_DUMP`                  | A boolean value that executes a `System.gc()` command before dumping the profile when set to `true`. This option may be useful for live profiling, but is disabled by default.                                                                                                                                                                                                                                                   |
 
+## Set namespace labels for profile correlation
+
+To show profiles in the trace view, set a `service_namespace` label on your profiles.
+For example, set it as a static label:
+
+```java
+Pyroscope.setStaticLabels(Map.of("service_namespace", "accessmanager"));
+```
+
+{{< docs/shared source="pyroscope" lookup="correlate-profiles-namespace-labels.md" version="latest" >}}
+
 ## Send data to Pyroscope OSS or Grafana Cloud Profiles
 
 Add the following code to your application:
