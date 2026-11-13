@@ -28,7 +28,6 @@ import (
 
 type MetastoreClientMock struct {
 	*mockmetastorev1.MockCompactionServiceClient
-	*mockmetastorev1.MockIndexServiceClient
 }
 
 func createTestWorker(t *testing.T, client MetastoreClient, compactFn compactFunc, bucket objstore.Bucket) *Worker {
@@ -78,10 +77,8 @@ func runWorker(t *testing.T, w *Worker, done <-chan struct{}) {
 func TestWorker_SuccessfulCompaction(t *testing.T) {
 	bucket := mockobjstore.NewMockBucket(t)
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
@@ -117,10 +114,6 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 		Token: 12345,
 	}
 
-	metadata := []*metastorev1.BlockMeta{
-		{Id: block1ID, Tenant: 1, Shard: 1},
-		{Id: block2ID, Tenant: 1, Shard: 1},
-	}
 	done := make(chan struct{})
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return req.JobCapacity > 0
@@ -129,9 +122,10 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 		Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 	}, nil).Once()
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.GetBlockMetadataResponse{
-		Blocks: metadata,
-	}, nil).Once()
+	expectBlockObjects(t, bucket,
+		testBlockMeta(block1ID, 1, 1, "test-tenant"),
+		testBlockMeta(block2ID, 1, 1, "test-tenant"),
+	)
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		if len(req.StatusUpdates) != 1 {
@@ -175,10 +169,8 @@ func TestWorker_SuccessfulCompaction(t *testing.T) {
 func TestWorker_CompactionFailure(t *testing.T) {
 	bucket := mockobjstore.NewMockBucket(t)
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
@@ -203,9 +195,6 @@ func TestWorker_CompactionFailure(t *testing.T) {
 		Token: 12345,
 	}
 
-	metadata := []*metastorev1.BlockMeta{
-		{Id: block1ID, Tenant: 1, Shard: 1},
-	}
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
 		return req.JobCapacity > 0
 	}), mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{
@@ -213,9 +202,7 @@ func TestWorker_CompactionFailure(t *testing.T) {
 		Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 	}, nil).Once()
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.GetBlockMetadataResponse{
-		Blocks: metadata,
-	}, nil).Once()
+	expectBlockObjects(t, bucket, testBlockMeta(block1ID, 1, 1, "test-tenant"))
 
 	bucket.EXPECT().IsObjNotFoundErr(mock.Anything).Return(false).Maybe()
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
@@ -226,10 +213,8 @@ func TestWorker_CompactionFailure(t *testing.T) {
 func TestWorker_JobCancellation(t *testing.T) {
 	bucket := mockobjstore.NewMockBucket(t)
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
@@ -261,9 +246,7 @@ func TestWorker_JobCancellation(t *testing.T) {
 		Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 	}, nil).Once()
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.GetBlockMetadataResponse{
-		Blocks: []*metastorev1.BlockMeta{{Id: block1ID, Tenant: 1, Shard: 1}},
-	}, nil).Maybe()
+	expectBlockObjects(t, bucket, testBlockMeta(block1ID, 1, 1, "test-tenant"))
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
@@ -273,10 +256,8 @@ func TestWorker_JobCancellation(t *testing.T) {
 func TestWorker_TombstoneHandling(t *testing.T) {
 	bucket := mockobjstore.NewMockBucket(t)
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	sourceBlockID := test.ULID("2024-01-01T11:00:00Z")
@@ -313,9 +294,6 @@ func TestWorker_TombstoneHandling(t *testing.T) {
 		Token: 12345,
 	}
 
-	metadata := []*metastorev1.BlockMeta{
-		{Id: sourceBlockID, Tenant: 1, Shard: 1},
-	}
 	done := make(chan struct{})
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
@@ -325,9 +303,7 @@ func TestWorker_TombstoneHandling(t *testing.T) {
 		Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 	}, nil).Once()
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.GetBlockMetadataResponse{
-		Blocks: metadata,
-	}, nil).Once()
+	expectBlockObjects(t, bucket, testBlockMeta(sourceBlockID, 1, 1, "test-tenant"))
 
 	bucket.EXPECT().Delete(mock.Anything, mock.MatchedBy(func(path string) bool {
 		return (strings.Contains(path, oldBlock1ID) || strings.Contains(path, oldBlock2ID)) &&
@@ -348,10 +324,8 @@ func TestWorker_TombstoneHandling(t *testing.T) {
 func TestWorker_MetadataNotFound(t *testing.T) {
 	bucket := mockobjstore.NewMockBucket(t)
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	missingBlockID := test.ULID("2024-01-01T10:00:00Z")
@@ -383,9 +357,10 @@ func TestWorker_MetadataNotFound(t *testing.T) {
 		Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 	}, nil).Once()
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Run(func(context.Context, *metastorev1.GetBlockMetadataRequest, ...grpc.CallOption) {
+	bucket.EXPECT().Attributes(mock.Anything, block.BuildObjectPath("test-tenant", 1, 1, missingBlockID)).Run(func(context.Context, string) {
 		close(done)
-	}).Return((*metastorev1.GetBlockMetadataResponse)(nil), errors.New("metadata not found")).Once()
+	}).Return(thanosstore.ObjectAttributes{}, errors.New("object not found")).Once()
+	bucket.EXPECT().IsObjNotFoundErr(mock.Anything).Return(true).Maybe()
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.PollCompactionJobsResponse{}, nil).Maybe()
 
@@ -395,10 +370,8 @@ func TestWorker_MetadataNotFound(t *testing.T) {
 func TestWorker_ShardTombstoneHandling(t *testing.T) {
 	bucket := mockobjstore.NewMockBucket(t)
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	sourceBlockID := test.ULID("2024-01-01T11:00:00Z")
@@ -441,9 +414,6 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 		Token: 12345,
 	}
 
-	metadata := []*metastorev1.BlockMeta{
-		{Id: sourceBlockID, Tenant: 1, Shard: 1},
-	}
 	done := make(chan struct{})
 
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {
@@ -453,9 +423,7 @@ func TestWorker_ShardTombstoneHandling(t *testing.T) {
 		Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 	}, nil).Once()
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).Return(&metastorev1.GetBlockMetadataResponse{
-		Blocks: metadata,
-	}, nil).Once()
+	expectBlockObjects(t, bucket, testBlockMeta(sourceBlockID, 1, 1, "test-tenant"))
 
 	expectedDir := block.BuildObjectDir("test-tenant", 1)
 	bucket.EXPECT().Iter(mock.Anything, expectedDir, mock.Anything, mock.Anything).Run(
@@ -494,10 +462,8 @@ var skipCompactionFn = func(context.Context, []*metastorev1.BlockMeta, objstore.
 func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
 	bucket := mockobjstore.NewMockBucket(t)
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	config := Config{
@@ -540,11 +506,6 @@ func TestWorker_CleanupMaxDurationAtShutdown(t *testing.T) {
 			CompactionJobs: []*metastorev1.CompactionJob{job},
 			Assignments:    []*metastorev1.CompactionJobAssignment{assignment},
 		}, nil).Once()
-
-	indexClient.EXPECT().
-		GetBlockMetadata(mock.Anything, mock.Anything, mock.Anything).
-		Return(&metastorev1.GetBlockMetadataResponse{}, nil).
-		Once()
 
 	var blocksDeleted atomic.Int32
 	bucket.EXPECT().

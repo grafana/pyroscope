@@ -68,9 +68,9 @@ Usage of ./pyroscope:
   -compaction-worker.memory-max-ratio float
     	Fraction of the detected memory limit (GOMEMLIMIT or cgroup) used as job-byte-capacity when job-byte-capacity is 0. (default 0.25)
   -compaction-worker.metadata-fetch-timeout duration
-    	Timeout for reading the metadata of a single block from object storage. Only effective when metadata-source is object-storage. 0 disables the timeout. (default 30s)
+    	Timeout for reading the metadata of a single block from object storage. 0 disables the timeout. (default 30s)
   -compaction-worker.metadata-source string
-    	Source of the compaction job source block metadata. Supported values: metastore, object-storage. (default "object-storage")
+    	Deprecated: block metadata is always read from object storage. This flag has no effect and will be removed in a future release.
   -compaction-worker.metrics-exporter.enabled
     	This parameter specifies whether the metrics exporter is enabled.
   -compaction-worker.metrics-exporter.remote-write-address string

@@ -22,16 +22,13 @@ import (
 )
 
 // newStorageMetadataWorker creates a worker that reads block metadata from
-// object storage. The metastore mocks carry no expectations: any metastore
+// object storage. The metastore mock carries no expectations: any metastore
 // call on the metadata path fails the test.
 func newStorageMetadataWorker(t *testing.T, bucket objstore.Bucket) *Worker {
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: mockmetastorev1.NewMockCompactionServiceClient(t),
-		MockIndexServiceClient:      mockmetastorev1.NewMockIndexServiceClient(t),
 	}
-	w := createTestWorker(t, client, nil, bucket)
-	w.config.MetadataSource = MetadataSourceObjectStorage
-	return w
+	return createTestWorker(t, client, nil, bucket)
 }
 
 func testBlockMeta(id string, shard uint32, level uint32, tenant string) *metastorev1.BlockMeta {
@@ -53,14 +50,30 @@ func testBlockMeta(id string, shard uint32, level uint32, tenant string) *metast
 // writeBlockObject uploads an object of the block layout relevant here:
 // arbitrary data followed by the footer-encoded metadata.
 func writeBlockObject(t *testing.T, bucket objstore.Bucket, md *metastorev1.BlockMeta) string {
+	return writeBlockObjectWithData(t, bucket, md, 64)
+}
+
+func writeBlockObjectWithData(t *testing.T, bucket objstore.Bucket, md *metastorev1.BlockMeta, dataSize int) string {
 	t.Helper()
 	var body bytes.Buffer
-	body.WriteString(strings.Repeat("x", 64))
+	body.WriteString(strings.Repeat("x", dataSize))
 	md.MetadataOffset = uint64(body.Len())
 	require.NoError(t, metadata.Encode(&body, md))
 	path := block.ObjectPath(md)
 	require.NoError(t, bucket.Upload(context.Background(), path, bytes.NewReader(body.Bytes())))
 	return path
+}
+
+// expectBlockObjects makes the mock bucket serve each block object once,
+// the way the worker reads the source block metadata.
+func expectBlockObjects(t *testing.T, bucket *mockobjstore.MockBucket, blocks ...*metastorev1.BlockMeta) {
+	t.Helper()
+	mem := objstore.NewBucket(thanosstore.NewInMemBucket())
+	for _, md := range blocks {
+		path := writeBlockObject(t, mem, md)
+		bucket.EXPECT().Attributes(mock.Anything, path).RunAndReturn(mem.Attributes).Once()
+		bucket.EXPECT().GetRange(mock.Anything, path, mock.Anything, mock.Anything).RunAndReturn(mem.GetRange).Once()
+	}
 }
 
 func testCompactionJob(tenant string, shard uint32, level uint32, blocks ...string) *compactionJob {
@@ -118,8 +131,7 @@ func TestWorker_MetadataFromStorage_MissingBlocksDropped(t *testing.T) {
 	)
 	require.NoError(t, w.getBlockMetadata(log.NewNopLogger(), job))
 
-	// The missing block is dropped and the job plan is updated,
-	// mirroring the metastore lookup semantics.
+	// The missing block is dropped and the job plan is updated.
 	require.Equal(t, present, job.SourceBlocks)
 	require.Len(t, job.blocks, 2)
 }
@@ -177,43 +189,4 @@ func TestWorker_MetadataFromStorage_ReadError(t *testing.T) {
 	w := newStorageMetadataWorker(t, bucket)
 	job := testCompactionJob("tenant-a", 1, 1, "01J000000000000000000000E1")
 	require.Error(t, w.getBlockMetadata(log.NewNopLogger(), job))
-}
-
-// TestPyroscopeInstanceHash_MetadataSourceIndependent pins the CreatedBy
-// string table position across the two metadata representations. The
-// pyroscope_instance label of exported metrics hashes the CreatedBy string
-// table index (not the string), so the index must not depend on whether the
-// metadata was read from the block footer or exported by the metastore:
-// series identity would change with the metadata source otherwise.
-func TestPyroscopeInstanceHash_MetadataSourceIndependent(t *testing.T) {
-	// Footer representation: the segment writer interns the hostname first
-	// (see segment.flushBlock), so CreatedBy lands at index 1.
-	st := metadata.NewStringTable()
-	footer := &metastorev1.BlockMeta{
-		FormatVersion: 1,
-		Id:            "01J000000000000000000000F1",
-		Shard:         7,
-		Tenant:        0,
-		CreatedBy:     st.Put("segment-writer-1"),
-	}
-	footer.StringTable = st.Strings
-	require.EqualValues(t, 1, footer.CreatedBy)
-
-	// Metastore representation: blocks are stored against a shared
-	// shard-level string table, where the hostname lands at an arbitrary
-	// index; GetBlockMetadata exports a fresh per-block table.
-	shardTable := metadata.NewStringTable()
-	for _, s := range []string{"svc-a", "svc-b", "tenant-x"} {
-		shardTable.Put(s)
-	}
-	exported := footer.CloneVT()
-	shardTable.Import(exported)
-	require.NotEqual(t, footer.CreatedBy, exported.CreatedBy)
-	shardTable.Export(exported)
-
-	require.Equal(t, footer.CreatedBy, exported.CreatedBy)
-	require.Equal(t,
-		pyroscopeInstanceHash(footer.Shard, uint32(footer.CreatedBy)),
-		pyroscopeInstanceHash(exported.Shard, uint32(exported.CreatedBy)),
-	)
 }

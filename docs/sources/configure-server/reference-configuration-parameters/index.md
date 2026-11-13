@@ -1451,14 +1451,13 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # CLI flag: -compaction-worker.cleanup-max-duration
 [cleanup_max_duration: <duration> | default = 15s]
 
-# (advanced) Source of the compaction job source block metadata. Supported
-# values: metastore, object-storage.
+# (advanced) Deprecated: block metadata is always read from object storage. This
+# flag has no effect and will be removed in a future release.
 # CLI flag: -compaction-worker.metadata-source
-[metadata_source: <string> | default = "object-storage"]
+[metadata_source: <string> | default = ""]
 
 # (advanced) Timeout for reading the metadata of a single block from object
-# storage. Only effective when metadata-source is object-storage. 0 disables the
-# timeout.
+# storage. 0 disables the timeout.
 # CLI flag: -compaction-worker.metadata-fetch-timeout
 [metadata_fetch_timeout: <duration> | default = 30s]
 
