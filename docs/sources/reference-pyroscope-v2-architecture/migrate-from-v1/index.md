@@ -207,7 +207,7 @@ You should see series labels for recent profiling data. You can also open the Py
 
 ## Microservices mode
 
-If you deployed Pyroscope using the `values-micro-services.yaml` file as described in [Deploy on Kubernetes](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/deploy-kubernetes/helm/), follow the steps below.
+If you deployed Pyroscope in v1 microservices mode (for example, with `architecture.storage.v1=true` and `architecture.microservices.enabled=true`), follow the steps below.
 
 ### Phase 1: Deploy v2 components alongside v1
 
@@ -388,8 +388,8 @@ The following Helm values control the v1/v2 storage configuration and migration 
 
 | Value                     | Type | Default | Description                                                                                         |
 |---------------------------|------|---------|-----------------------------------------------------------------------------------------------------|
-| `architecture.storage.v1` | bool | `true`  | Enable v1 storage and its components (ingester, store-gateway, querier, compactor).                 |
-| `architecture.storage.v2` | bool | `false` | Enable v2 storage and its components (segment-writer, metastore, compaction-worker, query-backend). |
+| `architecture.storage.v1` | bool | `false` | Enable v1 storage and its components (ingester, store-gateway, querier, compactor).                 |
+| `architecture.storage.v2` | bool | `true`  | Enable v2 storage and its components (segment-writer, metastore, compaction-worker, query-backend). |
 
 ### Migration tuning
 

@@ -16,8 +16,9 @@ aliases:
 # Deploy Pyroscope with Jsonnet and Tanka
 
 Grafana Labs publishes a [Jsonnet](https://jsonnet.org/) library that you can use to deploy Pyroscope.
-The Jsonnet files are located in the [Pyroscope repository](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/jsonnet) and are using the helm charts as a source.
+The Jsonnet files are located in the [Pyroscope repository](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/jsonnet) and render the [Helm chart](helm/) as Kubernetes manifests.
 
+The chart defaults to the [v2 storage architecture](../reference-pyroscope-v2-architecture/about-pyroscope-v2-architecture/) and installs [Grafana Alloy](https://grafana.com/docs/alloy/latest/) to discover and scrape profile endpoints from annotated pods.
 
 ## Install tools and deploy the first cluster
 
@@ -54,31 +55,39 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
    tk env set environments/default --server-from-context=$(kubectl config current-context)
    ```
 
-1. Decide if you want to run Pyroscope in the monolithic or the microservices mode
+1. Decide if you want to run Pyroscope as a single binary or in microservices mode.
 
-  - Option A) For monolithic mode the file `environments/default/main.jsonnet`, should look like;
+   - Option A: For single-binary mode, the file `environments/default/main.jsonnet` should look like this:
 
-    ```jsonnet
-    local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';
-    local tk = import 'tk';
+     ```jsonnet
+     local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';
+     local tk = import 'tk';
 
-    pyroscope.new(overrides={
-      namespace: tk.env.spec.namespace,
-    })
-    ```
+     pyroscope.new(overrides={
+       namespace: tk.env.spec.namespace,
+     })
+     ```
 
-  - Option B) For microservices mode the file `environments/default/main.jsonnet`, should look like;
+   - Option B: For microservices mode, the file `environments/default/main.jsonnet` should look like this. This enables the bundled MinIO object store for local development and testing:
 
-    ```jsonnet
-    local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';
-    local valuesMicroServices = import 'pyroscope/jsonnet/values-micro-services.json';
-    local tk = import 'tk';
+     ```jsonnet
+     local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';
+     local tk = import 'tk';
 
-    pyroscope.new(overrides={
-      namespace: tk.env.spec.namespace,
-      values+: valuesMicroServices,
-    })
-    ```
+     pyroscope.new(overrides={
+       namespace: tk.env.spec.namespace,
+       values+: {
+         architecture+: {
+           microservices+: {
+             enabled: true,
+           },
+         },
+         minio+: {
+           enabled: true,
+         },
+       },
+     })
+     ```
 1. Generate the Kubernetes YAML manifests and store them in the `./manifests` directory:
 
    ```console
@@ -117,4 +126,11 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
      kubectl apply -k manifests/
      ```
 
-   > **Note**: The generated Kubernetes manifests create resources in the `default` namespace. To use a different namespace, change the `namespace` configuration option in the `environments/default/main.jsonnet` file, and re-generate the Kubernetes manifests.
+   {{% admonition type="note" %}}
+   The generated Kubernetes manifests create resources in the `default` namespace. To use a different namespace, change the `namespace` configuration option in the `environments/default/main.jsonnet` file, and re-generate the Kubernetes manifests.
+   {{% /admonition %}}
+
+## Next steps
+
+- To query profiles in Grafana after deployment, refer to [Deploy Pyroscope using the Helm chart](helm/#query-profiles-in-grafana). Use `http://pyroscope-query-frontend.<NAMESPACE>.svc.cluster.local.:4040/` as the data source URL in microservices mode.
+- If you installed an older v1 microservices deployment and need to move to v2 storage, refer to [Migrate from v1 to v2 storage using Helm](../reference-pyroscope-v2-architecture/migrate-from-v1/).
