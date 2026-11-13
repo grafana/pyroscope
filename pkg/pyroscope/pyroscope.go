@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -32,6 +33,7 @@ import (
 	"github.com/grafana/dskit/signals"
 	"github.com/grafana/dskit/spanlogger"
 	"github.com/grafana/pyroscope-go"
+	"github.com/grafana/pyroscope-go/upstream/remote"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -792,9 +794,27 @@ func (f *Pyroscope) Run() error {
 
 		// Start profiling when Pyroscope is ready
 		if !f.Cfg.SelfProfiling.DisablePush && slices.Contains(f.Cfg.Target, All) {
+			serverAddress := fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort)
+			// Self-push uses the pyroscope-go client SDK over HTTP. With a unix-only
+			// listener there is no TCP port to dial, and the SDK offers no
+			// unix dialer — so inject an HTTP client (via the SDK's public
+			// HTTPClient hook) whose transport dials the socket path instead.
+			// The URL host is unused by the custom dialer.
+			var httpClient remote.HTTPClient
+			if f.Cfg.Server.HTTPListenNetwork == "unix" {
+				socketPath := f.Cfg.Server.HTTPListenAddress
+				httpClient = &http.Client{
+					Transport: &http.Transport{
+						DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+							return net.Dial("unix", socketPath)
+						},
+					},
+				}
+			}
 			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
-				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
+				ServerAddress:   serverAddress,
+				HTTPClient:      httpClient,
 				TenantID:        f.Cfg.SelfProfiling.TenantID,
 				Tags: map[string]string{
 					"hostname":           os.Getenv("HOSTNAME"),
