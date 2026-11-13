@@ -7,7 +7,7 @@ import (
 )
 
 func (c *Config) getFeatureFlags() map[string]bool {
-	rulerEnabled := c.CompactionWorker.MetricsExporter.Enabled
+	rulerEnabled := c.RecordingRules.Enabled
 	return map[string]bool{
 		featureflags.V2StorageLayer:          c.ArchitectureStorage == V1V2Dual || c.ArchitectureStorage == V2,
 		featureflags.PyroscopeRuler:          rulerEnabled,

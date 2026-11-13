@@ -21,7 +21,7 @@ func (_m *MockRuler) EXPECT() *MockRuler_Expecter {
 }
 
 // RecordingRules provides a mock function with given fields: tenant
-func (_m *MockRuler) RecordingRules(tenant string) []*model.RecordingRule {
+func (_m *MockRuler) RecordingRules(tenant string) ([]*model.RecordingRule, error) {
 	ret := _m.Called(tenant)
 
 	if len(ret) == 0 {
@@ -29,6 +29,10 @@ func (_m *MockRuler) RecordingRules(tenant string) []*model.RecordingRule {
 	}
 
 	var r0 []*model.RecordingRule
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.RecordingRule, error)); ok {
+		return rf(tenant)
+	}
 	if rf, ok := ret.Get(0).(func(string) []*model.RecordingRule); ok {
 		r0 = rf(tenant)
 	} else {
@@ -37,7 +41,13 @@ func (_m *MockRuler) RecordingRules(tenant string) []*model.RecordingRule {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(tenant)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockRuler_RecordingRules_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecordingRules'
@@ -58,12 +68,12 @@ func (_c *MockRuler_RecordingRules_Call) Run(run func(tenant string)) *MockRuler
 	return _c
 }
 
-func (_c *MockRuler_RecordingRules_Call) Return(_a0 []*model.RecordingRule) *MockRuler_RecordingRules_Call {
-	_c.Call.Return(_a0)
+func (_c *MockRuler_RecordingRules_Call) Return(_a0 []*model.RecordingRule, _a1 error) *MockRuler_RecordingRules_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockRuler_RecordingRules_Call) RunAndReturn(run func(string) []*model.RecordingRule) *MockRuler_RecordingRules_Call {
+func (_c *MockRuler_RecordingRules_Call) RunAndReturn(run func(string) ([]*model.RecordingRule, error)) *MockRuler_RecordingRules_Call {
 	_c.Call.Return(run)
 	return _c
 }
