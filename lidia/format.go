@@ -145,10 +145,10 @@ func (rc *rangeCollector) write(f io.WriteSeeker) error {
 	hdr.vaTableHeader.offset = headerSize
 	hdr.rangeTableHeader.offset = headerSize
 	hdr.stringsTableHeader.offset = headerSize
-	hdr.stringsTableHeader.size = uint64(len(rc.sb.buf))
+	hdr.stringsTableHeader.size = uint64(rc.sb.size)
 
 	crc := crc32.New(castagnoli)
-	_, _ = crc.Write(rc.sb.buf)
+	_ = rc.sb.writeTo(crc)
 	hdr.stringsTableHeader.crc = crc.Sum32()
 
 	if err := writeRangeEntries(rc.rb, hdr, buf); err != nil {
@@ -158,7 +158,7 @@ func (rc *rangeCollector) write(f io.WriteSeeker) error {
 		return err
 	}
 
-	if _, err := f.Write(rc.sb.buf); err != nil {
+	if err := rc.sb.writeTo(f); err != nil {
 		return err
 	}
 

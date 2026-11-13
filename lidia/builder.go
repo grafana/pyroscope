@@ -2,7 +2,10 @@ package lidia
 
 import (
 	"encoding/binary"
+	"hash/maphash"
+	"io"
 	"sort"
+	"strings"
 )
 
 type lineTableRef struct {
@@ -25,18 +28,35 @@ func (ltb *lineBuilder) add(lines LineTable) lineTableRef {
 	return lineTableRef{idx: uint64(o), count: uint64(sz)}
 }
 
+// stringChunkSize is the capacity of a string table chunk. A longer entry gets
+// a chunk of its own.
+const stringChunkSize = 1 << 20
+
+// stringBuilder accumulates the deduplicated string table.
+//
+// The table is stored in chunks, so it is never copied as it grows. Strings
+// are deduplicated by hash, so add does not retain the strings passed to it;
+// a hash match is confirmed against the stored bytes.
 type stringBuilder struct {
-	buf      []byte
-	unique   map[string]stringOffset
-	offset   stringOffset
+	// chunks hold the table contents in order. An entry never spans two
+	// chunks, so a chunk may end before it is full.
+	chunks      [][]byte
+	chunkStarts []stringOffset
+	size        stringOffset
+
+	seed   maphash.Seed
+	unique map[uint64]stringOffset
+	// collisions holds strings whose hash is already taken by a different string.
+	collisions map[string]stringOffset
+
 	overflow stringOffset
 	emptystr stringOffset
 }
 
 func newStringBuilder() *stringBuilder {
 	sb := &stringBuilder{
-		buf:    make([]byte, 0),
-		unique: make(map[string]stringOffset),
+		seed:   maphash.MakeSeed(),
+		unique: make(map[uint64]stringOffset),
 	}
 	sb.emptystr = sb.add("")
 	sb.overflow = sb.add("[overflow]")
@@ -44,22 +64,70 @@ func newStringBuilder() *stringBuilder {
 }
 
 func (sb *stringBuilder) add(s string) stringOffset {
-	if prev, exists := sb.unique[s]; exists {
-		return prev
+	return sb.addHashed(s, maphash.String(sb.seed, s))
+}
+
+// addHashed adds s, whose hash is h.
+func (sb *stringBuilder) addHashed(s string, h uint64) stringOffset {
+	prev, exists := sb.unique[h]
+	if exists {
+		if sb.equal(prev, s) {
+			return prev
+		}
+		if prev, ok := sb.collisions[s]; ok {
+			return prev
+		}
 	}
 
 	strLen := len(s)
 	if strLen >= int(^uint32(0)) {
 		return sb.overflow
 	}
-	sb.buf = binary.LittleEndian.AppendUint32(sb.buf, uint32(strLen))
-	sb.buf = append(sb.buf, s...)
-
-	offset := sb.offset
-	sb.unique[s] = offset
-	sb.offset = stringOffset(uint64(sb.offset) + uint64(4+strLen))
-
+	offset := sb.appendEntry(s)
+	if !exists {
+		sb.unique[h] = offset
+	} else {
+		if sb.collisions == nil {
+			sb.collisions = make(map[string]stringOffset)
+		}
+		// s may alias a larger buffer, such as an ELF string table.
+		sb.collisions[strings.Clone(s)] = offset
+	}
 	return offset
+}
+
+// appendEntry stores s, prefixed with its length, and returns its offset.
+func (sb *stringBuilder) appendEntry(s string) stringOffset {
+	n := 4 + len(s)
+	last := len(sb.chunks) - 1
+	if last < 0 || cap(sb.chunks[last])-len(sb.chunks[last]) < n {
+		sb.chunks = append(sb.chunks, make([]byte, 0, max(n, stringChunkSize)))
+		sb.chunkStarts = append(sb.chunkStarts, sb.size)
+		last++
+	}
+	c := binary.LittleEndian.AppendUint32(sb.chunks[last], uint32(len(s)))
+	sb.chunks[last] = append(c, s...)
+
+	offset := sb.size
+	sb.size = stringOffset(uint64(sb.size) + uint64(n))
+	return offset
+}
+
+// equal reports whether the entry stored at offset is s.
+func (sb *stringBuilder) equal(offset stringOffset, s string) bool {
+	i := sort.Search(len(sb.chunkStarts), func(i int) bool { return sb.chunkStarts[i] > offset }) - 1
+	b := sb.chunks[i][offset-sb.chunkStarts[i]:]
+	return int(binary.LittleEndian.Uint32(b)) == len(s) && string(b[4:4+len(s)]) == s
+}
+
+// writeTo writes the string table to w.
+func (sb *stringBuilder) writeTo(w io.Writer) error {
+	for _, c := range sb.chunks {
+		if _, err := w.Write(c); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // rangesBuilder
