@@ -852,8 +852,9 @@ type SyncIterator struct {
 	currBuf         []parquet.Value
 	currBufN        int
 
-	err error
-	res *IteratorResult
+	err      error
+	closeErr error
+	res      *IteratorResult
 }
 
 var _ Iterator = (*SyncIterator)(nil)
@@ -869,7 +870,9 @@ func syncIteratorPoolGet(capacity, len int) []parquet.Value {
 	if cap(res) < capacity {
 		res = make([]parquet.Value, capacity)
 	}
-	res = res[:len]
+	// A pooled buffer may be larger than requested. Bound decoding to readSize
+	// rather than letting a previous query silently increase this scan's batch.
+	res = res[:len:capacity]
 	return res
 }
 
@@ -1144,13 +1147,15 @@ func (c *SyncIterator) next() (RowNumber, *parquet.Value, error) {
 
 		if c.currPage == nil {
 			pg, err := c.currPages.ReadPage()
+			if err != nil && err != io.EOF {
+				parquet.Release(pg)
+				return EmptyRowNumber(), nil, err
+			}
 			if pg == nil || err == io.EOF {
-				// This row group is exhausted
+				parquet.Release(pg)
+				// This row group is exhausted.
 				c.closeCurrRowGroup()
 				continue
-			}
-			if err != nil {
-				return EmptyRowNumber(), nil, err
 			}
 			c.metrics.pageReadsTotal.WithLabelValues(c.table, c.columnName).Add(1)
 			if c.span.IsRecording() {
@@ -1248,7 +1253,9 @@ func (c *SyncIterator) setPage(pg parquet.Page) {
 
 func (c *SyncIterator) closeCurrRowGroup() {
 	if c.currPages != nil {
-		c.currPages.Close()
+		if err := c.currPages.Close(); err != nil && c.closeErr == nil {
+			c.closeErr = err
+		}
 	}
 
 	c.currRowGroup = nil
@@ -1285,5 +1292,5 @@ func (c *SyncIterator) Close() error {
 		attribute.Int64("keptValues", c.filter.KeptValues.Load()),
 	)
 	c.span.End()
-	return nil
+	return c.closeErr
 }
