@@ -13,6 +13,22 @@ import (
 	v1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
 
+func TestTreeSymbolsResetClearsCallSiteMatcher(t *testing.T) {
+	symbols := &Symbols{Strings: []string{"", "f"}, Functions: []v1.InMemoryFunction{{Name: 1}}, Locations: []v1.InMemoryLocation{{Line: []v1.InMemoryLine{{FunctionId: 0}}}}}
+	samples := v1.Samples{StacktraceIDs: []uint32{1}, Values: []uint64{7}}
+	builder := new(treeSymbols)
+	builder.init(symbols, samples, SelectStackTraces(symbols, &typesv1.StackTraceSelector{CallSite: []*typesv1.Location{{Name: "missing"}}}), true)
+	builder.InsertStacktrace(1, []int32{0})
+	// Exercise reset deterministically while retaining ownership of the builder.
+	builder.reset()
+	require.Nil(t, builder.funcNamesMatcher)
+	require.Nil(t, builder.selection)
+	builder.init(symbols, samples, SelectStackTraces(symbols, nil), true)
+	builder.InsertStacktrace(1, []int32{0})
+	tree := phlaremodel.TreeFromStacktraceTree[phlaremodel.LocationRefName, phlaremodel.LocationRefNameI](builder.tree, 0, func(id int32) phlaremodel.LocationRefName { return phlaremodel.LocationRefName(id) })
+	require.Equal(t, int64(7), tree.Total(), "unfiltered reuse must not retain the previous filter")
+}
+
 func Test_memory_Resolver_ResolveTree(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	expectedFingerprint := pprofFingerprint(s.profiles[0], 0)
