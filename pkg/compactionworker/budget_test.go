@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	thanosstore "github.com/thanos-io/objstore"
 	"google.golang.org/grpc"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
@@ -20,7 +21,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/test"
 	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockmetastorev1"
-	"github.com/grafana/pyroscope/v2/pkg/test/mocks/mockobjstore"
 )
 
 func TestResolveByteCapacity(t *testing.T) {
@@ -188,12 +188,10 @@ func TestByteBudget_PauseAndOversizedJob(t *testing.T) {
 }
 
 func TestWorker_PausesOversizedJobAndStopsPollingUntilHeadroom(t *testing.T) {
-	bucket := mockobjstore.NewMockBucket(t)
+	bucket := objstore.NewBucket(thanosstore.NewInMemBucket())
 	compactionClient := mockmetastorev1.NewMockCompactionServiceClient(t)
-	indexClient := mockmetastorev1.NewMockIndexServiceClient(t)
 	client := &MetastoreClientMock{
 		MockCompactionServiceClient: compactionClient,
-		MockIndexServiceClient:      indexClient,
 	}
 
 	block1ID := test.ULID("2024-01-01T10:00:00Z")
@@ -251,7 +249,7 @@ func TestWorker_PausesOversizedJobAndStopsPollingUntilHeadroom(t *testing.T) {
 	}
 
 	// 3 threads (so thread capacity > 0 even with 2 jobs), but byte capacity = 1000 bytes.
-	// Each job is 800 bytes, so job-2 must pause while job-1 runs, and the worker
+	// Each job is ~800 bytes, so job-2 must pause while job-1 runs, and the worker
 	// must report JobCapacity == 0 on polls while job-2 is paused, despite having a free thread!
 	cfg := Config{
 		JobConcurrency:     3,
@@ -265,17 +263,9 @@ func TestWorker_PausesOversizedJobAndStopsPollingUntilHeadroom(t *testing.T) {
 	require.NoError(t, err)
 	w.compactFn = compactFn
 
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.MatchedBy(func(req *metastorev1.GetBlockMetadataRequest) bool {
-		return len(req.Blocks.Blocks) == 1 && req.Blocks.Blocks[0] == block1ID
-	}), mock.Anything).Return(&metastorev1.GetBlockMetadataResponse{
-		Blocks: []*metastorev1.BlockMeta{{Id: block1ID, Tenant: 1, Shard: 1, Size: 800}},
-	}, nil).Once()
-
-	indexClient.EXPECT().GetBlockMetadata(mock.Anything, mock.MatchedBy(func(req *metastorev1.GetBlockMetadataRequest) bool {
-		return len(req.Blocks.Blocks) == 1 && req.Blocks.Blocks[0] == block2ID
-	}), mock.Anything).Return(&metastorev1.GetBlockMetadataResponse{
-		Blocks: []*metastorev1.BlockMeta{{Id: block2ID, Tenant: 1, Shard: 1, Size: 800}},
-	}, nil).Once()
+	for _, id := range []string{block1ID, block2ID} {
+		writeBlockObjectWithData(t, bucket, testBlockMeta(id, 1, 2, "tenant-a"), 700)
+	}
 
 	// Initial poll hands both jobs to the worker.
 	compactionClient.EXPECT().PollCompactionJobs(mock.Anything, mock.MatchedBy(func(req *metastorev1.PollCompactionJobsRequest) bool {

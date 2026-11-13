@@ -37,12 +37,6 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
-// Sources of the compaction job source block metadata.
-const (
-	MetadataSourceMetastore     = "metastore"
-	MetadataSourceObjectStorage = "object-storage"
-)
-
 // metadataReadConcurrency bounds the parallel block metadata reads
 // from object storage within a single compaction job.
 const metadataReadConcurrency = 8
@@ -71,8 +65,8 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.DurationVar(&cfg.CleanupMaxDuration, prefix+"cleanup-max-duration", 15*time.Second, "Maximum duration of the cleanup operations.")
 	f.IntVar(&cfg.SmallObjectSize, prefix+"small-object-size-bytes", 8<<20, "Size of the object that can be loaded in memory.")
 	f.StringVar(&cfg.TempDir, prefix+"temp-dir", os.TempDir(), "Temporary directory for compaction jobs.")
-	f.StringVar(&cfg.MetadataSource, prefix+"metadata-source", MetadataSourceObjectStorage, "Source of the compaction job source block metadata. Supported values: metastore, object-storage.")
-	f.DurationVar(&cfg.MetadataFetchTimeout, prefix+"metadata-fetch-timeout", 30*time.Second, "Timeout for reading the metadata of a single block from object storage. Only effective when metadata-source is object-storage. 0 disables the timeout.")
+	f.StringVar(&cfg.MetadataSource, prefix+"metadata-source", "", "Deprecated: block metadata is always read from object storage. This flag has no effect and will be removed in a future release.")
+	f.DurationVar(&cfg.MetadataFetchTimeout, prefix+"metadata-fetch-timeout", 30*time.Second, "Timeout for reading the metadata of a single block from object storage. 0 disables the timeout.")
 	cfg.MetricsExporter.RegisterFlags(f)
 }
 
@@ -83,13 +77,7 @@ func (cfg *Config) Validate() error {
 	if cfg.MemoryMaxRatio < 0 || cfg.MemoryMaxRatio > 1 {
 		return fmt.Errorf("invalid compaction-worker.memory-max-ratio %v: must be between 0 and 1", cfg.MemoryMaxRatio)
 	}
-	switch cfg.MetadataSource {
-	case MetadataSourceMetastore, MetadataSourceObjectStorage:
-		return nil
-	default:
-		return fmt.Errorf("invalid compaction-worker.metadata-source %q: supported values: %s, %s",
-			cfg.MetadataSource, MetadataSourceMetastore, MetadataSourceObjectStorage)
-	}
+	return nil
 }
 
 type Worker struct {
@@ -137,7 +125,6 @@ type compactFunc func(context.Context, []*metastorev1.BlockMeta, objstore.Bucket
 
 type MetastoreClient interface {
 	metastorev1.CompactionServiceClient
-	metastorev1.IndexServiceClient
 }
 
 func New(
@@ -149,6 +136,9 @@ func New(
 	ruler metrics.Ruler,
 	exporter metrics.Exporter,
 ) (*Worker, error) {
+	if config.MetadataSource != "" {
+		level.Warn(logger).Log("msg", "compaction-worker.metadata-source is deprecated and has no effect: block metadata is always read from object storage")
+	}
 	config.TempDir = filepath.Join(filepath.Clean(config.TempDir), "pyroscope-compactor")
 	_ = os.RemoveAll(config.TempDir)
 	if err := os.MkdirAll(config.TempDir, 0o777); err != nil {
@@ -687,13 +677,7 @@ func pyroscopeInstanceHash(shard uint32, createdBy uint32) string {
 }
 
 func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
-	var blocks []*metastorev1.BlockMeta
-	var err error
-	if w.config.MetadataSource == MetadataSourceObjectStorage {
-		blocks, err = w.readBlockMetadataFromStorage(logger, job)
-	} else {
-		blocks, err = w.getBlockMetadataFromMetastore(logger, job)
-	}
+	blocks, err := w.readBlockMetadataFromStorage(logger, job)
 	if err != nil {
 		return err
 	}
@@ -708,29 +692,10 @@ func (w *Worker) getBlockMetadata(logger log.Logger, job *compactionJob) error {
 	return nil
 }
 
-func (w *Worker) getBlockMetadataFromMetastore(logger log.Logger, job *compactionJob) ([]*metastorev1.BlockMeta, error) {
-	ctx, cancel := context.WithTimeout(job.ctx, w.config.RequestTimeout)
-	defer cancel()
-
-	resp, err := w.client.GetBlockMetadata(ctx, &metastorev1.GetBlockMetadataRequest{
-		Blocks: &metastorev1.BlockList{
-			Tenant: job.Tenant,
-			Shard:  job.Shard,
-			Blocks: job.SourceBlocks,
-		},
-	})
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to get block metadata", "err", err)
-		return nil, err
-	}
-
-	return resp.GetBlocks(), nil
-}
-
 // readBlockMetadataFromStorage reads the source block metadata from the
-// block object footers, bypassing the metastore. The object paths are
-// derived from the job fields: the compaction queue is keyed by tenant,
-// shard, and level, so they are guaranteed to match the source blocks.
+// block object footers. The object paths are derived from the job fields:
+// the compaction queue is keyed by tenant, shard, and level, so they are
+// guaranteed to match the source blocks.
 func (w *Worker) readBlockMetadataFromStorage(logger log.Logger, job *compactionJob) ([]*metastorev1.BlockMeta, error) {
 	blocks := make([]*metastorev1.BlockMeta, len(job.SourceBlocks))
 	g, ctx := errgroup.WithContext(job.ctx)
@@ -752,8 +717,7 @@ func (w *Worker) readBlockMetadataFromStorage(logger log.Logger, job *compaction
 			case err == nil:
 				blocks[i] = obj.Metadata()
 			case objstore.IsNotExist(w.storage, err):
-				// The block has been deleted: drop it from the job,
-				// mirroring the metastore lookup semantics.
+				// The block has been deleted: drop it from the job.
 				level.Warn(logger).Log("msg", "source block object not found", "block", b)
 			default:
 				level.Error(logger).Log("msg", "failed to read block metadata from storage", "block", b, "err", err)
