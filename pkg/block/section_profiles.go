@@ -313,8 +313,7 @@ func (e ProfileEntry) View() ProfileEntryView {
 	}
 }
 
-// onDuplicate, if non-nil, is called for every dropped duplicate row.
-func NewMergeRowProfileIterator(src []*Dataset, onDuplicate func()) (iter.Iterator[ProfileEntry], error) {
+func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], error) {
 	its := make([]iter.Iterator[ProfileEntry], len(src))
 	for i, s := range src {
 		it, err := NewProfileRowIterator(s)
@@ -326,58 +325,28 @@ func NewMergeRowProfileIterator(src []*Dataset, onDuplicate func()) (iter.Iterat
 	if len(its) == 1 {
 		return its[0], nil
 	}
-	return &DedupeProfileRowIterator{
-		Iterator: iter.NewTreeIterator(loser.New(
-			its,
-			ProfileEntry{
-				Timestamp: math.MaxInt64,
-			},
-			func(it iter.Iterator[ProfileEntry]) ProfileEntry { return it.At() },
-			func(r1, r2 ProfileEntry) bool {
-				// first handle max profileRow if it's either r1 or r2
-				if r1.Timestamp == math.MaxInt64 {
-					return false
-				}
-				if r2.Timestamp == math.MaxInt64 {
-					return true
-				}
-				// then handle normal profileRows
-				if cmp := phlaremodel.CompareLabelPairs(r1.Labels, r2.Labels); cmp != 0 {
-					return cmp < 0
-				}
-				return r1.Timestamp < r2.Timestamp
-			},
-			func(it iter.Iterator[ProfileEntry]) { _ = it.Close() },
-		)),
-		onDuplicate: onDuplicate,
-	}, nil
-}
-
-type DedupeProfileRowIterator struct {
-	iter.Iterator[ProfileEntry]
-
-	prevFP        model.Fingerprint
-	prevTimeNanos int64
-	onDuplicate   func()
-}
-
-func (it *DedupeProfileRowIterator) Next() bool {
-	for {
-		if !it.Iterator.Next() {
-			return false
-		}
-		currentProfile := it.At()
-		if it.prevFP == currentProfile.Fingerprint && it.prevTimeNanos == currentProfile.Timestamp {
-			// skip duplicate profile
-			if it.onDuplicate != nil {
-				it.onDuplicate()
+	return iter.NewTreeIterator(loser.New(
+		its,
+		ProfileEntry{
+			Timestamp: math.MaxInt64,
+		},
+		func(it iter.Iterator[ProfileEntry]) ProfileEntry { return it.At() },
+		func(r1, r2 ProfileEntry) bool {
+			// first handle max profileRow if it's either r1 or r2
+			if r1.Timestamp == math.MaxInt64 {
+				return false
 			}
-			continue
-		}
-		it.prevFP = currentProfile.Fingerprint
-		it.prevTimeNanos = currentProfile.Timestamp
-		return true
-	}
+			if r2.Timestamp == math.MaxInt64 {
+				return true
+			}
+			// then handle normal profileRows
+			if cmp := phlaremodel.CompareLabelPairs(r1.Labels, r2.Labels); cmp != 0 {
+				return cmp < 0
+			}
+			return r1.Timestamp < r2.Timestamp
+		},
+		func(it iter.Iterator[ProfileEntry]) { _ = it.Close() },
+	)), nil
 }
 
 type profileRowIterator struct {

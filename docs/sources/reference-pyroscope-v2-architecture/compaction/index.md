@@ -80,6 +80,12 @@ Profiling data from each service is stored as a separate dataset within a block.
 - Symbols and profile tables are merged and rewritten
 - Output block contains optimized, non-overlapping datasets
 
+## Duplicate profiles
+
+Pyroscope v2 doesn't write the same profile to more than one segment-writer, because there is no write replication. Compaction therefore doesn't deduplicate profiles: when two profiles have the same series and timestamp, both are kept.
+
+As a result, if a client sends the same profile more than once, for example when it retries a request or when several processes report identical labels and timestamps, each copy is ingested and stored.
+
 ## Job scheduler
 
 The scheduler uses a **Small Job First** strategy:
