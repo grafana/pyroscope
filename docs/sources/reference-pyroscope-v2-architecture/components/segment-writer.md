@@ -67,7 +67,7 @@ Unlike the v1 ingester which required local disk storage, the segment-writer is 
 
 ## Failure handling
 
-The segment writer relies on at-least-once delivery semantics. If a write fails after the segment has been uploaded to object storage but before the metastore acknowledges the metadata, the client retries the request. This can result in the same profile appearing in multiple segments, which is resolved during compaction.
+The segment writer relies on at-least-once delivery semantics. If a write fails after the segment has been uploaded to object storage but before the metastore acknowledges the metadata, the client retries the request. This can result in the same profile appearing in multiple segments. Compaction doesn't remove it. Refer to [Duplicate profiles](../../compaction/#duplicate-profiles).
 
 ### Dead letter queue
 
