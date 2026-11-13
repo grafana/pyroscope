@@ -113,6 +113,22 @@ Pyroscope.wrapWithLabels({ vehicle: 'bike' }, () =>
 );
 ```
 
+## Set namespace labels for profile correlation
+
+To show profiles in the trace view, set a `service_namespace` label on your profiles.
+For example, add it to `tags` in `Pyroscope.init`:
+
+```javascript
+Pyroscope.init({
+  appName: 'myNodeService',
+  tags: {
+    service_namespace: 'accessmanager',
+  },
+});
+```
+
+{{< docs/shared source="pyroscope" lookup="correlate-profiles-namespace-labels.md" version="latest" >}}
+
 ## Send data to Pyroscope OSS or Grafana Cloud
 
 ```javascript
