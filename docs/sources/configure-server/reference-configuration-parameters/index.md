@@ -59,6 +59,13 @@ where `default_value` is the value to use if the environment variable is undefin
 ## Configuration parameters
 
 ```yaml
+compression:
+  # Minimum uncompressed message size in bytes for parallel gzip in internal
+  # pprof serialization and Connect RPC compression. Smaller messages use serial
+  # gzip. Zero always uses parallel gzip.
+  # CLI flag: -compression.parallel-gzip-min-size
+  [parallel_gzip_min_size: <int> | default = 1048576]
+
 # Comma-separated list of Pyroscope modules to load. The alias 'all' can be used
 # in the list to load a number of core modules and will enable single-binary
 # mode.
