@@ -170,6 +170,14 @@ func (w *Wrapper) AnalyzeQuery(ctx context.Context, req *connect.Request[querier
 	return resp, err
 }
 
+func (w *Wrapper) SelectSpanPresence(ctx context.Context, req *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error) {
+	resp, err := w.client.SelectSpanPresence(ctx, req)
+	if err == nil {
+		flushDiagnostics(w, ctx, "SelectSpanPresence", req, resp)
+	}
+	return resp, err
+}
+
 func (w *Wrapper) QueryAnomalies(ctx context.Context, req *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
 	resp, err := w.client.QueryAnomalies(ctx, req)
 	if resp != nil {

@@ -309,6 +309,100 @@ type multiColumnRepeatedTestRow struct {
 	List []multiColumnItem
 }
 
+type rejectRepeatedPagePredicate struct{ pages int }
+
+func (p *rejectRepeatedPagePredicate) KeepColumnChunk(parquet.ColumnIndex) bool { return true }
+func (p *rejectRepeatedPagePredicate) KeepPage(parquet.Page) bool {
+	p.pages++
+	return false
+}
+func (p *rejectRepeatedPagePredicate) KeepValue(parquet.Value) bool {
+	panic("page filtering must not decode individual values")
+}
+
+// Reading the payload column is a failure when the selector rejects every row.
+type unreadPayloadRowGroup struct{ parquet.RowGroup }
+
+func (g unreadPayloadRowGroup) ColumnChunks() []parquet.ColumnChunk {
+	chunks := append([]parquet.ColumnChunk(nil), g.RowGroup.ColumnChunks()...)
+	chunks[1] = unreadPayloadChunk{chunks[1]}
+	return chunks
+}
+
+type unreadPayloadChunk struct{ parquet.ColumnChunk }
+
+func (c unreadPayloadChunk) Pages() parquet.Pages {
+	panic("payload column read despite selector page rejection")
+}
+
+func Test_RepeatedRowIterator_PagePredicate(t *testing.T) {
+	buffer := parquet.NewBuffer()
+	for i := 0; i < 3; i++ {
+		require.NoError(t, buffer.Write(multiColumnRepeatedTestRow{List: []multiColumnItem{{X: 1, Y: 2}}}))
+	}
+	p := new(rejectRepeatedPagePredicate)
+	rows := iter.NewSliceIterator([]testRowGetter{{0}, {1}, {2}})
+	it := NewRepeatedRowIteratorWithOptions(context.Background(), rows, []parquet.RowGroup{unreadPayloadRowGroup{buffer}}, []int{0, 1},
+		WithPagePredicate(0, p),
+		WithSamplePredicate(func([][]parquet.Value, int) bool {
+			t.Fatal("sample predicate called for rejected page")
+			return true
+		}))
+	require.False(t, it.Next())
+	require.NoError(t, it.Err())
+	require.NoError(t, it.Close())
+	require.Equal(t, 1, p.pages)
+}
+
+func Test_RepeatedRowIterator_PagePredicate_Resume(t *testing.T) {
+	rejected, accepted := parquet.NewBuffer(), parquet.NewBuffer()
+	for i := 0; i < 2; i++ {
+		require.NoError(t, rejected.Write(multiColumnRepeatedTestRow{List: []multiColumnItem{{X: 1, Y: 10}}}))
+	}
+	require.NoError(t, accepted.Write(multiColumnRepeatedTestRow{List: []multiColumnItem{{X: 2, Y: 20}, {X: 3, Y: 30}}}))
+	rows := iter.NewSliceIterator([]testRowGetter{{0}, {1}, {2}})
+	it := NewRepeatedRowIteratorWithOptions(context.Background(), rows,
+		[]parquet.RowGroup{unreadPayloadRowGroup{rejected}, accepted}, []int{0, 1},
+		WithPagePredicate(0, NewIntBetweenPredicate(2, 2)),
+		WithSamplePredicate(func(values [][]parquet.Value, i int) bool { return values[0][i].Int64() == 2 }))
+	defer func() { require.NoError(t, it.Close()) }()
+	require.True(t, it.Next())
+	got := it.At()
+	require.Equal(t, int64(2), got.Row.RowNumber())
+	require.Len(t, got.Values[0], 1)
+	require.Len(t, got.Values[1], 1)
+	require.Equal(t, int64(2), got.Values[0][0].Int64())
+	require.Equal(t, int64(20), got.Values[1][0].Int64())
+	require.False(t, it.Next())
+	require.NoError(t, it.Err())
+}
+
+func Test_RepeatedRowIterator_Predicate(t *testing.T) {
+	buffer := parquet.NewBuffer()
+	for _, row := range []multiColumnRepeatedTestRow{
+		{List: []multiColumnItem{{X: 1, Y: 10}, {X: 2, Y: 20}, {X: 3, Y: 30}}},
+		{List: []multiColumnItem{{X: 1, Y: 40}}},
+		{List: []multiColumnItem{{X: 2, Y: 50}}},
+	} {
+		require.NoError(t, buffer.Write(row))
+	}
+	rows := iter.NewSliceIterator([]testRowGetter{{0}, {1}, {2}})
+	it := NewRepeatedRowIteratorWithOptions(context.Background(), rows, []parquet.RowGroup{buffer}, []int{0, 1},
+		WithSamplePredicate(func(values [][]parquet.Value, i int) bool { return values[0][i].Int64() == 2 }))
+	defer func() { require.NoError(t, it.Close()) }()
+	for _, want := range []struct{ row, value int64 }{{0, 20}, {2, 50}} {
+		require.True(t, it.Next())
+		got := it.At()
+		require.Equal(t, want.row, got.Row.RowNumber())
+		require.Len(t, got.Values[0], 1)
+		require.Len(t, got.Values[1], 1)
+		require.Equal(t, int64(2), got.Values[0][0].Int64())
+		require.Equal(t, want.value, got.Values[1][0].Int64())
+	}
+	require.False(t, it.Next())
+	require.NoError(t, it.Err())
+}
+
 func Test_RepeatedRowPageIterator_MultipleColumns(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

@@ -1117,6 +1117,10 @@ func (q *Querier) SelectHeatmap(ctx context.Context, req *connect.Request[querie
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SelectHeatmap not implemented in old querier"))
 }
 
+func (q *Querier) SelectSpanPresence(ctx context.Context, req *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SelectSpanPresence is only supported with the v2 query backend"))
+}
+
 func (q *Querier) QueryAnomalies(ctx context.Context, req *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("QueryAnomalies is only supported with the v2 query backend"))
 }
