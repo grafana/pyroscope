@@ -39,6 +39,9 @@ func (s *ProfileStripper) computeExceptions(tenantID string, seriesLabels phlare
 	if err != nil {
 		return exceptions{rulesUnavailable: true}
 	}
+	if len(rules) == 0 {
+		return exceptions{}
+	}
 	profileTypes := profileTypeNames(p, seriesLabels.Get(phlaremodel.LabelNameProfileName))
 	rulesByFunctionName := map[string][]deferredRule{}
 	var totalRules []deferredRule

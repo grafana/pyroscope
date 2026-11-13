@@ -663,3 +663,12 @@ func TestProfileStripper_Strip_RulesUnavailable(t *testing.T) {
 		assert.False(t, NewProfileStripper(nil).Strip("tenant-a", nil, stripTestProfile()))
 	})
 }
+
+func BenchmarkComputeExceptions_NoRules(b *testing.B) {
+	p := stripTestProfile()
+	stripper := NewProfileStripper(fakeRuler{})
+	b.ReportAllocs()
+	for b.Loop() {
+		stripper.computeExceptions("tenant-a", nil, p)
+	}
+}

@@ -3,6 +3,7 @@ package metrics
 import (
 	"errors"
 	"flag"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -40,15 +41,34 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 // compaction-worker (metrics generation), so they agree on whether the feature
 // is enabled and where the rules come from.
 type RecordingRulesConfig struct {
-	Enabled       bool   `yaml:"enabled"`
-	ClientAddress string `yaml:"client_address" category:"advanced"`
+	Enabled              bool          `yaml:"enabled"`
+	ClientAddress        string        `yaml:"client_address" category:"advanced"`
+	IndexRefreshInterval time.Duration `yaml:"index_refresh_interval" category:"advanced"`
+	FetchTimeout         time.Duration `yaml:"fetch_timeout" category:"advanced"`
 }
 
 func (c *RecordingRulesConfig) RegisterFlags(f *flag.FlagSet) {
 	f.BoolVar(&c.Enabled, "recording-rules.enabled", false,
 		"Enable generating metrics from profiles using recording rules. Read by the query-frontend, distributor and compaction-worker.")
 	f.StringVar(&c.ClientAddress, "recording-rules.client-address", "",
-		"Address of the recording rules source (the tenant-settings service). When empty, static rules from per-tenant overrides are used. Read by the distributor and compaction-worker.")
+		"Address of the recording rules source (the tenant-settings service). When empty, static rules from per-tenant overrides are used. Read by the compaction-worker.")
+	f.DurationVar(&c.IndexRefreshInterval, "recording-rules.index-refresh-interval", 30*time.Second,
+		"How often the distributor refreshes the index of tenants with stored recording rules.")
+	f.DurationVar(&c.FetchTimeout, "recording-rules.fetch-timeout", 5*time.Second,
+		"Timeout for reading a tenant's stored recording rules from the bucket in the distributor.")
+}
+
+func (c *RecordingRulesConfig) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+	if c.IndexRefreshInterval <= 0 {
+		return errors.New("recording rules index refresh interval must be positive")
+	}
+	if c.FetchTimeout <= 0 {
+		return errors.New("recording rules fetch timeout must be positive")
+	}
+	return nil
 }
 
 // ReconcileWithExporter merges the deprecated compaction-worker metrics-exporter

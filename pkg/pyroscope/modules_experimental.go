@@ -441,6 +441,23 @@ func (f *Pyroscope) initRecordingRulesClient() (services.Service, error) {
 	return c.Service(), nil
 }
 
+func (f *Pyroscope) initRecordingRulesRuler() (services.Service, error) {
+	if !f.Cfg.RecordingRules.Enabled {
+		return nil, nil
+	}
+	f.recordingRulesRuler = metrics.NewIndexedRuler(
+		metrics.IndexedRulerConfig{
+			RefreshInterval: f.Cfg.RecordingRules.IndexRefreshInterval,
+			FetchTimeout:    f.Cfg.RecordingRules.FetchTimeout,
+		},
+		f.storageBucket,
+		f.Overrides,
+		log.With(f.logger, "component", "recording-rules-ruler"),
+		f.reg,
+	)
+	return f.recordingRulesRuler, nil
+}
+
 func (f *Pyroscope) initQueryDiagnosticsStore() (services.Service, error) {
 	if f.storageBucket == nil {
 		return nil, nil

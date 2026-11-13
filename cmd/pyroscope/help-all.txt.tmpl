@@ -1266,9 +1266,13 @@ Usage of ./pyroscope:
   -query-scheduler.service-discovery-mode string
     	[experimental] Service discovery mode that query-frontends and queriers use to find query-scheduler instances. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. Supported values are: dns, ring. (default "ring")
   -recording-rules.client-address string
-    	Address of the recording rules source (the tenant-settings service). When empty, static rules from per-tenant overrides are used. Read by the distributor and compaction-worker.
+    	Address of the recording rules source (the tenant-settings service). When empty, static rules from per-tenant overrides are used. Read by the compaction-worker.
   -recording-rules.enabled
     	Enable generating metrics from profiles using recording rules. Read by the query-frontend, distributor and compaction-worker.
+  -recording-rules.fetch-timeout duration
+    	Timeout for reading a tenant's stored recording rules from the bucket in the distributor. (default 5s)
+  -recording-rules.index-refresh-interval duration
+    	How often the distributor refreshes the index of tenants with stored recording rules. (default 30s)
   -recording-rules.max-rules-per-tenant int
     	Maximum number of recording rules a tenant can create. 0 to disable. (default 25)
   -retention-period duration
@@ -1845,6 +1849,8 @@ Usage of ./pyroscope:
     	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tenant-settings.recording-rules.enabled
     	[experimental] Enable the storing of recording rules in tenant settings.
+  -tenant-settings.recording-rules.index-rebuild-interval duration
+    	How often the index of tenants with stored recording rules is rebuilt. Distributors read the index to know which tenants have rules. (default 1m0s)
   -tracing.enabled
     	Set to false to disable tracing. (default true)
   -tracing.profiling-enabled

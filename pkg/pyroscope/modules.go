@@ -40,10 +40,10 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/compactor"
 	"github.com/grafana/pyroscope/v2/pkg/debuginfo"
 	"github.com/grafana/pyroscope/v2/pkg/distributor"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/sampling"
 	"github.com/grafana/pyroscope/v2/pkg/embedded/grafana"
 	"github.com/grafana/pyroscope/v2/pkg/featureflags"
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
-	"github.com/grafana/pyroscope/v2/pkg/metrics"
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/operations"
@@ -112,6 +112,7 @@ const (
 	HealthServer          string = "health-server"
 	AdminServer           string = "admin-server"
 	RecordingRulesClient  string = "recording-rules-client"
+	RecordingRulesRuler   string = "recording-rules-ruler"
 	QueryDiagnosticsStore string = "query-diagnostics-store"
 	QueryDiagnosticsAdmin string = "query-diagnostics-admin"
 	AsyncQueryStore       string = "async-query-store"
@@ -335,17 +336,9 @@ func (f *Pyroscope) initDistributor() (services.Service, error) {
 		swClient = f.segmentWriterClient
 	}
 
-	var ruler metrics.Ruler
-	if f.Cfg.RecordingRules.Enabled {
-		if f.recordingRulesClient != nil {
-			r, err := metrics.NewCachedRemoteRuler(f.recordingRulesClient, f.logger)
-			if err != nil {
-				return nil, err
-			}
-			ruler = r
-		} else {
-			ruler = metrics.NewStaticRulerFromOverrides(f.Overrides)
-		}
+	var ruler sampling.Ruler
+	if f.recordingRulesRuler != nil {
+		ruler = f.recordingRulesRuler
 	}
 
 	d, err := distributor.New(f.Cfg.Distributor, f.ingesterRing, nil, f.Overrides, f.reg, logger, swClient, ruler, f.auth)

@@ -204,6 +204,11 @@ tenant_settings:
     # CLI flag: -tenant-settings.recording-rules.enabled
     [enabled: <boolean> | default = false]
 
+    # (advanced) How often the index of tenants with stored recording rules is
+    # rebuilt. Distributors read the index to know which tenants have rules.
+    # CLI flag: -tenant-settings.recording-rules.index-rebuild-interval
+    [index_rebuild_interval: <duration> | default = 1m]
+
 recording_rules:
   # Enable generating metrics from profiles using recording rules. Read by the
   # query-frontend, distributor and compaction-worker.
@@ -212,9 +217,19 @@ recording_rules:
 
   # (advanced) Address of the recording rules source (the tenant-settings
   # service). When empty, static rules from per-tenant overrides are used. Read
-  # by the distributor and compaction-worker.
+  # by the compaction-worker.
   # CLI flag: -recording-rules.client-address
   [client_address: <string> | default = ""]
+
+  # (advanced) How often the distributor refreshes the index of tenants with
+  # stored recording rules.
+  # CLI flag: -recording-rules.index-refresh-interval
+  [index_refresh_interval: <duration> | default = 30s]
+
+  # (advanced) Timeout for reading a tenant's stored recording rules from the
+  # bucket in the distributor.
+  # CLI flag: -recording-rules.fetch-timeout
+  [fetch_timeout: <duration> | default = 5s]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,

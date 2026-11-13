@@ -405,6 +405,9 @@ func (c *Config) Validate() error {
 	}
 
 	c.RecordingRules.ReconcileWithExporter(&c.CompactionWorker.MetricsExporter, util.Logger)
+	if err := c.RecordingRules.Validate(); err != nil {
+		return err
+	}
 
 	if err := c.Frontend.Validate(); err != nil {
 		return err
@@ -558,6 +561,7 @@ type Pyroscope struct {
 	compactionWorker      *compactionworker.Worker
 	healthServer          *health.Server
 	recordingRulesClient  *recordingrulesclient.Client
+	recordingRulesRuler   *metrics.IndexedRuler
 	queryDiagnosticsStore *diagnostics.Store
 	queryDiagnosticsAdmin *querydiagnostics.Admin
 	asyncQueryStore       *asyncquery.Store
@@ -648,6 +652,7 @@ func (f *Pyroscope) setupModuleManager() error {
 	mm.RegisterModule(FeatureFlags, f.initFeatureFlags)
 	mm.RegisterModule(HealthServer, f.initHealthServer, modules.UserInvisibleModule)
 	mm.RegisterModule(RecordingRulesClient, f.initRecordingRulesClient, modules.UserInvisibleModule)
+	mm.RegisterModule(RecordingRulesRuler, f.initRecordingRulesRuler, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsStore, f.initQueryDiagnosticsStore, modules.UserInvisibleModule)
 	mm.RegisterModule(QueryDiagnosticsAdmin, f.initQueryDiagnosticsAdmin, modules.UserInvisibleModule)
 	mm.RegisterModule(AsyncQueryStore, f.initAsyncQueryStore, modules.UserInvisibleModule)
@@ -671,7 +676,8 @@ func (f *Pyroscope) setupModuleManager() error {
 		API:                   {Server, AdminServer},
 		Metastore:             {Overrides, API, MetastoreClient, Storage, PlacementManager},
 		MetastoreAdmin:        {API, MetastoreClient},
-		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing, RecordingRulesClient},
+		Distributor:           {Overrides, SegmentWriterClient, API, UsageReport, Storage, IngesterRing, RecordingRulesRuler},
+		RecordingRulesRuler:   {Overrides, Storage},
 		PlacementAgent:        {Overrides, API, Storage},
 		PlacementManager:      {Overrides, API, Storage},
 		SegmentWriter:         {Overrides, API, MemberlistKV, Storage, UsageReport, MetastoreClient},
