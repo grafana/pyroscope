@@ -1,6 +1,7 @@
 package index
 
 import (
+	"github.com/go-kit/log"
 	"math/rand"
 	"testing"
 	"time"
@@ -13,7 +14,6 @@ import (
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/test"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 func TestBlockMetaTimeBounds_FieldNumbers(t *testing.T) {
@@ -174,7 +174,7 @@ func TestQueryMetadata_TimeFilterSkipsDecode(t *testing.T) {
 		StringTable: []string{"", "tenant-a", "dataset-a", "service_name", "svc-a"},
 	}
 
-	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	idx := NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
 		if err := idx.Init(tx); err != nil {
 			return err
@@ -186,7 +186,7 @@ func TestQueryMetadata_TimeFilterSkipsDecode(t *testing.T) {
 	}))
 
 	// A fresh index observes only the persisted state, with cold caches.
-	idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	idx = NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	require.NoError(t, db.Update(idx.Init))
 
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
@@ -210,7 +210,7 @@ func TestQueryMetadata_TimeFilterSkipsDecode(t *testing.T) {
 
 	// Labels queries use the same prefilter and must also avoid caching the
 	// out-of-range block.
-	idx = NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	idx = NewIndex(log.NewNopLogger(), NewStore(), DefaultConfig, nil)
 	require.NoError(t, db.Update(idx.Init))
 	require.NoError(t, db.View(func(tx *bbolt.Tx) error {
 		labels, err := idx.QueryMetadataLabels(tx, t.Context(), MetadataQuery{

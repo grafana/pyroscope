@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -47,7 +48,7 @@ func TestClientCapabilitiesHttpMiddleware_SpanAttributes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := ClientCapabilitiesHttpMiddleware().Wrap(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+			h := ClientCapabilitiesHttpMiddleware(log.NewNopLogger()).Wrap(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			rec := httptest.NewRecorder()
 
 			attrs := recordSpanAttributes(t, func(ctx context.Context) {
@@ -95,7 +96,7 @@ func TestClientCapabilitiesGRPCMiddleware_SpanAttributes(t *testing.T) {
 
 			attrs := recordSpanAttributes(t, func(ctx context.Context) {
 				ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("accept", tt.accept))
-				_, err = ClientCapabilitiesGRPCMiddleware()(ctx, nil, &grpc.UnaryServerInfo{}, handler)
+				_, err = ClientCapabilitiesGRPCMiddleware(log.NewNopLogger())(ctx, nil, &grpc.UnaryServerInfo{}, handler)
 			})
 
 			if tt.wantCode != 0 {
@@ -287,7 +288,7 @@ func Test_parseClientCapabilities(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseClientCapabilities(tt.Header)
+			got, err := parseClientCapabilities(tt.Header, log.NewNopLogger())
 
 			if tt.WantError {
 				require.Error(t, err)
@@ -347,7 +348,7 @@ func Test_parseClientCapabilities_MultipleCapabilities(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := parseClientCapabilities(tt.Header)
+			got, err := parseClientCapabilities(tt.Header, log.NewNopLogger())
 			require.NoError(t, err)
 			require.Equal(t, tt.Want, got)
 		})

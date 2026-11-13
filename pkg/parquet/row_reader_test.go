@@ -149,6 +149,7 @@ func TestIteratorRowReader(t *testing.T) {
 			{{parquet.Int32Value(4)}, {parquet.Int32Value(5)}, {parquet.Int32Value(6)}},
 			{{parquet.Int32Value(7)}, {parquet.Int32Value(8)}, {parquet.Int32Value(9)}},
 		}), 4),
+		nil,
 	)
 	actual, err := ReadAllWithBufferSize(it, 3)
 	require.NoError(t, err)
