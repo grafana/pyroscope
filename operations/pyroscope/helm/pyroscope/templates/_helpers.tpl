@@ -168,3 +168,35 @@ behavior:
     scaleDown: {}
     scaleUp: {}
 {{- end }}
+
+{{/*
+Fail on invalid .Values.architecture.storage settings. Renders nothing.
+*/}}
+{{- define "pyroscope.validateArchitecture" -}}
+{{- $storage := .Values.architecture.storage }}
+{{- if and (not $storage.v1) (not $storage.v2) }}
+{{-   fail "you need to set at least one of .Values.architecture.storage.v1, .Values.architecture.storage.v2 to true" }}
+{{- end }}
+{{- /* migration settings are only used when v1 and v2 run together */}}
+{{- if and $storage.v1 $storage.v2 }}
+{{-   $migration := $storage.migration }}
+{{-   range $key := list "ingesterWeight" "segmentWriterWeight" }}
+{{-     $weight := index $migration $key }}
+{{- /* helm --set keeps floats like 0.1 as strings, so match the text form */}}
+{{-     if not (regexMatch "^[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?$" (toString $weight)) }}
+{{-       fail (printf ".Values.architecture.storage.migration.%s must be a number between 0 and 1, got %q" $key (toString $weight)) }}
+{{-     end }}
+{{-     if or (lt (float64 $weight) 0.0) (gt (float64 $weight) 1.0) }}
+{{-       fail (printf ".Values.architecture.storage.migration.%s must be between 0 and 1, got %v" $key $weight) }}
+{{-     end }}
+{{-   end }}
+{{- /* each write goes to a path when rand[0,1) <= its weight, so one weight must be 1 to keep every write */}}
+{{-   if and (lt (float64 $migration.ingesterWeight) 1.0) (lt (float64 $migration.segmentWriterWeight) 1.0) }}
+{{-     fail (printf "at least one of .Values.architecture.storage.migration.ingesterWeight, .Values.architecture.storage.migration.segmentWriterWeight must be 1, otherwise some writes are dropped (got %v and %v)" $migration.ingesterWeight $migration.segmentWriterWeight) }}
+{{-   end }}
+{{-   $from := toString ($migration.queryBackendFrom | default "auto") }}
+{{-   if not (regexMatch "^(auto|0|\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2}))?)?)$" $from) }}
+{{-     fail (printf ".Values.architecture.storage.migration.queryBackendFrom must be \"auto\" or a time like 2006-01-02, 2006-01-02T15:04 or 2006-01-02T15:04:05Z07:00, got %q" $from) }}
+{{-   end }}
+{{- end }}
+{{- end }}
