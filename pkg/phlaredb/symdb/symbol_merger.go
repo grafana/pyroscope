@@ -140,11 +140,19 @@ func (h *hashedSlice[A]) grow(size int) {
 }
 
 func (h *hashedSlice[A]) add(hash uint64, v A) int32 {
+	return h.addWithClone(hash, v, nil)
+}
+
+// addWithClone clones borrowed data only when inserting a new value.
+func (h *hashedSlice[A]) addWithClone(hash uint64, v A, clone func(A) A) int32 {
 	for probeHash := hash; ; probeHash++ {
 		idx, found := h.m[probeHash]
 		if !found {
 			idx = len(h.sl)
 			h.m[probeHash] = idx
+			if clone != nil {
+				v = clone(v)
+			}
 			h.sl = append(h.sl, v)
 			h.hashes = append(h.hashes, hash) // store original hash, not probe offset
 			return int32(idx)
@@ -154,6 +162,15 @@ func (h *hashedSlice[A]) add(hash uint64, v A) int32 {
 		}
 		// hash collision: probe next slot
 	}
+}
+
+func cloneLocationLines(loc schemav1.InMemoryLocation) schemav1.InMemoryLocation {
+	if len(loc.Line) == 0 {
+		loc.Line = nil
+		return loc
+	}
+	loc.Line = slices.Clone(loc.Line)
+	return loc
 }
 
 type SymbolMerger struct {
@@ -416,15 +433,18 @@ func (sm *SymbolMerger) addSymbols(symbols *Symbols, locationIDs []int32) (func(
 
 	// add the locations to the merger
 	var loc schemav1.InMemoryLocation
+	var lines []schemav1.InMemoryLine
 	locationRemap := make(map[int32]int32, len(locationIDs))
 	for _, lID := range locationIDs {
 		h.Reset()
 		loc = symbols.Locations[lID]
+		lines = append(lines[:0], loc.Line...)
+		loc.Line = lines
 		rm.updateLocation(&loc)
 		if err := sm.hashLocation(h, &loc, buf); err != nil {
 			return nil, err
 		}
-		locationRemap[lID] = sm.locations.add(h.Sum64(), loc)
+		locationRemap[lID] = sm.locations.addWithClone(h.Sum64(), loc, cloneLocationLines)
 	}
 
 	// Return a remap function
@@ -446,8 +466,8 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 	defer sm.mu.Unlock()
 
 	// add the strings to the merger
+	sm.strings.grow(len(ts.Strings))
 	for idx, s := range ts.Strings {
-		sm.strings.grow(len(ts.Strings))
 		rm.strings[int32(idx)] = sm.strings.add(ts.StringHashes[idx], s)
 	}
 
@@ -492,7 +512,7 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 		loc.Address = orig.Address
 		loc.MappingId = uint32(orig.MappingId)
 		loc.IsFolded = orig.IsFolded
-		loc.Line = make([]schemav1.InMemoryLine, len(orig.Line))
+		loc.Line = slices.Grow(loc.Line[:0], len(orig.Line))[:len(orig.Line)]
 		for lineIdx, line := range orig.Line {
 			loc.Line[lineIdx] = schemav1.InMemoryLine{
 				FunctionId: uint32(line.FunctionId),
@@ -500,7 +520,7 @@ func (sm *SymbolMerger) Add(ts *queryv1.TreeSymbols) (func(model.LocationRefName
 			}
 		}
 		rm.updateLocation(&loc)
-		locationRemap[int32(idx)] = sm.locations.add(ts.LocationHashes[idx], loc)
+		locationRemap[int32(idx)] = sm.locations.addWithClone(ts.LocationHashes[idx], loc, cloneLocationLines)
 	}
 
 	// Return a remap function
@@ -624,15 +644,14 @@ func (m *symbolResultBuilder) Build(r *queryv1.TreeSymbols) {
 		r.LocationHashes = make([]uint64, len(m.locationsRef))
 		for idx, lID := range m.locationsRef {
 			orig := m.merger.locations.sl[lID]
-			rm.updateLocation(&orig)
 			locations[idx].Id = uint64(idx)
 			locations[idx].Address = orig.Address
-			locations[idx].MappingId = uint64(orig.MappingId)
+			locations[idx].MappingId = uint64(rm.mappings[int32(orig.MappingId)])
 			locations[idx].IsFolded = orig.IsFolded
 			locations[idx].Line = make([]*profilev1.Line, len(orig.Line))
 			for lineIdx := range orig.Line {
 				locations[idx].Line[lineIdx] = &profilev1.Line{
-					FunctionId: uint64(orig.Line[lineIdx].FunctionId),
+					FunctionId: uint64(rm.functions[int32(orig.Line[lineIdx].FunctionId)]),
 					Line:       int64(orig.Line[lineIdx].Line),
 				}
 			}
