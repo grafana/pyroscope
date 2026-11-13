@@ -76,7 +76,44 @@ If you'd prefer, you can use Pull mode using [Grafana Alloy](https://grafana.com
 | `sourceMapper:`               | n/a                                       | [SourceMapper] | Provide source file mapping information (Default `undefined`)                     |
 
 [LabelSet]:https://github.com/DataDog/pprof-nodejs/blob/v5.3.0/ts/src/v8-types.ts#L59-L61
-[SourceMapper]:https://github.com/DataDog/pprof-nodejs/blob/v5.3.0/ts/src/sourcemapper/sourcemapper.ts#L152
+[SourceMapper]:https://github.com/grafana/pyroscope-nodejs/blob/v0.7.1/src/sourcemapper.ts
+
+
+### Map profiles to original source files
+
+For applications compiled from TypeScript or bundled JavaScript, use `sourceMapper` to map profile locations back to the original source files.
+Build your application with source maps enabled, for example, by setting `sourceMap: true` in your TypeScript compiler options.
+Deploy the generated JavaScript and its `.js.map` files together. The mapper also supports source maps embedded in JavaScript files.
+
+For a CommonJS application built to `dist/index.js`, save the following as `profile.cjs` in your project root and start it with `node profile.cjs`:
+
+```javascript
+const Pyroscope = require('@pyroscope/nodejs').default;
+const path = require('node:path');
+
+async function main() {
+  const sourceMapper = await Pyroscope.SourceMapper.create([
+    path.join(__dirname, 'dist'),
+  ]);
+
+  Pyroscope.init({
+    serverAddress: 'http://pyroscope:4040',
+    appName: 'myNodeService',
+    sourceMapper,
+  });
+
+  Pyroscope.start();
+  require('./dist/index.js');
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+```
+
+`SourceMapper.create()` searches the supplied directories recursively. Replace `dist` with your build output directory and `./dist/index.js` with your application's entry point.
+Wait for it to finish before calling `Pyroscope.init()` and `Pyroscope.start()` so the maps are available when profiling begins.
 
 
 ### Add profiling labels to Node.js applications
