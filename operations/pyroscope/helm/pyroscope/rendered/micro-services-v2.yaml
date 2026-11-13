@@ -2498,7 +2498,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2608,7 +2608,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2718,7 +2718,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2828,7 +2828,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -2938,7 +2938,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -3048,7 +3048,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -3364,7 +3364,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:
@@ -3480,7 +3480,7 @@ spec:
             - "-metastore.index.cleanup-interval=1m"
             - "-metastore.raft.bootstrap-expect-peers=3"
             - "-metastore.snapshot-compact-on-restore=true"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.data-dir=./data-metastore/data"
             - "-metastore.raft.dir=./data-metastore/raft"
@@ -3606,7 +3606,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
-            - "-query-backend.address=dns:///_grpc._tcp.pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
+            - "-query-backend.address=dns:///pyroscope-dev-query-backend-headless.$(NAMESPACE_FQDN):9095"
             - "-metastore.address=kubernetes:///pyroscope-dev-metastore-headless.$(NAMESPACE_FQDN):9095"
             - "-architecture.storage=v2"
           env:

@@ -95,6 +95,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | pyroscope.podSecurityContext.fsGroup | int | `10001` |  |
 | pyroscope.podSecurityContext.runAsNonRoot | bool | `true` |  |
 | pyroscope.podSecurityContext.runAsUser | int | `10001` |  |
+| pyroscope.queryBackend.useSrvPrefix | bool | `false` | Prefix the default query-backend.address host with `_grpc._tcp.` (previous chart default). Ignored when query-backend.address is set in extraArgs. |
 | pyroscope.rbac.create | bool | `true` | Whether to create RBAC resources |
 | pyroscope.replicaCount | int | `1` |  |
 | pyroscope.resources | object | `{}` |  |
