@@ -796,6 +796,20 @@ func TestLabels_WithoutLabels(t *testing.T) {
 			},
 		},
 		{
+			name: "Remove multiple labels given in unsorted order",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "pod", Value: "pod-1"},
+				{Name: "region", Value: "us-east"},
+				{Name: "service", Value: "api"},
+			},
+			remove: []string{"service", "env"},
+			expected: Labels{
+				{Name: "pod", Value: "pod-1"},
+				{Name: "region", Value: "us-east"},
+			},
+		},
+		{
 			name: "Remove non-existent label",
 			labels: Labels{
 				{Name: "env", Value: "prod"},
