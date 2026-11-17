@@ -32,7 +32,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
-	"github.com/grafana/pyroscope/v2/pkg/anomalyapi"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/vcs"
 	objstoreclient "github.com/grafana/pyroscope/v2/pkg/objstore/client"
@@ -75,10 +74,6 @@ type Config struct {
 	// inconsistent with the way address is specified in other places.
 	// The parameter is replaced with `instance_addr`.
 	AddrOld string `yaml:"address" category:"advanced" doc:"hidden"`
-
-	// AnomalyAPI configures the anomaly source used by QueryAnomalies' "stacktrace"
-	// anomaly type. Off by default.
-	AnomalyAPI anomalyapi.Config `yaml:"anomaly_api"`
 
 	// This configuration is injected internally.
 	QuerySchedulerDiscovery schedulerdiscovery.Config `yaml:"-"`
@@ -128,7 +123,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	})
 	f.StringVar(&cfg.QueryPlannerStrategy, "query-frontend.query-planner-strategy", "classic", "Sets the query planner strategy, options: classic, balanced")
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("query-frontend.grpc-client-config", f)
-	cfg.AnomalyAPI.RegisterFlags(f)
 }
 
 func (cfg *Config) Validate() error {
