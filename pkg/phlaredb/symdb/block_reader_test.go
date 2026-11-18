@@ -128,6 +128,100 @@ func Fuzz_Reader_Open_v3(f *testing.F) {
 	})
 }
 
+func Test_Reader_OpenObject_prefetch(t *testing.T) {
+	// The block contains two partitions (0 and 1); see Test_Reader_Open_v3.
+	ctx := context.Background()
+
+	b, err := filesystem.NewBucket("testdata/symbols/v3")
+	require.NoError(t, err)
+	x, err := Open(ctx, b, testBlockMeta)
+	require.NoError(t, err)
+	// The index section with the footer: the minimal prefetch
+	// window that covers the index starts exactly at the index offset.
+	indexSize := x.file.SizeBytes - x.footer.IndexOffset
+	fileSize := x.file.SizeBytes
+
+	for _, tc := range []struct {
+		name         string
+		prefetchSize uint64
+		reads        int64
+	}{
+		{"window does not cover the index", uint64(FooterSize), 2},
+		{"window starts at the index offset", indexSize, 1},
+		{"window covers the index", fileSize, 1},
+		{"window exceeds the file size", fileSize + 1, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bucket := &testBucket{}
+			b, err := filesystem.NewBucket("testdata/symbols/v3", func(x objstore.Bucket) (objstore.Bucket, error) {
+				bucket.Bucket = x
+				return bucket, nil
+			})
+			require.NoError(t, err)
+			r, err := OpenObject(ctx, b, DefaultFileName, 0, int64(fileSize), WithPrefetchSize(tc.prefetchSize))
+			require.NoError(t, err)
+			require.Len(t, r.partitions, 2)
+			require.Equal(t, tc.reads, bucket.getRangeCount.Load())
+
+			res := NewResolver(ctx, r)
+			defer res.Release()
+			res.AddSamples(0, schemav1.Samples{
+				StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+				Values:        []uint64{1, 1, 1, 1, 1},
+			})
+			res.AddSamples(1, schemav1.Samples{
+				StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+				Values:        []uint64{1, 1, 1, 1, 1},
+			})
+
+			resolved, err := res.Tree()
+			require.NoError(t, err)
+			expected := `.
+├── github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).takeSnapshots: self 2 total 8
+│   └── github.com/pyroscope-io/pyroscope/pkg/agent/gospy.(*GoSpy).Snapshot: self 2 total 6
+│       └── github.com/pyroscope-io/pyroscope/pkg/convert.ParsePprof: self 0 total 4
+│           └── io/ioutil.ReadAll: self 2 total 4
+│               └── io.ReadAll: self 2 total 2
+└── net/http.(*conn).serve: self 2 total 2
+`
+
+			require.Equal(t, expected, resolved.String())
+		})
+	}
+}
+
+func Test_Reader_OpenObject_prefetch_invalid_index_offset(t *testing.T) {
+	// The footer CRC is valid, but the index offset is not.
+	corpus, err := os.ReadFile("testdata/symbols/v3/symbols.symdb")
+	require.NoError(t, err)
+
+	var footer Footer
+	require.NoError(t, footer.UnmarshalBinary(corpus[len(corpus)-FooterSize:]))
+
+	fileSize := uint64(len(corpus))
+	for _, tc := range []struct {
+		name        string
+		indexOffset uint64
+	}{
+		{"index offset overlaps the footer", fileSize - uint64(FooterSize) + 1},
+		{"index offset is the file size", fileSize},
+		{"index offset is beyond the file size", ^uint64(0)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := append([]byte(nil), corpus...)
+			footer.IndexOffset = tc.indexOffset
+			copy(data[len(data)-FooterSize:], footer.MarshalBinary())
+
+			ctx := context.Background()
+			bucket := pystore.NewBucket(objstore.NewInMemBucket())
+			require.NoError(t, bucket.Upload(ctx, DefaultFileName, bytes.NewReader(data)))
+			_, err := OpenObject(ctx, bucket, DefaultFileName, 0, int64(fileSize), WithPrefetchSize(uint64(FooterSize)))
+			require.Error(t, err)
+			require.ErrorIs(t, err, ErrInvalidSize)
+		})
+	}
+}
+
 func Test_Reader_Open_v2(t *testing.T) {
 	// The block contains two partitions (0 and 1), each partition
 	// stores symbols of the testdata/profile.pb.gz profile
