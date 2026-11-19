@@ -455,6 +455,11 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	if err != nil {
 		return nil, err
 	}
+	if len(req.Msg.LabelNames) > 0 && len(filteredLabelNames) == 0 {
+		// Every requested label name was filtered out. Querying with no label
+		// names would return all labels, including the filtered ones.
+		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
+	}
 	req.Msg.LabelNames = filteredLabelNames
 
 	// no store gateways configured so just query the ingesters

@@ -54,6 +54,14 @@ func (m *mockServer) DeleteTenant(ctx context.Context, request *metastorev1.Dele
 	return m.tenant.DeleteTenant(ctx, request)
 }
 
+func (m *mockServer) ListCompactionJobs(ctx context.Context, request *metastorev1.ListCompactionJobsRequest) (*metastorev1.ListCompactionJobsResponse, error) {
+	return m.compactor.ListCompactionJobs(ctx, request)
+}
+
+func (m *mockServer) DeleteDatasets(ctx context.Context, request *metastorev1.DeleteDatasetsRequest) (*metastorev1.DeleteDatasetsResponse, error) {
+	return m.compactor.DeleteDatasets(ctx, request)
+}
+
 func (m *mockServer) PollCompactionJobs(ctx context.Context, request *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	return m.compactor.PollCompactionJobs(ctx, request)
 }

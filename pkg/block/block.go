@@ -16,11 +16,15 @@ const (
 )
 
 const (
-	defaultObjectSizeLoadInMemory        = 1 << 20
-	defaultTenantDatasetSizeLoadInMemory = 1 << 20
+	defaultObjectSizeLoadInMemory = 1 << 20
+
+	// DefaultTenantDatasetSizeLoadInMemory is the exclusive size threshold
+	// below which datasets are buffered when their object is not in memory.
+	DefaultTenantDatasetSizeLoadInMemory = 1 << 20
 
 	maxRowsPerRowGroup  = 10 << 10
 	symbolsPrefetchSize = 32 << 10
+	localReadBufferSize = 64 << 10
 )
 
 func estimateReadBufferSize(s int64) int {

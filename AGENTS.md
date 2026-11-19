@@ -133,10 +133,6 @@ Commit the generated files with your changes.
 go run ./cmd/pyroscope --target all,embedded-grafana
 # Pyroscope: http://localhost:4040
 # Grafana: http://localhost:4041
-
-# Run with V2 architecture (segment writers, query backend, symbolizer)
-# -symbolizer.enabled=true opts into symbolization (off by default).
-go run ./cmd/pyroscope -symbolizer.enabled=true
 ```
 
 ## Code Style & Conventions
@@ -372,6 +368,7 @@ make docker-image/pyroscope/build  # Build Docker image
 - **Commit Messages**: Focus on "why" not just "what"
 - **Generated Code**: Include generated files in the same commit as source changes
 - **Format**: Follow existing commit message style (see `git log --oneline -20`)
+- **Protected Branches**: `main`, `weekly/*` and `release/*` are protected; direct pushes are rejected, so changes require a PR
 
 ## Additional Notes for AI Agents
 

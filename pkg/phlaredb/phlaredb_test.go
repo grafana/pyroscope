@@ -348,8 +348,20 @@ func TestMergeProfilesPprof(t *testing.T) {
 	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
 
-	t.Run("request the one existing series", func(t *testing.T) {
+	newStream := func(t *testing.T, ctx context.Context) *connect.BidiStreamForClient[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse] {
+		t.Helper()
 		bidi := client.MergeProfilesPprof(ctx)
+		t.Cleanup(func() {
+			// Cancellation alone may leave the HTTP transport reading the request
+			// pipe. Close both sides before the deferred server shutdown.
+			assert.NoError(t, bidi.CloseRequest())
+			assert.NoError(t, bidi.CloseResponse())
+		})
+		return bidi
+	}
+
+	t.Run("request the one existing series", func(t *testing.T) {
+		bidi := newStream(t, ctx)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
 			Request: &ingestv1.SelectProfilesRequest{
@@ -386,7 +398,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	})
 
 	t.Run("request non existing series", func(t *testing.T) {
-		bidi := client.MergeProfilesPprof(ctx)
+		bidi := newStream(t, ctx)
 
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
 			Request: &ingestv1.SelectProfilesRequest{
@@ -415,7 +427,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	})
 
 	t.Run("empty request fails", func(t *testing.T) {
-		bidi := client.MergeProfilesPprof(ctx)
+		bidi := newStream(t, ctx)
 
 		// It is possible that the error returned by server side of the
 		// stream closes the net.Conn before bidi.Send has finished. The
@@ -433,7 +445,8 @@ func TestMergeProfilesPprof(t *testing.T) {
 
 	t.Run("test cancellation", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
-		bidi := client.MergeProfilesPprof(ctx)
+		t.Cleanup(cancel)
+		bidi := newStream(t, ctx)
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
 			Request: &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{pod="my-pod"}`,
@@ -446,7 +459,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	})
 
 	t.Run("test close request", func(t *testing.T) {
-		bidi := client.MergeProfilesPprof(ctx)
+		bidi := newStream(t, ctx)
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
 			Request: &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{pod="my-pod"}`,
@@ -458,8 +471,24 @@ func TestMergeProfilesPprof(t *testing.T) {
 		require.NoError(t, bidi.CloseRequest())
 	})
 
+	t.Run("incomplete request", func(t *testing.T) {
+		bidi := newStream(t, ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         start.UnixMilli(),
+				End:           end.UnixMilli(),
+			},
+		}))
+		resp, err := bidi.Receive()
+		require.NoError(t, err)
+		require.NotEmpty(t, resp.SelectedProfiles.Profiles)
+		// Leave the server waiting for a selection, as an early test exit would.
+	})
+
 	t.Run("timerange with no Profiles", func(t *testing.T) {
-		bidi := client.MergeProfilesPprof(ctx)
+		bidi := newStream(t, ctx)
 		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
 			Request: &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{pod="my-pod"}`,

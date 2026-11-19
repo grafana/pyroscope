@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
@@ -12,6 +14,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/internal/pushback"
 )
@@ -35,6 +38,45 @@ func (*testServerStream) SendHeader(metadata.MD) error { return nil }
 func (s *testServerStream) SetTrailer(md metadata.MD) error {
 	s.trailer = metadata.Join(s.trailer, md)
 	return nil
+}
+
+func TestQueryBackend_ReadProcessingIncludesFinalization(t *testing.T) {
+	for _, collectDiag := range []bool{false, true} {
+		t.Run(map[bool]string{false: "without diagnostics", true: "with diagnostics"}[collectDiag], func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var readerEnd time.Time
+				handler := &testQueryHandler{invoke: func(context.Context, *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+					readerEnd = time.Now()
+					// Simulate local work after the reader snapshots its timing.
+					time.Sleep(time.Millisecond)
+					return &queryv1.InvokeResponse{
+						Diagnostics: &queryv1.Diagnostics{ExecutionNode: &queryv1.ExecutionNode{
+							EndTimeNs: readerEnd.UnixNano(),
+							Stats:     &queryv1.ExecutionStats{ProcessingDurationNs: 1},
+						}},
+						Reports: []*queryv1.Report{{TimeSeriesAnalysis: &queryv1.TimeSeriesAnalysisReport{
+							Query: &queryv1.TimeSeriesAnalysisQuery{Step: 1},
+						}}},
+					}, nil
+				}}
+				q, err := New(Config{}, log.NewNopLogger(), nil, nil, handler)
+				require.NoError(t, err)
+				resp, err := q.Invoke(context.Background(), &queryv1.InvokeRequest{
+					QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{Type: queryv1.QueryNode_READ}},
+					Options:   &queryv1.InvokeOptions{Finalize: true, CollectDiagnostics: collectDiag},
+				})
+				require.NoError(t, err)
+				node := resp.Diagnostics.ExecutionNode
+				require.Equal(t, int64(time.Millisecond), node.Stats.ProcessingDurationNs)
+				require.Zero(t, node.Stats.UnaccountedDurationNs)
+				require.Zero(t, node.Stats.BackoffDurationNs)
+				if collectDiag {
+					require.Greater(t, node.EndTimeNs, readerEnd.UnixNano())
+					require.Equal(t, node.EndTimeNs-node.StartTimeNs, node.Stats.ProcessingDurationNs)
+				}
+			})
+		})
+	}
 }
 
 func TestQueryBackend_NoRetrySignal(t *testing.T) {
@@ -136,6 +178,33 @@ func TestQueryBackend_NoRetrySignal_SiblingErrorWins(t *testing.T) {
 	require.True(t, pushback.IsNoRetry(stream.trailer))
 }
 
+func TestConfig_AsyncQueryTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		want    time.Duration
+		wantErr bool
+	}{
+		{name: "default", want: 2 * time.Minute},
+		{name: "override", args: []string{"-query-backend.async-query-timeout=10m"}, want: 10 * time.Minute},
+		{name: "fallback", args: []string{"-query-backend.async-query-timeout=0"}},
+		{name: "negative", args: []string{"-query-backend.async-query-timeout=-1s"}, want: -time.Second, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var cfg Config
+			flags := flag.NewFlagSet("", flag.ContinueOnError)
+			cfg.RegisterFlags(flags)
+			require.NoError(t, flags.Parse(tc.args))
+			require.Equal(t, tc.want, cfg.AsyncQueryTimeout)
+			if tc.wantErr {
+				require.ErrorContains(t, cfg.Validate(), "async-query-timeout")
+			} else {
+				require.NoError(t, cfg.Validate())
+			}
+		})
+	}
+}
+
 func TestConfig_DisableClientRateLimitRetries(t *testing.T) {
 	var cfg Config
 	cfg.RegisterFlags(flag.NewFlagSet("", flag.PanicOnError))
@@ -144,4 +213,77 @@ func TestConfig_DisableClientRateLimitRetries(t *testing.T) {
 	cfg.GRPCClientConfig.BackoffOnRatelimits = true
 	cfg.DisableClientRateLimitRetries(log.NewNopLogger())
 	require.False(t, cfg.GRPCClientConfig.BackoffOnRatelimits)
+}
+
+func TestQueryBackend_MergeCriticalPathStats(t *testing.T) {
+	for _, collectDiagnostics := range []bool{false, true} {
+		name := "without diagnostics"
+		if collectDiagnostics {
+			name = "with diagnostics"
+		}
+		t.Run(name, func(t *testing.T) {
+			// Both RPCs start before either responds. The slower child has
+			// less processing but more backoff and unaccounted time.
+			started := make(chan struct{}, 2)
+			release := make(chan struct{})
+			handler := &testQueryHandler{invoke: func(ctx context.Context, req *queryv1.InvokeRequest) (*queryv1.InvokeResponse, error) {
+				started <- struct{}{}
+				<-release
+				stats := &queryv1.ExecutionStats{
+					BytesFetched:          100,
+					ProcessingDurationNs:  int64(20 * time.Millisecond),
+					BackoffDurationNs:     int64(5 * time.Millisecond),
+					UnaccountedDurationNs: int64(5 * time.Millisecond),
+				}
+				duration := 30 * time.Millisecond
+				if req.QueryPlan.Root.Blocks[0].Id == "slow" {
+					stats = &queryv1.ExecutionStats{
+						BytesFetched:          200,
+						ProcessingDurationNs:  int64(10 * time.Millisecond),
+						BackoffDurationNs:     int64(70 * time.Millisecond),
+						UnaccountedDurationNs: int64(20 * time.Millisecond),
+					}
+					duration = 100 * time.Millisecond
+				}
+				time.Sleep(duration)
+				return &queryv1.InvokeResponse{Diagnostics: &queryv1.Diagnostics{
+					ExecutionNode: &queryv1.ExecutionNode{Stats: stats},
+				}}, nil
+			}}
+			q, err := New(Config{}, log.NewNopLogger(), nil, handler, nil)
+			require.NoError(t, err)
+			go func() {
+				<-started
+				<-started
+				close(release)
+			}()
+			start := time.Now()
+			resp, err := q.Invoke(t.Context(), &queryv1.InvokeRequest{
+				Options: &queryv1.InvokeOptions{CollectDiagnostics: collectDiagnostics},
+				QueryPlan: &queryv1.QueryPlan{Root: &queryv1.QueryNode{
+					Type: queryv1.QueryNode_MERGE,
+					Children: []*queryv1.QueryNode{
+						{Type: queryv1.QueryNode_READ, Blocks: []*metastorev1.BlockMeta{{Id: "fast"}}},
+						{Type: queryv1.QueryNode_READ, Blocks: []*metastorev1.BlockMeta{{Id: "slow"}}},
+					},
+				}},
+			})
+			elapsed := time.Since(start)
+			require.NoError(t, err)
+			node := resp.GetDiagnostics().GetExecutionNode()
+			stats := node.GetStats()
+			require.NotNil(t, stats)
+			require.Equal(t, uint64(300), stats.BytesFetched)
+			require.Equal(t, int64(70*time.Millisecond), stats.BackoffDurationNs)
+			require.GreaterOrEqual(t, stats.UnaccountedDurationNs, int64(20*time.Millisecond))
+			require.GreaterOrEqual(t, stats.ProcessingDurationNs, int64(10*time.Millisecond))
+			total := stats.ProcessingDurationNs + stats.BackoffDurationNs + stats.UnaccountedDurationNs
+			require.InDelta(t, elapsed.Nanoseconds(), total, float64(20*time.Millisecond))
+			if collectDiagnostics {
+				require.Len(t, node.Children, 2)
+			} else {
+				require.Empty(t, node.Children)
+			}
+		})
+	}
 }

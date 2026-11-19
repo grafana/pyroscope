@@ -1,6 +1,7 @@
 package tombstones
 
 import (
+	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -20,6 +21,7 @@ type TombstoneStore interface {
 }
 
 type Tombstones struct {
+	mu         sync.RWMutex
 	metrics    *metrics
 	tombstones map[tombstoneKey]*tombstones
 	blocks     map[tenantBlockKey]*tenantBlocks
@@ -51,6 +53,8 @@ func NewStore() *store.TombstoneStore {
 }
 
 func (x *Tombstones) Exists(tenant string, shard uint32, block string) bool {
+	x.mu.RLock()
+	defer x.mu.RUnlock()
 	t, exists := x.blocks[tenantBlockKey{tenant: tenant, shard: shard}]
 	if exists {
 		_, exists = t.blocks[block]
@@ -59,6 +63,8 @@ func (x *Tombstones) Exists(tenant string, shard uint32, block string) bool {
 }
 
 func (x *Tombstones) ListTombstones(before time.Time) iter.Iterator[*metastorev1.Tombstones] {
+	x.mu.RLock()
+	defer x.mu.RUnlock()
 	return &tombstoneIter{
 		head:   x.queue.head,
 		before: before.UnixNano(),
@@ -75,6 +81,8 @@ func (x *Tombstones) AddTombstones(tx *bbolt.Tx, cmd *raft.Log, t *metastorev1.T
 		AppendedAt: cmd.AppendedAt.UnixNano(),
 		Tombstones: t,
 	}
+	x.mu.Lock()
+	defer x.mu.Unlock()
 	if !x.put(k, v) {
 		return nil
 	}
@@ -82,6 +90,8 @@ func (x *Tombstones) AddTombstones(tx *bbolt.Tx, cmd *raft.Log, t *metastorev1.T
 }
 
 func (x *Tombstones) DeleteTombstones(tx *bbolt.Tx, cmd *raft.Log, tombstones ...*metastorev1.Tombstones) error {
+	x.mu.Lock()
+	defer x.mu.Unlock()
 	for _, t := range tombstones {
 		if err := x.deleteTombstones(tx, cmd, t); err != nil {
 			return err
@@ -168,6 +178,8 @@ func (x *Tombstones) Init(tx *bbolt.Tx) error {
 }
 
 func (x *Tombstones) Restore(tx *bbolt.Tx) error {
+	x.mu.Lock()
+	defer x.mu.Unlock()
 	x.queue = newTombstoneQueue()
 	clear(x.tombstones)
 	clear(x.blocks)

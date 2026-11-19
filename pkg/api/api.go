@@ -28,7 +28,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/capabilities/v1/capabilitiesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
-	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
@@ -44,6 +43,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/ingester"
 	"github.com/grafana/pyroscope/v2/pkg/ingester/otlp"
 	"github.com/grafana/pyroscope/v2/pkg/ingester/pyroscope"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	"github.com/grafana/pyroscope/v2/pkg/querier"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler"
 	"github.com/grafana/pyroscope/v2/pkg/scheduler/schedulerpb/schedulerpbconnect"
@@ -273,14 +273,14 @@ func (a *API) RegisterDebugInfo(svc debuginfov1alpha1connect.DebuginfoServiceHan
 }
 
 // RegisterDistributor registers the endpoints associated with the distributor.
-func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config) {
+func (a *API) RegisterDistributor(d *distributor.Distributor, limits *validation.Overrides, cfg server.Config, recorder *profiledump.Recorder) {
 	writePathOpts := a.registerOptionsWritePath(limits)
 	pyroscopeHandler := pyroscope.NewPyroscopeIngestHandler(d, limits, a.logger)
 	otlpHandler := otlp.NewOTLPIngestHandler(cfg, d, a.logger, limits)
 
 	a.RegisterRoute("/ingest", pyroscopeHandler, writePathOpts...)
 	a.RegisterRoute("/pyroscope/ingest", pyroscopeHandler, writePathOpts...)
-	pushv1connect.RegisterPusherServiceHandler(a.server.HTTP, d, a.connectOptionsAuthDelayRecovery(limits)...)
+	a.registerPusher(d, limits, recorder)
 	a.registerAdminRoute("/distributor/ring", d, a.registerOptionsRingPage()...)
 	a.addOperationalLinks(defaultWeight, "Distributor", []IndexPageLink{
 		{Desc: "Ring status", Path: "/distributor/ring"},

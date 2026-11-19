@@ -393,5 +393,9 @@ func (i *Ingester) CheckReady(ctx context.Context) error {
 	if s := i.State(); s != services.Running && s != services.Stopping {
 		return fmt.Errorf("ingester not ready: %v", s)
 	}
-	return i.lifecycler.CheckReady(ctx)
+	err := i.lifecycler.CheckReady(ctx)
+	if err != nil && err.Error() == fmt.Sprintf("waiting for %v after being ready", i.cfg.LifecyclerConfig.MinReadyDuration) {
+		return fmt.Errorf("%w (the wait slows rolling updates so the rest of the cluster can pick up this instance; set -ingester.min-ready-duration=0 to disable it, which is safe for local or single-instance setups)", err)
+	}
+	return err
 }

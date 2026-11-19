@@ -42,6 +42,9 @@ type metrics struct {
 	profilesReceived               *prometheus.CounterVec
 	parseDuration                  *prometheus.HistogramVec
 	pushBatchSeries                *prometheus.HistogramVec
+	inflightBytesLimit             prometheus.Gauge
+	inflightBytesHighWatermark     prometheus.Summary
+	rejectedRequests               *prometheus.CounterVec
 	profileIDGeneration            *prometheus.CounterVec
 }
 
@@ -162,6 +165,26 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			},
 			[]string{"tenant"},
 		),
+		inflightBytesLimit: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Name:      "distributor_inflight_bytes_limit",
+			Help:      "The configured per-distributor limit on inflight bytes. 0 means the limit is disabled.",
+		}),
+		inflightBytesHighWatermark: prometheus.NewSummary(prometheus.SummaryOpts{
+			Namespace:  "pyroscope",
+			Name:       "distributor_inflight_bytes_high_watermark",
+			Help:       "The maximum total size of the uncompressed profiles the distributor held in memory in the last minute.",
+			Objectives: map[float64]float64{1.0: 0.1},
+			MaxAge:     time.Minute,
+		}),
+		rejectedRequests: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "pyroscope",
+				Name:      "distributor_rejected_requests_total",
+				Help:      "The number of requests rejected by an instance-level limit of the distributor.",
+			},
+			[]string{"reason"},
+		),
 		profileIDGeneration: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "pyroscope",
@@ -183,9 +206,15 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			m.profilesReceived,
 			m.parseDuration,
 			m.pushBatchSeries,
+			m.inflightBytesLimit,
+			m.inflightBytesHighWatermark,
+			m.rejectedRequests,
 			m.profileIDGeneration,
 		)
 	}
+	// Initialize expected rejected request labels, so the series exists before
+	// the first rejection.
+	m.rejectedRequests.WithLabelValues(reasonMaxInflightBytes)
 	return m
 }
 

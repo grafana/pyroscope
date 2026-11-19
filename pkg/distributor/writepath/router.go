@@ -16,6 +16,7 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
+	"github.com/grafana/pyroscope/v2/pkg/distributor/inflight"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	"github.com/grafana/pyroscope/v2/pkg/util"
@@ -215,8 +216,12 @@ func (m *Router) detachedClient(ctx context.Context, req *distributormodel.Profi
 func (m *Router) sendAsync(ctx context.Context, req *distributormodel.ProfileSeries, r *route) <-chan error {
 	c := make(chan error, 1)
 	m.inflight.Add(1)
+	// The profile stays in memory until the goroutine below completes, which
+	// may be long after the caller has returned.
+	release := inflight.Detach(ctx)
 	go func() {
 		defer m.inflight.Done()
+		defer release()
 		c <- m.send(r)(ctx, req)
 	}()
 	return c

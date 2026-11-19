@@ -7,6 +7,12 @@ weight: 800
 
 # Configure Grafana Pyroscope shuffle sharding
 
+{{< admonition type="note" >}}
+This page describes shuffle sharding for the legacy v1 architecture. These settings apply to v1 ingesters, queriers, query schedulers, store gateways, and compactors.
+For v2 write-path placement across segment writers, refer to [Data distribution](../../reference-pyroscope-v2-architecture/data-distribution/).
+For the v2 read path, refer to [Query frontend](../../reference-pyroscope-v2-architecture/components/query-frontend/) and [Query backend](../../reference-pyroscope-v2-architecture/components/query-backend/).
+{{< /admonition >}}
+
 Grafana Pyroscope leverages sharding to horizontally scale both single- and multi-tenant clusters beyond the capacity of a single node.
 
 ## Background

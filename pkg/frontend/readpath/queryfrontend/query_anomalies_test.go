@@ -29,7 +29,8 @@ import (
 
 func TestQueryAnomalies_Unconfigured(t *testing.T) {
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		30*time.Second,
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -51,10 +52,11 @@ func TestQueryAnomalies_WrongProfileType_ReturnsEmpty(t *testing.T) {
 		log.NewNopLogger(),
 		mockfrontend.NewMockLimits(t),
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		new(mockmetastorev1.MockMetadataQueryServiceClient),
 		nil,
 		new(mockqueryfrontend.MockQueryBackend),
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -70,7 +72,8 @@ func TestQueryAnomalies_WrongProfileType_ReturnsEmpty(t *testing.T) {
 
 func TestQueryAnomalies_NoAnomalyTypes(t *testing.T) {
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		30*time.Second,
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -98,6 +101,7 @@ func TestQueryAnomalies_ClampsStartToMaxQueryLookback(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Hour)
 	mockLimits.On("MaxQueryLength", smpTenant).Return(2 * time.Hour)
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -127,10 +131,11 @@ func TestQueryAnomalies_ClampsStartToMaxQueryLookback(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -164,10 +169,11 @@ func TestQueryAnomalies_TimeRangeBeforeLookback_ReturnsEmpty(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: "http://unused"}},
+		30*time.Second,
 		new(mockmetastorev1.MockMetadataQueryServiceClient),
 		nil,
 		new(mockqueryfrontend.MockQueryBackend),
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -186,7 +192,8 @@ func TestQueryAnomalies_TimeRangeBeforeLookback_ReturnsEmpty(t *testing.T) {
 
 func TestQueryAnomalies_UnknownType(t *testing.T) {
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t), frontend.Config{},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		30*time.Second,
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -210,7 +217,8 @@ func TestQueryAnomalies_UnknownTypeMixedWithValid_FailsBeforeExecuting(t *testin
 
 	qf := NewQueryFrontend(log.NewNopLogger(), mockfrontend.NewMockLimits(t),
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
-		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil, nil)
+		30*time.Second,
+		new(mockmetastorev1.MockMetadataQueryServiceClient), nil, new(mockqueryfrontend.MockQueryBackend), nil, nil)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
 	resp, err := qf.QueryAnomalies(ctx, connect.NewRequest(&querierv1.QueryAnomaliesRequest{
@@ -240,6 +248,7 @@ func TestQueryAnomalies_DuplicateAnomalyType_QueriesOnce(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -276,10 +285,11 @@ func TestQueryAnomalies_DuplicateAnomalyType_QueriesOnce(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -321,10 +331,10 @@ func TestQueryAnomalies_NoMatchingServiceName_ReturnsEmpty(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: "http://unused"}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil,
 		nil,
 		nil,
 	)
@@ -395,10 +405,10 @@ func TestQueryAnomalies_MultipleServiceNames(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil,
 		nil,
 		nil,
 	)
@@ -453,10 +463,11 @@ func TestQueryAnomalies_ResolveServiceNames_ScopesSeriesByProfileType(t *testing
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -509,10 +520,11 @@ func TestQueryAnomalies_TooManyServices_ReturnsInvalidArgument(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)
@@ -551,6 +563,7 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -595,10 +608,10 @@ func TestQueryAnomalies_StacktraceConfirmsAgainstIngestedData(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil,
 		nil,
 		nil,
 	)
@@ -645,6 +658,7 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -676,10 +690,10 @@ func TestQueryAnomalies_AllAbsent_SingleBackendCall(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil,
 		nil,
 		nil,
 	)
@@ -719,6 +733,7 @@ func TestQueryAnomalies_ScoreLookupToleratesUUIDSpelling(t *testing.T) {
 	mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 	mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
 	mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
+	mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 
 	mockMetadata := new(mockmetastorev1.MockMetadataQueryServiceClient)
 	mockMetadata.On("QueryMetadata", mock.Anything, mock.Anything).Return(smpOneBlock(), nil)
@@ -755,10 +770,11 @@ func TestQueryAnomalies_ScoreLookupToleratesUUIDSpelling(t *testing.T) {
 		log.NewNopLogger(),
 		mockLimits,
 		frontend.Config{AnomalyAPI: anomalyapi.Config{URL: apServer.URL}},
+		30*time.Second,
 		mockMetadata,
 		nil,
 		mockBackend,
-		nil, nil, nil,
+		nil, nil,
 	)
 
 	ctx := tenant.InjectTenantID(context.Background(), smpTenant)

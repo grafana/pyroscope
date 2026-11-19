@@ -21,6 +21,98 @@ func (_m *MockLimits) EXPECT() *MockLimits_Expecter {
 	return &MockLimits_Expecter{mock: &_m.Mock}
 }
 
+// DatasetIndexShardPruning provides a mock function with given fields: _a0
+func (_m *MockLimits) DatasetIndexShardPruning(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DatasetIndexShardPruning")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockLimits_DatasetIndexShardPruning_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DatasetIndexShardPruning'
+type MockLimits_DatasetIndexShardPruning_Call struct {
+	*mock.Call
+}
+
+// DatasetIndexShardPruning is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) DatasetIndexShardPruning(_a0 interface{}) *MockLimits_DatasetIndexShardPruning_Call {
+	return &MockLimits_DatasetIndexShardPruning_Call{Call: _e.mock.On("DatasetIndexShardPruning", _a0)}
+}
+
+func (_c *MockLimits_DatasetIndexShardPruning_Call) Run(run func(_a0 string)) *MockLimits_DatasetIndexShardPruning_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_DatasetIndexShardPruning_Call) Return(_a0 bool) *MockLimits_DatasetIndexShardPruning_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_DatasetIndexShardPruning_Call) RunAndReturn(run func(string) bool) *MockLimits_DatasetIndexShardPruning_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ForceDatasetIndexLookup provides a mock function with given fields: _a0
+func (_m *MockLimits) ForceDatasetIndexLookup(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ForceDatasetIndexLookup")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockLimits_ForceDatasetIndexLookup_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ForceDatasetIndexLookup'
+type MockLimits_ForceDatasetIndexLookup_Call struct {
+	*mock.Call
+}
+
+// ForceDatasetIndexLookup is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockLimits_Expecter) ForceDatasetIndexLookup(_a0 interface{}) *MockLimits_ForceDatasetIndexLookup_Call {
+	return &MockLimits_ForceDatasetIndexLookup_Call{Call: _e.mock.On("ForceDatasetIndexLookup", _a0)}
+}
+
+func (_c *MockLimits_ForceDatasetIndexLookup_Call) Run(run func(_a0 string)) *MockLimits_ForceDatasetIndexLookup_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockLimits_ForceDatasetIndexLookup_Call) Return(_a0 bool) *MockLimits_ForceDatasetIndexLookup_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockLimits_ForceDatasetIndexLookup_Call) RunAndReturn(run func(string) bool) *MockLimits_ForceDatasetIndexLookup_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MaxFlameGraphNodesDefault provides a mock function with given fields: _a0
 func (_m *MockLimits) MaxFlameGraphNodesDefault(_a0 string) int {
 	ret := _m.Called(_a0)
@@ -477,52 +569,6 @@ func (_c *MockLimits_QueryTreeEnabled_Call) Return(_a0 bool) *MockLimits_QueryTr
 }
 
 func (_c *MockLimits_QueryTreeEnabled_Call) RunAndReturn(run func(string) bool) *MockLimits_QueryTreeEnabled_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SymbolizerEnabled provides a mock function with given fields: _a0
-func (_m *MockLimits) SymbolizerEnabled(_a0 string) bool {
-	ret := _m.Called(_a0)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SymbolizerEnabled")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// MockLimits_SymbolizerEnabled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SymbolizerEnabled'
-type MockLimits_SymbolizerEnabled_Call struct {
-	*mock.Call
-}
-
-// SymbolizerEnabled is a helper method to define mock.On call
-//   - _a0 string
-func (_e *MockLimits_Expecter) SymbolizerEnabled(_a0 interface{}) *MockLimits_SymbolizerEnabled_Call {
-	return &MockLimits_SymbolizerEnabled_Call{Call: _e.mock.On("SymbolizerEnabled", _a0)}
-}
-
-func (_c *MockLimits_SymbolizerEnabled_Call) Run(run func(_a0 string)) *MockLimits_SymbolizerEnabled_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *MockLimits_SymbolizerEnabled_Call) Return(_a0 bool) *MockLimits_SymbolizerEnabled_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockLimits_SymbolizerEnabled_Call) RunAndReturn(run func(string) bool) *MockLimits_SymbolizerEnabled_Call {
 	_c.Call.Return(run)
 	return _c
 }

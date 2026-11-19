@@ -82,6 +82,7 @@ func (m *IndexCommandHandler) AddBlock(ctx context.Context, tx *bbolt.Tx, cmd *r
 	insertSpan, _ := tracing.StartSpanFromContext(ctx, "index.InsertBlock")
 	if err = m.index.InsertBlock(tx, req.Block); err != nil {
 		if errors.Is(err, index.ErrBlockExists) {
+			insertSpan.Finish()
 			level.Warn(m.logger).Log("msg", "block already added", "block", e.ID)
 			return new(metastorev1.AddBlockResponse), nil
 		}

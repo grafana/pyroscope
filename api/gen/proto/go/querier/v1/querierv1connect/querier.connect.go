@@ -116,8 +116,8 @@ type QuerierServiceClient interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
-	// (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
-	// profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
+	// (Experimental) QueryAnomalies returns stacktrace anomalies and detected
+	// time-series changes for matching profiles, according to anomaly_types.
 	QueryAnomalies(context.Context, *connect.Request[v1.QueryAnomaliesRequest]) (*connect.Response[v1.QueryAnomaliesResponse], error)
 }
 
@@ -335,8 +335,8 @@ type QuerierServiceHandler interface {
 	// GetProfileStats returns profile stats for the current tenant.
 	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 	AnalyzeQuery(context.Context, *connect.Request[v1.AnalyzeQueryRequest]) (*connect.Response[v1.AnalyzeQueryResponse], error)
-	// (Experimental) QueryAnomalies returns, out of the profiles matching the request, the
-	// profile IDs also flagged as anomalies by an external anomaly source (see anomaly_type).
+	// (Experimental) QueryAnomalies returns stacktrace anomalies and detected
+	// time-series changes for matching profiles, according to anomaly_types.
 	QueryAnomalies(context.Context, *connect.Request[v1.QueryAnomaliesRequest]) (*connect.Response[v1.QueryAnomaliesResponse], error)
 }
 

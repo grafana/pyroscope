@@ -249,6 +249,7 @@ type AnomalyType int32
 const (
 	AnomalyType_ANOMALY_TYPE_UNSPECIFIED AnomalyType = 0
 	AnomalyType_ANOMALY_TYPE_STACKTRACE  AnomalyType = 1
+	AnomalyType_ANOMALY_TYPE_TIME_SERIES AnomalyType = 2
 )
 
 // Enum value maps for AnomalyType.
@@ -256,10 +257,12 @@ var (
 	AnomalyType_name = map[int32]string{
 		0: "ANOMALY_TYPE_UNSPECIFIED",
 		1: "ANOMALY_TYPE_STACKTRACE",
+		2: "ANOMALY_TYPE_TIME_SERIES",
 	}
 	AnomalyType_value = map[string]int32{
 		"ANOMALY_TYPE_UNSPECIFIED": 0,
 		"ANOMALY_TYPE_STACKTRACE":  1,
+		"ANOMALY_TYPE_TIME_SERIES": 2,
 	}
 )
 
@@ -288,6 +291,61 @@ func (x AnomalyType) Number() protoreflect.EnumNumber {
 // Deprecated: Use AnomalyType.Descriptor instead.
 func (AnomalyType) EnumDescriptor() ([]byte, []int) {
 	return file_querier_v1_querier_proto_rawDescGZIP(), []int{4}
+}
+
+type TimeSeriesAnomalyType int32
+
+const (
+	TimeSeriesAnomalyType_TIME_SERIES_ANOMALY_TYPE_UNSPECIFIED TimeSeriesAnomalyType = 0
+	TimeSeriesAnomalyType_TIME_SERIES_ANOMALY_TYPE_SPIKE       TimeSeriesAnomalyType = 1
+	TimeSeriesAnomalyType_TIME_SERIES_ANOMALY_TYPE_DROP        TimeSeriesAnomalyType = 2
+	TimeSeriesAnomalyType_TIME_SERIES_ANOMALY_TYPE_INCREASE    TimeSeriesAnomalyType = 3
+	TimeSeriesAnomalyType_TIME_SERIES_ANOMALY_TYPE_DECREASE    TimeSeriesAnomalyType = 4
+)
+
+// Enum value maps for TimeSeriesAnomalyType.
+var (
+	TimeSeriesAnomalyType_name = map[int32]string{
+		0: "TIME_SERIES_ANOMALY_TYPE_UNSPECIFIED",
+		1: "TIME_SERIES_ANOMALY_TYPE_SPIKE",
+		2: "TIME_SERIES_ANOMALY_TYPE_DROP",
+		3: "TIME_SERIES_ANOMALY_TYPE_INCREASE",
+		4: "TIME_SERIES_ANOMALY_TYPE_DECREASE",
+	}
+	TimeSeriesAnomalyType_value = map[string]int32{
+		"TIME_SERIES_ANOMALY_TYPE_UNSPECIFIED": 0,
+		"TIME_SERIES_ANOMALY_TYPE_SPIKE":       1,
+		"TIME_SERIES_ANOMALY_TYPE_DROP":        2,
+		"TIME_SERIES_ANOMALY_TYPE_INCREASE":    3,
+		"TIME_SERIES_ANOMALY_TYPE_DECREASE":    4,
+	}
+)
+
+func (x TimeSeriesAnomalyType) Enum() *TimeSeriesAnomalyType {
+	p := new(TimeSeriesAnomalyType)
+	*p = x
+	return p
+}
+
+func (x TimeSeriesAnomalyType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TimeSeriesAnomalyType) Descriptor() protoreflect.EnumDescriptor {
+	return file_querier_v1_querier_proto_enumTypes[5].Descriptor()
+}
+
+func (TimeSeriesAnomalyType) Type() protoreflect.EnumType {
+	return &file_querier_v1_querier_proto_enumTypes[5]
+}
+
+func (x TimeSeriesAnomalyType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TimeSeriesAnomalyType.Descriptor instead.
+func (TimeSeriesAnomalyType) EnumDescriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{5}
 }
 
 type ProfileTypesRequest struct {
@@ -650,14 +708,15 @@ type SelectMergeStacktracesResponse struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Flamegraph *FlameGraph            `protobuf:"bytes,1,opt,name=flamegraph,proto3" json:"flamegraph,omitempty"`
 	// Pyroscope tree bytes.
-	Tree    []byte            `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
-	Mapping map[string]string `protobuf:"bytes,3,rep,name=mapping,proto3" json:"mapping,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Tree []byte `protobuf:"bytes,2,opt,name=tree,proto3" json:"tree,omitempty"`
 	// DOT graph representation.
-	Dot string `protobuf:"bytes,4,opt,name=dot,proto3" json:"dot,omitempty"`
+	Dot string `protobuf:"bytes,3,opt,name=dot,proto3" json:"dot,omitempty"`
 	// (experimental) Used for responding to async queries.
-	Async *AsyncQueryResponse `protobuf:"bytes,5,opt,name=async,proto3,oneof" json:"async,omitempty"`
+	Async *AsyncQueryResponse `protobuf:"bytes,4,opt,name=async,proto3,oneof" json:"async,omitempty"`
 	// Profile in pprof format.
-	Pprof         *PprofProfile `protobuf:"bytes,6,opt,name=pprof,proto3" json:"pprof,omitempty"`
+	Pprof *PprofProfile `protobuf:"bytes,5,opt,name=pprof,proto3" json:"pprof,omitempty"`
+	// Function name to file/binary mapping.
+	Mapping       map[string]string `protobuf:"bytes,6,rep,name=mapping,proto3" json:"mapping,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -706,13 +765,6 @@ func (x *SelectMergeStacktracesResponse) GetTree() []byte {
 	return nil
 }
 
-func (x *SelectMergeStacktracesResponse) GetMapping() map[string]string {
-	if x != nil {
-		return x.Mapping
-	}
-	return nil
-}
-
 func (x *SelectMergeStacktracesResponse) GetDot() string {
 	if x != nil {
 		return x.Dot
@@ -730,6 +782,13 @@ func (x *SelectMergeStacktracesResponse) GetAsync() *AsyncQueryResponse {
 func (x *SelectMergeStacktracesResponse) GetPprof() *PprofProfile {
 	if x != nil {
 		return x.Pprof
+	}
+	return nil
+}
+
+func (x *SelectMergeStacktracesResponse) GetMapping() map[string]string {
+	if x != nil {
+		return x.Mapping
 	}
 	return nil
 }
@@ -2093,9 +2152,11 @@ type QueryAnomaliesRequest struct {
 	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
 	// Milliseconds since epoch.
 	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
-	// Which anomaly sources to consult. Only ANOMALY_TYPE_STACKTRACE is handled today; any
-	// other value returns an unimplemented error.
-	AnomalyTypes  []AnomalyType `protobuf:"varint,5,rep,packed,name=anomaly_types,json=anomalyTypes,proto3,enum=querier.v1.AnomalyType" json:"anomaly_types,omitempty"`
+	// Which anomaly sources to consult.
+	AnomalyTypes []AnomalyType `protobuf:"varint,5,rep,packed,name=anomaly_types,json=anomalyTypes,proto3,enum=querier.v1.AnomalyType" json:"anomaly_types,omitempty"`
+	// Required when ANOMALY_TYPE_TIME_SERIES is requested; there is no default step.
+	// Ignored when ANOMALY_TYPE_TIME_SERIES is not requested.
+	TimeSeries    *AnomalyTimeSeriesRequest `protobuf:"bytes,6,opt,name=time_series,json=timeSeries,proto3,oneof" json:"time_series,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2165,11 +2226,20 @@ func (x *QueryAnomaliesRequest) GetAnomalyTypes() []AnomalyType {
 	return nil
 }
 
+func (x *QueryAnomaliesRequest) GetTimeSeries() *AnomalyTimeSeriesRequest {
+	if x != nil {
+		return x.TimeSeries
+	}
+	return nil
+}
+
 type QueryAnomaliesResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Profiles flagged by the stacktrace anomaly source and confirmed present for the given
 	// label selector and time range. Populated when ANOMALY_TYPE_STACKTRACE is requested.
 	StacktraceAnomalies []*StacktraceAnomaly `protobuf:"bytes,1,rep,name=stacktrace_anomalies,json=stacktraceAnomalies,proto3" json:"stacktrace_anomalies,omitempty"`
+	// Detected time-series changes, populated when ANOMALY_TYPE_TIME_SERIES is requested.
+	TimeSeriesAnomalies []*TimeSeriesAnomaly `protobuf:"bytes,2,rep,name=time_series_anomalies,json=timeSeriesAnomalies,proto3" json:"time_series_anomalies,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -2207,6 +2277,13 @@ func (*QueryAnomaliesResponse) Descriptor() ([]byte, []int) {
 func (x *QueryAnomaliesResponse) GetStacktraceAnomalies() []*StacktraceAnomaly {
 	if x != nil {
 		return x.StacktraceAnomalies
+	}
+	return nil
+}
+
+func (x *QueryAnomaliesResponse) GetTimeSeriesAnomalies() []*TimeSeriesAnomaly {
+	if x != nil {
+		return x.TimeSeriesAnomalies
 	}
 	return nil
 }
@@ -2284,6 +2361,195 @@ func (x *StacktraceAnomaly) GetScore() float64 {
 	return 0
 }
 
+type AnomalyTimeSeriesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Labels used to group matching profiles into series.
+	// If empty, all matching profiles are aggregated into a single series.
+	GroupBy []string `protobuf:"bytes,1,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
+	// Query resolution step width in seconds. Must be at least 0.001 (1 ms).
+	// Unset or zero is invalid; there is no default.
+	Step float64 `protobuf:"fixed64,2,opt,name=step,proto3" json:"step,omitempty"`
+	// Retain all anomalies from the top N series by highest event priority_score.
+	// If unset, zero, or negative, no limit is applied.
+	Limit         *int64 `protobuf:"varint,3,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnomalyTimeSeriesRequest) Reset() {
+	*x = AnomalyTimeSeriesRequest{}
+	mi := &file_querier_v1_querier_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnomalyTimeSeriesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnomalyTimeSeriesRequest) ProtoMessage() {}
+
+func (x *AnomalyTimeSeriesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnomalyTimeSeriesRequest.ProtoReflect.Descriptor instead.
+func (*AnomalyTimeSeriesRequest) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *AnomalyTimeSeriesRequest) GetGroupBy() []string {
+	if x != nil {
+		return x.GroupBy
+	}
+	return nil
+}
+
+func (x *AnomalyTimeSeriesRequest) GetStep() float64 {
+	if x != nil {
+		return x.Step
+	}
+	return 0
+}
+
+func (x *AnomalyTimeSeriesRequest) GetLimit() int64 {
+	if x != nil && x.Limit != nil {
+		return *x.Limit
+	}
+	return 0
+}
+
+type TimeSeriesAnomaly struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Type   TimeSeriesAnomalyType  `protobuf:"varint,1,opt,name=type,proto3,enum=querier.v1.TimeSeriesAnomalyType" json:"type,omitempty"`
+	Labels []*v1.LabelPair        `protobuf:"bytes,2,rep,name=labels,proto3" json:"labels,omitempty"`
+	// Milliseconds since epoch.
+	TimestampStart int64 `protobuf:"varint,3,opt,name=timestamp_start,json=timestampStart,proto3" json:"timestamp_start,omitempty"`
+	// Milliseconds since epoch.
+	TimestampEnd int64 `protobuf:"varint,4,opt,name=timestamp_end,json=timestampEnd,proto3" json:"timestamp_end,omitempty"`
+	// Milliseconds since epoch.
+	TimestampPeak  int64   `protobuf:"varint,5,opt,name=timestamp_peak,json=timestampPeak,proto3" json:"timestamp_peak,omitempty"`
+	Baseline       float64 `protobuf:"fixed64,6,opt,name=baseline,proto3" json:"baseline,omitempty"`
+	PeakValue      float64 `protobuf:"fixed64,7,opt,name=peak_value,json=peakValue,proto3" json:"peak_value,omitempty"`
+	RelativeChange float64 `protobuf:"fixed64,8,opt,name=relative_change,json=relativeChange,proto3" json:"relative_change,omitempty"`
+	// Statistical anomaly score relative to pre-event baseline variability.
+	Score float64 `protobuf:"fixed64,9,opt,name=score,proto3" json:"score,omitempty"`
+	// Statistical score weighted by resource usage relative to the largest input
+	// series (including series without anomalies). Used to rank series for limits.
+	// Usage is the sum of non-negative finite buckets across the selected window.
+	PriorityScore float64 `protobuf:"fixed64,10,opt,name=priority_score,json=priorityScore,proto3" json:"priority_score,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TimeSeriesAnomaly) Reset() {
+	*x = TimeSeriesAnomaly{}
+	mi := &file_querier_v1_querier_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TimeSeriesAnomaly) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TimeSeriesAnomaly) ProtoMessage() {}
+
+func (x *TimeSeriesAnomaly) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TimeSeriesAnomaly.ProtoReflect.Descriptor instead.
+func (*TimeSeriesAnomaly) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *TimeSeriesAnomaly) GetType() TimeSeriesAnomalyType {
+	if x != nil {
+		return x.Type
+	}
+	return TimeSeriesAnomalyType_TIME_SERIES_ANOMALY_TYPE_UNSPECIFIED
+}
+
+func (x *TimeSeriesAnomaly) GetLabels() []*v1.LabelPair {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *TimeSeriesAnomaly) GetTimestampStart() int64 {
+	if x != nil {
+		return x.TimestampStart
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetTimestampEnd() int64 {
+	if x != nil {
+		return x.TimestampEnd
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetTimestampPeak() int64 {
+	if x != nil {
+		return x.TimestampPeak
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetBaseline() float64 {
+	if x != nil {
+		return x.Baseline
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetPeakValue() float64 {
+	if x != nil {
+		return x.PeakValue
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetRelativeChange() float64 {
+	if x != nil {
+		return x.RelativeChange
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetScore() float64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+func (x *TimeSeriesAnomaly) GetPriorityScore() float64 {
+	if x != nil {
+		return x.PriorityScore
+	}
+	return 0
+}
+
 var File_querier_v1_querier_proto protoreflect.FileDescriptor
 
 const file_querier_v1_querier_proto_rawDesc = "" +
@@ -2325,11 +2591,11 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\n" +
 	"flamegraph\x18\x01 \x01(\v2\x16.querier.v1.FlameGraphR\n" +
 	"flamegraph\x12\x12\n" +
-	"\x04tree\x18\x02 \x01(\fR\x04tree\x12Q\n" +
-	"\amapping\x18\x03 \x03(\v27.querier.v1.SelectMergeStacktracesResponse.MappingEntryR\amapping\x12\x10\n" +
-	"\x03dot\x18\x04 \x01(\tR\x03dot\x129\n" +
-	"\x05async\x18\x05 \x01(\v2\x1e.querier.v1.AsyncQueryResponseH\x00R\x05async\x88\x01\x01\x12.\n" +
-	"\x05pprof\x18\x06 \x01(\v2\x18.querier.v1.PprofProfileR\x05pprof\x1a:\n" +
+	"\x04tree\x18\x02 \x01(\fR\x04tree\x12\x10\n" +
+	"\x03dot\x18\x03 \x01(\tR\x03dot\x129\n" +
+	"\x05async\x18\x04 \x01(\v2\x1e.querier.v1.AsyncQueryResponseH\x00R\x05async\x88\x01\x01\x12.\n" +
+	"\x05pprof\x18\x05 \x01(\v2\x18.querier.v1.PprofProfileR\x05pprof\x12Q\n" +
+	"\amapping\x18\x06 \x03(\v27.querier.v1.SelectMergeStacktracesResponse.MappingEntryR\amapping\x1a:\n" +
 	"\fMappingEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\b\n" +
@@ -2455,21 +2721,43 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\vQueryImpact\x128\n" +
 	"\x19total_bytes_in_time_range\x18\x02 \x01(\x04R\x15totalBytesInTimeRange\x120\n" +
 	"\x14total_queried_series\x18\x03 \x01(\x04R\x12totalQueriedSeries\x121\n" +
-	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded\"\xd0\x02\n" +
+	"\x14deduplication_needed\x18\x04 \x01(\bR\x13deduplicationNeeded\"\xac\x03\n" +
 	"\x15QueryAnomaliesRequest\x12Y\n" +
 	"\x0eprofile_typeID\x18\x01 \x01(\tB2\xbaG/:-\x12+process_cpu:cpu:nanoseconds:cpu:nanosecondsR\rprofileTypeID\x12J\n" +
 	"\x0elabel_selector\x18\x02 \x01(\tB#\xbaG :\x1e\x12\x1c'{namespace=\"my-namespace\"}'R\rlabelSelector\x12*\n" +
 	"\x05start\x18\x03 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\x05start\x12&\n" +
 	"\x03end\x18\x04 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676289600000R\x03end\x12<\n" +
-	"\ranomaly_types\x18\x05 \x03(\x0e2\x17.querier.v1.AnomalyTypeR\fanomalyTypes\"j\n" +
+	"\ranomaly_types\x18\x05 \x03(\x0e2\x17.querier.v1.AnomalyTypeR\fanomalyTypes\x12J\n" +
+	"\vtime_series\x18\x06 \x01(\v2$.querier.v1.AnomalyTimeSeriesRequestH\x00R\n" +
+	"timeSeries\x88\x01\x01B\x0e\n" +
+	"\f_time_series\"\xbd\x01\n" +
 	"\x16QueryAnomaliesResponse\x12P\n" +
-	"\x14stacktrace_anomalies\x18\x01 \x03(\v2\x1d.querier.v1.StacktraceAnomalyR\x13stacktraceAnomalies\"\xa9\x01\n" +
+	"\x14stacktrace_anomalies\x18\x01 \x03(\v2\x1d.querier.v1.StacktraceAnomalyR\x13stacktraceAnomalies\x12Q\n" +
+	"\x15time_series_anomalies\x18\x02 \x03(\v2\x1d.querier.v1.TimeSeriesAnomalyR\x13timeSeriesAnomalies\"\xa9\x01\n" +
 	"\x11StacktraceAnomaly\x12\x1d\n" +
 	"\n" +
 	"profile_id\x18\x01 \x01(\tR\tprofileId\x122\n" +
 	"\ttimestamp\x18\x02 \x01(\x03B\x14\xbaG\x11:\x0f\x12\r1676282400000R\ttimestamp\x12+\n" +
 	"\x06labels\x18\x03 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12\x14\n" +
-	"\x05score\x18\x04 \x01(\x01R\x05score*\x99\x01\n" +
+	"\x05score\x18\x04 \x01(\x01R\x05score\"~\n" +
+	"\x18AnomalyTimeSeriesRequest\x12)\n" +
+	"\bgroup_by\x18\x01 \x03(\tB\x0e\xbaG\v:\t\x12\a['pod']R\agroupBy\x12\x12\n" +
+	"\x04step\x18\x02 \x01(\x01R\x04step\x12\x19\n" +
+	"\x05limit\x18\x03 \x01(\x03H\x00R\x05limit\x88\x01\x01B\b\n" +
+	"\x06_limit\"\x8d\x03\n" +
+	"\x11TimeSeriesAnomaly\x125\n" +
+	"\x04type\x18\x01 \x01(\x0e2!.querier.v1.TimeSeriesAnomalyTypeR\x04type\x12+\n" +
+	"\x06labels\x18\x02 \x03(\v2\x13.types.v1.LabelPairR\x06labels\x12'\n" +
+	"\x0ftimestamp_start\x18\x03 \x01(\x03R\x0etimestampStart\x12#\n" +
+	"\rtimestamp_end\x18\x04 \x01(\x03R\ftimestampEnd\x12%\n" +
+	"\x0etimestamp_peak\x18\x05 \x01(\x03R\rtimestampPeak\x12\x1a\n" +
+	"\bbaseline\x18\x06 \x01(\x01R\bbaseline\x12\x1d\n" +
+	"\n" +
+	"peak_value\x18\a \x01(\x01R\tpeakValue\x12'\n" +
+	"\x0frelative_change\x18\b \x01(\x01R\x0erelativeChange\x12\x14\n" +
+	"\x05score\x18\t \x01(\x01R\x05score\x12%\n" +
+	"\x0epriority_score\x18\n" +
+	" \x01(\x01R\rpriorityScore*\x99\x01\n" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
@@ -2487,10 +2775,17 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x10HeatmapQueryType\x12\"\n" +
 	"\x1eHEATMAP_QUERY_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dHEATMAP_QUERY_TYPE_INDIVIDUAL\x10\x01\x12\x1b\n" +
-	"\x17HEATMAP_QUERY_TYPE_SPAN\x10\x02*H\n" +
+	"\x17HEATMAP_QUERY_TYPE_SPAN\x10\x02*f\n" +
 	"\vAnomalyType\x12\x1c\n" +
 	"\x18ANOMALY_TYPE_UNSPECIFIED\x10\x00\x12\x1b\n" +
-	"\x17ANOMALY_TYPE_STACKTRACE\x10\x012\xd3\n" +
+	"\x17ANOMALY_TYPE_STACKTRACE\x10\x01\x12\x1c\n" +
+	"\x18ANOMALY_TYPE_TIME_SERIES\x10\x02*\xd6\x01\n" +
+	"\x15TimeSeriesAnomalyType\x12(\n" +
+	"$TIME_SERIES_ANOMALY_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eTIME_SERIES_ANOMALY_TYPE_SPIKE\x10\x01\x12!\n" +
+	"\x1dTIME_SERIES_ANOMALY_TYPE_DROP\x10\x02\x12%\n" +
+	"!TIME_SERIES_ANOMALY_TYPE_INCREASE\x10\x03\x12%\n" +
+	"!TIME_SERIES_ANOMALY_TYPE_DECREASE\x10\x042\xd3\n" +
 	"\n" +
 	"\x0eQuerierService\x12d\n" +
 	"\fProfileTypes\x12\x1f.querier.v1.ProfileTypesRequest\x1a .querier.v1.ProfileTypesResponse\"\x11\xbaG\x0e\n" +
@@ -2536,125 +2831,132 @@ func file_querier_v1_querier_proto_rawDescGZIP() []byte {
 	return file_querier_v1_querier_proto_rawDescData
 }
 
-var file_querier_v1_querier_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_querier_v1_querier_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_querier_v1_querier_proto_goTypes = []any{
 	(ProfileFormat)(0),                     // 0: querier.v1.ProfileFormat
 	(AsyncQueryType)(0),                    // 1: querier.v1.AsyncQueryType
 	(AsyncQueryStatus)(0),                  // 2: querier.v1.AsyncQueryStatus
 	(HeatmapQueryType)(0),                  // 3: querier.v1.HeatmapQueryType
 	(AnomalyType)(0),                       // 4: querier.v1.AnomalyType
-	(*ProfileTypesRequest)(nil),            // 5: querier.v1.ProfileTypesRequest
-	(*ProfileTypesResponse)(nil),           // 6: querier.v1.ProfileTypesResponse
-	(*SeriesRequest)(nil),                  // 7: querier.v1.SeriesRequest
-	(*SeriesResponse)(nil),                 // 8: querier.v1.SeriesResponse
-	(*SelectMergeStacktracesRequest)(nil),  // 9: querier.v1.SelectMergeStacktracesRequest
-	(*SelectMergeStacktracesResponse)(nil), // 10: querier.v1.SelectMergeStacktracesResponse
-	(*PprofProfile)(nil),                   // 11: querier.v1.PprofProfile
-	(*AsyncQueryRequest)(nil),              // 12: querier.v1.AsyncQueryRequest
-	(*AsyncQueryResponse)(nil),             // 13: querier.v1.AsyncQueryResponse
-	(*SelectMergeSpanProfileRequest)(nil),  // 14: querier.v1.SelectMergeSpanProfileRequest
-	(*SelectMergeSpanProfileResponse)(nil), // 15: querier.v1.SelectMergeSpanProfileResponse
-	(*DiffRequest)(nil),                    // 16: querier.v1.DiffRequest
-	(*DiffResponse)(nil),                   // 17: querier.v1.DiffResponse
-	(*FlameGraph)(nil),                     // 18: querier.v1.FlameGraph
-	(*FlameGraphDiff)(nil),                 // 19: querier.v1.FlameGraphDiff
-	(*Level)(nil),                          // 20: querier.v1.Level
-	(*SelectMergeProfileRequest)(nil),      // 21: querier.v1.SelectMergeProfileRequest
-	(*SelectSeriesRequest)(nil),            // 22: querier.v1.SelectSeriesRequest
-	(*SelectSeriesResponse)(nil),           // 23: querier.v1.SelectSeriesResponse
-	(*SelectHeatmapRequest)(nil),           // 24: querier.v1.SelectHeatmapRequest
-	(*SelectHeatmapResponse)(nil),          // 25: querier.v1.SelectHeatmapResponse
-	(*AnalyzeQueryRequest)(nil),            // 26: querier.v1.AnalyzeQueryRequest
-	(*AnalyzeQueryResponse)(nil),           // 27: querier.v1.AnalyzeQueryResponse
-	(*QueryScope)(nil),                     // 28: querier.v1.QueryScope
-	(*QueryImpact)(nil),                    // 29: querier.v1.QueryImpact
-	(*QueryAnomaliesRequest)(nil),          // 30: querier.v1.QueryAnomaliesRequest
-	(*QueryAnomaliesResponse)(nil),         // 31: querier.v1.QueryAnomaliesResponse
-	(*StacktraceAnomaly)(nil),              // 32: querier.v1.StacktraceAnomaly
-	nil,                                    // 33: querier.v1.SelectMergeStacktracesResponse.MappingEntry
-	nil,                                    // 34: querier.v1.SelectMergeSpanProfileResponse.MappingEntry
-	(*v1.ProfileType)(nil),                 // 35: types.v1.ProfileType
-	(*v1.Labels)(nil),                      // 36: types.v1.Labels
-	(*v1.StackTraceSelector)(nil),          // 37: types.v1.StackTraceSelector
-	(*v11.Profile)(nil),                    // 38: google.v1.Profile
-	(v1.TimeSeriesAggregationType)(0),      // 39: types.v1.TimeSeriesAggregationType
-	(v1.ExemplarType)(0),                   // 40: types.v1.ExemplarType
-	(*v1.Series)(nil),                      // 41: types.v1.Series
-	(*v1.HeatmapSeries)(nil),               // 42: types.v1.HeatmapSeries
-	(*v1.LabelPair)(nil),                   // 43: types.v1.LabelPair
-	(*v1.LabelValuesRequest)(nil),          // 44: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),           // 45: types.v1.LabelNamesRequest
-	(*v1.GetProfileStatsRequest)(nil),      // 46: types.v1.GetProfileStatsRequest
-	(*v1.LabelValuesResponse)(nil),         // 47: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),          // 48: types.v1.LabelNamesResponse
-	(*v1.GetProfileStatsResponse)(nil),     // 49: types.v1.GetProfileStatsResponse
+	(TimeSeriesAnomalyType)(0),             // 5: querier.v1.TimeSeriesAnomalyType
+	(*ProfileTypesRequest)(nil),            // 6: querier.v1.ProfileTypesRequest
+	(*ProfileTypesResponse)(nil),           // 7: querier.v1.ProfileTypesResponse
+	(*SeriesRequest)(nil),                  // 8: querier.v1.SeriesRequest
+	(*SeriesResponse)(nil),                 // 9: querier.v1.SeriesResponse
+	(*SelectMergeStacktracesRequest)(nil),  // 10: querier.v1.SelectMergeStacktracesRequest
+	(*SelectMergeStacktracesResponse)(nil), // 11: querier.v1.SelectMergeStacktracesResponse
+	(*PprofProfile)(nil),                   // 12: querier.v1.PprofProfile
+	(*AsyncQueryRequest)(nil),              // 13: querier.v1.AsyncQueryRequest
+	(*AsyncQueryResponse)(nil),             // 14: querier.v1.AsyncQueryResponse
+	(*SelectMergeSpanProfileRequest)(nil),  // 15: querier.v1.SelectMergeSpanProfileRequest
+	(*SelectMergeSpanProfileResponse)(nil), // 16: querier.v1.SelectMergeSpanProfileResponse
+	(*DiffRequest)(nil),                    // 17: querier.v1.DiffRequest
+	(*DiffResponse)(nil),                   // 18: querier.v1.DiffResponse
+	(*FlameGraph)(nil),                     // 19: querier.v1.FlameGraph
+	(*FlameGraphDiff)(nil),                 // 20: querier.v1.FlameGraphDiff
+	(*Level)(nil),                          // 21: querier.v1.Level
+	(*SelectMergeProfileRequest)(nil),      // 22: querier.v1.SelectMergeProfileRequest
+	(*SelectSeriesRequest)(nil),            // 23: querier.v1.SelectSeriesRequest
+	(*SelectSeriesResponse)(nil),           // 24: querier.v1.SelectSeriesResponse
+	(*SelectHeatmapRequest)(nil),           // 25: querier.v1.SelectHeatmapRequest
+	(*SelectHeatmapResponse)(nil),          // 26: querier.v1.SelectHeatmapResponse
+	(*AnalyzeQueryRequest)(nil),            // 27: querier.v1.AnalyzeQueryRequest
+	(*AnalyzeQueryResponse)(nil),           // 28: querier.v1.AnalyzeQueryResponse
+	(*QueryScope)(nil),                     // 29: querier.v1.QueryScope
+	(*QueryImpact)(nil),                    // 30: querier.v1.QueryImpact
+	(*QueryAnomaliesRequest)(nil),          // 31: querier.v1.QueryAnomaliesRequest
+	(*QueryAnomaliesResponse)(nil),         // 32: querier.v1.QueryAnomaliesResponse
+	(*StacktraceAnomaly)(nil),              // 33: querier.v1.StacktraceAnomaly
+	(*AnomalyTimeSeriesRequest)(nil),       // 34: querier.v1.AnomalyTimeSeriesRequest
+	(*TimeSeriesAnomaly)(nil),              // 35: querier.v1.TimeSeriesAnomaly
+	nil,                                    // 36: querier.v1.SelectMergeStacktracesResponse.MappingEntry
+	nil,                                    // 37: querier.v1.SelectMergeSpanProfileResponse.MappingEntry
+	(*v1.ProfileType)(nil),                 // 38: types.v1.ProfileType
+	(*v1.Labels)(nil),                      // 39: types.v1.Labels
+	(*v1.StackTraceSelector)(nil),          // 40: types.v1.StackTraceSelector
+	(*v11.Profile)(nil),                    // 41: google.v1.Profile
+	(v1.TimeSeriesAggregationType)(0),      // 42: types.v1.TimeSeriesAggregationType
+	(v1.ExemplarType)(0),                   // 43: types.v1.ExemplarType
+	(*v1.Series)(nil),                      // 44: types.v1.Series
+	(*v1.HeatmapSeries)(nil),               // 45: types.v1.HeatmapSeries
+	(*v1.LabelPair)(nil),                   // 46: types.v1.LabelPair
+	(*v1.LabelValuesRequest)(nil),          // 47: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),           // 48: types.v1.LabelNamesRequest
+	(*v1.GetProfileStatsRequest)(nil),      // 49: types.v1.GetProfileStatsRequest
+	(*v1.LabelValuesResponse)(nil),         // 50: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),          // 51: types.v1.LabelNamesResponse
+	(*v1.GetProfileStatsResponse)(nil),     // 52: types.v1.GetProfileStatsResponse
 }
 var file_querier_v1_querier_proto_depIdxs = []int32{
-	35, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
-	36, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
+	38, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
+	39, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
 	0,  // 2: querier.v1.SelectMergeStacktracesRequest.format:type_name -> querier.v1.ProfileFormat
-	37, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	12, // 4: querier.v1.SelectMergeStacktracesRequest.async:type_name -> querier.v1.AsyncQueryRequest
-	18, // 5: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
-	33, // 6: querier.v1.SelectMergeStacktracesResponse.mapping:type_name -> querier.v1.SelectMergeStacktracesResponse.MappingEntry
-	13, // 7: querier.v1.SelectMergeStacktracesResponse.async:type_name -> querier.v1.AsyncQueryResponse
-	11, // 8: querier.v1.SelectMergeStacktracesResponse.pprof:type_name -> querier.v1.PprofProfile
-	38, // 9: querier.v1.PprofProfile.profile:type_name -> google.v1.Profile
+	40, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	13, // 4: querier.v1.SelectMergeStacktracesRequest.async:type_name -> querier.v1.AsyncQueryRequest
+	19, // 5: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
+	14, // 6: querier.v1.SelectMergeStacktracesResponse.async:type_name -> querier.v1.AsyncQueryResponse
+	12, // 7: querier.v1.SelectMergeStacktracesResponse.pprof:type_name -> querier.v1.PprofProfile
+	36, // 8: querier.v1.SelectMergeStacktracesResponse.mapping:type_name -> querier.v1.SelectMergeStacktracesResponse.MappingEntry
+	41, // 9: querier.v1.PprofProfile.profile:type_name -> google.v1.Profile
 	1,  // 10: querier.v1.AsyncQueryRequest.type:type_name -> querier.v1.AsyncQueryType
 	2,  // 11: querier.v1.AsyncQueryResponse.status:type_name -> querier.v1.AsyncQueryStatus
 	0,  // 12: querier.v1.SelectMergeSpanProfileRequest.format:type_name -> querier.v1.ProfileFormat
-	18, // 13: querier.v1.SelectMergeSpanProfileResponse.flamegraph:type_name -> querier.v1.FlameGraph
-	34, // 14: querier.v1.SelectMergeSpanProfileResponse.mapping:type_name -> querier.v1.SelectMergeSpanProfileResponse.MappingEntry
-	9,  // 15: querier.v1.DiffRequest.left:type_name -> querier.v1.SelectMergeStacktracesRequest
-	9,  // 16: querier.v1.DiffRequest.right:type_name -> querier.v1.SelectMergeStacktracesRequest
-	19, // 17: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
-	20, // 18: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
-	20, // 19: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
-	37, // 20: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	39, // 21: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
-	37, // 22: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	40, // 23: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	41, // 24: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
+	19, // 13: querier.v1.SelectMergeSpanProfileResponse.flamegraph:type_name -> querier.v1.FlameGraph
+	37, // 14: querier.v1.SelectMergeSpanProfileResponse.mapping:type_name -> querier.v1.SelectMergeSpanProfileResponse.MappingEntry
+	10, // 15: querier.v1.DiffRequest.left:type_name -> querier.v1.SelectMergeStacktracesRequest
+	10, // 16: querier.v1.DiffRequest.right:type_name -> querier.v1.SelectMergeStacktracesRequest
+	20, // 17: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
+	21, // 18: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
+	21, // 19: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
+	40, // 20: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	42, // 21: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
+	40, // 22: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	43, // 23: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	44, // 24: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
 	3,  // 25: querier.v1.SelectHeatmapRequest.query_type:type_name -> querier.v1.HeatmapQueryType
-	40, // 26: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	42, // 27: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
-	28, // 28: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
-	29, // 29: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
+	43, // 26: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	45, // 27: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
+	29, // 28: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
+	30, // 29: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
 	4,  // 30: querier.v1.QueryAnomaliesRequest.anomaly_types:type_name -> querier.v1.AnomalyType
-	32, // 31: querier.v1.QueryAnomaliesResponse.stacktrace_anomalies:type_name -> querier.v1.StacktraceAnomaly
-	43, // 32: querier.v1.StacktraceAnomaly.labels:type_name -> types.v1.LabelPair
-	5,  // 33: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	44, // 34: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	45, // 35: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	7,  // 36: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	9,  // 37: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	14, // 38: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	21, // 39: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	22, // 40: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	24, // 41: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
-	16, // 42: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	46, // 43: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	26, // 44: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
-	30, // 45: querier.v1.QuerierService.QueryAnomalies:input_type -> querier.v1.QueryAnomaliesRequest
-	6,  // 46: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	47, // 47: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	48, // 48: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	8,  // 49: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	10, // 50: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	15, // 51: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	38, // 52: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	23, // 53: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	25, // 54: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
-	17, // 55: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	49, // 56: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	27, // 57: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
-	31, // 58: querier.v1.QuerierService.QueryAnomalies:output_type -> querier.v1.QueryAnomaliesResponse
-	46, // [46:59] is the sub-list for method output_type
-	33, // [33:46] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	34, // 31: querier.v1.QueryAnomaliesRequest.time_series:type_name -> querier.v1.AnomalyTimeSeriesRequest
+	33, // 32: querier.v1.QueryAnomaliesResponse.stacktrace_anomalies:type_name -> querier.v1.StacktraceAnomaly
+	35, // 33: querier.v1.QueryAnomaliesResponse.time_series_anomalies:type_name -> querier.v1.TimeSeriesAnomaly
+	46, // 34: querier.v1.StacktraceAnomaly.labels:type_name -> types.v1.LabelPair
+	5,  // 35: querier.v1.TimeSeriesAnomaly.type:type_name -> querier.v1.TimeSeriesAnomalyType
+	46, // 36: querier.v1.TimeSeriesAnomaly.labels:type_name -> types.v1.LabelPair
+	6,  // 37: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	47, // 38: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	48, // 39: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	8,  // 40: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	10, // 41: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	15, // 42: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	22, // 43: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	23, // 44: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	25, // 45: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
+	17, // 46: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	49, // 47: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	27, // 48: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
+	31, // 49: querier.v1.QuerierService.QueryAnomalies:input_type -> querier.v1.QueryAnomaliesRequest
+	7,  // 50: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	50, // 51: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	51, // 52: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	9,  // 53: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	11, // 54: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	16, // 55: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	41, // 56: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	24, // 57: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	26, // 58: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
+	18, // 59: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	52, // 60: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	28, // 61: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
+	32, // 62: querier.v1.QuerierService.QueryAnomalies:output_type -> querier.v1.QueryAnomaliesResponse
+	50, // [50:63] is the sub-list for method output_type
+	37, // [37:50] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }
@@ -2668,13 +2970,15 @@ func file_querier_v1_querier_proto_init() {
 	file_querier_v1_querier_proto_msgTypes[16].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[17].OneofWrappers = []any{}
 	file_querier_v1_querier_proto_msgTypes[19].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_msgTypes[25].OneofWrappers = []any{}
+	file_querier_v1_querier_proto_msgTypes[28].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_querier_v1_querier_proto_rawDesc), len(file_querier_v1_querier_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   30,
+			NumEnums:      6,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

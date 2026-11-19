@@ -9,13 +9,17 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/middleware"
-	"github.com/grafana/pyroscope/v2/pkg/util"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 const (
-	// Capability names - update parseClientCapabilities below when new capabilities added
+	// Capability names - update parseClientCapabilities and setSpanAttributes
+	// below when new capabilities added
 	allowUtf8LabelNamesCapabilityName string = "allow-utf8-labelnames"
 )
 
@@ -61,6 +65,7 @@ func ClientCapabilitiesGRPCMiddleware() grpc.UnaryServerInterceptor {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 
+		setSpanAttributes(ctx, clientCapabilities)
 		enhancedCtx := WithClientCapabilities(ctx, clientCapabilities)
 		return handler(enhancedCtx, req)
 	}
@@ -77,10 +82,19 @@ func ClientCapabilitiesHttpMiddleware() middleware.Interface {
 				return
 			}
 
+			setSpanAttributes(r.Context(), clientCapabilities)
 			ctx := WithClientCapabilities(r.Context(), clientCapabilities)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
+}
+
+// setSpanAttributes records disabled capabilities too, so traces can show
+// which clients do not send them.
+func setSpanAttributes(ctx context.Context, capabilities ClientCapabilities) {
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Bool("client_capability.allow_utf8_labelnames", capabilities.AllowUtf8LabelNames),
+	)
 }
 
 func parseClientCapabilities(header http.Header) (ClientCapabilities, error) {

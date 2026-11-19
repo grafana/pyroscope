@@ -10,7 +10,9 @@ aliases:
 # Configure object storage backend
 
 Grafana Pyroscope can use different object storage services to persist blocks containing the profiles data.
-Blocks are flushed by ingesters [on disk](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-server/storage/configure-disk-storage/) first then are uploaded to the object store.
+In the v2 architecture, [segment writers](../../../reference-pyroscope-v2-architecture/components/segment-writer/) accumulate profiles in memory and write segments directly to object storage, without first persisting them to local disk.
+In the legacy v1 architecture, ingesters first flush blocks [to disk](../configure-disk-storage/) and then upload them to object storage.
+Use the `storage` configuration below to select the primary object storage backend for either architecture.
 
 The supported backends are:
 
@@ -22,6 +24,37 @@ The supported backends are:
 > Internally, Pyroscope uses [Thanos' object store client] library, so their stated limitations apply.
 
 [Thanos' object store client]: https://github.com/thanos-io/objstore#supported-providers-clients
+
+## Dedicated storage for asynchronous queries
+
+The experimental asynchronous query path uses the primary `storage` bucket by default.
+To store query metadata, request specifications, and results in a dedicated bucket, configure
+`frontend.async_queries.storage` on every query frontend:
+
+```yaml
+frontend:
+  async_queries:
+    enabled: true
+    storage:
+      backend: s3
+      s3:
+        bucket_name: pyroscope-async-queries
+        region: eu-west-2
+        endpoint: s3.eu-west-2.amazonaws.com
+```
+
+This configuration supports the same backend settings as `storage`, with independent credentials
+and an optional `prefix`. The corresponding CLI flags start with `-query-frontend.async-queries.storage.`.
+When `backend` is `none` (the default), the primary bucket is used. Objects are stored under
+`async-queries/` within the configured prefix. All query frontends must use the same bucket
+and prefix to poll results and recover queries from another frontend.
+
+Enable asynchronous queries with `-query-frontend.async-queries.enabled=true`.
+The legacy `-query-frontend.async-queries-enabled` flag remains supported, but logs a
+deprecation warning when used. If both flags are supplied, the last one takes effect.
+
+Changing the bucket does not migrate existing asynchronous queries. Let in-flight queries
+finish before switching buckets.
 
 ## Amazon S3
 

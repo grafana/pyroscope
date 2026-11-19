@@ -338,7 +338,7 @@ func TestDistributorAPIBodySizeLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	a := newAPITest(t, api.Config{}, logger)
-	a.RegisterDistributor(d, limits, server.Config{})
+	a.RegisterDistributor(d, limits, server.Config{}, nil)
 
 	// generate sample payloads
 	var (
@@ -576,7 +576,7 @@ func TestDistributorAPIMaxProfileSizeBytes(t *testing.T) {
 	require.NoError(t, err)
 
 	a := newAPITest(t, api.Config{}, logger)
-	a.RegisterDistributor(d, limits, server.Config{})
+	a.RegisterDistributor(d, limits, server.Config{}, nil)
 
 	// generate sample payloads
 	var (

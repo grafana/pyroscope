@@ -13,8 +13,16 @@ const (
 	stacktraceTreeNodeSize    = int(unsafe.Sizeof(node{}))
 )
 
+// wideNodeScan is how many siblings an insert may scan before the parent's
+// children are indexed by location instead.
+const wideNodeScan = 32
+
 type stacktraceTree struct {
 	nodes []node
+	// Index of the children of wide nodes; only needed for insertion.
+	wideChildren  childIndex // keyed by parent and location; the sentinel location keys the last child
+	wideParents   []uint64   // bitmap of the nodes whose children are indexed
+	wideThreshold int        // siblings scanned before a node counts as wide; 0 disables
 }
 
 type node struct {
@@ -29,7 +37,7 @@ func newStacktraceTree(size int) *stacktraceTree {
 	if size < 1 {
 		size = 1
 	}
-	t := stacktraceTree{nodes: make([]node, 1, size)}
+	t := stacktraceTree{nodes: make([]node, 1, size), wideThreshold: wideNodeScan}
 	t.nodes[0] = node{
 		p:  sentinel,
 		fc: sentinel,
@@ -43,47 +51,85 @@ const sentinel = -1
 func (t *stacktraceTree) len() uint32 { return uint32(len(t.nodes)) }
 
 func (t *stacktraceTree) insert(refs []uint64) uint32 {
-	var (
-		n = &t.nodes[0]
-		i = n.fc
-		x int32
-	)
-
-	for j := len(refs) - 1; j >= 0; {
+	var parent int32 // The root.
+	for j := len(refs) - 1; j >= 0; j-- {
 		r := int32(refs[j])
-		if i == sentinel {
-			ni := int32(len(t.nodes))
-			n.fc = ni
-			t.nodes = append(t.nodes, node{
-				r:  r,
-				p:  x,
-				fc: sentinel,
-				ns: sentinel,
-			})
-			x = ni
-			n = &t.nodes[ni]
-		} else {
-			x = i
-			n = &t.nodes[i]
-		}
-		if n.r == r {
-			i = n.fc
-			j--
+		if t.isWide(parent) {
+			k := childKey(parent, r)
+			i, ok := t.wideChildren.get(k)
+			if !ok {
+				tail := childKey(parent, sentinel)
+				last, _ := t.wideChildren.get(tail)
+				i = t.newChild(parent, r, last)
+				t.wideChildren.set(k, i)
+				t.wideChildren.set(tail, i)
+			}
+			parent = i
 			continue
 		}
-		if n.ns < 0 {
-			n.ns = int32(len(t.nodes))
-			t.nodes = append(t.nodes, node{
-				r:  r,
-				p:  n.p,
-				fc: sentinel,
-				ns: sentinel,
-			})
+		i, last, n := t.nodes[parent].fc, int32(sentinel), 0
+		for i != sentinel && t.nodes[i].r != r {
+			last, i = i, t.nodes[i].ns
+			n++
 		}
-		i = n.ns
+		if i == sentinel {
+			i = t.newChild(parent, r, last)
+		}
+		if t.wideThreshold > 0 && n >= t.wideThreshold {
+			t.indexChildren(parent)
+		}
+		parent = i
 	}
+	return uint32(parent)
+}
 
-	return uint32(x)
+// newChild appends a child after last (sentinel: no children yet). Appending keeps the
+// children created first, usually the most visited, at the front of sibling scans.
+func (t *stacktraceTree) newChild(parent, r, last int32) int32 {
+	i := int32(len(t.nodes))
+	t.nodes = append(t.nodes, node{
+		r:  r,
+		p:  parent,
+		fc: sentinel,
+		ns: sentinel,
+	})
+	if last == sentinel {
+		t.nodes[parent].fc = i
+	} else {
+		t.nodes[last].ns = i
+	}
+	return i
+}
+
+func childKey(parent, r int32) uint64 { return uint64(uint32(parent))<<32 | uint64(uint32(r)) }
+
+func (t *stacktraceTree) isWide(i int32) bool {
+	w := int(i) >> 6
+	return w < len(t.wideParents) && t.wideParents[w]&(1<<(uint(i)&63)) != 0
+}
+
+// wideIndexSize is the memory held by the index of wide nodes.
+func (t *stacktraceTree) wideIndexSize() int {
+	return 12*len(t.wideChildren.keys) + 8*cap(t.wideParents)
+}
+
+// indexChildren indexes the existing children of a wide node; later children
+// are indexed as they are created.
+func (t *stacktraceTree) indexChildren(parent int32) {
+	last := int32(sentinel)
+	for i := t.nodes[parent].fc; i != sentinel; i = t.nodes[i].ns {
+		t.wideChildren.set(childKey(parent, t.nodes[i].r), i)
+		last = i
+	}
+	t.wideChildren.set(childKey(parent, sentinel), last)
+	w := int(parent) >> 6
+	if w >= len(t.wideParents) {
+		// Sized for the node capacity, so the bitmap grows only as often as the nodes do.
+		words := make([]uint64, max(w+1, cap(t.nodes)>>6+1))
+		copy(words, t.wideParents)
+		t.wideParents = words
+	}
+	t.wideParents[w] |= 1 << (uint(parent) & 63)
 }
 
 func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {
@@ -182,37 +228,6 @@ func (t *parentPointerTree) Nodes() []Node {
 		dst[i] = Node{Parent: t.nodes[i].p, Location: t.nodes[i].r}
 	}
 	return dst
-}
-
-func (t *parentPointerTree) toStacktraceTree() *stacktraceTree {
-	l := int32(len(t.nodes))
-	x := stacktraceTree{nodes: make([]node, l)}
-	x.nodes[0] = node{
-		p:  sentinel,
-		fc: sentinel,
-		ns: sentinel,
-	}
-	lc := make([]int32, len(t.nodes))
-	var s int32
-	for i := int32(1); i < l; i++ {
-		n := t.nodes[i]
-		x.nodes[i] = node{
-			p:  n.p,
-			r:  n.r,
-			fc: sentinel,
-			ns: sentinel,
-		}
-		// Swap the last child of the parent with self.
-		// If this is the first child, update the parent.
-		// Otherwise, update the sibling.
-		s, lc[n.p] = lc[n.p], i
-		if s == 0 {
-			x.nodes[n.p].fc = i
-		} else {
-			x.nodes[s].ns = i
-		}
-	}
-	return &x
 }
 
 // ReadFrom decodes parent pointer tree from the reader.
@@ -388,4 +403,53 @@ func decodeU32Groups(dst []uint32, src []byte) (i, j, rm int) {
 		j += n
 	}
 	return i, j, 0
+}
+
+// childIndex is an open-addressing hash table from child keys to node indexes. Unlike a
+// map, it grows by doubling two flat slices, so it allocates a few times per tree.
+type childIndex struct {
+	keys []uint64 // key+1; 0 marks an empty slot
+	vals []int32
+	n    int
+}
+
+func (x *childIndex) slot(k uint64) int {
+	return int((k * 0x9e3779b97f4a7c15) >> 32 & uint64(len(x.keys)-1))
+}
+
+func (x *childIndex) get(k uint64) (int32, bool) {
+	if x.n == 0 {
+		return sentinel, false
+	}
+	for i := x.slot(k); x.keys[i] != 0; i = (i + 1) & (len(x.keys) - 1) {
+		if x.keys[i] == k+1 {
+			return x.vals[i], true
+		}
+	}
+	return sentinel, false
+}
+
+func (x *childIndex) set(k uint64, v int32) {
+	if 4*(x.n+1) > 3*len(x.keys) {
+		x.grow()
+	}
+	i := x.slot(k)
+	for x.keys[i] != 0 && x.keys[i] != k+1 {
+		i = (i + 1) & (len(x.keys) - 1)
+	}
+	if x.keys[i] == 0 {
+		x.n++
+	}
+	x.keys[i], x.vals[i] = k+1, v
+}
+
+func (x *childIndex) grow() {
+	keys, vals := x.keys, x.vals
+	size := max(2*len(keys), 1024)
+	x.keys, x.vals, x.n = make([]uint64, size), make([]int32, size), 0
+	for i, k := range keys {
+		if k != 0 {
+			x.set(k-1, vals[i])
+		}
+	}
 }

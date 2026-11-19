@@ -22,6 +22,124 @@ func (_m *MockCompactionServiceServer) EXPECT() *MockCompactionServiceServer_Exp
 	return &MockCompactionServiceServer_Expecter{mock: &_m.Mock}
 }
 
+// DeleteDatasets provides a mock function with given fields: _a0, _a1
+func (_m *MockCompactionServiceServer) DeleteDatasets(_a0 context.Context, _a1 *metastorev1.DeleteDatasetsRequest) (*metastorev1.DeleteDatasetsResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteDatasets")
+	}
+
+	var r0 *metastorev1.DeleteDatasetsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.DeleteDatasetsRequest) (*metastorev1.DeleteDatasetsResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.DeleteDatasetsRequest) *metastorev1.DeleteDatasetsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*metastorev1.DeleteDatasetsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *metastorev1.DeleteDatasetsRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCompactionServiceServer_DeleteDatasets_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteDatasets'
+type MockCompactionServiceServer_DeleteDatasets_Call struct {
+	*mock.Call
+}
+
+// DeleteDatasets is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *metastorev1.DeleteDatasetsRequest
+func (_e *MockCompactionServiceServer_Expecter) DeleteDatasets(_a0 interface{}, _a1 interface{}) *MockCompactionServiceServer_DeleteDatasets_Call {
+	return &MockCompactionServiceServer_DeleteDatasets_Call{Call: _e.mock.On("DeleteDatasets", _a0, _a1)}
+}
+
+func (_c *MockCompactionServiceServer_DeleteDatasets_Call) Run(run func(_a0 context.Context, _a1 *metastorev1.DeleteDatasetsRequest)) *MockCompactionServiceServer_DeleteDatasets_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*metastorev1.DeleteDatasetsRequest))
+	})
+	return _c
+}
+
+func (_c *MockCompactionServiceServer_DeleteDatasets_Call) Return(_a0 *metastorev1.DeleteDatasetsResponse, _a1 error) *MockCompactionServiceServer_DeleteDatasets_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCompactionServiceServer_DeleteDatasets_Call) RunAndReturn(run func(context.Context, *metastorev1.DeleteDatasetsRequest) (*metastorev1.DeleteDatasetsResponse, error)) *MockCompactionServiceServer_DeleteDatasets_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListCompactionJobs provides a mock function with given fields: _a0, _a1
+func (_m *MockCompactionServiceServer) ListCompactionJobs(_a0 context.Context, _a1 *metastorev1.ListCompactionJobsRequest) (*metastorev1.ListCompactionJobsResponse, error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListCompactionJobs")
+	}
+
+	var r0 *metastorev1.ListCompactionJobsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.ListCompactionJobsRequest) (*metastorev1.ListCompactionJobsResponse, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *metastorev1.ListCompactionJobsRequest) *metastorev1.ListCompactionJobsResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*metastorev1.ListCompactionJobsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *metastorev1.ListCompactionJobsRequest) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCompactionServiceServer_ListCompactionJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCompactionJobs'
+type MockCompactionServiceServer_ListCompactionJobs_Call struct {
+	*mock.Call
+}
+
+// ListCompactionJobs is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *metastorev1.ListCompactionJobsRequest
+func (_e *MockCompactionServiceServer_Expecter) ListCompactionJobs(_a0 interface{}, _a1 interface{}) *MockCompactionServiceServer_ListCompactionJobs_Call {
+	return &MockCompactionServiceServer_ListCompactionJobs_Call{Call: _e.mock.On("ListCompactionJobs", _a0, _a1)}
+}
+
+func (_c *MockCompactionServiceServer_ListCompactionJobs_Call) Run(run func(_a0 context.Context, _a1 *metastorev1.ListCompactionJobsRequest)) *MockCompactionServiceServer_ListCompactionJobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*metastorev1.ListCompactionJobsRequest))
+	})
+	return _c
+}
+
+func (_c *MockCompactionServiceServer_ListCompactionJobs_Call) Return(_a0 *metastorev1.ListCompactionJobsResponse, _a1 error) *MockCompactionServiceServer_ListCompactionJobs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCompactionServiceServer_ListCompactionJobs_Call) RunAndReturn(run func(context.Context, *metastorev1.ListCompactionJobsRequest) (*metastorev1.ListCompactionJobsResponse, error)) *MockCompactionServiceServer_ListCompactionJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PollCompactionJobs provides a mock function with given fields: _a0, _a1
 func (_m *MockCompactionServiceServer) PollCompactionJobs(_a0 context.Context, _a1 *metastorev1.PollCompactionJobsRequest) (*metastorev1.PollCompactionJobsResponse, error) {
 	ret := _m.Called(_a0, _a1)

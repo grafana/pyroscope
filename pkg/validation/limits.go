@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/v2/pkg/profiledump"
 	placement "github.com/grafana/pyroscope/v2/pkg/segmentwriter/client/distributor/placement/adaptiveplacement"
 )
 
@@ -33,6 +34,10 @@ const (
 // NOTE: we use custom `model.Duration` instead of standard `time.Duration` because,
 // to support tenant-friendly duration format (e.g: "1h30m45s") in JSON value.
 type Limits struct {
+	// ProfileDump is runtime-only. Absence or null disables capture.
+	ProfileDump       *profiledump.TenantConfig `yaml:"profile_dump,omitempty" json:"profile_dump,omitempty" doc:"hidden"`
+	profileDumpPolicy profiledump.Policy
+
 	// Distributor enforced limits.
 	IngestionRateMB          float64              `yaml:"ingestion_rate_mb" json:"ingestion_rate_mb"`
 	IngestionBurstSizeMB     float64              `yaml:"ingestion_burst_size_mb" json:"ingestion_burst_size_mb"`
@@ -87,6 +92,7 @@ type Limits struct {
 	QueryAnalysisEnabled       bool           `yaml:"query_analysis_enabled" json:"query_analysis_enabled"`
 	QueryAnalysisSeriesEnabled bool           `yaml:"query_analysis_series_enabled" json:"query_analysis_series_enabled"`
 	IncludeStrippedProfiles    bool           `yaml:"include_stripped_profiles" json:"include_stripped_profiles"`
+	DatasetLookupFromMetadata  bool           `yaml:"dataset_lookup_from_metadata" json:"dataset_lookup_from_metadata" category:"experimental" doc:"hidden"`
 
 	// Flame graph enforced limits.
 	MaxFlameGraphNodesDefault              int  `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
@@ -139,9 +145,6 @@ type Limits struct {
 
 	// MaxRecordingRules is the maximum number of recording rules a tenant can create and store.
 	MaxRecordingRules int `yaml:"max_recording_rules" json:"max_recording_rules"`
-
-	// Symbolizer.
-	Symbolizer Symbolizer `yaml:"symbolizer" json:"symbolizer" category:"experimental" doc:"hidden"`
 
 	// ProfileIDDeterministic enables deterministic profile ID generation.
 	// When enabled, IDs use the tenant ID, profile type, and ingress labels, plus the original timestamp
@@ -205,6 +208,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.BoolVar(&l.KeepStrippedProfiles, "distributor.sampling.keep-stripped-profiles", false, "When a profile is sampled out, retain its totals as a single sample with stacktraces and sample labels stripped (marked __sampled__) instead of dropping it.")
 	f.BoolVar(&l.IncludeStrippedProfiles, "query-backend.include-stripped-profiles", false, "Include profiles that were sampled out and stored with stacktraces stripped (marked __sampled__) in query results.")
+	f.BoolVar(&l.DatasetLookupFromMetadata, "query-backend.dataset-lookup-from-metadata", false, "Resolve the datasets of service_name queries from the dataset labels in the block metadata instead of the dataset index stored in the block.")
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
 
@@ -258,8 +262,12 @@ func (l *Limits) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return unmarshal((*plain)(l))
 }
 
-// Validate validates that this limits config is valid.
+// Validate checks limits and replaces the compiled policy in place, before publication.
 func (l *Limits) Validate() error {
+	return l.validate(time.Now())
+}
+
+func (l *Limits) validate(now time.Time) error {
 	if l.IngestionRelabelingDefaultRulesPosition != "" {
 		if err := l.IngestionRelabelingDefaultRulesPosition.Set(string(l.IngestionRelabelingDefaultRulesPosition)); err != nil {
 			return err
@@ -272,6 +280,12 @@ func (l *Limits) Validate() error {
 			return fmt.Errorf("rule at pos %d is not valid: %v", idx, err)
 		}
 	}
+
+	policy, err := l.ProfileDump.Compile(now)
+	if err != nil {
+		return fmt.Errorf("profile_dump: %w", err)
+	}
+	l.profileDumpPolicy = policy
 
 	return nil
 }
@@ -321,6 +335,20 @@ func (o *Overrides) AllByTenantID() map[string]*Limits {
 	return nil
 }
 
+// ProfileDump returns the tenant's immutable policy. ActiveAt evaluates expiry
+// independently of configuration reloads.
+func (o *Overrides) ProfileDump(tenantID string) profiledump.Policy {
+	return o.getOverridesForTenant(tenantID).ProfileDumpPolicy()
+}
+
+// ProfileDumpPolicy returns the immutable snapshot compiled during validation.
+func (l *Limits) ProfileDumpPolicy() profiledump.Policy {
+	if l == nil {
+		return profiledump.Policy{}
+	}
+	return l.profileDumpPolicy
+}
+
 // IngestionRateBytes returns the limit on ingester rate (MBs per second).
 func (o *Overrides) IngestionRateBytes(tenantID string) float64 {
 	return o.getOverridesForTenant(tenantID).IngestionRateMB * bytesInMB
@@ -349,6 +377,10 @@ func (o *Overrides) KeepStrippedProfiles(tenantID string) bool {
 
 func (o *Overrides) IncludeStrippedProfiles(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).IncludeStrippedProfiles
+}
+
+func (o *Overrides) DatasetLookupFromMetadata(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).DatasetLookupFromMetadata
 }
 
 // IngestionArtificialDelay returns the artificial ingestion latency for a given user.
@@ -619,6 +651,14 @@ func (o *Overrides) ReadPathOverrides(tenantID string) readpath.Config {
 
 func (o *Overrides) QueryTreeEnabled(tenantID string) bool {
 	return o.getOverridesForTenant(tenantID).ReadPathOverrides.QueryTreeEnabled
+}
+
+func (o *Overrides) ForceDatasetIndexLookup(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ReadPathOverrides.ForceDatasetIndexLookup
+}
+
+func (o *Overrides) DatasetIndexShardPruning(tenantID string) bool {
+	return o.getOverridesForTenant(tenantID).ReadPathOverrides.DatasetIndexShardPruning
 }
 
 func (o *Overrides) PlacementLimits(tenantID string) placement.PlacementLimits {

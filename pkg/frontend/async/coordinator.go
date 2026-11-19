@@ -34,10 +34,11 @@ type queryResult struct {
 }
 
 type Coordinator struct {
-	logger log.Logger
-	store  *Store
-	limits Limits
-	next   querierv1connect.QuerierServiceHandler
+	logger       log.Logger
+	store        *Store
+	limits       Limits
+	next         querierv1connect.QuerierServiceHandler
+	queryTimeout time.Duration
 
 	mu       sync.Mutex
 	inFlight map[string]int // tenantID -> count
@@ -46,13 +47,14 @@ type Coordinator struct {
 	asyncQueriesMax     *prometheus.GaugeVec
 }
 
-func NewCoordinator(logger log.Logger, store *Store, limits Limits, next querierv1connect.QuerierServiceHandler, reg prometheus.Registerer) *Coordinator {
+func NewCoordinator(logger log.Logger, store *Store, limits Limits, next querierv1connect.QuerierServiceHandler, queryTimeout time.Duration, reg prometheus.Registerer) *Coordinator {
 	return &Coordinator{
-		logger:   logger,
-		store:    store,
-		limits:   limits,
-		next:     next,
-		inFlight: make(map[string]int),
+		logger:       logger,
+		store:        store,
+		limits:       limits,
+		next:         next,
+		queryTimeout: queryTimeout,
+		inFlight:     make(map[string]int),
 		asyncQueriesCurrent: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 			Name: "pyroscope_async_queries_in_progress",
 			Help: "Number of async queries currently in progress.",
@@ -142,7 +144,7 @@ func (c *Coordinator) Dispatch(tenantID, requestID string, spec *querierv1.Selec
 // the scan tick that triggered an adoption. Submit and Dispatch both share
 // this path once their concurrency slot is reserved.
 func (c *Coordinator) dispatch(tenantID, requestID string, spec *querierv1.SelectMergeStacktracesRequest) {
-	queryCtx := tenant.InjectTenantID(context.Background(), tenantID)
+	queryCtx := WithQueryTimeout(tenant.InjectTenantID(context.Background(), tenantID), c.queryTimeout)
 	resultCh := make(chan queryResult, 1)
 	started := time.Now()
 

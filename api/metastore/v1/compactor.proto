@@ -5,8 +5,33 @@ package metastore.v1;
 import "metastore/v1/types.proto";
 
 service CompactionService {
+  // Read-only snapshot of queued and assigned jobs.
+  rpc ListCompactionJobs(ListCompactionJobsRequest) returns (ListCompactionJobsResponse) {}
+
+  // Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
+  rpc DeleteDatasets(DeleteDatasetsRequest) returns (DeleteDatasetsResponse) {}
+
   // Used to both retrieve jobs and update the jobs status at the same time.
   rpc PollCompactionJobs(PollCompactionJobsRequest) returns (PollCompactionJobsResponse) {}
+}
+
+message ListCompactionJobsRequest {
+  // Empty selects all tenants.
+  string tenant = 1;
+}
+
+message ListCompactionJobsResponse {
+  repeated CompactionJobInfo jobs = 1;
+}
+
+message CompactionJobInfo {
+  CompactionJob job = 1;
+  CompactionJobStatus status = 2;
+  // Unix nanoseconds.
+  int64 added_at = 3;
+  // Unix nanoseconds; zero when not leased.
+  int64 lease_expires_at = 4;
+  uint32 failures = 5;
 }
 
 message PollCompactionJobsRequest {
@@ -27,6 +52,7 @@ message CompactionJob {
   uint32 compaction_level = 4;
   repeated string source_blocks = 5;
   repeated Tombstones tombstones = 6;
+  DeleteFilter delete_filter = 7;
 }
 
 // Tombstones represent objects removed from the index but still stored.
@@ -75,4 +101,67 @@ enum CompactionJobStatus {
   COMPACTION_STATUS_UNSPECIFIED = 0;
   COMPACTION_STATUS_IN_PROGRESS = 1;
   COMPACTION_STATUS_SUCCESS = 2;
+}
+
+// Go/RE2 regular expression, matched against the entire dataset service_name.
+// An empty regex matches only an empty service name, not all services.
+// Use ".*" to match all services. Datasets without a service name are skipped.
+message DeleteFilter {
+  string service_name_regex = 1;
+}
+
+message DeleteDatasetsRequest {
+  // Required, non-blank tenant. Cross-tenant deletion is not supported.
+  string tenant = 1;
+  // Inclusive Unix nanosecond time window. Entire matching datasets in
+  // overlapping blocks are removed, including data outside this window.
+  // min_time must not exceed max_time; zero is the Unix epoch.
+  int64 min_time = 2;
+  int64 max_time = 3;
+  // Required selection filter.
+  DeleteFilter filter = 4;
+  // Report planned work without scheduling jobs or changing state.
+  bool dry_run = 5;
+  // Minimum compaction level of blocks to consider (0 by default).
+  // Note that L0 multi-tenant segments are never eligible.
+  uint32 min_compaction_level = 6;
+}
+
+message BlockDeletionSummary {
+  string block_id = 1;
+  string tenant = 2;
+  uint32 shard = 3;
+  uint32 compaction_level = 4;
+  // Full block bounds in Unix nanoseconds.
+  int64 block_min_time = 5;
+  int64 block_max_time = 6;
+  // Matched dataset bounds in Unix nanoseconds, potentially outside the request.
+  int64 matched_min_time = 7;
+  int64 matched_max_time = 8;
+  // True when all service datasets match and the whole block will be removed.
+  bool full_block_planned = 9;
+  uint32 matched_datasets_count = 10;
+  uint32 remaining_datasets_count = 11;
+  repeated string matched_services = 12;
+  // Sum of matched dataset sizes, not reclaimed object-storage bytes.
+  uint64 matched_bytes = 13;
+}
+
+// Impact plan, not a completion acknowledgement. Counts describe selected work
+// for both dry runs and scheduled deletions. Only single-tenant compacted blocks
+// are eligible; L0/multi-tenant blocks and already tombstoned blocks are skipped.
+message DeleteDatasetsResponse {
+  bool dry_run = 1;
+  uint32 matched_blocks_count = 2;
+  uint32 planned_full_block_deletions_count = 3;
+  uint32 planned_block_rewrites_count = 4;
+  uint32 matched_datasets_count = 5;
+  // Sum of matched dataset sizes, not reclaimed object-storage bytes.
+  uint64 matched_bytes = 6;
+  // Overall matched dataset bounds in Unix nanoseconds; both zero if no matches.
+  int64 effective_matched_min_time = 7;
+  int64 effective_matched_max_time = 8;
+  repeated BlockDeletionSummary blocks = 9;
+  // Non-dry-run jobs are asynchronous; this is not a completion acknowledgement.
+  repeated string scheduled_job_names = 10;
 }

@@ -277,6 +277,7 @@ func (m *CompactionJobState) CloneVT() *CompactionJobState {
 	r.LeaseExpiresAt = m.LeaseExpiresAt
 	r.AddedAt = m.AddedAt
 	r.Failures = m.Failures
+	r.DatasetDeletion = m.DatasetDeletion
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -312,6 +313,13 @@ func (m *CompactionJobPlan) CloneVT() *CompactionJobPlan {
 			}
 		}
 		r.Tombstones = tmpContainer
+	}
+	if rhs := m.DeleteFilter; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.DeleteFilter }); ok {
+			r.DeleteFilter = vtpb.CloneVT()
+		} else {
+			r.DeleteFilter = proto.Clone(rhs).(*v1.DeleteFilter)
+		}
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -763,6 +771,9 @@ func (this *CompactionJobState) EqualVT(that *CompactionJobState) bool {
 	if this.Failures != that.Failures {
 		return false
 	}
+	if this.DatasetDeletion != that.DatasetDeletion {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -820,6 +831,13 @@ func (this *CompactionJobPlan) EqualVT(that *CompactionJobPlan) bool {
 				return false
 			}
 		}
+	}
+	if equal, ok := interface{}(this.DeleteFilter).(interface{ EqualVT(*v1.DeleteFilter) bool }); ok {
+		if !equal.EqualVT(that.DeleteFilter) {
+			return false
+		}
+	} else if !proto.Equal(this.DeleteFilter, that.DeleteFilter) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -1544,6 +1562,16 @@ func (m *CompactionJobState) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.DatasetDeletion {
+		i--
+		if m.DatasetDeletion {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x40
+	}
 	if m.Failures != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Failures))
 		i--
@@ -1613,6 +1641,28 @@ func (m *CompactionJobPlan) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.DeleteFilter != nil {
+		if vtmsg, ok := interface{}(m.DeleteFilter).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.DeleteFilter)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x3a
 	}
 	if len(m.Tombstones) > 0 {
 		for iNdEx := len(m.Tombstones) - 1; iNdEx >= 0; iNdEx-- {
@@ -2102,6 +2152,9 @@ func (m *CompactionJobState) SizeVT() (n int) {
 	if m.Failures != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Failures))
 	}
+	if m.DatasetDeletion {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -2143,6 +2196,16 @@ func (m *CompactionJobPlan) SizeVT() (n int) {
 			}
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	if m.DeleteFilter != nil {
+		if size, ok := interface{}(m.DeleteFilter).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.DeleteFilter)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3638,6 +3701,26 @@ func (m *CompactionJobState) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DatasetDeletion", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.DatasetDeletion = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
@@ -3861,6 +3944,50 @@ func (m *CompactionJobPlan) UnmarshalVT(dAtA []byte) error {
 				}
 			} else {
 				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Tombstones[len(m.Tombstones)-1]); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeleteFilter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DeleteFilter == nil {
+				m.DeleteFilter = &v1.DeleteFilter{}
+			}
+			if unmarshal, ok := interface{}(m.DeleteFilter).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.DeleteFilter); err != nil {
 					return err
 				}
 			}

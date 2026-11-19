@@ -663,6 +663,7 @@ type CompactionJobState struct {
 	LeaseExpiresAt  int64                  `protobuf:"varint,5,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
 	AddedAt         int64                  `protobuf:"varint,6,opt,name=added_at,json=addedAt,proto3" json:"added_at,omitempty"`
 	Failures        uint32                 `protobuf:"varint,7,opt,name=failures,proto3" json:"failures,omitempty"`
+	DatasetDeletion bool                   `protobuf:"varint,8,opt,name=dataset_deletion,json=datasetDeletion,proto3" json:"dataset_deletion,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -746,6 +747,13 @@ func (x *CompactionJobState) GetFailures() uint32 {
 	return 0
 }
 
+func (x *CompactionJobState) GetDatasetDeletion() bool {
+	if x != nil {
+		return x.DatasetDeletion
+	}
+	return false
+}
+
 type CompactionJobPlan struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -756,6 +764,7 @@ type CompactionJobPlan struct {
 	SourceBlocks    []string `protobuf:"bytes,5,rep,name=source_blocks,json=sourceBlocks,proto3" json:"source_blocks,omitempty"`
 	// Objects to be deleted.
 	Tombstones    []*v1.Tombstones `protobuf:"bytes,6,rep,name=tombstones,proto3" json:"tombstones,omitempty"`
+	DeleteFilter  *v1.DeleteFilter `protobuf:"bytes,7,opt,name=delete_filter,json=deleteFilter,proto3" json:"delete_filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -828,6 +837,13 @@ func (x *CompactionJobPlan) GetSourceBlocks() []string {
 func (x *CompactionJobPlan) GetTombstones() []*v1.Tombstones {
 	if x != nil {
 		return x.Tombstones
+	}
+	return nil
+}
+
+func (x *CompactionJobPlan) GetDeleteFilter() *v1.DeleteFilter {
+	if x != nil {
+		return x.DeleteFilter
 	}
 	return nil
 }
@@ -1054,7 +1070,7 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\x12H\n" +
 	"\x10compacted_blocks\x18\x02 \x01(\v2\x1d.metastore.v1.CompactedBlocksR\x0fcompactedBlocks\"J\n" +
 	"\x14EvictedCompactionJob\x122\n" +
-	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\"\x85\x02\n" +
+	"\x05state\x18\x01 \x01(\v2\x1c.raft_log.CompactionJobStateR\x05state\"\xb0\x02\n" +
 	"\x12CompactionJobState\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12)\n" +
 	"\x10compaction_level\x18\x02 \x01(\rR\x0fcompactionLevel\x129\n" +
@@ -1062,7 +1078,8 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\x05token\x18\x04 \x01(\x04R\x05token\x12(\n" +
 	"\x10lease_expires_at\x18\x05 \x01(\x03R\x0eleaseExpiresAt\x12\x19\n" +
 	"\badded_at\x18\x06 \x01(\x03R\aaddedAt\x12\x1a\n" +
-	"\bfailures\x18\a \x01(\rR\bfailures\"\xdf\x01\n" +
+	"\bfailures\x18\a \x01(\rR\bfailures\x12)\n" +
+	"\x10dataset_deletion\x18\b \x01(\bR\x0fdatasetDeletion\"\xa0\x02\n" +
 	"\x11CompactionJobPlan\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06tenant\x18\x02 \x01(\tR\x06tenant\x12\x14\n" +
@@ -1071,7 +1088,8 @@ const file_metastore_v1_raft_log_raft_log_proto_rawDesc = "" +
 	"\rsource_blocks\x18\x05 \x03(\tR\fsourceBlocks\x128\n" +
 	"\n" +
 	"tombstones\x18\x06 \x03(\v2\x18.metastore.v1.TombstonesR\n" +
-	"tombstones\"r\n" +
+	"tombstones\x12?\n" +
+	"\rdelete_filter\x18\a \x01(\v2\x1a.metastore.v1.DeleteFilterR\fdeleteFilter\"r\n" +
 	"\x1bUpdateCompactionPlanRequest\x12\x12\n" +
 	"\x04term\x18\x01 \x01(\x04R\x04term\x12?\n" +
 	"\vplan_update\x18\x02 \x01(\v2\x1e.raft_log.CompactionPlanUpdateR\n" +
@@ -1130,6 +1148,7 @@ var file_metastore_v1_raft_log_raft_log_proto_goTypes = []any{
 	(v1.CompactionJobStatus)(0),             // 19: metastore.v1.CompactionJobStatus
 	(*v1.CompactedBlocks)(nil),              // 20: metastore.v1.CompactedBlocks
 	(*v1.Tombstones)(nil),                   // 21: metastore.v1.Tombstones
+	(*v1.DeleteFilter)(nil),                 // 22: metastore.v1.DeleteFilter
 }
 var file_metastore_v1_raft_log_raft_log_proto_depIdxs = []int32{
 	18, // 0: raft_log.AddBlockMetadataRequest.metadata:type_name -> metastore.v1.BlockMeta
@@ -1151,14 +1170,15 @@ var file_metastore_v1_raft_log_raft_log_proto_depIdxs = []int32{
 	12, // 16: raft_log.EvictedCompactionJob.state:type_name -> raft_log.CompactionJobState
 	19, // 17: raft_log.CompactionJobState.status:type_name -> metastore.v1.CompactionJobStatus
 	21, // 18: raft_log.CompactionJobPlan.tombstones:type_name -> metastore.v1.Tombstones
-	6,  // 19: raft_log.UpdateCompactionPlanRequest.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	6,  // 20: raft_log.UpdateCompactionPlanResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
-	21, // 21: raft_log.TruncateIndexRequest.tombstones:type_name -> metastore.v1.Tombstones
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	22, // 19: raft_log.CompactionJobPlan.delete_filter:type_name -> metastore.v1.DeleteFilter
+	6,  // 20: raft_log.UpdateCompactionPlanRequest.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	6,  // 21: raft_log.UpdateCompactionPlanResponse.plan_update:type_name -> raft_log.CompactionPlanUpdate
+	21, // 22: raft_log.TruncateIndexRequest.tombstones:type_name -> metastore.v1.Tombstones
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_metastore_v1_raft_log_raft_log_proto_init() }

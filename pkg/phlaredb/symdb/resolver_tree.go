@@ -48,7 +48,7 @@ func buildTree[N model.NodeName, I model.NodeNameI[N]](
 
 	samples := appender.Samples()
 	t := treeSymbolsFromPool()
-	defer t.reset()
+	defer t.toPool()
 	t.init(symbols, samples, selection, treeI.IsLocationTree())
 	if err := symbols.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
@@ -84,14 +84,20 @@ func treeSymbolsFromPool() *treeSymbols {
 	return treeSymbolsPool.Get().(*treeSymbols)
 }
 
+func (r *treeSymbols) toPool() {
+	r.reset()
+	treeSymbolsPool.Put(r)
+}
+
 func (r *treeSymbols) reset() {
 	r.symbols = nil
 	r.samples = nil
 	r.tree.Reset()
 	r.lines = r.lines[:0]
 	r.locID = r.locID[:0]
+	r.funcNamesMatcher = nil
+	r.selection = nil
 	r.cur = 0
-	treeSymbolsPool.Put(r)
 }
 
 func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples, selection *SelectedStackTraces, addLocation bool) {

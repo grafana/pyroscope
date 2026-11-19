@@ -1,3 +1,4 @@
+import { CLIENT_CAPABILITIES_ACCEPT_HEADER } from '@api/clientCapabilities';
 import type {
   DiagnosticSummary,
   QueryMethod,
@@ -270,6 +271,7 @@ export async function executeQuery(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Accept: CLIENT_CAPABILITIES_ACCEPT_HEADER,
       'X-Scope-OrgID': params.tenantId,
       'X-Pyroscope-Collect-Diagnostics': 'true',
     },

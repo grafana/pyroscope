@@ -35,6 +35,15 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(4<<10))
+	} else if s.obj.local != nil {
+		// A downloaded object is read from local disk, where read-ahead
+		// and large buffers only hold more memory per column.
+		s.profiles, err = openParquetFile(
+			s.obj.storage, s.obj.path, offset, size,
+			estimateFooterSize(size),
+			parquet.SkipBloomFilters(true),
+			parquet.FileReadMode(parquet.ReadModeSync),
+			parquet.ReadBufferSize(localReadBufferSize))
 	} else {
 		s.profiles, err = openParquetFile(
 			s.obj.storage, s.obj.path, offset, size,
@@ -304,7 +313,8 @@ func (e ProfileEntry) View() ProfileEntryView {
 	}
 }
 
-func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], error) {
+// onDuplicate, if non-nil, is called for every dropped duplicate row.
+func NewMergeRowProfileIterator(src []*Dataset, onDuplicate func()) (iter.Iterator[ProfileEntry], error) {
 	its := make([]iter.Iterator[ProfileEntry], len(src))
 	for i, s := range src {
 		it, err := NewProfileRowIterator(s)
@@ -339,6 +349,7 @@ func NewMergeRowProfileIterator(src []*Dataset) (iter.Iterator[ProfileEntry], er
 			},
 			func(it iter.Iterator[ProfileEntry]) { _ = it.Close() },
 		)),
+		onDuplicate: onDuplicate,
 	}, nil
 }
 
@@ -347,6 +358,7 @@ type DedupeProfileRowIterator struct {
 
 	prevFP        model.Fingerprint
 	prevTimeNanos int64
+	onDuplicate   func()
 }
 
 func (it *DedupeProfileRowIterator) Next() bool {
@@ -357,6 +369,9 @@ func (it *DedupeProfileRowIterator) Next() bool {
 		currentProfile := it.At()
 		if it.prevFP == currentProfile.Fingerprint && it.prevTimeNanos == currentProfile.Timestamp {
 			// skip duplicate profile
+			if it.onDuplicate != nil {
+				it.onDuplicate()
+			}
 			continue
 		}
 		it.prevFP = currentProfile.Fingerprint
@@ -375,7 +390,6 @@ type profileRowIterator struct {
 	currentRow       ProfileEntry
 	currentSeriesIdx uint32
 	chunks           []index.ChunkMeta
-	labels           immutableLabels
 }
 
 // NewProfileRowIterator takes ownership of one open dataset reference on
@@ -435,11 +449,10 @@ func (p *profileRowIterator) Next() bool {
 }
 
 func (p *profileRowIterator) snapshotLabels(labels phlaremodel.Labels) immutableLabels {
-	start := len(p.labels)
-	for _, label := range labels {
-		p.labels = append(p.labels, immutableLabel{name: label.Name, value: label.Value})
-	}
-	return p.labels[start:]
+	// Snapshots may outlive the current series through the dataset index or
+	// observer views. Give each snapshot its own backing array so retaining
+	// one series does not also retain labels from other input series.
+	return newImmutableLabels(labels)
 }
 
 func (p *profileRowIterator) Err() error {

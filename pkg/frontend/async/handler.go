@@ -50,7 +50,7 @@ func (h *Handler) SelectMergeStacktraces(
 	}
 
 	if h.coordinator == nil {
-		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("async queries are disabled (set -query-frontend.async-queries-enabled=true)"))
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("async queries are disabled (set -query-frontend.async-queries.enabled=true)"))
 	}
 
 	tenantIDs, err := tenant.TenantIDs(ctx)
