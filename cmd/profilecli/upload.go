@@ -66,7 +66,7 @@ func upload(ctx context.Context, params *uploadParams) (err error) {
 
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		profile, err := pprof.RawFromBytes(data)
