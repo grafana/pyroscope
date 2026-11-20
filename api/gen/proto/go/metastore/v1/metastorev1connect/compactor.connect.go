@@ -42,6 +42,9 @@ const (
 	// CompactionServicePollCompactionJobsProcedure is the fully-qualified name of the
 	// CompactionService's PollCompactionJobs RPC.
 	CompactionServicePollCompactionJobsProcedure = "/metastore.v1.CompactionService/PollCompactionJobs"
+	// CompactionServiceGetCompactionStateProcedure is the fully-qualified name of the
+	// CompactionService's GetCompactionState RPC.
+	CompactionServiceGetCompactionStateProcedure = "/metastore.v1.CompactionService/GetCompactionState"
 )
 
 // CompactionServiceClient is a client for the metastore.v1.CompactionService service.
@@ -52,6 +55,10 @@ type CompactionServiceClient interface {
 	DeleteDatasets(context.Context, *connect.Request[v1.DeleteDatasetsRequest]) (*connect.Response[v1.DeleteDatasetsResponse], error)
 	// Used to both retrieve jobs and update the jobs status at the same time.
 	PollCompactionJobs(context.Context, *connect.Request[v1.PollCompactionJobsRequest]) (*connect.Response[v1.PollCompactionJobsResponse], error)
+	// Returns a snapshot of the compaction state: the scheduler job queue and
+	// the planner block queues. The method serves operational purposes and is
+	// not part of the compaction protocol.
+	GetCompactionState(context.Context, *connect.Request[v1.GetCompactionStateRequest]) (*connect.Response[v1.GetCompactionStateResponse], error)
 }
 
 // NewCompactionServiceClient constructs a client for the metastore.v1.CompactionService service. By
@@ -83,6 +90,12 @@ func NewCompactionServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(compactionServiceMethods.ByName("PollCompactionJobs")),
 			connect.WithClientOptions(opts...),
 		),
+		getCompactionState: connect.NewClient[v1.GetCompactionStateRequest, v1.GetCompactionStateResponse](
+			httpClient,
+			baseURL+CompactionServiceGetCompactionStateProcedure,
+			connect.WithSchema(compactionServiceMethods.ByName("GetCompactionState")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -91,6 +104,7 @@ type compactionServiceClient struct {
 	listCompactionJobs *connect.Client[v1.ListCompactionJobsRequest, v1.ListCompactionJobsResponse]
 	deleteDatasets     *connect.Client[v1.DeleteDatasetsRequest, v1.DeleteDatasetsResponse]
 	pollCompactionJobs *connect.Client[v1.PollCompactionJobsRequest, v1.PollCompactionJobsResponse]
+	getCompactionState *connect.Client[v1.GetCompactionStateRequest, v1.GetCompactionStateResponse]
 }
 
 // ListCompactionJobs calls metastore.v1.CompactionService.ListCompactionJobs.
@@ -108,6 +122,11 @@ func (c *compactionServiceClient) PollCompactionJobs(ctx context.Context, req *c
 	return c.pollCompactionJobs.CallUnary(ctx, req)
 }
 
+// GetCompactionState calls metastore.v1.CompactionService.GetCompactionState.
+func (c *compactionServiceClient) GetCompactionState(ctx context.Context, req *connect.Request[v1.GetCompactionStateRequest]) (*connect.Response[v1.GetCompactionStateResponse], error) {
+	return c.getCompactionState.CallUnary(ctx, req)
+}
+
 // CompactionServiceHandler is an implementation of the metastore.v1.CompactionService service.
 type CompactionServiceHandler interface {
 	// Read-only snapshot of queued and assigned jobs.
@@ -116,6 +135,10 @@ type CompactionServiceHandler interface {
 	DeleteDatasets(context.Context, *connect.Request[v1.DeleteDatasetsRequest]) (*connect.Response[v1.DeleteDatasetsResponse], error)
 	// Used to both retrieve jobs and update the jobs status at the same time.
 	PollCompactionJobs(context.Context, *connect.Request[v1.PollCompactionJobsRequest]) (*connect.Response[v1.PollCompactionJobsResponse], error)
+	// Returns a snapshot of the compaction state: the scheduler job queue and
+	// the planner block queues. The method serves operational purposes and is
+	// not part of the compaction protocol.
+	GetCompactionState(context.Context, *connect.Request[v1.GetCompactionStateRequest]) (*connect.Response[v1.GetCompactionStateResponse], error)
 }
 
 // NewCompactionServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -143,6 +166,12 @@ func NewCompactionServiceHandler(svc CompactionServiceHandler, opts ...connect.H
 		connect.WithSchema(compactionServiceMethods.ByName("PollCompactionJobs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	compactionServiceGetCompactionStateHandler := connect.NewUnaryHandler(
+		CompactionServiceGetCompactionStateProcedure,
+		svc.GetCompactionState,
+		connect.WithSchema(compactionServiceMethods.ByName("GetCompactionState")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/metastore.v1.CompactionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CompactionServiceListCompactionJobsProcedure:
@@ -151,6 +180,8 @@ func NewCompactionServiceHandler(svc CompactionServiceHandler, opts ...connect.H
 			compactionServiceDeleteDatasetsHandler.ServeHTTP(w, r)
 		case CompactionServicePollCompactionJobsProcedure:
 			compactionServicePollCompactionJobsHandler.ServeHTTP(w, r)
+		case CompactionServiceGetCompactionStateProcedure:
+			compactionServiceGetCompactionStateHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -170,4 +201,8 @@ func (UnimplementedCompactionServiceHandler) DeleteDatasets(context.Context, *co
 
 func (UnimplementedCompactionServiceHandler) PollCompactionJobs(context.Context, *connect.Request[v1.PollCompactionJobsRequest]) (*connect.Response[v1.PollCompactionJobsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.CompactionService.PollCompactionJobs is not implemented"))
+}
+
+func (UnimplementedCompactionServiceHandler) GetCompactionState(context.Context, *connect.Request[v1.GetCompactionStateRequest]) (*connect.Response[v1.GetCompactionStateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.CompactionService.GetCompactionState is not implemented"))
 }
