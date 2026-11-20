@@ -2,7 +2,6 @@ package querybackendclient
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -24,8 +23,8 @@ type Client struct {
 	conn       *grpc.ClientConn
 }
 
-func New(address string, grpcClientConfig grpcclient.Config, timeout time.Duration, dialOpts ...grpc.DialOption) (*Client, error) {
-	conn, err := dial(address, grpcClientConfig, timeout, dialOpts...)
+func New(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*Client, error) {
+	conn, err := dial(address, grpcClientConfig, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -36,15 +35,13 @@ func New(address string, grpcClientConfig grpcclient.Config, timeout time.Durati
 	return &c, nil
 }
 
-func dial(address string, grpcClientConfig grpcclient.Config, timeout time.Duration, dialOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func dial(address string, grpcClientConfig grpcclient.Config, dialOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	options, err := grpcClientConfig.DialOption(nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
-	serviceConfig := fmt.Sprintf(grpcServiceConfigTemplate, timeout.Seconds())
 	options = append(options,
-		grpc.WithDefaultServiceConfig(serviceConfig),
+		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 		grpc.WithMaxCallAttempts(500),
 		grpc.WithStatsHandler(retryStatsHandler{}),
 	)
@@ -153,7 +150,7 @@ func (retryStatsHandler) TagConn(ctx context.Context, _ *stats.ConnTagInfo) cont
 
 func (retryStatsHandler) HandleConn(context.Context, stats.ConnStats) {}
 
-const grpcServiceConfigTemplate = `{
+const grpcServiceConfig = `{
     "loadBalancingPolicy":"round_robin",
     "methodConfig": [{
         "name": [{"service": ""}],
@@ -167,7 +164,6 @@ const grpcServiceConfigTemplate = `{
               "UNAVAILABLE",
               "RESOURCE_EXHAUSTED"
             ]
-        },
-        "timeout": "%.0fs"
+        }
     }]
 }`

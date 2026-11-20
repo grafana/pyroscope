@@ -14,6 +14,49 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
+func TestIndex_ReplaceBlocks_Idempotent(t *testing.T) {
+	db := test.BoltDB(t)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	idx := NewIndex(util.Logger, NewStore(), DefaultConfig, nil)
+	require.NoError(t, db.Update(idx.Init))
+
+	source := &metastorev1.BlockMeta{
+		Id:              test.ULID("2024-09-11T07:00:00Z"),
+		Tenant:          1,
+		Shard:           1,
+		CompactionLevel: 1,
+		MinTime:         1000,
+		MaxTime:         2000,
+		StringTable:     []string{"", "tenant"},
+	}
+	output := source.CloneVT()
+	output.Id = test.ULID("2024-09-11T07:01:00Z")
+	output.CompactionLevel = 2
+	for _, block := range []*metastorev1.BlockMeta{source, output} {
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return idx.InsertBlock(tx, block.CloneVT())
+		}))
+	}
+	compacted := &metastorev1.CompactedBlocks{
+		SourceBlocks: &metastorev1.BlockList{Tenant: "tenant", Shard: 1, Blocks: []string{source.Id}},
+		NewBlocks:    []*metastorev1.BlockMeta{output},
+	}
+	test.AssertIdempotent(t, func(t *testing.T) {
+		require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+			return idx.ReplaceBlocks(tx, compacted.CloneVT())
+		}))
+		require.NoError(t, db.View(func(tx *bbolt.Tx) error {
+			blocks, err := idx.GetBlocks(tx, &metastorev1.BlockList{
+				Tenant: "tenant", Shard: 1, Blocks: []string{source.Id, output.Id},
+			})
+			require.NoError(t, err)
+			require.Len(t, blocks, 1)
+			require.Equal(t, output.Id, blocks[0].Id)
+			return nil
+		}))
+	})
+}
+
 func TestIndex_PartitionList(t *testing.T) {
 	const testTenant = "tenant"
 

@@ -26,10 +26,12 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	"github.com/grafana/pyroscope/v2/pkg/frontend"
+	"github.com/grafana/pyroscope/v2/pkg/frontend/async"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/querybackend/queryplan"
 	"github.com/grafana/pyroscope/v2/pkg/util/spanlogger"
+	validationutil "github.com/grafana/pyroscope/v2/pkg/util/validation"
 )
 
 var _ querierv1connect.QuerierServiceClient = (*QueryFrontend)(nil)
@@ -51,6 +53,7 @@ type QueryFrontend struct {
 	metadataQueryClient metastorev1.MetadataQueryServiceClient
 	tenantServiceClient metastorev1.TenantServiceClient
 	querybackend        QueryBackend
+	queryBackendTimeout time.Duration
 	diagnosticsStore    DiagnosticsStore
 	now                 func() time.Time
 	queryPlanType       string
@@ -139,6 +142,7 @@ func NewQueryFrontend(
 	logger log.Logger,
 	limits frontend.Limits,
 	cfg frontend.Config,
+	queryBackendTimeout time.Duration,
 	metadataQueryClient metastorev1.MetadataQueryServiceClient,
 	tenantServiceClient metastorev1.TenantServiceClient,
 	querybackendClient QueryBackend,
@@ -151,6 +155,7 @@ func NewQueryFrontend(
 		metadataQueryClient: metadataQueryClient,
 		tenantServiceClient: tenantServiceClient,
 		querybackend:        querybackendClient,
+		queryBackendTimeout: queryBackendTimeout,
 		diagnosticsStore:    diagnosticsStore,
 		now:                 time.Now,
 		queryPlanType:       cfg.QueryPlannerStrategy,
@@ -281,6 +286,17 @@ func (q *QueryFrontend) Query(
 		estimatedBytes: float64(weight.Total()),
 	}
 
+	timeout := q.queryBackendTimeout
+	if asyncTimeout := async.QueryTimeout(ctx); asyncTimeout > 0 {
+		timeout = asyncTimeout
+	}
+	// Preserve legacy behavior: negative timeouts disable the deadline.
+	if timeout >= 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
 	resp, err := backend.Invoke(ctx, &queryv1.InvokeRequest{
 		Tenant:        tenants,
 		StartTime:     req.StartTime,
@@ -375,16 +391,21 @@ func (q *QueryFrontend) QueryMetadata(
 	}
 
 	// Delete all matchers but service_name with strict match. If no matchers
-	// left, request the dataset index for query backend to lookup block datasets
+	// left, or all tenants are configured to always use the dataset index,
+	// request the dataset index for query backend to lookup block datasets
 	// locally.
 	matchers = slices.DeleteFunc(matchers, func(m *labels.Matcher) bool {
 		return m.Name != model.LabelNameServiceName || m.Type != labels.MatchEqual
 	})
-	if len(matchers) == 0 {
+	forceLookup := len(matchers) > 0 && validationutil.AllTruePerTenant(tenants, q.limits.ForceDatasetIndexLookup)
+	if len(matchers) == 0 || forceLookup {
 		// We preserve the __tenant_dataset__= label: this is needed for the
 		// query backend to identify that the dataset is the tenant-wide index,
 		// and a dataset lookup is needed.
 		query.Labels = []string{metadata.LabelNameTenantDataset}
+		if forceLookup && validationutil.AllTruePerTenant(tenants, q.limits.DatasetIndexShardPruning) {
+			query.ShardSelector = matchersToLabelSelector(matchers)
+		}
 		matchers = []*labels.Matcher{{
 			Name:  metadata.LabelNameTenantDataset,
 			Value: metadata.LabelValueDatasetTSDBIndex,

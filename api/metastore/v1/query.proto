@@ -16,6 +16,11 @@ message QueryMetadataRequest {
   int64 end_time = 3;
   string query = 4;
   repeated string labels = 5;
+  // Optional pruning hint, not a filter: the metastore may skip shards whose
+  // string table lacks a name or value of an equality matcher. Returned blocks
+  // and datasets are selected by query alone and may not match the selector;
+  // metastores that predate the field ignore it.
+  string shard_selector = 6;
 }
 
 message QueryMetadataResponse {

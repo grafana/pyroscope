@@ -32,6 +32,7 @@ func (m *QueryMetadataRequest) CloneVT() *QueryMetadataRequest {
 	r.StartTime = m.StartTime
 	r.EndTime = m.EndTime
 	r.Query = m.Query
+	r.ShardSelector = m.ShardSelector
 	if rhs := m.TenantId; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -164,6 +165,9 @@ func (this *QueryMetadataRequest) EqualVT(that *QueryMetadataRequest) bool {
 		if vx != vy {
 			return false
 		}
+	}
+	if this.ShardSelector != that.ShardSelector {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -446,6 +450,13 @@ func (m *QueryMetadataRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.ShardSelector) > 0 {
+		i -= len(m.ShardSelector)
+		copy(dAtA[i:], m.ShardSelector)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.ShardSelector)))
+		i--
+		dAtA[i] = 0x32
+	}
 	if len(m.Labels) > 0 {
 		for iNdEx := len(m.Labels) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.Labels[iNdEx])
@@ -681,6 +692,10 @@ func (m *QueryMetadataRequest) SizeVT() (n int) {
 			l = len(s)
 			n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 		}
+	}
+	l = len(m.ShardSelector)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -918,6 +933,38 @@ func (m *QueryMetadataRequest) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Labels = append(m.Labels, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ShardSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ShardSelector = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

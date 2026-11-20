@@ -61,8 +61,8 @@ use pyroscope::pyroscope::PyroscopeAgentBuilder;
 use pyroscope::backend::{pprof_backend, PprofConfig, BackendConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let user = std::env::var("USER").unwrap();
-    let password = std::env::var("PASSWORD").unwrap();
+    let user = std::env::var("PYROSCOPE_BASIC_AUTH_USER").unwrap();
+    let password = std::env::var("PYROSCOPE_BASIC_AUTH_PASSWORD").unwrap();
     let url = std::env::var("PYROSCOPE_URL").unwrap();
 
     let agent = PyroscopeAgentBuilder::new(
@@ -76,6 +76,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .basic_auth(user, password)
     .tags(vec![("app", "Rust"), ("TagB", "ValueB")])
     .build()?;
+
+    Ok(())
+}
 ```
 
 You can start profiling by invoking the following code:
@@ -87,7 +90,7 @@ let agent_running = agent.start().unwrap();
 ## Add memory profiling with jemalloc
 
 The Pyroscope Rust SDK supports memory profiling through the [jemalloc](https://jemalloc.net/) allocator.
-With jemalloc memory profiling, you can identify memory leaks, excessive allocations, and heap growth in your Rust applications the same way you would for Python, Java, or .NET services.
+With jemalloc memory profiling, you can see which code paths hold the most live heap memory, which helps you find memory leaks and track heap growth in your Rust applications.
 
 ### Before you begin
 
@@ -137,16 +140,14 @@ Memory profiling requires:
 
    ```bash
    _RJEM_MALLOC_CONF=prof:true,prof_active:true,lg_prof_sample:19 \
-       cargo run --features backend-jemalloc
+       cargo run
    ```
 
    - `prof:true` enables the profiling infrastructure.
    - `prof_active:true` starts collecting allocation samples immediately.
    - `lg_prof_sample:19` sets the sampling interval to every 512 KB (2^19 bytes). Lower values produce more detailed profiles but increase overhead.
 
-The jemalloc backend reports `memory` profile types (`inuse_objects` and `inuse_space`), which appear alongside CPU profiles in Pyroscope.
-
-## Stop profiling
+The jemalloc backend reports one `memory` profile type, `inuse_space`: an estimate of the live heap in bytes, based on sampled allocations, at the time each profile is collected. It doesn't report `inuse_objects`, `alloc_space`, or `alloc_objects`, so allocations that are freed between profiles don't appear.
 
 ## Stop profiling
 

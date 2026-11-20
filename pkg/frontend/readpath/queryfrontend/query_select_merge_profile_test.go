@@ -40,6 +40,7 @@ func newSMPQueryFrontend(
 		log.NewNopLogger(),
 		limits,
 		frontend.Config{},
+		30*time.Second,
 		metaClient,
 		nil, // tenantServiceClient
 		backend,

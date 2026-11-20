@@ -1420,6 +1420,17 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # CLI flag: -compaction-worker.job-concurrency
 [job_capacity: <int> | default = 0]
 
+# (advanced) Maximum total estimated bytes of compaction jobs running
+# concurrently. -1 disables byte budgeting. When 0, derived from
+# memory-max-ratio of the detected memory limit.
+# CLI flag: -compaction-worker.job-byte-capacity
+[job_byte_capacity: <int> | default = -1]
+
+# (advanced) Fraction of the detected memory limit (GOMEMLIMIT or cgroup) used
+# as job-byte-capacity when job-byte-capacity is 0.
+# CLI flag: -compaction-worker.memory-max-ratio
+[memory_max_ratio: <float> | default = 0.25]
+
 # (advanced) Interval between job requests
 # CLI flag: -compaction-worker.job-poll-interval
 [job_poll_interval: <duration> | default = 5s]
@@ -1440,14 +1451,13 @@ The `compaction_worker` block configures the compaction-worker (V2).
 # CLI flag: -compaction-worker.cleanup-max-duration
 [cleanup_max_duration: <duration> | default = 15s]
 
-# (advanced) Source of the compaction job source block metadata. Supported
-# values: metastore, object-storage.
+# (advanced) Deprecated: block metadata is always read from object storage. This
+# flag has no effect and will be removed in a future release.
 # CLI flag: -compaction-worker.metadata-source
-[metadata_source: <string> | default = "metastore"]
+[metadata_source: <string> | default = ""]
 
 # (advanced) Timeout for reading the metadata of a single block from object
-# storage. Only effective when metadata-source is object-storage. 0 disables the
-# timeout.
+# storage. 0 disables the timeout.
 # CLI flag: -compaction-worker.metadata-fetch-timeout
 [metadata_fetch_timeout: <duration> | default = 30s]
 
@@ -1806,9 +1816,14 @@ The `query_backend` block configures the query-backend (V2 read path).
 # query-backend.grpc-client-config
 [grpc_client_config: <grpc_client>]
 
-# (advanced) Timeout for query-backend client requests.
+# (advanced) Timeout for synchronous query-backend requests, including retries.
 # CLI flag: -query-backend.client-timeout
 [client_timeout: <duration> | default = 30s]
+
+# (experimental) Timeout for async query-backend requests, including retries. 0
+# uses query-backend.client-timeout.
+# CLI flag: -query-backend.async-query-timeout
+[async_query_timeout: <duration> | default = 2m]
 ```
 
 ### frontend_worker

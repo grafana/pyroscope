@@ -67,6 +67,7 @@ func TestSelectMergeSpanProfile_Formats(t *testing.T) {
 			mockLimits := mockfrontend.NewMockLimits(t)
 			mockLimits.On("MaxQueryLookback", smpTenant).Return(time.Duration(0))
 			mockLimits.On("MaxQueryLength", smpTenant).Return(time.Duration(0))
+			mockLimits.On("ForceDatasetIndexLookup", smpTenant).Return(false)
 			mockLimits.On("MaxFlameGraphNodesDefault", smpTenant).Return(0)
 			mockLimits.On("QuerySanitizeOnMerge", smpTenant).Return(false)
 
