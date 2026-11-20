@@ -23,7 +23,7 @@
           "mapping": "0x1000-0x2000@0x0 service-a.so()"
         }
       ],
-      "values": "1000000000"
+      "values": "1000000000,100"
     }
   ],
   "time_nanos": "239",
