@@ -22,7 +22,7 @@ func (it TreeIterator[T]) At() T {
 }
 
 func (it *TreeIterator[T]) Err() error {
-	return it.Tree.Winner().Err()
+	return it.Tree.Err()
 }
 
 func (it *TreeIterator[T]) Close() error {
