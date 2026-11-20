@@ -277,12 +277,19 @@ func PprofToProfile(b []byte, name string, limits Limits) ([]*flamebearer.Flameb
 				return nil, fmt.Errorf("invalid sampleType index %d for sample %d (len=%d)", sampleType, i, len(p.Sample[i].Value))
 			}
 
-			val := p.Sample[i].Value[sampleType]
-			if val <= 0 {
-				continue
-			}
+			t.Insert(stack, p.Sample[i].Value[sampleType])
+		}
 
-			t.Insert(stack, val)
+		// Delta heap profiles carry negative samples for deallocations. Insert
+		// them so same-stack values still cancel during aggregation, then clamp
+		// at the flamegraph boundary so no node renders with a negative width.
+		for i := range t.Nodes {
+			if t.Nodes[i].Value < 0 {
+				t.Nodes[i].Value = 0
+			}
+			if t.Nodes[i].Total < 0 {
+				t.Nodes[i].Total = 0
+			}
 		}
 
 		tp, err := getProfileType(name, sampleType, p)
