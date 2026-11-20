@@ -1776,12 +1776,6 @@ components:
           title: tree
           format: byte
           description: Pyroscope tree bytes.
-        mapping:
-          type: object
-          title: mapping
-          additionalProperties:
-            type: string
-            title: value
         dot:
           type: string
           title: dot
@@ -1795,6 +1789,13 @@ components:
           title: pprof
           description: Profile in pprof format.
           $ref: '#/components/schemas/querier.v1.PprofProfile'
+        mapping:
+          type: object
+          title: mapping
+          additionalProperties:
+            type: string
+            title: value
+          description: Function name to file/binary mapping.
       title: SelectMergeStacktracesResponse
       additionalProperties: false
     querier.v1.SelectMergeStacktracesResponse.MappingEntry:
