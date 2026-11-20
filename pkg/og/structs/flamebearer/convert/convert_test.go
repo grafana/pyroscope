@@ -1,6 +1,8 @@
 package convert
 
 import (
+	"bytes"
+	"compress/gzip"
 	"os"
 	"reflect"
 	"testing"
@@ -10,6 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/v2/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 func readFile(path string) []byte {
@@ -160,4 +164,79 @@ func TestConvert(t *testing.T) {
 
 		require.Len(t, b[0].FlamebearerProfileV1.Flamebearer.Levels, 2)
 	})
+
+	t.Run("delta heap negative samples preserve aggregation and clamp output", func(t *testing.T) {
+		p := &profilev1.Profile{
+			SampleType: []*profilev1.ValueType{
+				{Type: 1, Unit: 2},
+			},
+			Sample: []*profilev1.Sample{
+				{LocationId: []uint64{1}, Value: []int64{100}},
+				{LocationId: []uint64{1}, Value: []int64{-50}},
+				{LocationId: []uint64{1}, Value: []int64{0}},
+			},
+			Location: []*profilev1.Location{
+				{Id: 1, Address: 0x1000, Line: []*profilev1.Line{{FunctionId: 1, Line: 10}}},
+			},
+			Function: []*profilev1.Function{
+				{Id: 1, Name: 3},
+			},
+			PeriodType:  &profilev1.ValueType{Type: 1, Unit: 2},
+			StringTable: []string{"", "inuse_space", "bytes", "main"},
+		}
+
+		data, err := proto.Marshal(p)
+		require.NoError(t, err)
+
+		b, err := PprofToProfile(data, "delta-heap", Limits{MaxNodes: 1024})
+		require.NoError(t, err)
+		require.Len(t, b, 1)
+
+		fb := b[0].FlamebearerProfileV1.Flamebearer
+		// Same-stack values still cancel during aggregation: 100 - 50 = 50.
+		require.Equal(t, 50, fb.NumTicks)
+		requireNoNegativeNodes(t, b[0])
+	})
+
+	t.Run("real delta heap pprof renders without negative flamebearer values", func(t *testing.T) {
+		// PprofToProfile reads raw profiles; normalize references first, as the
+		// ingest path does, then re-encode so we exercise the real fixture.
+		raw, err := pprof.RawFromBytesWithLimit(readFile("../../../../pprof/testdata/heap_delta"), 0)
+		require.NoError(t, err)
+		raw.Normalize()
+		protoBytes, err := proto.Marshal(raw.Profile)
+		require.NoError(t, err)
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		_, err = gz.Write(protoBytes)
+		require.NoError(t, err)
+		require.NoError(t, gz.Close())
+
+		b, err := PprofToProfile(buf.Bytes(), "heap_delta", Limits{MaxNodes: 1024})
+		require.NoError(t, err)
+		require.NotEmpty(t, b)
+		for _, prof := range b {
+			require.GreaterOrEqual(t, prof.Flamebearer.NumTicks, 0)
+			require.GreaterOrEqual(t, prof.Flamebearer.MaxSelf, 0)
+			requireNoNegativeNodes(t, prof)
+		}
+	})
+}
+
+func requireNoNegativeNodes(t *testing.T, prof *flamebearer.FlamebearerProfile) {
+	t.Helper()
+	chunk := 4
+	if prof.Metadata.Format == "double" {
+		chunk = 7
+	}
+	for _, level := range prof.Flamebearer.Levels {
+		for i := 0; i+chunk <= len(level); i += chunk {
+			require.GreaterOrEqual(t, level[i+1], 0, "negative total in flamebearer")
+			require.GreaterOrEqual(t, level[i+2], 0, "negative self in flamebearer")
+			if chunk == 7 {
+				require.GreaterOrEqual(t, level[i+4], 0, "negative diff total in flamebearer")
+				require.GreaterOrEqual(t, level[i+5], 0, "negative diff self in flamebearer")
+			}
+		}
+	}
 }
