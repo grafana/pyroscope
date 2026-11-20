@@ -107,4 +107,5 @@ Because each flush results in write operations to object storage (and each subse
 
 By default, ingestion is synchronous: clients wait until profiles are durably stored and indexed, which provides read-after-write consistency but bounds how large `-segment-writer.segment-duration` can be.
 
-If read-after-write consistency and synchronous durability confirmation are not required, set `-async-ingest=true`. The write path then responds without waiting for the segment-writer to flush and index the profile, which allows a larger segment duration (and therefore lower object storage costs) without triggering client timeouts. The trade-off is that a successful ingestion response no longer guarantees the profile is durable and immediately queryable.
+If read-after-write consistency and synchronous durability confirmation are not required, set `-segment-writer.async-ingest=true` (or `-async-ingest=true` on the distributor). With segment-writer-side async ingest enabled, the segment-writer responds once the profile is buffered into memory, without waiting for the segment to flush and index. This allows a larger segment duration (and lower object storage costs) without holding distributor streams or triggering client timeouts. The trade-off is that a successful push response acknowledges buffering in memory rather than durable object storage.
+
