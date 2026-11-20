@@ -78,6 +78,46 @@ func Test_Resolver_Cancellation(t *testing.T) {
 	wg.Wait()
 }
 
+func Test_Resolver_TreeWithMappings(t *testing.T) {
+    s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
+    defer s.teardown()
+
+    r := NewResolver(context.Background(), s.reader)
+    r.AddSamples(0, s.indexed[0][0].Samples)
+    tree, mappings, err := r.TreeWithMappings()
+    r.Release()
+
+    require.NoError(t, err)
+    require.NotNil(t, tree)
+    require.NotNil(t, mappings)
+}
+
+func Test_Resolver_TreeWithMappings_Error_Propagation(t *testing.T) {
+    s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
+    defer s.teardown()
+    ctx, cancel := context.WithCancel(context.Background())
+    cancel()
+
+    r := NewResolver(ctx, s.reader)
+    r.AddSamples(0, s.indexed[0][0].Samples)
+    _, _, err := r.TreeWithMappings()
+    r.Release()
+
+    require.ErrorIs(t, err, context.Canceled)
+}
+
+func Test_Resolver_TreeWithMappings_Cancellation(t *testing.T) {
+    m := new(mockSymbolsReader)
+    m.On("Partition", mock.Anything, mock.Anything).Return(nil, io.EOF).Once()
+
+    r := NewResolver(context.Background(), m)
+    r.AddSamples(0, schemav1.Samples{})
+    _, _, err := r.TreeWithMappings()
+    r.Release()
+
+    require.ErrorIs(t, err, io.EOF)
+}
+
 type mockSymbolsReader struct{ mock.Mock }
 
 func (m *mockSymbolsReader) Partition(ctx context.Context, partition uint64) (PartitionReader, error) {
