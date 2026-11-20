@@ -74,9 +74,9 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    - Option B: Install Pyroscope as multiple microservices. In this mode, as you scale out the number of instances, they will share a singular backend for storage and querying.
 
    ```bash
-   # Gather the default config for micro-services
-   curl -Lo values-micro-services.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
-   helm -n pyroscope-test install pyroscope grafana/pyroscope --values values-micro-services.yaml
+   helm -n pyroscope-test install pyroscope grafana/pyroscope \
+     --set architecture.microservices.enabled=true \
+     --set minio.enabled=true
    ```
 
    {{% admonition type="note" %}}
@@ -85,7 +85,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    ```
    [...]
    The in-cluster query URL is:
-   http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040
+   http://pyroscope-query-frontend.pyroscope-test.svc.cluster.local.:4040
    [...]
    ```
    {{% /admonition %}}
@@ -100,17 +100,28 @@ Use a custom namespace so that you don't have to overwrite the default namespace
 
    ```bash
    kubectl -n pyroscope-test get pods
-   NAME                                 READY   STATUS    RESTARTS   AGE
-   pyroscope-agent-7d75b4f9dc-xwpsw        1/1     Running   0          3m23s
-   pyroscope-distributor-7c474947c-2p5cc   1/1     Running   0          3m23s
-   pyroscope-distributor-7c474947c-xbszv   1/1     Running   0          3m23s
-   pyroscope-ingester-0                    1/1     Running   0          5s
-   pyroscope-ingester-1                    1/1     Running   0          37s
-   pyroscope-ingester-2                    1/1     Running   0          69s
-   pyroscope-minio-0                       1/1     Running   0          3m23s
-   pyroscope-querier-66bf58dfcc-89gb8      1/1     Running   0          3m23s
-   pyroscope-querier-66bf58dfcc-p7lnc      1/1     Running   0          3m23s
-   pyroscope-querier-66bf58dfcc-zbggm      1/1     Running   0          3m23s
+   NAME                                         READY   STATUS    RESTARTS   AGE
+   pyroscope-ad-hoc-profiles-5f85bdbbd5-ftnfp   1/1     Running   0          3m23s
+   pyroscope-admin-6d9c7b8f4c-x2l8q             1/1     Running   0          3m23s
+   pyroscope-alloy-0                            2/2     Running   0          3m23s
+   pyroscope-compaction-worker-0                1/1     Running   0          3m23s
+   pyroscope-compaction-worker-1                1/1     Running   0          3m23s
+   pyroscope-compaction-worker-2                1/1     Running   0          3m23s
+   pyroscope-distributor-6bdb598969-2slkq       1/1     Running   0          3m23s
+   pyroscope-distributor-6bdb598969-rw7pt       1/1     Running   0          3m23s
+   pyroscope-metastore-0                        1/1     Running   0          3m23s
+   pyroscope-metastore-1                        1/1     Running   0          3m23s
+   pyroscope-metastore-2                        1/1     Running   0          3m23s
+   pyroscope-minio-0                            1/1     Running   0          3m23s
+   pyroscope-query-backend-7c9d8f6b5d-4kx2m     1/1     Running   0          3m23s
+   pyroscope-query-backend-7c9d8f6b5d-9qwzt     1/1     Running   0          3m23s
+   pyroscope-query-backend-7c9d8f6b5d-tz7lp     1/1     Running   0          3m23s
+   pyroscope-query-frontend-56bd8f57d7-pv9pk    1/1     Running   0          3m23s
+   pyroscope-query-frontend-56bd8f57d7-zgmqs    1/1     Running   0          3m23s
+   pyroscope-segment-writer-0                   1/1     Running   0          3m23s
+   pyroscope-segment-writer-1                   1/1     Running   0          3m23s
+   pyroscope-segment-writer-2                   1/1     Running   0          3m23s
+   pyroscope-tenant-settings-5978dc9ccf-nj8hq   1/1     Running   0          3m23s
    ```
 
 1. Wait until all the pods have a status of `Running` or `Completed`, which might take a few minutes.
@@ -121,12 +132,12 @@ Set additional Pyroscope command-line arguments in `pyroscope.extraArgs` in your
 Keep `extraArgs` and `resources` at the same indentation level under `pyroscope`.
 The `resources` field only configures container resource requests and limits; arguments nested inside it are not added to the container command.
 
-For example, for a deployment using v1 storage, save the following as `values.yaml` to set the maximum block duration to 30 minutes:
+For example, save the following as `values.yaml` to set the segment writer upload timeout to 5 seconds:
 
 ```yaml
 pyroscope:
   extraArgs:
-    pyroscopedb.max-block-duration: 30m
+    segment-writer.upload-timeout: 5s
   resources:
     requests:
       cpu: 1
@@ -136,12 +147,11 @@ pyroscope:
       memory: 6Gi
 ```
 
-The `pyroscopedb.max-block-duration` option applies to the v1 ingester, not v2 segment writers.
-Before deploying, render the chart and verify that the Pyroscope container's `args` include `-pyroscopedb.max-block-duration=30m`:
+Before deploying, render the chart and verify that the Pyroscope container's `args` include `-segment-writer.upload-timeout=5s`:
 
 ```bash
 helm template pyroscope grafana/pyroscope --values values.yaml \
-  | grep -F -- '-pyroscopedb.max-block-duration=30m'
+  | grep -F -- '-segment-writer.upload-timeout=5s'
 ```
 
 ## Query profiles in Grafana
@@ -181,7 +191,7 @@ helm template pyroscope grafana/pyroscope --values values.yaml \
    | Field | Value                                                        |
    | ----- | ------------------------------------------------------------ |
    | Name  | Pyroscope                                                       |
-   | URL   | `http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/`   |
+   | URL   | `http://pyroscope-query-frontend.pyroscope-test.svc.cluster.local.:4040/`   |
 
    To add a data source, refer to [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
@@ -204,7 +214,7 @@ datasources:
    - name: Pyroscope
      type: grafana-pyroscope-datasource
      uid: pyroscope-test
-     url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/
+     url: http://pyroscope-query-frontend.pyroscope-test.svc.cluster.local.:4040/
 ```
 
 Modify the Helm deployment by running:
