@@ -3,6 +3,10 @@
     {
       "type": "cpu",
       "unit": "nanoseconds"
+    },
+    {
+      "type": "samples",
+      "unit": "count"
     }
   ],
   "samples": [
