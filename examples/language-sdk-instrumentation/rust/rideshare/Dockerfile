@@ -7,6 +7,7 @@ COPY server/Cargo.toml server/Cargo.lock ./
 RUN mkdir src && \
     echo "fn main() {}" > src/main.rs && \
     cargo build --release && \
+    cargo clean --release -p server && \
     rm -rf src
 
 FROM deps as builder
