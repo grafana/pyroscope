@@ -90,4 +90,4 @@ jobs:
           gh pr create --repo "${TAP_REPO}" \
             --base main --head "${BRANCH}" \
             --title "chore: update formulas to ${PYROSCOPE_TAG}" \
-            --body "Automated formula update for Pyroscope ${PYROSCOPE_TAG}. Review and merge to publish the new version via Homebrew."
+            --body "Automated formula update for Pyroscope ${PYROSCOPE_TAG}."
