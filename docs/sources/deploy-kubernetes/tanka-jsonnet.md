@@ -71,12 +71,14 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
 
     ```jsonnet
     local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';
-    local valuesMicroServices = import 'pyroscope/jsonnet/values-micro-services.json';
     local tk = import 'tk';
 
     pyroscope.new(overrides={
       namespace: tk.env.spec.namespace,
-      values+: valuesMicroServices,
+      values+: {
+        architecture+: { microservices+: { enabled: true } },
+        minio+: { enabled: true },
+      },
     })
     ```
 1. Generate the Kubernetes YAML manifests and store them in the `./manifests` directory:
