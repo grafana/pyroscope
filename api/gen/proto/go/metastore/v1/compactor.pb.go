@@ -1652,6 +1652,95 @@ func (x *CompactionQueueDetails) GetNewestBlockAt() int64 {
 	return 0
 }
 
+type RetryCompactionJobRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Ownership token observed by the caller. Stale requests are rejected.
+	Token         uint64 `protobuf:"varint,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryCompactionJobRequest) Reset() {
+	*x = RetryCompactionJobRequest{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryCompactionJobRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryCompactionJobRequest) ProtoMessage() {}
+
+func (x *RetryCompactionJobRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryCompactionJobRequest.ProtoReflect.Descriptor instead.
+func (*RetryCompactionJobRequest) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RetryCompactionJobRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *RetryCompactionJobRequest) GetToken() uint64 {
+	if x != nil {
+		return x.Token
+	}
+	return 0
+}
+
+type RetryCompactionJobResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryCompactionJobResponse) Reset() {
+	*x = RetryCompactionJobResponse{}
+	mi := &file_metastore_v1_compactor_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryCompactionJobResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryCompactionJobResponse) ProtoMessage() {}
+
+func (x *RetryCompactionJobResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_metastore_v1_compactor_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryCompactionJobResponse.ProtoReflect.Descriptor instead.
+func (*RetryCompactionJobResponse) Descriptor() ([]byte, []int) {
+	return file_metastore_v1_compactor_proto_rawDescGZIP(), []int{21}
+}
+
 var File_metastore_v1_compactor_proto protoreflect.FileDescriptor
 
 const file_metastore_v1_compactor_proto_rawDesc = "" +
@@ -1784,12 +1873,17 @@ const file_metastore_v1_compactor_proto_rawDesc = "" +
 	"\x10compaction_level\x18\x03 \x01(\rR\x0fcompactionLevel\x12\x16\n" +
 	"\x06blocks\x18\x04 \x01(\x04R\x06blocks\x12&\n" +
 	"\x0foldest_block_at\x18\x05 \x01(\x03R\roldestBlockAt\x12&\n" +
-	"\x0fnewest_block_at\x18\x06 \x01(\x03R\rnewestBlockAt*z\n" +
+	"\x0fnewest_block_at\x18\x06 \x01(\x03R\rnewestBlockAt\"E\n" +
+	"\x19RetryCompactionJobRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\x04R\x05token\"\x1c\n" +
+	"\x1aRetryCompactionJobResponse*z\n" +
 	"\x13CompactionJobStatus\x12!\n" +
 	"\x1dCOMPACTION_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dCOMPACTION_STATUS_IN_PROGRESS\x10\x01\x12\x1d\n" +
-	"\x19COMPACTION_STATUS_SUCCESS\x10\x022\xb3\x03\n" +
+	"\x19COMPACTION_STATUS_SUCCESS\x10\x022\x9e\x04\n" +
 	"\x11CompactionService\x12i\n" +
+	"\x12RetryCompactionJob\x12'.metastore.v1.RetryCompactionJobRequest\x1a(.metastore.v1.RetryCompactionJobResponse\"\x00\x12i\n" +
 	"\x12ListCompactionJobs\x12'.metastore.v1.ListCompactionJobsRequest\x1a(.metastore.v1.ListCompactionJobsResponse\"\x00\x12]\n" +
 	"\x0eDeleteDatasets\x12#.metastore.v1.DeleteDatasetsRequest\x1a$.metastore.v1.DeleteDatasetsResponse\"\x00\x12i\n" +
 	"\x12PollCompactionJobs\x12'.metastore.v1.PollCompactionJobsRequest\x1a(.metastore.v1.PollCompactionJobsResponse\"\x00\x12i\n" +
@@ -1809,7 +1903,7 @@ func file_metastore_v1_compactor_proto_rawDescGZIP() []byte {
 }
 
 var file_metastore_v1_compactor_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_metastore_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_metastore_v1_compactor_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_metastore_v1_compactor_proto_goTypes = []any{
 	(CompactionJobStatus)(0),           // 0: metastore.v1.CompactionJobStatus
 	(*ListCompactionJobsRequest)(nil),  // 1: metastore.v1.ListCompactionJobsRequest
@@ -1832,8 +1926,10 @@ var file_metastore_v1_compactor_proto_goTypes = []any{
 	(*GetCompactionStateResponse)(nil), // 18: metastore.v1.GetCompactionStateResponse
 	(*CompactionJobDetails)(nil),       // 19: metastore.v1.CompactionJobDetails
 	(*CompactionQueueDetails)(nil),     // 20: metastore.v1.CompactionQueueDetails
-	(*BlockList)(nil),                  // 21: metastore.v1.BlockList
-	(*BlockMeta)(nil),                  // 22: metastore.v1.BlockMeta
+	(*RetryCompactionJobRequest)(nil),  // 21: metastore.v1.RetryCompactionJobRequest
+	(*RetryCompactionJobResponse)(nil), // 22: metastore.v1.RetryCompactionJobResponse
+	(*BlockList)(nil),                  // 23: metastore.v1.BlockList
+	(*BlockMeta)(nil),                  // 24: metastore.v1.BlockMeta
 }
 var file_metastore_v1_compactor_proto_depIdxs = []int32{
 	3,  // 0: metastore.v1.ListCompactionJobsResponse.jobs:type_name -> metastore.v1.CompactionJobInfo
@@ -1848,23 +1944,25 @@ var file_metastore_v1_compactor_proto_depIdxs = []int32{
 	9,  // 9: metastore.v1.Tombstones.shard:type_name -> metastore.v1.ShardTombstone
 	0,  // 10: metastore.v1.CompactionJobStatusUpdate.status:type_name -> metastore.v1.CompactionJobStatus
 	12, // 11: metastore.v1.CompactionJobStatusUpdate.compacted_blocks:type_name -> metastore.v1.CompactedBlocks
-	21, // 12: metastore.v1.CompactedBlocks.source_blocks:type_name -> metastore.v1.BlockList
-	22, // 13: metastore.v1.CompactedBlocks.new_blocks:type_name -> metastore.v1.BlockMeta
+	23, // 12: metastore.v1.CompactedBlocks.source_blocks:type_name -> metastore.v1.BlockList
+	24, // 13: metastore.v1.CompactedBlocks.new_blocks:type_name -> metastore.v1.BlockMeta
 	13, // 14: metastore.v1.DeleteDatasetsRequest.filter:type_name -> metastore.v1.DeleteFilter
 	15, // 15: metastore.v1.DeleteDatasetsResponse.blocks:type_name -> metastore.v1.BlockDeletionSummary
 	19, // 16: metastore.v1.GetCompactionStateResponse.compaction_jobs:type_name -> metastore.v1.CompactionJobDetails
 	20, // 17: metastore.v1.GetCompactionStateResponse.compaction_queues:type_name -> metastore.v1.CompactionQueueDetails
 	0,  // 18: metastore.v1.CompactionJobDetails.status:type_name -> metastore.v1.CompactionJobStatus
-	1,  // 19: metastore.v1.CompactionService.ListCompactionJobs:input_type -> metastore.v1.ListCompactionJobsRequest
-	14, // 20: metastore.v1.CompactionService.DeleteDatasets:input_type -> metastore.v1.DeleteDatasetsRequest
-	4,  // 21: metastore.v1.CompactionService.PollCompactionJobs:input_type -> metastore.v1.PollCompactionJobsRequest
-	17, // 22: metastore.v1.CompactionService.GetCompactionState:input_type -> metastore.v1.GetCompactionStateRequest
-	2,  // 23: metastore.v1.CompactionService.ListCompactionJobs:output_type -> metastore.v1.ListCompactionJobsResponse
-	16, // 24: metastore.v1.CompactionService.DeleteDatasets:output_type -> metastore.v1.DeleteDatasetsResponse
-	5,  // 25: metastore.v1.CompactionService.PollCompactionJobs:output_type -> metastore.v1.PollCompactionJobsResponse
-	18, // 26: metastore.v1.CompactionService.GetCompactionState:output_type -> metastore.v1.GetCompactionStateResponse
-	23, // [23:27] is the sub-list for method output_type
-	19, // [19:23] is the sub-list for method input_type
+	21, // 19: metastore.v1.CompactionService.RetryCompactionJob:input_type -> metastore.v1.RetryCompactionJobRequest
+	1,  // 20: metastore.v1.CompactionService.ListCompactionJobs:input_type -> metastore.v1.ListCompactionJobsRequest
+	14, // 21: metastore.v1.CompactionService.DeleteDatasets:input_type -> metastore.v1.DeleteDatasetsRequest
+	4,  // 22: metastore.v1.CompactionService.PollCompactionJobs:input_type -> metastore.v1.PollCompactionJobsRequest
+	17, // 23: metastore.v1.CompactionService.GetCompactionState:input_type -> metastore.v1.GetCompactionStateRequest
+	22, // 24: metastore.v1.CompactionService.RetryCompactionJob:output_type -> metastore.v1.RetryCompactionJobResponse
+	2,  // 25: metastore.v1.CompactionService.ListCompactionJobs:output_type -> metastore.v1.ListCompactionJobsResponse
+	16, // 26: metastore.v1.CompactionService.DeleteDatasets:output_type -> metastore.v1.DeleteDatasetsResponse
+	5,  // 27: metastore.v1.CompactionService.PollCompactionJobs:output_type -> metastore.v1.PollCompactionJobsResponse
+	18, // 28: metastore.v1.CompactionService.GetCompactionState:output_type -> metastore.v1.GetCompactionStateResponse
+	24, // [24:29] is the sub-list for method output_type
+	19, // [19:24] is the sub-list for method input_type
 	19, // [19:19] is the sub-list for extension type_name
 	19, // [19:19] is the sub-list for extension extendee
 	0,  // [0:19] is the sub-list for field type_name
@@ -1883,7 +1981,7 @@ func file_metastore_v1_compactor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_metastore_v1_compactor_proto_rawDesc), len(file_metastore_v1_compactor_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

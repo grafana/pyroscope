@@ -140,3 +140,15 @@
         </table>
     </div>
 {{ end }}
+
+{{ define "compaction-retry-cell" }}
+    <td class="align-middle">
+        {{ if .CanRetry }}
+            <form method="post">
+                <input type="hidden" name="job" value="{{ .Name }}">
+                <input type="hidden" name="token" value="{{ .Token }}">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Retry</button>
+            </form>
+        {{ end }}
+    </td>
+{{ end }}

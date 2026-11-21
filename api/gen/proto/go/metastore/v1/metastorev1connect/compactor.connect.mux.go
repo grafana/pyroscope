@@ -19,6 +19,11 @@ const _ = connect.IsAtLeastVersion0_1_0
 // RegisterCompactionServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
 func RegisterCompactionServiceHandler(mux *mux.Router, svc CompactionServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/metastore.v1.CompactionService/RetryCompactionJob", connect.NewUnaryHandler(
+		"/metastore.v1.CompactionService/RetryCompactionJob",
+		svc.RetryCompactionJob,
+		opts...,
+	))
 	mux.Handle("/metastore.v1.CompactionService/ListCompactionJobs", connect.NewUnaryHandler(
 		"/metastore.v1.CompactionService/ListCompactionJobs",
 		svc.ListCompactionJobs,

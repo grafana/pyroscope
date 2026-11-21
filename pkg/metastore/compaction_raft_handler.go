@@ -67,6 +67,12 @@ func (h *CompactionCommandHandler) GetCompactionPlanUpdate(
 	planner := h.planner.NewPlan(cmd)
 	schedule := h.scheduler.NewSchedule(tx, cmd)
 	p := new(raft_log.CompactionPlanUpdate)
+	if req.RetryJob != nil {
+		if state := schedule.RetryJob(req.RetryJob); state != nil {
+			p.UpdatedJobs = append(p.UpdatedJobs, &raft_log.UpdatedCompactionJob{State: state})
+		}
+		return &raft_log.GetCompactionPlanUpdateResponse{Term: cmd.Term, PlanUpdate: p}, nil
+	}
 
 	// Any status update may translate to either a job lease refresh, or a
 	// completed job. Status update might be rejected, if the worker has

@@ -5,6 +5,9 @@ package metastore.v1;
 import "metastore/v1/types.proto";
 
 service CompactionService {
+  // Requeues one exhausted job with an expired lease for one additional attempt.
+  rpc RetryCompactionJob(RetryCompactionJobRequest) returns (RetryCompactionJobResponse) {}
+
   // Read-only snapshot of queued and assigned jobs.
   rpc ListCompactionJobs(ListCompactionJobsRequest) returns (ListCompactionJobsResponse) {}
 
@@ -260,3 +263,11 @@ message CompactionQueueDetails {
   int64 oldest_block_at = 5;
   int64 newest_block_at = 6;
 }
+
+message RetryCompactionJobRequest {
+  string name = 1;
+  // Ownership token observed by the caller. Stale requests are rejected.
+  uint64 token = 2;
+}
+
+message RetryCompactionJobResponse {}

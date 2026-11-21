@@ -200,6 +200,12 @@ func (c *Client) QueryMetadataLabels(ctx context.Context, in *metastorev1.QueryM
 	})
 }
 
+func (c *Client) RetryCompactionJob(ctx context.Context, in *metastorev1.RetryCompactionJobRequest, opts ...grpc.CallOption) (*metastorev1.RetryCompactionJobResponse, error) {
+	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.RetryCompactionJobResponse, error) {
+		return instance.RetryCompactionJob(ctx, in, opts...)
+	}, codes.FailedPrecondition)
+}
+
 func (c *Client) ListCompactionJobs(ctx context.Context, in *metastorev1.ListCompactionJobsRequest, opts ...grpc.CallOption) (*metastorev1.ListCompactionJobsResponse, error) {
 	return invoke(ctx, c, func(ctx context.Context, instance instance) (*metastorev1.ListCompactionJobsResponse, error) {
 		return instance.ListCompactionJobs(ctx, in, opts...)
