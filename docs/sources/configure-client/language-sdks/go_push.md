@@ -148,6 +148,28 @@ runtime.SetBlockProfileRate(rate)
 The `rate` parameter controls the fraction of goroutine blocking events that are reported in the blocking profile.
 The profiler aims to sample an average of one blocking event per rate nanoseconds spent blocked.
 
+### Goroutine leak profiling
+
+Goroutine leak profiling helps you find leaked goroutines.
+A leaked goroutine waits forever on a concurrency primitive, such as a channel or `sync.Mutex`, because no other goroutine can ever release it.
+
+Goroutine leak profiling requires Go 1.26 or later, with your application built using the `goroutineleakprofile` experiment:
+
+```bash
+GOEXPERIMENT=goroutineleakprofile go build
+```
+
+To enable goroutine leak profiling, add `pyroscope.ProfileGoroutineLeak` to the `ProfileTypes` list:
+
+```go
+ProfileTypes: []pyroscope.ProfileType{
+  // ...
+  pyroscope.ProfileGoroutineLeak,
+},
+```
+
+If your application isn't built with the experiment, the SDK logs a message and doesn't collect goroutine leak profiles.
+
 ## Send data to Pyroscope OSS or Grafana Cloud Profiles
 
 To configure the Golang SDK to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL.

@@ -34,6 +34,17 @@ Ensure your Golang application exposes pprof endpoints.
     import _ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
     ```
 
+3. Optional: To collect mutex and block profiles, set the mutex and block profiling rates in your application.
+
+    ```go
+    runtime.SetMutexProfileFraction(5)
+    runtime.SetBlockProfileRate(5)
+    ```
+
+    The Go runtime records mutex and block events only after you set these rates.
+    Without them, the mutex and block profiles that Alloy scrapes are empty.
+    For information about how to choose the rates, refer to [Mutex profiling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/go_push/#mutex-profiling) and [Block profiling](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/language-sdks/go_push/#block-profiling).
+
 ## Install the collector
 
 [//]: # (TODO&#40;korniltsev&#41; What should go here?)

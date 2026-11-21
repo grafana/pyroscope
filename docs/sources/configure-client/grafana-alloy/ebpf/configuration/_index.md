@@ -36,6 +36,8 @@ The `forward_to` parameter should point to a `pyroscope.write` component to send
 | `collect_user_profile`    | `bool`                   | A flag to enable/disable collection of userspace profiles    | true    | no       |
 | `collect_kernel_profile`  | `bool`                   | A flag to enable/disable collection of kernelspace profiles  | true    | no       |
 | `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, `full` | `none` | no |
+| `off_cpu_threshold`       | `float`                  | Probability from `0` to `1` for recording an off-CPU event. A value of `0` disables off-CPU profiling. | `0` | no |
+| `probe_links`             | `list(string)`           | List of kernel or user-space probes from which to collect stack traces. |  | no |
 
 ## Supported languages
 
@@ -77,6 +79,27 @@ can help you pin down a profiling target.
 | `service_name`     | Pyroscope service name. It's automatically selected from discovery meta labels, if possible. Otherwise, it defaults to `unspecified`. |
 | `__name__`         | pyroscope metric name. Defaults to `process_cpu`.                                                                                |
 | `__container_id__` | The container ID derived from target.                                                                                            |
+
+### Off-CPU and probe profiles
+
+By default, the `pyroscope.ebpf` component collects CPU profiles.
+You can also collect these profiles:
+
+- Off-CPU profiles: Set `off_cpu_threshold` to a value greater than `0` to record the time that threads spend off the CPU, for example while waiting on I/O or locks. Off-CPU profiles use the `offcpu` metric name.
+- Probe profiles: Set `probe_links` to collect a stack trace each time a process or the kernel calls the functions you specify. Probe profiles use the `process_cpu` metric name with the `uprobe` sample type, and count the number of calls.
+
+The following example collects off-CPU profiles and profiles for calls to `malloc` in `libc`:
+
+```alloy
+pyroscope.ebpf "default" {
+  targets           = discovery.process.all.targets
+  forward_to        = [pyroscope.write.endpoint.receiver]
+  off_cpu_threshold = 0.5
+  probe_links       = ["uprobe:/usr/lib/libc.so.6:malloc"]
+}
+```
+
+For more information, refer to the [`pyroscope.ebpf`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.ebpf/) reference.
 
 ### Privileges
 
