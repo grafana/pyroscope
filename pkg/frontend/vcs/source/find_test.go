@@ -190,6 +190,23 @@ source_code:
           path: src/paymentservice
 `
 
+const dotnetPyroscopeYAML = `---
+source_code:
+  mappings:
+    - path:
+        - prefix: /src/src
+      language: dotnet
+      source:
+        local:
+          path: src
+    - function_name:
+        - prefix: MyApp
+      language: dotnet
+      source:
+        local:
+          path: src
+`
+
 // TestFileFinder_Find tests the complete happy path integration for find.go using table-driven tests
 func TestFileFinder_Find(t *testing.T) {
 	tests := []struct {
@@ -574,6 +591,87 @@ require (
 			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/nodejs-app/server.js",
 			expectedError:   false,
 		},
+		// .NET tests
+		{
+			name: "dotnet/mapped-pdb-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "MyApp.Web.Controllers.OrderController.Get",
+				Path:         "/src/src/Web/Controllers/OrderController.cs",
+			},
+			ref:           "main",
+			pyroscopeYAML: dotnetPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "src/Web/Controllers/OrderController.cs",
+						Ref:  "main",
+					},
+					content: "// CONTENT OrderController.cs",
+				},
+			},
+			expectedContent: "// CONTENT OrderController.cs",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/src/Web/Controllers/OrderController.cs",
+		},
+		{
+			name: "dotnet/mapped-pdb-path-fsharp",
+			fileSpec: config.FileSpec{
+				FunctionName: "MyApp.Pricing.calculate",
+				Path:         "/src/src/Pricing/Pricing.fs",
+			},
+			ref:           "main",
+			pyroscopeYAML: dotnetPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "src/Pricing/Pricing.fs",
+						Ref:  "main",
+					},
+					content: "// CONTENT Pricing.fs",
+				},
+			},
+			expectedContent: "// CONTENT Pricing.fs",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/src/Pricing/Pricing.fs",
+		},
+		{
+			name: "dotnet/mapped-pdb-path-vb",
+			fileSpec: config.FileSpec{
+				FunctionName: "MyApp.Legacy.Report.Render",
+				Path:         "/src/src/Legacy/Report.vb",
+			},
+			ref:           "main",
+			pyroscopeYAML: dotnetPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "src/Legacy/Report.vb",
+						Ref:  "main",
+					},
+					content: "' CONTENT Report.vb",
+				},
+			},
+			expectedContent: "' CONTENT Report.vb",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/src/Legacy/Report.vb",
+		},
+		{
+			name: "dotnet/relative-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "MyApp.Web.Program.Main",
+				Path:         "Web/Program.cs",
+			},
+			rootPath: "examples/dotnet-app",
+			ref:      "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "examples/dotnet-app/Web/Program.cs",
+						Ref:  "main",
+					},
+					content: "// CONTENT Program.cs",
+				},
+			},
+			expectedContent: "// CONTENT Program.cs",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/dotnet-app/Web/Program.cs",
+		},
 		{
 			name: "fallback/unknown-file-extension",
 			fileSpec: config.FileSpec{
@@ -761,6 +859,23 @@ source_code:
 			},
 			ref:           "main",
 			pyroscopeYAML: javascriptPyroscopeYAML,
+		},
+		{
+			name: "dotnet/assembly-name",
+			fileSpec: config.FileSpec{
+				FunctionName: "MyApp.Web.Controllers.OrderController.Get",
+				Path:         "MyApp.Web",
+			},
+			ref:           "main",
+			pyroscopeYAML: dotnetPyroscopeYAML,
+		},
+		{
+			name: "dotnet/no-mappings",
+			fileSpec: config.FileSpec{
+				FunctionName: "MyApp.Web.Controllers.OrderController.Get",
+				Path:         "/src/src/Web/Controllers/OrderController.cs",
+			},
+			ref: "main",
 		},
 	}
 
