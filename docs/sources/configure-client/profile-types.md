@@ -1,7 +1,7 @@
 ---
 title: Profile types and instrumentation
 menuTitle: Profile types and instrumentation
-description: Learn about the different profiling types available in Pyroscope and
+description: Learn about the different profiling types available in Pyroscope and which instrumentation methods support them.
 weight: 100
 aliases:
   - ../ingest-and-analyze-profile-data/profiling-types/
@@ -48,13 +48,14 @@ This table lists the available profile types based on auto instrumentation using
 | Profile type   | Go (pull) | Java | eBPF      |
 | -------------- | --------- | ---- | --------- |
 | CPU            | Yes       | Yes  | Yes       |
+| Off-CPU        |           |      | Yes       |
 | Alloc Objects  | Yes       | Yes  |           |
 | Alloc Space    | Yes       | Yes  |           |
-| Inuse Objects  |           |      |           |
-| Inuse Space    |           |      |           |
+| Inuse Objects  | Yes       |      |           |
+| Inuse Space    | Yes       |      |           |
 | Goroutines     | Yes       |      |           |
-| Mutex Count    |           |      |           |
-| Mutex Duration |           |      |           |
+| Mutex Count    | Yes       |      |           |
+| Mutex Duration | Yes       |      |           |
 | Block Count    | Yes       |      |           |
 | Block Duration | Yes       |      |           |
 | Lock Count     |           | Yes  |           |
@@ -62,6 +63,14 @@ This table lists the available profile types based on auto instrumentation using
 | Exceptions     |           |      |           |
 | Wall           |           | Yes  |           |
 | Heap           |           |      |           |
+| Probe Events   |           |      | Yes       |
+
+Some profile types require additional configuration.
+For details, refer to:
+
+- [Set up Go profiling in pull mode](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/go_pull/)
+- [Set up Java profiling using Grafana Alloy](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/java/)
+- [eBPF configuration reference](https://grafana.com/docs/pyroscope/<PYROSCOPE_VERSION>/configure-client/grafana-alloy/ebpf/configuration/)
 
 ### Instrumentation with SDKs
 
@@ -71,23 +80,24 @@ For more information on the language SDKs, refer to [Pyroscope language SDKs](ht
 
 This table lists the available profile types based on the language SDK.
 
-| Profile type   | Go (push) | Java | .NET       | .NET Framework | Ruby | Python | Rust | Node.js |
-| -------------- | --------- | ---- | ---------- | -------------- | ---- | ------ | ---- | ------- |
-| CPU            | Yes       | Yes  | Yes        | Yes            | Yes  | Yes    | Yes  | Yes     |
-| Alloc Objects  | Yes       | Yes  | Yes        |                |      | Yes    |      |         |
-| Alloc Space    | Yes       | Yes  | Yes        |                |      | Yes    |      |         |
-| Inuse Objects  | Yes       |      | Yes (7.0+) |                |      | Yes    |      |         |
-| Inuse Space    | Yes       |      | Yes (7.0+) |                |      | Yes    | Yes  |         |
-| Goroutines     | Yes       |      |            |                |      |        |      |         |
-| Mutex Count    | Yes       |      | Yes        |                |      |        |      |         |
-| Mutex Duration | Yes       |      | Yes        |                |      |        |      |         |
-| Block Count    | Yes       |      |            |                |      |        |      |         |
-| Block Duration | Yes       |      |            |                |      |        |      |         |
-| Lock Count     |           | Yes  | Yes        |                |      |        |      |         |
-| Lock Duration  |           | Yes  | Yes        |                |      |        |      |         |
-| Exceptions     |           |      | Yes        |                |      |        |      |         |
-| Wall           |           | Yes  | Yes        | Yes            |      |        |      | Yes     |
-| Heap           |           |      | Yes (7.0+) |                |      |        |      | Yes     |
+| Profile type    | Go (push) | Java | .NET       | .NET Framework | Ruby | Python | Rust | Node.js |
+| --------------- | --------- | ---- | ---------- | -------------- | ---- | ------ | ---- | ------- |
+| CPU             | Yes       | Yes  | Yes        | Yes            | Yes  | Yes    | Yes  | Yes     |
+| Alloc Objects   | Yes       | Yes  | Yes        |                |      | Yes    |      |         |
+| Alloc Space     | Yes       | Yes  | Yes        |                |      | Yes    |      |         |
+| Inuse Objects   | Yes       |      | Yes (7.0+) |                |      | Yes    |      |         |
+| Inuse Space     | Yes       |      | Yes (7.0+) |                |      | Yes    | Yes  |         |
+| Goroutines      | Yes       |      |            |                |      |        |      |         |
+| Goroutine Leaks | Yes       |      |            |                |      |        |      |         |
+| Mutex Count     | Yes       |      | Yes        |                |      |        |      |         |
+| Mutex Duration  | Yes       |      | Yes        |                |      |        |      |         |
+| Block Count     | Yes       |      |            |                |      |        |      |         |
+| Block Duration  | Yes       |      |            |                |      |        |      |         |
+| Lock Count      |           | Yes  | Yes        |                |      |        |      |         |
+| Lock Duration   |           | Yes  | Yes        |                |      |        |      |         |
+| Exceptions      |           |      | Yes        |                |      |        |      |         |
+| Wall            |           | Yes  | Yes        | Yes            |      |        |      | Yes     |
+| Heap            |           |      | Yes (7.0+) |                |      |        |      | Yes     |
 
 ## Profile types supported with span profiles
 

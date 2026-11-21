@@ -73,6 +73,32 @@ It supports the following arguments:
 For more information on async-profiler configuration,
 see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options).
 
+### Collect live-object and native memory profiles
+
+To collect profiles that the `profiling_config` arguments don't cover, use the `custom_arguments` argument to pass async-profiler options directly.
+For example, you can collect these profiles:
+
+- Live-object profiles: Add the `--live` option to allocation profiling to keep only the allocation samples for objects that are still live at the end of each profiling period. This helps you find Java heap memory leaks.
+- Native memory profiles: Use the `--nativemem` option to profile native memory allocations, such as allocations made with `malloc`.
+
+When you set `custom_arguments`, `pyroscope.java` ignores the `cpu`, `event`, `per_thread`, `sample_rate`, `alloc`, `lock`, `log_level`, and `tlab` arguments.
+Include every event you want to collect in `custom_arguments`.
+
+The following example collects CPU, allocation, live-object, and lock profiles:
+
+```alloy
+pyroscope.java "java" {
+  profiling_config {
+    interval         = "60s"
+    custom_arguments = ["-e", "itimer", "--alloc", "512k", "--live", "--lock", "10ms"]
+  }
+  forward_to = [pyroscope.write.endpoint.receiver]
+  targets    = discovery.relabel.java.output
+}
+```
+
+For more information, refer to the [`custom_arguments`](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/pyroscope/pyroscope.java/#custom_arguments) section of the `pyroscope.java` reference.
+
 ### Set privileges for the collector
 
 You must run the collector, such Alloy, as root and inside host `pid` namespace for the `pyroscope.java` and `discover.process` components to work.
