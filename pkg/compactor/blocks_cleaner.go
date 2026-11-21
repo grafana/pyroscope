@@ -344,7 +344,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 		level.Info(userLogger).Log("msg", "deleted blocks for tenant marked for deletion", "deletedBlocks", deletedBlocks)
 	}
 
-	mark, err := bucket.ReadTenantDeletionMark(ctx, c.bucketClient, userID)
+	mark, err := bucket.ReadTenantDeletionMark(ctx, c.bucketClient, userID, userLogger)
 	if err != nil {
 		return fmt.Errorf("failed to read tenant deletion mark: %w", err)
 	}

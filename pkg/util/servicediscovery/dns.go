@@ -10,10 +10,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/grpcutil"
 	"github.com/grafana/dskit/services"
-
-	util_log "github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // Instance notified by the service discovery.
@@ -50,8 +49,8 @@ type dnsServiceDiscovery struct {
 }
 
 // NewDNS creates a new DNS-based service discovery.
-func NewDNS(address string, dnsLookupPeriod time.Duration, notifications Notifications) (services.Service, error) {
-	resolver, err := grpcutil.NewDNSResolverWithFreq(dnsLookupPeriod, util_log.Logger)
+func NewDNS(address string, dnsLookupPeriod time.Duration, notifications Notifications, logger log.Logger) (services.Service, error) {
+	resolver, err := grpcutil.NewDNSResolverWithFreq(dnsLookupPeriod, logger)
 	if err != nil {
 		return nil, err
 	}

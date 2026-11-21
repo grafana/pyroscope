@@ -3,6 +3,7 @@ package validation
 import (
 	"bytes"
 	"flag"
+	"github.com/go-kit/log"
 	"testing"
 
 	"github.com/prometheus/common/model"
@@ -56,7 +57,7 @@ overrides:
 `
 
 func Test_IngestionRelabelingRules(t *testing.T) {
-	rc, err := LoadRuntimeConfig(bytes.NewReader([]byte(tenantOverrideConfig)))
+	rc, err := LoadRuntimeConfig(bytes.NewReader([]byte(tenantOverrideConfig)), log.NewNopLogger())
 	require.NoError(t, err)
 
 	o, err := newOverrides(rc)
@@ -87,14 +88,14 @@ func Test_IngestionRelabelingRules(t *testing.T) {
 overrides:
   wrong-mode:
     ingestion_relabeling_default_rules_position: end
-  `)))
+  `)), log.NewNopLogger())
 	require.ErrorContains(t, err, "invalid ingestion_relabeling_default_rules_position: end")
 
 	_, err = LoadRuntimeConfig(bytes.NewReader([]byte(`
 overrides:
   wrong-rule-action:
     ingestion_relabeling_rules: [{action: refund}]
-  `)))
+  `)), log.NewNopLogger())
 	require.ErrorContains(t, err, "unknown relabel action \"refund\"")
 
 	// Empty relabel config is valid with UTF8 validation (defaults to replace action with no-op).
@@ -102,7 +103,7 @@ overrides:
 overrides:
   empty-rule:
     ingestion_relabeling_rules: [{}]
-  `)))
+  `)), log.NewNopLogger())
 	require.NoError(t, err)
 
 }
