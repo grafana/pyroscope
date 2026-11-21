@@ -518,6 +518,40 @@ func (m *CompactionQueueDetails) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *RetryCompactionJobRequest) CloneVT() *RetryCompactionJobRequest {
+	if m == nil {
+		return (*RetryCompactionJobRequest)(nil)
+	}
+	r := new(RetryCompactionJobRequest)
+	r.Name = m.Name
+	r.Token = m.Token
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RetryCompactionJobRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RetryCompactionJobResponse) CloneVT() *RetryCompactionJobResponse {
+	if m == nil {
+		return (*RetryCompactionJobResponse)(nil)
+	}
+	r := new(RetryCompactionJobResponse)
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RetryCompactionJobResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *ListCompactionJobsRequest) EqualVT(that *ListCompactionJobsRequest) bool {
 	if this == that {
 		return true
@@ -1288,6 +1322,44 @@ func (this *CompactionQueueDetails) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *RetryCompactionJobRequest) EqualVT(that *RetryCompactionJobRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Name != that.Name {
+		return false
+	}
+	if this.Token != that.Token {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *RetryCompactionJobRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RetryCompactionJobRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *RetryCompactionJobResponse) EqualVT(that *RetryCompactionJobResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *RetryCompactionJobResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RetryCompactionJobResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
@@ -1298,6 +1370,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CompactionServiceClient interface {
+	// Requeues one exhausted job with an expired lease for one additional attempt.
+	RetryCompactionJob(ctx context.Context, in *RetryCompactionJobRequest, opts ...grpc.CallOption) (*RetryCompactionJobResponse, error)
 	// Read-only snapshot of queued and assigned jobs.
 	ListCompactionJobs(ctx context.Context, in *ListCompactionJobsRequest, opts ...grpc.CallOption) (*ListCompactionJobsResponse, error)
 	// Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
@@ -1316,6 +1390,15 @@ type compactionServiceClient struct {
 
 func NewCompactionServiceClient(cc grpc.ClientConnInterface) CompactionServiceClient {
 	return &compactionServiceClient{cc}
+}
+
+func (c *compactionServiceClient) RetryCompactionJob(ctx context.Context, in *RetryCompactionJobRequest, opts ...grpc.CallOption) (*RetryCompactionJobResponse, error) {
+	out := new(RetryCompactionJobResponse)
+	err := c.cc.Invoke(ctx, "/metastore.v1.CompactionService/RetryCompactionJob", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *compactionServiceClient) ListCompactionJobs(ctx context.Context, in *ListCompactionJobsRequest, opts ...grpc.CallOption) (*ListCompactionJobsResponse, error) {
@@ -1358,6 +1441,8 @@ func (c *compactionServiceClient) GetCompactionState(ctx context.Context, in *Ge
 // All implementations must embed UnimplementedCompactionServiceServer
 // for forward compatibility
 type CompactionServiceServer interface {
+	// Requeues one exhausted job with an expired lease for one additional attempt.
+	RetryCompactionJob(context.Context, *RetryCompactionJobRequest) (*RetryCompactionJobResponse, error)
 	// Read-only snapshot of queued and assigned jobs.
 	ListCompactionJobs(context.Context, *ListCompactionJobsRequest) (*ListCompactionJobsResponse, error)
 	// Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
@@ -1375,6 +1460,9 @@ type CompactionServiceServer interface {
 type UnimplementedCompactionServiceServer struct {
 }
 
+func (UnimplementedCompactionServiceServer) RetryCompactionJob(context.Context, *RetryCompactionJobRequest) (*RetryCompactionJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RetryCompactionJob not implemented")
+}
 func (UnimplementedCompactionServiceServer) ListCompactionJobs(context.Context, *ListCompactionJobsRequest) (*ListCompactionJobsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListCompactionJobs not implemented")
 }
@@ -1398,6 +1486,24 @@ type UnsafeCompactionServiceServer interface {
 
 func RegisterCompactionServiceServer(s grpc.ServiceRegistrar, srv CompactionServiceServer) {
 	s.RegisterService(&CompactionService_ServiceDesc, srv)
+}
+
+func _CompactionService_RetryCompactionJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetryCompactionJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompactionServiceServer).RetryCompactionJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/metastore.v1.CompactionService/RetryCompactionJob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompactionServiceServer).RetryCompactionJob(ctx, req.(*RetryCompactionJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _CompactionService_ListCompactionJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1479,6 +1585,10 @@ var CompactionService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "metastore.v1.CompactionService",
 	HandlerType: (*CompactionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "RetryCompactionJob",
+			Handler:    _CompactionService_RetryCompactionJob_Handler,
+		},
 		{
 			MethodName: "ListCompactionJobs",
 			Handler:    _CompactionService_ListCompactionJobs_Handler,
@@ -2831,6 +2941,84 @@ func (m *CompactionQueueDetails) MarshalToSizedBufferVT(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
+func (m *RetryCompactionJobRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RetryCompactionJobRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *RetryCompactionJobRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Token != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Token))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RetryCompactionJobResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RetryCompactionJobResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *RetryCompactionJobResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *ListCompactionJobsRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -3389,6 +3577,33 @@ func (m *CompactionQueueDetails) SizeVT() (n int) {
 	if m.NewestBlockAt != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.NewestBlockAt))
 	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *RetryCompactionJobRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Token != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.Token))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *RetryCompactionJobResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
 	n += len(m.unknownFields)
 	return n
 }
@@ -6825,6 +7040,159 @@ func (m *CompactionQueueDetails) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RetryCompactionJobRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RetryCompactionJobRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RetryCompactionJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+			}
+			m.Token = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Token |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := protohelpers.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RetryCompactionJobResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return protohelpers.ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RetryCompactionJobResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RetryCompactionJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

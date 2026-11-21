@@ -127,11 +127,11 @@ func (q *jobQueue) add(e *jobEntry) {
 }
 
 func (q *jobQueue) update(e *jobEntry, state *raft_log.CompactionJobState) {
-	if e.Status == 0 && state.Status != 0 {
+	if e.Status == 0 && state.Status != 0 && e.Failures == 0 {
 		// Job given a status.
 		q.stats.assignedTotal++
 	}
-	if e.Status != 0 && e.Token != state.Token {
+	if state.Status != 0 && (e.Status != 0 || e.Failures > 0) && e.Token != state.Token {
 		// Token change.
 		q.stats.reassignedTotal++
 	}

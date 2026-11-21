@@ -156,6 +156,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/metastore.v1.PollCompactionJobsResponse'
+  /metastore.v1.CompactionService/RetryCompactionJob:
+    post:
+      tags:
+        - metastore.v1.CompactionService
+      summary: Requeues one exhausted job with an expired lease for one additional attempt.
+      description: Requeues one exhausted job with an expired lease for one additional attempt.
+      operationId: metastore.v1.CompactionService.RetryCompactionJob
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metastore.v1.RetryCompactionJobRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/metastore.v1.RetryCompactionJobResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -1000,6 +1036,25 @@ components:
             $ref: '#/components/schemas/metastore.v1.CompactionJobAssignment'
           title: assignments
       title: PollCompactionJobsResponse
+      additionalProperties: false
+    metastore.v1.RetryCompactionJobRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        token:
+          type:
+            - integer
+            - string
+          title: token
+          format: int64
+          description: Ownership token observed by the caller. Stale requests are rejected.
+      title: RetryCompactionJobRequest
+      additionalProperties: false
+    metastore.v1.RetryCompactionJobResponse:
+      type: object
+      title: RetryCompactionJobResponse
       additionalProperties: false
     metastore.v1.ShardTombstone:
       type: object

@@ -72,6 +72,15 @@ func (m *GetCompactionPlanUpdateRequest) CloneVT() *GetCompactionPlanUpdateReque
 		}
 		r.StatusUpdates = tmpContainer
 	}
+	if rhs := m.RetryJob; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface {
+			CloneVT() *v1.RetryCompactionJobRequest
+		}); ok {
+			r.RetryJob = vtpb.CloneVT()
+		} else {
+			r.RetryJob = proto.Clone(rhs).(*v1.RetryCompactionJobRequest)
+		}
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -474,6 +483,15 @@ func (this *GetCompactionPlanUpdateRequest) EqualVT(that *GetCompactionPlanUpdat
 		}
 	}
 	if this.AssignJobsMax != that.AssignJobsMax {
+		return false
+	}
+	if equal, ok := interface{}(this.RetryJob).(interface {
+		EqualVT(*v1.RetryCompactionJobRequest) bool
+	}); ok {
+		if !equal.EqualVT(that.RetryJob) {
+			return false
+		}
+	} else if !proto.Equal(this.RetryJob, that.RetryJob) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1063,6 +1081,28 @@ func (m *GetCompactionPlanUpdateRequest) MarshalToSizedBufferVT(dAtA []byte) (in
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.RetryJob != nil {
+		if vtmsg, ok := interface{}(m.RetryJob).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.RetryJob)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = protohelpers.EncodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x22
 	}
 	if m.AssignJobsMax != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.AssignJobsMax))
@@ -1955,6 +1995,16 @@ func (m *GetCompactionPlanUpdateRequest) SizeVT() (n int) {
 	if m.AssignJobsMax != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.AssignJobsMax))
 	}
+	if m.RetryJob != nil {
+		if size, ok := interface{}(m.RetryJob).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.RetryJob)
+		}
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -2505,6 +2555,50 @@ func (m *GetCompactionPlanUpdateRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RetryJob", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RetryJob == nil {
+				m.RetryJob = &v1.RetryCompactionJobRequest{}
+			}
+			if unmarshal, ok := interface{}(m.RetryJob).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.RetryJob); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

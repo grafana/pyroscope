@@ -203,6 +203,7 @@
                         </th>
                         <th>Age</th>
                         <th>Lease</th>
+                        <th>Action</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -224,10 +225,11 @@
                             {{ template "compaction-blocks-cell" . }}
                             <td class="align-middle">{{ .Age }}</td>
                             <td class="align-middle">{{ .Lease }}</td>
+                            {{ template "compaction-retry-cell" . }}
                         </tr>
                     {{ else }}
                         <tr>
-                            <td colspan="10" class="text-body-secondary">
+                            <td colspan="11" class="text-body-secondary">
                                 No job has an expired lease or has exceeded the failure threshold.
                             </td>
                         </tr>

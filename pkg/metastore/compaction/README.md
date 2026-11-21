@@ -347,6 +347,21 @@ back or fix the bug and restart the compaction process, temporarily increasing t
 When the worker reports a successful completion of the job, the scheduler must remove the job from the schedule and
 notify the planner about the completion.
 
+### Manual Retry
+
+The compaction admin page at `/metastore-compaction` offers **Retry** for a job
+that has exhausted its retry budget and whose lease has expired. Each retry
+requeues that job for one additional attempt through the normal worker polling
+path. The job plan and failure count are preserved. Its ownership token changes,
+so stale retry requests and reports from the previous worker are rejected. Completed or
+evicted jobs cannot be retried this way.
+
+A queued retry uses the existing unassigned state and is excluded from failed-job
+eviction. Assignment increments its reassignment count without resetting its
+retry budget. If that attempt expires, another explicit Retry is required.
+The existing Failed badge describes an exhausted retry budget, so it can also
+appear during the final active attempt. Retry is unavailable until the lease expires.
+
 ## Job Status Description
 
 The diagram below depicts the state machine of the job status.

@@ -136,6 +136,7 @@
                             <th>Assigned</th>
                             <th>Lease</th>
                             <th>Token</th>
+                            <th>Action</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -152,10 +153,11 @@
                                 <td class="align-middle">{{ .Assigned }}</td>
                                 <td class="align-middle">{{ .Lease }}</td>
                                 <td class="align-middle font-monospace small">{{ .Token }}</td>
+                                {{ template "compaction-retry-cell" . }}
                             </tr>
                         {{ else }}
                             <tr>
-                                <td colspan="11" class="text-body-secondary">No compaction jobs for this tenant.</td>
+                                <td colspan="12" class="text-body-secondary">No compaction jobs for this tenant.</td>
                             </tr>
                         {{ end }}
                         </tbody>

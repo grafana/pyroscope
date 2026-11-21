@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/v2/pkg/util/http"
@@ -196,6 +199,7 @@ type compactionJobRow struct {
 	// points at the block listing of the tenant over the time window the
 	// blocks are expected to fall into.
 	SourceBlockLinks []compactionBlockLink
+	CanRetry         bool
 }
 
 // compactionBlockLink addresses a single block in the object store browser.
@@ -215,7 +219,11 @@ type compactionQueueRow struct {
 }
 
 func (a *Admin) CompactionHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.NewCrossOriginProtection().Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			a.retryCompactionJob(w, r)
+			return
+		}
 		query := r.URL.Query()
 		drilldown, tenantID := compactionDrilldown(query)
 
@@ -257,7 +265,35 @@ func (a *Admin) CompactionHandler() http.Handler {
 		if err = pageTemplates.compactionTemplate.Execute(w, content); err != nil {
 			httputil.Error(w, err)
 		}
-	})
+	}))
+}
+
+func (a *Admin) retryCompactionJob(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid retry form", http.StatusBadRequest)
+		return
+	}
+	token, err := strconv.ParseUint(r.PostForm.Get("token"), 10, 64)
+	name := r.PostForm.Get("job")
+	if err != nil || token == 0 || strings.TrimSpace(name) == "" {
+		http.Error(w, "job name and ownership token are required", http.StatusBadRequest)
+		return
+	}
+	_, err = a.compactionClient.RetryCompactionJob(r.Context(), &metastorev1.RetryCompactionJobRequest{Name: name, Token: token})
+	if err != nil && status.Code(err) != codes.FailedPrecondition {
+		httputil.Error(w, err)
+		return
+	}
+	a.compactionCache.mu.Lock()
+	clear(a.compactionCache.entries)
+	a.compactionCache.mu.Unlock()
+	if err != nil {
+		http.Error(w, "Retry could not be confirmed. Refresh to check the job's current state.", http.StatusConflict)
+		return
+	}
+	// A relative redirect retains the cell's reverse-proxy path and current view.
+	w.Header().Set("Location", "?"+r.URL.RawQuery)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 // formatStateAge describes how old the rendered state is. It is empty when
@@ -563,6 +599,7 @@ func newCompactionJobRow(job *metastorev1.CompactionJobDetails, maxFailures uint
 		Age:           formatAge(job.AddedAt, now),
 		Assigned:      formatAge(job.AssignedAt, now),
 		Lease:         formatLease(job, now),
+		CanRetry:      status == jobStatusFailed && now.UnixNano() > job.LeaseExpiresAt && job.Token != 0,
 	}
 	row.TenantPath = tenantPath(job.Tenant, "")
 	if len(job.SourceBlockIds) > 0 {

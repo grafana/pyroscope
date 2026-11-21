@@ -61,6 +61,9 @@ type Schedule interface {
 	// AddJob is called on behalf of the planner to add a new job to the schedule.
 	// The scheduler may decline the job by returning a nil state.
 	AddJob(*raft_log.CompactionJobPlan) *raft_log.CompactionJobState
+	// RetryJob requeues an exhausted job with an expired lease and matching token.
+	// A nil state means the request is no longer applicable.
+	RetryJob(*metastorev1.RetryCompactionJobRequest) *raft_log.CompactionJobState
 }
 
 // BlockEntry represents a block metadata entry compaction operates on.

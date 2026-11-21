@@ -33,6 +33,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// CompactionServiceRetryCompactionJobProcedure is the fully-qualified name of the
+	// CompactionService's RetryCompactionJob RPC.
+	CompactionServiceRetryCompactionJobProcedure = "/metastore.v1.CompactionService/RetryCompactionJob"
 	// CompactionServiceListCompactionJobsProcedure is the fully-qualified name of the
 	// CompactionService's ListCompactionJobs RPC.
 	CompactionServiceListCompactionJobsProcedure = "/metastore.v1.CompactionService/ListCompactionJobs"
@@ -49,6 +52,8 @@ const (
 
 // CompactionServiceClient is a client for the metastore.v1.CompactionService service.
 type CompactionServiceClient interface {
+	// Requeues one exhausted job with an expired lease for one additional attempt.
+	RetryCompactionJob(context.Context, *connect.Request[v1.RetryCompactionJobRequest]) (*connect.Response[v1.RetryCompactionJobResponse], error)
 	// Read-only snapshot of queued and assigned jobs.
 	ListCompactionJobs(context.Context, *connect.Request[v1.ListCompactionJobsRequest]) (*connect.Response[v1.ListCompactionJobsResponse], error)
 	// Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
@@ -72,6 +77,12 @@ func NewCompactionServiceClient(httpClient connect.HTTPClient, baseURL string, o
 	baseURL = strings.TrimRight(baseURL, "/")
 	compactionServiceMethods := v1.File_metastore_v1_compactor_proto.Services().ByName("CompactionService").Methods()
 	return &compactionServiceClient{
+		retryCompactionJob: connect.NewClient[v1.RetryCompactionJobRequest, v1.RetryCompactionJobResponse](
+			httpClient,
+			baseURL+CompactionServiceRetryCompactionJobProcedure,
+			connect.WithSchema(compactionServiceMethods.ByName("RetryCompactionJob")),
+			connect.WithClientOptions(opts...),
+		),
 		listCompactionJobs: connect.NewClient[v1.ListCompactionJobsRequest, v1.ListCompactionJobsResponse](
 			httpClient,
 			baseURL+CompactionServiceListCompactionJobsProcedure,
@@ -101,10 +112,16 @@ func NewCompactionServiceClient(httpClient connect.HTTPClient, baseURL string, o
 
 // compactionServiceClient implements CompactionServiceClient.
 type compactionServiceClient struct {
+	retryCompactionJob *connect.Client[v1.RetryCompactionJobRequest, v1.RetryCompactionJobResponse]
 	listCompactionJobs *connect.Client[v1.ListCompactionJobsRequest, v1.ListCompactionJobsResponse]
 	deleteDatasets     *connect.Client[v1.DeleteDatasetsRequest, v1.DeleteDatasetsResponse]
 	pollCompactionJobs *connect.Client[v1.PollCompactionJobsRequest, v1.PollCompactionJobsResponse]
 	getCompactionState *connect.Client[v1.GetCompactionStateRequest, v1.GetCompactionStateResponse]
+}
+
+// RetryCompactionJob calls metastore.v1.CompactionService.RetryCompactionJob.
+func (c *compactionServiceClient) RetryCompactionJob(ctx context.Context, req *connect.Request[v1.RetryCompactionJobRequest]) (*connect.Response[v1.RetryCompactionJobResponse], error) {
+	return c.retryCompactionJob.CallUnary(ctx, req)
 }
 
 // ListCompactionJobs calls metastore.v1.CompactionService.ListCompactionJobs.
@@ -129,6 +146,8 @@ func (c *compactionServiceClient) GetCompactionState(ctx context.Context, req *c
 
 // CompactionServiceHandler is an implementation of the metastore.v1.CompactionService service.
 type CompactionServiceHandler interface {
+	// Requeues one exhausted job with an expired lease for one additional attempt.
+	RetryCompactionJob(context.Context, *connect.Request[v1.RetryCompactionJobRequest]) (*connect.Response[v1.RetryCompactionJobResponse], error)
 	// Read-only snapshot of queued and assigned jobs.
 	ListCompactionJobs(context.Context, *connect.Request[v1.ListCompactionJobsRequest]) (*connect.Response[v1.ListCompactionJobsResponse], error)
 	// Plans whole-dataset deletion; dry runs are read-only, non-dry runs require the leader.
@@ -148,6 +167,12 @@ type CompactionServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewCompactionServiceHandler(svc CompactionServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	compactionServiceMethods := v1.File_metastore_v1_compactor_proto.Services().ByName("CompactionService").Methods()
+	compactionServiceRetryCompactionJobHandler := connect.NewUnaryHandler(
+		CompactionServiceRetryCompactionJobProcedure,
+		svc.RetryCompactionJob,
+		connect.WithSchema(compactionServiceMethods.ByName("RetryCompactionJob")),
+		connect.WithHandlerOptions(opts...),
+	)
 	compactionServiceListCompactionJobsHandler := connect.NewUnaryHandler(
 		CompactionServiceListCompactionJobsProcedure,
 		svc.ListCompactionJobs,
@@ -174,6 +199,8 @@ func NewCompactionServiceHandler(svc CompactionServiceHandler, opts ...connect.H
 	)
 	return "/metastore.v1.CompactionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case CompactionServiceRetryCompactionJobProcedure:
+			compactionServiceRetryCompactionJobHandler.ServeHTTP(w, r)
 		case CompactionServiceListCompactionJobsProcedure:
 			compactionServiceListCompactionJobsHandler.ServeHTTP(w, r)
 		case CompactionServiceDeleteDatasetsProcedure:
@@ -190,6 +217,10 @@ func NewCompactionServiceHandler(svc CompactionServiceHandler, opts ...connect.H
 
 // UnimplementedCompactionServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedCompactionServiceHandler struct{}
+
+func (UnimplementedCompactionServiceHandler) RetryCompactionJob(context.Context, *connect.Request[v1.RetryCompactionJobRequest]) (*connect.Response[v1.RetryCompactionJobResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.CompactionService.RetryCompactionJob is not implemented"))
+}
 
 func (UnimplementedCompactionServiceHandler) ListCompactionJobs(context.Context, *connect.Request[v1.ListCompactionJobsRequest]) (*connect.Response[v1.ListCompactionJobsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("metastore.v1.CompactionService.ListCompactionJobs is not implemented"))

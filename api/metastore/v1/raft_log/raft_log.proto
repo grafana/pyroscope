@@ -30,6 +30,7 @@ message GetCompactionPlanUpdateRequest {
   // wire-compatible with metastore.v1.PollCompactionJobsRequest: raft log
   // entries written by older versions may contain the raw worker request.
   reserved 3;
+  metastore.v1.RetryCompactionJobRequest retry_job = 4;
 }
 
 message CompactionJobStatusUpdate {

@@ -54,6 +54,10 @@ func (m *mockServer) DeleteTenant(ctx context.Context, request *metastorev1.Dele
 	return m.tenant.DeleteTenant(ctx, request)
 }
 
+func (m *mockServer) RetryCompactionJob(ctx context.Context, request *metastorev1.RetryCompactionJobRequest) (*metastorev1.RetryCompactionJobResponse, error) {
+	return m.compactor.RetryCompactionJob(ctx, request)
+}
+
 func (m *mockServer) ListCompactionJobs(ctx context.Context, request *metastorev1.ListCompactionJobsRequest) (*metastorev1.ListCompactionJobsResponse, error) {
 	return m.compactor.ListCompactionJobs(ctx, request)
 }

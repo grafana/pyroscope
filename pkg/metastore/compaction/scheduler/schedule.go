@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"container/heap"
+	"math"
 	"slices"
 	"time"
 
@@ -45,6 +46,21 @@ func (p *schedule) AssignJob() (*raft_log.AssignedCompactionJob, error) {
 		Plan:  plan,
 	}
 	return assigned, nil
+}
+
+func (p *schedule) RetryJob(req *metastorev1.RetryCompactionJobRequest) *raft_log.CompactionJobState {
+	p.scheduler.mu.Lock()
+	defer p.scheduler.mu.Unlock()
+	job := p.scheduler.queue.jobs[req.Name]
+	if job == nil || job.Token != req.Token || !p.isFailed(job) || p.now.UnixNano() <= job.LeaseExpiresAt {
+		return nil
+	}
+	state := job.CloneVT()
+	state.Status = metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED
+	state.LeaseExpiresAt = 0
+	state.Token = p.token
+	p.updates[state.Name] = state
+	return state
 }
 
 func (p *schedule) UpdateJob(status *raft_log.CompactionJobStatusUpdate) *raft_log.CompactionJobState {
@@ -180,7 +196,12 @@ func (p *schedule) nextAssignment() *raft_log.CompactionJobState {
 
 		switch job.Status {
 		case metastorev1.CompactionJobStatus_COMPACTION_STATUS_UNSPECIFIED:
-			return p.assignJob(job)
+			state := p.assignJob(job)
+			// Requeued jobs retain their failures, unlike newly created jobs.
+			if state.Failures > 0 && state.Failures < math.MaxUint32 {
+				state.Failures++
+			}
+			return state
 
 		case metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS:
 			if p.isFailed(job) {
@@ -218,7 +239,8 @@ func (p *schedule) isAbandoned(job *jobEntry) bool {
 
 func (p *schedule) isFailed(job *jobEntry) bool {
 	limit := p.scheduler.config.MaxFailures
-	return limit > 0 && uint64(job.Failures) >= limit
+	return job.Status == metastorev1.CompactionJobStatus_COMPACTION_STATUS_IN_PROGRESS &&
+		limit > 0 && uint64(job.Failures) >= limit
 }
 
 // The queue must not be modified by the assigner. Therefore, we're copying the
