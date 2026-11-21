@@ -9,11 +9,12 @@ import (
 )
 
 type metrics struct {
-	apply           prometheus.Histogram
-	read            prometheus.Histogram
-	state           *prometheus.GaugeVec
-	logStoreWrite   prometheus.Histogram
-	logStoreTimeout prometheus.Counter
+	apply               prometheus.Histogram
+	read                prometheus.Histogram
+	state               *prometheus.GaugeVec
+	logStoreWrite       prometheus.Histogram
+	logStoreWriteRecent prometheus.Summary
+	logStoreTimeout     prometheus.Counter
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -57,6 +58,14 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Name: "raft_log_store_write_timeouts_total",
 			Help: "Number of log store write operations that timed out",
 		}),
+
+		// Local election signal, kept separate from the exported WAL histogram.
+		logStoreWriteRecent: prometheus.NewSummary(prometheus.SummaryOpts{
+			Name:       "raft_log_store_write_recent_duration_seconds",
+			Help:       "Recent WAL write latency used to delay ordinary elections",
+			Objectives: map[float64]float64{0.99: 0.001},
+			MaxAge:     5 * time.Minute,
+		}),
 	}
 
 	if reg != nil {
@@ -68,4 +77,9 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	return m
+}
+
+func (m *metrics) observeLogStoreWrite(seconds float64) {
+	m.logStoreWrite.Observe(seconds)
+	m.logStoreWriteRecent.Observe(seconds)
 }

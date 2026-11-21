@@ -25,14 +25,14 @@ import (
 type timeoutLogStore struct {
 	store        raft.LogStore
 	timeout      time.Duration
-	writeLatency prometheus.Histogram
+	writeLatency prometheus.Observer
 	timeouts     prometheus.Counter
 
 	writeToken       chan struct{}
 	acknowledgedLast uint64
 }
 
-func newTimeoutLogStore(store raft.LogStore, timeout time.Duration, writeLatency prometheus.Histogram, timeouts prometheus.Counter) (raft.LogStore, error) {
+func newTimeoutLogStore(store raft.LogStore, timeout time.Duration, writeLatency prometheus.Observer, timeouts prometheus.Counter) (raft.LogStore, error) {
 	if timeout <= 0 {
 		return store, nil
 	}
