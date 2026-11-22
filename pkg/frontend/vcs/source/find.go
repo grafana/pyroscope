@@ -54,6 +54,10 @@ func NewFileFinder(client VCSClient, repo giturl.IGitURL, file config.FileSpec, 
 
 // Find returns the file content and URL.
 func (ff *FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) {
+	if isDotNetExtension(filepath.Ext(ff.file.Path)) {
+		ff.file.Path = normalizeDotNetPath(ff.file.Path)
+	}
+
 	// first try to gather the config
 	ff.loadConfig(ctx)
 

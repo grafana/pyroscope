@@ -205,6 +205,13 @@ source_code:
       source:
         local:
           path: src
+    - path:
+        - prefix: /src
+        - prefix: C:/build/shop
+      language: dotnet
+      source:
+        local:
+          path: app
 `
 
 // TestFileFinder_Find tests the complete happy path integration for find.go using table-driven tests
@@ -671,6 +678,84 @@ require (
 			},
 			expectedContent: "// CONTENT Program.cs",
 			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/examples/dotnet-app/Web/Program.cs",
+		},
+		{
+			name: "dotnet/sdk-pdb-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "Shop.Orders!OrderService.Process",
+				Path:         "/src/Shop/Orders/OrderService.cs",
+			},
+			ref:           "main",
+			pyroscopeYAML: dotnetPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "app/Shop/Orders/OrderService.cs",
+						Ref:  "main",
+					},
+					content: "// CONTENT OrderService.cs",
+				},
+			},
+			expectedContent: "// CONTENT OrderService.cs",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/app/Shop/Orders/OrderService.cs",
+		},
+		{
+			name: "dotnet/windows-pdb-path",
+			fileSpec: config.FileSpec{
+				FunctionName: "Shop.Orders!OrderService.Process",
+				Path:         `C:\build\shop\Shop\Orders\OrderService.cs`,
+			},
+			ref:           "main",
+			pyroscopeYAML: dotnetPyroscopeYAML,
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "app/Shop/Orders/OrderService.cs",
+						Ref:  "main",
+					},
+					content: "// CONTENT OrderService.cs",
+				},
+			},
+			expectedContent: "// CONTENT OrderService.cs",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/app/Shop/Orders/OrderService.cs",
+		},
+		{
+			name: "dotnet/pathmap-root",
+			fileSpec: config.FileSpec{
+				FunctionName: "Shop.Orders!OrderService.Process",
+				Path:         "/_/Shop/Orders/OrderService.cs",
+			},
+			ref: "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "Shop/Orders/OrderService.cs",
+						Ref:  "main",
+					},
+					content: "// CONTENT OrderService.cs",
+				},
+			},
+			expectedContent: "// CONTENT OrderService.cs",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/Shop/Orders/OrderService.cs",
+		},
+		{
+			name: "dotnet/pathmap-root-windows",
+			fileSpec: config.FileSpec{
+				FunctionName: "Shop.Orders!OrderService.Process",
+				Path:         `/_/Shop\Orders\OrderService.cs`,
+			},
+			ref: "main",
+			mockFiles: []mockFileResponse{
+				{
+					request: client.FileRequest{
+						Path: "Shop/Orders/OrderService.cs",
+						Ref:  "main",
+					},
+					content: "// CONTENT OrderService.cs",
+				},
+			},
+			expectedContent: "// CONTENT OrderService.cs",
+			expectedURL:     "https://github.com/grafana/pyroscope/blob/main/Shop/Orders/OrderService.cs",
 		},
 		{
 			name: "fallback/unknown-file-extension",

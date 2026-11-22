@@ -19,6 +19,9 @@ const (
 	ExtCSharp = ".cs"
 	ExtFSharp = ".fs"
 	ExtVB     = ".vb"
+
+	// pathMapRoot is the repo root in PDBs of deterministic builds (PathMap).
+	pathMapRoot = "/_/"
 )
 
 // isDotNetExtension returns true if the file extension is a C#, F# or Visual Basic extension.
@@ -29,6 +32,11 @@ func isDotNetExtension(ext string) bool {
 	default:
 		return false
 	}
+}
+
+// normalizeDotNetPath turns Windows PDB paths, e.g. C:\src\Web\Program.cs, into forward-slash paths.
+func normalizeDotNetPath(path string) string {
+	return strings.ReplaceAll(path, `\`, "/")
 }
 
 // findDotNetFile finds a .NET source file in a VCS repository.
@@ -65,7 +73,7 @@ func (ff FileFinder) findDotNetFile(ctx context.Context, mappings ...*config.Map
 	}
 
 	// Fallback to relative file path matching
-	f, err := ff.fetchRepoFile(ctx, ff.file.Path, ff.ref)
+	f, err := ff.fetchRepoFile(ctx, strings.TrimPrefix(ff.file.Path, pathMapRoot), ff.ref)
 	if err != nil {
 		level.Warn(ff.logger).Log("msg", "failed to fetch relative file", "err", err)
 	} else {
