@@ -459,6 +459,9 @@
       "runAsNonRoot": true,
       "runAsUser": 10001
     },
+    "queryBackend": {
+      "useSrvPrefix": false
+    },
     "rbac": {
       "create": true
     },

@@ -114,6 +114,11 @@ pyroscope:
     port: 9099
     port_name: raft
 
+  queryBackend:
+    # -- Prefix the default query-backend.address host with `_grpc._tcp.` (previous chart default).
+    # Ignored when query-backend.address is set in extraArgs.
+    useSrvPrefix: false
+
   resources:
     {}
     # We usually recommend not to specify default resources and to leave this as a conscious
