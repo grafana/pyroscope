@@ -81,9 +81,6 @@ func (p *replayDumpParams) parseFromTo() (from, to time.Time, err error) {
 	return from, to, nil
 }
 
-// newMetastoreClient builds a metastore client from a comma-separated list of
-// addresses. It relies on plaintext (non-TLS) gRPC, matching the default
-// configuration of the metastore.
 type flagPrefixCommander struct {
 	commander
 	prefix string
@@ -97,6 +94,9 @@ func addReplayBucketParams(cmd commander) *bucketParams {
 	return addBucketParams(flagPrefixCommander{commander: cmd, prefix: "replay."})
 }
 
+// newMetastoreClient builds a metastore client from a comma-separated list of
+// addresses. It relies on plaintext (non-TLS) gRPC, matching the default
+// configuration of the metastore.
 func newMetastoreClient(ctx context.Context, address string) (*metastoreclient.Client, error) {
 	disc, err := discovery.NewDiscovery(logger, address, nil)
 	if err != nil {
