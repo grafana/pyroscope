@@ -45,7 +45,7 @@ type replayDumpParams struct {
 func addReplayDumpParams(cmd commander) *replayDumpParams {
 	params := &replayDumpParams{}
 	params.bucketParams = addBucketParams(cmd)
-	params.ReplayBucket = addBucketParamsWithPrefix(cmd, "replay-storage")
+	params.ReplayBucket = addReplayBucketParams(cmd)
 
 	cmd.Flag("metastore.address", "Address of the source cell's metastore (host:port). Accepts a comma-separated list of peers.").
 		Default("localhost:9095").StringVar(&params.MetastoreAddress)
@@ -58,7 +58,7 @@ func addReplayDumpParams(cmd commander) *replayDumpParams {
 	cmd.Flag("from", "Beginning of the dump window.").Default("now-1h").StringVar(&params.From)
 	cmd.Flag("to", "End of the dump window.").Default("now").StringVar(&params.To)
 	cmd.Flag("output", "Path to write the replay dump file to. Exactly one of --output and --output-object is required.").Short('o').StringVar(&params.Output)
-	cmd.Flag("output-object", "Object name to write the replay dump to in the bucket configured with the --replay-storage.* flags. Exactly one of --output and --output-object is required.").StringVar(&params.OutputObject)
+	cmd.Flag("output-object", "Object name to write the replay dump to in the bucket configured with the --replay.storage.* flags. Exactly one of --output and --output-object is required.").StringVar(&params.OutputObject)
 	cmd.Flag("skip-if-exists", "Exit successfully without dumping if the output already exists.").BoolVar(&params.SkipIfExists)
 	cmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").BoolVar(&params.Force)
 	cmd.Flag("anonymize-salt", "Anonymize labels and symbols with this salt (64-character SHA-256 hex hashes); preserve profile-type labels. An empty salt disables anonymization.").StringVar(&params.AnonymizeSalt)
@@ -83,6 +83,10 @@ func (p *replayDumpParams) parseFromTo() (from, to time.Time, err error) {
 // newMetastoreClient builds a metastore client from a comma-separated list of
 // addresses. It relies on plaintext (non-TLS) gRPC, matching the default
 // configuration of the metastore.
+func addReplayBucketParams(cmd commander) *bucketParams {
+	return addBucketParamsWithFlagPrefix(cmd, "replay.")
+}
+
 func newMetastoreClient(ctx context.Context, address string) (*metastoreclient.Client, error) {
 	disc, err := discovery.NewDiscovery(logger, address, nil)
 	if err != nil {

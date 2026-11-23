@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
@@ -158,4 +159,22 @@ func TestReplayPush_RequiresExactlyOneInput(t *testing.T) {
 	both := base
 	both.Input, both.InputObject = "a", "b"
 	require.Error(t, replayPush(context.Background(), &both))
+}
+
+func TestReplayBucketFlagsAreIndependent(t *testing.T) {
+	app := kingpin.New("test", "")
+	cmd := app.Command("c", "")
+	source := addBucketParams(cmd)
+	replay := addReplayBucketParams(cmd)
+
+	_, err := app.Parse([]string{"c", "--storage.backend=filesystem", "--storage.filesystem.dir=/src", "--replay.storage.backend=filesystem", "--replay.storage.filesystem.dir=/dst"})
+	require.NoError(t, err)
+	require.Equal(t, "/src", source.objectStoreCfg.Filesystem.Directory)
+	require.Equal(t, "/dst", replay.objectStoreCfg.Filesystem.Directory)
+
+	ctx := context.Background()
+	_, err = source.initClient(ctx)
+	require.NoError(t, err)
+	_, err = replay.initClient(ctx)
+	require.NoError(t, err)
 }

@@ -127,10 +127,10 @@ type replayPushParams struct {
 func addReplayPushParams(cmd commander) *replayPushParams {
 	params := &replayPushParams{ExtraLabels: map[string]string{}}
 	params.phlareClient = addPhlareClient(cmd)
-	params.ReplayBucket = addBucketParamsWithPrefix(cmd, "replay-storage")
+	params.ReplayBucket = addReplayBucketParams(cmd)
 
 	cmd.Flag("input", "Path to the replay dump file produced by `replay dump`. Accepts a local file path or an http(s) URL. Exactly one of --input and --input-object is required.").Short('i').StringVar(&params.Input)
-	cmd.Flag("input-object", "Object name of the replay dump in the bucket configured with the --replay-storage.* flags. Exactly one of --input and --input-object is required.").StringVar(&params.InputObject)
+	cmd.Flag("input-object", "Object name of the replay dump in the bucket configured with the --replay.storage.* flags. Exactly one of --input and --input-object is required.").StringVar(&params.InputObject)
 	cmd.Flag("extra-labels", "Set a label on every replayed profile, replacing its recorded value or adding it. Repeatable: --extra-labels=replay_id=abc --extra-labels=env=bench.").StringMapVar(&params.ExtraLabels)
 	cmd.Flag("loop", "Continuously repeat the dump, looping every recorded window duration, so the destination cell keeps receiving data that looks like the original recording.").Default("true").BoolVar(&params.Loop)
 	cmd.Flag("speed", "Time-scale multiplier for replay speed (2 replays twice as fast, 0.5 half as fast).").Default("1").Float64Var(&params.Speed)
