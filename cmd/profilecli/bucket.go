@@ -44,10 +44,6 @@ type bucketWebToolParams struct {
 }
 
 func addBucketParams(cmd commander) *bucketParams {
-	return addBucketParamsWithFlagPrefix(cmd, "")
-}
-
-func addBucketParamsWithFlagPrefix(cmd commander, flagPrefix string) *bucketParams {
 	var (
 		params = &bucketParams{}
 	)
@@ -57,23 +53,23 @@ func addBucketParamsWithFlagPrefix(cmd commander, flagPrefix string) *bucketPara
 	fs.VisitAll(func(f *flag.Flag) {
 		switch f.Name {
 		case "storage.backend":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default("filesystem").StringVar(&params.objectStoreCfg.Backend)
+			cmd.Flag(f.Name, f.Usage).Default("filesystem").StringVar(&params.objectStoreCfg.Backend)
 		case "storage.prefix":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Prefix)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Prefix)
 		case "storage.filesystem.dir":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Filesystem.Directory)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Filesystem.Directory)
 		case "storage.gcs.bucket-name":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.GCS.BucketName)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.GCS.BucketName)
 		case "storage.s3.bucket-name":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.S3.BucketName)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.S3.BucketName)
 		case "storage.s3.endpoint":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.S3.Endpoint)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.S3.Endpoint)
 		case "storage.s3.region":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.S3.Region)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.S3.Region)
 		case "storage.azure.container-name":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Azure.ContainerName)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Azure.ContainerName)
 		case "storage.azure.account-name":
-			cmd.Flag(flagPrefix+f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Azure.StorageAccountName)
+			cmd.Flag(f.Name, f.Usage).Default(f.DefValue).StringVar(&params.objectStoreCfg.Azure.StorageAccountName)
 		default:
 			break
 		}

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/services"
@@ -83,8 +84,17 @@ func (p *replayDumpParams) parseFromTo() (from, to time.Time, err error) {
 // newMetastoreClient builds a metastore client from a comma-separated list of
 // addresses. It relies on plaintext (non-TLS) gRPC, matching the default
 // configuration of the metastore.
+type flagPrefixCommander struct {
+	commander
+	prefix string
+}
+
+func (c flagPrefixCommander) Flag(name, help string) *kingpin.FlagClause {
+	return c.commander.Flag(c.prefix+name, help)
+}
+
 func addReplayBucketParams(cmd commander) *bucketParams {
-	return addBucketParamsWithFlagPrefix(cmd, "replay.")
+	return addBucketParams(flagPrefixCommander{commander: cmd, prefix: "replay."})
 }
 
 func newMetastoreClient(ctx context.Context, address string) (*metastoreclient.Client, error) {
