@@ -28,6 +28,7 @@ import (
 
 type replayDumpParams struct {
 	*bucketParams
+	ReplayBucket *bucketParams
 
 	MetastoreAddress string
 	Tenant           string
@@ -35,6 +36,8 @@ type replayDumpParams struct {
 	From             string
 	To               string
 	Output           string
+	OutputObject     string
+	SkipIfExists     bool
 	Force            bool
 	AnonymizeSalt    string
 }
@@ -42,6 +45,7 @@ type replayDumpParams struct {
 func addReplayDumpParams(cmd commander) *replayDumpParams {
 	params := &replayDumpParams{}
 	params.bucketParams = addBucketParams(cmd)
+	params.ReplayBucket = addBucketParamsWithPrefix(cmd, "replay-storage")
 
 	cmd.Flag("metastore.address", "Address of the source cell's metastore (host:port). Accepts a comma-separated list of peers.").
 		Default("localhost:9095").StringVar(&params.MetastoreAddress)
@@ -53,7 +57,9 @@ func addReplayDumpParams(cmd commander) *replayDumpParams {
 	cmd.Flag("query", "Label selector to query.").Default("{}").StringVar(&params.Query)
 	cmd.Flag("from", "Beginning of the dump window.").Default("now-1h").StringVar(&params.From)
 	cmd.Flag("to", "End of the dump window.").Default("now").StringVar(&params.To)
-	cmd.Flag("output", "Path to write the replay dump file to.").Short('o').Required().StringVar(&params.Output)
+	cmd.Flag("output", "Path to write the replay dump file to. Exactly one of --output and --output-object is required.").Short('o').StringVar(&params.Output)
+	cmd.Flag("output-object", "Object name to write the replay dump to in the bucket configured with the --replay-storage.* flags. Exactly one of --output and --output-object is required.").StringVar(&params.OutputObject)
+	cmd.Flag("skip-if-exists", "Exit successfully without dumping if the output already exists.").BoolVar(&params.SkipIfExists)
 	cmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").BoolVar(&params.Force)
 	cmd.Flag("anonymize-salt", "Anonymize labels and symbols with this salt (64-character SHA-256 hex hashes); preserve profile-type labels. An empty salt disables anonymization.").StringVar(&params.AnonymizeSalt)
 	return params
@@ -96,6 +102,9 @@ func newMetastoreClient(ctx context.Context, address string) (*metastoreclient.C
 }
 
 func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
+	if (params.Output == "") == (params.OutputObject == "") {
+		return errors.New("exactly one of --output and --output-object is required")
+	}
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -117,6 +126,27 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	level.Info(logger).Log("msg", "starting replay dump",
 		"metastore", params.MetastoreAddress, "tenant", params.Tenant,
 		"query", params.Query, "from", from, "to", to, "output", params.Output)
+
+	var replayBucket phlareobj.Bucket
+	if params.OutputObject != "" {
+		replayBucket, err = params.ReplayBucket.initClient(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create replay bucket client: %w", err)
+		}
+	}
+	exists, err := replayDumpExists(ctx, params, replayBucket)
+	if err != nil {
+		return err
+	}
+	if exists {
+		if params.SkipIfExists {
+			level.Info(logger).Log("msg", "replay dump already exists, skipping", "output", params.Output, "object", params.OutputObject)
+			return nil
+		}
+		if !params.Force {
+			return fmt.Errorf("output %s already exists (use --force to overwrite or --skip-if-exists to skip)", params.Output+params.OutputObject)
+		}
+	}
 
 	bucket, err := params.initClient(ctx)
 	if err != nil {
@@ -142,20 +172,14 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	}
 	level.Info(logger).Log("msg", "found blocks matching query", "count", len(resp.Blocks))
 
-	// Fail early if the destination exists and we are not overwriting, before
-	// doing the (potentially expensive) dump work.
-	if !params.Force {
-		if _, statErr := os.Stat(params.Output); statErr == nil {
-			return fmt.Errorf("output file %s already exists (use --force to overwrite)", params.Output)
-		} else if !errors.Is(statErr, os.ErrNotExist) {
-			return fmt.Errorf("failed to stat output file: %w", statErr)
-		}
-	}
-
 	// Write to a temporary file alongside the destination and atomically
 	// rename it into place only on success, so a failed or interrupted dump
 	// never leaves a partial/corrupt file at the destination path.
-	f, err := os.CreateTemp(filepath.Dir(params.Output), filepath.Base(params.Output)+".tmp-*")
+	outDir, outName := filepath.Dir(params.Output), filepath.Base(params.Output)
+	if replayBucket != nil {
+		outDir, outName = os.TempDir(), filepath.Base(params.OutputObject)
+	}
+	f, err := os.CreateTemp(outDir, outName+".tmp-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary output file: %w", err)
 	}
@@ -176,7 +200,7 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	startNanos := from.UnixNano()
 	endNanos := to.UnixNano()
 
-	totalProfiles, err := dumpBlocks(ctx, bucket, resp.Blocks, matchers, startNanos, endNanos, rw, filepath.Dir(params.Output), anonymizer)
+	totalProfiles, err := dumpBlocks(ctx, bucket, resp.Blocks, matchers, startNanos, endNanos, rw, outDir, anonymizer)
 	if err != nil {
 		return err
 	}
@@ -187,13 +211,47 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("failed to close temporary output file: %w", err)
 	}
-	if err := os.Rename(tmpName, params.Output); err != nil {
-		return fmt.Errorf("failed to move dump into place: %w", err)
+	if replayBucket != nil {
+		if err := uploadReplayDump(ctx, replayBucket, params.OutputObject, tmpName); err != nil {
+			return err
+		}
+	} else {
+		if err := os.Rename(tmpName, params.Output); err != nil {
+			return fmt.Errorf("failed to move dump into place: %w", err)
+		}
+		renamed = true
 	}
-	renamed = true
 
 	level.Info(logger).Log("msg", "replay dump complete",
 		"blocks", len(resp.Blocks), "profiles", totalProfiles, "output", params.Output)
+	return nil
+}
+
+func replayDumpExists(ctx context.Context, params *replayDumpParams, replayBucket phlareobj.Bucket) (bool, error) {
+	if replayBucket != nil {
+		exists, err := replayBucket.Exists(ctx, params.OutputObject)
+		if err != nil {
+			return false, fmt.Errorf("failed to check replay object %s: %w", params.OutputObject, err)
+		}
+		return exists, nil
+	}
+	if _, err := os.Stat(params.Output); err == nil {
+		return true, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, fmt.Errorf("failed to stat output file: %w", err)
+	}
+	return false, nil
+}
+
+func uploadReplayDump(ctx context.Context, bucket phlareobj.Bucket, name, path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("failed to open dump for upload: %w", err)
+	}
+	defer f.Close()
+	if err := bucket.Upload(ctx, name, f); err != nil {
+		return fmt.Errorf("failed to upload replay dump to %s: %w", name, err)
+	}
 	return nil
 }
 

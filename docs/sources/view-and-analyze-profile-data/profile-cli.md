@@ -572,7 +572,7 @@ Configure the source with these flags:
 - Set the metastore address with `--metastore.address` (default `localhost:9095`). You can pass a comma-separated list of peers.
 - Set the tenant to dump with `--tenant-id`. This flag is required, and only a single tenant is supported.
 - Narrow the data with `--query` (default `{}`), `--from` (default `now-1h`), and `--to` (default `now`).
-- Set the destination file with `--output` (or `-o`). This flag is required. Use `--force` (or `-f`) to overwrite an existing file.
+- Set the destination with either `--output` (or `-o`), a local file, or `--output-object`, an object name in the bucket configured with the `--replay-storage.*` flags, such as `--replay-storage.backend=gcs` and `--replay-storage.gcs.bucket-name`. Exactly one of the two is required. Use `--force` (or `-f`) to overwrite an existing destination, or `--skip-if-exists` to exit successfully without dumping when it already exists.
 
 Example command:
 
@@ -594,7 +594,8 @@ By default, it loops over the recorded time window, rescheduling timestamps so t
 
 Configure the command with these flags:
 
-- Set the dump file with `--input` (or `-i`). This flag is required. You can pass a local path or an `http(s)` URL, such as a signed object storage URL.
+- Set the dump file with `--input` (or `-i`), a local path or an `http(s)` URL such as a signed object storage URL, or with `--input-object`, an object name in the bucket configured with the `--replay-storage.*` flags. Exactly one of the two is required.
+- Set labels on every replayed profile with `--extra-labels`, for example `--extra-labels=replay_id=checkout-1`. You can repeat the flag. An extra label replaces a recorded label with the same name. Profile-type labels (`__profile_type__`, `__name__`, `__type__`, `__unit__`, `__period_type__`, and `__period_unit__`) can't be set.
 - Set the destination and credentials with the same connection flags as other commands, for example `--url`, `--username`, `--password`, and `--tenant-id`. Refer to [Common flags and environment variables](#common-flags-and-environment-variables).
 - Control replay behavior with `--loop` (default `true`), `--speed` (default `1`), `--batch-size` (default `100`), and `--batch-wait` (default `500ms`). A `--speed` of `2` replays twice as fast, and `0.5` replays half as fast. Use `--no-loop` to replay the window once and exit.
 
