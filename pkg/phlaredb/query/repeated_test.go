@@ -409,6 +409,32 @@ func Test_RepeatedRowPageIterator_MultipleColumns(t *testing.T) {
 	}
 }
 
+// Repeated sample columns must stay aligned across asynchronous batch boundaries.
+func Test_RepeatedRowIterator_MultipleColumnsAcrossDefaultBatches(t *testing.T) {
+	buffer := parquet.NewBuffer()
+	var rows []testRowGetter
+	var expected []RepeatedRow[testRowGetter]
+	for i := 0; i < 3*defaultBatchSize+1; i++ {
+		var items []multiColumnItem
+		values := make([][]parquet.Value, 2)
+		for j := 0; j <= i%3; j++ {
+			a, b := int64(i*10+j), int64(i*100+j)
+			items = append(items, multiColumnItem{a, b})
+			values[0] = append(values[0], parquet.ValueOf(a))
+			values[1] = append(values[1], parquet.ValueOf(b))
+		}
+		require.NoError(t, buffer.Write(multiColumnRepeatedTestRow{List: items}))
+		rows = append(rows, testRowGetter{int64(i)})
+		expected = append(expected, RepeatedRow[testRowGetter]{Row: rows[i], Values: values})
+	}
+	actual := readRepeatedRowIterator(t, NewRepeatedRowIterator(
+		context.Background(), iter.NewSliceIterator(rows), []parquet.RowGroup{buffer}, 0, 1,
+	))
+	if diff := cmp.Diff(expected, actual, int64ParquetComparer()); diff != "" {
+		t.Errorf("result mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func readRepeatedRowIterator(t *testing.T, it iter.Iterator[RepeatedRow[testRowGetter]]) []RepeatedRow[testRowGetter] {
 	defer func() {
 		require.NoError(t, it.Close())

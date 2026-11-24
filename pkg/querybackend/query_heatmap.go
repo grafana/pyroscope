@@ -98,11 +98,10 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 		indices = append(indices, columns.TraceID.ColumnIndex)
 	}
 
-	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
+	rows := parquetquery.NewRepeatedRowIterator(
 		q.ctx,
 		entries,
 		q.ds.Profiles().RowGroups(),
-		bigBatchSize,
 		indices...,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
