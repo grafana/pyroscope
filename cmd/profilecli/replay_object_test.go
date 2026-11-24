@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -177,4 +178,84 @@ func TestReplayBucketFlagsAreIndependent(t *testing.T) {
 	require.NoError(t, err)
 	_, err = replay.initClient(ctx)
 	require.NoError(t, err)
+}
+
+type flakyBucket struct {
+	phlareobj.Bucket
+	failAfter   int64
+	failRanges  bool
+	rangeOffset []int64
+}
+
+func (b *flakyBucket) Get(ctx context.Context, name string) (io.ReadCloser, error) {
+	rc, err := b.Bucket.Get(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return &failingReader{ReadCloser: rc, left: b.failAfter}, nil
+}
+
+func (b *flakyBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	b.rangeOffset = append(b.rangeOffset, off)
+	if b.failRanges {
+		return nil, errors.New("range unavailable")
+	}
+	return b.Bucket.GetRange(ctx, name, off, length)
+}
+
+type failingReader struct {
+	io.ReadCloser
+	left int64
+}
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if r.left <= 0 {
+		return 0, errors.New("connection reset by peer")
+	}
+	if int64(len(p)) > r.left {
+		p = p[:r.left]
+	}
+	n, err := r.ReadCloser.Read(p)
+	r.left -= int64(n)
+	return n, err
+}
+
+func TestResumableObjectBody_ResumesAfterReadFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	content := bytes.Repeat([]byte("0123456789"), 1000)
+	inner := phlareobj.NewBucket(objstore.NewInMemBucket())
+	require.NoError(t, inner.Upload(ctx, "o", bytes.NewReader(content)))
+	bucket := &flakyBucket{Bucket: inner, failAfter: 2500}
+
+	rc, err := bucket.Get(ctx, "o")
+	require.NoError(t, err)
+	body := newResumableObjectBody(ctx, bucket, "o", rc, int64(len(content)))
+	body.backoff = time.Millisecond
+
+	got, err := io.ReadAll(body)
+	require.NoError(t, err)
+	assert.Equal(t, content, got)
+	assert.Equal(t, []int64{2500}, bucket.rangeOffset)
+}
+
+func TestResumableObjectBody_GivesUpAfterRetries(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	content := bytes.Repeat([]byte("0123456789"), 1000)
+	inner := phlareobj.NewBucket(objstore.NewInMemBucket())
+	require.NoError(t, inner.Upload(ctx, "o", bytes.NewReader(content)))
+	bucket := &flakyBucket{Bucket: inner, failAfter: 100, failRanges: true}
+
+	rc, err := bucket.Get(ctx, "o")
+	require.NoError(t, err)
+	body := newResumableObjectBody(ctx, bucket, "o", rc, int64(len(content)))
+	body.backoff = time.Millisecond
+
+	got, err := io.ReadAll(body)
+	require.Error(t, err)
+	assert.Len(t, got, 100)
+	assert.Len(t, bucket.rangeOffset, replayResumeMaxRetries)
 }

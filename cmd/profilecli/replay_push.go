@@ -179,7 +179,7 @@ func openReplayInput(ctx context.Context, input string) (*rawHashReadCloser, err
 			_ = resp.Body.Close()
 			return nil, errors.New("replay HTTP input requires a known content length")
 		}
-		return newRawHashReadCloser(&resumableReplayBody{ctx: ctx, url: input, body: resp.Body, size: resp.ContentLength, generation: resp.Header.Get("X-Goog-Generation")}), nil
+		return newRawHashReadCloser(newResumableHTTPBody(ctx, input, resp.Body, resp.ContentLength, resp.Header.Get("X-Goog-Generation"))), nil
 	}
 
 	f, err := os.Open(input)
@@ -189,19 +189,27 @@ func openReplayInput(ctx context.Context, input string) (*rawHashReadCloser, err
 	return newRawHashReadCloser(f), nil
 }
 
-// resumableReplayBody retries only source reads, below hashing and decompression.
+const replayResumeMaxRetries = 5
+
+// resumableReader retries only source reads, below hashing and decompression.
 // Bytes returned to the caller are never fetched again.
-type resumableReplayBody struct {
-	ctx        context.Context
-	url        string
-	body       io.ReadCloser
-	size       int64
-	offset     int64
-	generation string
-	retries    int
+type resumableReader struct {
+	ctx     context.Context
+	name    string
+	body    io.ReadCloser
+	size    int64
+	offset  int64
+	retries int
+	backoff time.Duration
+	reopen  func(ctx context.Context, offset int64) (io.ReadCloser, error)
 }
 
-func (r *resumableReplayBody) Read(p []byte) (int, error) {
+type permanentResumeError struct{ err error }
+
+func (e permanentResumeError) Error() string { return e.err.Error() }
+func (e permanentResumeError) Unwrap() error { return e.err }
+
+func (r *resumableReader) Read(p []byte) (int, error) {
 	if err := r.ctx.Err(); err != nil {
 		return 0, err
 	}
@@ -214,7 +222,7 @@ func (r *resumableReplayBody) Read(p []byte) (int, error) {
 		if n > 0 {
 			r.retries = 0
 			if r.offset > r.size {
-				return n, errors.New("replay HTTP body exceeds declared size")
+				return n, errors.New("replay input exceeds declared size")
 			}
 			return n, nil
 		}
@@ -224,40 +232,81 @@ func (r *resumableReplayBody) Read(p []byte) (int, error) {
 		if r.offset == r.size {
 			return 0, io.EOF
 		}
-		_ = r.body.Close()
-		for {
-			if r.retries >= 5 {
-				return 0, fmt.Errorf("replay HTTP stream interrupted at byte %d: %w", r.offset, err)
-			}
-			r.retries++
-			select {
-			case <-r.ctx.Done():
-				return 0, r.ctx.Err()
-			case <-time.After(time.Duration(r.retries) * time.Second):
-			}
-			req, e := http.NewRequestWithContext(r.ctx, http.MethodGet, r.url, nil)
-			if e != nil {
-				return 0, e
-			}
-			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", r.offset))
-			req.Header.Set("Accept-Encoding", "identity")
-			resp, e := http.DefaultClient.Do(req)
-			if e != nil {
-				err = e
-				continue
-			}
-			want := fmt.Sprintf("bytes %d-%d/%d", r.offset, r.size-1, r.size)
-			if resp.StatusCode != http.StatusPartialContent || resp.Header.Get("Content-Range") != want || resp.ContentLength != r.size-r.offset || (r.generation != "" && resp.Header.Get("X-Goog-Generation") != r.generation) {
-				_ = resp.Body.Close()
-				return 0, fmt.Errorf("replay HTTP resume at byte %d: unexpected response %s (Content-Range %q)", r.offset, resp.Status, resp.Header.Get("Content-Range"))
-			}
-			r.body = resp.Body
-			break
+		if err := r.resume(err); err != nil {
+			return 0, err
 		}
 	}
 }
 
-func (r *resumableReplayBody) Close() error { return r.body.Close() }
+func (r *resumableReader) resume(cause error) error {
+	_ = r.body.Close()
+	for {
+		if r.retries >= replayResumeMaxRetries {
+			return fmt.Errorf("replay %s stream interrupted at byte %d: %w", r.name, r.offset, cause)
+		}
+		r.retries++
+		level.Warn(logger).Log("msg", "replay input read failed, resuming", "input", r.name, "offset", r.offset, "retry", r.retries, "err", cause)
+		select {
+		case <-r.ctx.Done():
+			return r.ctx.Err()
+		case <-time.After(time.Duration(r.retries) * r.backoff):
+		}
+		rc, err := r.reopen(r.ctx, r.offset)
+		if err != nil {
+			var permanent permanentResumeError
+			if errors.As(err, &permanent) {
+				return permanent.err
+			}
+			cause = err
+			continue
+		}
+		r.body = rc
+		return nil
+	}
+}
+
+func (r *resumableReader) Close() error { return r.body.Close() }
+
+func newResumableHTTPBody(ctx context.Context, url string, body io.ReadCloser, size int64, generation string) *resumableReader {
+	return &resumableReader{
+		ctx:     ctx,
+		name:    "HTTP",
+		body:    body,
+		size:    size,
+		backoff: time.Second,
+		reopen: func(ctx context.Context, offset int64) (io.ReadCloser, error) {
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+			if err != nil {
+				return nil, permanentResumeError{err}
+			}
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+			req.Header.Set("Accept-Encoding", "identity")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, err
+			}
+			want := fmt.Sprintf("bytes %d-%d/%d", offset, size-1, size)
+			if resp.StatusCode != http.StatusPartialContent || resp.Header.Get("Content-Range") != want || resp.ContentLength != size-offset || (generation != "" && resp.Header.Get("X-Goog-Generation") != generation) {
+				_ = resp.Body.Close()
+				return nil, permanentResumeError{fmt.Errorf("replay HTTP resume at byte %d: unexpected response %s (Content-Range %q)", offset, resp.Status, resp.Header.Get("Content-Range"))}
+			}
+			return resp.Body, nil
+		},
+	}
+}
+
+func newResumableObjectBody(ctx context.Context, bucket phlareobj.BucketReader, name string, body io.ReadCloser, size int64) *resumableReader {
+	return &resumableReader{
+		ctx:     ctx,
+		name:    "object " + name,
+		body:    body,
+		size:    size,
+		backoff: time.Second,
+		reopen: func(ctx context.Context, offset int64) (io.ReadCloser, error) {
+			return bucket.GetRange(ctx, name, offset, size-offset)
+		},
+	}
+}
 
 // newRawHashReadCloser wraps raw in a SHA-256 tee, then layers optional zstd
 // decompression on top. The hasher sees every raw byte read from the source.
@@ -306,11 +355,15 @@ func replayInputReader(r io.ReadCloser) io.ReadCloser {
 }
 
 func openReplayInputObject(ctx context.Context, bucket phlareobj.Bucket, name string) (*rawHashReadCloser, error) {
+	attrs, err := bucket.Attributes(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat replay dump object %s: %w", name, err)
+	}
 	rc, err := bucket.Get(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get replay dump object %s: %w", name, err)
 	}
-	return newRawHashReadCloser(rc), nil
+	return newRawHashReadCloser(newResumableObjectBody(ctx, bucket, name, rc, attrs.Size)), nil
 }
 
 func (p *replayPushParams) inputName() string {
