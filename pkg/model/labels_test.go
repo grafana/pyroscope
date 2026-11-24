@@ -845,3 +845,84 @@ func TestLabels_WithoutLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestLabels_WithLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		labels   Labels
+		keep     []string
+		expected Labels
+	}{
+		{
+			name: "Keep nothing",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+			keep:     []string{},
+			expected: Labels{},
+		},
+		{
+			name: "Keep single label",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "pod", Value: "pod-1"},
+				{Name: "service", Value: "api"},
+			},
+			keep: []string{"pod"},
+			expected: Labels{
+				{Name: "pod", Value: "pod-1"},
+			},
+		},
+		{
+			name: "Keep multiple labels",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "pod", Value: "pod-1"},
+				{Name: "region", Value: "us-east"},
+				{Name: "service", Value: "api"},
+			},
+			keep: []string{"pod", "region"},
+			expected: Labels{
+				{Name: "pod", Value: "pod-1"},
+				{Name: "region", Value: "us-east"},
+			},
+		},
+		{
+			name: "Keep multiple labels given in unsorted order",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "pod", Value: "pod-1"},
+				{Name: "region", Value: "us-east"},
+				{Name: "service", Value: "api"},
+			},
+			keep: []string{"service", "env"},
+			expected: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+		},
+		{
+			name: "Keep non-existent label",
+			labels: Labels{
+				{Name: "env", Value: "prod"},
+				{Name: "service", Value: "api"},
+			},
+			keep:     []string{"nonexistent"},
+			expected: Labels{},
+		},
+		{
+			name:     "Empty labels",
+			labels:   Labels{},
+			keep:     []string{"env"},
+			expected: Labels{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.labels.WithLabels(test.keep...)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}

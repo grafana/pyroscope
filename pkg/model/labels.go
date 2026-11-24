@@ -209,6 +209,9 @@ func (ls Labels) WithLabels(names ...string) Labels {
 			}
 		}
 	}
+	// matched was collected in the order of names, which is arbitrary. Sort it
+	// so the result is a well-formed label set regardless of argument order.
+	sort.Sort(matched)
 	return matched
 }
 
