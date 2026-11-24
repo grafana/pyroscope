@@ -1,4 +1,10 @@
 {
+  "architecture": {
+    "storage": {
+      "v1": true,
+      "v2": false
+    }
+  },
   "minio": {
     "enabled": true
   },
