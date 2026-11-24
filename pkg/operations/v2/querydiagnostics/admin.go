@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	dskittenant "github.com/grafana/dskit/tenant"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	"github.com/grafana/pyroscope/v2/pkg/frontend/readpath/queryfrontend/diagnostics"
@@ -68,6 +69,19 @@ func (a *Admin) TenantsAPIHandler() http.Handler {
 	})
 }
 
+func tenantParam(w http.ResponseWriter, r *http.Request) (string, bool) {
+	tenant := r.URL.Query().Get("tenant")
+	if tenant == "" {
+		http.Error(w, `{"error":"tenant parameter required"}`, http.StatusBadRequest)
+		return "", false
+	}
+	if err := dskittenant.ValidTenantID(tenant); err != nil {
+		http.Error(w, `{"error":"invalid tenant"}`, http.StatusBadRequest)
+		return "", false
+	}
+	return tenant, true
+}
+
 // DiagnosticsListAPIHandler returns a JSON API handler for listing diagnostics by tenant.
 func (a *Admin) DiagnosticsListAPIHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,9 +92,8 @@ func (a *Admin) DiagnosticsListAPIHandler() http.Handler {
 			return
 		}
 
-		tenant := r.URL.Query().Get("tenant")
-		if tenant == "" {
-			http.Error(w, `{"error":"tenant parameter required"}`, http.StatusBadRequest)
+		tenant, ok := tenantParam(w, r)
+		if !ok {
 			return
 		}
 
@@ -109,9 +122,8 @@ func (a *Admin) DiagnosticsGetAPIHandler() http.Handler {
 			return
 		}
 
-		tenant := r.URL.Query().Get("tenant")
-		if tenant == "" {
-			http.Error(w, `{"error":"tenant parameter required"}`, http.StatusBadRequest)
+		tenant, ok := tenantParam(w, r)
+		if !ok {
 			return
 		}
 
@@ -152,9 +164,8 @@ func (a *Admin) DiagnosticsExportAPIHandler() http.Handler {
 			return
 		}
 
-		tenant := r.URL.Query().Get("tenant")
-		if tenant == "" {
-			http.Error(w, `{"error":"tenant parameter required"}`, http.StatusBadRequest)
+		tenant, ok := tenantParam(w, r)
+		if !ok {
 			return
 		}
 
@@ -202,9 +213,8 @@ func (a *Admin) DiagnosticsImportAPIHandler() http.Handler {
 			return
 		}
 
-		tenant := r.URL.Query().Get("tenant")
-		if tenant == "" {
-			http.Error(w, `{"error":"tenant parameter required"}`, http.StatusBadRequest)
+		tenant, ok := tenantParam(w, r)
+		if !ok {
 			return
 		}
 
