@@ -90,12 +90,36 @@ Outer:
 
 // selectTopNExemplarsProto selects the top-N exemplars by value.
 func selectTopNExemplarsProto(exemplars []*typesv1.Exemplar, maxExemplars int) []*typesv1.Exemplar {
+	if maxExemplars <= 0 || len(exemplars) == 0 {
+		return nil
+	}
 	if len(exemplars) <= maxExemplars {
-		return exemplars
+		res := make([]*typesv1.Exemplar, len(exemplars))
+		copy(res, exemplars)
+		if len(res) > 1 {
+			slices.SortFunc(res, cmpExemplarProto)
+		}
+		return res
+	}
+	if maxExemplars == 1 {
+		best := exemplars[0]
+		for _, ex := range exemplars[1:] {
+			if cmpExemplarProto(ex, best) < 0 {
+				best = ex
+			}
+		}
+		return []*typesv1.Exemplar{best}
 	}
 
-	slices.SortFunc(exemplars, func(a, b *typesv1.Exemplar) int {
-		return cmp.Compare(b.Value, a.Value)
-	})
-	return exemplars[:maxExemplars]
+	res := make([]*typesv1.Exemplar, len(exemplars))
+	copy(res, exemplars)
+	slices.SortFunc(res, cmpExemplarProto)
+	return res[:maxExemplars]
+}
+
+func cmpExemplarProto(a, b *typesv1.Exemplar) int {
+	if c := cmp.Compare(b.Value, a.Value); c != 0 {
+		return c
+	}
+	return cmp.Compare(a.ProfileId, b.ProfileId)
 }

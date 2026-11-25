@@ -444,18 +444,49 @@ func (f *benchmarkFixture) runTimeSeriesQuery(b *testing.B, req *queryv1.InvokeR
 		b.Fatalf("query failed: %v", err)
 	}
 	for _, r := range resp.Reports {
-		if r.ReportType != queryv1.ReportType_REPORT_TIME_SERIES {
-			continue
-		}
-		for _, s := range r.TimeSeries.TimeSeries {
-			for _, p := range s.Points {
-				if p.Value > 0 {
-					return
+		switch r.ReportType {
+		case queryv1.ReportType_REPORT_TIME_SERIES:
+			for _, s := range r.TimeSeries.TimeSeries {
+				for _, p := range s.Points {
+					if p.Value > 0 {
+						return
+					}
+				}
+			}
+		case queryv1.ReportType_REPORT_TIME_SERIES_COMPACT:
+			for _, s := range r.TimeSeriesCompact.TimeSeries {
+				for _, p := range s.Points {
+					if p.Value > 0 {
+						return
+					}
 				}
 			}
 		}
 	}
 	panic("no data found")
+}
+
+func (f *benchmarkFixture) makeTimeSeriesCompactRequest(
+	startTime, endTime time.Time,
+	labelSelector string,
+	groupBy []string,
+	exemplarType typesv1.ExemplarType,
+) *queryv1.InvokeRequest {
+	return &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       endTime.UnixMilli(),
+		LabelSelector: labelSelector,
+		QueryPlan:     f.plan.CloneVT(),
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TIME_SERIES_COMPACT,
+			TimeSeriesCompact: &queryv1.TimeSeriesQuery{
+				Step:         60.0,
+				GroupBy:      groupBy,
+				ExemplarType: exemplarType,
+			},
+		}},
+		Tenant: f.tenant,
+	}
 }
 
 func (f *benchmarkFixture) makeTimeSeriesRequest(
@@ -468,7 +499,7 @@ func (f *benchmarkFixture) makeTimeSeriesRequest(
 		StartTime:     startTime.UnixMilli(),
 		EndTime:       endTime.UnixMilli(),
 		LabelSelector: labelSelector,
-		QueryPlan:     f.plan,
+		QueryPlan:     f.plan.CloneVT(),
 		Query: []*queryv1.Query{{
 			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
 			TimeSeries: &queryv1.TimeSeriesQuery{
@@ -487,20 +518,34 @@ func BenchmarkTimeSeriesQuery(b *testing.B) {
 	benchmarks := []struct {
 		name         string
 		exemplarType typesv1.ExemplarType
+		compact      bool
 	}{
-		{"NoExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE},
-		{"WithExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL},
+		{"NoExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE, false},
+		{"WithExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL, false},
+		{"CompactNoExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_NONE, true},
+		{"CompactWithExemplars", typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL, true},
 	}
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			req := fixture.makeTimeSeriesRequest(
-				fixture.startTime, fixture.startTime.Add(time.Hour),
-				"{}",
-				[]string{"service_name"},
-				bm.exemplarType,
-			)
+			var req *queryv1.InvokeRequest
+			if bm.compact {
+				req = fixture.makeTimeSeriesCompactRequest(
+					fixture.startTime, fixture.startTime.Add(time.Hour),
+					"{}",
+					[]string{"service_name"},
+					bm.exemplarType,
+				)
+			} else {
+				req = fixture.makeTimeSeriesRequest(
+					fixture.startTime, fixture.startTime.Add(time.Hour),
+					"{}",
+					[]string{"service_name"},
+					bm.exemplarType,
+				)
+			}
 
+			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				fixture.runTimeSeriesQuery(b, req)
