@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/runutil"
-	"github.com/parquet-go/parquet-go"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
@@ -87,34 +86,39 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 		return nil, err
 	}
 
-	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
-	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
+	annotationKeyColIndex := -1
+	if annotationKeysColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath); err == nil {
+		annotationKeyColIndex = annotationKeysColumn.ColumnIndex
+	}
+	annotationValueColIndex := -1
+	if annotationValuesColumn, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath); err == nil {
+		annotationValueColIndex = annotationValuesColumn.ColumnIndex
+	}
 
-	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, column.ColumnIndex, annotationKeysColumn.ColumnIndex, annotationValuesColumn.ColumnIndex)
+	rows := parquetquery.NewTypedRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
+
+	totalValues := rows.Int64Column(column.ColumnIndex)
+	annotationKeys := rows.StringColumn(annotationKeyColIndex)
+	annotationValues := rows.StringColumn(annotationValueColIndex)
 
 	builder := timeseries.NewBuilder(groupBy...)
 	for rows.Next() {
 		row := rows.At()
-		annotations := schemav1.Annotations{Keys: make([]string, 0), Values: make([]string, 0)}
-		stripped := row.Row.Labels.Get(phlaremodel.LabelNameSampled) == "true"
-		for _, e := range row.Values {
-			if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
-				annotations.Keys = append(annotations.Keys, e[0].String())
-			}
-			if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
-				annotations.Values = append(annotations.Values, e[0].String())
-			}
+		annotations := schemav1.Annotations{
+			Keys:   annotationKeys.At(),
+			Values: annotationValues.At(),
 		}
-		exemplarID := row.Row.ID
+		stripped := row.Labels.Get(phlaremodel.LabelNameSampled) == "true"
+		exemplarID := row.ID
 		if stripped {
 			exemplarID = ""
 		}
 		builder.Add(
-			row.Row.Fingerprint,
-			row.Row.Labels,
-			int64(row.Row.Timestamp),
-			float64(row.Values[0][0].Int64()),
+			row.Fingerprint,
+			row.Labels,
+			int64(row.Timestamp),
+			float64(totalValues.At()[0]),
 			annotations,
 			exemplarID,
 		)

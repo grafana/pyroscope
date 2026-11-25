@@ -82,21 +82,16 @@ func (r *symbolsResolverV1) Partition(_ context.Context, _ uint64) (symdb.Partit
 
 type stacktraceResolverV1 struct{ r *symbolsResolverV1 }
 
-func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error {
+func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) (err error) {
 	column, err := schemav1.ResolveColumnByPath(r.r.stacktraces.file.Schema(), strings.Split("LocationIDs.list.element", "."))
 	if err != nil {
 		return err
 	}
-	it := query.NewRepeatedRowIterator(ctx, iter.NewSliceIterator(stacktraces), r.r.stacktraces.file.RowGroups(), column.ColumnIndex)
+	it := query.NewTypedRepeatedRowIterator(ctx, iter.NewSliceIterator(stacktraces), r.r.stacktraces.file.RowGroups())
 	defer runutil.CloseWithErrCapture(&err, it, "failed to close stack trace stream")
-	t := make([]int32, 0, 64)
+	locationIDs := it.Int32Column(column.ColumnIndex)
 	for it.Next() {
-		s := it.At()
-		t = grow(t, len(s.Values))
-		for i, v := range s.Values {
-			t[i] = v[0].Int32()
-		}
-		dst.InsertStacktrace(s.Row, t)
+		dst.InsertStacktrace(it.At(), locationIDs.At())
 	}
 	return it.Err()
 }

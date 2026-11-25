@@ -118,14 +118,16 @@ func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context
 	if err = columns.Resolve(profileSource.Schema()); err != nil {
 		return err
 	}
-	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
-		columns.StacktraceID.ColumnIndex,
-		columns.Value.ColumnIndex,
-	)
+	profiles := query.NewTypedRepeatedRowIterator(ctx, rows, profileSource.RowGroups())
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	stacktraces := profiles.Uint32Column(columns.StacktraceID.ColumnIndex)
+	values := profiles.Uint64Column(columns.Value.ColumnIndex)
 	for profiles.Next() {
 		p := profiles.At()
-		r.AddSamplesFromParquetRow(p.Row.StacktracePartition(), p.Values[0], p.Values[1])
+		r.AddSamples(p.StacktracePartition(), v1.Samples{
+			StacktraceIDs: stacktraces.At(),
+			Values:        values.At(),
+		})
 	}
 	return profiles.Err()
 }
@@ -140,19 +142,20 @@ func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Conte
 	if !columns.HasSpanID() {
 		return nil
 	}
-	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
-		columns.StacktraceID.ColumnIndex,
-		columns.Value.ColumnIndex,
-		columns.SpanID.ColumnIndex,
-	)
+	profiles := query.NewTypedRepeatedRowIterator(ctx, rows, profileSource.RowGroups())
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	stacktraces := profiles.Uint32Column(columns.StacktraceID.ColumnIndex)
+	values := profiles.Uint64Column(columns.Value.ColumnIndex)
+	spans := profiles.Uint64Column(columns.SpanID.ColumnIndex)
 	for profiles.Next() {
 		p := profiles.At()
-		r.AddSamplesWithSpanSelectorFromParquetRow(
-			p.Row.StacktracePartition(),
-			p.Values[0],
-			p.Values[1],
-			p.Values[2],
+		r.AddSamplesWithSpanSelector(
+			p.StacktracePartition(),
+			v1.Samples{
+				StacktraceIDs: stacktraces.At(),
+				Values:        values.At(),
+				Spans:         spans.At(),
+			},
 			spanSelector,
 		)
 	}
@@ -165,44 +168,44 @@ func mergeByLabels[T Profile](
 	columnName string,
 	rows iter.Iterator[T],
 	by ...string,
-) ([]*typesv1.Series, error) {
+) (_ []*typesv1.Series, err error) {
 	column, err := v1.ResolveColumnByPath(profileSource.Schema(), strings.Split(columnName, "."))
 	if err != nil {
 		return nil, err
 	}
 
 	// these columns might not be present
-	annotationKeysColumn, _ := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationKeyColumnPath)
-	annotationValuesColumn, _ := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationValueColumnPath)
+	annotationKeyColIndex := -1
+	if annotationKeysColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationKeyColumnPath); err == nil {
+		annotationKeyColIndex = annotationKeysColumn.ColumnIndex
+	}
+	annotationValueColIndex := -1
+	if annotationValuesColumn, err := v1.ResolveColumnByPath(profileSource.Schema(), v1.AnnotationValueColumnPath); err == nil {
+		annotationValueColIndex = annotationValuesColumn.ColumnIndex
+	}
 
-	profiles := query.NewRepeatedRowIterator(
+	profiles := query.NewTypedRepeatedRowIterator(
 		ctx,
 		rows,
 		profileSource.RowGroups(),
-		column.ColumnIndex,
-		annotationKeysColumn.ColumnIndex,
-		annotationValuesColumn.ColumnIndex,
 	)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+
+	values := profiles.Int64Column(column.ColumnIndex)
+	annotationKeys := profiles.StringColumn(annotationKeyColIndex)
+	annotationValues := profiles.StringColumn(annotationValueColIndex)
 
 	seriesBuilder := timeseries.NewBuilder(by...)
 
 	for profiles.Next() {
-		values := profiles.At()
-		p := values.Row
+		p := profiles.At()
 		var total int64
-		annotations := v1.Annotations{
-			Keys:   make([]string, 0),
-			Values: make([]string, 0),
+		for _, v := range values.At() {
+			total += v
 		}
-		for _, e := range values.Values {
-			if e[0].Column() == column.ColumnIndex && e[0].Kind() == parquet.Int64 {
-				total += e[0].Int64()
-			} else if e[0].Column() == annotationKeysColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
-				annotations.Keys = append(annotations.Keys, e[0].String())
-			} else if e[0].Column() == annotationValuesColumn.ColumnIndex && e[0].Kind() == parquet.ByteArray {
-				annotations.Values = append(annotations.Values, e[0].String())
-			}
+		annotations := v1.Annotations{
+			Keys:   annotationKeys.At(),
+			Values: annotationValues.At(),
 		}
 		seriesBuilder.Add(
 			p.Fingerprint(),
@@ -227,10 +230,9 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 	if err = columns.Resolve(profileSource.Schema()); err != nil {
 		return nil, err
 	}
-	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
-		columns.StacktraceID.ColumnIndex,
-		columns.Value.ColumnIndex,
-	)
+	profiles := query.NewTypedRepeatedRowIterator(ctx, rows, profileSource.RowGroups())
+	stacktraces := profiles.Uint32Column(columns.StacktraceID.ColumnIndex)
+	values := profiles.Uint64Column(columns.Value.ColumnIndex)
 
 	seriesBuilder := timeseries.Builder{}
 	seriesBuilder.Init(by...)
@@ -238,9 +240,12 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 	var v symdb.CallSiteValues
 	for profiles.Next() {
-		row := profiles.At()
-		h := row.Row
-		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
+		h := profiles.At()
+		samples := v1.Samples{
+			StacktraceIDs: stacktraces.At(),
+			Values:        values.At(),
+		}
+		if err = r.CallSiteValues(&v, h.StacktracePartition(), samples); err != nil {
 			return nil, err
 		}
 		// TODO aleks-p: add annotation support?

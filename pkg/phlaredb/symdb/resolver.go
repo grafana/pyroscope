@@ -146,8 +146,30 @@ func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
 func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
 	r.withPartitionSamples(partition, func(samples *SampleAppender) {
 		for i, sid := range s.StacktraceIDs {
-			if _, ok := spanSelector[s.Spans[i]]; ok && sid > 0 {
+			spanID := s.Spans[i]
+			if spanID == 0 || sid == 0 {
+				continue
+			}
+			if _, ok := spanSelector[spanID]; ok {
 				samples.Append(sid, s.Values[i])
+			}
+		}
+	})
+}
+
+func (r *Resolver) AddSamplesWithTraceSelector(partition uint64, stacktraces []uint32, values []uint64, traces []model.TraceID, traceSelector model.TraceSelector) {
+	r.withPartitionSamples(partition, func(samples *SampleAppender) {
+		for i, sid := range stacktraces {
+			if sid == 0 {
+				continue
+			}
+			t := traces[i]
+			if t == (model.TraceID{}) {
+				// Null (no trace id on this sample): cannot match.
+				continue
+			}
+			if _, ok := traceSelector[t]; ok {
+				samples.Append(sid, values[i])
 			}
 		}
 	})
@@ -158,42 +180,6 @@ func (r *Resolver) AddSamplesFromParquetRow(partition uint64, stacktraceIDs, val
 		for i, sid := range stacktraceIDs {
 			if s := sid.Uint32(); s > 0 {
 				samples.Append(s, values[i].Uint64())
-			}
-		}
-	})
-}
-
-func (r *Resolver) AddSamplesWithSpanSelectorFromParquetRow(partition uint64, stacktraces, values, spans []parquet.Value, spanSelector model.SpanSelector) {
-	r.withPartitionSamples(partition, func(samples *SampleAppender) {
-		for i, sid := range stacktraces {
-			spanID := spans[i].Uint64()
-			stackID := sid.Uint32()
-			if spanID == 0 || stackID == 0 {
-				continue
-			}
-			if _, ok := spanSelector[spanID]; ok {
-				samples.Append(stackID, values[i].Uint64())
-			}
-		}
-	})
-}
-
-func (r *Resolver) AddSamplesWithTraceSelectorFromParquetRow(partition uint64, stacktraces, values, traces []parquet.Value, traceSelector model.TraceSelector) {
-	r.withPartitionSamples(partition, func(samples *SampleAppender) {
-		for i, sid := range stacktraces {
-			stackID := sid.Uint32()
-			if stackID == 0 {
-				continue
-			}
-			b := traces[i].ByteArray()
-			if len(b) != len(model.TraceID{}) {
-				// Null (no trace id on this sample): cannot match.
-				continue
-			}
-			var t model.TraceID
-			copy(t[:], b)
-			if _, ok := traceSelector[t]; ok {
-				samples.Append(stackID, values[i].Uint64())
 			}
 		}
 	})
@@ -214,17 +200,6 @@ func (r *Resolver) CallSiteValues(values *CallSiteValues, partition uint64, samp
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.selection.CallSiteValues(values, samples)
-	return nil
-}
-
-func (r *Resolver) CallSiteValuesParquet(values *CallSiteValues, partition uint64, stacktraceID, value []parquet.Value) error {
-	p := r.partition(partition)
-	if err := p.fetch(r.ctx); err != nil {
-		return err
-	}
-	p.m.Lock()
-	defer p.m.Unlock()
-	p.selection.CallSiteValuesParquet(values, stacktraceID, value)
 	return nil
 }
 

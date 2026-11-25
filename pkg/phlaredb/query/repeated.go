@@ -17,6 +17,7 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/pyroscope/v2/pkg/iter"
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 type RepeatedRow[T any] struct {
@@ -103,6 +104,196 @@ func (x *repeatedRowIterator[T]) Err() error {
 
 func (x *repeatedRowIterator[T]) Close() error {
 	return x.columns.Close()
+}
+
+type columnStepper interface {
+	Next() bool
+	Err() error
+	Close() error
+}
+
+type RepeatedColumn[V any] struct {
+	it iter.Iterator[[]V]
+	v  []V
+}
+
+func (c *RepeatedColumn[V]) Next() bool {
+	if c.it == nil {
+		return true
+	}
+	if !c.it.Next() {
+		return false
+	}
+	c.v = c.it.At()
+	return true
+}
+
+func (c *RepeatedColumn[V]) At() []V {
+	return c.v
+}
+
+func (c *RepeatedColumn[V]) Err() error {
+	if c.it == nil {
+		return nil
+	}
+	return c.it.Err()
+}
+
+func (c *RepeatedColumn[V]) Close() error {
+	if c.it == nil {
+		return nil
+	}
+	return c.it.Close()
+}
+
+type TypedRepeatedRowIterator[T any] struct {
+	ctx       context.Context
+	srcRows   iter.Iterator[T]
+	rows      iter.Iterator[T]
+	rowGroups []parquet.RowGroup
+	batchSize int
+
+	factories []func(iter.Iterator[int64]) columnStepper
+	rowIters  []iter.Iterator[int64]
+	columns   []columnStepper
+	started   bool
+}
+
+func NewTypedRepeatedRowIterator[T any](
+	ctx context.Context,
+	rows iter.Iterator[T],
+	rowGroups []parquet.RowGroup,
+) *TypedRepeatedRowIterator[T] {
+	return NewTypedRepeatedRowIteratorBatchSize(ctx, rows, rowGroups, defaultBatchSize)
+}
+
+func NewTypedRepeatedRowIteratorBatchSize[T any](
+	ctx context.Context,
+	rows iter.Iterator[T],
+	rowGroups []parquet.RowGroup,
+	batchSize int64,
+) *TypedRepeatedRowIterator[T] {
+	return &TypedRepeatedRowIterator[T]{
+		ctx:       ctx,
+		srcRows:   rows,
+		rowGroups: rowGroups,
+		batchSize: int(batchSize),
+	}
+}
+
+func addTypedColumn[T, V any](
+	it *TypedRepeatedRowIterator[T],
+	column int,
+	clone func([]parquet.Value) []V,
+	release func([][]V),
+) *RepeatedColumn[V] {
+	if it.started {
+		panic("cannot register column after iteration started")
+	}
+	col := &RepeatedColumn[V]{}
+	if column < 0 {
+		return col
+	}
+	it.factories = append(it.factories, func(r iter.Iterator[int64]) columnStepper {
+		col.it = iter.NewAsyncBatchIterator[[]parquet.Value](
+			NewRepeatedRowColumnIterator(it.ctx, r, it.rowGroups, column),
+			it.batchSize,
+			clone,
+			release,
+		)
+		return col
+	})
+	return col
+}
+
+func (x *TypedRepeatedRowIterator[T]) Uint32Column(column int) *RepeatedColumn[uint32] {
+	return addTypedColumn(x, column, CloneUint32ParquetValues, ReleaseUint32Values)
+}
+
+func (x *TypedRepeatedRowIterator[T]) Uint64Column(column int) *RepeatedColumn[uint64] {
+	return addTypedColumn(x, column, CloneUint64ParquetValues, ReleaseUint64Values)
+}
+
+func (x *TypedRepeatedRowIterator[T]) Int64Column(column int) *RepeatedColumn[int64] {
+	return addTypedColumn(x, column, CloneInt64ParquetValues, ReleaseInt64Values)
+}
+
+func (x *TypedRepeatedRowIterator[T]) Int32Column(column int) *RepeatedColumn[int32] {
+	return addTypedColumn(x, column, CloneInt32ParquetValues, ReleaseInt32Values)
+}
+
+func (x *TypedRepeatedRowIterator[T]) TraceIDColumn(column int) *RepeatedColumn[model.TraceID] {
+	return addTypedColumn(x, column, CloneTraceIDParquetValues, ReleaseTraceIDValues)
+}
+
+func (x *TypedRepeatedRowIterator[T]) StringColumn(column int) *RepeatedColumn[string] {
+	return addTypedColumn(x, column, CloneStringParquetValues, ReleaseStringValues)
+}
+
+func (x *TypedRepeatedRowIterator[T]) init() {
+	x.started = true
+	if len(x.factories) == 0 {
+		// Tee even with 0 columns so we never close srcRows directly,
+		// matching NewRepeatedRowIterator ownership semantics.
+		rows, unused := iter.Tee(x.srcRows)
+		_ = unused.Close()
+		x.rows = rows
+		return
+	}
+	rows, rowNumbers := iter.Tee(x.srcRows)
+	x.rows = rows
+	x.rowIters = iter.TeeN(WrapWithRowNumber(rowNumbers), len(x.factories))
+	x.columns = make([]columnStepper, len(x.factories))
+	for i, fn := range x.factories {
+		x.columns[i] = fn(x.rowIters[i])
+	}
+}
+
+func (x *TypedRepeatedRowIterator[T]) Next() bool {
+	if !x.started {
+		x.init()
+	}
+	if !x.rows.Next() {
+		return false
+	}
+	for _, c := range x.columns {
+		if !c.Next() {
+			return false
+		}
+	}
+	return true
+}
+
+func (x *TypedRepeatedRowIterator[T]) At() T {
+	return x.rows.At()
+}
+
+func (x *TypedRepeatedRowIterator[T]) Err() error {
+	var err multierror.MultiError
+	for i := range x.columns {
+		err.Add(x.columns[i].Err())
+		err.Add(x.rowIters[i].Err())
+	}
+	if len(x.columns) == 0 && x.rows != nil {
+		err.Add(x.rows.Err())
+	}
+	return err.Err()
+}
+
+func (x *TypedRepeatedRowIterator[T]) Close() error {
+	if !x.started {
+		x.started = true
+		return nil
+	}
+	var err multierror.MultiError
+	for i := range x.columns {
+		err.Add(x.columns[i].Close())
+		err.Add(x.rowIters[i].Close())
+	}
+	if x.rows != nil {
+		err.Add(x.rows.Close())
+	}
+	return err.Err()
 }
 
 type rowNumberIterator[T any] struct{ it iter.Iterator[T] }

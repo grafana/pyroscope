@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,11 +21,11 @@ func sumPprofValues(p *googlev1.Profile) int64 {
 	return total
 }
 
-// Test_Resolver_AddSamplesWithTraceSelectorFromParquetRow drives the trace_id
+// Test_Resolver_AddSamplesWithTraceSelector drives the trace_id
 // sample filter end to end: samples are tagged with synthetic 16-byte trace IDs
 // (matching, non-matching, and null) and the resolved pprof must contain only
 // the values whose trace ID is in the selector.
-func Test_Resolver_AddSamplesWithTraceSelectorFromParquetRow(t *testing.T) {
+func Test_Resolver_AddSamplesWithTraceSelector(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	samples := s.indexed[0][0].Samples
 	require.NotZero(t, len(samples.StacktraceIDs))
@@ -34,24 +33,20 @@ func Test_Resolver_AddSamplesWithTraceSelectorFromParquetRow(t *testing.T) {
 	matching := model.TraceID{0x01}
 	other := model.TraceID{0x02}
 
-	stacktraces := make([]parquet.Value, len(samples.StacktraceIDs))
-	values := make([]parquet.Value, len(samples.StacktraceIDs))
-	traces := make([]parquet.Value, len(samples.StacktraceIDs))
+	traces := make([]model.TraceID, len(samples.StacktraceIDs))
 	var wantMatching int64
 	for i, sid := range samples.StacktraceIDs {
-		stacktraces[i] = parquet.Int32Value(int32(sid))
-		values[i] = parquet.Int64Value(int64(samples.Values[i]))
 		switch i % 3 {
 		case 0:
-			traces[i] = parquet.FixedLenByteArrayValue(matching[:])
+			traces[i] = matching
 			if sid > 0 {
 				wantMatching += int64(samples.Values[i])
 			}
 		case 1:
-			traces[i] = parquet.FixedLenByteArrayValue(other[:])
+			traces[i] = other
 		default:
-			// No trace id on this sample (optional column null).
-			traces[i] = parquet.NullValue()
+			// No trace id on this sample (optional column null -> zero TraceID).
+			traces[i] = model.TraceID{}
 		}
 	}
 	require.NotZero(t, wantMatching, "fixture must contain at least one matching sample")
@@ -59,7 +54,7 @@ func Test_Resolver_AddSamplesWithTraceSelectorFromParquetRow(t *testing.T) {
 	t.Run("matching trace filters to its samples", func(t *testing.T) {
 		r := NewResolver(context.Background(), s.db)
 		defer r.Release()
-		r.AddSamplesWithTraceSelectorFromParquetRow(0, stacktraces, values, traces, model.TraceSelector{matching: {}})
+		r.AddSamplesWithTraceSelector(0, samples.StacktraceIDs, samples.Values, traces, model.TraceSelector{matching: {}})
 		resolved, err := r.Pprof()
 		require.NoError(t, err)
 		assert.Equal(t, wantMatching, sumPprofValues(resolved))
@@ -69,7 +64,16 @@ func Test_Resolver_AddSamplesWithTraceSelectorFromParquetRow(t *testing.T) {
 		r := NewResolver(context.Background(), s.db)
 		defer r.Release()
 		absent := model.TraceID{0xff}
-		r.AddSamplesWithTraceSelectorFromParquetRow(0, stacktraces, values, traces, model.TraceSelector{absent: {}})
+		r.AddSamplesWithTraceSelector(0, samples.StacktraceIDs, samples.Values, traces, model.TraceSelector{absent: {}})
+		resolved, err := r.Pprof()
+		require.NoError(t, err)
+		assert.Zero(t, sumPprofValues(resolved))
+	})
+
+	t.Run("null trace IDs never match zero selector", func(t *testing.T) {
+		r := NewResolver(context.Background(), s.db)
+		defer r.Release()
+		r.AddSamplesWithTraceSelector(0, samples.StacktraceIDs, samples.Values, traces, model.TraceSelector{{}: {}})
 		resolved, err := r.Pprof()
 		require.NoError(t, err)
 		assert.Zero(t, sumPprofValues(resolved))

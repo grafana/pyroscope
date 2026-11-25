@@ -77,27 +77,20 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		return nil, err
 	}
 
-	indices := []int{
-		columns.StacktraceID.ColumnIndex,
-		columns.Value.ColumnIndex,
-	}
 	switch {
-	case len(spanSelector) > 0:
-		if !columns.HasSpanID() {
-			// Block has no SpanID column: no samples can match the span selector.
-			return &queryv1.Report{Pprof: &queryv1.PprofReport{Query: query.Pprof.CloneVT()}}, nil
-		}
-		indices = append(indices, columns.SpanID.ColumnIndex)
-	case len(traceSelector) > 0:
-		if !columns.HasTraceID() {
-			// Block has no TraceID column: no samples can match the trace selector.
-			return &queryv1.Report{Pprof: &queryv1.PprofReport{Query: query.Pprof.CloneVT()}}, nil
-		}
-		indices = append(indices, columns.TraceID.ColumnIndex)
+	case len(spanSelector) > 0 && !columns.HasSpanID():
+		// Block has no SpanID column: no samples can match the span selector.
+		return &queryv1.Report{Pprof: &queryv1.PprofReport{Query: query.Pprof.CloneVT()}}, nil
+	case len(traceSelector) > 0 && !columns.HasTraceID():
+		// Block has no TraceID column: no samples can match the trace selector.
+		return &queryv1.Report{Pprof: &queryv1.PprofReport{Query: query.Pprof.CloneVT()}}, nil
 	}
 
-	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
+	profiles := parquetquery.NewTypedRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups())
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+
+	stacktraces := profiles.Uint32Column(columns.StacktraceID.ColumnIndex)
+	values := profiles.Uint64Column(columns.Value.ColumnIndex)
 
 	resolverOptions := make([]symdb.ResolverOption, 0)
 	resolverOptions = append(resolverOptions, symdb.WithResolverMaxNodes(query.Pprof.MaxNodes))
@@ -113,31 +106,38 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 
 	switch {
 	case len(spanSelector) > 0:
+		spans := profiles.Uint64Column(columns.SpanID.ColumnIndex)
 		for profiles.Next() {
 			p := profiles.At()
-			resolver.AddSamplesWithSpanSelectorFromParquetRow(
-				p.Row.Partition,
-				p.Values[0],
-				p.Values[1],
-				p.Values[2],
+			resolver.AddSamplesWithSpanSelector(
+				p.Partition,
+				v1.Samples{
+					StacktraceIDs: stacktraces.At(),
+					Values:        values.At(),
+					Spans:         spans.At(),
+				},
 				spanSelector,
 			)
 		}
 	case len(traceSelector) > 0:
+		traces := profiles.TraceIDColumn(columns.TraceID.ColumnIndex)
 		for profiles.Next() {
 			p := profiles.At()
-			resolver.AddSamplesWithTraceSelectorFromParquetRow(
-				p.Row.Partition,
-				p.Values[0],
-				p.Values[1],
-				p.Values[2],
+			resolver.AddSamplesWithTraceSelector(
+				p.Partition,
+				stacktraces.At(),
+				values.At(),
+				traces.At(),
 				traceSelector,
 			)
 		}
 	default:
 		for profiles.Next() {
 			p := profiles.At()
-			resolver.AddSamplesFromParquetRow(p.Row.Partition, p.Values[0], p.Values[1])
+			resolver.AddSamples(p.Partition, v1.Samples{
+				StacktraceIDs: stacktraces.At(),
+				Values:        values.At(),
+			})
 		}
 	}
 	if err = profiles.Err(); err != nil {

@@ -1,8 +1,6 @@
 package symdb
 
 import (
-	"github.com/parquet-go/parquet-go"
-
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
 )
@@ -96,32 +94,6 @@ func (x *SelectedStackTraces) CallSiteValues(values *CallSiteValues, samples sch
 	}
 	for i, sid := range samples.StacktraceIDs {
 		v := samples.Values[i]
-		r, ok := x.relations[sid]
-		if !ok {
-			x.buf = x.symbols.Stacktraces.LookupLocations(x.buf, sid)
-			r = x.appendStackTrace(x.buf)
-			x.relations[sid] = r
-		}
-		x.write(values, v, r)
-	}
-}
-
-// CallSiteValuesParquet is identical to CallSiteValues
-// but accepts raw parquet values instead of samples.
-func (x *SelectedStackTraces) CallSiteValuesParquet(values *CallSiteValues, stacktraceID, value []parquet.Value) {
-	*values = CallSiteValues{}
-	if x.depth == 0 {
-		return
-	}
-	if x.relations == nil {
-		// relations will grow to the size of the number of stack traces:
-		// if a stack trace does not belong to the selection, we still
-		// have to memoize the negative result.
-		x.relations = make(map[uint32]stackTraceLocationRelation, len(x.symbols.Locations))
-	}
-	for i, pv := range stacktraceID {
-		sid := pv.Uint32()
-		v := value[i].Uint64()
 		r, ok := x.relations[sid]
 		if !ok {
 			x.buf = x.symbols.Stacktraces.LookupLocations(x.buf, sid)
