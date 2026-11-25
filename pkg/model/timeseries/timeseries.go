@@ -121,23 +121,31 @@ func (s *Builder) attachExemplars(series []*typesv1.Series) {
 			continue
 		}
 
-		// Attach exemplars to points with matching timestamps
-		// Both exemplars and points are sorted by timestamp
+		// Attach exemplars to points with matching timestamps.
+		// Both exemplars and points are sorted by timestamp; attach only once per
+		// unique timestamp so same-timestamp points do not duplicate exemplars.
 		exIdx := 0
+		var prevTs int64
+		hasPrevTs := false
 		for _, point := range ser.Points {
+			if hasPrevTs && point.Timestamp == prevTs {
+				continue
+			}
+			prevTs = point.Timestamp
+			hasPrevTs = true
+
 			// Skip exemplars with timestamp < point timestamp
 			for exIdx < len(exemplars) && exemplars[exIdx].Timestamp < point.Timestamp {
 				exIdx++
 			}
 
 			// Collect all exemplars with timestamp == point timestamp
-			var pointExemplars []*typesv1.Exemplar
-			for i := exIdx; i < len(exemplars) && exemplars[i].Timestamp == point.Timestamp; i++ {
-				pointExemplars = append(pointExemplars, exemplars[i])
+			start := exIdx
+			for exIdx < len(exemplars) && exemplars[exIdx].Timestamp == point.Timestamp {
+				exIdx++
 			}
-
-			if len(pointExemplars) > 0 {
-				point.Exemplars = pointExemplars
+			if exIdx > start {
+				point.Exemplars = exemplars[start:exIdx]
 			}
 		}
 	}
