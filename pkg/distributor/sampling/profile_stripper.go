@@ -16,6 +16,10 @@ type ProfileStripper struct {
 	ruler Ruler
 }
 
+type StripResult struct {
+	RulesUnavailable bool
+}
+
 func NewProfileStripper(ruler Ruler) *ProfileStripper {
 	return &ProfileStripper{ruler: ruler}
 }
@@ -26,9 +30,10 @@ func NewProfileStripper(ruler Ruler) *ProfileStripper {
 // exception: they are kept, trimmed to the frames of the targeted functions,
 // together with the labels those rules need to match and group.
 //
-// It returns true when the tenant's rules could not be loaded. The profile is
-// then stripped to plain totals, so the stacktraces the rules need are lost.
-func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) (rulesUnavailable bool) {
+// RulesUnavailable in the result is set when the tenant's rules could not be
+// loaded. The profile is then stripped to plain totals, so the stacktraces the
+// rules need are lost.
+func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) StripResult {
 	exc := s.computeExceptions(tenantID, seriesLabels, p)
 
 	stripSamples(p, exc)
@@ -37,7 +42,7 @@ func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels
 
 	compactStringTable(p)
 
-	return exc.rulesUnavailable
+	return StripResult{RulesUnavailable: exc.rulesUnavailable}
 }
 
 // compactStringTable rebuilds p.StringTable so it holds only the strings still

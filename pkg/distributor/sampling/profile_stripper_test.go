@@ -649,9 +649,9 @@ func TestProfileStripper_Strip_FunctionRuleNotEqualKeepsLabel(t *testing.T) {
 func TestProfileStripper_Strip_RulesUnavailable(t *testing.T) {
 	t.Run("ruler error strips to plain totals and reports it", func(t *testing.T) {
 		p := stripTestProfile()
-		unavailable := NewProfileStripper(failingRuler{}).Strip("tenant-a", nil, p)
+		result := NewProfileStripper(failingRuler{}).Strip("tenant-a", nil, p)
 
-		assert.True(t, unavailable)
+		assert.True(t, result.RulesUnavailable)
 		require.Len(t, p.Sample, 1)
 		assert.Empty(t, p.Sample[0].LocationId)
 		assert.Equal(t, []int64{15, 1500}, p.Sample[0].Value)
@@ -659,8 +659,8 @@ func TestProfileStripper_Strip_RulesUnavailable(t *testing.T) {
 
 	t.Run("working and nil rulers are available", func(t *testing.T) {
 		rules := map[string][]*phlaremodel.RecordingRule{"tenant-a": {{FunctionName: "func-a"}}}
-		assert.False(t, NewProfileStripper(fakeRuler{rules}).Strip("tenant-a", nil, stripTestProfile()))
-		assert.False(t, NewProfileStripper(nil).Strip("tenant-a", nil, stripTestProfile()))
+		assert.False(t, NewProfileStripper(fakeRuler{rules}).Strip("tenant-a", nil, stripTestProfile()).RulesUnavailable)
+		assert.False(t, NewProfileStripper(nil).Strip("tenant-a", nil, stripTestProfile()).RulesUnavailable)
 	})
 }
 
