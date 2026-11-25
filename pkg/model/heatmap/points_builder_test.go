@@ -1,6 +1,8 @@
 package heatmap
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/prometheus/common/model"
@@ -217,4 +219,95 @@ func TestPointsBuilder_Sorting(t *testing.T) {
 	assert.Equal(t, int64(100), timestamps[0])
 	assert.Equal(t, int64(200), timestamps[1])
 	assert.Equal(t, int64(300), timestamps[2])
+}
+
+func TestPointsBuilder_AddAfterIteration(t *testing.T) {
+	pb := newPointsBuilder()
+	labels := pkgmodel.Labels{&typesv1.LabelPair{Name: "service", Value: "api"}}
+	fp := model.Fingerprint(labels.Hash())
+	// Exercise every field of the exemplar key and comparator, inserting in
+	// reverse order. In particular, labels and values must not be part of the key.
+	keys := []exemplarKey{
+		{timestamp: 1, spanID: 1, traceID: pkgmodel.TraceID{15: 1}, profileID: "a"},
+		{timestamp: 1, spanID: 1, traceID: pkgmodel.TraceID{15: 1}, profileID: "b"},
+		{timestamp: 1, spanID: 1, traceID: pkgmodel.TraceID{15: 2}, profileID: "a"},
+		{timestamp: 1, spanID: 2, traceID: pkgmodel.TraceID{15: 1}, profileID: "a"},
+		{timestamp: 2, spanID: 1, traceID: pkgmodel.TraceID{15: 1}, profileID: "a"},
+	}
+	for i := len(keys) - 1; i >= 0; i-- {
+		k := keys[i]
+		pb.add(fp, labels, k.timestamp, k.profileID, k.spanID, k.traceID, 1)
+	}
+	collect := func(wantValue int64) {
+		t.Helper()
+		var actual []exemplarKey
+		pb.forEach(func(_ pkgmodel.Labels, ts int64, profileID string, spanID uint64, traceID pkgmodel.TraceID, value int64) {
+			actual = append(actual, exemplarKey{timestamp: ts, profileID: profileID, spanID: spanID, traceID: traceID})
+			require.Equal(t, wantValue, value)
+		})
+		require.Equal(t, keys, actual)
+		require.Equal(t, len(keys), pb.count())
+	}
+	collect(1)
+	for _, k := range keys {
+		pb.add(fp, labels, k.timestamp, k.profileID, k.spanID, k.traceID, 2)
+	}
+	collect(3)
+	collect(3)
+	// A new exemplar after iteration must also preserve existing indices.
+	pb.add(fp, labels, 3, "new", 1, pkgmodel.TraceID{}, 3)
+	keys = append(keys, exemplarKey{timestamp: 3, profileID: "new", spanID: 1})
+	collect(3)
+}
+
+// BenchmarkPointsBuilder includes final iteration so deferred sorting is charged
+// to the benchmark as well as insertion and duplicate aggregation.
+func BenchmarkPointsBuilder(b *testing.B) {
+	labels := pkgmodel.Labels{
+		&typesv1.LabelPair{Name: "service_name", Value: "benchmark"},
+		&typesv1.LabelPair{Name: "pod", Value: "benchmark-0"},
+	}
+	fp := model.Fingerprint(labels.Hash())
+	for _, size := range []int{1000, 10000, 50000} {
+		for _, order := range []string{"ordered", "reverse", "shuffled", "duplicates"} {
+			b.Run(fmt.Sprintf("%s/samples=%d", order, size), func(b *testing.B) {
+				// Prepare deterministic inputs outside the timed region. Duplicate
+				// input has ten samples per unique exemplar, in shuffled order.
+				ids := make([]int, size)
+				unique := size
+				if order == "duplicates" {
+					unique = size / 10
+				}
+				for i := range ids {
+					ids[i] = i % unique
+					if order == "reverse" {
+						ids[i] = size - 1 - i
+					}
+				}
+				if order == "shuffled" || order == "duplicates" {
+					rand.New(rand.NewSource(42)).Shuffle(len(ids), func(i, j int) {
+						ids[i], ids[j] = ids[j], ids[i]
+					})
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				for i := 0; i < b.N; i++ {
+					pb := newPointsBuilder()
+					for _, id := range ids {
+						// Many spans share a timestamp, as in repeated profile rows.
+						pb.add(fp, labels, int64(id/100), "", uint64(id+1), pkgmodel.TraceID{15: 1}, 1)
+					}
+					var total int64
+					count := 0
+					pb.forEach(func(_ pkgmodel.Labels, _ int64, _ string, _ uint64, _ pkgmodel.TraceID, value int64) {
+						total += value
+						count++
+					})
+					if count != unique || total != int64(size) {
+						b.Fatalf("got %d exemplars and total %d; want %d and %d", count, total, unique, size)
+					}
+				}
+			})
+		}
+	}
 }
