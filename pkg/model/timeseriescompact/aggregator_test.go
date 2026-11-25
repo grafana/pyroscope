@@ -1,6 +1,7 @@
 package timeseriescompact
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -153,4 +154,94 @@ func TestSelectTopExemplars_MoreThanN(t *testing.T) {
 	// Should keep top 2 by value (400, 300)
 	assert.Equal(t, int64(400), result[0].Value)
 	assert.Equal(t, int64(300), result[1].Value)
+}
+
+func TestAggregator_SameProfileIntersectsAndResets(t *testing.T) {
+	var agg Aggregator
+
+	agg.Add(1000, &CompactValue{
+		Ts:             100,
+		Value:          100,
+		AnnotationRefs: []int64{1, 2},
+		Exemplars: []*queryv1.Exemplar{
+			{ProfileId: "prof-z", Value: 50, AttributeRefs: []int64{1}},
+			{ProfileId: "prof-a", Value: 200, AttributeRefs: []int64{1, 2, 3}},
+		},
+	})
+	agg.Add(1000, &CompactValue{
+		Ts:             200,
+		Value:          50,
+		AnnotationRefs: []int64{2, 3},
+		Exemplars: []*queryv1.Exemplar{
+			{ProfileId: "prof-a", Value: 150, AttributeRefs: []int64{2, 3, 4}},
+			{ProfileId: "prof-b", Value: 180, AttributeRefs: []int64{9}},
+		},
+	})
+
+	pt1 := agg.GetAndReset()
+	assert.True(t, agg.IsEmpty())
+	assert.Equal(t, int64(1000), pt1.Timestamp)
+	assert.Equal(t, 150.0, pt1.Value)
+	assert.Equal(t, []int64{1, 2, 3}, pt1.AnnotationRefs)
+	require.Len(t, pt1.Exemplars, 1)
+	assert.Equal(t, "prof-a", pt1.Exemplars[0].ProfileId)
+	assert.Equal(t, int64(200), pt1.Exemplars[0].Value)
+	assert.Equal(t, []int64{2, 3}, pt1.Exemplars[0].AttributeRefs)
+
+	// Subsequent step must not retain state from previous step.
+	agg.Add(2000, &CompactValue{
+		Ts:    1100,
+		Value: 40,
+		Exemplars: []*queryv1.Exemplar{
+			{ProfileId: "prof-c", Value: 40, AttributeRefs: []int64{7}},
+		},
+	})
+	pt2 := agg.GetAndReset()
+	require.Len(t, pt2.Exemplars, 1)
+	assert.Equal(t, "prof-c", pt2.Exemplars[0].ProfileId)
+	assert.Equal(t, []int64{7}, pt2.Exemplars[0].AttributeRefs)
+}
+
+func TestSelectTopExemplars_TieBreakByProfileID(t *testing.T) {
+	exemplars := []*queryv1.Exemplar{
+		{ProfileId: "prof-b", Value: 200},
+		{ProfileId: "prof-a", Value: 200},
+	}
+	result := SelectTopExemplars(exemplars, 1)
+	require.Len(t, result, 1)
+	assert.Equal(t, "prof-a", result[0].ProfileId)
+}
+
+func BenchmarkAggregator_ManyExemplarsInStep(b *testing.B) {
+	for _, pointsPerStep := range []int{10, 100, 1000} {
+		b.Run(fmt.Sprintf("points=%d", pointsPerStep), func(b *testing.B) {
+			values := make([]CompactValue, pointsPerStep)
+			for i := range values {
+				values[i] = CompactValue{
+					Ts:             int64(i),
+					Value:          float64(i + 1),
+					AnnotationRefs: []int64{0},
+					Exemplars: []*queryv1.Exemplar{{
+						ProfileId:     fmt.Sprintf("00000000-0000-0000-0000-%012d", i),
+						Timestamp:     int64(i),
+						Value:         int64(i + 1),
+						AttributeRefs: []int64{1, 2, 3},
+					}},
+				}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			var agg Aggregator
+			for i := 0; i < b.N; i++ {
+				for j := range values {
+					agg.Add(1000, &values[j])
+				}
+				pt := agg.GetAndReset()
+				if len(pt.Exemplars) != 1 || pt.Exemplars[0].Value != int64(pointsPerStep) {
+					b.Fatalf("unexpected exemplar: %+v", pt.Exemplars)
+				}
+			}
+		})
+	}
 }

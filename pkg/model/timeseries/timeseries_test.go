@@ -83,16 +83,18 @@ func TestBuilder_MultipleExemplarsAtSameTimestamp(t *testing.T) {
 	require.Len(t, series, 1)
 	require.Len(t, series[0].Points, 3)
 
-	// All 3 points at timestamp 1000 should have all 3 exemplars
-	for _, point := range series[0].Points {
-		require.Len(t, point.Exemplars, 3)
-		profileIDs := make(map[string]bool)
-		for _, ex := range point.Exemplars {
-			profileIDs[ex.ProfileId] = true
-		}
-		assert.True(t, profileIDs["profile-1"])
-		assert.True(t, profileIDs["profile-2"])
-		assert.True(t, profileIDs["profile-3"])
+	// Exemplars at timestamp 1000 are attached once (to the first point at that
+	// timestamp) rather than duplicated across all points sharing the timestamp.
+	require.Len(t, series[0].Points[0].Exemplars, 3)
+	profileIDs := make(map[string]bool)
+	for _, ex := range series[0].Points[0].Exemplars {
+		profileIDs[ex.ProfileId] = true
+	}
+	assert.True(t, profileIDs["profile-1"])
+	assert.True(t, profileIDs["profile-2"])
+	assert.True(t, profileIDs["profile-3"])
+	for _, point := range series[0].Points[1:] {
+		assert.Empty(t, point.Exemplars)
 	}
 }
 
@@ -146,11 +148,10 @@ func TestBuilder_ExemplarDeduplication(t *testing.T) {
 	require.Len(t, series, 1)
 	require.Len(t, series[0].Points, 2)
 
-	// Should deduplicate to 1 exemplar per point
-	for _, point := range series[0].Points {
-		require.Len(t, point.Exemplars, 1)
-		assert.Equal(t, "profile-dup", point.Exemplars[0].ProfileId)
-	}
+	// Should deduplicate to 1 exemplar attached once for the timestamp
+	require.Len(t, series[0].Points[0].Exemplars, 1)
+	assert.Equal(t, "profile-dup", series[0].Points[0].Exemplars[0].ProfileId)
+	assert.Empty(t, series[0].Points[1].Exemplars)
 }
 
 func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {

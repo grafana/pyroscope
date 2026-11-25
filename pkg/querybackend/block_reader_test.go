@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/attributetable"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/memory"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
@@ -303,6 +304,89 @@ func (s *testSuite) Test_QueryTimeSeries() {
 	s.Assert().JSONEq(string(expected), string(actual))
 }
 
+// When there is only one report we don't run the aggregate method unless alwaysAggregate is set.
+func (s *testSuite) Test_QueryTimeSeriesCompact() {
+	query := &queryv1.Query{
+		QueryType: queryv1.QueryType_QUERY_TIME_SERIES_COMPACT,
+		TimeSeriesCompact: &queryv1.TimeSeriesQuery{
+			GroupBy:      []string{"service_name"},
+			Step:         30.0,
+			ExemplarType: typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
+		},
+	}
+
+	req := &queryv1.InvokeRequest{
+		StartTime:     startTime.UnixMilli(),
+		EndTime:       startTime.Add(time.Hour).UnixMilli(),
+		Query:         []*queryv1.Query{query},
+		QueryPlan:     s.plan.CloneVT(),
+		LabelSelector: "{}",
+		Tenant:        s.tenant,
+	}
+
+	resp, err := s.reader.Invoke(s.ctx, req)
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.Require().Len(resp.Reports, 1)
+	compact := resp.Reports[0].TimeSeriesCompact
+	s.Require().NotNil(compact)
+
+	stdResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime: startTime.UnixMilli(),
+		EndTime:   startTime.Add(time.Hour).UnixMilli(),
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TIME_SERIES,
+			TimeSeries: &queryv1.TimeSeriesQuery{
+				GroupBy:      []string{"service_name"},
+				Step:         30.0,
+				ExemplarType: typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
+			},
+		}},
+		QueryPlan:     s.plan.CloneVT(),
+		LabelSelector: "{}",
+		Tenant:        s.tenant,
+	})
+	s.Require().NoError(err)
+	stdSeries := stdResp.Reports[0].TimeSeries.TimeSeries
+	expanded := make([]*typesv1.Series, len(compact.TimeSeries))
+	for i, cs := range compact.TimeSeries {
+		pts := make([]*typesv1.Point, len(cs.Points))
+		for j, cp := range cs.Points {
+			pts[j] = &typesv1.Point{
+				Timestamp:   cp.Timestamp,
+				Value:       cp.Value,
+				Annotations: attributetable.ResolveAnnotations(cp.AnnotationRefs, compact.AttributeTable),
+				Exemplars:   attributetable.ResolveExemplars(cp.Exemplars, compact.AttributeTable),
+			}
+		}
+		expanded[i] = &typesv1.Series{
+			Labels: attributetable.ResolveLabelPairs(cs.AttributeRefs, compact.AttributeTable),
+			Points: pts,
+		}
+	}
+	slices.SortFunc(expanded, func(a, b *typesv1.Series) int {
+		return phlaremodel.CompareLabelPairs(a.Labels, b.Labels)
+	})
+	s.Require().Len(expanded, len(stdSeries))
+	for i := range stdSeries {
+		s.Assert().Equal(stdSeries[i].Labels, expanded[i].Labels)
+		s.Require().Len(expanded[i].Points, len(stdSeries[i].Points))
+		for j := range stdSeries[i].Points {
+			cp := expanded[i].Points[j]
+			sp := stdSeries[i].Points[j]
+			s.Assert().Equal(sp.Timestamp, cp.Timestamp)
+			s.Assert().Equal(sp.Value, cp.Value)
+			s.Require().Len(cp.Exemplars, len(sp.Exemplars))
+			if len(sp.Exemplars) > 0 {
+				s.Assert().Equal(sp.Exemplars[0].ProfileId, cp.Exemplars[0].ProfileId)
+				s.Assert().Equal(sp.Exemplars[0].Value, cp.Exemplars[0].Value)
+				s.Assert().Equal(sp.Exemplars[0].Timestamp, cp.Exemplars[0].Timestamp)
+				s.Assert().ElementsMatch(sp.Exemplars[0].Labels, cp.Exemplars[0].Labels)
+			}
+		}
+	}
+}
+
 // When there is only one report we don't run the aggregate method. This check ensures that the timeseries, is still correctly formatted.
 func (s *testSuite) Test_QueryTimeSeriesOneReport() {
 	query := &queryv1.Query{
@@ -337,6 +421,29 @@ func (s *testSuite) Test_QueryTimeSeriesOneReport() {
 	expected, err := os.ReadFile("testdata/fixtures/time_series_first_block.json")
 	s.Require().NoError(err)
 	s.Assert().JSONEq(string(expected), string(actual))
+
+	// Also verify direct handler output (without aggregator) is already bucketed.
+	shorterPlan2 := s.plan.CloneVT()
+	shorterPlan2.Root = s.plan.Root.CloneVT()
+	shorterPlan2.Root.Blocks = s.plan.Root.Blocks[:1]
+	compactResp, err := s.reader.Invoke(s.ctx, &queryv1.InvokeRequest{
+		StartTime: startTime.UnixMilli(),
+		EndTime:   startTime.Add(time.Hour).UnixMilli(),
+		Query: []*queryv1.Query{{
+			QueryType: queryv1.QueryType_QUERY_TIME_SERIES_COMPACT,
+			TimeSeriesCompact: &queryv1.TimeSeriesQuery{
+				GroupBy:      []string{"service_name"},
+				Step:         30.0,
+				ExemplarType: typesv1.ExemplarType_EXEMPLAR_TYPE_INDIVIDUAL,
+			},
+		}},
+		QueryPlan:     shorterPlan2,
+		LabelSelector: "{}",
+		Tenant:        s.tenant,
+	})
+	s.Require().NoError(err)
+	s.Require().Len(compactResp.Reports[0].TimeSeriesCompact.TimeSeries, 1)
+	s.Assert().Len(compactResp.Reports[0].TimeSeriesCompact.TimeSeries[0].Points, len(resp.Reports[0].TimeSeries.TimeSeries[0].Points))
 }
 
 func (s *testSuite) Test_QueryTree_All_Tenant_Isolation() {
