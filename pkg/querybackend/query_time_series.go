@@ -29,7 +29,7 @@ func init() {
 		queryv1.ReportType_REPORT_TIME_SERIES,
 		queryTimeSeries,
 		newTimeSeriesAggregator,
-		true,
+		false,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -40,7 +40,7 @@ func init() {
 		queryv1.ReportType_REPORT_TIME_SERIES_COMPACT,
 		queryTimeSeriesCompact,
 		newTimeSeriesCompactAggregator,
-		true,
+		false,
 		[]block.Section{
 			block.SectionTSDB,
 			block.SectionProfiles,
@@ -143,10 +143,12 @@ func queryTimeSeries(q *queryContext, query *queryv1.Query) (r *queryv1.Report, 
 		trace.SpanFromContext(q.ctx).SetAttributes(attribute.Int("exemplars.raw_count", result.exemplarCount))
 	}
 
+	series := bucketTimeSeries(result.series, q.req.src.StartTime, q.req.src.EndTime, query.TimeSeries.GetStep())
+
 	return &queryv1.Report{
 		TimeSeries: &queryv1.TimeSeriesReport{
 			Query:      query.TimeSeries.CloneVT(),
-			TimeSeries: result.series,
+			TimeSeries: series,
 		},
 	}, nil
 }
@@ -161,9 +163,11 @@ func queryTimeSeriesCompact(q *queryContext, query *queryv1.Query) (r *queryv1.R
 		trace.SpanFromContext(q.ctx).SetAttributes(attribute.Int("exemplars.raw_count", result.exemplarCount))
 	}
 
+	bucketed := bucketTimeSeries(result.series, q.req.src.StartTime, q.req.src.EndTime, query.TimeSeriesCompact.GetStep())
+
 	at := attributetable.New()
-	series := make([]*queryv1.Series, len(result.series))
-	for i, s := range result.series {
+	series := make([]*queryv1.Series, len(bucketed))
+	for i, s := range bucketed {
 		series[i] = &queryv1.Series{
 			AttributeRefs: at.Refs(phlaremodel.Labels(s.Labels), nil),
 			Points:        convertPoints(s.Points, at),
@@ -177,6 +181,22 @@ func queryTimeSeriesCompact(q *queryContext, query *queryv1.Query) (r *queryv1.R
 			AttributeTable: at.Build(nil),
 		},
 	}, nil
+}
+
+// bucketTimeSeries aggregates raw dataset points into query steps immediately,
+// selecting top exemplars and deduplicating annotations per step before the
+// report is interned into an AttributeTable or sent over gRPC.
+func bucketTimeSeries(series []*typesv1.Series, startTime, endTime int64, step float64) []*typesv1.Series {
+	if len(series) == 0 || timeseries.ValidateStep(step) != nil {
+		return series
+	}
+	stepMilli := time.Duration(step * float64(time.Second)).Milliseconds()
+	if stepMilli <= 0 {
+		return series
+	}
+	sum := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+	it := timeseries.NewTimeSeriesMergeIterator(series)
+	return timeseries.RangeSeries(it, startTime+stepMilli, endTime, stepMilli, &sum)
 }
 
 func convertPoints(points []*typesv1.Point, at *attributetable.Table) []*queryv1.Point {

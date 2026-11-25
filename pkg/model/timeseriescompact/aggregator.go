@@ -14,7 +14,13 @@ type Aggregator struct {
 	value          float64
 	annotationRefs []int64
 	exemplars      []*queryv1.Exemplar
+	exemplarByID   map[string]exemplarEntry
 	hasData        bool
+}
+
+type exemplarEntry struct {
+	idx     int
+	refSets [][]int64
 }
 
 // Add adds a point to the aggregator.
@@ -23,9 +29,35 @@ func (a *Aggregator) Add(ts int64, v *CompactValue) {
 	a.value += v.Value
 	a.annotationRefs = append(a.annotationRefs, v.AnnotationRefs...)
 	if len(v.Exemplars) > 0 {
-		a.exemplars = MergeExemplars(a.exemplars, v.Exemplars)
+		a.addExemplars(v.Exemplars)
 	}
 	a.hasData = true
+}
+
+func (a *Aggregator) addExemplars(exemplars []*queryv1.Exemplar) {
+	if a.exemplarByID == nil {
+		a.exemplarByID = make(map[string]exemplarEntry, len(exemplars))
+	}
+	for _, ex := range exemplars {
+		entry, found := a.exemplarByID[ex.ProfileId]
+		if !found {
+			a.exemplarByID[ex.ProfileId] = exemplarEntry{
+				idx: len(a.exemplars),
+			}
+			a.exemplars = append(a.exemplars, ex)
+			continue
+		}
+		existing := a.exemplars[entry.idx]
+		if len(entry.refSets) == 0 {
+			entry.refSets = [][]int64{existing.AttributeRefs, ex.AttributeRefs}
+		} else {
+			entry.refSets = append(entry.refSets, ex.AttributeRefs)
+		}
+		if ex.Value > existing.Value {
+			a.exemplars[entry.idx] = ex
+		}
+		a.exemplarByID[ex.ProfileId] = entry
+	}
 }
 
 // GetAndReset returns the aggregated point and resets the aggregator.
@@ -38,14 +70,28 @@ func (a *Aggregator) GetAndReset() *queryv1.Point {
 		pt.AnnotationRefs = DedupeRefs(a.annotationRefs)
 	}
 	if len(a.exemplars) > 0 {
-		pt.Exemplars = SelectTopExemplars(a.exemplars, timeseries.DefaultMaxExemplarsPerPoint)
+		top := SelectTopExemplars(a.exemplars, timeseries.DefaultMaxExemplarsPerPoint)
+		for i, ex := range top {
+			if entry := a.exemplarByID[ex.ProfileId]; len(entry.refSets) > 1 {
+				top[i] = &queryv1.Exemplar{
+					Timestamp:     ex.Timestamp,
+					ProfileId:     ex.ProfileId,
+					SpanId:        ex.SpanId,
+					Value:         ex.Value,
+					AttributeRefs: IntersectRefs(entry.refSets),
+				}
+			}
+		}
+		pt.Exemplars = top
 	}
 
 	// Reset
 	a.ts = 0
 	a.value = 0
 	a.annotationRefs = nil
-	a.exemplars = nil
+	clear(a.exemplars)
+	a.exemplars = a.exemplars[:0]
+	clear(a.exemplarByID)
 	a.hasData = false
 
 	return pt
@@ -75,13 +121,41 @@ func DedupeRefs(refs []int64) []int64 {
 
 // SelectTopExemplars selects the top N exemplars by value.
 func SelectTopExemplars(exemplars []*queryv1.Exemplar, n int) []*queryv1.Exemplar {
-	if len(exemplars) <= n {
-		return exemplars
+	if n <= 0 || len(exemplars) == 0 {
+		return nil
 	}
-	sort.Slice(exemplars, func(i, j int) bool {
-		return exemplars[i].Value > exemplars[j].Value
+	if len(exemplars) <= n {
+		res := make([]*queryv1.Exemplar, len(exemplars))
+		copy(res, exemplars)
+		if len(res) > 1 {
+			sort.Slice(res, func(i, j int) bool {
+				return exemplarBetter(res[i], res[j])
+			})
+		}
+		return res
+	}
+	if n == 1 {
+		best := exemplars[0]
+		for _, ex := range exemplars[1:] {
+			if exemplarBetter(ex, best) {
+				best = ex
+			}
+		}
+		return []*queryv1.Exemplar{best}
+	}
+	res := make([]*queryv1.Exemplar, len(exemplars))
+	copy(res, exemplars)
+	sort.Slice(res, func(i, j int) bool {
+		return exemplarBetter(res[i], res[j])
 	})
-	return exemplars[:n]
+	return res[:n]
+}
+
+func exemplarBetter(a, b *queryv1.Exemplar) bool {
+	if a.Value != b.Value {
+		return a.Value > b.Value
+	}
+	return a.ProfileId < b.ProfileId
 }
 
 // MergeExemplars combines two exemplar lists.

@@ -2,6 +2,7 @@ package timeseries
 
 import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 // DefaultMaxExemplarsPerPoint is the default maximum number of exemplars tracked per point.
@@ -66,7 +67,57 @@ type sumAggregator struct {
 	sum                  float64
 	annotations          annotationAccumulator
 	exemplars            []*typesv1.Exemplar
+	exemplarByID         map[string]exemplarEntry
 	maxExemplarsPerPoint int
+}
+
+type exemplarEntry struct {
+	idx       int
+	labelSets []phlaremodel.Labels
+}
+
+func addExemplarsProto(dst *[]*typesv1.Exemplar, byID *map[string]exemplarEntry, exemplars []*typesv1.Exemplar) {
+	if *byID == nil {
+		*byID = make(map[string]exemplarEntry, len(exemplars))
+	}
+	m := *byID
+	for _, ex := range exemplars {
+		entry, found := m[ex.ProfileId]
+		if !found {
+			m[ex.ProfileId] = exemplarEntry{
+				idx: len(*dst),
+			}
+			*dst = append(*dst, ex)
+			continue
+		}
+		existing := (*dst)[entry.idx]
+		if len(entry.labelSets) == 0 {
+			entry.labelSets = []phlaremodel.Labels{existing.Labels, ex.Labels}
+		} else {
+			entry.labelSets = append(entry.labelSets, ex.Labels)
+		}
+		if ex.Value > existing.Value {
+			(*dst)[entry.idx] = ex
+		}
+		m[ex.ProfileId] = entry
+	}
+}
+
+func finalizeExemplarsProto(exemplars []*typesv1.Exemplar, byID map[string]exemplarEntry, maxExemplars int) []*typesv1.Exemplar {
+	top := selectTopNExemplarsProto(exemplars, maxExemplars)
+	for i, ex := range top {
+		if entry := byID[ex.ProfileId]; len(entry.labelSets) > 1 {
+			top[i] = &typesv1.Exemplar{
+				Timestamp: ex.Timestamp,
+				ProfileId: ex.ProfileId,
+				SpanId:    ex.SpanId,
+				TraceId:   ex.TraceId,
+				Value:     ex.Value,
+				Labels:    phlaremodel.IntersectAll(entry.labelSets),
+			}
+		}
+	}
+	return top
 }
 
 func (a *sumAggregator) Add(ts int64, point *Value) {
@@ -75,7 +126,7 @@ func (a *sumAggregator) Add(ts int64, point *Value) {
 	a.annotations.add(point.Annotations)
 
 	if len(point.Exemplars) > 0 {
-		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
+		addExemplarsProto(&a.exemplars, &a.exemplarByID, point.Exemplars)
 	}
 }
 
@@ -86,12 +137,14 @@ func (a *sumAggregator) GetAndReset() *typesv1.Point {
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
-		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
+		exemplars = finalizeExemplarsProto(a.exemplars, a.exemplarByID, a.maxExemplarsPerPoint)
 	}
 
 	a.ts = -1
 	a.sum = 0
-	a.exemplars = nil
+	clear(a.exemplars)
+	a.exemplars = a.exemplars[:0]
+	clear(a.exemplarByID)
 
 	return &typesv1.Point{
 		Timestamp:   tsCopy,
@@ -110,6 +163,7 @@ type avgAggregator struct {
 	count                int64
 	annotations          annotationAccumulator
 	exemplars            []*typesv1.Exemplar
+	exemplarByID         map[string]exemplarEntry
 	maxExemplarsPerPoint int
 }
 
@@ -120,7 +174,7 @@ func (a *avgAggregator) Add(ts int64, point *Value) {
 	a.annotations.add(point.Annotations)
 
 	if len(point.Exemplars) > 0 {
-		a.exemplars = mergeExemplars(a.exemplars, point.Exemplars)
+		addExemplarsProto(&a.exemplars, &a.exemplarByID, point.Exemplars)
 	}
 }
 
@@ -131,13 +185,15 @@ func (a *avgAggregator) GetAndReset() *typesv1.Point {
 
 	var exemplars []*typesv1.Exemplar
 	if len(a.exemplars) > 0 {
-		exemplars = selectTopNExemplarsProto(a.exemplars, a.maxExemplarsPerPoint)
+		exemplars = finalizeExemplarsProto(a.exemplars, a.exemplarByID, a.maxExemplarsPerPoint)
 	}
 
 	a.ts = -1
 	a.sum = 0
 	a.count = 0
-	a.exemplars = nil
+	clear(a.exemplars)
+	a.exemplars = a.exemplars[:0]
+	clear(a.exemplarByID)
 
 	return &typesv1.Point{
 		Timestamp:   tsCopy,
