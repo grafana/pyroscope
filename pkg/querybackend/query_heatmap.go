@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/grafana/dskit/runutil"
+	"github.com/parquet-go/parquet-go"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -13,6 +14,7 @@ import (
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
+	"github.com/grafana/pyroscope/v2/pkg/iter"
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/model/heatmap"
 	parquetquery "github.com/grafana/pyroscope/v2/pkg/phlaredb/query"
@@ -74,12 +76,6 @@ func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
 }
 
 func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
-	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withExcludeSampled())
-	if err != nil {
-		return err
-	}
-
-	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 	var columns schemav1.SampleColumns
 	if err := columns.Resolve(q.ds.Profiles().Schema()); err != nil {
 		return err
@@ -89,6 +85,17 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 	if !columns.HasSpanID() {
 		return nil
 	}
+
+	ranges := spanRowRanges(q.ds.Profiles().RowGroups(), columns.SpanID.ColumnIndex)
+	if len(ranges) == 0 {
+		return nil
+	}
+	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withExcludeSampled())
+	if err != nil {
+		return err
+	}
+	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
+	filtered := &spanProfileIterator{Iterator: entries, ranges: ranges}
 
 	indices := []int{
 		columns.SpanID.ColumnIndex,
@@ -100,7 +107,7 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
-		entries,
+		filtered,
 		q.ds.Profiles().RowGroups(),
 		bigBatchSize,
 		indices...,
@@ -135,6 +142,59 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 	}
 
 	return nil
+}
+
+// spanRowRanges preserves global row numbers: removing row groups themselves
+// would shift the offsets used by the repeated-row reader.
+func spanRowRanges(groups []parquet.RowGroup, column int) [][2]int64 {
+	var ranges [][2]int64
+	var start int64
+	for _, rg := range groups {
+		end := start + rg.NumRows()
+		ci, err := rg.ColumnChunks()[column].ColumnIndex()
+		if err != nil || columnMayHaveSpans(ci) {
+			ranges = append(ranges, [2]int64{start, end})
+		}
+		start = end
+	}
+	return ranges
+}
+
+func columnMayHaveSpans(ci parquet.ColumnIndex) bool {
+	if ci == nil || ci.NumPages() == 0 {
+		return true // No index is not evidence of absent spans.
+	}
+	for p := 0; p < ci.NumPages(); p++ {
+		if ci.NullPage(p) {
+			continue
+		}
+		min, max := ci.MinValue(p), ci.MaxValue(p)
+		if min.IsNull() || max.IsNull() || min.Uint64() != 0 || max.Uint64() != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+type spanProfileIterator struct {
+	iter.Iterator[ProfileEntry]
+	ranges [][2]int64
+}
+
+func (s *spanProfileIterator) Next() bool {
+	for s.Iterator.Next() {
+		rn := s.At().RowNum
+		for len(s.ranges) > 0 && rn >= s.ranges[0][1] {
+			s.ranges = s.ranges[1:]
+		}
+		if len(s.ranges) == 0 {
+			return false
+		}
+		if rn >= s.ranges[0][0] {
+			return true
+		}
+	}
+	return false
 }
 
 func queryHeatmap(q *queryContext, query *queryv1.Query) (r *queryv1.Report, err error) {
