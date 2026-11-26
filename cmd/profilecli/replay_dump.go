@@ -60,7 +60,7 @@ func addReplayDumpParams(cmd commander) *replayDumpParams {
 	cmd.Flag("to", "End of the dump window.").Default("now").StringVar(&params.To)
 	cmd.Flag("output", "Path to write the replay dump file to. Exactly one of --output and --output-object is required.").Short('o').StringVar(&params.Output)
 	cmd.Flag("output-object", "Object name to write the replay dump to in the bucket configured with the --replay.storage.* flags. Exactly one of --output and --output-object is required.").StringVar(&params.OutputObject)
-	cmd.Flag("skip-if-exists", "Exit successfully without dumping if the output already exists.").BoolVar(&params.SkipIfExists)
+	cmd.Flag("skip-if-exists", "Exit successfully without dumping if the output already exists. Cannot be combined with --force.").BoolVar(&params.SkipIfExists)
 	cmd.Flag("force", "Overwrite the output file if it already exists.").Short('f').Default("false").BoolVar(&params.Force)
 	cmd.Flag("anonymize-salt", "Anonymize labels and symbols with this salt (64-character SHA-256 hex hashes); preserve profile-type labels. An empty salt disables anonymization.").StringVar(&params.AnonymizeSalt)
 	return params
@@ -119,6 +119,9 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	if (params.Output == "") == (params.OutputObject == "") {
 		return errors.New("exactly one of --output and --output-object is required")
 	}
+	if params.SkipIfExists && params.Force {
+		return errors.New("--skip-if-exists and --force are mutually exclusive")
+	}
 	from, to, err := params.parseFromTo()
 	if err != nil {
 		return err
@@ -139,7 +142,7 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	})
 	level.Info(logger).Log("msg", "starting replay dump",
 		"metastore", params.MetastoreAddress, "tenant", params.Tenant,
-		"query", params.Query, "from", from, "to", to, "output", params.Output)
+		"query", params.Query, "from", from, "to", to, "output", params.outputName())
 
 	var replayBucket phlareobj.Bucket
 	if params.OutputObject != "" {
@@ -154,11 +157,11 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	}
 	if exists {
 		if params.SkipIfExists {
-			level.Info(logger).Log("msg", "replay dump already exists, skipping", "output", params.Output, "object", params.OutputObject)
+			level.Info(logger).Log("msg", "replay dump already exists, skipping", "output", params.outputName())
 			return nil
 		}
 		if !params.Force {
-			return fmt.Errorf("output %s already exists (use --force to overwrite or --skip-if-exists to skip)", params.Output+params.OutputObject)
+			return fmt.Errorf("output %s already exists (use --force to overwrite or --skip-if-exists to skip)", params.outputName())
 		}
 	}
 
@@ -237,8 +240,15 @@ func replayDump(ctx context.Context, params *replayDumpParams) (err error) {
 	}
 
 	level.Info(logger).Log("msg", "replay dump complete",
-		"blocks", len(resp.Blocks), "profiles", totalProfiles, "output", params.Output)
+		"blocks", len(resp.Blocks), "profiles", totalProfiles, "output", params.outputName())
 	return nil
+}
+
+func (p *replayDumpParams) outputName() string {
+	if p.OutputObject != "" {
+		return "object:" + p.OutputObject
+	}
+	return p.Output
 }
 
 func replayDumpExists(ctx context.Context, params *replayDumpParams, replayBucket phlareobj.Bucket) (bool, error) {

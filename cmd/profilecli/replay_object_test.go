@@ -16,6 +16,7 @@ import (
 	"github.com/thanos-io/objstore"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 )
 
@@ -62,6 +63,8 @@ func TestValidateExtraLabels(t *testing.T) {
 	require.Error(t, validateExtraLabels(map[string]string{"": "x"}))
 	require.Error(t, validateExtraLabels(map[string]string{"replay_id": ""}))
 	require.Error(t, validateExtraLabels(map[string]string{"__profile_type__": "x"}))
+	require.Error(t, validateExtraLabels(map[string]string{"__custom__": "x"}))
+	require.NoError(t, validateExtraLabels(map[string]string{phlaremodel.LabelNameSessionID: "x"}))
 }
 
 func TestReplayDumpExists_Object(t *testing.T) {
@@ -113,6 +116,20 @@ func TestReplayDump_RequiresExactlyOneOutput(t *testing.T) {
 
 	err = replayDump(context.Background(), &replayDumpParams{bucketParams: &bucketParams{}, Output: "a", OutputObject: "b"})
 	require.Error(t, err)
+}
+
+func TestReplayDump_SkipIfExistsAndForceAreExclusive(t *testing.T) {
+	t.Parallel()
+
+	err := replayDump(context.Background(), &replayDumpParams{bucketParams: &bucketParams{}, Output: "a", SkipIfExists: true, Force: true})
+	require.ErrorContains(t, err, "mutually exclusive")
+}
+
+func TestReplayDumpOutputName(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "dump.replay", (&replayDumpParams{Output: "dump.replay"}).outputName())
+	assert.Equal(t, "object:replays/r1.replay", (&replayDumpParams{OutputObject: "replays/r1.replay"}).outputName())
 }
 
 func TestOpenReplayInputObject_RoundTrip(t *testing.T) {

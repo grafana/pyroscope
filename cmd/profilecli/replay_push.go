@@ -26,6 +26,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
@@ -820,8 +821,8 @@ func validateExtraLabels(extra map[string]string) error {
 		if name == "" || value == "" {
 			return fmt.Errorf("--extra-labels: name and value must be non-empty, got %q=%q", name, value)
 		}
-		if replayProfileTypeLabel(name) {
-			return fmt.Errorf("--extra-labels: %q is a profile-type label and cannot be set", name)
+		if !phlaremodel.IsLabelAllowedForIngestion(name) {
+			return fmt.Errorf("--extra-labels: %q is not allowed for ingestion", name)
 		}
 	}
 	return nil
