@@ -24,15 +24,43 @@ func NewProfileStripper(ruler Ruler) *ProfileStripper {
 	return &ProfileStripper{ruler: ruler}
 }
 
-// Strip reduces the profile to a single sample holding the sum of all sample
-// values: stacktraces, symbols, and sample labels are dropped, only the series
-// totals are kept. Stacktraces targeted by the tenant's recording rules are the
-// exception: they are kept, trimmed to the frames of the targeted functions,
-// together with the labels those rules need to match and group.
+// Strip reduces a profile that was sampled out but should be kept. Two things
+// are kept:
+//
+//   - Totals: the samples that no function rule targets are folded into
+//     samples with no stacktrace, holding the sum of their values. A total rule
+//     (a rule without a function_name) matches and groups by sample labels, so
+//     those labels are kept and the totals are split per distinct value of
+//     them, for example one total for region=eu and one for region=us. If no
+//     total rule needs a sample label, it is dropped.
+//   - Targeted stacktraces: for a rule with function_name F, each sample whose
+//     stacktrace goes through F is kept, trimmed to the frames of F. It also
+//     keeps the labels the rules match and group by, so the rules can still be
+//     evaluated when the profile is compacted.
+//
+// Everything else, such as the rest of the stacktraces, the symbols they
+// reference and the other sample labels, is removed.
+//
+// For two rules, one with function_name "db.query" and one total rule grouping
+// by region:
+//
+//	before                              after
+//
+//	main
+//	└─ handler                          db.query     10  region=eu
+//	   ├─ db.query                      db.query      7  region=us
+//	   │  ├─ driver.exec  10 region=eu
+//	   │  └─ parse         7 region=us  (no stack)     5  region=eu   <- totals
+//	   ├─ render           5 region=eu  (no stack)     3  region=us
+//	   └─ cache.get        3 region=us
+//
+// The two samples that went through db.query keep only that frame, and keep
+// region because the total rule groups by it. render and cache.get have no
+// frame a function rule targets, so they fold into totals, one per region.
 //
 // RulesUnavailable in the result is set when the tenant's rules could not be
-// loaded. The profile is then stripped to plain totals, so the stacktraces the
-// rules need are lost.
+// loaded. The profile is then reduced to the totals only, so the stacktraces
+// the rules need are lost.
 func (s *ProfileStripper) Strip(tenantID string, seriesLabels phlaremodel.Labels, p *profilev1.Profile) StripResult {
 	exc := s.computeExceptions(tenantID, seriesLabels, p)
 
@@ -108,17 +136,19 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 		if len(sample.Value) != len(p.SampleType) || hasNegativeValue(sample) {
 			continue
 		}
-		// Labels the sample must keep for the total rules. These apply whether
-		// the sample is kept (it still counts toward those totals) or folded.
+		// Total rules count every sample, so each sample keeps the labels they
+		// need, whether or not its stacktrace is kept.
 		clear(totalKeep)
 		for _, rule := range exc.totalRules {
-			keepRuleLabels(totalKeep, rule, sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers))
+			if sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers) {
+				keepMatchedLabels(totalKeep, rule)
+			} else {
+				keepEmptyAcceptingLabels(totalKeep, rule)
+			}
 		}
 
-		// Trim to the locations kept by function rules the sample matches. Every
-		// rule targeting a kept location re-matches this sample's series at
-		// compaction, so all of them contribute the labels they need — including
-		// the ones the sample does not match (via keepRuleLabels).
+		// Keep only the frames that a function rule targets and this sample
+		// matches, along with the labels those rules need.
 		clear(funcKeep)
 		var keptLocations int
 		for _, l := range sample.LocationId {
@@ -128,10 +158,11 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 			}
 			var fulfilled bool
 			for _, rule := range rules {
-				matched := sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers)
-				keepRuleLabels(funcKeep, rule, matched)
-				if matched {
+				if sampleFulfillsMatchers(sample, p.StringTable, rule.deferredMatchers) {
+					keepMatchedLabels(funcKeep, rule)
 					fulfilled = true
+				} else {
+					keepEmptyAcceptingLabels(funcKeep, rule)
 				}
 			}
 			if fulfilled {
@@ -153,11 +184,8 @@ func stripSamples(p *profilev1.Profile, exc exceptions) {
 	p.Sample = append(kept, foldToTotals(folded, len(p.SampleType))...)
 }
 
-// foldToTotals groups the label-reduced folded samples by their labels and sums
-// each group into a single totals sample. Group labels are copied into a fresh
-// slice: GroupSamplesByLabels aliases a source sample's label slice, whose
-// backing array can hold labels past len() that the pprof split later restores
-// and indexes against the rebuilt (smaller) string table.
+// foldToTotals sums the folded samples that have the same labels into one totals
+// sample per label set.
 func foldToTotals(folded []*profilev1.Sample, valueLen int) []*profilev1.Sample {
 	if len(folded) == 0 {
 		return nil
@@ -169,6 +197,11 @@ func foldToTotals(folded []*profilev1.Sample, valueLen int) []*profilev1.Sample 
 	groups := pprof.GroupSamplesByLabels(&profilev1.Profile{Sample: folded})
 	totals := make([]*profilev1.Sample, len(groups))
 	for i, g := range groups {
+		// Copy the labels so the totals sample has no capacity past len(). The
+		// series split (pprofsplit.VisitSampleSeries) hides labels in that space
+		// and restores them afterwards (restoreRemovedLabels), so a dropped label
+		// left there would come back pointing at a string the compacted string
+		// table no longer holds.
 		labels := make([]*profilev1.Label, len(g.Labels))
 		copy(labels, g.Labels)
 		total := &profilev1.Sample{Value: make([]int64, valueLen), Label: labels}
@@ -182,18 +215,17 @@ func foldToTotals(folded []*profilev1.Sample, valueLen int) []*profilev1.Sample 
 	return totals
 }
 
-// keepRuleLabels records the labels a sample must retain for one rule. When the
-// sample matches the rule, those are the rule's matcher + group_by labels. When
-// it doesn't, only the matchers that also match "" are kept — otherwise dropping
-// their label (which reads as "" downstream) would flip them into a spurious
-// match. Shared by the function and total paths so they can't drift.
-func keepRuleLabels(dst map[string]struct{}, rule deferredRule, matched bool) {
-	if matched {
-		for _, name := range rule.keepLabels {
-			dst[name] = struct{}{}
-		}
-		return
+// keepMatchedLabels keeps the labels the rule matches and groups by.
+func keepMatchedLabels(dst map[string]struct{}, rule deferredRule) {
+	for _, name := range rule.keepLabels {
+		dst[name] = struct{}{}
 	}
+}
+
+// keepEmptyAcceptingLabels keeps the labels of the matchers that accept an empty
+// value, such as region!="eu". A dropped label reads as empty, so dropping one
+// of these would turn a non-match into a match.
+func keepEmptyAcceptingLabels(dst map[string]struct{}, rule deferredRule) {
 	for _, m := range rule.deferredMatchers {
 		if m.Matches("") {
 			dst[m.Name] = struct{}{}
