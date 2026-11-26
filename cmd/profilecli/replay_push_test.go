@@ -289,7 +289,7 @@ func TestBuildSeries_RewritesTimestamp(t *testing.T) {
 	}
 	target := time.Unix(0, 987654321)
 
-	series, err := buildSeries(rec, target)
+	series, err := buildSeries(rec, target, nil)
 	require.NoError(t, err)
 	require.Len(t, series.Samples, 1)
 

@@ -37,7 +37,7 @@ func TestReplayHTTPResumeReconnectFailure(t *testing.T) {
 				return &http.Response{StatusCode: http.StatusPartialContent, Header: http.Header{"Content-Range": {"bytes 0-0/1"}}, ContentLength: 1, Body: io.NopCloser(bytes.NewReader([]byte("x")))}, nil
 			})}
 			body := &replayInterruptedBody{}
-			r := &resumableReplayBody{ctx: context.Background(), url: "http://example.test", body: body, size: 1}
+			r := newResumableHTTPBody(context.Background(), "http://example.test", body, 1, "")
 			defer r.Close()
 			got, err := io.ReadAll(r)
 			if recover {

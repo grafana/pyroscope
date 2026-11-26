@@ -25,6 +25,9 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
@@ -110,7 +113,10 @@ func effectiveWorkers(n int) int {
 type replayPushParams struct {
 	*phlareClient
 
+	ReplayBucket   *bucketParams
 	Input          string
+	InputObject    string
+	ExtraLabels    map[string]string
 	Loop           bool
 	Speed          float64
 	BatchSize      int
@@ -120,10 +126,13 @@ type replayPushParams struct {
 }
 
 func addReplayPushParams(cmd commander) *replayPushParams {
-	params := &replayPushParams{}
+	params := &replayPushParams{ExtraLabels: map[string]string{}}
 	params.phlareClient = addPhlareClient(cmd)
+	params.ReplayBucket = addReplayBucketParams(cmd)
 
-	cmd.Flag("input", "Path to the replay dump file produced by `replay dump`. Accepts a local file path or an http(s) URL.").Short('i').Required().StringVar(&params.Input)
+	cmd.Flag("input", "Path to the replay dump file produced by `replay dump`. Accepts a local file path or an http(s) URL. Exactly one of --input and --input-object is required.").Short('i').StringVar(&params.Input)
+	cmd.Flag("input-object", "Object name of the replay dump in the bucket configured with the --replay.storage.* flags. Exactly one of --input and --input-object is required.").StringVar(&params.InputObject)
+	cmd.Flag("extra-labels", "Set a label on every replayed profile, replacing its recorded value or adding it. Repeatable: --extra-labels=replay_id=abc --extra-labels=env=bench.").StringMapVar(&params.ExtraLabels)
 	cmd.Flag("loop", "Continuously repeat the dump, looping every recorded window duration, so the destination cell keeps receiving data that looks like the original recording.").Default("true").BoolVar(&params.Loop)
 	cmd.Flag("speed", "Time-scale multiplier for replay speed (2 replays twice as fast, 0.5 half as fast).").Default("1").Float64Var(&params.Speed)
 	cmd.Flag("batch-size", "Maximum number of profiles to send in a single push request.").Default("100").IntVar(&params.BatchSize)
@@ -171,7 +180,7 @@ func openReplayInput(ctx context.Context, input string) (*rawHashReadCloser, err
 			_ = resp.Body.Close()
 			return nil, errors.New("replay HTTP input requires a known content length")
 		}
-		return newRawHashReadCloser(&resumableReplayBody{ctx: ctx, url: input, body: resp.Body, size: resp.ContentLength, generation: resp.Header.Get("X-Goog-Generation")}), nil
+		return newRawHashReadCloser(newResumableHTTPBody(ctx, input, resp.Body, resp.ContentLength, resp.Header.Get("X-Goog-Generation"))), nil
 	}
 
 	f, err := os.Open(input)
@@ -181,19 +190,27 @@ func openReplayInput(ctx context.Context, input string) (*rawHashReadCloser, err
 	return newRawHashReadCloser(f), nil
 }
 
-// resumableReplayBody retries only source reads, below hashing and decompression.
+const replayResumeMaxRetries = 5
+
+// resumableReader retries only source reads, below hashing and decompression.
 // Bytes returned to the caller are never fetched again.
-type resumableReplayBody struct {
-	ctx        context.Context
-	url        string
-	body       io.ReadCloser
-	size       int64
-	offset     int64
-	generation string
-	retries    int
+type resumableReader struct {
+	ctx     context.Context
+	name    string
+	body    io.ReadCloser
+	size    int64
+	offset  int64
+	retries int
+	backoff time.Duration
+	reopen  func(ctx context.Context, offset int64) (io.ReadCloser, error)
 }
 
-func (r *resumableReplayBody) Read(p []byte) (int, error) {
+type permanentResumeError struct{ err error }
+
+func (e permanentResumeError) Error() string { return e.err.Error() }
+func (e permanentResumeError) Unwrap() error { return e.err }
+
+func (r *resumableReader) Read(p []byte) (int, error) {
 	if err := r.ctx.Err(); err != nil {
 		return 0, err
 	}
@@ -206,7 +223,7 @@ func (r *resumableReplayBody) Read(p []byte) (int, error) {
 		if n > 0 {
 			r.retries = 0
 			if r.offset > r.size {
-				return n, errors.New("replay HTTP body exceeds declared size")
+				return n, errors.New("replay input exceeds declared size")
 			}
 			return n, nil
 		}
@@ -216,40 +233,81 @@ func (r *resumableReplayBody) Read(p []byte) (int, error) {
 		if r.offset == r.size {
 			return 0, io.EOF
 		}
-		_ = r.body.Close()
-		for {
-			if r.retries >= 5 {
-				return 0, fmt.Errorf("replay HTTP stream interrupted at byte %d: %w", r.offset, err)
-			}
-			r.retries++
-			select {
-			case <-r.ctx.Done():
-				return 0, r.ctx.Err()
-			case <-time.After(time.Duration(r.retries) * time.Second):
-			}
-			req, e := http.NewRequestWithContext(r.ctx, http.MethodGet, r.url, nil)
-			if e != nil {
-				return 0, e
-			}
-			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", r.offset))
-			req.Header.Set("Accept-Encoding", "identity")
-			resp, e := http.DefaultClient.Do(req)
-			if e != nil {
-				err = e
-				continue
-			}
-			want := fmt.Sprintf("bytes %d-%d/%d", r.offset, r.size-1, r.size)
-			if resp.StatusCode != http.StatusPartialContent || resp.Header.Get("Content-Range") != want || resp.ContentLength != r.size-r.offset || (r.generation != "" && resp.Header.Get("X-Goog-Generation") != r.generation) {
-				_ = resp.Body.Close()
-				return 0, fmt.Errorf("replay HTTP resume at byte %d: unexpected response %s (Content-Range %q)", r.offset, resp.Status, resp.Header.Get("Content-Range"))
-			}
-			r.body = resp.Body
-			break
+		if err := r.resume(err); err != nil {
+			return 0, err
 		}
 	}
 }
 
-func (r *resumableReplayBody) Close() error { return r.body.Close() }
+func (r *resumableReader) resume(cause error) error {
+	_ = r.body.Close()
+	for {
+		if r.retries >= replayResumeMaxRetries {
+			return fmt.Errorf("replay %s stream interrupted at byte %d: %w", r.name, r.offset, cause)
+		}
+		r.retries++
+		level.Warn(logger).Log("msg", "replay input read failed, resuming", "input", r.name, "offset", r.offset, "retry", r.retries, "err", cause)
+		select {
+		case <-r.ctx.Done():
+			return r.ctx.Err()
+		case <-time.After(time.Duration(r.retries) * r.backoff):
+		}
+		rc, err := r.reopen(r.ctx, r.offset)
+		if err != nil {
+			var permanent permanentResumeError
+			if errors.As(err, &permanent) {
+				return permanent.err
+			}
+			cause = err
+			continue
+		}
+		r.body = rc
+		return nil
+	}
+}
+
+func (r *resumableReader) Close() error { return r.body.Close() }
+
+func newResumableHTTPBody(ctx context.Context, url string, body io.ReadCloser, size int64, generation string) *resumableReader {
+	return &resumableReader{
+		ctx:     ctx,
+		name:    "HTTP",
+		body:    body,
+		size:    size,
+		backoff: time.Second,
+		reopen: func(ctx context.Context, offset int64) (io.ReadCloser, error) {
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+			if err != nil {
+				return nil, permanentResumeError{err}
+			}
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+			req.Header.Set("Accept-Encoding", "identity")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, err
+			}
+			want := fmt.Sprintf("bytes %d-%d/%d", offset, size-1, size)
+			if resp.StatusCode != http.StatusPartialContent || resp.Header.Get("Content-Range") != want || resp.ContentLength != size-offset || (generation != "" && resp.Header.Get("X-Goog-Generation") != generation) {
+				_ = resp.Body.Close()
+				return nil, permanentResumeError{fmt.Errorf("replay HTTP resume at byte %d: unexpected response %s (Content-Range %q)", offset, resp.Status, resp.Header.Get("Content-Range"))}
+			}
+			return resp.Body, nil
+		},
+	}
+}
+
+func newResumableObjectBody(ctx context.Context, bucket phlareobj.BucketReader, name string, body io.ReadCloser, size int64) *resumableReader {
+	return &resumableReader{
+		ctx:     ctx,
+		name:    "object " + name,
+		body:    body,
+		size:    size,
+		backoff: time.Second,
+		reopen: func(ctx context.Context, offset int64) (io.ReadCloser, error) {
+			return bucket.GetRange(ctx, name, offset, size-offset)
+		},
+	}
+}
 
 // newRawHashReadCloser wraps raw in a SHA-256 tee, then layers optional zstd
 // decompression on top. The hasher sees every raw byte read from the source.
@@ -297,11 +355,45 @@ func replayInputReader(r io.ReadCloser) io.ReadCloser {
 	return replayInputReadCloser{Reader: br, close: r.Close}
 }
 
+func openReplayInputObject(ctx context.Context, bucket phlareobj.Bucket, name string) (*rawHashReadCloser, error) {
+	attrs, err := bucket.Attributes(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat replay dump object %s: %w", name, err)
+	}
+	rc, err := bucket.Get(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get replay dump object %s: %w", name, err)
+	}
+	return newRawHashReadCloser(newResumableObjectBody(ctx, bucket, name, rc, attrs.Size)), nil
+}
+
+func (p *replayPushParams) inputName() string {
+	if p.InputObject != "" {
+		return "object:" + p.InputObject
+	}
+	return p.Input
+}
+
+func (p *replayPushParams) openReader(ctx context.Context, bucket phlareobj.Bucket) (*replayReader, *rawHashReadCloser, error) {
+	if bucket != nil {
+		r, err := openReplayInputObject(ctx, bucket, p.InputObject)
+		if err != nil {
+			return nil, nil, err
+		}
+		return newReplayReaderFromInput(r)
+	}
+	return openReplayReader(ctx, p.Input)
+}
+
 func openReplayReader(ctx context.Context, input string) (*replayReader, *rawHashReadCloser, error) {
 	r, err := openReplayInput(ctx, input)
 	if err != nil {
 		return nil, nil, err
 	}
+	return newReplayReaderFromInput(r)
+}
+
+func newReplayReaderFromInput(r *rawHashReadCloser) (*replayReader, *rawHashReadCloser, error) {
 	rr, err := newReplayReader(r)
 	if err != nil {
 		_ = r.Close()
@@ -313,6 +405,12 @@ func openReplayReader(ctx context.Context, input string) (*replayReader, *rawHas
 func replayPush(ctx context.Context, params *replayPushParams) error {
 	if params.Speed <= 0 {
 		return errors.New("--speed must be greater than 0")
+	}
+	if (params.Input == "") == (params.InputObject == "") {
+		return errors.New("exactly one of --input and --input-object is required")
+	}
+	if err := validateExtraLabels(params.ExtraLabels); err != nil {
+		return err
 	}
 	if params.BatchSize < 1 {
 		return errors.New("--batch-size must be at least 1")
@@ -335,8 +433,17 @@ func replayPush(ctx context.Context, params *replayPushParams) error {
 		params.ExpectedSHA256 = norm
 	}
 
-	level.Info(logger).Log("msg", "opening replay dump file", "input", params.Input)
-	rr, input, err := openReplayReader(ctx, params.Input)
+	var replayBucket phlareobj.Bucket
+	if params.InputObject != "" {
+		var err error
+		replayBucket, err = params.ReplayBucket.initClient(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create replay bucket client: %w", err)
+		}
+	}
+
+	level.Info(logger).Log("msg", "opening replay dump file", "input", params.inputName())
+	rr, input, err := params.openReader(ctx, replayBucket)
 	if err != nil {
 		return err
 	}
@@ -358,7 +465,7 @@ func replayPush(ctx context.Context, params *replayPushParams) error {
 		cycleDuration = time.Second
 	}
 	level.Info(logger).Log("msg", "starting replay push",
-		"input", params.Input, "cycle_duration", cycleDuration, "source_query", header.SourceQuery,
+		"input", params.inputName(), "cycle_duration", cycleDuration, "source_query", header.SourceQuery,
 		"loop", params.Loop, "speed", params.Speed, "batch_size", params.BatchSize,
 		"batch_wait", params.BatchWait, "destination", params.URL)
 
@@ -373,7 +480,7 @@ func replayPush(ctx context.Context, params *replayPushParams) error {
 		level.Info(logger).Log("msg", "starting replay cycle", "cycle", cycle, "scheduled_start", cycleStart)
 
 		if cycle > 0 {
-			rr, input, err = openReplayReader(ctx, params.Input)
+			rr, input, err = params.openReader(ctx, replayBucket)
 			if err != nil {
 				return err
 			}
@@ -416,7 +523,7 @@ func replayPush(ctx context.Context, params *replayPushParams) error {
 			level.Info(logger).Log("msg", "replay interrupted", "cycle", cycle, "pushed", pushed, "failed", failed)
 			return nil
 		}
-		if shaErr := checkReplaySHA256(params.Input, digest, params.ExpectedSHA256); shaErr != nil {
+		if shaErr := checkReplaySHA256(params.inputName(), digest, params.ExpectedSHA256); shaErr != nil {
 			return shaErr
 		}
 		level.Info(logger).Log("msg", "replay cycle complete", "cycle", cycle, "pushed", pushed, "failed", failed)
@@ -470,7 +577,7 @@ func runReplayReaderCycle(
 		}
 		batch := make([]*pushv1.RawProfileSeries, 0, params.BatchSize)
 		for {
-			series, buildErr := buildSeries(current, scheduledTarget(current))
+			series, buildErr := buildSeries(current, scheduledTarget(current), params.ExtraLabels)
 			if buildErr != nil {
 				buildFailed++
 				level.Error(logger).Log("msg", "failed to prepare replayed profile", "err", buildErr)
@@ -592,7 +699,7 @@ func runReplayCycleWithWait(
 		}
 
 		batch := make([]*pushv1.RawProfileSeries, 0, params.BatchSize)
-		series, err := buildSeries(first, firstTarget)
+		series, err := buildSeries(first, firstTarget, params.ExtraLabels)
 		if err != nil {
 			buildFailed++
 			level.Error(logger).Log("msg", "failed to prepare replayed profile", "err", err)
@@ -612,7 +719,7 @@ func runReplayCycleWithWait(
 				interrupted = true
 				break
 			}
-			if series, err := buildSeries(next, nextTarget); err != nil {
+			if series, err := buildSeries(next, nextTarget, params.ExtraLabels); err != nil {
 				buildFailed++
 				level.Error(logger).Log("msg", "failed to prepare replayed profile", "err", err)
 			} else {
@@ -672,7 +779,7 @@ func checkReplaySHA256(input, computed, expected string) error {
 // buildSeries reconstructs the pprof profile with its timestamp rewritten to
 // target (the scheduled wall-clock replay time), ready to be included in a
 // push request.
-func buildSeries(rec replayRecord, target time.Time) (*pushv1.RawProfileSeries, error) {
+func buildSeries(rec replayRecord, target time.Time, extraLabels map[string]string) (*pushv1.RawProfileSeries, error) {
 	profile, err := pprof.RawFromBytes(rec.Pprof)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pprof: %w", err)
@@ -684,12 +791,41 @@ func buildSeries(rec replayRecord, target time.Time) (*pushv1.RawProfileSeries, 
 	}
 
 	return &pushv1.RawProfileSeries{
-		Labels: rec.Labels,
+		Labels: applyExtraLabels(rec.Labels, extraLabels),
 		Samples: []*pushv1.RawSample{{
 			ID:         uuid.New().String(),
 			RawProfile: data,
 		}},
 	}, nil
+}
+
+func applyExtraLabels(ls []*typesv1.LabelPair, extra map[string]string) []*typesv1.LabelPair {
+	if len(extra) == 0 {
+		return ls
+	}
+	out := make([]*typesv1.LabelPair, 0, len(ls)+len(extra))
+	for _, l := range ls {
+		if _, ok := extra[l.Name]; !ok {
+			out = append(out, l)
+		}
+	}
+	for name, value := range extra {
+		out = append(out, &typesv1.LabelPair{Name: name, Value: value})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func validateExtraLabels(extra map[string]string) error {
+	for name, value := range extra {
+		if name == "" || value == "" {
+			return fmt.Errorf("--extra-labels: name and value must be non-empty, got %q=%q", name, value)
+		}
+		if !phlaremodel.IsLabelAllowedForIngestion(name) {
+			return fmt.Errorf("--extra-labels: %q is not allowed for ingestion", name)
+		}
+	}
+	return nil
 }
 
 func pushBatch(ctx context.Context, pc pushv1connect.PusherServiceClient, batch []*pushv1.RawProfileSeries) error {
