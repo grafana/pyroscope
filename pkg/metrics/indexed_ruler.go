@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/thanos-io/objstore"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -59,9 +58,7 @@ type IndexedRuler struct {
 	retryAt   map[string]time.Time
 	fetches   singleflight.Group
 
-	indexTenants prometheus.Gauge
-	indexFailure prometheus.Counter
-	fetchTotal   *prometheus.CounterVec
+	metrics *indexedRulerMetrics
 }
 
 type rulesSnapshot struct {
@@ -96,21 +93,7 @@ func NewIndexedRuler(
 		snapshots: make(map[string]*rulesSnapshot),
 		composed:  make(map[string]*composedRules),
 		retryAt:   make(map[string]time.Time),
-		indexTenants: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Namespace: "pyroscope",
-			Name:      "recording_rules_index_tenants",
-			Help:      "Number of tenants with stored recording rules in the loaded index.",
-		}),
-		indexFailure: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "recording_rules_index_refresh_failures_total",
-			Help:      "Number of failed refreshes of the recording rules index.",
-		}),
-		fetchTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-			Namespace: "pyroscope",
-			Name:      "recording_rules_fetches_total",
-			Help:      "Number of fetches of a tenant's stored recording rules, by result.",
-		}, []string{"result"}),
+		metrics:   newIndexedRulerMetrics(reg),
 	}
 	r.index.Store(&settingsrecording.Index{Tenants: map[string]int64{}})
 	r.Service = services.NewTimerService(cfg.RefreshInterval, r.starting, r.refreshNoError, nil)
@@ -127,7 +110,7 @@ func (r *IndexedRuler) starting(ctx context.Context) error {
 func (r *IndexedRuler) refreshNoError(ctx context.Context) error {
 	util.Recover(func() {
 		if err := r.refresh(ctx); err != nil {
-			r.indexFailure.Inc()
+			r.metrics.indexFailure.Inc()
 			_ = level.Error(r.logger).Log("msg", "failed to refresh recording rules index", "err", err)
 		}
 	})
@@ -152,7 +135,7 @@ func (r *IndexedRuler) refresh(ctx context.Context) error {
 		return nil
 	}
 	r.index.Store(idx)
-	r.indexTenants.Set(float64(len(idx.Tenants)))
+	r.metrics.indexTenants.Set(float64(len(idx.Tenants)))
 
 	var g errgroup.Group
 	g.SetLimit(prefetchWorkers)
@@ -233,14 +216,14 @@ func (r *IndexedRuler) fetch(tenant string, generation int64) (*rulesSnapshot, e
 		defer cancel()
 		stored, err := settingsrecording.ReadStoredRules(ctx, r.bucket, r.logger, tenant)
 		if err != nil {
-			r.fetchTotal.WithLabelValues("error").Inc()
+			r.metrics.fetchTotal.WithLabelValues("error").Inc()
 			level.Error(r.logger).Log("msg", "failed to fetch recording rules", "tenant", tenant, "err", err)
 			r.mu.Lock()
 			r.retryAt[tenant] = time.Now().Add(r.retry)
 			r.mu.Unlock()
 			return nil, err
 		}
-		r.fetchTotal.WithLabelValues("success").Inc()
+		r.metrics.fetchTotal.WithLabelValues("success").Inc()
 		s := &rulesSnapshot{
 			generation: max(stored.Generation, generation),
 			rules:      stored.Rules,
