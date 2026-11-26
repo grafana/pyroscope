@@ -61,12 +61,10 @@ func Test_Ruler_happyPath(t *testing.T) {
 
 	ruler := NewStaticRulerFromOverrides(overrides)
 
-	rules, err := ruler.RecordingRules("non-configured-tenant")
-	assert.NoError(t, err)
+	rules := ruler.RecordingRules("non-configured-tenant")
 	assert.Equal(t, defaultRecordingRules, rules)
 
-	rules, err = ruler.RecordingRules("tenant-override")
-	assert.NoError(t, err)
+	rules = ruler.RecordingRules("tenant-override")
 	assert.Equal(t, overriddenRecordingRules, rules)
 }
 

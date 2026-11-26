@@ -2,7 +2,6 @@ package recording
 
 import (
 	"context"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -23,8 +22,6 @@ type Client struct {
 	logger  log.Logger
 }
 
-const requestTimeout = 5 * time.Second
-
 func NewClient(address string, logger log.Logger, auth connect.Option) (*Client, error) {
 	httpClient := httputil.InstrumentedDefaultHTTPClient()
 	opts := connectapi.DefaultClientOptions()
@@ -38,8 +35,7 @@ func NewClient(address string, logger log.Logger, auth connect.Option) (*Client,
 }
 
 func (b *Client) RecordingRules(tenantId string) ([]*phlaremodel.RecordingRule, error) {
-	ctx, cancel := context.WithTimeout(tenant.InjectTenantID(context.Background(), tenantId), requestTimeout)
-	defer cancel()
+	ctx := tenant.InjectTenantID(context.Background(), tenantId)
 	resp, err := b.client.ListRecordingRules(ctx, connect.NewRequest(&settingsv1.ListRecordingRulesRequest{}))
 	if err != nil {
 		return nil, err
