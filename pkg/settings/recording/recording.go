@@ -18,6 +18,7 @@ import (
 	prom "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/thanos-io/objstore"
+	"google.golang.org/protobuf/proto"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
@@ -63,7 +64,7 @@ func (r *RecordingRules) GetRecordingRule(ctx context.Context, req *connect.Requ
 	}
 
 	// look for provisioned rules
-	rulesFromConfig := r.recordingRulesFromOverrides(tenantID)
+	rulesFromConfig := provisionedRules(r.overrides.RecordingRules(tenantID))
 	for _, r := range rulesFromConfig {
 		if r.Id == req.Msg.Id {
 			return connect.NewResponse(&settingsv1.GetRecordingRuleResponse{Rule: r}), nil
@@ -93,28 +94,15 @@ func (r *RecordingRules) ListRecordingRules(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
-	rulesFromOverrides := r.recordingRulesFromOverrides(tenantId)
-	ruleIds := make(map[string]struct{}, len(rulesFromOverrides))
-	res := &settingsv1.ListRecordingRulesResponse{
-		Rules: make([]*settingsv1.RecordingRule, 0),
-	}
-	for _, r := range rulesFromOverrides {
-		ruleIds[r.Id] = struct{}{}
-		res.Rules = append(res.Rules, r)
-	}
-
 	s := r.storeForTenant(tenantId)
 	rulesFromStore, err := s.List(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	for _, rule := range rulesFromStore.Rules {
-		if _, overridden := ruleIds[rule.Id]; overridden {
-			continue
-		}
-		res.Rules = append(res.Rules, convertRuleToAPI(rule))
-	}
 
+	res := &settingsv1.ListRecordingRulesResponse{
+		Rules: EffectiveRules(r.overrides.RecordingRules(tenantId), rulesFromStore.Rules),
+	}
 	return connect.NewResponse(res), nil
 }
 
@@ -222,14 +210,33 @@ func (r *RecordingRules) tenantOrError(ctx context.Context) (string, error) {
 	return tenantID, nil
 }
 
-func (r *RecordingRules) recordingRulesFromOverrides(tenantID string) []*settingsv1.RecordingRule {
-	rules := r.overrides.RecordingRules(tenantID)
-	for i := range rules {
-		rules[i].Provisioned = true
-		if rules[i].Id == "" {
-			// for consistency, rules will be filled with an ID
-			rules[i].Id = idForRule(rules[i])
+// EffectiveRules returns the rules a tenant is evaluated with: the rules
+// provisioned by config, followed by the stored rules whose ID is not taken by
+// a provisioned one. The inputs are not modified.
+func EffectiveRules(config []*settingsv1.RecordingRule, stored []*settingsv1.RecordingRuleStore) []*settingsv1.RecordingRule {
+	rules := provisionedRules(config)
+	ids := make(map[string]struct{}, len(rules))
+	for _, rule := range rules {
+		ids[rule.Id] = struct{}{}
+	}
+	for _, rule := range stored {
+		if _, overridden := ids[rule.Id]; overridden {
+			continue
 		}
+		rules = append(rules, convertRuleToAPI(rule))
+	}
+	return rules
+}
+
+func provisionedRules(config []*settingsv1.RecordingRule) []*settingsv1.RecordingRule {
+	rules := make([]*settingsv1.RecordingRule, len(config))
+	for i, rule := range config {
+		rule = proto.Clone(rule).(*settingsv1.RecordingRule)
+		rule.Provisioned = true
+		if rule.Id == "" {
+			rule.Id = idForRule(rule)
+		}
+		rules[i] = rule
 	}
 	return rules
 }

@@ -15,6 +15,8 @@ import (
 	"github.com/thanos-io/objstore"
 	"golang.org/x/sync/errgroup"
 
+	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
+	"github.com/grafana/pyroscope/v2/pkg/settings/store"
 	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
@@ -62,6 +64,21 @@ func (s *IndexStore) Store(ctx context.Context, idx *Index) error {
 		return err
 	}
 	return s.bucket.Upload(ctx, IndexPath, bytes.NewReader(data))
+}
+
+type StoredRules struct {
+	Generation int64
+	Rules      []*settingsv1.RecordingRuleStore
+}
+
+// ReadStoredRules reads the rules file of a tenant; a missing file means no rules.
+func ReadStoredRules(ctx context.Context, bucket objstore.Bucket, logger log.Logger, tenantID string) (*StoredRules, error) {
+	bs := newBucketStore(logger, bucket, store.Key{TenantID: tenantID})
+	rules, err := bs.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &StoredRules{Generation: rules.Generation, Rules: rules.Rules}, nil
 }
 
 // BuildIndex lists the tenants in the bucket and reads the rules file of each.
