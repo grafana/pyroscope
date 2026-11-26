@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner/retention"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode"
@@ -22,6 +23,59 @@ type Config struct {
 	CleanupMaxPartitions int           `yaml:"cleanup_max_partitions" category:"advanced"`
 	CleanupGracePeriod   time.Duration `yaml:"cleanup_grace_period" category:"advanced"`
 	CleanupInterval      time.Duration `yaml:"cleanup_interval" category:"advanced"`
+}
+
+// ZeroableDuration unmarshals a YAML duration, accepting integer 0 in addition
+// to standard Go duration strings.
+type ZeroableDuration time.Duration
+
+func (d *ZeroableDuration) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode && value.Tag == "!!int" {
+		var n int64
+		if err := value.Decode(&n); err == nil && n == 0 {
+			*d = 0
+			return nil
+		}
+	}
+	var dur time.Duration
+	if err := value.Decode(&dur); err != nil {
+		return err
+	}
+	*d = ZeroableDuration(dur)
+	return nil
+}
+
+// YAMLConfig mirrors Config for YAML unmarshaling so structs that inline
+// Config preserve yaml.v3 KnownFields checks.
+type YAMLConfig struct {
+	CleanupMaxPartitions int              `yaml:"cleanup_max_partitions"`
+	CleanupGracePeriod   time.Duration    `yaml:"cleanup_grace_period"`
+	CleanupInterval      ZeroableDuration `yaml:"cleanup_interval"`
+}
+
+func (c Config) ToYAMLConfig() YAMLConfig {
+	return YAMLConfig{
+		CleanupMaxPartitions: c.CleanupMaxPartitions,
+		CleanupGracePeriod:   c.CleanupGracePeriod,
+		CleanupInterval:      ZeroableDuration(c.CleanupInterval),
+	}
+}
+
+func (y YAMLConfig) ToConfig() Config {
+	return Config{
+		CleanupMaxPartitions: y.CleanupMaxPartitions,
+		CleanupGracePeriod:   y.CleanupGracePeriod,
+		CleanupInterval:      time.Duration(y.CleanupInterval),
+	}
+}
+
+func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	aux := c.ToYAMLConfig()
+	if err := unmarshal(&aux); err != nil {
+		return err
+	}
+	*c = aux.ToConfig()
+	return nil
 }
 
 const DefaultCleanupInterval = 15 * time.Minute

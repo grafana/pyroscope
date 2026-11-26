@@ -39,6 +39,35 @@ type Config struct {
 	queryLookaroundPeriod time.Duration
 }
 
+// UnmarshalYAML delegates to an inline mirror of Config so yaml.v3 still
+// enforces KnownFields on Cleaner's inlined fields despite Cleaner
+// implementing yaml.Unmarshaler.
+func (cfg *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain struct {
+		ShardCacheSize      int                `yaml:"shard_cache_size"`
+		BlockWriteCacheSize int                `yaml:"block_write_cache_size"`
+		BlockReadCacheSize  int                `yaml:"block_read_cache_size"`
+		Cleaner             cleaner.YAMLConfig `yaml:",inline"`
+		Recovery            dlq.Config         `yaml:",inline"`
+	}
+	aux := plain{
+		ShardCacheSize:      cfg.ShardCacheSize,
+		BlockWriteCacheSize: cfg.BlockWriteCacheSize,
+		BlockReadCacheSize:  cfg.BlockReadCacheSize,
+		Cleaner:             cfg.Cleaner.ToYAMLConfig(),
+		Recovery:            cfg.Recovery,
+	}
+	if err := unmarshal(&aux); err != nil {
+		return err
+	}
+	cfg.ShardCacheSize = aux.ShardCacheSize
+	cfg.BlockWriteCacheSize = aux.BlockWriteCacheSize
+	cfg.BlockReadCacheSize = aux.BlockReadCacheSize
+	cfg.Cleaner = aux.Cleaner.ToConfig()
+	cfg.Recovery = aux.Recovery
+	return nil
+}
+
 var DefaultConfig = Config{
 	ShardCacheSize:      2000,   // 128KB * 2000 = 256MB
 	BlockReadCacheSize:  100000, // 8KB blocks = 800MB

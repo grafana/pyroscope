@@ -5,9 +5,12 @@ import (
 	"context"
 	"flag"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
@@ -298,5 +301,27 @@ func TestConfigValidate_V2IgnoresV1OnlyCompactorConfig(t *testing.T) {
 		})
 
 		require.Error(t, cfg.Validate())
+	})
+}
+
+func TestDynamicUnmarshal_MetastoreIndexCleanupIntervalYAML(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte("metastore:\n  index:\n    cleanup_interval: 0\n"), 0o600))
+
+	t.Run("yaml integer zero disables cleanup", func(t *testing.T) {
+		var cfg Config
+		fs := flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+		require.NoError(t, configpkg.DynamicUnmarshal(&cfg, []string{"-config.file", configPath}, fs))
+		require.Zero(t, cfg.Metastore.Index.Cleaner.CleanupInterval)
+	})
+
+	t.Run("cli flag overrides yaml zero", func(t *testing.T) {
+		var cfg Config
+		fs := flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+		require.NoError(t, configpkg.DynamicUnmarshal(&cfg, []string{
+			"-config.file", configPath,
+			"-metastore.index.cleanup-interval=5m",
+		}, fs))
+		require.Equal(t, 5*time.Minute, cfg.Metastore.Index.Cleaner.CleanupInterval)
 	})
 }
