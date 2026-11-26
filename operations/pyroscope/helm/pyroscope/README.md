@@ -58,7 +58,7 @@ A horizontally scalable, highly available, multi-tenant continuous profiling dat
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
 | pyroscope.extraArgs | object | `{"log.level":"debug"}` | Additional command-line arguments. Set these under pyroscope.extraArgs, not pyroscope.resources. |
 | pyroscope.extraContainers | list | `[]` |  |
-| pyroscope.extraCustomEnvVars | object | `{}` |  |
+| pyroscope.extraCustomEnvVars | list | `[]` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | pyroscope.extraEnvVars | object | `{}` |  |
 | pyroscope.extraLabels | object | `{}` | Labels added to every pyroscope pod. A component can set its own `extraLabels` under `pyroscope.components.<name>` to add or override labels. |

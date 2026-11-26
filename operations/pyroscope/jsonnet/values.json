@@ -402,7 +402,7 @@
       "log.level": "debug"
     },
     "extraContainers": [],
-    "extraCustomEnvVars": {},
+    "extraCustomEnvVars": [],
     "extraEnvFrom": [],
     "extraEnvVars": {},
     "extraLabels": {},
