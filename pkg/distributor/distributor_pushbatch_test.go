@@ -7,16 +7,20 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
+	"github.com/grafana/dskit/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	segmentwriterv1 "github.com/grafana/pyroscope/api/gen/proto/go/segmentwriter/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/v2/pkg/clientpool"
 	distributormodel "github.com/grafana/pyroscope/v2/pkg/distributor/model"
 	"github.com/grafana/pyroscope/v2/pkg/distributor/writepath"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -265,4 +269,91 @@ func TestPushBatch_PanicInOneSeriesDoesNotKillOthers(t *testing.T) {
 	assert.Contains(t, err.Error(), "probe panic for svc-1")
 	// The panicking series is recovered; the other four still complete.
 	assert.Equal(t, int64(n-1), probe.pushed.Load())
+}
+
+func TestDistributor_RejectsPushesDuringAndAfterStop(t *testing.T) {
+	sw := newBlockingSegmentWriter(4)
+	overrides := validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+		l := validation.MockDefaultLimits()
+		l.WritePathOverrides.WritePath = writepath.SegmentWriterPath
+		tenantLimits["user-1"] = l
+	})
+	d, err := New(
+		Config{
+			DistributorRing: ringConfig,
+			PoolConfig:      clientpool.PoolConfig{ClientCleanupPeriod: time.Second},
+		},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{f: func(string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
+		overrides, nil, log.NewNopLogger(), sw,
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	require.NoError(t, services.StartAndAwaitRunning(ctx, d))
+
+	profBytes, err := newProbeProfile().MarshalVT()
+	require.NoError(t, err)
+
+	pushReq := func() *connect.Request[pushv1.PushRequest] {
+		return connect.NewRequest(&pushv1.PushRequest{
+			Series: []*pushv1.RawProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: ProfileName, Value: "process_cpu"},
+						{Name: phlaremodel.LabelNameServiceName, Value: "svc-0"},
+					},
+					Samples: []*pushv1.RawSample{{RawProfile: profBytes}},
+				},
+			},
+		})
+	}
+
+	reqCtx := tenant.InjectTenantID(ctx, "user-1")
+	inFlightErr := make(chan error, 1)
+	go func() {
+		_, err := d.Push(reqCtx, pushReq())
+		inFlightErr <- err
+	}()
+	<-sw.started
+
+	d.StopAsync()
+
+	// Wait for stopping() to close admission while the in-flight push is still draining.
+	require.Eventually(t, func() bool {
+		if d.requests.Add() {
+			d.requests.Done()
+			return false
+		}
+		return true
+	}, time.Second, time.Millisecond)
+	assert.Equal(t, services.Stopping, d.State())
+
+	_, err = d.Push(reqCtx, pushReq())
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+
+	err = d.PushBatch(reqCtx, &distributormodel.PushRequest{
+		RawProfileType: distributormodel.RawProfileTypePPROF,
+		Series:         probeProfileSeries(1),
+	})
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+
+	close(sw.release)
+	require.NoError(t, <-inFlightErr)
+	require.NoError(t, d.AwaitTerminated(ctx))
+
+	_, err = d.Push(reqCtx, pushReq())
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+
+	err = d.PushBatch(reqCtx, &distributormodel.PushRequest{
+		RawProfileType: distributormodel.RawProfileTypePPROF,
+		Series:         probeProfileSeries(1),
+	})
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+	assert.Empty(t, sw.started, "no rejected push may reach segment writer")
 }

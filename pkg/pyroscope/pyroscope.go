@@ -735,13 +735,31 @@ func (f *Pyroscope) setupModuleManager() error {
 		deps[QueryFrontend] = []string{OverridesExporter, API, MemberlistKV, UsageReport, Version, FeatureFlags}
 	}
 
+	f.deps = deps
+
+	// Order co-located V2 modules so upstream producers and clients drain before
+	// segment-writer and metastore stop, without pulling them into single-target pods.
+	if f.isModuleActive(SegmentWriter) && f.isModuleActive(Distributor) {
+		deps[Distributor] = append(deps[Distributor], SegmentWriter)
+	}
+	if f.isModuleActive(Metastore) {
+		var metastoreConsumers []string
+		for _, mod := range []string{SegmentWriter, CompactionWorker, QueryFrontend, MetastoreAdmin, QueryDiagnosticsAdmin} {
+			if f.isModuleActive(mod) && slices.Contains(deps[mod], MetastoreClient) {
+				metastoreConsumers = append(metastoreConsumers, mod)
+			}
+		}
+		for _, mod := range metastoreConsumers {
+			deps[mod] = append(deps[mod], Metastore)
+		}
+	}
+
 	for mod, targets := range deps {
 		if err := mm.AddDependency(mod, targets...); err != nil {
 			return err
 		}
 	}
 
-	f.deps = deps
 	f.ModuleManager = mm
 
 	return nil
