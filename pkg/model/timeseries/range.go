@@ -28,11 +28,15 @@ func rangeSeriesWithLimit(it iter.Iterator[Value], start, end, step int64, aggre
 		return nil
 	}
 
+	// Aggregators consume the value synchronously; reuse one slot rather than
+	// letting the interface call move a fresh Value to the heap per row.
+	var point Value
+
 	// advance from the start to the end, adding each step results to the map.
 Outer:
 	for currentStep := start; currentStep <= end; currentStep += step {
 		for {
-			point := it.At()
+			point = it.At()
 			aggregator, ok := aggregators[point.LabelsHash]
 			if !ok {
 				aggregator = NewAggregatorWithLimit(aggregation, maxExemplarsPerPoint)
