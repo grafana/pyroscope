@@ -5,7 +5,10 @@ import (
 	"sync"
 )
 
-const defaultTeeBufferSize = 4096
+const (
+	defaultTeeBufferSize = 4096
+	teeLocalBatchSize    = 128
+)
 
 // Tee returns 2 independent iterators from a single iterable.
 //
@@ -49,8 +52,9 @@ func newTee[T any](iter Iterator[T], n, bufSize int) []Iterator[T] {
 	t := make([]Iterator[T], n)
 	for i := range s.t {
 		t[i] = &tee[T]{
-			s: s,
-			n: i,
+			s:       s,
+			n:       i,
+			scratch: make([]T, min(bufSize, teeLocalBatchSize)),
 		}
 	}
 	return t
@@ -61,45 +65,43 @@ type sharedIterator[T any] struct {
 	i Iterator[T]
 	e error
 	t []int64
-	m sync.RWMutex
+	m sync.Mutex
 	v []T
 	w int64
 }
 
-func (s *sharedIterator[T]) next(n int) bool {
-	s.m.RLock()
-	if s.t[n] < s.w {
-		s.t[n]++
-		s.m.RUnlock()
-		return true
-	}
-	s.m.RUnlock()
+// nextBatch copies into consumer-owned storage so clean can safely move the
+// shared buffer while other consumers read their local batches.
+func (s *sharedIterator[T]) nextBatch(t *tee[T]) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if s.t[n] < s.w {
-		s.t[n]++
-		return true
-	}
-	// All the memoized items were consumed.
-	if s.e != nil {
+	if s.t[t.n] == math.MaxInt64 {
 		return false
 	}
-	s.clean() // Conditionally clean consumed values.
-	// Fetch the next batch from the source iterator.
-	var i int64
-	for ; i < s.s; i++ {
-		if !s.i.Next() {
-			break
+	if s.t[t.n] == s.w {
+		if s.e != nil {
+			return false
 		}
-		s.v = append(s.v, s.i.At())
+		s.clean()
+		var i int64
+		for ; i < s.s; i++ {
+			if !s.i.Next() {
+				break
+			}
+			s.v = append(s.v, s.i.At())
+		}
+		s.e = s.i.Err()
+		s.w += i
+		if i == 0 {
+			return false
+		}
 	}
-	s.e = s.i.Err()
-	s.w += i
-	if i != 0 {
-		s.t[n]++
-		return true
-	}
-	return false
+	n := copy(t.scratch, s.v[s.t[t.n]:s.w])
+	s.t[t.n] += int64(n)
+	t.buf = t.scratch[:n]
+	// Offsets track values copied out, not values returned by Next.
+	s.clean()
+	return n > 0
 }
 
 func (s *sharedIterator[T]) clean() {
@@ -116,15 +118,11 @@ func (s *sharedIterator[T]) clean() {
 		// All iterators have been closed.
 		return
 	}
-	// Clean values that will be removed, shift
-	// remaining values to the beginning and update
-	// iterator offsets accordingly.
-	lo--
-	var v T
-	for i := range s.v[:lo] {
-		s.v[i] = v
-	}
-	s.v = s.v[:copy(s.v, s.v[lo:])]
+	// Shift remaining values and clear the vacated tail, including references
+	// beyond the new length of the shared buffer.
+	n := copy(s.v, s.v[lo:])
+	clear(s.v[n:])
+	s.v = s.v[:n]
 	s.w -= lo
 	for i := range s.t {
 		if s.t[i] != math.MaxInt64 {
@@ -133,38 +131,53 @@ func (s *sharedIterator[T]) clean() {
 	}
 }
 
-func (s *sharedIterator[T]) at(n int) T {
-	s.m.RLock()
-	v := s.v[s.t[n]-1]
-	s.m.RUnlock()
-	return v
-}
-
 func (s *sharedIterator[T]) close(n int) {
-	s.m.RLock()
+	s.m.Lock()
 	s.t[n] = math.MaxInt64
-	s.m.RUnlock()
+	s.m.Unlock()
 }
 
 func (s *sharedIterator[T]) err() error {
-	s.m.RLock()
+	s.m.Lock()
 	e := s.e
-	s.m.RUnlock()
+	s.m.Unlock()
 	return e
 }
 
+// Each consumer is used by a single goroutine, independently of other consumers.
 type tee[T any] struct {
-	s *sharedIterator[T]
-	n int
+	s       *sharedIterator[T]
+	n       int
+	scratch []T
+	buf     []T
+	cur     T
 }
 
-func (t *tee[T]) Next() bool { return t.s.next(t.n) }
+func (t *tee[T]) Next() bool {
+	if len(t.buf) == 0 {
+		var zero T
+		t.cur = zero
+		t.buf = nil
+		if !t.s.nextBatch(t) {
+			return false
+		}
+	}
+	t.cur = t.buf[0]
+	var zero T
+	t.buf[0] = zero
+	t.buf = t.buf[1:]
+	return true
+}
 
-func (t *tee[T]) At() T { return t.s.at(t.n) }
+func (t *tee[T]) At() T { return t.cur }
 
 func (t *tee[T]) Err() error { return t.s.err() }
 
 func (t *tee[T]) Close() error {
+	clear(t.scratch)
+	t.buf = nil
+	var zero T
+	t.cur = zero
 	t.s.close(t.n)
 	return nil
 }
