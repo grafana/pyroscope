@@ -55,7 +55,7 @@ const (
 	defaultBatchSize = 4
 )
 
-func NewRepeatedRowIterator[T any](
+func NewRepeatedRowIterator[T RowGetter](
 	ctx context.Context,
 	rows iter.Iterator[T],
 	rowGroups []parquet.RowGroup,
@@ -64,7 +64,7 @@ func NewRepeatedRowIterator[T any](
 	return NewRepeatedRowIteratorBatchSize(ctx, rows, rowGroups, defaultBatchSize, columns...)
 }
 
-func NewRepeatedRowIteratorBatchSize[T any](
+func NewRepeatedRowIteratorBatchSize[T RowGetter](
 	ctx context.Context,
 	rows iter.Iterator[T],
 	rowGroups []parquet.RowGroup,
@@ -105,9 +105,9 @@ func (x *repeatedRowIterator[T]) Close() error {
 	return x.columns.Close()
 }
 
-type rowNumberIterator[T any] struct{ it iter.Iterator[T] }
+type rowNumberIterator[T RowGetter] struct{ it iter.Iterator[T] }
 
-func WrapWithRowNumber[T any](it iter.Iterator[T]) iter.Iterator[int64] {
+func WrapWithRowNumber[T RowGetter](it iter.Iterator[T]) iter.Iterator[int64] {
 	return &rowNumberIterator[T]{it}
 }
 
@@ -115,19 +115,7 @@ func (x *rowNumberIterator[T]) Next() bool   { return x.it.Next() }
 func (x *rowNumberIterator[T]) Err() error   { return x.it.Err() }
 func (x *rowNumberIterator[T]) Close() error { return x.it.Close() }
 
-func (x *rowNumberIterator[T]) At() int64 {
-	v := any(x.it.At())
-	switch r := v.(type) {
-	case RowGetter:
-		return r.RowNumber()
-	case int64:
-		return r
-	case uint32:
-		return int64(r)
-	default:
-		panic(fmt.Sprintf("unknown row type: %T", v))
-	}
-}
+func (x *rowNumberIterator[T]) At() int64 { return x.it.At().RowNumber() }
 
 type multiColumnIterator struct {
 	r []iter.Iterator[int64]

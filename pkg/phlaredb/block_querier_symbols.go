@@ -12,7 +12,6 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/v2/pkg/iter"
 	phlareobj "github.com/grafana/pyroscope/v2/pkg/objstore"
 	parquetobj "github.com/grafana/pyroscope/v2/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
@@ -82,12 +81,35 @@ func (r *symbolsResolverV1) Partition(_ context.Context, _ uint64) (symdb.Partit
 
 type stacktraceResolverV1 struct{ r *symbolsResolverV1 }
 
+// uint32RowIterator adapts V1 stacktrace IDs without copying the source slice.
+type uint32RowIterator struct {
+	rows    []uint32
+	current uint32Row
+}
+
+type uint32Row uint32
+
+func (r uint32Row) RowNumber() int64 { return int64(r) }
+
+func (i *uint32RowIterator) Next() bool {
+	if len(i.rows) == 0 {
+		return false
+	}
+	i.current = uint32Row(i.rows[0])
+	i.rows = i.rows[1:]
+	return true
+}
+
+func (i *uint32RowIterator) At() uint32Row { return i.current }
+func (i *uint32RowIterator) Err() error    { return nil }
+func (i *uint32RowIterator) Close() error  { return nil }
+
 func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error {
 	column, err := schemav1.ResolveColumnByPath(r.r.stacktraces.file.Schema(), strings.Split("LocationIDs.list.element", "."))
 	if err != nil {
 		return err
 	}
-	it := query.NewRepeatedRowIterator(ctx, iter.NewSliceIterator(stacktraces), r.r.stacktraces.file.RowGroups(), column.ColumnIndex)
+	it := query.NewRepeatedRowIterator(ctx, &uint32RowIterator{rows: stacktraces}, r.r.stacktraces.file.RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, it, "failed to close stack trace stream")
 	t := make([]int32, 0, 64)
 	for it.Next() {
@@ -96,7 +118,7 @@ func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, ds
 		for i, v := range s.Values {
 			t[i] = v[0].Int32()
 		}
-		dst.InsertStacktrace(s.Row, t)
+		dst.InsertStacktrace(uint32(s.Row), t)
 	}
 	return it.Err()
 }
