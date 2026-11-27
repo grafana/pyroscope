@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -139,20 +138,6 @@ func TestStackTraceSelection_LineLessLeaf(t *testing.T) {
 		selection := SelectStackTraces(p.Symbols(), selector)
 		selection.CallSiteValues(&values, indexed[0].Samples)
 		assert.Equal(t, want, values)
-	})
-
-	t.Run("parquet", func(t *testing.T) {
-		var stats CallSiteValues
-		samples := indexed[0].Samples
-		stacktraceIDs := make([]parquet.Value, len(samples.StacktraceIDs))
-		parquetValues := make([]parquet.Value, len(samples.Values))
-		for i, id := range samples.StacktraceIDs {
-			stacktraceIDs[i] = parquet.Int32Value(int32(id))
-			parquetValues[i] = parquet.Int64Value(int64(samples.Values[i]))
-		}
-		selection := SelectStackTraces(p.Symbols(), selector)
-		selection.CallSiteValuesParquet(&stats, stacktraceIDs, parquetValues)
-		assert.Equal(t, want, stats)
 	})
 }
 

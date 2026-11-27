@@ -6,6 +6,8 @@ import (
 
 	"github.com/colega/zeropool"
 	"github.com/parquet-go/parquet-go"
+
+	"github.com/grafana/pyroscope/v2/pkg/model"
 )
 
 func GetColumnIndexByPath(root *parquet.Column, s string) (index, depth int) {
@@ -98,6 +100,7 @@ func CloneParquetValues(values []parquet.Value) []parquet.Value {
 func ReleaseParquetValues(b [][]parquet.Value) {
 	for _, s := range b {
 		if cap(s) > 0 {
+			clear(s)
 			parquetValuesPool.Put(s)
 		}
 	}
@@ -119,7 +122,7 @@ func CloneUint64ParquetValues(values []parquet.Value) []uint64 {
 
 func ReleaseUint64Values(b [][]uint64) {
 	for _, s := range b {
-		if len(s) > 0 {
+		if cap(s) > 0 {
 			uint64valuesPool.Put(s)
 		}
 	}
@@ -141,8 +144,103 @@ func CloneUint32ParquetValues(values []parquet.Value) []uint32 {
 
 func ReleaseUint32Values(b [][]uint32) {
 	for _, s := range b {
-		if len(s) > 0 {
+		if cap(s) > 0 {
 			uint32valuesPool.Put(s)
+		}
+	}
+}
+
+var int64valuesPool = zeropool.New(func() []int64 { return nil })
+
+func CloneInt64ParquetValues(values []parquet.Value) []int64 {
+	int64s := int64valuesPool.Get()
+	if l := len(values); cap(int64s) < l {
+		int64s = make([]int64, 0, 2*l)
+	}
+	int64s = int64s[:len(values)]
+	for i, v := range values {
+		int64s[i] = v.Int64()
+	}
+	return int64s
+}
+
+func ReleaseInt64Values(b [][]int64) {
+	for _, s := range b {
+		if cap(s) > 0 {
+			int64valuesPool.Put(s)
+		}
+	}
+}
+
+var int32valuesPool = zeropool.New(func() []int32 { return nil })
+
+func CloneInt32ParquetValues(values []parquet.Value) []int32 {
+	int32s := int32valuesPool.Get()
+	if l := len(values); cap(int32s) < l {
+		int32s = make([]int32, 0, 2*l)
+	}
+	int32s = int32s[:len(values)]
+	for i, v := range values {
+		int32s[i] = v.Int32()
+	}
+	return int32s
+}
+
+func ReleaseInt32Values(b [][]int32) {
+	for _, s := range b {
+		if cap(s) > 0 {
+			int32valuesPool.Put(s)
+		}
+	}
+}
+
+var traceIDValuesPool = zeropool.New(func() []model.TraceID { return nil })
+
+func CloneTraceIDParquetValues(values []parquet.Value) []model.TraceID {
+	traceIDs := traceIDValuesPool.Get()
+	if l := len(values); cap(traceIDs) < l {
+		traceIDs = make([]model.TraceID, 0, 2*l)
+	}
+	traceIDs = traceIDs[:len(values)]
+	for i, v := range values {
+		if b := v.ByteArray(); len(b) == len(model.TraceID{}) {
+			copy(traceIDs[i][:], b)
+		} else {
+			traceIDs[i] = model.TraceID{}
+		}
+	}
+	return traceIDs
+}
+
+func ReleaseTraceIDValues(b [][]model.TraceID) {
+	for _, s := range b {
+		if cap(s) > 0 {
+			traceIDValuesPool.Put(s)
+		}
+	}
+}
+
+var stringValuesPool = zeropool.New(func() []string { return nil })
+
+func CloneStringParquetValues(values []parquet.Value) []string {
+	strs := stringValuesPool.Get()
+	if l := len(values); cap(strs) < l {
+		strs = make([]string, 0, 2*l)
+	}
+	strs = strs[:0]
+	for _, v := range values {
+		if v.Kind() == parquet.ByteArray {
+			strs = append(strs, v.String())
+		}
+	}
+	return strs
+}
+
+func ReleaseStringValues(b [][]string) {
+	for _, s := range b {
+		if cap(s) > 0 {
+			clear(s)
+			stringValuesPool.Put(s)
 		}
 	}
 }

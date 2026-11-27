@@ -47,25 +47,26 @@ func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
 		return err
 	}
 
-	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
+	rows := parquetquery.NewTypedRepeatedRowIteratorBatchSize(
 		q.ctx,
 		entries,
 		q.ds.Profiles().RowGroups(),
 		bigBatchSize,
-		totalValue.ColumnIndex,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
+
+	totalValues := rows.Int64Column(totalValue.ColumnIndex)
 
 	for rows.Next() {
 		row := rows.At()
 		b.Add(
-			row.Row.Fingerprint,
-			row.Row.Labels,
-			int64(row.Row.Timestamp),
-			row.Row.ID,
+			row.Fingerprint,
+			row.Labels,
+			int64(row.Timestamp),
+			row.ID,
 			0,
 			model.TraceID{},
-			row.Values[0][0].Int64(),
+			totalValues.At()[0],
 		)
 	}
 	if err = rows.Err(); err != nil {
@@ -97,45 +98,45 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 	filtered := &spanProfileIterator{Iterator: entries, ranges: ranges}
 
-	indices := []int{
-		columns.SpanID.ColumnIndex,
-		columns.Value.ColumnIndex,
-	}
-	if columns.HasTraceID() {
-		indices = append(indices, columns.TraceID.ColumnIndex)
-	}
-
-	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
+	rows := parquetquery.NewTypedRepeatedRowIteratorBatchSize(
 		q.ctx,
 		filtered,
 		q.ds.Profiles().RowGroups(),
 		bigBatchSize,
-		indices...,
 	)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")
 
+	spanIDs := rows.Uint64Column(columns.SpanID.ColumnIndex)
+	sampleValues := rows.Int64Column(columns.Value.ColumnIndex)
+	var traceIDs *parquetquery.RepeatedColumn[model.TraceID]
+	if columns.HasTraceID() {
+		traceIDs = rows.TraceIDColumn(columns.TraceID.ColumnIndex)
+	}
+
 	for rows.Next() {
 		row := rows.At()
-
-		for idx := range row.Values[0] {
-			var traceID model.TraceID
-			if columns.HasTraceID() {
-				traceIDBytes := row.Values[2][idx].Bytes()
-				if len(traceIDBytes) == len(traceID) {
-					copy(traceID[:], traceIDBytes)
-				}
-			}
-			b.Add(
-				row.Row.Fingerprint,
-				row.Row.Labels,
-				int64(row.Row.Timestamp),
-				"",
-				row.Values[0][idx].Uint64(),
-				traceID,
-				row.Values[1][idx].Int64(),
-			)
+		spans := spanIDs.At()
+		vals := sampleValues.At()
+		var traces []model.TraceID
+		if traceIDs != nil {
+			traces = traceIDs.At()
 		}
 
+		for idx, spanID := range spans {
+			var traceID model.TraceID
+			if traces != nil {
+				traceID = traces[idx]
+			}
+			b.Add(
+				row.Fingerprint,
+				row.Labels,
+				int64(row.Timestamp),
+				"",
+				spanID,
+				traceID,
+				vals[idx],
+			)
+		}
 	}
 	if err = rows.Err(); err != nil {
 		return err
