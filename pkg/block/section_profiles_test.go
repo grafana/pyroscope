@@ -6,12 +6,15 @@ import (
 	"io"
 	"runtime"
 	"strconv"
+	"sync/atomic"
 	"testing"
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
+	thanosobjstore "github.com/thanos-io/objstore"
 
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/objstore"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/testutil"
 )
 
@@ -163,4 +166,86 @@ func Test_openParquetFile(t *testing.T) {
 		validateColumnIndex(t, pf.File, count)
 	})
 
+}
+
+type countingBucket struct {
+	thanosobjstore.Bucket
+	getRanges atomic.Int64
+}
+
+func (c *countingBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	c.getRanges.Add(1)
+	return c.Bucket.GetRange(ctx, name, off, length)
+}
+
+func TestParquetFile_PrefetchColumnsCoalescesReads(t *testing.T) {
+	type multiColRow struct {
+		A int64
+		B int64
+		C string
+		D int64
+	}
+	ctx := context.Background()
+	mem := thanosobjstore.NewInMemBucket()
+	counting := &countingBucket{Bucket: mem}
+	bucket := &objstore.ReaderAtBucket{Bucket: counting}
+
+	var buf bytes.Buffer
+	rows := make([]multiColRow, 400)
+	for i := range rows {
+		rows[i] = multiColRow{A: int64(i), B: int64(i * 10), C: "unused-payload", D: int64(i * 100)}
+	}
+	createParquetFile(t, &buf, rows, 4)
+
+	const path = "multi.parquet"
+	require.NoError(t, mem.Upload(ctx, path, bytes.NewReader(buf.Bytes())))
+
+	counting.getRanges.Store(0)
+	pf, err := openParquetFileWithCoalescer(
+		bucket, path, 0, int64(buf.Len()), estimateFooterSize(int64(buf.Len())),
+		parquet.SkipBloomFilters(true),
+		parquet.FileReadMode(parquet.ReadModeSync),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pf.Close() })
+	// Footer + ColumnIndex + OffsetIndex all fit in the single tail prefetch.
+	require.Equal(t, int64(1), counting.getRanges.Load())
+
+	// Prefetch columns 0, 1, and 3 across row groups 1 and 2; because the file is small,
+	// all 6 column chunks coalesce into a single GetRange call.
+	counting.getRanges.Store(0)
+	require.NoError(t, pf.PrefetchColumns(ctx, []int{1, 2}, []int{0, 1, 3}))
+	require.Equal(t, int64(1), counting.getRanges.Load())
+
+	// Reading pages from those row groups and columns now requires zero additional GetRange calls.
+	counting.getRanges.Store(0)
+	valBuf := make([]parquet.Value, 128)
+	for _, rgIdx := range []int{1, 2} {
+		chunks := pf.RowGroups()[rgIdx].ColumnChunks()
+		for _, colIdx := range []int{0, 1, 3} {
+			pages := chunks[colIdx].Pages()
+			for {
+				pg, pErr := pages.ReadPage()
+				if pErr == io.EOF {
+					break
+				}
+				require.NoError(t, pErr)
+				vr := pg.Values()
+				for {
+					n, vErr := vr.ReadValues(valBuf)
+					if n > 0 && vErr == io.EOF {
+						parquet.Release(pg)
+						break
+					}
+					if vErr == io.EOF {
+						parquet.Release(pg)
+						break
+					}
+					require.NoError(t, vErr)
+				}
+			}
+			require.NoError(t, pages.Close())
+		}
+	}
+	require.Equal(t, int64(0), counting.getRanges.Load())
 }

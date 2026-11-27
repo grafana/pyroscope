@@ -3,12 +3,14 @@ package symdb
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
@@ -85,7 +87,7 @@ func (r *Reader) openIndexWithPrefetch(ctx context.Context) (err error) {
 	}
 	n, err := r.prefetchIndex(ctx, prefetchSize)
 	if err == nil && n != 0 {
-		_, err = r.prefetchIndex(ctx, prefetchSize)
+		_, err = r.prefetchIndex(ctx, n)
 	}
 	return err
 }
@@ -325,7 +327,129 @@ type table[T any] interface {
 }
 
 func (p *partition) fetch(ctx context.Context) (err error) {
+	if p.reader.index.Header.Version == FormatV3 {
+		return p.fetchCoalescedV3(ctx)
+	}
 	return p.tx().fetch(ctx)
+}
+
+const (
+	symdbMaxCoalesceGap  = 256 << 10 // 256 KiB
+	symdbMaxCoalesceSize = 8 << 20   // 8 MiB
+)
+
+type v3FetchItem interface {
+	fetchable
+	byteSpan() (offset, size int64)
+	decodeFromBytes(data []byte) error
+}
+
+func (p *partition) fetchCoalescedV3(ctx context.Context) error {
+	items := make([]v3FetchItem, 0, len(p.stacktraces)+4)
+	for _, c := range p.stacktraces {
+		items = append(items, c)
+	}
+	for _, tbl := range []any{p.locations, p.mappings, p.functions, p.strings} {
+		if it, ok := tbl.(v3FetchItem); ok {
+			items = append(items, it)
+		}
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	sort.Slice(items, func(i, j int) bool {
+		oi, _ := items[i].byteSpan()
+		oj, _ := items[j].byteSpan()
+		return oi < oj
+	})
+
+	type itemRange struct {
+		lo, hi int64
+		items  []v3FetchItem
+	}
+	fileSize := int64(p.reader.file.SizeBytes)
+	var groups []itemRange
+	for _, it := range items {
+		off, sz := it.byteSpan()
+		if off < 0 || sz < 0 || sz > symdbMaxCoalesceSize || (fileSize > 0 && off+sz > fileSize) {
+			// Invalid or oversized header; fall back to standard fetchTx.
+			return p.tx().fetch(ctx)
+		}
+		hi := off + sz
+		if len(groups) > 0 {
+			last := &groups[len(groups)-1]
+			if off >= last.lo && off-last.hi <= symdbMaxCoalesceGap && max(last.hi, hi)-last.lo <= symdbMaxCoalesceSize {
+				if hi > last.hi {
+					last.hi = hi
+				}
+				last.items = append(last.items, it)
+				continue
+			}
+		}
+		groups = append(groups, itemRange{lo: off, hi: hi, items: []v3FetchItem{it}})
+	}
+
+	var (
+		mu       sync.Mutex
+		acquired = make([]fetchable, 0, len(items))
+	)
+	g, gctx := errgroup.WithContext(ctx)
+	for _, grp := range groups {
+		grp := grp
+		g.Go(func() error {
+			spanSize := grp.hi - grp.lo
+			var buf *bufferpool.Buffer
+			if spanSize > 0 {
+				buf = bufferpool.GetBuffer(int(spanSize))
+				defer bufferpool.Put(buf)
+				if err := objstore.ReadRange(gctx, buf, p.reader.file.RelPath, p.reader.bucket, grp.lo, spanSize); err != nil {
+					return err
+				}
+			}
+
+			if len(grp.items) == 1 {
+				it := grp.items[0]
+				var slice []byte
+				if spanSize > 0 {
+					off, sz := it.byteSpan()
+					slice = buf.B[off-grp.lo : off-grp.lo+sz]
+				}
+				if err := it.decodeFromBytes(slice); err != nil {
+					return err
+				}
+				mu.Lock()
+				acquired = append(acquired, it)
+				mu.Unlock()
+				return nil
+			}
+
+			decG, _ := errgroup.WithContext(gctx)
+			for _, it := range grp.items {
+				it := it
+				var slice []byte
+				if spanSize > 0 {
+					off, sz := it.byteSpan()
+					slice = buf.B[off-grp.lo : off-grp.lo+sz]
+				}
+				decG.Go(func() error {
+					if err := it.decodeFromBytes(slice); err != nil {
+						return err
+					}
+					mu.Lock()
+					acquired = append(acquired, it)
+					mu.Unlock()
+					return nil
+				})
+			}
+			return decG.Wait()
+		})
+	}
+	if err := g.Wait(); err != nil {
+		tx := fetchTx(acquired)
+		tx.release()
+		return err
+	}
+	return nil
 }
 
 func (p *partition) Release() {
@@ -607,6 +731,18 @@ func (c *stacktraceBlock) readFrom(r *bufio.Reader) error {
 	return nil
 }
 
+func (c *stacktraceBlock) byteSpan() (offset, size int64) {
+	return c.header.Offset, c.header.Size
+}
+
+func (c *stacktraceBlock) decodeFromBytes(data []byte) error {
+	return c.r.Inc(func() error {
+		r := getFetchBufReader(bytes.NewReader(data))
+		defer putFetchBufReader(r)
+		return c.readFrom(r)
+	})
+}
+
 func (c *stacktraceBlock) release() {
 	c.r.Dec(func() {
 		c.t = nil
@@ -657,6 +793,18 @@ func (t *rawTable[T]) readFrom(r *bufio.Reader) error {
 }
 
 func (t *rawTable[T]) slice() []T { return t.s }
+
+func (t *rawTable[T]) byteSpan() (offset, size int64) {
+	return int64(t.header.Offset), int64(t.header.Size)
+}
+
+func (t *rawTable[T]) decodeFromBytes(data []byte) error {
+	return t.r.Inc(func() error {
+		r := getFetchBufReader(bytes.NewReader(data))
+		defer putFetchBufReader(r)
+		return t.readFrom(r)
+	})
+}
 
 func (t *rawTable[T]) release() {
 	t.r.Dec(func() {

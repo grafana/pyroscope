@@ -53,13 +53,15 @@ func estimatePageBufferSize(s int64) int {
 
 func estimateFooterSize(size int64) int64 {
 	var s int64
-	// as long as we don't keep the exact footer sizes in the meta estimate it
+	// Prefetch enough of the file tail to cover the Parquet footer as well as
+	// its preceding ColumnIndex and OffsetIndex sections in a single range read
+	// (empirically ~1/420th of the section size on multi-row-group blocks).
 	if size > 0 {
-		s = size / 10000
+		s = size / 256
 	}
-	// set a minimum footer size of 32KiB
-	if s < 32<<10 {
-		s = 32 << 10
+	// set a minimum footer size of 64KiB
+	if s < 64<<10 {
+		s = 64 << 10
 	}
 	// set a maximum footer size of 512KiB
 	if s > 512<<10 {

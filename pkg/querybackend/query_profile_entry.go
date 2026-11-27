@@ -95,8 +95,17 @@ func withProfileIDSelector(ids ...string) (profileIteratorOption, error) {
 	}, nil
 }
 
+func withPrefetchColumns(columns ...int) profileIteratorOption {
+	return profileIteratorOption{
+		iterator: func(opts *iteratorOpts) {
+			opts.prefetchColumns = append(opts.prefetchColumns, columns...)
+		},
+	}
+}
+
 type iteratorOpts struct {
 	profileIDSelector []string // this is a slice of the byte form of the UUID
+	prefetchColumns   []int
 	fetchProfileIDs   bool
 	fetchPartition    bool
 	excludeSampled    bool
@@ -159,6 +168,47 @@ func (c queryColumns) join(q *queryContext) parquetquery.Iterator {
 	return result
 }
 
+func (c queryColumns) candidateRowGroups(pf *parquet.File) ([]int, []int, error) {
+	rgs := pf.RowGroups()
+	if len(rgs) == 0 {
+		return nil, nil, nil
+	}
+	colIndices := make([]int, 0, len(c))
+	predColIndices := make([]int, 0, len(c))
+	preds := make([]parquetquery.Predicate, 0, len(c))
+	for _, col := range c {
+		idx, _ := parquetquery.GetColumnIndexByPath(pf.Root(), col.name)
+		if idx == -1 {
+			continue
+		}
+		colIndices = append(colIndices, idx)
+		if col.predicate != nil {
+			predColIndices = append(predColIndices, idx)
+			preds = append(preds, col.predicate)
+		}
+	}
+
+	matchingRGs := make([]int, 0, len(rgs))
+	for rgIdx, rg := range rgs {
+		chunks := rg.ColumnChunks()
+		keep := true
+		for i, colIdx := range predColIndices {
+			ci, err := chunks[colIdx].ColumnIndex()
+			if err != nil {
+				return nil, nil, err
+			}
+			if !preds[i].KeepColumnChunk(ci) {
+				keep = false
+				break
+			}
+		}
+		if keep {
+			matchingRGs = append(matchingRGs, rgIdx)
+		}
+	}
+	return matchingRGs, colIndices, nil
+}
+
 func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (iter.Iterator[ProfileEntry], error) {
 	opts := iteratorOptsFromOptions(options)
 
@@ -170,6 +220,9 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 	series, err := getSeries(q.ds.Index(), matchers, options...)
 	if err != nil {
 		return nil, err
+	}
+	if len(series) == 0 {
+		return iter.NewEmptyIterator[ProfileEntry](), nil
 	}
 
 	columns := queryColumns{
@@ -197,7 +250,11 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		)
 		if len(opts.profileIDSelector) > 0 {
 			predicate = parquetquery.NewStringInPredicate(opts.profileIDSelector)
-			priority = 5
+			// Evaluate SeriesIndex (10) and TimeNanos (15) before scanning ID (18):
+			// UUIDv8 profile IDs span [00.., ff..] in every row group without bloom
+			// filters, whereas SeriesIndex (~800B/RG) and TimeNanos prune non-matching
+			// row groups and rows before touching the 160KiB/RG ID column.
+			priority = 18
 		}
 		offset := len(columns)
 		columns = append(
@@ -213,6 +270,24 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 			copy(u[:], b)
 			e.ID = u.String()
 		})
+	}
+
+	matchingRGs, entryCols, err := columns.candidateRowGroups(q.ds.Profiles().File)
+	if err != nil {
+		return nil, err
+	}
+	if len(matchingRGs) == 0 {
+		return iter.NewEmptyIterator[ProfileEntry](), nil
+	}
+
+	prefetchCols := entryCols
+	if len(opts.profileIDSelector) == 0 && len(opts.prefetchColumns) > 0 {
+		prefetchCols = make([]int, 0, len(entryCols)+len(opts.prefetchColumns))
+		prefetchCols = append(prefetchCols, entryCols...)
+		prefetchCols = append(prefetchCols, opts.prefetchColumns...)
+	}
+	if err := q.ds.Profiles().PrefetchColumns(q.ctx, matchingRGs, prefetchCols); err != nil {
+		return nil, err
 	}
 
 	buf := make([][]parquet.Value, len(columns))
@@ -236,7 +311,54 @@ func profileEntryIterator(q *queryContext, options ...profileIteratorOption) (it
 		},
 		func([]ProfileEntry) {},
 	)
+	if len(opts.profileIDSelector) > 0 && len(opts.prefetchColumns) > 0 {
+		// ProfileIdSelector typically matches very few rows (often 1): materialize
+		// matched entries first, then prefetch sample columns ONLY for the row groups
+		// containing matched rows so adjacent columns (e.g. StacktraceID + Value) are
+		// coalesced into a single GetRange instead of N separate column reads.
+		defer func() { _ = entries.Close() }()
+		var matched []ProfileEntry
+		for entries.Next() {
+			matched = append(matched, entries.At())
+		}
+		if err := entries.Err(); err != nil {
+			return nil, err
+		}
+		if len(matched) == 0 {
+			return iter.NewEmptyIterator[ProfileEntry](), nil
+		}
+		if err := prefetchRowGroupsForEntries(q, matched, opts.prefetchColumns); err != nil {
+			return nil, err
+		}
+		return iter.NewSliceIterator(matched), nil
+	}
+
 	return entries, nil
+}
+
+func prefetchRowGroupsForEntries(q *queryContext, matched []ProfileEntry, cols []int) error {
+	rgs := q.ds.Profiles().RowGroups()
+	if len(rgs) == 0 {
+		return nil
+	}
+	var (
+		matchedRGs []int
+		rgIdx      int
+		rgStart    int64
+	)
+	for _, e := range matched {
+		for rgIdx < len(rgs) && e.RowNum >= rgStart+rgs[rgIdx].NumRows() {
+			rgStart += rgs[rgIdx].NumRows()
+			rgIdx++
+		}
+		if rgIdx < len(rgs) && (len(matchedRGs) == 0 || matchedRGs[len(matchedRGs)-1] != rgIdx) {
+			matchedRGs = append(matchedRGs, rgIdx)
+		}
+	}
+	if len(matchedRGs) == 0 {
+		return nil
+	}
+	return q.ds.Profiles().PrefetchColumns(q.ctx, matchedRGs, cols)
 }
 
 type series struct {
