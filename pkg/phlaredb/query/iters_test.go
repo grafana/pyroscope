@@ -542,10 +542,64 @@ func TestBinaryJoinIteratorSeek(t *testing.T) {
 	})
 }
 
+func TestBinaryJoinIteratorSeekPreservesNestedResult(t *testing.T) {
+	leaf := func() Iterator {
+		return NewRowNumberIterator(iter.NewSliceIterator([]rowGetter{1, 2}))
+	}
+	nested := NewBinaryJoinIterator(0, leaf(), leaf())
+	outer := NewBinaryJoinIterator(0, leaf(), nested)
+	t.Cleanup(func() { require.NoError(t, outer.Close()) })
+
+	for _, row := range []rowGetter{1, 2} {
+		to := EmptyRowNumber()
+		to[0] = row.RowNumber()
+		require.True(t, outer.Seek(RowNumberWithDefinitionLevel{RowNumber: to}))
+		require.Len(t, nested.At().Entries, 2)
+		for _, entry := range nested.At().Entries {
+			require.Equal(t, row, entry.RowValue)
+		}
+	}
+}
+
 type rowGetter int64
 
 func (r rowGetter) RowNumber() int64 {
 	return int64(r)
+}
+
+func TestRowNumberIteratorSeekOwnership(t *testing.T) {
+	for _, target := range []int64{1, 4, 10} {
+		t.Run(fmt.Sprint(target), func(t *testing.T) {
+			it := NewRowNumberIterator(iter.NewSliceIterator([]rowGetter{1, 2, 3, 4}))
+			require.True(t, it.Next())
+			initial := it.At()
+			to := EmptyRowNumber()
+			to[0] = target
+			require.Equal(t, target <= 4, it.Seek(RowNumberWithDefinitionLevel{RowNumber: to}))
+			require.Equal(t, int64(1), initial.RowNumber[0])
+			require.Equal(t, rowGetter(1), initial.Entries[0].RowValue)
+			if initial != it.At() {
+				iteratorResultPoolPut(initial)
+			}
+			require.NoError(t, it.Close())
+			require.Nil(t, it.At())
+			require.NoError(t, it.Close())
+		})
+	}
+}
+
+func TestBinaryJoinIteratorCloseReleasesResults(t *testing.T) {
+	left := NewRowNumberIterator(iter.NewSliceIterator([]rowGetter{1}))
+	right := NewRowNumberIterator(iter.NewSliceIterator([]rowGetter{1}))
+	nested := NewBinaryJoinIterator(0, left, right)
+	outer := NewBinaryJoinIterator(0, nested, NewRowNumberIterator(iter.NewSliceIterator([]rowGetter{1})))
+	require.True(t, outer.Next())
+	require.NoError(t, outer.Close())
+	require.Nil(t, outer.At())
+	require.Nil(t, nested.At())
+	require.Nil(t, left.At())
+	require.Nil(t, right.At())
+	require.NoError(t, outer.Close())
 }
 
 func TestRowNumberIterator(t *testing.T) {
