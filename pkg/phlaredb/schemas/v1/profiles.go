@@ -41,6 +41,11 @@ var (
 		phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.RLEDictionary))),
 		phlareparquet.NewGroupField("TraceID", parquet.Optional(parquet.Encoded(parquet.Leaf(parquet.FixedLenByteArrayType(16)), &parquet.RLEDictionary))),
 	}
+	// Annotation strings are frequently repeated across profiles in a row group.
+	annotationFields = parquet.List(phlareparquet.Group{
+		phlareparquet.NewGroupField("Key", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
+		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
+	})
 	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
@@ -54,11 +59,7 @@ var (
 		phlareparquet.NewGroupField("Period", parquet.Optional(parquet.Int(64))),
 		phlareparquet.NewGroupField("Comments", parquet.List(stringRef)),
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
-		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
-			phlareparquet.Group{
-				phlareparquet.NewGroupField("Key", parquet.String()),
-				phlareparquet.NewGroupField("Value", parquet.String()),
-			})),
+		phlareparquet.NewGroupField(AnnotationsColumnName, annotationFields),
 	})
 	DownsampledProfilesSchema = parquet.NewSchema("DownsampledProfile", phlareparquet.Group{
 		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
@@ -70,11 +71,7 @@ var (
 				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 			})),
 		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
-		phlareparquet.NewGroupField(AnnotationsColumnName, parquet.List(
-			phlareparquet.Group{
-				phlareparquet.NewGroupField("Key", parquet.String()),
-				phlareparquet.NewGroupField("Value", parquet.String()),
-			})),
+		phlareparquet.NewGroupField(AnnotationsColumnName, annotationFields),
 	})
 
 	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
@@ -252,8 +249,8 @@ type Profile struct {
 }
 
 type Annotation struct {
-	Key   string `parquet:","`
-	Value string `parquet:","`
+	Key   string `parquet:",dict"`
+	Value string `parquet:",dict"`
 }
 
 type Annotations struct {
