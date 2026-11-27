@@ -182,6 +182,49 @@ func TestExemplarBuilder_SameProfileIDDifferentValues(t *testing.T) {
 	assert.Equal(t, "pod-1", exemplar.Labels[0].Value)
 }
 
+func TestExemplarBuilder_SharedLabelSetPreservedAcrossGroups(t *testing.T) {
+	builder := newExemplarBuilder()
+
+	shared := phlaremodel.Labels{
+		{Name: "env", Value: "prod"},
+		{Name: "pod", Value: "pod-1"},
+	}
+	subset := phlaremodel.Labels{
+		{Name: "env", Value: "prod"},
+	}
+	disjoint := phlaremodel.Labels{
+		{Name: "region", Value: "us-east"},
+	}
+
+	// First group shrinks shared -> subset; second group shrinks shared -> nil;
+	// third exemplar uses shared directly and must retain full labels.
+	builder.Add(1, shared, 1000, "profile-a", 10)
+	builder.Add(2, subset, 1000, "profile-a", 20)
+	builder.Add(1, shared, 2000, "profile-b", 30)
+	builder.Add(3, disjoint, 2000, "profile-b", 40)
+	builder.Add(1, shared, 3000, "profile-c", 50)
+	builder.Add(4, phlaremodel.Labels{}, 4000, "profile-d", 60)
+
+	exemplars := builder.Build()
+	require.Len(t, exemplars, 4)
+
+	assert.Equal(t, "profile-a", exemplars[0].ProfileId)
+	assert.Equal(t, int64(30), exemplars[0].Value)
+	assert.Equal(t, []*typesv1.LabelPair(subset), exemplars[0].Labels)
+
+	assert.Equal(t, "profile-b", exemplars[1].ProfileId)
+	assert.Equal(t, int64(70), exemplars[1].Value)
+	assert.Nil(t, exemplars[1].Labels)
+
+	assert.Equal(t, "profile-c", exemplars[2].ProfileId)
+	assert.Equal(t, int64(50), exemplars[2].Value)
+	assert.Equal(t, []*typesv1.LabelPair(shared), exemplars[2].Labels)
+
+	assert.Equal(t, "profile-d", exemplars[3].ProfileId)
+	assert.Equal(t, int64(60), exemplars[3].Value)
+	assert.Nil(t, exemplars[3].Labels)
+}
+
 func TestExemplarBuilder_DifferentProfileIDsNotSummed(t *testing.T) {
 	builder := newExemplarBuilder()
 
