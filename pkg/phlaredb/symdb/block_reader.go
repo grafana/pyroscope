@@ -38,9 +38,15 @@ type Reader struct {
 	parquetFiles *parquetFiles
 
 	prefetchSize uint64
+	indexOffset  *uint64
 }
 
 type Option func(*Reader)
+
+// WithIndexOffset specifies the exact section-relative start of the V3 index.
+func WithIndexOffset(offset uint64) Option {
+	return func(r *Reader) { r.indexOffset = &offset }
+}
 
 func WithPrefetchSize(size uint64) Option {
 	return func(r *Reader) {
@@ -62,7 +68,16 @@ func OpenObject(ctx context.Context, b objstore.BucketReader, name string, offse
 	}
 
 	var err error
-	if r.prefetchSize > 0 {
+	if r.indexOffset != nil {
+		if r.file.SizeBytes < uint64(FooterSize) || *r.indexOffset > r.file.SizeBytes-uint64(FooterSize) {
+			return nil, fmt.Errorf("invalid symbols index offset %d for size %d", *r.indexOffset, r.file.SizeBytes)
+		}
+		var missing uint64
+		missing, err = r.prefetchIndex(ctx, r.file.SizeBytes-*r.indexOffset)
+		if err == nil && (missing != 0 || r.footer.IndexOffset != *r.indexOffset) {
+			err = fmt.Errorf("symbols index offset does not match metadata")
+		}
+	} else if r.prefetchSize > 0 {
 		err = r.openIndexWithPrefetch(ctx)
 	} else {
 		err = r.openIndex(ctx)
@@ -79,13 +94,16 @@ func OpenObject(ctx context.Context, b objstore.BucketReader, name string, offse
 }
 
 func (r *Reader) openIndexWithPrefetch(ctx context.Context) (err error) {
+	if r.file.SizeBytes < uint64(FooterSize) {
+		return fmt.Errorf("symbols section is smaller than its footer")
+	}
 	prefetchSize := r.prefetchSize
 	if prefetchSize > r.file.SizeBytes {
 		prefetchSize = r.file.SizeBytes
 	}
 	n, err := r.prefetchIndex(ctx, prefetchSize)
 	if err == nil && n != 0 {
-		_, err = r.prefetchIndex(ctx, prefetchSize)
+		_, err = r.prefetchIndex(ctx, n)
 	}
 	return err
 }
@@ -103,6 +121,9 @@ func (r *Reader) prefetchIndex(ctx context.Context, size uint64) (n uint64, err 
 	footerOffset := size - uint64(FooterSize)
 	if err = r.footer.UnmarshalBinary(buf.B[footerOffset:]); err != nil {
 		return 0, fmt.Errorf("unmarshaling footer: %w", err)
+	}
+	if r.footer.IndexOffset > r.file.SizeBytes-uint64(FooterSize) {
+		return 0, fmt.Errorf("symbols index offset exceeds section size")
 	}
 	if prefetchOffset > (r.footer.IndexOffset) {
 		return r.file.SizeBytes - r.footer.IndexOffset, nil

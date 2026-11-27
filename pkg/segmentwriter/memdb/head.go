@@ -21,10 +21,12 @@ import (
 )
 
 type FlushedHead struct {
-	Index    []byte
-	Profiles []byte
-	Symbols  []byte
-	Meta     struct {
+	Index              []byte
+	Profiles           []byte
+	ProfilesFooterSize uint64
+	SymbolsIndexOffset uint64
+	Symbols            []byte
+	Meta               struct {
 		ProfileTypeNames []string
 		MinTimeNanos     int64
 		MaxTimeNanos     int64
@@ -176,6 +178,9 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 		return nil, err
 	}
 	res.Symbols = symbolsBuffer.Bytes()
+	if res.SymbolsIndexOffset, err = symdb.IndexOffset(res.Symbols); err != nil {
+		return nil, err
+	}
 
 	if res.Meta.ProfileTypeNames, err = h.profiles.profileTypeNames(); err != nil {
 		return nil, fmt.Errorf("failed to get profile type names: %w", err)
@@ -186,7 +191,7 @@ func (h *Head) flush(ctx context.Context) (*FlushedHead, error) {
 	}
 	res.Meta.NumProfiles = uint64(len(profiles))
 
-	if res.Profiles, err = WriteProfiles(h.metrics, profiles); err != nil {
+	if res.Profiles, res.ProfilesFooterSize, err = writeProfiles(h.metrics, profiles); err != nil {
 		return nil, fmt.Errorf("failed to write profiles parquet: %w", err)
 	}
 	return res, nil

@@ -425,8 +425,10 @@ func concatSegmentHead(f *datasetFlush, w *writerOffset, s *metadata.StringTable
 		//  - 0: profiles.parquet
 		//  - 1: index.tsdb
 		//  - 2: symbols.symdb
-		TableOfContents: offsets,
-		Labels:          nil,
+		TableOfContents:    offsets,
+		ProfilesFooterSize: f.flushed.ProfilesFooterSize,
+		SymbolsIndexOffset: &f.flushed.SymbolsIndexOffset,
+		Labels:             nil,
 	}
 
 	lb := metadata.NewLabelBuilder(s)
