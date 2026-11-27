@@ -154,11 +154,12 @@ type Dataset struct {
 	meta *metastorev1.Dataset
 	obj  *Object
 
-	refs   refctr.Counter
-	buf    *bufferpool.Buffer
-	bufOff int64
-	region *sharedRegion
-	err    error
+	refs           refctr.Counter
+	buf            *bufferpool.Buffer
+	bufOff         int64
+	region         *sharedRegion
+	regionAcquired bool
+	err            error
 
 	tsdb     *tsdbBuffer
 	symbols  *symdb.Reader
@@ -329,15 +330,10 @@ func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 	if err = s.obj.Open(ctx); err != nil {
 		return fmt.Errorf("failed to open object: %w", err)
 	}
-	var releaseRegion bool
 	defer func() {
 		// Close the object here because the dataset won't be
 		// closed if it fails to open.
 		if err != nil {
-			if !releaseRegion {
-				// Prevent closeErr from decrementing a region we haven't acquired.
-				s.region = nil
-			}
 			_ = s.closeErr(err)
 		}
 	}()
@@ -346,7 +342,7 @@ func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 			if err = s.region.fetch(ctx, s.obj.path, s.obj.storage); err != nil {
 				return fmt.Errorf("loading coalesced dataset region into memory: %w", err)
 			}
-			releaseRegion = true
+			s.regionAcquired = true
 		} else if off, size := s.neededSpan(sections); size > 0 && size < int64(s.memSize) {
 			s.buf = bufferpool.GetBuffer(int(size))
 			s.bufOff = off
@@ -387,10 +383,11 @@ func (s *Dataset) closeErr(err error) error {
 		bufferpool.Put(s.buf)
 		s.buf = nil
 	}
-	if s.region != nil {
+	if s.regionAcquired {
 		s.region.release()
-		s.region = nil
+		s.regionAcquired = false
 	}
+	s.region = nil
 	var merr multierror.MultiError
 	if s.tsdb != nil {
 		merr.Add(s.tsdb.Close())
