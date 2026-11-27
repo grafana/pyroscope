@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/block/metadata"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/objstore"
+	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/tsdb/index"
 	memindex "github.com/grafana/pyroscope/v2/pkg/segmentwriter/memdb/index"
@@ -442,6 +443,14 @@ func (m *datasetCompaction) compact(ctx context.Context, w *Writer) (err error) 
 		return fmt.Errorf("failed to read symbols: %w", err)
 	}
 
+	if m.meta.ProfilesFooterSize, err = phlareparquet.FooterSize(m.profilesWriter.File()); err != nil {
+		return err
+	}
+	symbolsIndexOffset, err := symdb.IndexOffset(m.symbolsRewriter.buf.Bytes())
+	if err != nil {
+		return err
+	}
+	m.meta.SymbolsIndexOffset = &symbolsIndexOffset
 	m.meta.Size = w.Offset() - off
 	m.meta.Labels = m.labels.Build()
 	return nil

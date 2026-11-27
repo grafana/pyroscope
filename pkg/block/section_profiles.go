@@ -27,6 +27,13 @@ import (
 func openProfileTable(_ context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionProfiles)
 	size := s.sectionSize(SectionProfiles)
+	prefetchSize := estimateFooterSize(size)
+	if n := s.meta.ProfilesFooterSize; n != 0 {
+		if size < 8 || n < 8 || n > uint64(size) {
+			return fmt.Errorf("invalid profiles footer size %d for section size %d", n, size)
+		}
+		prefetchSize = int64(n)
+	}
 	if buf := s.inMemoryBuffer(); buf != nil {
 		offset -= int64(s.offset())
 		s.profiles, err = openParquetFile(
@@ -38,16 +45,16 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 	} else if s.obj.local != nil {
 		// A downloaded object is read from local disk, where read-ahead
 		// and large buffers only hold more memory per column.
-		s.profiles, err = openParquetFile(
+		s.profiles, err = openParquetFileWithFooter(
 			s.obj.storage, s.obj.path, offset, size,
-			estimateFooterSize(size),
+			prefetchSize, s.meta.ProfilesFooterSize != 0,
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(localReadBufferSize))
 	} else {
-		s.profiles, err = openParquetFile(
+		s.profiles, err = openParquetFileWithFooter(
 			s.obj.storage, s.obj.path, offset, size,
-			estimateFooterSize(size),
+			prefetchSize, s.meta.ProfilesFooterSize != 0,
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeAsync),
 			parquet.ReadBufferSize(estimateReadBufferSize(size)))
@@ -76,6 +83,10 @@ func openParquetFile(
 	offset, size, footerSize int64,
 	options ...parquet.FileOption,
 ) (p *ParquetFile, err error) {
+	return openParquetFileWithFooter(storage, path, offset, size, footerSize, false, options...)
+}
+
+func openParquetFileWithFooter(storage objstore.BucketReader, path string, offset, size, footerSize int64, exact bool, options ...parquet.FileOption) (p *ParquetFile, err error) {
 	// The context is used for GetRange calls and should not
 	// be canceled until the parquet file is closed.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -98,6 +109,11 @@ func openParquetFile(
 		return nil, fmt.Errorf("creating object reader: %w", err)
 	}
 
+	defer func() {
+		if err != nil {
+			_ = r.Close()
+		}
+	}()
 	var ra io.ReaderAt
 	ra = io.NewSectionReader(r, offset, size)
 	if footerSize > 0 {
@@ -106,7 +122,7 @@ func openParquetFile(
 			// Footer is not used after the file was opened.
 			bufferpool.Put(buf)
 		}()
-		if err = p.fetchFooter(ctx, buf, footerSize); err != nil {
+		if err = p.fetchFooter(ctx, buf, footerSize, exact); err != nil {
 			return nil, err
 		}
 		rf := newReaderWithFooter(ra, buf.B, size)
@@ -135,7 +151,7 @@ func footerSize(buf []byte) int64 {
 	return s
 }
 
-func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, estimatedSize int64) error {
+func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, estimatedSize int64, exact bool) error {
 	if f.size < 8 {
 		return fmt.Errorf("file size is too small to contain a footer")
 	}
@@ -161,6 +177,9 @@ func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, e
 		return nil
 	}
 
+	if exact {
+		return fmt.Errorf("profiles footer size does not contain file metadata")
+	}
 	// reset buffer
 	buf.B = buf.B[:0]
 

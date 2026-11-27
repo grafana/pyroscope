@@ -8,9 +8,11 @@
     "min_time": 1721060010831,
     "max_time": 1721060035611,
     "metadata_offset": 163604,
-    "size": 163931,
+    "size": 163952,
     "datasets": [
       {
+        "profiles_footer_size": 3780,
+        "symbols_index_offset": 26671,
         "tenant": 1,
         "name": 4,
         "min_time": 1721060010831,
@@ -23,6 +25,8 @@
         "size": 36467
       },
       {
+        "profiles_footer_size": 3782,
+        "symbols_index_offset": 62056,
         "tenant": 1,
         "name": 3,
         "min_time": 1721060015603,
@@ -35,6 +39,8 @@
         "size": 78336
       },
       {
+        "profiles_footer_size": 3780,
+        "symbols_index_offset": 28272,
         "tenant": 1,
         "name": 2,
         "min_time": 1721060013534,

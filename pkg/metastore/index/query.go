@@ -227,13 +227,15 @@ func cloneBlockMetadataForQuery(b *metastorev1.BlockMeta) *metastorev1.BlockMeta
 
 func cloneDatasetMetadataForQuery(ds *metastorev1.Dataset) *metastorev1.Dataset {
 	return &metastorev1.Dataset{
-		Format:          ds.Format,
-		Tenant:          ds.Tenant,
-		Name:            ds.Name,
-		MinTime:         ds.MinTime,
-		MaxTime:         ds.MaxTime,
-		TableOfContents: ds.TableOfContents,
-		Size:            ds.Size,
+		Format:             ds.Format,
+		Tenant:             ds.Tenant,
+		Name:               ds.Name,
+		MinTime:            ds.MinTime,
+		MaxTime:            ds.MaxTime,
+		TableOfContents:    ds.TableOfContents,
+		ProfilesFooterSize: ds.ProfilesFooterSize,
+		SymbolsIndexOffset: ds.SymbolsIndexOffset,
+		Size:               ds.Size,
 		//	Labels:          ds.Labels,
 	}
 }

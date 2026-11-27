@@ -37,6 +37,13 @@ message BlockMeta {
 message Dataset {
   uint32 format = 9;
 
+  // Exact trailing Parquet bytes: column indexes, offset indexes, metadata,
+  // and the 8-byte trailer. Zero means unavailable (legacy datasets).
+  uint64 profiles_footer_size = 10;
+
+  // SymDB index offset relative to the symbols section.
+  optional uint64 symbols_index_offset = 11;
+
   int32 tenant = 1;
   int32 name = 2;
   int64 min_time = 3;

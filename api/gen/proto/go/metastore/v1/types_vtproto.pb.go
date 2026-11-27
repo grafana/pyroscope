@@ -63,11 +63,16 @@ func (m *Dataset) CloneVT() *Dataset {
 	}
 	r := new(Dataset)
 	r.Format = m.Format
+	r.ProfilesFooterSize = m.ProfilesFooterSize
 	r.Tenant = m.Tenant
 	r.Name = m.Name
 	r.MinTime = m.MinTime
 	r.MaxTime = m.MaxTime
 	r.Size = m.Size
+	if rhs := m.SymbolsIndexOffset; rhs != nil {
+		tmpVal := *rhs
+		r.SymbolsIndexOffset = &tmpVal
+	}
 	if rhs := m.TableOfContents; rhs != nil {
 		tmpContainer := make([]uint64, len(rhs))
 		copy(tmpContainer, rhs)
@@ -224,6 +229,12 @@ func (this *Dataset) EqualVT(that *Dataset) bool {
 		}
 	}
 	if this.Format != that.Format {
+		return false
+	}
+	if this.ProfilesFooterSize != that.ProfilesFooterSize {
+		return false
+	}
+	if p, q := this.SymbolsIndexOffset, that.SymbolsIndexOffset; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -402,6 +413,16 @@ func (m *Dataset) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.SymbolsIndexOffset != nil {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(*m.SymbolsIndexOffset))
+		i--
+		dAtA[i] = 0x58
+	}
+	if m.ProfilesFooterSize != 0 {
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.ProfilesFooterSize))
+		i--
+		dAtA[i] = 0x50
 	}
 	if m.Format != 0 {
 		i = protohelpers.EncodeVarint(dAtA, i, uint64(m.Format))
@@ -621,6 +642,12 @@ func (m *Dataset) SizeVT() (n int) {
 	}
 	if m.Format != 0 {
 		n += 1 + protohelpers.SizeOfVarint(uint64(m.Format))
+	}
+	if m.ProfilesFooterSize != 0 {
+		n += 1 + protohelpers.SizeOfVarint(uint64(m.ProfilesFooterSize))
+	}
+	if m.SymbolsIndexOffset != nil {
+		n += 1 + protohelpers.SizeOfVarint(uint64(*m.SymbolsIndexOffset))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1264,6 +1291,45 @@ func (m *Dataset) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfilesFooterSize", wireType)
+			}
+			m.ProfilesFooterSize = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ProfilesFooterSize |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SymbolsIndexOffset", wireType)
+			}
+			var v uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.SymbolsIndexOffset = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

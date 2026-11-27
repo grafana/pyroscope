@@ -168,12 +168,17 @@ func (x *BlockMeta) GetStringTable() []string {
 }
 
 type Dataset struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Format  uint32                 `protobuf:"varint,9,opt,name=format,proto3" json:"format,omitempty"`
-	Tenant  int32                  `protobuf:"varint,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	Name    int32                  `protobuf:"varint,2,opt,name=name,proto3" json:"name,omitempty"`
-	MinTime int64                  `protobuf:"varint,3,opt,name=min_time,json=minTime,proto3" json:"min_time,omitempty"`
-	MaxTime int64                  `protobuf:"varint,4,opt,name=max_time,json=maxTime,proto3" json:"max_time,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Format uint32                 `protobuf:"varint,9,opt,name=format,proto3" json:"format,omitempty"`
+	// Exact trailing Parquet bytes: column indexes, offset indexes, metadata,
+	// and the 8-byte trailer. Zero means unavailable (legacy datasets).
+	ProfilesFooterSize uint64 `protobuf:"varint,10,opt,name=profiles_footer_size,json=profilesFooterSize,proto3" json:"profiles_footer_size,omitempty"`
+	// SymDB index offset relative to the symbols section.
+	SymbolsIndexOffset *uint64 `protobuf:"varint,11,opt,name=symbols_index_offset,json=symbolsIndexOffset,proto3,oneof" json:"symbols_index_offset,omitempty"`
+	Tenant             int32   `protobuf:"varint,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name               int32   `protobuf:"varint,2,opt,name=name,proto3" json:"name,omitempty"`
+	MinTime            int64   `protobuf:"varint,3,opt,name=min_time,json=minTime,proto3" json:"min_time,omitempty"`
+	MaxTime            int64   `protobuf:"varint,4,opt,name=max_time,json=maxTime,proto3" json:"max_time,omitempty"`
 	// Table of contents lists data sections within the tenant
 	// service region. The offsets are absolute.
 	//
@@ -279,6 +284,20 @@ func (*Dataset) Descriptor() ([]byte, []int) {
 func (x *Dataset) GetFormat() uint32 {
 	if x != nil {
 		return x.Format
+	}
+	return 0
+}
+
+func (x *Dataset) GetProfilesFooterSize() uint64 {
+	if x != nil {
+		return x.ProfilesFooterSize
+	}
+	return 0
+}
+
+func (x *Dataset) GetSymbolsIndexOffset() uint64 {
+	if x != nil && x.SymbolsIndexOffset != nil {
+		return *x.SymbolsIndexOffset
 	}
 	return 0
 }
@@ -411,16 +430,20 @@ const file_metastore_v1_types_proto_rawDesc = "" +
 	"\x04size\x18\t \x01(\x04R\x04size\x121\n" +
 	"\bdatasets\x18\n" +
 	" \x03(\v2\x15.metastore.v1.DatasetR\bdatasets\x12!\n" +
-	"\fstring_table\x18\v \x03(\tR\vstringTable\"\xe1\x01\n" +
+	"\fstring_table\x18\v \x03(\tR\vstringTable\"\xe3\x02\n" +
 	"\aDataset\x12\x16\n" +
-	"\x06format\x18\t \x01(\rR\x06format\x12\x16\n" +
+	"\x06format\x18\t \x01(\rR\x06format\x120\n" +
+	"\x14profiles_footer_size\x18\n" +
+	" \x01(\x04R\x12profilesFooterSize\x125\n" +
+	"\x14symbols_index_offset\x18\v \x01(\x04H\x00R\x12symbolsIndexOffset\x88\x01\x01\x12\x16\n" +
 	"\x06tenant\x18\x01 \x01(\x05R\x06tenant\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\x05R\x04name\x12\x19\n" +
 	"\bmin_time\x18\x03 \x01(\x03R\aminTime\x12\x19\n" +
 	"\bmax_time\x18\x04 \x01(\x03R\amaxTime\x12*\n" +
 	"\x11table_of_contents\x18\x05 \x03(\x04R\x0ftableOfContents\x12\x12\n" +
 	"\x04size\x18\x06 \x01(\x04R\x04size\x12\x16\n" +
-	"\x06labels\x18\b \x03(\x05R\x06labelsJ\x04\b\a\x10\b\"Q\n" +
+	"\x06labels\x18\b \x03(\x05R\x06labelsB\x17\n" +
+	"\x15_symbols_index_offsetJ\x04\b\a\x10\b\"Q\n" +
 	"\tBlockList\x12\x16\n" +
 	"\x06tenant\x18\x01 \x01(\tR\x06tenant\x12\x14\n" +
 	"\x05shard\x18\x02 \x01(\rR\x05shard\x12\x16\n" +
@@ -460,6 +483,7 @@ func file_metastore_v1_types_proto_init() {
 	if File_metastore_v1_types_proto != nil {
 		return
 	}
+	file_metastore_v1_types_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
