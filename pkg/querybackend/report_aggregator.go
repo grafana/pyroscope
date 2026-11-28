@@ -123,36 +123,42 @@ func (ra *reportAggregator) aggregateReport(r *queryv1.Report) (err error) {
 		}
 
 		// Some ReportTypes need to call the aggregator for correctness even when
-		// there is only single instance, in that case call the aggregator right
-		// away and mark the report type appropriately in the staged map.
-		err = ra.aggregateReportNoCheck(r)
+		// there is only single instance, in that case initialize the aggregator
+		// under lock and run aggregate() outside the staging mutex.
 		ra.staged[r.ReportType] = nil
+		a, initErr := ra.getOrCreateAggregatorLocked(r)
 		ra.sm.Unlock()
-		return err
+		if initErr != nil {
+			return initErr
+		}
+		return a.aggregate(r)
 	}
 	// Found a staged report of the same type.
-	if v != nil {
-		// It should be aggregated and removed from the table.
-		err = ra.aggregateReportNoCheck(v)
-		ra.staged[r.ReportType] = nil
-	}
+	ra.staged[r.ReportType] = nil
+	a, initErr := ra.getOrCreateAggregatorLocked(r)
 	ra.sm.Unlock()
-	if err != nil {
-		return err
+	if initErr != nil {
+		return initErr
 	}
-	return ra.aggregateReportNoCheck(r)
+	if v != nil {
+		if err = a.aggregate(v); err != nil {
+			return err
+		}
+	}
+	return a.aggregate(r)
 }
 
-func (ra *reportAggregator) aggregateReportNoCheck(report *queryv1.Report) (err error) {
+func (ra *reportAggregator) getOrCreateAggregatorLocked(report *queryv1.Report) (aggregator, error) {
 	a, ok := ra.aggregators[report.ReportType]
 	if !ok {
+		var err error
 		a, err = getAggregator(ra.request, report)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ra.aggregators[report.ReportType] = a
 	}
-	return a.aggregate(report)
+	return a, nil
 }
 
 func (ra *reportAggregator) response() *queryv1.InvokeResponse {

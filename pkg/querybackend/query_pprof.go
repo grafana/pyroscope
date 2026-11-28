@@ -37,25 +37,6 @@ func init() {
 func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	otelSpan := trace.SpanFromContext(q.ctx)
 
-	profileOpts := []profileIteratorOption{withExcludeSampled()}
-	if len(query.Pprof.ProfileIdSelector) > 0 {
-		opt, err := withProfileIDSelector(query.Pprof.ProfileIdSelector...)
-		if err != nil {
-			return nil, err
-		}
-		profileOpts = append(profileOpts, opt)
-		otelSpan.SetAttributes(attribute.Int("profile_id_selector.count", len(query.Pprof.ProfileIdSelector)))
-		if len(query.Pprof.ProfileIdSelector) <= maxProfileIDsToLog {
-			otelSpan.SetAttributes(attribute.String("profile_ids", strings.Join(query.Pprof.ProfileIdSelector, ",")))
-		}
-	}
-
-	entries, err := profileEntryIterator(q, profileOpts...)
-	if err != nil {
-		return nil, err
-	}
-	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
-
 	spanSelector, err := phlaremodel.NewSpanSelector(query.Pprof.SpanSelector)
 	if err != nil {
 		return nil, err
@@ -95,6 +76,25 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		}
 		indices = append(indices, columns.TraceID.ColumnIndex)
 	}
+
+	profileOpts := []profileIteratorOption{withExcludeSampled(), withPrefetchColumns(indices...)}
+	if len(query.Pprof.ProfileIdSelector) > 0 {
+		opt, err := withProfileIDSelector(query.Pprof.ProfileIdSelector...)
+		if err != nil {
+			return nil, err
+		}
+		profileOpts = append(profileOpts, opt)
+		otelSpan.SetAttributes(attribute.Int("profile_id_selector.count", len(query.Pprof.ProfileIdSelector)))
+		if len(query.Pprof.ProfileIdSelector) <= maxProfileIDsToLog {
+			otelSpan.SetAttributes(attribute.String("profile_ids", strings.Join(query.Pprof.ProfileIdSelector, ",")))
+		}
+	}
+
+	entries, err := profileEntryIterator(q, profileOpts...)
+	if err != nil {
+		return nil, err
+	}
+	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
 	profiles := parquetquery.NewRepeatedRowIterator(q.ctx, entries, q.ds.Profiles().RowGroups(), indices...)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")

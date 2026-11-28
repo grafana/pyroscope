@@ -22,9 +22,8 @@ func openTSDB(ctx context.Context, s *Dataset) (err error) {
 			_ = s.tsdb.Close()
 		}
 	}()
-	if buf := s.inMemoryBuffer(); buf != nil {
-		offset -= int64(s.offset())
-		s.tsdb.index, err = index.NewReader(index.RealByteSlice(buf[offset : offset+size]))
+	if buf, relOff := s.inMemorySection(SectionTSDB); buf != nil {
+		s.tsdb.index, err = index.NewReader(index.RealByteSlice(buf[relOff : relOff+size]))
 	} else {
 		s.tsdb.buf = bufferpool.GetBuffer(int(size))
 		if err = objstore.ReadRange(ctx, s.tsdb.buf, s.obj.path, s.obj.storage, offset, size); err == nil {

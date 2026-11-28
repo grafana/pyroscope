@@ -27,10 +27,9 @@ import (
 func openProfileTable(_ context.Context, s *Dataset) (err error) {
 	offset := s.sectionOffset(SectionProfiles)
 	size := s.sectionSize(SectionProfiles)
-	if buf := s.inMemoryBuffer(); buf != nil {
-		offset -= int64(s.offset())
+	if buf, relOff := s.inMemorySection(SectionProfiles); buf != nil {
 		s.profiles, err = openParquetFile(
-			s.inMemoryBucket(buf), s.obj.path, offset, size,
+			s.inMemoryBucket(buf), s.obj.path, relOff, size,
 			0, // Do not prefetch the footer.
 			parquet.SkipBloomFilters(true),
 			parquet.FileReadMode(parquet.ReadModeSync),
@@ -45,11 +44,11 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(localReadBufferSize))
 	} else {
-		s.profiles, err = openParquetFile(
+		s.profiles, err = openParquetFileWithCoalescer(
 			s.obj.storage, s.obj.path, offset, size,
 			estimateFooterSize(size),
 			parquet.SkipBloomFilters(true),
-			parquet.FileReadMode(parquet.ReadModeAsync),
+			parquet.FileReadMode(parquet.ReadModeSync),
 			parquet.ReadBufferSize(estimateReadBufferSize(size)))
 	}
 	if err != nil {
@@ -61,8 +60,9 @@ func openProfileTable(_ context.Context, s *Dataset) (err error) {
 type ParquetFile struct {
 	*parquet.File
 
-	reader objstore.ReaderAtCloser
-	cancel context.CancelFunc
+	reader    objstore.ReaderAtCloser
+	coalescer *coalescedSectionReader
+	cancel    context.CancelFunc
 
 	storage objstore.BucketReader
 	path    string
@@ -74,6 +74,25 @@ func openParquetFile(
 	storage objstore.BucketReader,
 	path string,
 	offset, size, footerSize int64,
+	options ...parquet.FileOption,
+) (*ParquetFile, error) {
+	return openParquetFileInternal(storage, path, offset, size, footerSize, false, options...)
+}
+
+func openParquetFileWithCoalescer(
+	storage objstore.BucketReader,
+	path string,
+	offset, size, footerSize int64,
+	options ...parquet.FileOption,
+) (*ParquetFile, error) {
+	return openParquetFileInternal(storage, path, offset, size, footerSize, true, options...)
+}
+
+func openParquetFileInternal(
+	storage objstore.BucketReader,
+	path string,
+	offset, size, footerSize int64,
+	enableCoalescer bool,
 	options ...parquet.FileOption,
 ) (p *ParquetFile, err error) {
 	// The context is used for GetRange calls and should not
@@ -98,8 +117,11 @@ func openParquetFile(
 		return nil, fmt.Errorf("creating object reader: %w", err)
 	}
 
-	var ra io.ReaderAt
-	ra = io.NewSectionReader(r, offset, size)
+	var ra io.ReaderAt = io.NewSectionReader(r, offset, size)
+	if enableCoalescer {
+		p.coalescer = newCoalescedSectionReader(ra, storage, path, offset)
+		ra = p.coalescer
+	}
 	if footerSize > 0 {
 		buf := bufferpool.GetBuffer(int(footerSize))
 		defer func() {
@@ -116,6 +138,9 @@ func openParquetFile(
 
 	f, err := parquet.OpenFile(ra, size, options...)
 	if err != nil {
+		if p.coalescer != nil {
+			p.coalescer.close()
+		}
 		return nil, err
 	}
 
@@ -161,16 +186,19 @@ func (f *ParquetFile) fetchFooter(ctx context.Context, buf *bufferpool.Buffer, e
 		return nil
 	}
 
-	// reset buffer
+	// The footer was larger than estimatedSize; fetch an expanded tail so
+	// ColumnIndex and OffsetIndex immediately preceding the footer are also cached.
+	expanded := min(f.size, max(s, s+estimatedSize))
 	buf.B = buf.B[:0]
-
-	// Fetch exact footer to buf for sure.
-	return objstore.ReadRange(ctx, buf, f.path, f.storage, f.off+f.size-s, s)
+	return objstore.ReadRange(ctx, buf, f.path, f.storage, f.off+f.size-expanded, expanded)
 }
 
 func (f *ParquetFile) Close() error {
 	if f.cancel != nil {
 		f.cancel()
+	}
+	if f.coalescer != nil {
+		f.coalescer.close()
 	}
 	if f.reader != nil {
 		return f.reader.Close()

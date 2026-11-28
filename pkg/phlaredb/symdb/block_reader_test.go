@@ -3,7 +3,9 @@ package symdb
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -220,4 +222,45 @@ func Benchmark_Reader_ResolvePprof(b *testing.B) {
 
 	b.ReportMetric(float64(bs.getRangeCount.Load())/float64(b.N), "get_range_calls/op")
 	b.ReportMetric(float64(bs.getRangeSize.Load())/float64(b.N), "get_range_bytes/op")
+}
+
+type countingSymdbBucket struct {
+	objstore.Bucket
+	getRanges atomic.Int64
+}
+
+func (c *countingSymdbBucket) GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error) {
+	c.getRanges.Add(1)
+	return c.Bucket.GetRange(ctx, name, off, length)
+}
+
+func Test_Reader_OpenObject_v3_CoalescedPartitionFetchAndPrefetchFallback(t *testing.T) {
+	corpus, err := os.ReadFile("testdata/symbols/v3/symbols.symdb")
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	mem := objstore.NewInMemBucket()
+	require.NoError(t, mem.Upload(ctx, DefaultFileName, bytes.NewReader(corpus)))
+	counting := &countingSymdbBucket{Bucket: mem}
+	bucket := pystore.NewBucket(counting)
+
+	// Force openIndexWithPrefetch to miss on the initial tiny 8-byte (clamped to FooterSize)
+	// prefetch and verify the retry uses the exact returned index+footer size (2 GetRanges total).
+	r, err := OpenObject(ctx, bucket, DefaultFileName, 0, int64(len(corpus)), WithPrefetchSize(uint64(FooterSize)))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = r.Close() })
+	require.Equal(t, int64(2), counting.getRanges.Load())
+
+	// Fetching a V3 partition coalesces stacktraces + 4 symbol tables into a single GetRange.
+	counting.getRanges.Store(0)
+	res := NewResolver(ctx, r)
+	defer res.Release()
+	res.AddSamples(0, schemav1.Samples{
+		StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+		Values:        []uint64{1, 1, 1, 1, 1},
+	})
+	tree, err := res.Tree()
+	require.NoError(t, err)
+	require.NotEmpty(t, tree.String())
+	require.Equal(t, int64(1), counting.getRanges.Load())
 }

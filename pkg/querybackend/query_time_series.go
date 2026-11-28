@@ -66,7 +66,18 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 		attribute.String("exemplars.type", exemplarType.String()),
 	)
 
-	opts := []profileIteratorOption{withFetchPartition(false)}
+	column, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), strings.Split("TotalValue", "."))
+	if err != nil {
+		return nil, err
+	}
+
+	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
+	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
+
+	opts := []profileIteratorOption{
+		withFetchPartition(false),
+		withPrefetchColumns(column.ColumnIndex, annotationKeysColumn.ColumnIndex, annotationValuesColumn.ColumnIndex),
+	}
 	if includeExemplars {
 		opts = append(opts, withAllLabels(), withFetchProfileIDs(true))
 	} else {
@@ -81,14 +92,6 @@ func executeTimeSeriesQuery(q *queryContext, groupBy []string, exemplarType type
 		return nil, err
 	}
 	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
-
-	column, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), strings.Split("TotalValue", "."))
-	if err != nil {
-		return nil, err
-	}
-
-	annotationKeysColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationKeyColumnPath)
-	annotationValuesColumn, _ := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), schemav1.AnnotationValueColumnPath)
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(q.ctx, entries, q.ds.Profiles().RowGroups(), bigBatchSize, column.ColumnIndex, annotationKeysColumn.ColumnIndex, annotationValuesColumn.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, rows, "failed to close column iterator")

@@ -35,17 +35,24 @@ func init() {
 	)
 }
 
-func rowsIndividual(q *queryContext, b *heatmap.Builder) error {
-	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withFetchProfileIDs(true), withExcludeSampled())
-	if err != nil {
-		return err
-	}
-	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
-
+func rowsIndividual(q *queryContext, b *heatmap.Builder) (err error) {
 	totalValue, err := schemav1.ResolveColumnByPath(q.ds.Profiles().Schema(), strings.Split("TotalValue", "."))
 	if err != nil {
 		return err
 	}
+
+	entries, err := profileEntryIterator(
+		q,
+		withAllLabels(),
+		withFetchPartition(false),
+		withFetchProfileIDs(true),
+		withExcludeSampled(),
+		withPrefetchColumns(totalValue.ColumnIndex),
+	)
+	if err != nil {
+		return err
+	}
+	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,
@@ -90,13 +97,6 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 	if len(ranges) == 0 {
 		return nil
 	}
-	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withExcludeSampled())
-	if err != nil {
-		return err
-	}
-	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
-	filtered := &spanProfileIterator{Iterator: entries, ranges: ranges}
-
 	indices := []int{
 		columns.SpanID.ColumnIndex,
 		columns.Value.ColumnIndex,
@@ -104,6 +104,13 @@ func rowsSpans(q *queryContext, b *heatmap.Builder) (err error) {
 	if columns.HasTraceID() {
 		indices = append(indices, columns.TraceID.ColumnIndex)
 	}
+
+	entries, err := profileEntryIterator(q, withAllLabels(), withFetchPartition(false), withExcludeSampled(), withPrefetchColumns(indices...))
+	if err != nil {
+		return err
+	}
+	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
+	filtered := &spanProfileIterator{Iterator: entries, ranges: ranges}
 
 	rows := parquetquery.NewRepeatedRowIteratorBatchSize(
 		q.ctx,

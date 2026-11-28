@@ -119,6 +119,34 @@ func (sc Section) open(ctx context.Context, s *Dataset) (err error) {
 	}
 }
 
+type sharedRegion struct {
+	refs refctr.Counter
+	buf  *bufferpool.Buffer
+	off  int64
+	size int64
+}
+
+func (r *sharedRegion) fetch(ctx context.Context, path string, storage objstore.BucketReader) error {
+	return r.refs.IncErr(func() error {
+		buf := bufferpool.GetBuffer(int(r.size))
+		if err := objstore.ReadRange(ctx, buf, path, storage, r.off, r.size); err != nil {
+			bufferpool.Put(buf)
+			return err
+		}
+		r.buf = buf
+		return nil
+	})
+}
+
+func (r *sharedRegion) release() {
+	r.refs.Dec(func() {
+		if r.buf != nil {
+			bufferpool.Put(r.buf)
+			r.buf = nil
+		}
+	})
+}
+
 type Dataset struct {
 	tenant string
 	name   string
@@ -126,9 +154,12 @@ type Dataset struct {
 	meta *metastorev1.Dataset
 	obj  *Object
 
-	refs refctr.Counter
-	buf  *bufferpool.Buffer
-	err  error
+	refs           refctr.Counter
+	buf            *bufferpool.Buffer
+	bufOff         int64
+	region         *sharedRegion
+	regionAcquired bool
+	err            error
 
 	tsdb     *tsdbBuffer
 	symbols  *symdb.Reader
@@ -137,14 +168,135 @@ type Dataset struct {
 	memSize int
 }
 
-func NewDataset(meta *metastorev1.Dataset, obj *Object) *Dataset {
-	return &Dataset{
+func NewDataset(meta *metastorev1.Dataset, obj *Object, opts ...DatasetOption) *Dataset {
+	d := &Dataset{
 		tenant:  obj.meta.StringTable[meta.Tenant],
 		name:    obj.meta.StringTable[meta.Name],
 		meta:    meta,
 		obj:     obj,
 		memSize: DefaultTenantDatasetSizeLoadInMemory,
 	}
+	for _, opt := range opts {
+		opt(d)
+	}
+	return d
+}
+
+const (
+	smallDatasetCoalesceMaxGap   = 256 << 10
+	smallDatasetCoalesceMaxRange = 8 << 20
+)
+
+// NewCoalescedDatasets binds dataset metas to the object and groups nearby
+// small (< memSize) datasets into shared coalesced range reads covering only
+// the requested sections so that opening them issues one GetRange per run
+// rather than one GetRange per dataset.
+func NewCoalescedDatasets(metas []*metastorev1.Dataset, obj *Object, neededSections []Section, opts ...DatasetOption) []*Dataset {
+	datasets := make([]*Dataset, len(metas))
+	for i, m := range metas {
+		datasets[i] = NewDataset(m, obj, opts...)
+	}
+	if len(datasets) < 2 {
+		return datasets
+	}
+
+	type cand struct {
+		idx int
+		lo  int64
+		hi  int64
+	}
+	cands := make([]cand, 0, len(datasets))
+	for i, d := range datasets {
+		off, sz := d.neededSpan(neededSections)
+		if sz <= 0 || sz >= int64(d.memSize) {
+			continue
+		}
+		cands = append(cands, cand{idx: i, lo: off, hi: off + sz})
+	}
+	if len(cands) < 2 {
+		return datasets
+	}
+
+	// Datasets in metadata are typically already ordered by offset, but sort
+	// defensively in case a caller reordered them.
+	for i := 1; i < len(cands); i++ {
+		if cands[i].lo < cands[i-1].lo {
+			// Fallback insertion sort on small slice without extra import if needed,
+			// or slices.SortFunc in parquet_coalescer.go.
+			sortCands := func(s []cand) {
+				for a := 1; a < len(s); a++ {
+					for b := a; b > 0 && s[b].lo < s[b-1].lo; b-- {
+						s[b], s[b-1] = s[b-1], s[b]
+					}
+				}
+			}
+			sortCands(cands)
+			break
+		}
+	}
+
+	runStart := 0
+	flushRun := func(start, end int) {
+		if end-start < 2 {
+			return
+		}
+		lo := cands[start].lo
+		hi := cands[start].hi
+		for k := start + 1; k < end; k++ {
+			if cands[k].hi > hi {
+				hi = cands[k].hi
+			}
+		}
+		reg := &sharedRegion{off: lo, size: hi - lo}
+		for k := start; k < end; k++ {
+			datasets[cands[k].idx].region = reg
+		}
+	}
+
+	curLo := cands[0].lo
+	curHi := cands[0].hi
+	for i := 1; i < len(cands); i++ {
+		nextHi := max(curHi, cands[i].hi)
+		if cands[i].lo >= curLo && cands[i].lo-curHi <= smallDatasetCoalesceMaxGap && nextHi-curLo <= smallDatasetCoalesceMaxRange {
+			curHi = nextHi
+			continue
+		}
+		flushRun(runStart, i)
+		runStart = i
+		curLo = cands[i].lo
+		curHi = cands[i].hi
+	}
+	flushRun(runStart, len(cands))
+
+	return datasets
+}
+
+// neededSpan returns the minimal contiguous [offset, size) covering all
+// requested sections for this dataset.
+func (s *Dataset) neededSpan(needed []Section) (int64, int64) {
+	if len(s.meta.TableOfContents) == 0 || s.meta.Size == 0 {
+		return 0, 0
+	}
+	start := int64(s.offset())
+	if len(needed) == 0 || DatasetFormat(s.meta.Format) != DatasetFormat0 {
+		return start, int64(s.meta.Size)
+	}
+	minStart := start + int64(s.meta.Size)
+	var maxEnd int64
+	for _, sc := range needed {
+		off := s.sectionOffset(sc)
+		end := off + s.sectionSize(sc)
+		if off < minStart {
+			minStart = off
+		}
+		if end > maxEnd {
+			maxEnd = end
+		}
+	}
+	if maxEnd <= minStart {
+		return start, int64(s.meta.Size)
+	}
+	return minStart, maxEnd - minStart
 }
 
 type DatasetOption func(*Dataset)
@@ -185,11 +337,18 @@ func (s *Dataset) open(ctx context.Context, sections ...Section) (err error) {
 			_ = s.closeErr(err)
 		}
 	}()
-	if s.obj.buf == nil && s.meta.Size < uint64(s.memSize) {
-		s.buf = bufferpool.GetBuffer(int(s.meta.Size))
-		off, size := int64(s.offset()), int64(s.meta.Size)
-		if err = objstore.ReadRange(ctx, s.buf, s.obj.path, s.obj.storage, off, size); err != nil {
-			return fmt.Errorf("loading sections into memory: %w", err)
+	if s.obj.buf == nil {
+		if s.region != nil {
+			if err = s.region.fetch(ctx, s.obj.path, s.obj.storage); err != nil {
+				return fmt.Errorf("loading coalesced dataset region into memory: %w", err)
+			}
+			s.regionAcquired = true
+		} else if off, size := s.neededSpan(sections); size > 0 && size < int64(s.memSize) {
+			s.buf = bufferpool.GetBuffer(int(size))
+			s.bufOff = off
+			if err = objstore.ReadRange(ctx, s.buf, s.obj.path, s.obj.storage, off, size); err != nil {
+				return fmt.Errorf("loading sections into memory: %w", err)
+			}
 		}
 	}
 	g, ctx := errgroup.WithContext(ctx)
@@ -224,6 +383,11 @@ func (s *Dataset) closeErr(err error) error {
 		bufferpool.Put(s.buf)
 		s.buf = nil
 	}
+	if s.regionAcquired {
+		s.region.release()
+		s.regionAcquired = false
+	}
+	s.region = nil
 	var merr multierror.MultiError
 	if s.tsdb != nil {
 		merr.Add(s.tsdb.Close())
@@ -284,19 +448,33 @@ func (s *Dataset) sectionSize(sc Section) int64 {
 	return int64(next - off)
 }
 
-func (s *Dataset) inMemoryBuffer() []byte {
+// inMemorySection returns an in-memory buffer and the relative offset of sc
+// within that buffer if sc is completely covered by an already-loaded buffer.
+func (s *Dataset) inMemorySection(sc Section) ([]byte, int64) {
+	secOff := s.sectionOffset(sc)
+	secEnd := secOff + s.sectionSize(sc)
 	if s.obj.buf != nil {
-		// If the entire object is loaded into memory,
-		// return the dataset sub-slice.
-		lo := s.offset()
-		hi := lo + s.meta.Size
-		buf := s.obj.buf.B
-		return buf[lo:hi]
+		lo := int64(s.offset())
+		hi := lo + int64(s.meta.Size)
+		if secOff >= lo && secEnd <= hi {
+			return s.obj.buf.B[lo:hi], secOff - lo
+		}
+	}
+	if s.region != nil && s.region.buf != nil {
+		lo := s.region.off
+		hi := lo + int64(len(s.region.buf.B))
+		if secOff >= lo && secEnd <= hi {
+			return s.region.buf.B, secOff - lo
+		}
 	}
 	if s.buf != nil {
-		return s.buf.B
+		lo := s.bufOff
+		hi := lo + int64(len(s.buf.B))
+		if secOff >= lo && secEnd <= hi {
+			return s.buf.B, secOff - lo
+		}
 	}
-	return nil
+	return nil, 0
 }
 
 func (s *Dataset) inMemoryBucket(buf []byte) objstore.Bucket {

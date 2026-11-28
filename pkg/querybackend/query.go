@@ -30,6 +30,10 @@ import (
 const (
 	// maxProfileIDsToLog is the maximum number of profile IDs to log in trace spans.
 	maxProfileIDsToLog = 10
+
+	// maxDatasetConcurrency bounds how many datasets within a block are queried
+	// concurrently so object-store RTTs overlap without unbounded memory spikes.
+	maxDatasetConcurrency = 8
 )
 
 var (
@@ -126,16 +130,39 @@ func (b *blockContext) execute() error {
 	b.inflightBytes.Add(inflight)
 	defer b.inflightBytes.Sub(inflight)
 
-	for _, ds := range md.Datasets {
-		q := b.newQueryContext(ds)
-		for _, query := range b.req.src.Query {
-			q.grp.Go(util.RecoverPanic(func() error {
-				return q.execute(query)
-			}))
-		}
-		if err := q.grp.Wait(); err != nil {
-			return err
-		}
+	neededSections := (&queryContext{blockContext: b}).sections()
+	datasets := block.NewCoalescedDatasets(md.Datasets, b.obj, neededSections)
+
+	dsGroup, dsCtx := errgroup.WithContext(b.ctx)
+	dsGroup.SetLimit(maxDatasetConcurrency)
+	for _, ds := range datasets {
+		ds := ds
+		dsGroup.Go(util.RecoverPanic(func() (err error) {
+			q := b.newQueryContextWithDataset(dsCtx, ds)
+			if openErr := q.ds.Open(q.ctx, neededSections...); openErr != nil {
+				if q.obj.IsNotExists(openErr) {
+					level.Warn(q.log).Log("msg", "object not found", "err", openErr)
+					return nil
+				}
+				return fmt.Errorf("failed to initialize query context: %w", openErr)
+			}
+			defer func() {
+				_ = q.ds.CloseWithError(err)
+			}()
+			if len(b.req.src.Query) == 1 {
+				return q.execute(b.req.src.Query[0])
+			}
+			for _, query := range b.req.src.Query {
+				query := query
+				q.grp.Go(util.RecoverPanic(func() error {
+					return q.execute(query)
+				}))
+			}
+			return q.grp.Wait()
+		}))
+	}
+	if err := dsGroup.Wait(); err != nil {
+		return err
 	}
 
 	if b.execCollector != nil {
@@ -334,9 +361,9 @@ func (b *blockContext) lookupDatasetsInMetadata(indices []*metastorev1.Dataset, 
 	return nil
 }
 
-func (b *blockContext) newQueryContext(ds *metastorev1.Dataset) *queryContext {
-	q := &queryContext{blockContext: b, ds: block.NewDataset(ds, b.obj)}
-	q.grp, q.ctx = errgroup.WithContext(b.ctx)
+func (b *blockContext) newQueryContextWithDataset(parentCtx context.Context, ds *block.Dataset) *queryContext {
+	q := &queryContext{blockContext: b, ds: ds}
+	q.grp, q.ctx = errgroup.WithContext(parentCtx)
 	return q
 }
 
@@ -348,26 +375,16 @@ type queryContext struct {
 }
 
 func (q *queryContext) execute(query *queryv1.Query) error {
-	var span *tracing.Span
-	span, q.ctx = tracing.StartSpanFromContext(q.ctx, "executeQuery."+util.ToCamel(query.QueryType.String()))
+	span, ctx := tracing.StartSpanFromContext(q.ctx, "executeQuery."+util.ToCamel(query.QueryType.String()))
 	defer span.Finish()
 	handle, err := getQueryHandler(query.QueryType)
 	if err != nil {
 		return err
 	}
 
-	if err = q.ds.Open(q.ctx, q.sections()...); err != nil {
-		if q.obj.IsNotExists(err) {
-			level.Warn(q.log).Log("msg", "object not found", "err", err)
-			return nil
-		}
-		return fmt.Errorf("failed to initialize query context: %w", err)
-	}
-	defer func() {
-		_ = q.ds.CloseWithError(err)
-	}()
-
-	r, err := handle(q, query)
+	sub := *q
+	sub.ctx = ctx
+	r, err := handle(&sub, query)
 	if err != nil {
 		return err
 	}

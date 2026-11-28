@@ -35,25 +35,6 @@ func init() {
 func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	otelSpan := trace.SpanFromContext(q.ctx)
 
-	profileOpts := []profileIteratorOption{withExcludeSampled()}
-	if len(query.Tree.ProfileIdSelector) > 0 {
-		opt, err := withProfileIDSelector(query.Tree.ProfileIdSelector...)
-		if err != nil {
-			return nil, err
-		}
-		profileOpts = append(profileOpts, opt)
-		otelSpan.SetAttributes(attribute.Int("profile_id_selector.count", len(query.Tree.ProfileIdSelector)))
-		if len(query.Tree.ProfileIdSelector) <= maxProfileIDsToLog {
-			otelSpan.SetAttributes(attribute.String("profile_ids", strings.Join(query.Tree.ProfileIdSelector, ",")))
-		}
-	}
-
-	entries, err := profileEntryIterator(q, profileOpts...)
-	if err != nil {
-		return nil, err
-	}
-	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
-
 	spanSelector, err := model.NewSpanSelector(query.Tree.SpanSelector)
 	if err != nil {
 		return nil, err
@@ -93,6 +74,25 @@ func queryTree(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 		}
 		indices = append(indices, columns.TraceID.ColumnIndex)
 	}
+
+	profileOpts := []profileIteratorOption{withExcludeSampled(), withPrefetchColumns(indices...)}
+	if len(query.Tree.ProfileIdSelector) > 0 {
+		opt, err := withProfileIDSelector(query.Tree.ProfileIdSelector...)
+		if err != nil {
+			return nil, err
+		}
+		profileOpts = append(profileOpts, opt)
+		otelSpan.SetAttributes(attribute.Int("profile_id_selector.count", len(query.Tree.ProfileIdSelector)))
+		if len(query.Tree.ProfileIdSelector) <= maxProfileIDsToLog {
+			otelSpan.SetAttributes(attribute.String("profile_ids", strings.Join(query.Tree.ProfileIdSelector, ",")))
+		}
+	}
+
+	entries, err := profileEntryIterator(q, profileOpts...)
+	if err != nil {
+		return nil, err
+	}
+	defer runutil.CloseWithErrCapture(&err, entries, "failed to close profile entry iterator")
 
 	resolverOptions := []symdb.ResolverOption{
 		symdb.WithResolverMaxNodes(query.Tree.MaxNodes),
