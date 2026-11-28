@@ -1,3 +1,4 @@
+{{- include "pyroscope.validateArchitecture" . }}
 {{- $global := . }}
 {{- $components := (fromYaml (include "pyroscope.components" .)) }}
 {{- $hasV1 := $global.Values.architecture.storage.v1 }}
