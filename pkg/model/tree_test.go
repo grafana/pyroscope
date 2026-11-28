@@ -420,3 +420,36 @@ func Test_IterateStacks_LargeRootCount(t *testing.T) {
 
 	require.Equal(t, rootCount, visitedCount, "should visit all %d root nodes", rootCount)
 }
+
+func TestUnmarshalTree_TruncatedInput(t *testing.T) {
+	keep := func(n FunctionName) FunctionName { return n }
+	ft := new(FunctionNameTree)
+	ft.InsertStack(5, "a", "b", "c")
+	ft.InsertStack(3, "a", "d")
+	fb := ft.Bytes(100, keep)
+
+	lt := new(LocationRefNameTree)
+	lt.InsertStack(5, 1, 2, 3)
+	lt.InsertStack(3, 1, 4)
+	lb := lt.Bytes(100, func(n LocationRefName) LocationRefName { return n })
+
+	for i := 2; i < len(fb); i++ {
+		b := append([]byte(nil), fb[:i]...)
+		require.NotPanics(t, func() {
+			_, err := UnmarshalTree[FunctionName, FunctionNameI](b)
+			require.Error(t, err, "function tree truncated to %d of %d bytes", i, len(fb))
+		})
+	}
+	for i := 2; i < len(lb); i++ {
+		b := append([]byte(nil), lb[:i]...)
+		require.NotPanics(t, func() {
+			_, err := UnmarshalTree[LocationRefName, LocationRefNameI](b)
+			require.Error(t, err, "location tree truncated to %d of %d bytes", i, len(lb))
+		})
+	}
+
+	_, err := UnmarshalTree[FunctionName, FunctionNameI](fb)
+	require.NoError(t, err)
+	_, err = UnmarshalTree[LocationRefName, LocationRefNameI](lb)
+	require.NoError(t, err)
+}

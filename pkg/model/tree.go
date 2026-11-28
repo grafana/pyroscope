@@ -41,16 +41,22 @@ func (FunctionNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[Function
 }
 
 func (FunctionNameI) unmarshalNode(b []byte, offset int) (FunctionName, int64, int, error) { //nolint:unused
+	if offset > len(b) {
+		return "", 0, 0, errMalformedTreeBytes
+	}
 	nameLen, o := varint.Uvarint(b[offset:])
-	if o < 0 {
+	if o <= 0 {
 		return "", 0, 0, errMalformedTreeBytes
 	}
 	offset += o
+	if nameLen > uint64(len(b)-offset) {
+		return "", 0, 0, errMalformedTreeBytes
+	}
 	// Note that we allocate a string, instead of referencing b's capacity.
 	name := FunctionName(b[offset : offset+int(nameLen)])
 	offset += int(nameLen)
 	value, o := varint.Uvarint(b[offset:])
-	if o < 0 {
+	if o <= 0 {
 		return "", 0, 0, errMalformedTreeBytes
 	}
 	offset += o
@@ -81,14 +87,17 @@ func (LocationRefNameI) marshalNode(w io.Writer, vw varint.Writer, n *node[Locat
 }
 
 func (LocationRefNameI) unmarshalNode(b []byte, offset int) (LocationRefName, int64, int, error) { //nolint:unused
+	if offset > len(b) {
+		return 0, 0, 0, errMalformedTreeBytes
+	}
 	name, o := varint.Uvarint(b[offset:])
-	if o < 0 {
+	if o <= 0 {
 		return 0, 0, 0, errMalformedTreeBytes
 	}
 	offset += o
 
 	value, o := varint.Uvarint(b[offset:])
-	if o < 0 {
+	if o <= 0 {
 		return 0, 0, 0, errMalformedTreeBytes
 	}
 	offset += o
@@ -547,11 +556,18 @@ func UnmarshalTree[N NodeName, I NodeNameI[N]](b []byte) (*Tree[N, I], error) {
 		offset = o
 
 		// specific end
+		if offset > len(b) {
+			return nil, errMalformedTreeBytes
+		}
 		childrenLen, o := varint.Uvarint(b[offset:])
-		if o < 0 {
+		if o <= 0 {
 			return nil, errMalformedTreeBytes
 		}
 		offset += o
+		// Every child takes at least two bytes.
+		if childrenLen > uint64(len(b)-offset)/2 {
+			return nil, errMalformedTreeBytes
+		}
 
 		n := parent.insert(name, nodeBuffer.newNode)
 		n.children = make([]*node[N], 0, childrenLen)
