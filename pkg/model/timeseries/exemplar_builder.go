@@ -86,18 +86,29 @@ func (eb *exemplarBuilder) deduplicateAndIntersect() []*typesv1.Exemplar {
 	for i < len(eb.exemplars) {
 		curr := eb.exemplars[i]
 
-		labelSetsToIntersect := []phlaremodel.Labels{eb.labelSets[curr.labelSetRef]}
+		finalLabels := eb.labelSets[curr.labelSetRef]
+		var copied bool
 		sumValue := curr.value
 		j := i + 1
 		for j < len(eb.exemplars) &&
 			eb.exemplars[j].profileID == curr.profileID &&
 			eb.exemplars[j].timestamp == curr.timestamp {
-			labelSetsToIntersect = append(labelSetsToIntersect, eb.labelSets[eb.exemplars[j].labelSetRef])
+			ref := eb.exemplars[j].labelSetRef
+			if ref != curr.labelSetRef && len(finalLabels) > 0 {
+				if !copied {
+					// Intersect rewrites slice entries, not the immutable label pairs.
+					finalLabels = slices.Clone(finalLabels)
+					copied = true
+				}
+				finalLabels = finalLabels.Intersect(eb.labelSets[ref])
+			}
 			sumValue += eb.exemplars[j].value
 			j++
 		}
 
-		finalLabels := phlaremodel.IntersectAll(labelSetsToIntersect)
+		if len(finalLabels) == 0 {
+			finalLabels = nil
+		}
 
 		result = append(result, &typesv1.Exemplar{
 			Timestamp: curr.timestamp,
