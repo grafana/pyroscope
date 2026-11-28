@@ -17,6 +17,8 @@ permissions:
 jobs:
   goreleaser:
     runs-on: ubuntu-x64-large
+    outputs:
+      image: ${{ steps.image.outputs.image }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -68,3 +70,27 @@ jobs:
         run: gh workflow run update-homebrew-formulas.yml --repo "${GITHUB_REPOSITORY}" --ref main -f tag="${GITHUB_REF#refs/*/}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # :latest is the same manifest as :<version> (same digest), so signing once covers both.
+      - name: Get image digest
+        id: image
+        run: |
+          image="$(jq -r --arg tag ":${IMAGE_TAG}" '
+            [.[] | select(.type == "Docker Manifest" and (.name | endswith($tag)))]
+            | if length == 1 then "\(.[0].name | rtrimstr($tag))@\(.[0].extra.Digest)" else empty end
+          ' dist/artifacts.json)"
+          if [[ "${image}" != *"@sha256:"* ]]; then
+            echo "::error::could not find a single digest-pinned manifest for tag ${IMAGE_TAG} in dist/artifacts.json"
+            exit 1
+          fi
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+
+  sign-and-attest:
+    needs: goreleaser
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: read
+      id-token: write
+    uses: grafana/shared-workflows/.github/workflows/sign-and-attest.yml@8b583405b80c27ce951ff7d4c9631c301dfbc2b9 # main
+    with:
+      image: ${{ needs.goreleaser.outputs.image }}
