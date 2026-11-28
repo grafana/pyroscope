@@ -15,7 +15,10 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/sony/gobreaker/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -299,4 +302,37 @@ func (s *segwriterClientSuite) Test_Push_ConnTimeout() {
 	// The client, however, won't see the underlying error.
 	s.Require().NotNil(err)
 	s.Assert().Contains(err.Error(), errServiceUnavailableMsg)
+}
+
+func Test_ShouldBeHandledByCaller(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"nil", nil, true},
+		{"unknown", status.Error(codes.Unknown, "flush err"), true},
+		{"internal", status.Error(codes.Internal, "boom"), true},
+		{"invalid argument", status.Error(codes.InvalidArgument, "bad request"), true},
+		{"canceled", status.Error(codes.Canceled, "client gone"), true},
+		{"unavailable", status.Error(codes.Unavailable, "connection refused"), false},
+		{"deadline exceeded status", status.Error(codes.DeadlineExceeded, "flush timeout"), false},
+		{"context deadline exceeded", context.DeadlineExceeded, false},
+		{"os deadline exceeded", os.ErrDeadlineExceeded, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, shouldBeHandledByCaller(tc.err))
+		})
+	}
+}
+
+func Test_CircuitBreaker_TripsOnDeadlineExceeded(t *testing.T) {
+	cb := gobreaker.NewCircuitBreaker[any](circuitBreakerConfig)
+	flushTimeout := status.Error(codes.DeadlineExceeded, "flush timeout")
+	for i := 0; i < cbMaxFailures; i++ {
+		_, err := cb.Execute(func() (any, error) { return nil, flushTimeout })
+		require.Error(t, err)
+	}
+	_, err := cb.Execute(func() (any, error) { return new(segmentwriterv1.PushResponse), nil })
+	require.ErrorIs(t, err, gobreaker.ErrOpenState)
 }
