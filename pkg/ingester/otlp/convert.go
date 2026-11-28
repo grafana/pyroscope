@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	otelProfile "go.opentelemetry.io/proto/otlp/profiles/v1development"
 
 	googleProfile "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -75,6 +77,7 @@ type profileBuilder struct {
 	unsymbolziedFuncNameMap map[string]uint64
 	locationMap             map[*otelProfile.Location]uint64
 	mappingMap              map[*otelProfile.Mapping]uint64
+	kernelMappingMap        map[uint64]uint64
 
 	sampleProcessingTypes []sampleConversionType
 	name                  *typesv1.LabelPair
@@ -87,6 +90,7 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 		functionMap:             make(map[*otelProfile.Function]uint64),
 		locationMap:             make(map[*otelProfile.Location]uint64),
 		mappingMap:              make(map[*otelProfile.Mapping]uint64),
+		kernelMappingMap:        make(map[uint64]uint64),
 		unsymbolziedFuncNameMap: make(map[string]uint64),
 		dst: &googleProfile.Profile{
 			TimeNanos:     int64(src.TimeUnixNano),
@@ -233,6 +237,30 @@ func (p *profileBuilder) convertValueTypeBack(ovt *otelProfile.ValueType, dictio
 	return &googleProfile.ValueType{Type: p.addstr(typeLabel), Unit: p.addstr(unitLabel)}, nil
 }
 
+// kernelMapping returns the id of a copy of the mapping with a "[kernel]" filename prefix.
+// The original is left untouched since non-kernel locations may share it.
+func (p *profileBuilder) kernelMapping(mappingId uint64) uint64 {
+	if id, ok := p.kernelMappingMap[mappingId]; ok {
+		return id
+	}
+	orig := p.dst.Mapping[mappingId-1]
+	fn := p.dst.StringTable[orig.Filename]
+	if strings.HasPrefix(fn, "[kernel]") {
+		return mappingId
+	}
+
+	cp := proto.Clone(orig).(*googleProfile.Mapping)
+	if fn == "" {
+		cp.Filename = p.addstr("[kernel]")
+	} else {
+		cp.Filename = p.addstr("[kernel] " + fn)
+	}
+	p.dst.Mapping = append(p.dst.Mapping, cp)
+	cp.Id = uint64(len(p.dst.Mapping))
+	p.kernelMappingMap[mappingId] = cp.Id
+	return cp.Id
+}
+
 func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionary *otelProfile.ProfilesDictionary) (uint64, error) {
 	if i, ok := p.locationMap[ol]; ok {
 		return i, nil
@@ -246,6 +274,11 @@ func (p *profileBuilder) convertLocationBack(ol *otelProfile.Location, dictionar
 	mappingId, ok := p.mappingMap[om]
 	if !ok {
 		return 0, fmt.Errorf("mapping not found in mappingMap")
+	}
+
+	frameType, _ := getAttributeValueByKeyOrEmpty(ol.AttributeIndices, dictionary, "profile.frame.type")
+	if frameType == "kernel" {
+		mappingId = p.kernelMapping(mappingId)
 	}
 	gl := &googleProfile.Location{
 		MappingId: mappingId,

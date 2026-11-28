@@ -289,7 +289,25 @@ func PprofToProfile(b []byte, name string, limits Limits) ([]*flamebearer.Flameb
 		for i, s := range p.StringTable {
 			names[i] = model.FunctionName(s)
 		}
-		fg := model.NewFlameGraph(t.Tree(int64(limits.MaxNodes), names), int64(limits.MaxNodes))
+
+        nameToMapping := map[string]string{}
+        for _, loc := range p.Location {
+            if loc.MappingId == 0 || int(loc.MappingId-1) >= len(p.Mapping) {
+                continue
+            }
+            mapping := p.Mapping[loc.MappingId-1]
+            mappingFilename := p.StringTable[mapping.Filename]
+            for _, line := range loc.Line {
+                if line.FunctionId == 0 || int(line.FunctionId-1) >= len(p.Function) {
+                    continue
+                }
+                funcNameIdx := p.Function[line.FunctionId-1].Name
+                funcName := p.StringTable[funcNameIdx]
+                nameToMapping[funcName] = mappingFilename
+            }
+        }
+
+		fg := model.NewFlameGraph(t.Tree(int64(limits.MaxNodes), names), nameToMapping, int64(limits.MaxNodes))
 		fbs = append(fbs, model.ExportToFlamebearer(fg, tp))
 	}
 	if len(fbs) == 0 {

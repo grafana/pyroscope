@@ -170,6 +170,8 @@ message SelectMergeStacktracesResponse {
   optional AsyncQueryResponse async = 4;
   // Profile in pprof format.
   PprofProfile pprof = 5;
+  // Function name to file/binary mapping.
+  map<string, string> mapping = 6;
 }
 
 // PprofProfile contains pprof output and related response metadata.
@@ -231,6 +233,7 @@ message SelectMergeSpanProfileResponse {
   FlameGraph flamegraph = 1;
   // Pyroscope tree bytes.
   bytes tree = 2;
+  map<string, string> mapping = 3;
 }
 
 message DiffRequest {
@@ -248,6 +251,7 @@ message FlameGraph {
   repeated Level levels = 2;
   int64 total = 3;
   int64 max_self = 4;
+  repeated string mapping_names = 5;
 }
 
 message FlameGraphDiff {

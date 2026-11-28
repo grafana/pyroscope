@@ -1153,6 +1153,11 @@ components:
             - string
           title: max_self
           format: int64
+        mappingNames:
+          type: array
+          items:
+            type: string
+          title: mapping_names
       title: FlameGraph
       additionalProperties: false
     querier.v1.FlameGraphDiff:
@@ -1646,7 +1651,24 @@ components:
           title: tree
           format: byte
           description: Pyroscope tree bytes.
+        mapping:
+          type: object
+          title: mapping
+          additionalProperties:
+            type: string
+            title: value
       title: SelectMergeSpanProfileResponse
+      additionalProperties: false
+    querier.v1.SelectMergeSpanProfileResponse.MappingEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: MappingEntry
       additionalProperties: false
     querier.v1.SelectMergeStacktracesRequest:
       type: object
@@ -1767,7 +1789,25 @@ components:
           title: pprof
           description: Profile in pprof format.
           $ref: '#/components/schemas/querier.v1.PprofProfile'
+        mapping:
+          type: object
+          title: mapping
+          additionalProperties:
+            type: string
+            title: value
+          description: Function name to file/binary mapping.
       title: SelectMergeStacktracesResponse
+      additionalProperties: false
+    querier.v1.SelectMergeStacktracesResponse.MappingEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: MappingEntry
       additionalProperties: false
     querier.v1.SelectSeriesRequest:
       type: object
