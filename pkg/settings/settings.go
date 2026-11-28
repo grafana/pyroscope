@@ -50,6 +50,7 @@ func New(cfg Config, bucket objstore.Bucket, logger log.Logger, overrides *valid
 
 	if cfg.Recording.Enabled {
 		ts.RecordingRulesServiceHandler = recording.New(bucket, logger, overrides)
+		ts.recordingIndex = recording.NewIndexBuilder(bucket, logger, cfg.Recording.IndexRebuildInterval)
 	}
 
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
@@ -61,8 +62,9 @@ type TenantSettings struct {
 	services.Service
 	settingsv1connect.RecordingRulesServiceHandler
 
-	store  store
-	logger log.Logger
+	store          store
+	recordingIndex *recording.IndexBuilder
+	logger         log.Logger
 }
 
 func (ts *TenantSettings) starting(ctx context.Context) error {
@@ -70,7 +72,11 @@ func (ts *TenantSettings) starting(ctx context.Context) error {
 }
 
 func (ts *TenantSettings) running(ctx context.Context) error {
-	<-ctx.Done()
+	if ts.recordingIndex == nil {
+		<-ctx.Done()
+		return nil
+	}
+	ts.recordingIndex.Run(ctx)
 	return nil
 }
 

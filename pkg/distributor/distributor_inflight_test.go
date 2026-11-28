@@ -68,7 +68,7 @@ func newInflightDistributor(t *testing.T, reg prometheus.Registerer, maxInflight
 		Config{DistributorRing: ringConfig, MaxInflightBytes: maxInflightBytes},
 		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
-		overrides, reg, log.NewNopLogger(), sw,
+		overrides, reg, log.NewNopLogger(), sw, nil,
 	)
 	require.NoError(t, err)
 	return d
@@ -266,7 +266,7 @@ func TestPushBatch_MaxInflightBytes_IngesterQuorum(t *testing.T) {
 		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
 		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "1"}, {Addr: "2"}, {Addr: "3"}}, 3),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return ingesters[addr], nil }},
-		overrides, nil, log.NewNopLogger(), nil,
+		overrides, nil, log.NewNopLogger(), nil, nil,
 	)
 	require.NoError(t, err)
 
@@ -325,7 +325,7 @@ func TestPushBatch_MaxInflightBytes_Aggregation(t *testing.T) {
 		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
 		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
-		overrides, nil, log.NewNopLogger(), sw,
+		overrides, nil, log.NewNopLogger(), sw, nil,
 	)
 	require.NoError(t, err)
 	sw.limiter = d.inflight
@@ -372,7 +372,7 @@ func TestPushBatch_MaxInflightBytes_PendingAggregates(t *testing.T) {
 		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
 		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
-		overrides, nil, log.NewNopLogger(), sw,
+		overrides, nil, log.NewNopLogger(), sw, nil,
 	)
 	require.NoError(t, err)
 	sw.limiter = d.inflight
@@ -427,7 +427,7 @@ func TestPushBatch_MaxInflightBytes_AggregateGrowth(t *testing.T) {
 		Config{DistributorRing: ringConfig, PushTimeout: time.Minute},
 		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
 		&poolFactory{f: func(addr string) (client.PoolClient, error) { return newFakeIngester(t, false), nil }},
-		overrides, nil, log.NewNopLogger(), sw,
+		overrides, nil, log.NewNopLogger(), sw, nil,
 	)
 	require.NoError(t, err)
 	sw.limiter = d.inflight
