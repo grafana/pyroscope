@@ -508,14 +508,25 @@ func (bj *BinaryJoinIterator) At() *IteratorResult {
 	return bj.res
 }
 
+// seek returns replaced child results to the pool, just like nextOrSeek.
+// A nested join reuses its result, so it must not be reset or pooled here.
+func (bj *BinaryJoinIterator) seek(it Iterator, to RowNumberWithDefinitionLevel) bool {
+	from := it.At()
+	ok := it.Seek(to)
+	if from != nil && from != it.At() {
+		iteratorResultPoolPut(from)
+	}
+	return ok
+}
+
 func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
-	if !bj.left.Seek(to) {
+	if !bj.seek(bj.left, to) {
 		bj.err = bj.left.Err()
 		return false
 	}
 	// move right to at least the row left is currently on
 	to.RowNumber = bj.left.At().RowNumber
-	if !bj.right.Seek(to) {
+	if !bj.seek(bj.right, to) {
 		bj.err = bj.right.Err()
 		return false
 	}
@@ -529,6 +540,8 @@ func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
 }
 
 func (bj *BinaryJoinIterator) Close() error {
+	iteratorResultPoolPut(bj.res)
+	bj.res = nil
 	var merr multierror.MultiError
 	merr.Add(bj.left.Close())
 	merr.Add(bj.right.Close())
@@ -808,12 +821,26 @@ func (r *RowNumberIterator[T]) Err() error {
 	return r.Iterator.Err()
 }
 
+func (r *RowNumberIterator[T]) Close() error {
+	iteratorResultPoolPut(r.current)
+	r.current = nil
+	return r.Iterator.Close()
+}
+
 func (r *RowNumberIterator[T]) Seek(to RowNumberWithDefinitionLevel) bool {
+	// The caller owns the result visible before Seek. Only release results
+	// created and replaced within this call.
+	initial := r.current
 	if r.current == nil && !r.Next() {
 		return false
 	}
 	for CompareRowNumbers(0, r.current.RowNumber, to.RowNumber) == -1 {
-		if !r.Next() {
+		previous := r.current
+		ok := r.Next()
+		if previous != initial && previous != r.current {
+			iteratorResultPoolPut(previous)
+		}
+		if !ok {
 			return false
 		}
 	}
