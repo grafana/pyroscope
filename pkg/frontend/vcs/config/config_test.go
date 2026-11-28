@@ -121,6 +121,22 @@ func TestParsePyroscopeConfig(t *testing.T) {
 		assert.Equal(t, "src/paymentservice", mapping.Source.Local.Path)
 	})
 
+	t.Run("valid dotnet config", func(t *testing.T) {
+		yaml := `source_code:
+  mappings:
+    - language: dotnet
+      path:
+        - prefix: /src/src
+      source:
+        local:
+          path: src
+`
+		config, err := ParsePyroscopeConfig([]byte(yaml))
+		require.NoError(t, err)
+		require.Len(t, config.SourceCode.Mappings, 1)
+		assert.Equal(t, "dotnet", config.SourceCode.Mappings[0].Language)
+	})
+
 	t.Run("invalid - missing language", func(t *testing.T) {
 		yaml := `source_code:
   mappings:

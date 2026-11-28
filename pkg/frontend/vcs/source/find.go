@@ -54,6 +54,10 @@ func NewFileFinder(client VCSClient, repo giturl.IGitURL, file config.FileSpec, 
 
 // Find returns the file content and URL.
 func (ff *FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) {
+	if isDotNetExtension(filepath.Ext(ff.file.Path)) {
+		ff.file.Path = normalizeDotNetPath(ff.file.Path)
+	}
+
 	// first try to gather the config
 	ff.loadConfig(ctx)
 
@@ -77,6 +81,8 @@ func (ff *FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) 
 		return ff.findPythonFile(ctx, mapping)
 	case config.LanguageJavaScript:
 		return ff.findJavaScriptFile(ctx, mapping)
+	case config.LanguageDotNet:
+		return ff.findDotNetFile(ctx, mapping)
 	default:
 		return ff.findFallback(ctx)
 	}
@@ -93,6 +99,8 @@ func (ff FileFinder) findFallback(ctx context.Context) (*vcsv1.GetFileResponse, 
 		return ff.findGoFile(ctx)
 	case isJavaScriptExtension(ext):
 		return ff.findJavaScriptFile(ctx)
+	case isDotNetExtension(ext):
+		return ff.findDotNetFile(ctx)
 	default:
 		// by default we return the file content at the given path without any processing.
 		return ff.fetchRepoFile(ctx, ff.file.Path, ff.ref)
