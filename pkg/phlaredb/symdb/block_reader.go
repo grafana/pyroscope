@@ -85,7 +85,9 @@ func (r *Reader) openIndexWithPrefetch(ctx context.Context) (err error) {
 	}
 	n, err := r.prefetchIndex(ctx, prefetchSize)
 	if err == nil && n != 0 {
-		_, err = r.prefetchIndex(ctx, prefetchSize)
+		if n, err = r.prefetchIndex(ctx, n); err == nil && n != 0 {
+			err = fmt.Errorf("%w: index offset: %d", ErrInvalidSize, r.footer.IndexOffset)
+		}
 	}
 	return err
 }
@@ -103,6 +105,9 @@ func (r *Reader) prefetchIndex(ctx context.Context, size uint64) (n uint64, err 
 	footerOffset := size - uint64(FooterSize)
 	if err = r.footer.UnmarshalBinary(buf.B[footerOffset:]); err != nil {
 		return 0, fmt.Errorf("unmarshaling footer: %w", err)
+	}
+	if r.footer.IndexOffset > r.file.SizeBytes-uint64(FooterSize) {
+		return 0, fmt.Errorf("%w: index offset: %d", ErrInvalidSize, r.footer.IndexOffset)
 	}
 	if prefetchOffset > (r.footer.IndexOffset) {
 		return r.file.SizeBytes - r.footer.IndexOffset, nil
