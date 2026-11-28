@@ -110,7 +110,12 @@ type Source interface {
 	RowGroups() []parquet.RowGroup
 }
 
-func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver,
+type partitionRow interface {
+	query.RowGetter
+	StacktracePartition() uint64
+}
+
+func mergeByStacktraces[T partitionRow](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver,
 ) (err error) {
 	sp, ctx := tracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
@@ -130,7 +135,7 @@ func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context
 	return profiles.Err()
 }
 
-func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
+func mergeBySpans[T partitionRow](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
 	sp, ctx := tracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
 	var columns v1.SampleColumns
