@@ -17,6 +17,18 @@ import (
 	phlareparquet "github.com/grafana/pyroscope/v2/pkg/parquet"
 )
 
+func TestAnnotationDictionaryEncoding(t *testing.T) {
+	for _, schema := range []*parquet.Schema{ProfilesSchema, DownsampledProfilesSchema, parquet.SchemaOf(&Profile{})} {
+		t.Run(schema.Name(), func(t *testing.T) {
+			for _, path := range [][]string{AnnotationKeyColumnPath, AnnotationValueColumnPath} {
+				column, err := ResolveColumnByPath(schema, path)
+				require.NoError(t, err)
+				require.Equal(t, parquet.RLEDictionary.Encoding(), column.Node.Encoding().Encoding())
+			}
+		})
+	}
+}
+
 func TestInMemoryProfilesRowReader(t *testing.T) {
 	r := NewProfilesRowReader(
 		generateProfiles(10),
