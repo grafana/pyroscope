@@ -1,14 +1,18 @@
 package index
 
 import (
+	"flag"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
+	"go.yaml.in/yaml/v3"
 
 	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
+	"github.com/grafana/pyroscope/v2/pkg/metastore/index/cleaner"
 	indexstore "github.com/grafana/pyroscope/v2/pkg/metastore/index/store"
 	"github.com/grafana/pyroscope/v2/pkg/test"
 	"github.com/grafana/pyroscope/v2/pkg/util"
@@ -453,4 +457,82 @@ func TestIndex_GetTenantStats(t *testing.T) {
 		return nil
 	}))
 
+}
+
+func TestConfig_UnmarshalYAML(t *testing.T) {
+	tests := []struct {
+		name                 string
+		yaml                 string
+		wantCleanupInterval  time.Duration
+		wantShardCacheSize   int
+		wantDLQCheckInterval time.Duration
+		wantErr              bool
+	}{
+		{
+			name: "integer zero disables cleanup alongside other index fields",
+			yaml: `
+shard_cache_size: 4000
+cleanup_interval: 0
+dlq_recovery_check_interval: 30s
+`,
+			wantCleanupInterval:  0,
+			wantShardCacheSize:   4000,
+			wantDLQCheckInterval: 30 * time.Second,
+		},
+		{
+			name:                 "duration zero disables cleanup",
+			yaml:                 "cleanup_interval: 0s\n",
+			wantCleanupInterval:  0,
+			wantShardCacheSize:   DefaultConfig.ShardCacheSize,
+			wantDLQCheckInterval: 15 * time.Second,
+		},
+		{
+			name:                 "non-zero duration",
+			yaml:                 "cleanup_interval: 30m\n",
+			wantCleanupInterval:  30 * time.Minute,
+			wantShardCacheSize:   DefaultConfig.ShardCacheSize,
+			wantDLQCheckInterval: 15 * time.Second,
+		},
+		{
+			name:                 "omitted cleanup_interval preserves default",
+			yaml:                 "shard_cache_size: 1000\n",
+			wantCleanupInterval:  cleaner.DefaultCleanupInterval,
+			wantShardCacheSize:   1000,
+			wantDLQCheckInterval: 15 * time.Second,
+		},
+		{
+			name:    "non-zero integer rejected",
+			yaml:    "cleanup_interval: 5\n",
+			wantErr: true,
+		},
+		{
+			name:    "unknown field rejected",
+			yaml:    "unknown_field: 1\n",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var cfg Config
+			fs := flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+			cfg.RegisterFlagsWithPrefix("metastore.index.", fs)
+
+			dec := yaml.NewDecoder(strings.NewReader(tc.yaml))
+			dec.KnownFields(true)
+			err := dec.Decode(&cfg)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.wantCleanupInterval, cfg.Cleaner.CleanupInterval)
+			require.Equal(t, tc.wantShardCacheSize, cfg.ShardCacheSize)
+			require.Equal(t, tc.wantDLQCheckInterval, cfg.Recovery.CheckInterval)
+			require.Equal(t, 32, cfg.Cleaner.CleanupMaxPartitions)
+			require.Equal(t, 6*time.Hour, cfg.Cleaner.CleanupGracePeriod)
+			require.Equal(t, DefaultConfig.partitionDuration, cfg.partitionDuration)
+			require.Equal(t, DefaultConfig.queryLookaroundPeriod, cfg.queryLookaroundPeriod)
+		})
+	}
 }
