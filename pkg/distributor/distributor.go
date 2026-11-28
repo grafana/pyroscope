@@ -117,6 +117,7 @@ type Distributor struct {
 	healthyInstancesCount  *atomic.Uint32
 	ingestionRateLimiter   *limiter.RateLimiter
 	aggregator             *aggregator.MultiTenantAggregator[*pendingAggregate]
+	requests               util.InflightRequests
 	asyncRequests          sync.WaitGroup
 	ingestionLimitsSampler *ingestlimits.Sampler
 	usageGroupEvaluator    *validation.UsageGroupEvaluator
@@ -242,11 +243,19 @@ func New(
 	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
 	d.rfStats.Set(int64(ingesterRing.ReplicationFactor()))
 	d.metrics.replicationFactor.Set(float64(ingesterRing.ReplicationFactor()))
+	d.requests.Open()
 	return d, nil
 }
 
 func (d *Distributor) starting(ctx context.Context) error {
-	return services.StartManagerAndAwaitHealthy(ctx, d.subservices)
+	if err := services.StartAndAwaitRunning(ctx, d.router.Service()); err != nil {
+		return err
+	}
+	if err := services.StartManagerAndAwaitHealthy(ctx, d.subservices); err != nil {
+		_ = services.StopAndAwaitTerminated(context.Background(), d.router.Service())
+		return err
+	}
+	return nil
 }
 
 func (d *Distributor) running(ctx context.Context) error {
@@ -259,8 +268,11 @@ func (d *Distributor) running(ctx context.Context) error {
 }
 
 func (d *Distributor) stopping(_ error) error {
+	d.requests.Drain()
 	d.asyncRequests.Wait()
-	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
+	routerErr := services.StopAndAwaitTerminated(context.Background(), d.router.Service())
+	subservicesErr := services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
+	return errors.Join(routerErr, subservicesErr)
 }
 
 // CheckReady reports whether the distributor is ready to serve requests.
@@ -324,6 +336,11 @@ func isKnownValidationError(err error) bool {
 }
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (_ *connect.Response[pushv1.PushResponse], err error) {
+	if !d.requests.Add() {
+		return nil, connect.NewError(connect.CodeUnavailable, errServiceUnavailable)
+	}
+	defer d.requests.Done()
+
 	sp, ctx := tracing.StartSpanFromContext(ctx, "Distributor.Push")
 	defer sp.Finish()
 
@@ -394,7 +411,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	if len(req.Series) == 0 && allErrors.Err() != nil {
 		return nil, allErrors.Err()
 	}
-	if err := d.PushBatch(ctx, req); err != nil {
+	if err := d.pushBatch(ctx, req); err != nil {
 		allErrors.Add(err)
 	}
 	err = allErrors.Err()
@@ -444,6 +461,14 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 }
 
 func (d *Distributor) PushBatch(ctx context.Context, req *distributormodel.PushRequest) error {
+	if !d.requests.Add() {
+		return connect.NewError(connect.CodeUnavailable, errServiceUnavailable)
+	}
+	defer d.requests.Done()
+	return d.pushBatch(ctx, req)
+}
+
+func (d *Distributor) pushBatch(ctx context.Context, req *distributormodel.PushRequest) error {
 	sp, ctx := tracing.StartSpanFromContext(ctx, "Distributor.PushBatch")
 	defer sp.Finish()
 
@@ -783,8 +808,11 @@ func noNewProfilesReceivedError() *connect.Error {
 
 const reasonMaxInflightBytes = string(validation.MaxInflightBytes)
 
-var errMaxInflightBytesReached = connect.NewError(connect.CodeUnavailable,
-	fmt.Errorf("the request has been rejected because the distributor exceeded the allowed total size of inflight requests; see -distributor.max-inflight-bytes"))
+var (
+	errServiceUnavailable      = errors.New("service is unavailable")
+	errMaxInflightBytesReached = connect.NewError(connect.CodeUnavailable,
+		fmt.Errorf("the request has been rejected because the distributor exceeded the allowed total size of inflight requests; see -distributor.max-inflight-bytes"))
+)
 
 // inflightBytes estimates how much memory the request occupies, and counts the
 // profiles it carries.
