@@ -348,6 +348,9 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 		symbolLengthLimit = limits.MaxProfileSymbolValueLength(tenantID)
 	)
 	for _, s := range prof.Sample {
+		if s == nil {
+			return ValidatedProfile{}, NewErrorf(MalformedProfile, "nil sample")
+		}
 		if depthLimit != 0 && len(s.LocationId) > depthLimit {
 			// Truncate the deepest frames: s.LocationId[0] is the leaf.
 			s.LocationId = s.LocationId[len(s.LocationId)-depthLimit:]
@@ -383,9 +386,6 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *ppro
 		}
 	}
 	for _, s := range prof.Sample {
-		if s == nil {
-			return ValidatedProfile{}, NewErrorf(MalformedProfile, "nil sample")
-		}
 		if len(s.Value) != len(prof.SampleType) {
 			return ValidatedProfile{}, NewErrorf(MalformedProfile, "sample value length mismatch")
 		}

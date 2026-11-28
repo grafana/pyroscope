@@ -712,6 +712,21 @@ func TestValidateProfile(t *testing.T) {
 			nil,
 		},
 		{
+			"nil sample with stack depth and sample labels limits",
+			&googlev1.Profile{
+				SampleType: []*googlev1.ValueType{{}},
+				Sample:     make([]*googlev1.Sample, 3),
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSamplesValue:      100,
+				MaxProfileStacktraceDepthValue:        10,
+				MaxProfileStacktraceSampleLabelsValue: 10,
+			},
+			NewErrorf(MalformedProfile, "nil sample"),
+			nil,
+		},
+		{
 			"sample value mismatch",
 			&googlev1.Profile{
 				SampleType: []*googlev1.ValueType{{}},
