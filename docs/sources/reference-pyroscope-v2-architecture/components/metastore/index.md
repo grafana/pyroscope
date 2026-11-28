@@ -98,3 +98,5 @@ One metastore instance is elected as the leader through Raft consensus. The lead
 - Recovering metadata entries from the dead letter queue
 
 Follower replicas can serve read requests, distributing the query load across the cluster.
+
+A replica experiencing slow write p99 delays its outgoing pre-vote requests during normal elections. It continues voting for other replicas normally. Retries for the same proposed term do not restart the delay, and a lower p99 releases it early. After the delay, the next Raft election retry proceeds even if storage remains slow, allowing a cluster of slow replicas to elect a leader. Explicit leadership transfers and administrative promotions bypass it, as do single-voter elections, which need no peer pre-votes.

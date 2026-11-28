@@ -210,7 +210,8 @@ func (n *Node) Init() (err error) {
 	raftConfig.SnapshotInterval = n.config.SnapshotInterval
 	raftConfig.LocalID = raft.ServerID(n.config.ServerID)
 
-	n.raft, err = raft.NewRaft(raftConfig, n.fsm, n.logStore, n.stableStore, n.snapshotStore, n.transport)
+	transport := &slowWALTransport{NetworkTransport: n.transport, latency: n.metrics.logStoreWriteRecent}
+	n.raft, err = raft.NewRaft(raftConfig, n.fsm, n.logStore, n.stableStore, n.snapshotStore, transport)
 	if err != nil {
 		return fmt.Errorf("starting raft node: %w", err)
 	}
@@ -266,7 +267,8 @@ func (n *Node) openStore() (err error) {
 		n.logStore = n.config.LogStoreMiddleware(n.logStore)
 	}
 
-	n.logStore, err = newTimeoutLogStore(n.logStore, n.config.LogStoreTimeout, n.metrics.logStoreWrite, n.metrics.logStoreTimeout)
+	n.logStore, err = newTimeoutLogStore(n.logStore, n.config.LogStoreTimeout,
+		prometheus.ObserverFunc(n.metrics.observeLogStoreWrite), n.metrics.logStoreTimeout)
 	if err != nil {
 		return fmt.Errorf("initialize timeout log store: %w", err)
 	}
