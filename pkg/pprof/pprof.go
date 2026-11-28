@@ -1390,7 +1390,7 @@ func UnmarshalWithLimit(data []byte, p *profilev1.Profile, maxSize int64) error 
 	return p.UnmarshalVT(buf.Bytes())
 }
 
-func sanitizeProfile(p *profilev1.Profile, stats *sanitizeStats) {
+func sanitizeProfileSlow(p *profilev1.Profile, stats *sanitizeStats) {
 	if p == nil {
 		return
 	}
