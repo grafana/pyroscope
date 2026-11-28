@@ -1321,6 +1321,129 @@ func (x *HeatmapSlot) GetExemplars() []*Exemplar {
 	return nil
 }
 
+type FunctionTable struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Functions []*FunctionStats       `protobuf:"bytes,1,rep,name=functions,proto3" json:"functions,omitempty"`
+	// Sum of selected sample values, not the sum of inclusive function values.
+	Total int64 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	// Number of functions before limiting. Compare with functions length for coverage.
+	TotalFunctions int64 `protobuf:"varint,3,opt,name=total_functions,json=totalFunctions,proto3" json:"total_functions,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FunctionTable) Reset() {
+	*x = FunctionTable{}
+	mi := &file_types_v1_types_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionTable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionTable) ProtoMessage() {}
+
+func (x *FunctionTable) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionTable.ProtoReflect.Descriptor instead.
+func (*FunctionTable) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *FunctionTable) GetFunctions() []*FunctionStats {
+	if x != nil {
+		return x.Functions
+	}
+	return nil
+}
+
+func (x *FunctionTable) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *FunctionTable) GetTotalFunctions() int64 {
+	if x != nil {
+		return x.TotalFunctions
+	}
+	return 0
+}
+
+type FunctionStats struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// A sample contributes at most once, even if this function recurs in its stack.
+	Total         int64 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Self          int64 `protobuf:"varint,3,opt,name=self,proto3" json:"self,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FunctionStats) Reset() {
+	*x = FunctionStats{}
+	mi := &file_types_v1_types_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FunctionStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FunctionStats) ProtoMessage() {}
+
+func (x *FunctionStats) ProtoReflect() protoreflect.Message {
+	mi := &file_types_v1_types_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FunctionStats.ProtoReflect.Descriptor instead.
+func (*FunctionStats) Descriptor() ([]byte, []int) {
+	return file_types_v1_types_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *FunctionStats) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *FunctionStats) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *FunctionStats) GetSelf() int64 {
+	if x != nil {
+		return x.Self
+	}
+	return 0
+}
+
 var File_types_v1_types_proto protoreflect.FileDescriptor
 
 const file_types_v1_types_proto_rawDesc = "" +
@@ -1408,7 +1531,15 @@ const file_types_v1_types_proto_rawDesc = "" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x13\n" +
 	"\x05y_min\x18\x02 \x03(\x01R\x04yMin\x12\x16\n" +
 	"\x06counts\x18\x03 \x03(\x05R\x06counts\x120\n" +
-	"\texemplars\x18\x04 \x03(\v2\x12.types.v1.ExemplarR\texemplars*k\n" +
+	"\texemplars\x18\x04 \x03(\v2\x12.types.v1.ExemplarR\texemplars\"\x85\x01\n" +
+	"\rFunctionTable\x125\n" +
+	"\tfunctions\x18\x01 \x03(\v2\x17.types.v1.FunctionStatsR\tfunctions\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\x12'\n" +
+	"\x0ftotal_functions\x18\x03 \x01(\x03R\x0etotalFunctions\"M\n" +
+	"\rFunctionStats\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\x12\x12\n" +
+	"\x04self\x18\x03 \x01(\x03R\x04self*k\n" +
 	"\x19TimeSeriesAggregationType\x12$\n" +
 	" TIME_SERIES_AGGREGATION_TYPE_SUM\x10\x00\x12(\n" +
 	"$TIME_SERIES_AGGREGATION_TYPE_AVERAGE\x10\x01*{\n" +
@@ -1433,7 +1564,7 @@ func file_types_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_types_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_types_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_types_v1_types_proto_goTypes = []any{
 	(TimeSeriesAggregationType)(0),  // 0: types.v1.TimeSeriesAggregationType
 	(ExemplarType)(0),               // 1: types.v1.ExemplarType
@@ -1457,6 +1588,8 @@ var file_types_v1_types_proto_goTypes = []any{
 	(*Exemplar)(nil),                // 19: types.v1.Exemplar
 	(*HeatmapSeries)(nil),           // 20: types.v1.HeatmapSeries
 	(*HeatmapSlot)(nil),             // 21: types.v1.HeatmapSlot
+	(*FunctionTable)(nil),           // 22: types.v1.FunctionTable
+	(*FunctionStats)(nil),           // 23: types.v1.FunctionStats
 }
 var file_types_v1_types_proto_depIdxs = []int32{
 	2,  // 0: types.v1.Labels.labels:type_name -> types.v1.LabelPair
@@ -1472,11 +1605,12 @@ var file_types_v1_types_proto_depIdxs = []int32{
 	2,  // 10: types.v1.HeatmapSeries.labels:type_name -> types.v1.LabelPair
 	21, // 11: types.v1.HeatmapSeries.slots:type_name -> types.v1.HeatmapSlot
 	19, // 12: types.v1.HeatmapSlot.exemplars:type_name -> types.v1.Exemplar
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	23, // 13: types.v1.FunctionTable.functions:type_name -> types.v1.FunctionStats
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_types_v1_types_proto_init() }
@@ -1490,7 +1624,7 @@ func file_types_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_types_v1_types_proto_rawDesc), len(file_types_v1_types_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

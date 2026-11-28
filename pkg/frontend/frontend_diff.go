@@ -19,6 +19,9 @@ func (f *Frontend) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],
 ) (*connect.Response[querierv1.DiffResponse], error) {
+	if phlaremodel.IsProjectionFormat(c.Msg.GetLeft().GetFormat()) {
+		return nil, connect.NewError(connect.CodeUnimplemented, phlaremodel.ErrProjectionRequiresV2)
+	}
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceDiffProcedure)
 	g, ctx := errgroup.WithContext(ctx)
 	tenantIDs, err := tenant.TenantIDs(ctx)

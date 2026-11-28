@@ -8,13 +8,15 @@ import (
 	"connectrpc.com/connect"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/pyroscope/v2/pkg/frontend/profilediff"
+	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
+	"github.com/grafana/pyroscope/v2/pkg/model/timeseries"
+	"github.com/grafana/pyroscope/v2/pkg/pprof"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
-	"github.com/grafana/pyroscope/v2/pkg/model/timeseries"
-	"github.com/grafana/pyroscope/v2/pkg/pprof"
 )
 
 var _ querierv1connect.QuerierServiceHandler = (*Router)(nil)
@@ -65,6 +67,13 @@ func (r *Router) SelectMergeStacktraces(
 	ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest],
 ) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
+	if phlaremodel.IsProjectionFormat(c.Msg.Format) {
+		return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
+			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
+			func(_, _ *querierv1.SelectMergeStacktracesResponse) (*querierv1.SelectMergeStacktracesResponse, error) {
+				return nil, connect.NewError(connect.CodeUnimplemented, phlaremodel.ErrProjectionRequiresV2)
+			})
+	}
 	if c.Msg.Format == querierv1.ProfileFormat_PROFILE_FORMAT_PPROF {
 		return Query[querierv1.SelectMergeStacktracesRequest, querierv1.SelectMergeStacktracesResponse](ctx, r, c,
 			func(_, _ *querierv1.SelectMergeStacktracesRequest) {},
@@ -213,6 +222,9 @@ func (r *Router) Diff(
 	ctx context.Context,
 	c *connect.Request[querierv1.DiffRequest],
 ) (*connect.Response[querierv1.DiffResponse], error) {
+	if phlaremodel.IsProjectionFormat(c.Msg.GetLeft().GetFormat()) {
+		return profilediff.Diff(ctx, c.Msg, r.SelectMergeStacktraces)
+	}
 	g, ctx := errgroup.WithContext(ctx)
 	getTree := func(dst *phlaremodel.FunctionNameTree, req *querierv1.SelectMergeStacktracesRequest) func() error {
 		return func() error {
