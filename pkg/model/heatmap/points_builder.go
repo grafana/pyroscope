@@ -15,6 +15,15 @@ type pointsBuilder struct {
 	labelSetIndex map[uint64]int
 	labelSets     []model.Labels
 	exemplars     []exemplar
+	exemplarIndex map[exemplarKey]int
+}
+
+// exemplarKey contains exactly the fields compared by cmpExemplar.
+type exemplarKey struct {
+	timestamp int64
+	profileID string
+	spanID    uint64
+	traceID   model.TraceID
 }
 
 type exemplar struct {
@@ -32,6 +41,7 @@ func newPointsBuilder() *pointsBuilder {
 		labelSetIndex: make(map[uint64]int),
 		labelSets:     make([]model.Labels, 0),
 		exemplars:     make([]exemplar, 0),
+		exemplarIndex: make(map[exemplarKey]int),
 	}
 }
 
@@ -51,7 +61,8 @@ func (pb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts i
 
 	labelSetIdx, labelSetExists := pb.labelSetIndex[uint64(fp)]
 
-	pos, exemplarExists := slices.BinarySearchFunc(pb.exemplars, e, cmpExemplar)
+	key := exemplarKey{timestamp: ts, profileID: profileID, spanID: spanID, traceID: traceID}
+	pos, exemplarExists := pb.exemplarIndex[key]
 	if exemplarExists {
 		matched := &pb.exemplars[pos]
 		// add my value
@@ -82,7 +93,8 @@ func (pb *pointsBuilder) add(fp prommodel.Fingerprint, labels model.Labels, ts i
 		pb.labelSets[e.labelSetRef] = pb.labelSets[e.labelSetRef].Intersect(labels)
 	}
 
-	pb.exemplars = slices.Insert(pb.exemplars, pos, e)
+	pb.exemplarIndex[key] = len(pb.exemplars)
+	pb.exemplars = append(pb.exemplars, e)
 }
 
 func cmpExemplar(a, b exemplar) int {
@@ -105,7 +117,11 @@ func cmpExemplar(a, b exemplar) int {
 }
 
 func (pb *pointsBuilder) forEach(f func(labels model.Labels, ts int64, profileID string, spanID uint64, traceID model.TraceID, value int64)) {
-	for _, exemplar := range pb.exemplars {
+	// Keep insertion indices stable: callers may add more exemplars after
+	// iteration. Sort a copy instead of invalidating exemplarIndex.
+	exemplars := slices.Clone(pb.exemplars)
+	slices.SortFunc(exemplars, cmpExemplar)
+	for _, exemplar := range exemplars {
 		f(pb.labelSets[exemplar.labelSetRef], exemplar.timestamp, exemplar.profileID, exemplar.spanID, exemplar.traceID, exemplar.value)
 	}
 }
