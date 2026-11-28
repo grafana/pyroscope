@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	queryv1 "github.com/grafana/pyroscope/api/gen/proto/go/query/v1"
 	"github.com/grafana/pyroscope/v2/pkg/block"
 	phlaremodel "github.com/grafana/pyroscope/v2/pkg/model"
@@ -23,7 +24,7 @@ func init() {
 	registerQueryType(
 		queryv1.QueryType_QUERY_PPROF,
 		queryv1.ReportType_REPORT_PPROF,
-		queryPprof,
+		queryAndAggregatePprof,
 		newPprofAggregator,
 		false,
 		[]block.Section{
@@ -34,7 +35,10 @@ func init() {
 	)
 }
 
-func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
+// queryAndAggregatePprof hands resolved profiles directly to q.agg and returns
+// a nil report on that path. Empty selector results may still return a report
+// for the caller to aggregate through the normal handler path.
+func queryAndAggregatePprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) {
 	otelSpan := trace.SpanFromContext(q.ctx)
 
 	profileOpts := []profileIteratorOption{withExcludeSampled()}
@@ -158,14 +162,7 @@ func queryPprof(q *queryContext, query *queryv1.Query) (*queryv1.Report, error) 
 		}
 	}
 
-	resp := &queryv1.Report{
-		Pprof: &queryv1.PprofReport{
-			Query: query.Pprof.CloneVT(),
-			Pprof: pprof.MustMarshal(profile, true),
-		},
-	}
-
-	return resp, nil
+	return nil, q.agg.aggregateResolvedPprof(query.Pprof, profile)
 }
 
 type pprofAggregator struct {
@@ -196,7 +193,30 @@ func (a *pprofAggregator) build() *queryv1.Report {
 	return &queryv1.Report{
 		Pprof: &queryv1.PprofReport{
 			Query: a.query,
-			Pprof: pprof.MustMarshal(a.profile.Profile(), true),
+			Pprof: pprof.MustMarshal(a.profile.TakeProfile(), true),
 		},
 	}
+}
+
+// Bypass the dataset-local encode/decode roundtrip for privately resolved profiles.
+// Network responses continue to use the existing pprof wire representation.
+func (ra *reportAggregator) aggregateResolvedPprof(query *queryv1.PprofQuery, profile *profilev1.Profile) error {
+	ra.sm.Lock()
+	const typ = queryv1.ReportType_REPORT_PPROF
+	if staged := ra.staged[typ]; staged != nil {
+		if err := ra.aggregateReportNoCheck(staged); err != nil {
+			ra.sm.Unlock()
+			return err
+		}
+	}
+	a, exists := ra.aggregators[typ]
+	if !exists {
+		a = newPprofAggregator(ra.request)
+		ra.aggregators[typ] = a
+	}
+	ra.staged[typ] = nil
+	ra.sm.Unlock()
+	agg := a.(*pprofAggregator)
+	agg.init.Do(func() { agg.query = query.CloneVT() })
+	return agg.profile.MergeOwned(profile, agg.sanitize)
 }
