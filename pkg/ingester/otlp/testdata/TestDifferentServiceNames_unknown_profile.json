@@ -3,6 +3,10 @@
     {
       "type": "cpu",
       "unit": "nanoseconds"
+    },
+    {
+      "type": "samples",
+      "unit": "count"
     }
   ],
   "samples": [
@@ -23,7 +27,7 @@
           "mapping": "0x4000-0x5000@0x0 service-c.so()"
         }
       ],
-      "values": "7000000000"
+      "values": "7000000000,700"
     }
   ],
   "time_nanos": "239",

@@ -1047,9 +1047,11 @@ func TestDifferentServiceNames(t *testing.T) {
 
 		gp := s.Profile.Profile
 
-		require.Equal(t, 1, len(gp.SampleType))
+		require.Equal(t, 2, len(gp.SampleType))
 		assert.Equal(t, "cpu", gp.StringTable[gp.SampleType[0].Type])
 		assert.Equal(t, "nanoseconds", gp.StringTable[gp.SampleType[0].Unit])
+		assert.Equal(t, "samples", gp.StringTable[gp.SampleType[1].Type])
+		assert.Equal(t, "count", gp.StringTable[gp.SampleType[1].Unit])
 
 		require.NotNil(t, gp.PeriodType)
 		assert.Equal(t, "cpu", gp.StringTable[gp.PeriodType.Type])

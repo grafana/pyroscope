@@ -164,6 +164,16 @@ func newProfileBuilder(src *otelProfile.Profile, dictionary *otelProfile.Profile
 			}
 		}
 	}
+
+	// keep the raw sample count as an additional sample type for "samples:count:cpu:nanoseconds"
+    if len(res.dst.SampleType) == 1 && res.sampleProcessingTypes[0] == sampleConversionTypeSamplesToNanos {
+        res.dst.SampleType = append(res.dst.SampleType, &googleProfile.ValueType{
+            Type: res.addstr("samples"),
+            Unit: res.addstr("count"),
+        })
+        res.sampleProcessingTypes = append(res.sampleProcessingTypes, sampleConversionTypeNone)
+    }
+
 	if res.name == nil {
 		res.name = &typesv1.LabelPair{
 			Name:  pyromodel.LabelNameProfileName,
@@ -308,8 +318,12 @@ func (p *profileBuilder) convertFunctionBack(of *otelProfile.Function, dictionar
 }
 
 func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *otelProfile.ProfilesDictionary) (*googleProfile.Sample, error) {
+	// create a copy of values so that *= doesn't change source values
+	values := make([]int64, len(os.Values))
+	copy(values, os.Values)
+	
 	gs := &googleProfile.Sample{
-		Value: os.Values,
+		Value: values,
 	}
 
 	// According to spec, samples can come without values, in which case we assume that each timestamp occurrence has value of 1.
@@ -321,6 +335,10 @@ func (p *profileBuilder) convertSampleBack(os *otelProfile.Sample, dictionary *o
 	if len(gs.Value) == 0 {
 		return nil, fmt.Errorf("sample value is required")
 	}
+
+	for len(gs.Value) < len(p.sampleProcessingTypes) {
+        gs.Value = append(gs.Value, gs.Value[0])
+    }
 
 	for i, typ := range p.sampleProcessingTypes {
 		switch typ {
