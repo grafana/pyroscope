@@ -105,6 +105,8 @@ pyroscope:
   memberlist:
     port: 7946
     port_name: memberlist
+    annotations: {}
+    #  prometheus.io/probe-skip: "true"
 
   grpc:
     port: 9095
