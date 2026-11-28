@@ -27,7 +27,7 @@ func (f *Frontend) LabelNames(
 
 	interval, ok := phlaremodel.GetTimeRange(c.Msg)
 	if ok {
-		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
+		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now(), f.log)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}

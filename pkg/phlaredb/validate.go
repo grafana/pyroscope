@@ -4,16 +4,16 @@ import (
 	"context"
 	"path"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/runutil"
 
 	"github.com/grafana/pyroscope/v2/pkg/objstore/client"
 	"github.com/grafana/pyroscope/v2/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/v2/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/v2/pkg/util"
 )
 
 // ValidateLocalBlock validates the block in the given directory is readable.
-func ValidateLocalBlock(ctx context.Context, dir string) error {
+func ValidateLocalBlock(ctx context.Context, dir string, logger log.Logger) error {
 	meta, err := block.ReadMetaFromDir(dir)
 	if err != nil {
 		return err
@@ -31,6 +31,6 @@ func ValidateLocalBlock(ctx context.Context, dir string) error {
 		return err
 	}
 	q := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
-	defer runutil.CloseWithLogOnErr(util.Logger, q, "closing block querier")
+	defer runutil.CloseWithLogOnErr(logger, q, "closing block querier")
 	return q.Open(ctx)
 }
