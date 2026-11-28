@@ -25,6 +25,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	"github.com/grafana/pyroscope/v2/pkg/slices"
 	"github.com/grafana/pyroscope/v2/pkg/util"
+	"github.com/grafana/pyroscope/v2/pkg/util/gzipwriter"
 )
 
 var (
@@ -39,6 +40,10 @@ var (
 		New: func() any {
 			return gzip.NewWriter(io.Discard)
 		},
+	}
+	// Separate from gzipWriterPool, which is still used by Profile.Write.
+	profileGzipWriterPool = sync.Pool{
+		New: func() any { return gzipwriter.NewAdaptiveWriter(io.Discard) },
 	}
 	bufPool = sync.Pool{
 		New: func() any {
@@ -1325,11 +1330,11 @@ func Marshal(p *profilev1.Profile, compress bool) ([]byte, error) {
 	}
 	var buf bytes.Buffer
 	buf.Grow(len(b) / 2)
-	gw := gzipWriterPool.Get().(*gzip.Writer)
+	gw := profileGzipWriterPool.Get().(*gzipwriter.Writer)
 	gw.Reset(&buf)
 	defer func() {
 		gw.Reset(io.Discard)
-		gzipWriterPool.Put(gw)
+		profileGzipWriterPool.Put(gw)
 	}()
 	if _, err = gw.Write(b); err != nil {
 		return nil, err

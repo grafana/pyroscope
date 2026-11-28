@@ -39,6 +39,7 @@ require (
 	github.com/hashicorp/raft v1.8.0
 	github.com/hashicorp/raft-wal v0.5.0
 	github.com/klauspost/compress v1.20.2
+	github.com/klauspost/pgzip v1.2.6
 	github.com/kubescape/go-git-url v0.0.31
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/mitchellh/go-wordwrap v1.0.1

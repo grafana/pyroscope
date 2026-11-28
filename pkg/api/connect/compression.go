@@ -5,6 +5,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/klauspost/compress/gzip"
+
+	"github.com/grafana/pyroscope/v2/pkg/util/gzipwriter"
 )
 
 const (
@@ -15,12 +17,12 @@ var (
 	gzipPoolHandler = connect.WithCompression(
 		compressionGzip,
 		func() connect.Decompressor { return &gzip.Reader{} },
-		func() connect.Compressor { return gzip.NewWriter(io.Discard) },
+		func() connect.Compressor { return gzipwriter.NewAdaptiveWriter(io.Discard) },
 	)
 	gzipPoolClient = connect.WithAcceptCompression(
 		compressionGzip,
 		func() connect.Decompressor { return &gzip.Reader{} },
-		func() connect.Compressor { return gzip.NewWriter(io.Discard) },
+		func() connect.Compressor { return gzipwriter.NewAdaptiveWriter(io.Discard) },
 	)
 )
 
