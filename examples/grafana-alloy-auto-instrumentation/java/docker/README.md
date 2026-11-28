@@ -39,7 +39,7 @@ docker pull grafana/alloy:latest
 docker-compose up --build
 ```
 
-After the container is operational, Grafana Alloy profiles the Java application using he defined configuration.
+After the container is operational, Grafana Alloy profiles the Java application using the defined configuration.
 
 ### Observe profiling data
 
