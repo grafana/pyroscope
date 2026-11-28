@@ -32,9 +32,21 @@ func (s timeoutInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc 
 func (s timeoutInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
 	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
 		ctx, cancel := context.WithTimeout(ctx, s.timeout)
-		defer cancel()
-		return next(ctx, spec)
+		// The stream outlives this call, so the context can only be
+		// released once the response side of the stream is closed.
+		return &cancelOnCloseConn{StreamingClientConn: next(ctx, spec), cancel: cancel}
 	}
+}
+
+type cancelOnCloseConn struct {
+	connect.StreamingClientConn
+	cancel context.CancelFunc
+}
+
+func (c *cancelOnCloseConn) CloseResponse() error {
+	err := c.StreamingClientConn.CloseResponse()
+	c.cancel()
+	return err
 }
 
 func (s timeoutInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
