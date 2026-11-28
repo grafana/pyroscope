@@ -532,11 +532,6 @@ func (w *Worker) runCompaction(job *compactionJob) {
 		}))
 	}
 
-	duplicates := make(map[string]uint64)
-	options = append(options, block.WithDuplicateRowsCallback(func(tenant string, n uint64) {
-		duplicates[tenant] += n
-	}))
-
 	estimate := estimateJobMemory(job.blocks, w.config.SmallObjectSize)
 	jobBytes := estimate.total()
 	jobLevel := metricLabels[1]
@@ -603,18 +598,10 @@ func (w *Worker) runCompaction(job *compactionJob) {
 
 	switch {
 	case err == nil:
-		var totalDuplicates uint64
-		for tenant, n := range duplicates {
-			totalDuplicates += n
-			if n > 0 {
-				w.metrics.duplicateRowsDropped.WithLabelValues(tenant, strconv.Itoa(int(job.CompactionLevel))).Add(float64(n))
-			}
-		}
 		level.Info(logger).Log(
 			"msg", "compaction finished successfully",
 			"input_blocks", len(job.SourceBlocks),
 			"output_blocks", len(compacted),
-			"duplicate_profile_rows_dropped", totalDuplicates,
 		)
 		for _, c := range compacted {
 			level.Debug(logger).Log(

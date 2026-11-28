@@ -9,17 +9,16 @@ import (
 )
 
 type workerMetrics struct {
-	budgetWait           *prometheus.HistogramVec
-	estimatedMemory      *prometheus.HistogramVec
-	oversizedJobs        *prometheus.CounterVec
-	jobsCompacting       *prometheus.GaugeVec
-	compactionDuration   *prometheus.HistogramVec
-	jobsInProgress       *prometheus.GaugeVec
-	jobsCompleted        *prometheus.CounterVec
-	jobDuration          *prometheus.HistogramVec
-	timeToCompaction     *prometheus.HistogramVec
-	blocksDeleted        *prometheus.CounterVec
-	duplicateRowsDropped *prometheus.CounterVec
+	budgetWait         *prometheus.HistogramVec
+	estimatedMemory    *prometheus.HistogramVec
+	oversizedJobs      *prometheus.CounterVec
+	jobsCompacting     *prometheus.GaugeVec
+	compactionDuration *prometheus.HistogramVec
+	jobsInProgress     *prometheus.GaugeVec
+	jobsCompleted      *prometheus.CounterVec
+	jobDuration        *prometheus.HistogramVec
+	timeToCompaction   *prometheus.HistogramVec
+	blocksDeleted      *prometheus.CounterVec
 }
 
 func durationOpts(name, help string) prometheus.HistogramOpts {
@@ -109,11 +108,6 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 			Name: "blocks_deleted_total",
 			Help: "Total number of block deletion attempts.",
 		}, []string{"status"}),
-
-		duplicateRowsDropped: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "duplicate_profile_rows_dropped_total",
-			Help: "Total number of duplicate profile rows dropped during compaction.",
-		}, []string{"tenant", "level"}),
 	}
 
 	util.Register(r,
@@ -123,7 +117,6 @@ func newMetrics(r prometheus.Registerer) *workerMetrics {
 		m.jobDuration,
 		m.timeToCompaction,
 		m.blocksDeleted,
-		m.duplicateRowsDropped,
 	)
 
 	return m

@@ -58,6 +58,7 @@ Profiling data from each service (identified by the `service_name` label) is sto
 - Matching datasets from different blocks are merged
 - TSDB indexes are combined
 - Symbols and profile tables are merged and rewritten
+- Profiles are carried over as they are, without deduplication
 
 The output block contains non-overlapping, independent datasets optimized for efficient reading.
 
