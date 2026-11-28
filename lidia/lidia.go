@@ -156,10 +156,7 @@ func CreateLidia(executablePath, outputPath string, opts ...Option) error {
 // CreateLidiaFromELF generates a lidia format file from an already opened ELF file.
 // This allows more control over the ELF file handling.
 func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option) error {
-	sb := newStringBuilder()
-	rb := newRangesBuilder()
-	lb := newLineTableBuilder()
-	rc := &rangeCollector{sb: sb, rb: rb, lb: lb, opt: options{
+	rc := &rangeCollector{sb: newStringBuilder(), rb: newRangesBuilder(), lb: newLineTableBuilder(), opt: options{
 		symtab:         true,
 		parseGoPclntab: true,
 	}}
@@ -169,33 +166,29 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 	}
 
 	if rc.opt.symtab {
-		var (
-			symErr, dynSymErr error
-		)
-		symbols, symErr := elfFile.Symbols()
+		visit := func(name string, value, size uint64) {
+			rc.VisitRange(&Range{
+				VA:       value,
+				Length:   uint32(size),
+				Function: name,
+			})
+		}
+		symErr := visitFuncSymbols(elfFile, visit)
 		if symErr != nil {
-			symbols, dynSymErr = elfFile.DynamicSymbols()
+			// Drop any ranges collected before a read error part way through.
+			rc.sb, rc.rb, rc.lb = newStringBuilder(), newRangesBuilder(), newLineTableBuilder()
+
+			symbols, dynSymErr := elfFile.DynamicSymbols()
 			if dynSymErr != nil {
 				if !errors.Is(symErr, elf.ErrNoSymbols) || !errors.Is(dynSymErr, elf.ErrNoSymbols) {
 					return fmt.Errorf("failed to read symbols from ELF file: %w, %w", symErr, dynSymErr)
 				}
 			}
-		}
-
-		for _, symbol := range symbols {
-			if elf.ST_TYPE(symbol.Info) != elf.STT_FUNC || symbol.Name == "" {
-				continue
+			for _, symbol := range symbols {
+				if elf.ST_TYPE(symbol.Info) == elf.STT_FUNC && symbol.Name != "" {
+					visit(symbol.Name, symbol.Value, symbol.Size)
+				}
 			}
-			rc.VisitRange(&Range{
-				VA:        symbol.Value,
-				Length:    uint32(symbol.Size),
-				Function:  symbol.Name,
-				File:      "",
-				CallFile:  "",
-				CallLine:  0,
-				Depth:     0,
-				LineTable: nil,
-			})
 		}
 	}
 	if rc.opt.parseGoPclntab {
@@ -213,7 +206,7 @@ func CreateLidiaFromELF(elfFile *elf.File, output io.WriteSeeker, opts ...Option
 		}
 	}
 
-	rb.sort()
+	rc.rb.sort()
 
 	err := rc.write(output)
 	if err != nil {
