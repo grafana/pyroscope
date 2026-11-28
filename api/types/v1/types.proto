@@ -198,3 +198,53 @@ message FunctionStats {
   int64 total = 2;
   int64 self = 3;
 }
+
+// Requested directions are present even when no samples match (root is absent).
+message FunctionTree {
+  CallTree callers = 1;
+  CallTree callees = 2;
+}
+
+message CallTree {
+  CallTreeNode root = 1;
+}
+
+message CallTreeNode {
+  // Empty only for the synthetic profile root. Uses stored function names.
+  string name = 1;
+  // FUNCTION_CHAIN counts each matching occurrence, including recursion.
+  int64 total = 2;
+  // Actual self for callees. For callers, self is only populated at the root of
+  // a single-function selection; caller ancestors have zero self.
+  int64 self = 3;
+  repeated CallTreeNode children = 4;
+  // Further nodes exist in this direction, even when depth stops children.
+  // Values beyond the boundary are included in total, never folded into self.
+  bool has_children = 5;
+}
+
+enum FunctionTreeDirection {
+  FUNCTION_TREE_DIRECTION_UNSPECIFIED = 0;
+  FUNCTION_TREE_DIRECTION_CALLEES = 1;
+  FUNCTION_TREE_DIRECTION_CALLERS = 2;
+  FUNCTION_TREE_DIRECTION_BOTH = 3;
+}
+
+enum FunctionTreeSelection {
+  FUNCTION_TREE_SELECTION_UNSPECIFIED = 0;
+  // Exact root-first call_site prefix; only CALLEES is supported. Empty selects
+  // the synthetic profile root.
+  FUNCTION_TREE_SELECTION_ROOT_PATH = 1;
+  // Match every occurrence of the root-first call_site chain: [A, F] means A calls F.
+  // The response root is the first item for CALLERS and the last item for CALLEES.
+  // To refine, prepend callers or append callees to the chain.
+  // BOTH requires exactly one function. Recursive occurrences count separately.
+  FUNCTION_TREE_SELECTION_FUNCTION_CHAIN = 2;
+}
+
+message FunctionTreeOptions {
+  FunctionTreeDirection direction = 1;
+  FunctionTreeSelection selection = 2;
+  // Edges from the reference node. Omitted defaults to 1; valid range 0..128.
+  optional int32 max_depth = 3;
+}

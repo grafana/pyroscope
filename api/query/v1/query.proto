@@ -94,6 +94,7 @@ message Query {
   ProfilePresenceQuery profile_presence = 10;
   TimeSeriesAnalysisQuery time_series_analysis = 11;
   FunctionsQuery functions = 12;
+  FunctionTreeQuery function_tree = 13;
 }
 
 enum QueryType {
@@ -109,6 +110,7 @@ enum QueryType {
   QUERY_PROFILE_PRESENCE = 9;
   QUERY_TIME_SERIES_ANALYSIS = 10;
   QUERY_FUNCTIONS = 11;
+  QUERY_FUNCTION_TREE = 12;
 }
 
 message InvokeResponse {
@@ -182,6 +184,7 @@ message Report {
   ProfilePresenceReport profile_presence = 10;
   TimeSeriesAnalysisReport time_series_analysis = 11;
   FunctionsReport functions = 12;
+  FunctionTreeReport function_tree = 13;
 }
 
 enum ReportType {
@@ -197,6 +200,7 @@ enum ReportType {
   REPORT_PROFILE_PRESENCE = 9;
   REPORT_TIME_SERIES_ANALYSIS = 10;
   REPORT_FUNCTIONS = 11;
+  REPORT_FUNCTION_TREE = 12;
 }
 
 message LabelNamesQuery {}
@@ -403,7 +407,20 @@ message FunctionsQuery {
   repeated string trace_id_selector = 4;
 }
 
+message FunctionTreeQuery {
+  optional types.v1.StackTraceSelector stack_trace_selector = 1;
+  repeated string profile_id_selector = 2;
+  repeated string span_selector = 3;
+  repeated string trace_id_selector = 4;
+  types.v1.FunctionTreeOptions options = 5;
+}
+
 message FunctionsReport {
   FunctionsQuery query = 1;
   types.v1.FunctionTable table = 2;
+}
+
+message FunctionTreeReport {
+  FunctionTreeQuery query = 1;
+  types.v1.FunctionTree tree = 2;
 }

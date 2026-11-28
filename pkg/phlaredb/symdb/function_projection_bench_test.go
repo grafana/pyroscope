@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/v2/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/v2/pkg/phlaredb/schemas/v1"
@@ -15,6 +17,7 @@ import (
 	"github.com/grafana/pyroscope/v2/pkg/pprof"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 // BenchmarkFunctionProjectionSizes includes sample collection, symbol resolution,
@@ -50,6 +53,27 @@ func BenchmarkFunctionProjectionSizes(b *testing.B) {
 		for _, level := range fg.Levels {
 			nodes += len(level.Values) / 4
 		}
+		frequency := make(map[string]int)
+		var longest []string
+		tree.IterateStacks(func(_ model.FunctionName, _ int64, stack []model.FunctionName) {
+			for _, name := range stack {
+				frequency[string(name)]++
+			}
+			if len(stack) > len(longest) {
+				longest = make([]string, len(stack))
+				for i, name := range stack {
+					longest[i] = string(name)
+				}
+				slices.Reverse(longest)
+			}
+		})
+		anchor, most := "", 0
+		for name, occurrences := range frequency {
+			if occurrences > most || (occurrences == most && name < anchor) {
+				anchor, most = name, occurrences
+			}
+		}
+		b.Logf("nodes=%d stacks=%d functions=%d anchor_occurrences=%d", nodes, count, len(frequency), most)
 		cases := []projectionBenchCase{
 			{
 				name:   "flamegraph_full",
@@ -69,11 +93,50 @@ func BenchmarkFunctionProjectionSizes(b *testing.B) {
 				limit:  100,
 			},
 		}
+		for _, depth := range []int{1, 4} {
+			for _, selection := range []struct {
+				name      string
+				direction typesv1.FunctionTreeDirection
+				selection typesv1.FunctionTreeSelection
+				path      []string
+			}{
+				{"root_callees", typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLEES, typesv1.FunctionTreeSelection_FUNCTION_TREE_SELECTION_ROOT_PATH, nil},
+				{"function_callees", typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLEES, typesv1.FunctionTreeSelection_FUNCTION_TREE_SELECTION_FUNCTION_CHAIN, []string{anchor}},
+				{"function_callers", typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLERS, typesv1.FunctionTreeSelection_FUNCTION_TREE_SELECTION_FUNCTION_CHAIN, []string{anchor}},
+				{"function_both", typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_BOTH, typesv1.FunctionTreeSelection_FUNCTION_TREE_SELECTION_FUNCTION_CHAIN, []string{anchor}},
+			} {
+				cases = append(cases, projectionBenchCase{
+					name:   fmt.Sprintf("%s_depth%d", selection.name, depth),
+					format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTION_TREE,
+					path:   selection.path,
+					options: &typesv1.FunctionTreeOptions{
+						Direction: selection.direction,
+						Selection: selection.selection,
+						MaxDepth:  proto.Int32(int32(depth)),
+					},
+				})
+			}
+		}
+		// A deep exact call-site query contrasts a narrow expansion with broad roots.
+		cases = append(cases, projectionBenchCase{
+			name:   "path_callees_depth4",
+			format: querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTION_TREE,
+			path:   longest[:len(longest)/2],
+			options: &typesv1.FunctionTreeOptions{
+				Direction: typesv1.FunctionTreeDirection_FUNCTION_TREE_DIRECTION_CALLEES,
+				Selection: typesv1.FunctionTreeSelection_FUNCTION_TREE_SELECTION_ROOT_PATH,
+				MaxDepth:  proto.Int32(4),
+			},
+		})
 		b.Run(fmt.Sprintf("nodes_%d", nodes), func(b *testing.B) {
 			for _, tc := range cases {
 				b.Run(tc.name, func(b *testing.B) {
+					selector := &typesv1.StackTraceSelector{}
+					for _, name := range tc.path {
+						selector.CallSite = append(selector.CallSite, &typesv1.Location{Name: name})
+					}
 					run := func() (*querierv1.SelectMergeStacktracesResponse, []byte, error) {
-						r := symdb.NewResolver(context.Background(), db, symdb.WithResolverMaxNodes(0))
+						r := symdb.NewResolver(context.Background(), db, symdb.WithResolverMaxNodes(0), symdb.WithResolverStackTraceSelector(selector))
 						defer r.Release()
 						r.AddSamples(0, samples)
 						resp, err := tc.response(r)
@@ -114,14 +177,22 @@ func BenchmarkFunctionProjectionSizes(b *testing.B) {
 }
 
 type projectionBenchCase struct {
-	name   string
-	format querierv1.ProfileFormat
-	limit  int
+	name    string
+	format  querierv1.ProfileFormat
+	path    []string
+	options *typesv1.FunctionTreeOptions
+	limit   int
 }
 
 func (c projectionBenchCase) response(r *symdb.Resolver) (*querierv1.SelectMergeStacktracesResponse, error) {
 	resp := new(querierv1.SelectMergeStacktracesResponse)
 	switch c.format {
+	case querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTION_TREE:
+		tree, err := r.FunctionTree(c.options)
+		if err != nil {
+			return nil, err
+		}
+		resp.FunctionTree = tree
 	case querierv1.ProfileFormat_PROFILE_FORMAT_FUNCTIONS:
 		functions, err := r.Functions()
 		if err != nil {
@@ -161,6 +232,20 @@ func projectionResponseNodes(resp *querierv1.SelectMergeStacktracesResponse) int
 			n += len(level.Values) / 4
 		}
 		return n
+	}
+	if resp.FunctionTree != nil {
+		var count func(*typesv1.CallTreeNode) int
+		count = func(node *typesv1.CallTreeNode) int {
+			if node == nil {
+				return 0
+			}
+			n := 1
+			for _, child := range node.Children {
+				n += count(child)
+			}
+			return n
+		}
+		return count(resp.FunctionTree.GetCallers().GetRoot()) + count(resp.FunctionTree.GetCallees().GetRoot())
 	}
 	return -1
 }
