@@ -34,4 +34,9 @@ func RegisterCompactionServiceHandler(mux *mux.Router, svc CompactionServiceHand
 		svc.PollCompactionJobs,
 		opts...,
 	))
+	mux.Handle("/metastore.v1.CompactionService/GetCompactionState", connect.NewUnaryHandler(
+		"/metastore.v1.CompactionService/GetCompactionState",
+		svc.GetCompactionState,
+		opts...,
+	))
 }

@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	metastorev1 "github.com/grafana/pyroscope/api/gen/proto/go/metastore/v1"
 	metastoreclient "github.com/grafana/pyroscope/v2/pkg/metastore/client"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/discovery"
 	"github.com/grafana/pyroscope/v2/pkg/metastore/raftnode/raftnodepb"
@@ -37,7 +38,12 @@ type Admin struct {
 	servers      []discovery.Server
 	leaderClient raftnodepb.RaftNodeServiceClient // used to make operational calls (e.g., removing nodes)
 
-	metastoreClient *metastoreclient.Client // used to test the metastoreclient.Client implementation
+	metastoreClient  *metastoreclient.Client // used to test the metastoreclient.Client implementation
+	compactionClient metastorev1.CompactionServiceClient
+
+	// compactionCache keeps the compaction state briefly: serving the page
+	// costs a full scan of the compaction queues. The zero value disables it.
+	compactionCache compactionStateCache
 
 	actionHandlers map[string]formActionHandler
 }
@@ -58,11 +64,13 @@ func New(
 	metastoreClient *metastoreclient.Client,
 ) (*Admin, error) {
 	adm := &Admin{
-		leaderClient:    client,
-		logger:          logger,
-		actionHandlers:  make(map[string]formActionHandler),
-		metastoreClient: metastoreClient,
+		leaderClient:     client,
+		logger:           logger,
+		actionHandlers:   make(map[string]formActionHandler),
+		metastoreClient:  metastoreClient,
+		compactionClient: metastoreClient,
 	}
+	adm.compactionCache.ttl = compactionStateCacheTTL
 	adm.addFormActionHandlers()
 	adm.service = services.NewIdleService(adm.starting, adm.stopping)
 
