@@ -535,6 +535,44 @@ components:
         - HEATMAP_QUERY_TYPE_UNSPECIFIED
         - HEATMAP_QUERY_TYPE_INDIVIDUAL
         - HEATMAP_QUERY_TYPE_SPAN
+    querier.v1.SpanPresence:
+      type: object
+      properties:
+        traceId:
+          type: string
+          title: trace_id
+          description: |-
+            Empty if matching samples have no stored trace ID. Such samples can only
+             match requests with an empty trace_id_selector.
+        spanId:
+          type: string
+          title: span_id
+        totals:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.SpanProfileTotal'
+          title: totals
+          description: Totals are separated by profile type because their units may differ.
+      title: SpanPresence
+      additionalProperties: false
+    querier.v1.SpanProfileTotal:
+      type: object
+      properties:
+        profileTypeID:
+          type: string
+          title: profile_typeID
+          description: Profile type identifying the sample type and unit.
+        total:
+          type:
+            - integer
+            - string
+          title: total
+          format: int64
+          description: |-
+            Sum of matching sample values for this trace, span, and profile type.
+             A zero total still indicates presence if matching samples exist.
+      title: SpanProfileTotal
+      additionalProperties: false
     querier.v1.TimeSeriesAnomaly:
       type: object
       properties:
@@ -1178,12 +1216,15 @@ components:
           $ref: '#/components/schemas/query.v1.ProfilePresenceQuery'
         timeSeriesAnalysis:
           title: time_series_analysis
+          $ref: '#/components/schemas/query.v1.TimeSeriesAnalysisQuery'
+        spanPresence:
+          title: span_presence
           description: |-
             function_details
              call_graph
              top_table
              ...
-          $ref: '#/components/schemas/query.v1.TimeSeriesAnalysisQuery'
+          $ref: '#/components/schemas/query.v1.SpanPresenceQuery'
       title: Query
       additionalProperties: false
     query.v1.QueryNode:
@@ -1275,6 +1316,7 @@ components:
         - QUERY_TIME_SERIES_COMPACT
         - QUERY_PROFILE_PRESENCE
         - QUERY_TIME_SERIES_ANALYSIS
+        - QUERY_SPAN_PRESENCE
     query.v1.Report:
       type: object
       properties:
@@ -1314,6 +1356,9 @@ components:
         timeSeriesAnalysis:
           title: time_series_analysis
           $ref: '#/components/schemas/query.v1.TimeSeriesAnalysisReport'
+        spanPresence:
+          title: span_presence
+          $ref: '#/components/schemas/query.v1.SpanPresenceReport'
       title: Report
       additionalProperties: false
     query.v1.ReportType:
@@ -1331,6 +1376,7 @@ components:
         - REPORT_TIME_SERIES_COMPACT
         - REPORT_PROFILE_PRESENCE
         - REPORT_TIME_SERIES_ANALYSIS
+        - REPORT_SPAN_PRESENCE
     query.v1.Series:
       type: object
       properties:
@@ -1374,6 +1420,38 @@ components:
             $ref: '#/components/schemas/types.v1.Labels'
           title: series_labels
       title: SeriesLabelsReport
+      additionalProperties: false
+    query.v1.SpanPresenceQuery:
+      type: object
+      properties:
+        spanSelector:
+          type: array
+          items:
+            type: string
+          title: span_selector
+        traceIdSelector:
+          type: array
+          items:
+            type: string
+          title: trace_id_selector
+      title: SpanPresenceQuery
+      additionalProperties: false
+      description: |-
+        Checks stored samples without resolving symbols. IDs are ORed within each
+         selector and ANDed across selectors, on the same sample. At least one
+         selector must be nonempty.
+    query.v1.SpanPresenceReport:
+      type: object
+      properties:
+        query:
+          title: query
+          $ref: '#/components/schemas/query.v1.SpanPresenceQuery'
+        spans:
+          type: array
+          items:
+            $ref: '#/components/schemas/querier.v1.SpanPresence'
+          title: spans
+      title: SpanPresenceReport
       additionalProperties: false
     query.v1.TimeSeriesAnalysisConfig:
       type: object

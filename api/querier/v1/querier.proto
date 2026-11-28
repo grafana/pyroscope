@@ -61,6 +61,12 @@ service QuerierService {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
   }
 
+  // SelectSpanPresence returns spans with stored profiling samples and their
+  // total sample values, grouped by trace ID, span ID, and profile type.
+  rpc SelectSpanPresence(SelectSpanPresenceRequest) returns (SelectSpanPresenceResponse) {
+    option (gnostic.openapi.v3.operation).tags = "scope/internal";
+  }
+
   // Diff returns a diff of two profiles
   rpc Diff(DiffRequest) returns (DiffResponse) {
     option (gnostic.openapi.v3.operation).tags = "scope/public";
@@ -456,4 +462,58 @@ message TimeSeriesAnomaly {
   // series (including series without anomalies). Used to rank series for limits.
   // Usage is the sum of non-negative finite buckets across the selected window.
   double priority_score = 10;
+}
+
+// SelectSpanPresenceRequest restricts the search by time and profile labels.
+// At least one of span_selector or trace_id_selector must be nonempty.
+// IDs within each selector are alternatives (OR). When both selectors are
+// supplied, the same sample must match one ID from each selector (AND).
+// The lists are not paired by position.
+//
+// Examples (all within the requested time range and label selector):
+//   span_selector = ["0000000000000001", "0000000000000002"]
+//     Matches samples for either span, regardless of trace ID.
+//   trace_id_selector = ["0000000000000000000000000000000a"]
+//     Discovers all profiled spans belonging to trace A.
+//   span_selector = ["0000000000000001", "0000000000000002"]
+//   trace_id_selector = ["0000000000000000000000000000000a",
+//                        "0000000000000000000000000000000b"]
+//     Matches (span 1, trace A), (span 1, trace B), (span 2, trace A),
+//     or (span 2, trace B), if those pairs occur on stored samples.
+//     Excludes span 3 in trace A and span 1 in trace C.
+//     A span match on one sample and a trace match on another do not qualify.
+message SelectSpanPresenceRequest {
+  // Milliseconds since epoch.
+  int64 start = 1;
+  // Milliseconds since epoch.
+  int64 end = 2;
+  // Label selector restricting the profiles searched.
+  string label_selector = 3;
+  // Candidate span IDs (16 hex characters). Empty means no span restriction.
+  repeated string span_selector = 4;
+  // Trace IDs (32 hex characters). Empty means no trace restriction.
+  // Samples without a stored trace ID cannot match a nonempty trace selector.
+  repeated string trace_id_selector = 5;
+}
+
+message SelectSpanPresenceResponse {
+  // Only spans with matching stored samples are returned.
+  repeated SpanPresence spans = 1;
+}
+
+message SpanPresence {
+  // Empty if matching samples have no stored trace ID. Such samples can only
+  // match requests with an empty trace_id_selector.
+  string trace_id = 1;
+  string span_id = 2;
+  // Totals are separated by profile type because their units may differ.
+  repeated SpanProfileTotal totals = 3;
+}
+
+message SpanProfileTotal {
+  // Profile type identifying the sample type and unit.
+  string profile_typeID = 1;
+  // Sum of matching sample values for this trace, span, and profile type.
+  // A zero total still indicates presence if matching samples exist.
+  int64 total = 2;
 }

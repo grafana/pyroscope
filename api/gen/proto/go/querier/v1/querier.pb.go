@@ -2525,6 +2525,270 @@ func (x *TimeSeriesAnomaly) GetPriorityScore() float64 {
 	return 0
 }
 
+// SelectSpanPresenceRequest restricts the search by time and profile labels.
+// At least one of span_selector or trace_id_selector must be nonempty.
+// IDs within each selector are alternatives (OR). When both selectors are
+// supplied, the same sample must match one ID from each selector (AND).
+// The lists are not paired by position.
+//
+// Examples (all within the requested time range and label selector):
+//
+//	span_selector = ["0000000000000001", "0000000000000002"]
+//	  Matches samples for either span, regardless of trace ID.
+//	trace_id_selector = ["0000000000000000000000000000000a"]
+//	  Discovers all profiled spans belonging to trace A.
+//	span_selector = ["0000000000000001", "0000000000000002"]
+//	trace_id_selector = ["0000000000000000000000000000000a",
+//	                     "0000000000000000000000000000000b"]
+//	  Matches (span 1, trace A), (span 1, trace B), (span 2, trace A),
+//	  or (span 2, trace B), if those pairs occur on stored samples.
+//	  Excludes span 3 in trace A and span 1 in trace C.
+//	  A span match on one sample and a trace match on another do not qualify.
+type SelectSpanPresenceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Milliseconds since epoch.
+	Start int64 `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
+	// Milliseconds since epoch.
+	End int64 `protobuf:"varint,2,opt,name=end,proto3" json:"end,omitempty"`
+	// Label selector restricting the profiles searched.
+	LabelSelector string `protobuf:"bytes,3,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	// Candidate span IDs (16 hex characters). Empty means no span restriction.
+	SpanSelector []string `protobuf:"bytes,4,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
+	// Trace IDs (32 hex characters). Empty means no trace restriction.
+	// Samples without a stored trace ID cannot match a nonempty trace selector.
+	TraceIdSelector []string `protobuf:"bytes,5,rep,name=trace_id_selector,json=traceIdSelector,proto3" json:"trace_id_selector,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SelectSpanPresenceRequest) Reset() {
+	*x = SelectSpanPresenceRequest{}
+	mi := &file_querier_v1_querier_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SelectSpanPresenceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SelectSpanPresenceRequest) ProtoMessage() {}
+
+func (x *SelectSpanPresenceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SelectSpanPresenceRequest.ProtoReflect.Descriptor instead.
+func (*SelectSpanPresenceRequest) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *SelectSpanPresenceRequest) GetStart() int64 {
+	if x != nil {
+		return x.Start
+	}
+	return 0
+}
+
+func (x *SelectSpanPresenceRequest) GetEnd() int64 {
+	if x != nil {
+		return x.End
+	}
+	return 0
+}
+
+func (x *SelectSpanPresenceRequest) GetLabelSelector() string {
+	if x != nil {
+		return x.LabelSelector
+	}
+	return ""
+}
+
+func (x *SelectSpanPresenceRequest) GetSpanSelector() []string {
+	if x != nil {
+		return x.SpanSelector
+	}
+	return nil
+}
+
+func (x *SelectSpanPresenceRequest) GetTraceIdSelector() []string {
+	if x != nil {
+		return x.TraceIdSelector
+	}
+	return nil
+}
+
+type SelectSpanPresenceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Only spans with matching stored samples are returned.
+	Spans         []*SpanPresence `protobuf:"bytes,1,rep,name=spans,proto3" json:"spans,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SelectSpanPresenceResponse) Reset() {
+	*x = SelectSpanPresenceResponse{}
+	mi := &file_querier_v1_querier_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SelectSpanPresenceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SelectSpanPresenceResponse) ProtoMessage() {}
+
+func (x *SelectSpanPresenceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SelectSpanPresenceResponse.ProtoReflect.Descriptor instead.
+func (*SelectSpanPresenceResponse) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *SelectSpanPresenceResponse) GetSpans() []*SpanPresence {
+	if x != nil {
+		return x.Spans
+	}
+	return nil
+}
+
+type SpanPresence struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty if matching samples have no stored trace ID. Such samples can only
+	// match requests with an empty trace_id_selector.
+	TraceId string `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	SpanId  string `protobuf:"bytes,2,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	// Totals are separated by profile type because their units may differ.
+	Totals        []*SpanProfileTotal `protobuf:"bytes,3,rep,name=totals,proto3" json:"totals,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpanPresence) Reset() {
+	*x = SpanPresence{}
+	mi := &file_querier_v1_querier_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpanPresence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpanPresence) ProtoMessage() {}
+
+func (x *SpanPresence) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpanPresence.ProtoReflect.Descriptor instead.
+func (*SpanPresence) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *SpanPresence) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *SpanPresence) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *SpanPresence) GetTotals() []*SpanProfileTotal {
+	if x != nil {
+		return x.Totals
+	}
+	return nil
+}
+
+type SpanProfileTotal struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Profile type identifying the sample type and unit.
+	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
+	// Sum of matching sample values for this trace, span, and profile type.
+	// A zero total still indicates presence if matching samples exist.
+	Total         int64 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SpanProfileTotal) Reset() {
+	*x = SpanProfileTotal{}
+	mi := &file_querier_v1_querier_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SpanProfileTotal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SpanProfileTotal) ProtoMessage() {}
+
+func (x *SpanProfileTotal) ProtoReflect() protoreflect.Message {
+	mi := &file_querier_v1_querier_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SpanProfileTotal.ProtoReflect.Descriptor instead.
+func (*SpanProfileTotal) Descriptor() ([]byte, []int) {
+	return file_querier_v1_querier_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *SpanProfileTotal) GetProfileTypeID() string {
+	if x != nil {
+		return x.ProfileTypeID
+	}
+	return ""
+}
+
+func (x *SpanProfileTotal) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 var File_querier_v1_querier_proto protoreflect.FileDescriptor
 
 const file_querier_v1_querier_proto_rawDesc = "" +
@@ -2723,7 +2987,22 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x0frelative_change\x18\b \x01(\x01R\x0erelativeChange\x12\x14\n" +
 	"\x05score\x18\t \x01(\x01R\x05score\x12%\n" +
 	"\x0epriority_score\x18\n" +
-	" \x01(\x01R\rpriorityScore*\x99\x01\n" +
+	" \x01(\x01R\rpriorityScore\"\xbb\x01\n" +
+	"\x19SelectSpanPresenceRequest\x12\x14\n" +
+	"\x05start\x18\x01 \x01(\x03R\x05start\x12\x10\n" +
+	"\x03end\x18\x02 \x01(\x03R\x03end\x12%\n" +
+	"\x0elabel_selector\x18\x03 \x01(\tR\rlabelSelector\x12#\n" +
+	"\rspan_selector\x18\x04 \x03(\tR\fspanSelector\x12*\n" +
+	"\x11trace_id_selector\x18\x05 \x03(\tR\x0ftraceIdSelector\"L\n" +
+	"\x1aSelectSpanPresenceResponse\x12.\n" +
+	"\x05spans\x18\x01 \x03(\v2\x18.querier.v1.SpanPresenceR\x05spans\"x\n" +
+	"\fSpanPresence\x12\x19\n" +
+	"\btrace_id\x18\x01 \x01(\tR\atraceId\x12\x17\n" +
+	"\aspan_id\x18\x02 \x01(\tR\x06spanId\x124\n" +
+	"\x06totals\x18\x03 \x03(\v2\x1c.querier.v1.SpanProfileTotalR\x06totals\"O\n" +
+	"\x10SpanProfileTotal\x12%\n" +
+	"\x0eprofile_typeID\x18\x01 \x01(\tR\rprofileTypeID\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total*\x99\x01\n" +
 	"\rProfileFormat\x12\x1e\n" +
 	"\x1aPROFILE_FORMAT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19PROFILE_FORMAT_FLAMEGRAPH\x10\x01\x12\x17\n" +
@@ -2751,8 +3030,7 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\x1eTIME_SERIES_ANOMALY_TYPE_SPIKE\x10\x01\x12!\n" +
 	"\x1dTIME_SERIES_ANOMALY_TYPE_DROP\x10\x02\x12%\n" +
 	"!TIME_SERIES_ANOMALY_TYPE_INCREASE\x10\x03\x12%\n" +
-	"!TIME_SERIES_ANOMALY_TYPE_DECREASE\x10\x042\xd3\n" +
-	"\n" +
+	"!TIME_SERIES_ANOMALY_TYPE_DECREASE\x10\x042\xcd\v\n" +
 	"\x0eQuerierService\x12d\n" +
 	"\fProfileTypes\x12\x1f.querier.v1.ProfileTypesRequest\x1a .querier.v1.ProfileTypesResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12]\n" +
@@ -2772,7 +3050,9 @@ const file_querier_v1_querier_proto_rawDesc = "" +
 	"\fSelectSeries\x12\x1f.querier.v1.SelectSeriesRequest\x1a .querier.v1.SelectSeriesResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12g\n" +
 	"\rSelectHeatmap\x12 .querier.v1.SelectHeatmapRequest\x1a!.querier.v1.SelectHeatmapResponse\"\x11\xbaG\x0e\n" +
-	"\fscope/public\x12L\n" +
+	"\fscope/public\x12x\n" +
+	"\x12SelectSpanPresence\x12%.querier.v1.SelectSpanPresenceRequest\x1a&.querier.v1.SelectSpanPresenceResponse\"\x13\xbaG\x10\n" +
+	"\x0escope/internal\x12L\n" +
 	"\x04Diff\x12\x17.querier.v1.DiffRequest\x1a\x18.querier.v1.DiffResponse\"\x11\xbaG\x0e\n" +
 	"\fscope/public\x12k\n" +
 	"\x0fGetProfileStats\x12 .types.v1.GetProfileStatsRequest\x1a!.types.v1.GetProfileStatsResponse\"\x13\xbaG\x10\n" +
@@ -2798,7 +3078,7 @@ func file_querier_v1_querier_proto_rawDescGZIP() []byte {
 }
 
 var file_querier_v1_querier_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_querier_v1_querier_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_querier_v1_querier_proto_goTypes = []any{
 	(ProfileFormat)(0),                     // 0: querier.v1.ProfileFormat
 	(AsyncQueryType)(0),                    // 1: querier.v1.AsyncQueryType
@@ -2836,32 +3116,36 @@ var file_querier_v1_querier_proto_goTypes = []any{
 	(*StacktraceAnomaly)(nil),              // 33: querier.v1.StacktraceAnomaly
 	(*AnomalyTimeSeriesRequest)(nil),       // 34: querier.v1.AnomalyTimeSeriesRequest
 	(*TimeSeriesAnomaly)(nil),              // 35: querier.v1.TimeSeriesAnomaly
-	(*v1.ProfileType)(nil),                 // 36: types.v1.ProfileType
-	(*v1.Labels)(nil),                      // 37: types.v1.Labels
-	(*v1.StackTraceSelector)(nil),          // 38: types.v1.StackTraceSelector
-	(*v11.Profile)(nil),                    // 39: google.v1.Profile
-	(v1.TimeSeriesAggregationType)(0),      // 40: types.v1.TimeSeriesAggregationType
-	(v1.ExemplarType)(0),                   // 41: types.v1.ExemplarType
-	(*v1.Series)(nil),                      // 42: types.v1.Series
-	(*v1.HeatmapSeries)(nil),               // 43: types.v1.HeatmapSeries
-	(*v1.LabelPair)(nil),                   // 44: types.v1.LabelPair
-	(*v1.LabelValuesRequest)(nil),          // 45: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),           // 46: types.v1.LabelNamesRequest
-	(*v1.GetProfileStatsRequest)(nil),      // 47: types.v1.GetProfileStatsRequest
-	(*v1.LabelValuesResponse)(nil),         // 48: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),          // 49: types.v1.LabelNamesResponse
-	(*v1.GetProfileStatsResponse)(nil),     // 50: types.v1.GetProfileStatsResponse
+	(*SelectSpanPresenceRequest)(nil),      // 36: querier.v1.SelectSpanPresenceRequest
+	(*SelectSpanPresenceResponse)(nil),     // 37: querier.v1.SelectSpanPresenceResponse
+	(*SpanPresence)(nil),                   // 38: querier.v1.SpanPresence
+	(*SpanProfileTotal)(nil),               // 39: querier.v1.SpanProfileTotal
+	(*v1.ProfileType)(nil),                 // 40: types.v1.ProfileType
+	(*v1.Labels)(nil),                      // 41: types.v1.Labels
+	(*v1.StackTraceSelector)(nil),          // 42: types.v1.StackTraceSelector
+	(*v11.Profile)(nil),                    // 43: google.v1.Profile
+	(v1.TimeSeriesAggregationType)(0),      // 44: types.v1.TimeSeriesAggregationType
+	(v1.ExemplarType)(0),                   // 45: types.v1.ExemplarType
+	(*v1.Series)(nil),                      // 46: types.v1.Series
+	(*v1.HeatmapSeries)(nil),               // 47: types.v1.HeatmapSeries
+	(*v1.LabelPair)(nil),                   // 48: types.v1.LabelPair
+	(*v1.LabelValuesRequest)(nil),          // 49: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),           // 50: types.v1.LabelNamesRequest
+	(*v1.GetProfileStatsRequest)(nil),      // 51: types.v1.GetProfileStatsRequest
+	(*v1.LabelValuesResponse)(nil),         // 52: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),          // 53: types.v1.LabelNamesResponse
+	(*v1.GetProfileStatsResponse)(nil),     // 54: types.v1.GetProfileStatsResponse
 }
 var file_querier_v1_querier_proto_depIdxs = []int32{
-	36, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
-	37, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
+	40, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
+	41, // 1: querier.v1.SeriesResponse.labels_set:type_name -> types.v1.Labels
 	0,  // 2: querier.v1.SelectMergeStacktracesRequest.format:type_name -> querier.v1.ProfileFormat
-	38, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	42, // 3: querier.v1.SelectMergeStacktracesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	13, // 4: querier.v1.SelectMergeStacktracesRequest.async:type_name -> querier.v1.AsyncQueryRequest
 	19, // 5: querier.v1.SelectMergeStacktracesResponse.flamegraph:type_name -> querier.v1.FlameGraph
 	14, // 6: querier.v1.SelectMergeStacktracesResponse.async:type_name -> querier.v1.AsyncQueryResponse
 	12, // 7: querier.v1.SelectMergeStacktracesResponse.pprof:type_name -> querier.v1.PprofProfile
-	39, // 8: querier.v1.PprofProfile.profile:type_name -> google.v1.Profile
+	43, // 8: querier.v1.PprofProfile.profile:type_name -> google.v1.Profile
 	1,  // 9: querier.v1.AsyncQueryRequest.type:type_name -> querier.v1.AsyncQueryType
 	2,  // 10: querier.v1.AsyncQueryResponse.status:type_name -> querier.v1.AsyncQueryStatus
 	0,  // 11: querier.v1.SelectMergeSpanProfileRequest.format:type_name -> querier.v1.ProfileFormat
@@ -2871,54 +3155,58 @@ var file_querier_v1_querier_proto_depIdxs = []int32{
 	20, // 15: querier.v1.DiffResponse.flamegraph:type_name -> querier.v1.FlameGraphDiff
 	21, // 16: querier.v1.FlameGraph.levels:type_name -> querier.v1.Level
 	21, // 17: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
-	38, // 18: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	40, // 19: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
-	38, // 20: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	41, // 21: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	42, // 22: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
+	42, // 18: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	44, // 19: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
+	42, // 20: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	45, // 21: querier.v1.SelectSeriesRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	46, // 22: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
 	3,  // 23: querier.v1.SelectHeatmapRequest.query_type:type_name -> querier.v1.HeatmapQueryType
-	41, // 24: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
-	43, // 25: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
+	45, // 24: querier.v1.SelectHeatmapRequest.exemplar_type:type_name -> types.v1.ExemplarType
+	47, // 25: querier.v1.SelectHeatmapResponse.series:type_name -> types.v1.HeatmapSeries
 	29, // 26: querier.v1.AnalyzeQueryResponse.query_scopes:type_name -> querier.v1.QueryScope
 	30, // 27: querier.v1.AnalyzeQueryResponse.query_impact:type_name -> querier.v1.QueryImpact
 	4,  // 28: querier.v1.QueryAnomaliesRequest.anomaly_types:type_name -> querier.v1.AnomalyType
 	34, // 29: querier.v1.QueryAnomaliesRequest.time_series:type_name -> querier.v1.AnomalyTimeSeriesRequest
 	33, // 30: querier.v1.QueryAnomaliesResponse.stacktrace_anomalies:type_name -> querier.v1.StacktraceAnomaly
 	35, // 31: querier.v1.QueryAnomaliesResponse.time_series_anomalies:type_name -> querier.v1.TimeSeriesAnomaly
-	44, // 32: querier.v1.StacktraceAnomaly.labels:type_name -> types.v1.LabelPair
+	48, // 32: querier.v1.StacktraceAnomaly.labels:type_name -> types.v1.LabelPair
 	5,  // 33: querier.v1.TimeSeriesAnomaly.type:type_name -> querier.v1.TimeSeriesAnomalyType
-	44, // 34: querier.v1.TimeSeriesAnomaly.labels:type_name -> types.v1.LabelPair
-	6,  // 35: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	45, // 36: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	46, // 37: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	8,  // 38: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	10, // 39: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	15, // 40: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	22, // 41: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	23, // 42: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	25, // 43: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
-	17, // 44: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	47, // 45: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
-	27, // 46: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
-	31, // 47: querier.v1.QuerierService.QueryAnomalies:input_type -> querier.v1.QueryAnomaliesRequest
-	7,  // 48: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	48, // 49: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	49, // 50: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	9,  // 51: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	11, // 52: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	16, // 53: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	39, // 54: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	24, // 55: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	26, // 56: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
-	18, // 57: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	50, // 58: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
-	28, // 59: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
-	32, // 60: querier.v1.QuerierService.QueryAnomalies:output_type -> querier.v1.QueryAnomaliesResponse
-	48, // [48:61] is the sub-list for method output_type
-	35, // [35:48] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	48, // 34: querier.v1.TimeSeriesAnomaly.labels:type_name -> types.v1.LabelPair
+	38, // 35: querier.v1.SelectSpanPresenceResponse.spans:type_name -> querier.v1.SpanPresence
+	39, // 36: querier.v1.SpanPresence.totals:type_name -> querier.v1.SpanProfileTotal
+	6,  // 37: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	49, // 38: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	50, // 39: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	8,  // 40: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	10, // 41: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	15, // 42: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	22, // 43: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	23, // 44: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	25, // 45: querier.v1.QuerierService.SelectHeatmap:input_type -> querier.v1.SelectHeatmapRequest
+	36, // 46: querier.v1.QuerierService.SelectSpanPresence:input_type -> querier.v1.SelectSpanPresenceRequest
+	17, // 47: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	51, // 48: querier.v1.QuerierService.GetProfileStats:input_type -> types.v1.GetProfileStatsRequest
+	27, // 49: querier.v1.QuerierService.AnalyzeQuery:input_type -> querier.v1.AnalyzeQueryRequest
+	31, // 50: querier.v1.QuerierService.QueryAnomalies:input_type -> querier.v1.QueryAnomaliesRequest
+	7,  // 51: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	52, // 52: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	53, // 53: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	9,  // 54: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	11, // 55: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	16, // 56: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	43, // 57: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	24, // 58: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	26, // 59: querier.v1.QuerierService.SelectHeatmap:output_type -> querier.v1.SelectHeatmapResponse
+	37, // 60: querier.v1.QuerierService.SelectSpanPresence:output_type -> querier.v1.SelectSpanPresenceResponse
+	18, // 61: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	54, // 62: querier.v1.QuerierService.GetProfileStats:output_type -> types.v1.GetProfileStatsResponse
+	28, // 63: querier.v1.QuerierService.AnalyzeQuery:output_type -> querier.v1.AnalyzeQueryResponse
+	32, // 64: querier.v1.QuerierService.QueryAnomalies:output_type -> querier.v1.QueryAnomaliesResponse
+	51, // [51:65] is the sub-list for method output_type
+	37, // [37:51] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }
@@ -2940,7 +3228,7 @@ func file_querier_v1_querier_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_querier_v1_querier_proto_rawDesc), len(file_querier_v1_querier_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   30,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -18,6 +18,10 @@ func (f *Frontend) SelectHeatmap(
 	return nil, errNotAvailableInV1Frontend
 }
 
+func (f *Frontend) SelectSpanPresence(ctx context.Context, req *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SelectSpanPresence requires the v2 query backend"))
+}
+
 func (f *Frontend) QueryAnomalies(
 	ctx context.Context,
 	c *connect.Request[querierv1.QueryAnomaliesRequest],

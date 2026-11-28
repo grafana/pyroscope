@@ -734,6 +734,65 @@ func (_c *MockQuerierServiceClient_SelectSeries_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// SelectSpanPresence provides a mock function with given fields: _a0, _a1
+func (_m *MockQuerierServiceClient) SelectSpanPresence(_a0 context.Context, _a1 *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error) {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SelectSpanPresence")
+	}
+
+	var r0 *connect.Response[querierv1.SelectSpanPresenceResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *connect.Request[querierv1.SelectSpanPresenceRequest]) *connect.Response[querierv1.SelectSpanPresenceResponse]); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[querierv1.SelectSpanPresenceResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *connect.Request[querierv1.SelectSpanPresenceRequest]) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuerierServiceClient_SelectSpanPresence_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SelectSpanPresence'
+type MockQuerierServiceClient_SelectSpanPresence_Call struct {
+	*mock.Call
+}
+
+// SelectSpanPresence is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *connect.Request[querierv1.SelectSpanPresenceRequest]
+func (_e *MockQuerierServiceClient_Expecter) SelectSpanPresence(_a0 interface{}, _a1 interface{}) *MockQuerierServiceClient_SelectSpanPresence_Call {
+	return &MockQuerierServiceClient_SelectSpanPresence_Call{Call: _e.mock.On("SelectSpanPresence", _a0, _a1)}
+}
+
+func (_c *MockQuerierServiceClient_SelectSpanPresence_Call) Run(run func(_a0 context.Context, _a1 *connect.Request[querierv1.SelectSpanPresenceRequest])) *MockQuerierServiceClient_SelectSpanPresence_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*connect.Request[querierv1.SelectSpanPresenceRequest]))
+	})
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_SelectSpanPresence_Call) Return(_a0 *connect.Response[querierv1.SelectSpanPresenceResponse], _a1 error) *MockQuerierServiceClient_SelectSpanPresence_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockQuerierServiceClient_SelectSpanPresence_Call) RunAndReturn(run func(context.Context, *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error)) *MockQuerierServiceClient_SelectSpanPresence_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Series provides a mock function with given fields: _a0, _a1
 func (_m *MockQuerierServiceClient) Series(_a0 context.Context, _a1 *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	ret := _m.Called(_a0, _a1)

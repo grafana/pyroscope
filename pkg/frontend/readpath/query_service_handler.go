@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/grafana/dskit/tenant"
 	"golang.org/x/sync/errgroup"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -261,6 +263,34 @@ func (r *Router) AnalyzeQuery(
 		return r.oldFrontend.AnalyzeQuery(ctx, req)
 	}
 	return connect.NewResponse(&querierv1.AnalyzeQueryResponse{}), nil
+}
+
+// SelectSpanPresence requires the entire requested range to use v2 storage.
+func (r *Router) SelectSpanPresence(ctx context.Context, req *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error) {
+	unsupported := func() (*connect.Response[querierv1.SelectSpanPresenceResponse], error) {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("SelectSpanPresence requires a full v2 read path; v1 and mixed mode are unsupported"))
+	}
+	tenants, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if r.newFrontend == nil {
+		return unsupported()
+	}
+	for _, id := range tenants {
+		cfg := r.overrides.ReadPathOverrides(id)
+		if !cfg.EnableQueryBackend {
+			return unsupported()
+		}
+		split, err := cfg.EnableQueryBackendFrom.SplitTime(func() (time.Time, error) { return r.resolver.OldestProfileTime(ctx, id) })
+		if err != nil {
+			return nil, err
+		}
+		if req.Msg.Start < split.UnixMilli() {
+			return unsupported()
+		}
+	}
+	return r.newFrontend.SelectSpanPresence(ctx, req)
 }
 
 func (r *Router) QueryAnomalies(

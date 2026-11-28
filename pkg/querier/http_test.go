@@ -162,6 +162,10 @@ func (m *mockQuerierClient) SelectHeatmap(context.Context, *connect.Request[quer
 	return nil, nil
 }
 
+func (m *mockQuerierClient) SelectSpanPresence(context.Context, *connect.Request[querierv1.SelectSpanPresenceRequest]) (*connect.Response[querierv1.SelectSpanPresenceResponse], error) {
+	return connect.NewResponse(&querierv1.SelectSpanPresenceResponse{}), nil
+}
+
 func (m *mockQuerierClient) QueryAnomalies(context.Context, *connect.Request[querierv1.QueryAnomaliesRequest]) (*connect.Response[querierv1.QueryAnomaliesResponse], error) {
 	return nil, nil
 }
