@@ -209,6 +209,9 @@ func (ls Labels) WithLabels(names ...string) Labels {
 			}
 		}
 	}
+	// matched was collected in the order of names, which is arbitrary. Sort it
+	// so the result is a well-formed label set regardless of argument order.
+	sort.Sort(matched)
 	return matched
 }
 
@@ -653,6 +656,11 @@ func (ls Labels) WithoutLabels(names ...string) Labels {
 	if len(toRemove) == 0 {
 		return ls
 	}
+
+	// Subtract performs a merge join and expects its argument to be sorted,
+	// but toRemove was collected in the order of names, which is arbitrary.
+	// Sort it first so every requested label is removed regardless of order.
+	sort.Sort(toRemove)
 
 	result := ls.Clone()
 	return result.Subtract(toRemove)
