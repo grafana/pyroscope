@@ -83,7 +83,7 @@ The `LD_LIBRARY_PATH` environment variable should point to the directory contain
 
 ### Windows (public preview)
 
-1. Obtain `Pyroscope.Profiler.Native.dll` from the [latest release](https://github.com/grafana/pyroscope-dotnet/releases/). The profiler is a single DLL, signed by Grafana Labs. No other native libraries are needed: 
+1. Obtain `Pyroscope.Profiler.Native.dll` from the [latest release](https://github.com/grafana/pyroscope-dotnet/releases/). The profiler is a single DLL, signed by Grafana Labs. No other native libraries are needed:
 
 ```powershell
 Invoke-WebRequest -Uri https://github.com/grafana/pyroscope-dotnet/releases/download/pyroscope-1.6.0/pyroscope.1.6.0-windows-x64.zip -OutFile pyroscope-windows-x64.zip
@@ -230,7 +230,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | ENVIRONMENT VARIABLE                   | Type         | DESCRIPTION                                                                                                                       |
 |----------------------------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | PYROSCOPE_PROFILING_LOG_DIR            | String       | Sets the directory for .NET Profiler logs. Defaults to `/var/log/pyroscope/` on Linux and `%PROGRAMDATA%\Pyroscope\logs` on Windows. |
-| PYROSCOPE_LABELS                       | String       | Static labels to apply to an uploaded profile. Must be a list of key:value separated by commas such as: layer:api or team:intake. |
+| PYROSCOPE_LABELS                       | String       | Static labels to apply to an uploaded profile. Must be a list of key:value separated by commas such as: layer:api or team:intake. Set namespace labels here to correlate profiles with trace spans in the trace view. Refer to [Set namespace labels for profile correlation](#set-namespace-labels-for-profile-correlation). |
 | PYROSCOPE_SERVER_ADDRESS               | String       | Address of the Pyroscope Server                                                                                                   |
 | PYROSCOPE_PROFILING_ENABLED            | Boolean      | If set to true, enables the .NET Profiler. Defaults to false.                                                                     |
 | PYROSCOPE_PROFILING_WALLTIME_ENABLED   | Boolean      | If set to true, enables the Wall time profiling. Defaults to false.                                                               |
@@ -242,6 +242,17 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_BASIC_AUTH_USER              | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_TENANT_ID                    | String       | Only needed if using multi-tenancy in Pyroscope.                                                                                  |
+
+## Set namespace labels for profile correlation
+
+To show profiles in the trace view, set a `service_namespace` label on your profiles.
+For example, set it as a static label with `PYROSCOPE_LABELS`:
+
+```shell
+PYROSCOPE_LABELS=service_namespace:accessmanager
+```
+
+{{< docs/shared source="pyroscope" lookup="correlate-profiles-namespace-labels.md" version="latest" >}}
 
 ## Send data to Pyroscope OSS or Grafana Cloud Profiles
 

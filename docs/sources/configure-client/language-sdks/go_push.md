@@ -148,6 +148,21 @@ runtime.SetBlockProfileRate(rate)
 The `rate` parameter controls the fraction of goroutine blocking events that are reported in the blocking profile.
 The profiler aims to sample an average of one blocking event per rate nanoseconds spent blocked.
 
+## Set namespace labels for profile correlation
+
+To show profiles in the trace view, set a `service_namespace` label on your profiles.
+For example, add it to the `Tags` map in your `pyroscope.Config`:
+
+```go
+pyroscope.Start(pyroscope.Config{
+  ApplicationName: "simple.golang.app",
+  Tags:            map[string]string{"service_namespace": "accessmanager"},
+  // ...
+})
+```
+
+{{< docs/shared source="pyroscope" lookup="correlate-profiles-namespace-labels.md" version="latest" >}}
+
 ## Send data to Pyroscope OSS or Grafana Cloud Profiles
 
 To configure the Golang SDK to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL.

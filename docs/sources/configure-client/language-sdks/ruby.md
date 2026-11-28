@@ -81,6 +81,22 @@ Pyroscope.configure do |config|
 end
 ```
 
+## Set namespace labels for profile correlation
+
+To show profiles in the trace view, set a `service_namespace` label on your profiles.
+For example, add it to `config.tags`:
+
+```ruby
+Pyroscope.configure do |config|
+  config.application_name = "my.ruby.app"
+  config.tags = {
+    "service_namespace" => "accessmanager",
+  }
+end
+```
+
+{{< docs/shared source="pyroscope" lookup="correlate-profiles-namespace-labels.md" version="latest" >}}
+
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Ruby SDK
 
 ```ruby
